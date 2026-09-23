@@ -7,11 +7,7 @@ import {
   encodeMCPToolNameForForm,
   getEffectiveToolSettings,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import type {
-  MCPServerToolDefinition,
-  ToolsAndStakesController,
-  ToolsAndStakesState,
-} from "@app/components/actions/mcp/types";
+import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import {
@@ -25,7 +21,6 @@ import {
   Button,
   Check,
   Checkbox,
-  Chip,
   ContentMessage,
   cn,
   DropdownMenu,
@@ -37,8 +32,6 @@ import {
   Label,
   ListGroup,
   ListItem,
-  Popover,
-  ScrollArea,
   SearchInput,
   SliderToggle,
   XClose,
@@ -46,21 +39,44 @@ import {
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
+type ToolDefinition = MCPServerViewType["server"]["tools"][number];
+
+export interface ToolsAndStakesController {
+  search: string;
+  setSearch: (search: string) => void;
+  tools: ToolDefinition[];
+  visibleTools: ToolDefinition[];
+  selectedToolNames: string[];
+  isSelected: (toolName: string) => boolean;
+  toggleSelected: (toolName: string) => void;
+  areAllVisibleSelected: boolean;
+  toggleSelectAllVisible: () => void;
+  clearSelection: () => void;
+  getSettings: (toolName: string) => ToolSettings;
+  updateTool: (toolName: string, patch: Partial<ToolSettings>) => void;
+  selectionStakeLevels: MCPToolStakeLevelType[];
+  applyToSelection: (patch: Partial<ToolSettings>) => void;
+}
+
+/**
+ * @cc [owner:id13,label:product] tool-selection-persistence
+ * Tool selection MUST survive search changes, including clearing search, and batch stake or state updates.
+ */
 export function useToolsAndStakesController(
   mcpServerView: MCPServerViewType | null
 ): ToolsAndStakesController {
   const form = useFormContext<MCPServerFormValues>();
+  const [search, setSearch] = useState("");
+  const [selectedToolNames, setSelectedToolNames] = useState<string[]>([]);
   const serverViewId = mcpServerView?.sId ?? null;
-  const [controllerState, setControllerState] = useState<ToolsAndStakesState>({
-    serverViewId,
-    search: "",
-    selectedToolNames: [],
-  });
-  const isCurrentServer = controllerState.serverViewId === serverViewId;
-  const search = isCurrentServer ? controllerState.search : "";
-  const selectedToolNames = isCurrentServer
-    ? controllerState.selectedToolNames
-    : [];
+  const [previousServerViewId, setPreviousServerViewId] =
+    useState(serverViewId);
+
+  if (serverViewId !== previousServerViewId) {
+    setPreviousServerViewId(serverViewId);
+    setSearch("");
+    setSelectedToolNames([]);
+  }
 
   const tools = useMemo(
     () => mcpServerView?.server.tools ?? [],
@@ -134,29 +150,6 @@ export function useToolsAndStakesController(
     }
   };
 
-  const setSearch = (nextSearch: string) => {
-    setControllerState((previous) => ({
-      serverViewId,
-      search: nextSearch,
-      selectedToolNames:
-        previous.serverViewId === serverViewId
-          ? previous.selectedToolNames
-          : [],
-    }));
-  };
-
-  const updateSelectedToolNames = (
-    update: (previous: string[]) => string[]
-  ) => {
-    setControllerState((previous) => ({
-      serverViewId,
-      search: previous.serverViewId === serverViewId ? previous.search : "",
-      selectedToolNames: update(
-        previous.serverViewId === serverViewId ? previous.selectedToolNames : []
-      ),
-    }));
-  };
-
   return {
     search,
     setSearch,
@@ -165,7 +158,7 @@ export function useToolsAndStakesController(
     selectedToolNames,
     isSelected: (toolName: string) => selectedSet.has(toolName),
     toggleSelected: (toolName: string) =>
-      updateSelectedToolNames((previous) =>
+      setSelectedToolNames((previous) =>
         previous.includes(toolName)
           ? previous.filter((name) => name !== toolName)
           : [...previous, toolName]
@@ -173,7 +166,7 @@ export function useToolsAndStakesController(
     areAllVisibleSelected,
     toggleSelectAllVisible: () => {
       const visibleToolNames = new Set(visibleTools.map((tool) => tool.name));
-      updateSelectedToolNames((previous) => {
+      setSelectedToolNames((previous) => {
         if (areAllVisibleSelected) {
           return previous.filter((name) => !visibleToolNames.has(name));
         }
@@ -186,7 +179,7 @@ export function useToolsAndStakesController(
         ];
       });
     },
-    clearSelection: () => updateSelectedToolNames(() => []),
+    clearSelection: () => setSelectedToolNames([]),
     getSettings,
     updateTool,
     selectionStakeLevels,
@@ -214,16 +207,12 @@ export function MCPServerDetailsTools({
     setSearch,
     tools,
     visibleTools,
-    selectedToolNames,
     isSelected,
     toggleSelected,
     areAllVisibleSelected,
     toggleSelectAllVisible,
-    clearSelection,
     getSettings,
     updateTool,
-    selectionStakeLevels,
-    applyToSelection,
   } = controller;
 
   if (tools.length === 0) {
@@ -267,96 +256,6 @@ export function MCPServerDetailsTools({
           value={search}
           onChange={setSearch}
         />
-        {selectedToolNames.length > 0 && (
-          <Popover
-            popoverTriggerAsChild
-            trigger={
-              <Button
-                size="sm"
-                variant="outline"
-                label={`${selectedToolNames.length} selected`}
-                isSelect
-              />
-            }
-            content={
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="heading-sm text-foreground">
-                    Selected tools
-                  </span>
-                  <Button
-                    size="xs"
-                    variant="ghost-secondary"
-                    label="Clear all"
-                    onClick={clearSelection}
-                  />
-                </div>
-                <ScrollArea
-                  className={selectedToolNames.length > 5 ? "h-48" : undefined}
-                >
-                  <div className="flex flex-col items-start gap-2 pr-2">
-                    {selectedToolNames.map((toolName) => (
-                      <Chip
-                        key={toolName}
-                        className="max-w-full"
-                        size="sm"
-                        label={asDisplayName(toolName)}
-                        onRemove={() => toggleSelected(toolName)}
-                      />
-                    ))}
-                  </div>
-                </ScrollArea>
-                <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        isSelect
-                        label="Set stake"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel label="Set stake" />
-                      {selectionStakeLevels.map((stakeLevel) => (
-                        <DropdownMenuItem
-                          key={stakeLevel}
-                          label={MCP_TOOL_STAKE_LABELS[stakeLevel]}
-                          onClick={() =>
-                            applyToSelection({ permission: stakeLevel })
-                          }
-                        />
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        isSelect
-                        label="State"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel label="State" />
-                      <DropdownMenuItem
-                        icon={Check}
-                        label="Enable"
-                        onClick={() => applyToSelection({ enabled: true })}
-                      />
-                      <DropdownMenuItem
-                        icon={XClose}
-                        label="Disable"
-                        onClick={() => applyToSelection({ enabled: false })}
-                      />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-            }
-          />
-        )}
         <Button
           size="sm"
           variant="outline"
@@ -394,7 +293,7 @@ export function MCPServerDetailsTools({
 }
 
 interface ToolRowProps {
-  tool: MCPServerToolDefinition;
+  tool: ToolDefinition;
   settings: ToolSettings;
   stakeLevels: ReadonlyArray<MCPToolStakeLevelType>;
   isSelected: boolean;
@@ -539,5 +438,66 @@ function ClampedDescription({
         />
       )}
     </div>
+  );
+}
+
+interface MCPServerDetailsToolsBulkBarProps {
+  controller: ToolsAndStakesController;
+}
+
+export function MCPServerDetailsToolsBulkBar({
+  controller,
+}: MCPServerDetailsToolsBulkBarProps) {
+  const {
+    selectedToolNames,
+    visibleTools,
+    clearSelection,
+    selectionStakeLevels,
+    applyToSelection,
+  } = controller;
+
+  return (
+    <BulkSelectionBar
+      selectedCount={selectedToolNames.length}
+      totalCount={visibleTools.length}
+      itemLabel="tool"
+      canSelectAll={false}
+      onSelectAll={() => {}}
+      onClear={clearSelection}
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="primary" isSelect label="Set stake" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" side="top">
+          <DropdownMenuLabel label="Set stake" />
+          {selectionStakeLevels.map((stakeLevel) => (
+            <DropdownMenuItem
+              key={stakeLevel}
+              label={MCP_TOOL_STAKE_LABELS[stakeLevel]}
+              onClick={() => applyToSelection({ permission: stakeLevel })}
+            />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="primary" isSelect label="State" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" side="top">
+          <DropdownMenuLabel label="State" />
+          <DropdownMenuItem
+            icon={Check}
+            label="Enable"
+            onClick={() => applyToSelection({ enabled: true })}
+          />
+          <DropdownMenuItem
+            icon={XClose}
+            label="Disable"
+            onClick={() => applyToSelection({ enabled: false })}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </BulkSelectionBar>
   );
 }

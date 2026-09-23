@@ -6,6 +6,7 @@ import {
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import {
   MCPServerDetailsTools,
+  MCPServerDetailsToolsBulkBar,
   useToolsAndStakesController,
 } from "@app/components/actions/mcp/MCPServerDetailsTools";
 import { MCPServerViewTypeFactory } from "@app/tests/utils/MCPServerViewTypeFactory";
@@ -20,7 +21,6 @@ import type {
   MouseEventHandler,
   ReactNode,
 } from "react";
-import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { FormProvider, useForm } from "react-hook-form";
 import { describe, expect, it, vi } from "vitest";
@@ -38,13 +38,6 @@ interface CheckboxStubProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "checked" | "onChange"> {
   checked?: boolean | "indeterminate";
   onCheckedChange?: (checked: boolean | "indeterminate") => void;
-}
-
-interface ChipStubProps {
-  className?: string;
-  label?: string;
-  onRemove?: () => void;
-  size?: string;
 }
 
 interface ChildrenStubProps {
@@ -76,16 +69,6 @@ interface LabelStubProps extends LabelHTMLAttributes<HTMLLabelElement> {
 
 interface ListItemStubProps extends HTMLAttributes<HTMLLIElement> {
   children: ReactNode;
-}
-
-interface PopoverStubProps {
-  content: ReactNode;
-  popoverTriggerAsChild?: boolean;
-  trigger: ReactNode;
-}
-
-interface ScrollAreaStubProps extends ChildrenStubProps {
-  className?: string;
 }
 
 interface SearchInputStubProps {
@@ -122,16 +105,6 @@ vi.mock("@dust-tt/sparkle", () => ({
       onChange={(e) => onCheckedChange?.(e.target.checked)}
       {...rest}
     />
-  ),
-  Chip: ({ className, label, onRemove, size: _size }: ChipStubProps) => (
-    <div className={className}>
-      <span>{label}</span>
-      {onRemove && (
-        <button type="button" aria-label={`Remove ${label}`} onClick={onRemove}>
-          Remove
-        </button>
-      )}
-    </div>
   ),
   cn: (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" "),
@@ -174,25 +147,6 @@ vi.mock("@dust-tt/sparkle", () => ({
     <li {...rest} data-testid="tool-row">
       {children}
     </li>
-  ),
-  Popover: ({
-    content,
-    popoverTriggerAsChild: _popoverTriggerAsChild,
-    trigger,
-  }: PopoverStubProps) => {
-    const [open, setOpen] = useState(false);
-
-    return (
-      <>
-        <div onClick={() => setOpen((previous) => !previous)}>{trigger}</div>
-        {open && <div data-testid="popover-content">{content}</div>}
-      </>
-    );
-  },
-  ScrollArea: ({ children, className }: ScrollAreaStubProps) => (
-    <div className={className} data-testid="scroll-area">
-      {children}
-    </div>
   ),
   SearchInput: ({
     value,
@@ -246,20 +200,6 @@ const twoToolView = MCPServerViewTypeFactory.build({
   ],
 });
 
-const manyTools = Array.from({ length: 6 }, (_, index) => ({
-  name: `tool_${index}`,
-  description: `Tool ${index}`,
-}));
-
-const manyToolView = MCPServerViewTypeFactory.build({
-  server: { tools: manyTools },
-  toolsMetadata: manyTools.map((tool) => ({
-    toolName: tool.name,
-    enabled: true,
-    permission: "low",
-  })),
-});
-
 function renderTools(view = twoToolView) {
   let form!: UseFormReturn<MCPServerFormValues>;
 
@@ -284,7 +224,12 @@ function renderTools(view = twoToolView) {
   function Body() {
     const controller = useToolsAndStakesController(view);
     return (
-      <MCPServerDetailsTools mcpServerView={view} controller={controller} />
+      <>
+        <MCPServerDetailsTools mcpServerView={view} controller={controller} />
+        <div data-testid="bulk-bar">
+          <MCPServerDetailsToolsBulkBar controller={controller} />
+        </div>
+      </>
     );
   }
 
@@ -303,20 +248,16 @@ function renderTools(view = twoToolView) {
 
 const getSearchInput = () => screen.getByLabelText("tool-filter");
 const getRows = () => screen.getAllByTestId("tool-row");
-const getSelectionPopover = () => screen.getByTestId("popover-content");
+const getBulkBar = () => screen.getByTestId("bulk-bar");
 
 /** The row's stake dropdown button, as opposed to the items it opens. */
 const getStakeTrigger = (row: HTMLElement) =>
   within(within(row).getByTestId("dropdown-trigger")).getByRole("button");
 
-const getSelectionStakeMenu = () =>
-  within(getSelectionPopover()).getAllByTestId("dropdown-content")[0];
-const getSelectionStateMenu = () =>
-  within(getSelectionPopover()).getAllByTestId("dropdown-content")[1];
-
-function openSelectionPopover(count: number) {
-  fireEvent.click(screen.getByRole("button", { name: `${count} selected` }));
-}
+const getBulkStakeMenu = () =>
+  within(getBulkBar()).getAllByTestId("dropdown-content")[0];
+const getBulkStateMenu = () =>
+  within(getBulkBar()).getAllByTestId("dropdown-content")[1];
 
 function selectRow(index: number) {
   const checkbox = within(getRows()[index]).getByRole("checkbox");
@@ -351,9 +292,7 @@ describe("MCPServerDetailsTools", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select all" }));
 
     // Only the visible tool is picked up, not the one the search hid.
-    expect(
-      screen.getByRole("button", { name: "1 selected" })
-    ).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("1 selected.")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Deselect all" })
     ).toBeInTheDocument();
@@ -363,10 +302,9 @@ describe("MCPServerDetailsTools", () => {
     const { settingsFor } = renderTools();
 
     selectRow(0);
-    openSelectionPopover(1);
     await act(async () => {
       fireEvent.click(
-        within(getSelectionStakeMenu()).getByRole("button", {
+        within(getBulkStakeMenu()).getByRole("button", {
           name: "High (always ask for confirmation)",
         })
       );
@@ -374,9 +312,7 @@ describe("MCPServerDetailsTools", () => {
 
     expect(settingsFor(WEATHER_TOOL).permission).toBe("high");
     expect(settingsFor(CALENDAR_TOOL).permission).toBe("low");
-    expect(
-      screen.getByRole("button", { name: "1 selected" })
-    ).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("1 selected.")).toBeInTheDocument();
     expect(within(getRows()[0]).getByRole("checkbox")).toBeChecked();
   });
 
@@ -384,10 +320,9 @@ describe("MCPServerDetailsTools", () => {
     const { settingsFor } = renderTools();
 
     selectRow(1);
-    openSelectionPopover(1);
     await act(async () => {
       fireEvent.click(
-        within(getSelectionStateMenu()).getByRole("button", {
+        within(getBulkStateMenu()).getByRole("button", {
           name: "Disable",
         })
       );
@@ -395,9 +330,7 @@ describe("MCPServerDetailsTools", () => {
 
     expect(settingsFor(CALENDAR_TOOL).enabled).toBe(false);
     expect(settingsFor(WEATHER_TOOL).enabled).toBe(true);
-    expect(
-      screen.getByRole("button", { name: "1 selected" })
-    ).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("1 selected.")).toBeInTheDocument();
     expect(within(getRows()[1]).getByRole("checkbox")).toBeChecked();
   });
 
@@ -405,68 +338,13 @@ describe("MCPServerDetailsTools", () => {
     renderTools();
 
     selectRow(0);
-    expect(
-      screen.getByRole("button", { name: "1 selected" })
-    ).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("1 selected.")).toBeInTheDocument();
 
     fireEvent.change(getSearchInput(), { target: { value: "calendar" } });
-    expect(
-      screen.getByRole("button", { name: "1 selected" })
-    ).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("1 selected.")).toBeInTheDocument();
 
     fireEvent.change(getSearchInput(), { target: { value: "" } });
     expect(within(getRows()[0]).getByRole("checkbox")).toBeChecked();
-  });
-
-  it("opens a stash where hidden selections can be removed", () => {
-    renderTools();
-
-    selectRow(0);
-    fireEvent.change(getSearchInput(), { target: { value: "calendar" } });
-
-    expect(screen.queryByTestId("popover-content")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "1 selected" }));
-
-    const stash = screen.getByTestId("popover-content");
-    expect(
-      within(stash).getByText(asDisplayName(WEATHER_TOOL))
-    ).toBeInTheDocument();
-    fireEvent.click(
-      within(stash).getByRole("button", {
-        name: `Remove ${asDisplayName(WEATHER_TOOL)}`,
-      })
-    );
-
-    expect(screen.queryByRole("button", { name: "1 selected" })).toBeNull();
-
-    fireEvent.change(getSearchInput(), { target: { value: "" } });
-    expect(within(getRows()[0]).getByRole("checkbox")).not.toBeChecked();
-  });
-
-  it("clears every selection from the stash", () => {
-    renderTools();
-
-    selectRow(0);
-    selectRow(1);
-    fireEvent.click(screen.getByRole("button", { name: "2 selected" }));
-    fireEvent.click(
-      within(screen.getByTestId("popover-content")).getByRole("button", {
-        name: "Clear all",
-      })
-    );
-
-    expect(screen.queryByRole("button", { name: "2 selected" })).toBeNull();
-    expect(within(getRows()[0]).getByRole("checkbox")).not.toBeChecked();
-    expect(within(getRows()[1]).getByRole("checkbox")).not.toBeChecked();
-  });
-
-  it("bounds the stash when many tools are selected", () => {
-    renderTools(manyToolView);
-
-    fireEvent.click(screen.getByRole("button", { name: "Select all" }));
-    fireEvent.click(screen.getByRole("button", { name: "6 selected" }));
-
-    expect(screen.getByTestId("scroll-area")).toHaveClass("h-48");
   });
 
   it("selects and deselects visible tools without changing hidden selections", () => {
@@ -475,14 +353,10 @@ describe("MCPServerDetailsTools", () => {
     selectRow(0);
     fireEvent.change(getSearchInput(), { target: { value: "calendar" } });
     fireEvent.click(screen.getByRole("button", { name: "Select all" }));
-    expect(
-      screen.getByRole("button", { name: "2 selected" })
-    ).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("2 selected.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Deselect all" }));
-    expect(
-      screen.getByRole("button", { name: "1 selected" })
-    ).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("1 selected.")).toBeInTheDocument();
 
     fireEvent.change(getSearchInput(), { target: { value: "" } });
     expect(within(getRows()[0]).getByRole("checkbox")).toBeChecked();
@@ -495,11 +369,10 @@ describe("MCPServerDetailsTools", () => {
     selectRow(0);
     fireEvent.change(getSearchInput(), { target: { value: "calendar" } });
     selectRow(0);
-    openSelectionPopover(2);
 
     await act(async () => {
       fireEvent.click(
-        within(getSelectionStateMenu()).getByRole("button", {
+        within(getBulkStateMenu()).getByRole("button", {
           name: "Disable",
         })
       );
@@ -507,9 +380,7 @@ describe("MCPServerDetailsTools", () => {
 
     expect(settingsFor(WEATHER_TOOL).enabled).toBe(false);
     expect(settingsFor(CALENDAR_TOOL).enabled).toBe(false);
-    expect(
-      screen.getByRole("button", { name: "2 selected" })
-    ).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("2 selected.")).toBeInTheDocument();
 
     fireEvent.change(getSearchInput(), { target: { value: "" } });
     expect(within(getRows()[0]).getByRole("checkbox")).toBeChecked();
@@ -540,9 +411,8 @@ describe("MCPServerDetailsTools", () => {
     renderTools();
 
     selectRow(0);
-    openSelectionPopover(1);
 
-    const stakeMenu = getSelectionStakeMenu();
+    const stakeMenu = getBulkStakeMenu();
     expect(
       within(stakeMenu).getByRole("button", {
         name: "High (always ask for confirmation)",
