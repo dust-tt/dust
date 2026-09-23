@@ -2,6 +2,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
@@ -31,6 +32,9 @@ async function setup() {
   const { workspace, key } = await createPublicApiMockRequest({
     systemKey: true,
   });
+  await SpaceFactory.defaults(
+    await Authenticator.internalAdminForWorkspace(workspace.sId)
+  );
 
   // Create a user and agent for testing
   const user = await UserFactory.basic();

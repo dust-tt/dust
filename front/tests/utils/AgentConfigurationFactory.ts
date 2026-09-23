@@ -15,15 +15,7 @@ import type {
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
-import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
-
-async function fetchGlobalSpaceId(
-  auth: Authenticator
-): Promise<ModelId | null> {
-  const spaces = await SpaceResource.listWorkspaceDefaultSpaces(auth);
-  return spaces.find((space) => space.isGlobal())?.id ?? null;
-}
 
 export class AgentConfigurationFactory {
   static async createTestAgent(
@@ -66,11 +58,9 @@ export class AgentConfigurationFactory {
       workspace.sId
     );
 
-    // Every agent requests the workspace's global space (see `agent-stored-global-space`). Some
-    // legacy tests build a workspace without its default spaces; they get no global space here.
-    const requestedSpaceIds =
-      overrides.requestedSpaceIds ??
-      removeNulls([await fetchGlobalSpaceId(internalAuth)]);
+    const globalSpace =
+      await SpaceResource.fetchWorkspaceGlobalSpace(internalAuth);
+    const requestedSpaceIds = overrides.requestedSpaceIds ?? [globalSpace.id];
 
     const result = await AgentResource.makeNew(internalAuth, {
       name,
@@ -134,6 +124,7 @@ export class AgentConfigurationFactory {
     const user = auth.user();
     assert(user, "User is required");
 
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const agentResource = await AgentResource.fetchById(auth, agentId);
     assert(
       agentResource && auth.can("read", agentResource),
@@ -159,9 +150,7 @@ export class AgentConfigurationFactory {
       tags: [],
       editors: [user.toJSON()],
       authorId: user.id,
-      requestedSpaceIds:
-        overrides.requestedSpaceIds ??
-        removeNulls([await fetchGlobalSpaceId(auth)]),
+      requestedSpaceIds: overrides.requestedSpaceIds ?? [globalSpace.id],
       // Explicitly clear tools/skills: `updateConfiguration` is a partial merge (an omitted field
       // keeps its current value), and this helper's contract is to produce a bare updated version.
       actions: [],

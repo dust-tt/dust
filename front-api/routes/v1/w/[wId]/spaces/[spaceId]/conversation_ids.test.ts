@@ -65,6 +65,9 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversation_ids", () => {
     const { workspace, key } = await createPublicApiMockRequest({
       systemKey: true,
     });
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
 
     const space = await SpaceFactory.regular(workspace);
     const user = await UserFactory.basic();
@@ -112,6 +115,9 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversation_ids", () => {
     const { workspace, key } = await createPublicApiMockRequest({
       systemKey: true,
     });
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
 
     const space = await SpaceFactory.regular(workspace);
     const user = await UserFactory.basic();
@@ -158,6 +164,9 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversation_ids", () => {
     const { workspace, key } = await createPublicApiMockRequest({
       systemKey: true,
     });
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
 
     const space = await SpaceFactory.regular(workspace);
     const user = await UserFactory.basic();
