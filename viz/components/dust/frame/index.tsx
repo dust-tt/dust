@@ -1,5 +1,6 @@
 "use client";
 
+import { VisualizationThemeRoot } from "@viz/app/components/VisualizationThemeRoot";
 import { cn } from "@viz/lib/utils";
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 
@@ -27,11 +28,13 @@ export const FrameRoot = ({
   style,
   ...props
 }: FrameRootProps) => (
-  <div
-    {...props}
-    className={cn("bg-background font-sans text-foreground", className)}
-    style={{ ...theme, ...style }}
-  >
-    {children}
-  </div>
+  <VisualizationThemeRoot hasTheme={theme !== undefined}>
+    <div
+      {...props}
+      className={cn("bg-background font-sans text-foreground", className)}
+      style={{ ...theme, ...style }}
+    >
+      {children}
+    </div>
+  </VisualizationThemeRoot>
 );

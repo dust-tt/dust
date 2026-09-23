@@ -1,5 +1,6 @@
 "use client";
 
+import { VisualizationThemeRoot } from "@viz/app/components/VisualizationThemeRoot";
 import { useVizContext } from "@viz/app/components/VizContext";
 import type { FrameTheme } from "@viz/components/dust/frame";
 import { SlideshowControls } from "@viz/components/dust/slideshow/SlideshowControls";
@@ -136,18 +137,18 @@ export function Slideshow({ children, className, theme }: SlideshowProps) {
   const { isPdfMode } = useVizContext();
   const slides = React.Children.toArray(children);
 
-  if (isPdfMode) {
-    return (
-      <PdfSlideshow className={className} theme={theme}>
-        {slides}
-      </PdfSlideshow>
-    );
-  }
-
   return (
-    <InteractiveSlideshow className={className} theme={theme}>
-      {slides}
-    </InteractiveSlideshow>
+    <VisualizationThemeRoot hasTheme={theme !== undefined}>
+      {isPdfMode ? (
+        <PdfSlideshow className={className} theme={theme}>
+          {slides}
+        </PdfSlideshow>
+      ) : (
+        <InteractiveSlideshow className={className} theme={theme}>
+          {slides}
+        </InteractiveSlideshow>
+      )}
+    </VisualizationThemeRoot>
   );
 }
 
