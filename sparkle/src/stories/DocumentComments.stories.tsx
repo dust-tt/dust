@@ -608,6 +608,64 @@ export const MarkdownSaveFormat: Story = {
   },
 };
 
+/** @summary Code blocks and inline code cannot anchor a comment, so the action stays away. */
+export const UnsupportedSelections: Story = {
+  args: {
+    initialContent: JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "codeBlock",
+          content: [{ type: "text", text: "const answer = 42;" }],
+        },
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "npm install",
+              marks: [{ type: "code" }],
+            },
+          ],
+        },
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Plain prose still works." }],
+        },
+      ],
+    }),
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const editor = await canvas.findByRole("textbox", {
+      name: "Document content",
+    });
+    await userEvent.click(editor);
+
+    for (const selector of ["pre", "p:has(code)"]) {
+      const element = editor.querySelector(selector);
+      if (!element) {
+        throw new Error(`Expected ${selector} in the document`);
+      }
+      selectContents(element);
+      const toolbar = await findSelectionToolbar(canvasElement);
+      await expect(
+        within(toolbar).queryByRole("button", { name: "Comment" })
+      ).not.toBeInTheDocument();
+      await userEvent.keyboard("{Control>}{Alt>}m{/Alt}{/Control}");
+      await expect(
+        canvas.queryByRole("dialog", { name: "New comment" })
+      ).not.toBeInTheDocument();
+    }
+
+    const prose = editor.querySelectorAll("p")[1];
+    selectContents(prose);
+    const toolbar = await findSelectionToolbar(canvasElement);
+    await expect(
+      await within(toolbar).findByRole("button", { name: "Comment" })
+    ).toBeVisible();
+  },
+};
+
 /** @summary Malformed stored comments keep the document closed and unchanged. */
 export const InvalidComments: Story = {
   args: {

@@ -60,19 +60,50 @@ export const documentCommentsPluginKey = new PluginKey<DocumentCommentsState>(
 export const getDocumentComments = (doc: Node): DocumentComment[] =>
   (doc.attrs[COMMENTS_ATTRIBUTE] as DocumentComment[] | undefined) ?? [];
 
-/** First rendered highlight of an unresolved comment, if any. */
-export const findCommentHighlight = (editor: Editor, id: string) =>
-  editor.view.dom.querySelector<HTMLElement>(
-    `[data-comment-highlight="${id.replace(/["\\]/g, "\\$&")}"]`
-  );
+/** First rendered highlight of each unresolved comment, from one DOM pass. */
+export const getCommentHighlights = (editor: Editor) => {
+  const highlights = new Map<string, HTMLElement>();
+  for (const element of editor.view.dom.querySelectorAll<HTMLElement>(
+    "[data-comment-highlight]"
+  )) {
+    const id = element.dataset.commentHighlight;
+    if (id !== undefined && !highlights.has(id)) {
+      highlights.set(id, element);
+    }
+  }
+  return highlights;
+};
 
 export const scrollToCommentHighlight = (editor: Editor, id: string) => {
-  findCommentHighlight(editor, id)?.scrollIntoView({
-    block: "center",
-    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? "instant"
-      : "smooth",
+  getCommentHighlights(editor)
+    .get(id)
+    ?.scrollIntoView({
+      block: "center",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+    });
+};
+
+/**
+ * True when some text in the range can carry a comment mark, mirroring what addMark
+ * would do. Code blocks declare `marks: ""` and the inline code mark excludes every other
+ * mark, so a selection made only of those would save a thread with nothing to anchor it.
+ */
+const rangeAcceptsCommentMark = (doc: Node, from: number, to: number) => {
+  const markType = doc.type.schema.marks[COMMENT_MARK_NAME];
+  let accepts = false;
+  doc.nodesBetween(from, to, (node, _pos, parent) => {
+    if (
+      node.isText &&
+      parent?.type.allowsMarkType(markType) &&
+      !node.marks.some((mark) => mark.type.excludes(markType))
+    ) {
+      accepts = true;
+    }
+    return !accepts;
   });
+  return accepts;
 };
 
 /** Text covered by each comment, in document order, joined across blocks. */
@@ -210,9 +241,10 @@ export const DocumentCommentMark = Mark.create({
  */
 /**
  * @cc [owner:flvndvd,label:product] document-comment-draft-range
- * A pending draft range MUST follow document edits around it without growing from text
- * inserted at its edges. A draft whose range collapses MUST be dropped. Starting a draft
- * MUST collapse the selection to the end of the range.
+ * A draft MUST start only when some selected text can carry a comment mark, so every
+ * submitted thread has an anchor. A pending draft range MUST follow document edits around
+ * it without growing from text inserted at its edges. A draft whose range collapses MUST
+ * be dropped. Starting a draft MUST collapse the selection to the end of the range.
  */
 export const DocumentComments = Extension.create({
   name: "documentComments",
@@ -238,7 +270,7 @@ export const DocumentComments = Extension.create({
         if (
           !(selection instanceof TextSelection) ||
           selection.empty ||
-          state.doc.textBetween(selection.from, selection.to).length === 0
+          !rangeAcceptsCommentMark(state.doc, selection.from, selection.to)
         ) {
           return false;
         }

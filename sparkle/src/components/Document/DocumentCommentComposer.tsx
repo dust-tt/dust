@@ -40,7 +40,7 @@ export const DocumentCommentComposer = ({
     left: number;
   } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const layoutVersion = useEditorLayoutVersion(editor);
+  const layoutVersion = useEditorLayoutVersion(editor, containerRef);
   const { cancelDraft, submitDraft } = comments;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: layoutVersion re-measures after document changes and resizes

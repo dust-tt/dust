@@ -29,39 +29,45 @@ const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 const WEEK_MS = 7 * DAY_MS;
 
+const relativeTimeFormat = new Intl.RelativeTimeFormat(undefined, {
+  numeric: "auto",
+});
+
 // Duplicates front's timeAgoFrom in spirit. Sparkle cannot import front, and no shared
 // relative time helper exists in Sparkle yet. Promote to src/lib when a second component needs it.
 export const formatCommentTime = (
   createdAt: string,
-  now = Date.now()
+  nowMs = Date.now()
 ): string => {
   const date = new Date(createdAt);
-  const time = date.getTime();
-  if (Number.isNaN(time)) {
+  const createdMs = date.getTime();
+  if (Number.isNaN(createdMs)) {
     return "";
   }
 
-  const elapsed = now - time;
-  const relative = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  const elapsedMs = nowMs - createdMs;
 
-  if (elapsed < MINUTE_MS) {
+  if (elapsedMs < MINUTE_MS) {
     return "just now";
   }
-  if (elapsed < HOUR_MS) {
-    return relative.format(-Math.round(elapsed / MINUTE_MS), "minute");
+  if (elapsedMs < HOUR_MS) {
+    return relativeTimeFormat.format(
+      -Math.round(elapsedMs / MINUTE_MS),
+      "minute"
+    );
   }
-  if (elapsed < DAY_MS) {
-    return relative.format(-Math.round(elapsed / HOUR_MS), "hour");
+  if (elapsedMs < DAY_MS) {
+    return relativeTimeFormat.format(-Math.round(elapsedMs / HOUR_MS), "hour");
   }
-  if (elapsed < WEEK_MS) {
-    return relative.format(-Math.round(elapsed / DAY_MS), "day");
+  if (elapsedMs < WEEK_MS) {
+    return relativeTimeFormat.format(-Math.round(elapsedMs / DAY_MS), "day");
   }
 
   return date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year:
-      date.getFullYear() === new Date(now).getFullYear()
+      date.getFullYear() === new Date(nowMs).getFullYear()
         ? undefined
         : "numeric",
   });

@@ -4,7 +4,7 @@ import { MessageTextCircle01 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import type { Editor } from "@tiptap/core";
 import React, { type RefObject, useLayoutEffect, useState } from "react";
-import { findCommentHighlight } from "./DocumentComments";
+import { getCommentHighlights } from "./DocumentComments";
 import type { DocumentComment } from "./types";
 import type { DocumentCommentsController } from "./useDocumentComments";
 import { useEditorLayoutVersion } from "./useEditorLayoutVersion";
@@ -31,13 +31,17 @@ const measureClusters = (
   container: HTMLElement
 ): MarkerCluster[] => {
   const containerTop = container.getBoundingClientRect().top;
+  const highlights = getCommentHighlights(editor);
   const anchors = comments
     .flatMap((comment) => {
-      const highlight = findCommentHighlight(editor, comment.id);
+      const highlight = highlights.get(comment.id);
       if (!highlight) {
         return [];
       }
-      const bounds = highlight.getBoundingClientRect();
+      // The first client rect is the first line. The bounding rect would span every
+      // wrapped line and pull the marker down.
+      const bounds =
+        highlight.getClientRects()[0] ?? highlight.getBoundingClientRect();
       return [
         {
           id: comment.id,
@@ -76,7 +80,7 @@ export const DocumentCommentMarkers = ({
   const { unresolved, activeId, reveal } = comments;
   const [clusters, setClusters] = useState<MarkerCluster[]>([]);
   // Measured here so document updates re-render the markers, not the whole editor chrome.
-  const layoutVersion = useEditorLayoutVersion(editor);
+  const layoutVersion = useEditorLayoutVersion(editor, containerRef);
   const authorsById = new Map(
     unresolved.map((comment) => [comment.id, comment.author.name])
   );

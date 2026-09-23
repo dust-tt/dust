@@ -28,8 +28,8 @@ const TOOLBAR_BUTTON_CLASS = cn(
 
 /**
  * @cc [owner:flvndvd,label:product] document-comment-cta
- * The Comment action MUST appear only when onComment is provided. The toolbar MUST stay
- * hidden while a comment draft is pending.
+ * The Comment action MUST appear only when onComment is provided and the selection can
+ * start a draft. The toolbar MUST stay hidden while a comment draft is pending.
  */
 export const DocumentSelectionToolbar = ({
   editor,
@@ -43,6 +43,7 @@ export const DocumentSelectionToolbar = ({
       italic: editor.isActive("italic"),
       strike: editor.isActive("strike"),
       code: editor.isActive("code"),
+      canComment: editor.can().startCommentDraft(),
     }),
   });
   const isApple =
@@ -133,7 +134,7 @@ export const DocumentSelectionToolbar = ({
             }
           />
         ))}
-        {onComment && (
+        {onComment && selection.canComment && (
           <>
             <Separator
               orientation="vertical"

@@ -1,11 +1,14 @@
 import type { Editor } from "@tiptap/core";
-import { useEffect, useState } from "react";
+import { type RefObject, useEffect, useState } from "react";
 
 // Markers and the composer read highlight positions from the DOM. Put this counter in
 // their layout effect deps and they measure again whenever the text may have moved:
-// after a document edit, when the editor element resizes, or when the window does.
-
-export const useEditorLayoutVersion = (editor: Editor | null) => {
+// after a document edit, when the editor or its container resizes, or when the window does.
+// The container catches things like the save error banner appearing above the editor.
+export const useEditorLayoutVersion = (
+  editor: Editor | null,
+  containerRef: RefObject<HTMLElement>
+) => {
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
@@ -20,6 +23,9 @@ export const useEditorLayoutVersion = (editor: Editor | null) => {
     // Selection-only transactions follow every render, so only document changes count.
     editor.on("update", bump);
     observer?.observe(editor.view.dom);
+    if (containerRef.current) {
+      observer?.observe(containerRef.current);
+    }
     window.addEventListener("resize", bump);
 
     return () => {
@@ -27,7 +33,7 @@ export const useEditorLayoutVersion = (editor: Editor | null) => {
       observer?.disconnect();
       window.removeEventListener("resize", bump);
     };
-  }, [editor]);
+  }, [editor, containerRef]);
 
   return version;
 };
