@@ -6,9 +6,11 @@ import { EUROPE } from "@app/lib/model_constructors/types/regions";
 export class MistralMistralMedium35EuropeMistralStream extends WithMistralMedium35Config(
   MistralStream
 ) {
+  // 1.1x list price: https://docs.mistral.ai/inference/regional-inference (2026-09-22).
   static readonly tokenPricing = {
-    standardInput: 1.5,
-    standardOutput: 7.5,
+    standardInput: 1.65,
+    standardOutput: 8.25,
+    cacheHit: 0.165,
   };
 
   // Inference runs in the EU; the endpoint remains usable from both US and EU.
