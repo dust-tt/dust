@@ -103,6 +103,7 @@ import {
 } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
+import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
@@ -175,6 +176,7 @@ export function loadAllModels() {
     MembershipInvitationModel,
     GroupModel,
     GroupMembershipModel,
+    GroupPinnedItemModel,
     TagModel,
     SpaceModel,
     ProjectMetadataModel,

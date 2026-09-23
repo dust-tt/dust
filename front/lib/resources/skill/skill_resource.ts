@@ -54,6 +54,7 @@ import type {
   SkillHydrationOptions,
 } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -4312,6 +4313,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           where: {
             workspaceId: workspace.id,
             childCustomSkillId: this.id,
+          },
+          transaction,
+        });
+
+        await GroupPinnedItemModel.destroy({
+          where: {
+            workspaceId: workspace.id,
+            type: "skill",
+            itemId: this.sId,
           },
           transaction,
         });

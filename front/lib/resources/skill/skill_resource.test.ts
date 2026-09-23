@@ -7,6 +7,7 @@ import {
 } from "@app/lib/models/skill";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -275,11 +276,22 @@ describe("SkillResource", () => {
         name: "Skill To Delete With Grants",
       });
       expect(await fetchSkillGrants(skill.id)).toHaveLength(1);
+      const replaceResult = await DiscoveryItemResource.setPinnedForGroup(
+        testContext.authenticator,
+        {
+          groupModelId: testContext.globalGroup.id,
+          item: { type: "skill", itemId: skill.sId, position: 0 },
+        }
+      );
+      expect(replaceResult.isOk()).toBe(true);
 
       const result = await skill.delete(testContext.authenticator);
       expect(result.isOk()).toBe(true);
 
       expect(await fetchSkillGrants(skill.id)).toHaveLength(0);
+      expect(
+        await DiscoveryItemResource.listPinnedForAuth(testContext.authenticator)
+      ).toEqual([]);
     });
 
     it("is idempotent: granting the same editor twice keeps one member", async () => {
@@ -1659,6 +1671,14 @@ describe("SkillResource", () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill To Archive",
       });
+      const replaceResult = await DiscoveryItemResource.setPinnedForGroup(
+        testContext.authenticator,
+        {
+          groupModelId: testContext.globalGroup.id,
+          item: { type: "skill", itemId: skill.sId, position: 0 },
+        }
+      );
+      expect(replaceResult.isOk()).toBe(true);
 
       // Editors live in the regular_auto group holding the skill's `editor` grant.
       const grantGroup =
@@ -1684,6 +1704,9 @@ describe("SkillResource", () => {
         testContext.authenticator
       );
       expect(archiveCount).toBe(1);
+      expect(
+        await DiscoveryItemResource.listPinnedForAuth(testContext.authenticator)
+      ).toHaveLength(0);
 
       // Archiving leaves the memberships alone: an archived skill keeps its editors, both on the
       // in-memory resource and on a freshly fetched one.
