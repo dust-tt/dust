@@ -1,0 +1,11 @@
+@import "./sparkle-scoped.generated.css";
+
+/* Put .viz-sparkle on Sparkle UI and its portal containers.
+   Put data-viz-sparkle-slot on model visuals nested inside that UI. */
+@scope (.viz-sparkle) to ([data-viz-sparkle-slot]) {
+  :scope {
+    --viz-sparkle-font-sans: var(--font-geist), sans-serif;
+    --viz-sparkle-font-mono: var(--font-geist-mono), monospace;
+    font-family: var(--viz-sparkle-font-sans);
+  }
+}

@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import localFont from "next/font/local";
 
 import "./styles/globals.css";
+import "./styles/sparkle.css";
 
 const geist = localFont({
   src: [
