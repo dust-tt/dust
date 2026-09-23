@@ -21,7 +21,7 @@ function SuggestedEditorRow({
     member?.fullName ?? (isMembersLoading ? "Loading…" : userId);
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5">
+    <div className="flex items-center gap-3 py-2.5">
       <Avatar
         size="xs"
         visual={member?.image ?? null}
@@ -29,9 +29,7 @@ function SuggestedEditorRow({
         isRounded
       />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-foreground">
-          {displayName}
-        </div>
+        <div className="truncate text-sm text-foreground">{displayName}</div>
         {member?.email && (
           <div className="truncate text-xs text-muted-foreground">
             {member.email}
@@ -40,8 +38,8 @@ function SuggestedEditorRow({
       </div>
       <Chip
         size="xs"
-        color={action === "add" ? "success" : "warning"}
-        label={action === "add" ? "Will add" : "Will remove"}
+        color={action === "add" ? "highlight" : "warning"}
+        label={action === "add" ? "Add" : "Remove"}
       />
     </div>
   );
@@ -69,10 +67,8 @@ export function SuggestedSkillEditors({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-foreground">
-        Editors change
-      </span>
-      <div className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background">
+      <span className="text-sm text-muted-foreground">Editors</span>
+      <div className="divide-y divide-border">
         {addUserIds.map((userId) => (
           <SuggestedEditorRow
             key={`add-${userId}`}

@@ -11,7 +11,10 @@ export async function syncRemoteMCPServers(ids: ModelId[]): Promise<void> {
   try {
     for (const id of ids) {
       // Retrieve the remote MCP server
-      const server = await RemoteMCPServerResource.fetchByModelId(id);
+      const server =
+        await RemoteMCPServerResource.dangerouslyFetchByModelIdAcrossWorkspaces(
+          id
+        );
       if (!server) {
         logger.error({
           msg: "Remote MCP server not found",

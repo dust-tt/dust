@@ -6,16 +6,12 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import {
-  AgentConfigurationModel,
-  AgentModel,
-} from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 // Type-only import (erased at runtime, so no import cycle with `agent_resource`): these helpers may
 // operate on an already-resolved `AgentResource` instance but never construct or statically call it.
 import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -219,41 +215,6 @@ export async function resolveExistingAgentAndVersion(
   }
 
   return { existingAgent, version };
-}
-
-// Resolves the agent's stable `sId` and its `AgentModel` identity, creating the identity row for a
-// brand-new agent and backfilling `agentId` on any pre-existing configuration rows. Runs inside the
-// save transaction.
-export async function resolveAgentIdentity({
-  agentConfigurationId,
-  existingAgent,
-  owner,
-  transaction: t,
-}: {
-  agentConfigurationId: string | undefined;
-  existingAgent: AgentConfigurationModel | null;
-  owner: LightWorkspaceType;
-  transaction: Transaction;
-}): Promise<{ sId: string; agentModelId: ModelId }> {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const sId = agentConfigurationId || generateRandomModelSId();
-  let agentModelId = existingAgent?.agentId;
-  if (!agentModelId) {
-    const [agentIdentity] = await AgentModel.findOrCreate({
-      where: { sId, workspaceId: owner.id },
-      defaults: { sId, workspaceId: owner.id },
-      transaction: t,
-    });
-    agentModelId = agentIdentity.id;
-    await AgentConfigurationModel.update(
-      { agentId: agentModelId },
-      {
-        where: { sId, workspaceId: owner.id },
-        transaction: t,
-      }
-    );
-  }
-  return { sId, agentModelId };
 }
 
 // Writes the configuration row for the version being saved: an in-place update for a pending agent

@@ -1,5 +1,6 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import {
+  getCreditSpendCheckpointEnabled,
   hasCrossedCreditSpendCheckpoint,
   hasReachedCreditSpendCheckpoint,
   isExemptFromCreditSpendCheckpoint,
@@ -280,6 +281,7 @@ async function _runModelAndCreateActionsActivity({
       isRootAgentMessage,
       userMessageOrigin: runAgentArgs.userMessageOrigin ?? null,
       agentMessageId: runAgentArgs.agentMessageId,
+      agentMessageModelId: runAgentData.agentMessage.agentMessageId,
       totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
     }
   );
@@ -393,7 +395,8 @@ async function _runModelAndCreateActionsActivity({
 /**
  * Whether the agent loop must pause here for the user to confirm continuing. Reads the agent
  * message's checkpoint status only when the cheap, in-memory checks (exemption, root message,
- * pre-step spend) don't already rule it out.
+ * pre-step spend) don't already rule it out; the workspace's checkpoint gate setting is
+ * consulted only the first time that status is found unset.
  */
 export async function getCreditSpendCheckpointCrossed(
   auth: Authenticator,
@@ -401,11 +404,13 @@ export async function getCreditSpendCheckpointCrossed(
     isRootAgentMessage,
     userMessageOrigin,
     agentMessageId,
+    agentMessageModelId,
     totalCostMicroUsd,
   }: {
     isRootAgentMessage: boolean;
     userMessageOrigin: UserMessageOrigin | null;
     agentMessageId: string;
+    agentMessageModelId: ModelId;
     totalCostMicroUsd: number;
   }
 ): Promise<boolean> {
@@ -426,6 +431,17 @@ export async function getCreditSpendCheckpointCrossed(
       auth,
       { agentMessageId }
     );
+
+  // First step crossing the threshold for this message: the workspace's gate hasn't been
+  // consulted yet. A disabled gate is persisted as acknowledged right away so every later step
+  // sees a resolved status and never re-reads the workspace setting.
+  if (status === null && !(await getCreditSpendCheckpointEnabled(auth))) {
+    await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
+      auth,
+      { agentMessageModelId, from: null, to: "acknowledged" }
+    );
+    return false;
+  }
 
   return hasCrossedCreditSpendCheckpoint({
     isExempt,

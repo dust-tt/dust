@@ -19,6 +19,7 @@ import { destroyMCPServerViewDependencies } from "@app/lib/resources/mcp_server_
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { mcpToolsRequireConfiguration } from "@app/lib/utils/json_schemas";
@@ -116,7 +117,8 @@ export interface RemoteMCPServerResource
   > {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> {
-  static model: ModelStatic<RemoteMCPServerModel> = RemoteMCPServerModel;
+  static model: ModelStaticWorkspaceAware<RemoteMCPServerModel> =
+    RemoteMCPServerModel;
 
   // Only the keys fetched so far are present; a key mapped to `null` is a fetched NULL, an
   // absent key was never fetched.
@@ -439,7 +441,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     firstId?: number;
     limit?: number;
   }) {
-    const servers = await RemoteMCPServerModel.findAll({
+    const servers = await this.model.findAll({
       where: {
         id: {
           [Op.gte]: firstId,
@@ -447,9 +449,30 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       },
       limit,
       order: [["id", "ASC"]],
+      // WORKSPACE_ISOLATION_BYPASS: daily sync job iterates over all remote MCP servers across
+      // workspaces (see front/temporal/remote_tools/activities.ts).
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     return servers.map((server) => server.id);
+  }
+
+  // Admin operations - don't use in non-temporal code.
+  static async dangerouslyFetchByModelIdAcrossWorkspaces(
+    id: ModelId
+  ): Promise<RemoteMCPServerResource | null> {
+    const blob = await this.model.findByPk(id, {
+      // WORKSPACE_ISOLATION_BYPASS: daily sync job resolves each server listed by
+      // dangerouslyListAllServersIds before building an Authenticator for its workspace.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+    if (!blob) {
+      return null;
+    }
+
+    return new this(this.model, blob.get());
   }
 
   // sId

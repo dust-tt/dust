@@ -5,7 +5,10 @@ import {
   AgentModel,
 } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  AgentReinforcementMode,
+} from "@app/types/assistant/agent";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -26,6 +29,8 @@ export class AgentConfigurationFactory {
         temperature?: number;
       };
       requestedSpaceIds: ModelId[];
+      templateId: string | null;
+      reinforcement: AgentReinforcementMode;
     }> = {}
   ): Promise<AgentConfigurationType> {
     const name = overrides.name ?? "Test Agent";
@@ -62,7 +67,8 @@ export class AgentConfigurationFactory {
         modelId,
         temperature,
       },
-      templateId: null,
+      templateId: overrides.templateId ?? null,
+      reinforcement: overrides.reinforcement,
       requestedSpaceIds,
       tags: [], // Added missing tags property
       editors,

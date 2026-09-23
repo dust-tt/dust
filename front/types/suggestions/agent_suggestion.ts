@@ -215,6 +215,7 @@ const BaseAgentSuggestionSchema = z.object({
   agentConfigurationId: z.number(),
   analysis: z.string().nullable(),
   state: z.enum(AGENT_SUGGESTION_STATES),
+  source: z.enum(AGENT_SUGGESTION_SOURCES),
   conversationId: z.string().nullable(),
 });
 

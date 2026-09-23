@@ -1,4 +1,3 @@
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { Authenticator } from "@app/lib/auth";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
@@ -12,7 +11,6 @@ import {
   parseToolTag,
   serializeToolTag,
   TOOL_TAG_NAME,
-  type ToolReference,
 } from "@app/lib/tools/format";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import * as cheerio from "cheerio";
@@ -62,15 +60,7 @@ async function processWorkspace(
       continue;
     }
 
-    const tools = skill.mcpServerViews.map((view): ToolReference => {
-      const viewType = view.toJSON();
-
-      return {
-        icon: viewType.server.icon ?? null,
-        id: view.sId,
-        name: getMcpServerViewDisplayName(viewType),
-      };
-    });
+    const tools = skill.mcpServerViews.map((view) => view.toRefJSON());
 
     const instructionsToolIds = new Set(
       extractToolTags(skill.instructions).map((tool) => tool.id)
