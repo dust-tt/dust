@@ -1,7 +1,11 @@
+import type { KnowledgeBrowserItem } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
+import { getKnowledgeBrowserEntryLabel } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import type { NavigationHistoryState } from "@app/components/data_source_view/context/useNavigationHistory";
 import { useNavigationHistory } from "@app/components/data_source_view/context/useNavigationHistory";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { EnrichedSpaceType } from "@app/types/space";
+import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 // Pods only expose connected data, so the browser skips their category level; that level is
@@ -45,40 +49,112 @@ export function getVisibleNavigationEntries(
     .filter(({ index }) => !isSkippedPodCategory(navigationHistory, index));
 }
 
-// Navigation state for a knowledge browser, with the Agent Builder's shortcuts: a lone space is
-// entered directly and pods skip the category level since they only expose connected data.
-export function useKnowledgeBrowserNavigation({
+// One crumb per entry, each navigating back to its level. `getLabel` lets a surface keep its own
+// wording for an entry (the Agent Builder shows a data source view's stored name);
+// `includeSkippedLevels` keeps a pod's skipped category in the trail (the Agent Builder shows it).
+export function getKnowledgeBrowserBreadcrumbItems(
+  navigationHistory: NavigationHistoryEntryType[],
+  navigateTo: (index: number) => void,
+  {
+    getLabel = getKnowledgeBrowserEntryLabel,
+    includeSkippedLevels = false,
+  }: {
+    getLabel?: (entry: NavigationHistoryEntryType) => string;
+    includeSkippedLevels?: boolean;
+  } = {}
+): BreadcrumbsItem[] {
+  const entries = includeSkippedLevels
+    ? navigationHistory.map((entry, index) => ({ entry, index }))
+    : getVisibleNavigationEntries(navigationHistory);
+  return entries.map(({ entry, index }) => ({
+    label: getLabel(entry),
+    onClick: () => navigateTo(index),
+  }));
+}
+
+type NavigationSetters = Pick<
+  NavigationHistoryState,
+  | "setSpaceEntry"
+  | "setCategoryEntry"
+  | "setDataSourceViewEntry"
+  | "addNodeEntry"
+>;
+
+// Enters the level a browser row stands for.
+export function navigateToKnowledgeBrowserItem(
+  item: KnowledgeBrowserItem,
+  navigation: NavigationSetters
+): void {
+  switch (item.kind) {
+    case "space":
+      navigation.setSpaceEntry(item.space);
+      return;
+    case "category":
+      navigation.setCategoryEntry(item.category);
+      return;
+    case "data_source":
+      navigation.setDataSourceViewEntry(item.dataSourceView);
+      return;
+    case "node":
+      navigation.addNodeEntry(item.node);
+      return;
+    default:
+      assertNeverAndIgnore(item);
+  }
+}
+
+/**
+ * @cc [owner:smb2268,label:product] browser-navigation-shortcuts
+ * A navigation offered exactly one space MUST enter that space, once per space (a refetched list
+ * MUST NOT pull the user back into it), and a navigation sitting on a pod's space level MUST enter
+ * its `managed` category, since pods only expose connected data.
+ */
+export function useKnowledgeBrowserShortcuts({
+  navigation,
   spaces,
-  enabled = true,
 }: {
+  navigation: Pick<
+    NavigationHistoryState,
+    "navigationHistory" | "setSpaceEntry" | "setCategoryEntry"
+  >;
   spaces: EnrichedSpaceType[];
-  // When false the shortcuts stay idle so a hidden browser never fetches a space.
-  enabled?: boolean;
-}): NavigationHistoryState & { navigateUp: () => void } {
-  const navigation = useNavigationHistory();
-  const { navigationHistory, navigateTo, setSpaceEntry, setCategoryEntry } =
-    navigation;
+}): void {
+  const { navigationHistory, setSpaceEntry, setCategoryEntry } = navigation;
   const currentEntry = navigationHistory[navigationHistory.length - 1];
 
-  // Remembered so a refetched `spaces` array does not pull the user back to that space.
-  const autoEnteredSpaceId = useRef<string | null>(null);
+  // Remembered so a refetched `spaces` array does not pull the user back into a space already
+  // entered for them.
+  const autoEnteredSpaceIds = useRef(new Set<string>());
   useEffect(() => {
     const loneSpace = spaces.length === 1 ? spaces[0] : null;
-    if (enabled && loneSpace && autoEnteredSpaceId.current !== loneSpace.sId) {
-      autoEnteredSpaceId.current = loneSpace.sId;
+    if (loneSpace && !autoEnteredSpaceIds.current.has(loneSpace.sId)) {
+      autoEnteredSpaceIds.current.add(loneSpace.sId);
       setSpaceEntry(loneSpace);
     }
-  }, [enabled, spaces, setSpaceEntry]);
+  }, [spaces, setSpaceEntry]);
 
   useEffect(() => {
     if (
-      enabled &&
       currentEntry.type === "space" &&
       currentEntry.space.kind === "project"
     ) {
       setCategoryEntry("managed");
     }
-  }, [currentEntry, enabled, setCategoryEntry]);
+  }, [currentEntry, setCategoryEntry]);
+}
+
+// Navigation state for a knowledge browser with the shortcuts above, for callers that do not
+// already own a navigation history (the Agent Builder's context does, and applies the shortcuts
+// to it directly).
+export function useKnowledgeBrowserNavigation({
+  spaces,
+}: {
+  spaces: EnrichedSpaceType[];
+}): NavigationHistoryState & { navigateUp: () => void } {
+  const navigation = useNavigationHistory();
+  const { navigationHistory, navigateTo } = navigation;
+
+  useKnowledgeBrowserShortcuts({ navigation, spaces });
 
   const navigateUp = useCallback(
     () => navigateTo(getNavigateUpIndex(navigationHistory)),

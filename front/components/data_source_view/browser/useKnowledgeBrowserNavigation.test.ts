@@ -1,13 +1,15 @@
 import {
   getNavigateUpIndex,
   getVisibleNavigationEntries,
+  useKnowledgeBrowserShortcuts,
 } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import {
   makeDataSourceViewFixture,
   makeSpaceFixture,
 } from "@app/tests/utils/content_node_test_fixtures";
-import { describe, expect, it } from "vitest";
+import { renderHook } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 const root: NavigationHistoryEntryType = { type: "root" };
 const category: NavigationHistoryEntryType = {
@@ -56,5 +58,44 @@ describe("getVisibleNavigationEntries", () => {
         ({ index }) => index
       )
     ).toEqual([0, 1, 2, 3]);
+  });
+});
+
+describe("useKnowledgeBrowserShortcuts", () => {
+  it("enters a lone space once, even when it is offered again later", () => {
+    const spaceA = makeSpaceFixture({ sId: "a" });
+    const spaceB = makeSpaceFixture({ sId: "b" });
+    const setSpaceEntry = vi.fn();
+    const navigation = {
+      navigationHistory: [root],
+      setSpaceEntry,
+      setCategoryEntry: vi.fn(),
+    };
+
+    const { rerender } = renderHook(
+      ({ spaces }) => useKnowledgeBrowserShortcuts({ navigation, spaces }),
+      { initialProps: { spaces: [spaceA] } }
+    );
+    rerender({ spaces: [spaceA] });
+    rerender({ spaces: [spaceB] });
+    rerender({ spaces: [spaceA] });
+    rerender({ spaces: [spaceA, spaceB] });
+
+    expect(setSpaceEntry.mock.calls).toEqual([[spaceA], [spaceB]]);
+  });
+
+  it("enters a pod's managed category from its space level", () => {
+    const setCategoryEntry = vi.fn();
+    renderHook(() =>
+      useKnowledgeBrowserShortcuts({
+        navigation: {
+          navigationHistory: [root, pod],
+          setSpaceEntry: vi.fn(),
+          setCategoryEntry,
+        },
+        spaces: [pod.space, regular.space],
+      })
+    );
+    expect(setCategoryEntry).toHaveBeenCalledWith("managed");
   });
 });
