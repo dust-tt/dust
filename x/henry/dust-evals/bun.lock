@@ -5,7 +5,7 @@
     "": {
       "name": "dust-evals",
       "dependencies": {
-        "@dust-tt/client": "^1.2.6",
+        "@dust-tt/client": "^1.2.9",
         "commander": "^12.0.0",
         "csv-parse": "^5.5.6",
         "eventsource-parser": "1.1.2",
@@ -25,7 +25,7 @@
     "eventsource-parser": "1.1.2",
   },
   "packages": {
-    "@dust-tt/client": ["@dust-tt/client@1.2.6", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.26.0", "@types/json-schema": "^7.0.15", "event-source-polyfill": "^1.0.31", "eventsource-parser": "^1.1.1", "zod": "^3.23.8" } }, "sha512-u5nTIYyk1iPGZ2XQK2K4Hp5frwj1/H7sUr6R5LbyUi1V0ZbobzYZ63s0rdDj/hnSkf/aTVgukRTqbkdAKnhsmg=="],
+    "@dust-tt/client": ["@dust-tt/client@1.2.9", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.29.0", "@types/json-schema": "^7.0.15", "event-source-polyfill": "^1.0.31", "eventsource-parser": "^1.1.1", "zod": "^3.23.8" } }, "sha512-1mkYBNU2mcGRqemuDfi46IVqTbTWjemqa8sY+im7LKzx8FXG1a7lvxzqbJrULwmxIUSoTjC37AGFDgxHcyz3qQ=="],
 
     "@eslint-community/eslint-utils": ["@eslint-community/eslint-utils@4.9.0", "", { "dependencies": { "eslint-visitor-keys": "^3.4.3" }, "peerDependencies": { "eslint": "^6.0.0 || ^7.0.0 || >=8.0.0" } }, "sha512-ayVFHdtZ+hsq1t2Dy24wCmGXGe4q9Gu3smhLYALJrr473ZH27MsnSL+LKUlimp4BWJqMDMLmPpx/Q9R3OAlL4g=="],
 
