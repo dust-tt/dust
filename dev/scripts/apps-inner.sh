@@ -16,6 +16,8 @@ cd "$DUST_REPO_ROOT"
 
 # Force dependents to wait for a fresh sdks-js build.
 rm -rf sdks/js/dist
+# Same for sparkle. Its dist is a volume mount, so empty it rather than removing it.
+mkdir -p sparkle/dist && find sparkle/dist -mindepth 1 -delete
 
 export DUST_USE_START_MPROCS=1
 export DUST_IN_CONTAINER="${DUST_IN_CONTAINER:-1}"
