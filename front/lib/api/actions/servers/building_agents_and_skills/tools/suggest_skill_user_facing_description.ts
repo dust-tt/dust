@@ -3,6 +3,8 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatSkillSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestSkillUserFacingDescriptionArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { fetchWritableSkill } from "@app/lib/api/skills/write_access";
@@ -13,6 +15,7 @@ import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isUserFacingDescriptionSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
+import assert from "assert";
 
 export async function suggestSkillUserFacingDescription(
   auth: Authenticator,
@@ -21,7 +24,8 @@ export async function suggestSkillUserFacingDescription(
     userFacingDescription,
     analysis,
     title,
-  }: SuggestSkillUserFacingDescriptionArgs
+  }: SuggestSkillUserFacingDescriptionArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<SkillSuggestionResource, MCPError>> {
   if (!auth.user()) {
     return new Err(
@@ -61,7 +65,7 @@ export async function suggestSkillUserFacingDescription(
       title: title ?? null,
       state: "pending",
       source: "conversational",
-      sourceConversationIds: null,
+      sourceConversationIds: [runContext.conversation.id],
     }
   );
 
@@ -76,9 +80,15 @@ export async function suggestSkillUserFacingDescription(
 
 export async function suggestSkillUserFacingDescriptionHandler(
   args: SuggestSkillUserFacingDescriptionArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestSkillUserFacingDescription(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestSkillUserFacingDescription(
+    auth,
+    args,
+    runContext
+  );
   if (result.isErr()) {
     return result;
   }

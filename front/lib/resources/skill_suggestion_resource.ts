@@ -260,7 +260,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
 
   /**
    * Lists all suggestions for a skill identified by its sId.
-   * Optionally filter by state, source, and kinds.
+   * Optionally filter by state, source, kinds, and source conversation.
    */
   static async listBySkillConfigurationId(
     auth: Authenticator,
@@ -269,6 +269,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       states?: SkillSuggestionState[];
       sources?: SkillSuggestionSource[];
       kinds?: readonly SkillSuggestionKind[];
+      sourceConversationModelId?: ModelId;
       limit?: number;
       dangerouslyBypassConversationsVisibilityCheck?: boolean;
     }
@@ -293,6 +294,11 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       ...sourceFilter,
       ...(filters?.kinds &&
         filters.kinds.length > 0 && { kind: [...filters.kinds] }),
+      ...(filters?.sourceConversationModelId !== undefined && {
+        sourceConversationIds: {
+          [Op.contains]: [filters.sourceConversationModelId],
+        },
+      }),
     };
 
     return this.baseFetch(auth, {

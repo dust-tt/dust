@@ -3,6 +3,8 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatSkillSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestSkillNameArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
@@ -13,10 +15,12 @@ import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_res
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isNameSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
+import assert from "assert";
 
 export async function suggestSkillName(
   auth: Authenticator,
-  { skillId, name, analysis, title }: SuggestSkillNameArgs
+  { skillId, name, analysis, title }: SuggestSkillNameArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<SkillSuggestionResource, MCPError>> {
   if (!auth.user()) {
     return new Err(
@@ -56,7 +60,7 @@ export async function suggestSkillName(
       title: title ?? null,
       state: "pending",
       source: "conversational",
-      sourceConversationIds: null,
+      sourceConversationIds: [runContext.conversation.id],
     }
   );
 
@@ -69,9 +73,11 @@ export async function suggestSkillName(
 
 export async function suggestSkillNameHandler(
   args: SuggestSkillNameArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestSkillName(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestSkillName(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

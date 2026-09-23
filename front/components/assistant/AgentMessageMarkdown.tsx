@@ -49,6 +49,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 export const AgentMessageMarkdown = ({
   owner,
+  conversationId,
   content,
   additionalMarkdownComponents = {} as Components,
   additionalMarkdownPlugins = [] as PluggableList,
@@ -61,6 +62,7 @@ export const AgentMessageMarkdown = ({
   canCopyQuotes,
 }: {
   owner: WorkspaceType;
+  conversationId?: string;
   content: string;
   isLastMessage?: boolean;
   streamingState?: StreamingState;
@@ -89,11 +91,11 @@ export const AgentMessageMarkdown = ({
       instruction_block: InstructionBlock,
       build_skill: BuildSkillDirectiveBlock,
       build_agent: getBuildAgentDirectivePlugin(owner),
-      skill_suggestion: getSkillSuggestionPlugin(owner),
+      skill_suggestion: getSkillSuggestionPlugin(owner, conversationId),
       agent_suggestion: getConversationAgentSuggestionPlugin(owner),
       ...additionalMarkdownComponents,
     }),
-    [owner, additionalMarkdownComponents]
+    [owner, conversationId, additionalMarkdownComponents]
   );
 
   const markdownPlugins = React.useMemo(() => {
