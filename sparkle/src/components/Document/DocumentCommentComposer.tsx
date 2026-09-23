@@ -72,7 +72,7 @@ export const DocumentCommentComposer = ({
     });
   }, [editor, containerRef, layoutVersion]);
 
-  // Focus once the card is positioned and visible; hidden elements ignore focus().
+  // Focus once the card is positioned and visible. Hidden elements ignore focus().
   const positioned = position !== null;
   useEffect(() => {
     if (positioned) {

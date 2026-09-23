@@ -105,7 +105,7 @@ const buildDecorations = (
         continue;
       }
 
-      // nodeName gives each comment its own wrapper; ProseMirror otherwise merges
+      // nodeName gives each comment its own wrapper. ProseMirror otherwise merges
       // same-range decorations into one span and keeps a single id.
       decorations.push(
         Decoration.inline(pos, pos + node.nodeSize, {
@@ -184,11 +184,11 @@ export const DocumentCommentMark = Mark.create({
  * Comment threads MUST persist in the document's `comments` attribute and anchor to text
  * through comment marks, so a saved JSON document carries its comments. Stored comments
  * MUST satisfy the comment schema before the document opens. Deleting a comment MUST remove
- * its marks; resolving MUST keep them so the thread can be reopened in place.
+ * its marks. Resolving MUST keep them so the thread can be reopened in place.
  */
 /**
  * @cc [owner:flvndvd,label:react] document-comment-highlights
- * Unresolved comments MUST render as highlights over their marked text; resolved comments and
+ * Unresolved comments MUST render as highlights over their marked text. Resolved comments and
  * comments without a thread MUST render as plain text. The active comment and a pending draft
  * MUST render with the emphasized highlight.
  */
@@ -222,7 +222,7 @@ export const DocumentComments = Extension.create({
         }
 
         if (dispatch) {
-          // The draft highlight now marks the range; collapsing the selection also lets
+          // The draft highlight now marks the range. Collapsing the selection also lets
           // the selection toolbar notice the draft and hide.
           tr.setSelection(TextSelection.create(tr.doc, selection.to));
           tr.setMeta(documentCommentsPluginKey, {
