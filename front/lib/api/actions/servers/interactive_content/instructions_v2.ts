@@ -56,45 +56,10 @@ content file using the \`Slideshow\` and \`Slide\` components.
 - Fit each slide's content within its available space. Simplify dense content or split it across
   additional slides while preserving the slide dimensions.
 
-\`\`\`tsx
-import { Slideshow, Slide } from "@dust/slideshow/v2";
-
-export default function App() {
-  return (
-    <Slideshow>
-      <Slide className="bg-background">
-        <h1 className="text-6xl font-bold text-foreground mb-4">Q4 Revenue Analysis</h1>
-        <p className="text-xl text-muted-foreground">Annual review & key insights</p>
-      </Slide>
-      <Slide className="bg-background">
-        <h2 className="text-4xl font-semibold mb-8">Key Metrics</h2>
-        <div className="grid grid-cols-3 gap-8">
-          <div className="text-center">
-            <p className="text-5xl font-bold text-primary">+25%</p>
-            <p className="text-lg text-muted-foreground mt-2">YoY Growth</p>
-          </div>
-          <div className="text-center">
-            <p className="text-5xl font-bold text-primary">92%</p>
-            <p className="text-lg text-muted-foreground mt-2">Retention</p>
-          </div>
-          <div className="text-center">
-            <p className="text-5xl font-bold text-primary">1.2k</p>
-            <p className="text-lg text-muted-foreground mt-2">New Customers</p>
-          </div>
-        </div>
-      </Slide>
-      <Slide className="bg-background">
-        <h2 className="text-4xl font-semibold mb-6">Next Steps</h2>
-        <ul className="space-y-4 text-xl text-foreground">
-          <li>Expand into EU markets</li>
-          <li>Launch premium tier</li>
-          <li>Revamp onboarding flow</li>
-        </ul>
-      </Slide>
-    </Slideshow>
-  );
-}
-\`\`\`
+Before creating a slideshow, read \`skills/Create Frames/slideshow.example.tsx\` from the conversation
+files (\`/files/conversation-<conversationId>/skills/Create Frames/slideshow.example.tsx\` on the
+Computer). If missing, re-enable \`Create Frames\` to load it. Adapt its content and visual design to
+the user's request.
 
 ### Page and dashboard layout
 

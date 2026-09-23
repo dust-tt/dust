@@ -69,7 +69,7 @@ async function createSkillFileAttachment(
 }
 
 describe("upsertSkillFilesToConversation", () => {
-  it("loads the Frame checker, configs, plugin and theme as skill attachments", async () => {
+  it("loads the Frame checker, configs, plugin and examples as skill attachments", async () => {
     const { auth, workspace, conversation } =
       await setupConversationAndSkillPermissions();
     const skill = await SkillResource.fetchById(auth, "frames");
@@ -90,6 +90,7 @@ describe("upsertSkillFilesToConversation", () => {
         "oxlintrc.json",
         "frame-rules.cjs",
         "theme.ts",
+        "slideshow.example.tsx",
       ].map(
         (fileName) =>
           `conversation-${conversation.sId}/skills/Create Frames/${fileName}`
