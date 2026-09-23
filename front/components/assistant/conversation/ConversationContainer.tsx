@@ -28,6 +28,7 @@ import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { serializeToolTag } from "@app/lib/tools/format";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { HomepageUseCaseType } from "@app/types/api/homepage_use_cases";
 import type {
   ConversationListItemType,
   SubmitMessageError,
@@ -182,6 +183,21 @@ export function ConversationContainerVirtuoso({
 
   const { isAgentsSectionVisible } = useAgentsSectionVisibility();
   const isDiscoveryHomepage = hasFeature("discovery_homepage");
+
+  const handleUseCasePick = useCallback(
+    (useCase: HomepageUseCaseType) => {
+      const references = [
+        ...useCase.skills.map((skill) => serializeSkillTag(skill)),
+        ...useCase.tools.map((tool) => serializeToolTag(tool)),
+      ].join(" ");
+
+      setPendingInputText(references, {
+        replace: true,
+        typedSuffix: references ? ` ${useCase.prompt}` : useCase.prompt,
+      });
+    },
+    [setPendingInputText]
+  );
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -410,17 +426,7 @@ export function ConversationContainerVirtuoso({
 
       {isDiscoveryHomepage && (
         <HomepageUseCases
-          onPick={(useCase) => {
-            const references = [
-              ...useCase.skills.map((skill) => serializeSkillTag(skill)),
-              ...useCase.tools.map((tool) => serializeToolTag(tool)),
-            ].join(" ");
-
-            setPendingInputText(references, {
-              replace: true,
-              typedSuffix: references ? ` ${useCase.prompt}` : useCase.prompt,
-            });
-          }}
+          onPick={handleUseCasePick}
           style={shouldReduceMotion ? undefined : useCasesEntranceStyle}
           workspaceId={owner.sId}
         />

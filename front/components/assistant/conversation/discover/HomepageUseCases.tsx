@@ -7,7 +7,7 @@ import type { HomepageUseCaseType } from "@app/types/api/homepage_use_cases";
 import { cn, LoadingBlock } from "@dust-tt/sparkle";
 import sampleSize from "lodash/sampleSize";
 import type { CSSProperties } from "react";
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 const VISIBLE_COUNT = 4;
 
@@ -32,7 +32,7 @@ export function HomepageUseCases({
 
   const [page, setPage] = useState<HomepageUseCaseType[]>([]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     setPage((current) => {
       const stillOffered = new Set(useCases.map((useCase) => useCase.id));
       if (
@@ -46,7 +46,10 @@ export function HomepageUseCases({
     });
   }, [useCases]);
 
-  if (isUseCasesLoading) {
+  const isPreparing =
+    isUseCasesLoading || (useCases.length > 0 && page.length === 0);
+
+  if (isPreparing) {
     return (
       <div className="mt-4 w-full max-w-conversation" style={style}>
         <ul className="flex flex-col gap-1">

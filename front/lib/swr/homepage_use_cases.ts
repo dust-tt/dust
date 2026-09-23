@@ -2,7 +2,7 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetHomepageUseCasesResponseBody } from "@app/types/api/homepage_use_cases";
 import type { Fetcher } from "swr";
 
-const USE_CASES_DEDUPING_INTERVAL_MS = 5 * 60 * 1000;
+const USE_CASES_DEDUPING_INTERVAL_MS = 30 * 60 * 1000;
 
 interface UseHomepageUseCasesOptions {
   workspaceId: string;

@@ -108,7 +108,10 @@ import {
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
-import type { AnimationPlaybackControls } from "framer-motion";
+import type {
+  AnimationPlaybackControls,
+  BezierDefinition,
+} from "framer-motion";
 import { animate, useReducedMotion } from "framer-motion";
 import type React from "react";
 import {
@@ -143,7 +146,7 @@ function narrowToKnownSlashCommand(
 
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 const TYPING_MAX_DURATION_MS = 700;
-const TYPING_EASE: [number, number, number, number] = [0.86, 0, 0.07, 1];
+const TYPING_EASE: BezierDefinition = [0.86, 0, 0.07, 1];
 const EMPTY_SPACE_IDS: string[] = [];
 const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
 const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
@@ -1330,7 +1333,9 @@ const InputBarContainer = ({
     typingAnimationRef.current = null;
   }, []);
 
-  useEffect(() => stopTyping, [stopTyping]);
+  useEffect(() => {
+    return () => stopTyping();
+  }, [stopTyping]);
 
   const typeIntoEditor = useCallback(
     (text: string) => {
