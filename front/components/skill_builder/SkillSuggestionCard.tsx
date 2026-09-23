@@ -351,6 +351,7 @@ interface SkillSuggestionCardProps {
   suggestion: SkillSuggestionType;
   onAccept?: (suggestion: SkillSuggestionType) => void;
   onDecline?: (suggestion: SkillSuggestionType) => void;
+  onPreview?: () => void;
   getSkillInstructionsHtml: () => string;
   getCurrentAgentFacingDescription: () => string;
   isSelected?: boolean;
@@ -365,6 +366,7 @@ export function SkillSuggestionCard({
   suggestion,
   onAccept,
   onDecline,
+  onPreview,
   getSkillInstructionsHtml,
   getCurrentAgentFacingDescription,
   isSelected = false,
@@ -421,6 +423,7 @@ export function SkillSuggestionCard({
         analysis={suggestion.analysis}
         onAccept={hasActions ? () => onAccept(suggestion) : undefined}
         onReject={hasActions ? () => onDecline(suggestion) : undefined}
+        onPreview={onPreview}
         disabled={disabled}
         isAccepting={isAccepting}
         isDeclining={isDeclining}

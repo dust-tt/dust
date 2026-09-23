@@ -30,6 +30,7 @@ interface ConversationalSuggestionCardProps {
   collapsibleContent?: ReactNode;
   onAccept?: () => void;
   onReject?: () => void;
+  onPreview?: () => void;
   acceptLabel?: string;
   rejectLabel?: string;
   disabled?: boolean;
@@ -44,6 +45,7 @@ export function ConversationalSuggestionCard({
   collapsibleContent,
   onAccept,
   onReject,
+  onPreview,
   acceptLabel = "Accept",
   rejectLabel = "Decline",
   disabled = false,
@@ -69,24 +71,36 @@ export function ConversationalSuggestionCard({
           <p className="text-sm text-muted-foreground">{analysis}</p>
         )}
 
-        {hasActions && (
+        {(hasActions || onPreview) && (
           <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              label={rejectLabel}
-              onClick={onReject}
-              disabled={disabled}
-              isLoading={isDeclining}
-            />
-            <Button
-              variant="highlight"
-              size="sm"
-              label={acceptLabel}
-              onClick={onAccept}
-              disabled={disabled}
-              isLoading={isAccepting}
-            />
+            {onPreview && (
+              <Button
+                variant="ghost"
+                size="sm"
+                label="View in builder"
+                onClick={onPreview}
+              />
+            )}
+            {hasActions && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label={rejectLabel}
+                  onClick={onReject}
+                  disabled={disabled}
+                  isLoading={isDeclining}
+                />
+                <Button
+                  variant="highlight"
+                  size="sm"
+                  label={acceptLabel}
+                  onClick={onAccept}
+                  disabled={disabled}
+                  isLoading={isAccepting}
+                />
+              </>
+            )}
           </div>
         )}
       </div>
