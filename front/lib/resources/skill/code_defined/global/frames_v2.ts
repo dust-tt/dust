@@ -69,7 +69,11 @@ Copy the attached \`skills/Create Frames/theme.ts\` into the Frame folder as \`t
 its values for this Frame. Pass \`theme\` to the content's root: \`FrameRoot\` from \`@dust/frame\` for
 pages and dashboards, or \`Slideshow\` from \`@dust/slideshow/v2\` for presentations. Both use the same
 theme file and scope the existing Tailwind variables to their contents. Author ordinary React and SVG
-using the existing classes. Omit \`theme\` to keep the host's light or dark appearance.
+using the existing classes. Passing \`theme\` to the outer root also opts into Dust's light or dark
+appearance. Pass \`theme={{}}\` to follow Dust with default colors, or omit \`theme\` to keep the light
+defaults. Before opting in, ensure foreground and background pairs remain legible in both modes;
+avoid mixing fixed light surfaces with inherited theme text, or fixed dark text with themed surfaces.
+When editing an existing Frame, preserve its appearance unless adapting its colors for both modes.
 Name the entry component \`App\` and import the root component rather than declaring it locally.
 
 For a page or dashboard:
@@ -103,7 +107,7 @@ the Frame. Keep related foreground and background colors legible together.
 
 Keep shared values in \`theme.ts\` so custom visuals and components using those semantic classes
 follow the same direction. Extend the theme with normal object spreads. A nested FrameRoot inherits
-omitted variables and can override a section:
+omitted variables and can override a section without changing the document's light or dark mode:
 
 \`\`\`tsx
 <FrameRoot

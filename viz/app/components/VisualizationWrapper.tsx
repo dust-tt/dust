@@ -8,7 +8,6 @@ import { FrameFunctionHooksProvider } from "@viz/app/lib/frame-function-hooks";
 import { createFrameRuntimeImports } from "@viz/app/lib/frame-runtime-scope";
 import { extractFileRefs, type FileRef } from "@viz/app/lib/parseFileRefs";
 import { transformEditableText } from "@viz/app/lib/transformEditableText";
-import { useVisualizationTheme } from "@viz/app/lib/use-visualization-theme";
 import type {
   VisualizationAPI,
   VisualizationConfig,
@@ -398,8 +397,6 @@ export function VisualizationWrapper({
     editText,
     addEventListener,
   } = api.ui;
-
-  useVisualizationTheme(isPdfMode);
 
   const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
 

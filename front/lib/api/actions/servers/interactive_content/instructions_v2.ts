@@ -34,6 +34,9 @@ content file using the \`Slideshow\` and \`Slide\` components.
 - \`<Slideshow>\` is the root layout. It fills the viewport and provides navigation, slide previews,
   keyboard shortcuts, fullscreen and PDF rendering. Return it directly from the exported component.
   When using \`theme.ts\`, import its theme and pass it directly as \`<Slideshow theme={theme}>\`.
+  Passing \`theme\` (including \`theme={{}}\`) opts into Dust's light/dark appearance. Without it,
+  the slideshow keeps the light defaults. Use matching semantic foreground and background colors
+  when opting in, and check both light and dark modes.
 - \`<Slide>\` fills the slideshow's width and height and centers its children. Both components accept
   \`className\` for appearance, such as background colors, while keeping their built-in dimensions.
   Inside a \`<Slide>\`, use any React and Tailwind, standard HTML elements, Recharts charts,
