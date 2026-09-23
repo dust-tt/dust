@@ -29,6 +29,7 @@ import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { extractToolTags } from "@app/lib/tools/format";
+import type { SkillSuggestionsPreviewType } from "@app/types/api/assistant/skills/suggestions";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -429,6 +430,43 @@ async function applyEditorsChange(
   });
 
   return new Ok(undefined);
+}
+
+export function previewSkillSuggestions(
+  skill: SkillResource,
+  suggestions: SkillSuggestionResource[]
+): Result<SkillSuggestionsPreviewType, DustError<"invalid_request_error">> {
+  const perSuggestionEdits: SkillEdits[] = [];
+
+  for (const suggestion of suggestions) {
+    const suggestionEdits = editsForSuggestion(suggestion);
+    if (suggestionEdits.isErr()) {
+      return suggestionEdits;
+    }
+
+    perSuggestionEdits.push(suggestionEdits.value);
+  }
+
+  const {
+    name,
+    availability,
+    agentFacingDescription,
+    userFacingDescription,
+    instructionEdits,
+  } = mergeSkillEdits(perSuggestionEdits);
+
+  const instructions = resolveInstructions(skill, instructionEdits);
+  if (instructions.isErr()) {
+    return instructions;
+  }
+
+  return new Ok({
+    name,
+    availability,
+    agentFacingDescription,
+    userFacingDescription,
+    ...instructions.value,
+  });
 }
 
 export async function applySkillSuggestions(

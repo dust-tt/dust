@@ -9,6 +9,7 @@ import {
 } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type {
+  GetSkillSuggestionsPreviewResponseBody,
   GetSkillSuggestionsQuery,
   GetSkillSuggestionsResponseBody,
   PatchSkillSuggestionRequestBody,
@@ -75,6 +76,34 @@ export function useSkillSuggestions({
     isSuggestionsError: !!error,
     isSuggestionsValidating: isValidating,
     mutateSuggestions: mutate,
+  };
+}
+
+interface UseSkillSuggestionsPreviewParams {
+  skillId: string | null;
+  suggestionIds: string;
+  workspaceId: string;
+}
+
+export function useSkillSuggestionsPreview({
+  skillId,
+  suggestionIds,
+  workspaceId,
+}: UseSkillSuggestionsPreviewParams) {
+  const { fetcher } = useFetcher();
+  const previewFetcher: Fetcher<GetSkillSuggestionsPreviewResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    skillId && suggestionIds
+      ? `/api/w/${workspaceId}/assistant/skills/${skillId}/preview?suggestionIds=${encodeURIComponent(suggestionIds)}`
+      : null,
+    previewFetcher
+  );
+
+  return {
+    preview: data?.preview ?? null,
+    isPreviewLoading: !!suggestionIds && !error && !data,
   };
 }
 

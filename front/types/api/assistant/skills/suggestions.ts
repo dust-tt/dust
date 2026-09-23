@@ -1,6 +1,7 @@
 // Contract types and schemas for the skill suggestions endpoint
 // (`/api/w/:wId/assistant/skills/:sId/suggestions`). Used by the skill
 // suggestions route so validation has a single source of truth.
+import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { isString } from "@app/types/shared/utils/general";
 import {
   REVIEWABLE_SKILL_SUGGESTION_SOURCES,
@@ -49,4 +50,30 @@ export const PatchSkillSuggestionResponseBodySchema = z.object({
 });
 export type PatchSkillSuggestionResponseBody = z.infer<
   typeof PatchSkillSuggestionResponseBodySchema
+>;
+
+export const GetSkillSuggestionsPreviewQuerySchema = z.object({
+  suggestionIds: z
+    .string()
+    .min(1)
+    .transform((ids) => ids.split(",")),
+});
+
+export const SkillSuggestionsPreviewSchema = z.object({
+  name: z.string().optional(),
+  availability: z.enum(SKILL_AVAILABILITIES).optional(),
+  agentFacingDescription: z.string().optional(),
+  userFacingDescription: z.string().optional(),
+  instructions: z.string().optional(),
+  instructionsHtml: z.string().optional(),
+});
+export type SkillSuggestionsPreviewType = z.infer<
+  typeof SkillSuggestionsPreviewSchema
+>;
+
+export const GetSkillSuggestionsPreviewResponseBodySchema = z.object({
+  preview: SkillSuggestionsPreviewSchema,
+});
+export type GetSkillSuggestionsPreviewResponseBody = z.infer<
+  typeof GetSkillSuggestionsPreviewResponseBodySchema
 >;
