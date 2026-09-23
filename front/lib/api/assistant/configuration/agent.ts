@@ -11,17 +11,10 @@ import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
-import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
-import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
-import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import { tracer } from "@app/logger/tracer";
 import { launchDeleteAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
@@ -525,75 +518,6 @@ export async function syncAgentSearchAfterRowDestroyed(
   return launchDeleteAgentSearchWorkflow({
     workspaceId: auth.getNonNullableWorkspace().sId,
     agentId: agent.sId,
-  });
-}
-
-/**
- * Batch-deletes pending agent configurations and their grant groups.
- */
-export async function batchHardDeletePendingAgentConfigurations(
-  auth: Authenticator,
-  agents: AgentConfigurationModel[]
-) {
-  const workspaceId = auth.getNonNullableWorkspace().id;
-  const agentConfigurationModelIds = agents.map((agent) => agent.id);
-  const agentModelIds = [...new Set(agents.map((agent) => agent.agentId))];
-
-  await withTransaction(async (t) => {
-    const grantGroups =
-      await GroupPermissionResource.listRegularAutoGroupsForResources(auth, {
-        resourceType: "agent",
-        resourceIds: agentModelIds,
-        transaction: t,
-      });
-    await GroupPermissionResource.deleteAllForResources(auth, {
-      resourceType: "agent",
-      resourceIds: agentModelIds,
-      transaction: t,
-    });
-
-    const groupModelIds = grantGroups.map((group) => group.id);
-    if (groupModelIds.length > 0) {
-      await GroupMembershipModel.destroy({
-        where: { groupId: groupModelIds, workspaceId },
-        transaction: t,
-      });
-
-      await GroupModel.destroy({
-        where: { id: groupModelIds, workspaceId },
-        transaction: t,
-      });
-    }
-
-    // Delete agent suggestions before agents (FK constraint)
-    await AgentSuggestionModel.destroy({
-      where: { agentConfigurationId: agentConfigurationModelIds, workspaceId },
-      transaction: t,
-    });
-
-    await AgentUserRelationResource.deleteForAgents(
-      agents.map((a) => a.sId),
-      { workspaceId, transaction: t }
-    );
-
-    await AgentConfigurationModel.destroy({
-      where: { id: agentConfigurationModelIds, workspaceId },
-      transaction: t,
-    });
-
-    // Pending configurations are the only version of their logical agent. The FK protects this
-    // invariant by rolling the transaction back if another configuration still uses an identity.
-    await AgentModel.destroy({
-      where: { id: agentModelIds, workspaceId },
-      transaction: t,
-    });
-
-    // Drop the deleted agents' cached entries once the deletion commits.
-    await invalidateAgentResourceCaches(
-      workspaceId,
-      agents.map((agent) => agent.sId),
-      t
-    );
   });
 }
 

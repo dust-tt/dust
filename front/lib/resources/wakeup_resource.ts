@@ -380,6 +380,27 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     });
   }
 
+  static async listByAgentConfigurationIds(
+    auth: Authenticator,
+    agentConfigurationIds: string[],
+    { status }: { status?: WakeUpStatus | WakeUpStatus[] } = {}
+  ): Promise<WakeUpResource[]> {
+    if (agentConfigurationIds.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: {
+        agentConfigurationId: agentConfigurationIds,
+        ...(status !== undefined ? { status } : {}),
+      },
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+  }
+
   /**
    * Checks whether the caller can post or edit user messages in a conversation that has active
    * wake-ups. Rejects when any active (scheduled) wake-up is owned by a user other than the current

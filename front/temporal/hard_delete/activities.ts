@@ -1,9 +1,9 @@
 // biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
-import { batchHardDeletePendingAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -162,7 +162,16 @@ export async function purgeExpiredPendingAgentsActivity(
         hasMore = batch.length === batchSize;
 
         if (batch.length > 0) {
-          await batchHardDeletePendingAgentConfigurations(auth, batch);
+          // `batchDelete` skips search-index deletion for pending agents on its own (they are never
+          // indexed; see `batch-delete-search-index`), so no per-agent workflows are launched here.
+          const agents = await AgentResource.dangerouslyFromConfigurationModels(
+            auth,
+            batch
+          );
+          const deleteRes = await AgentResource.batchDelete(auth, agents);
+          if (deleteRes.isErr()) {
+            throw deleteRes.error;
+          }
           deleted += batch.length;
         }
 
