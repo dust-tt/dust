@@ -6,7 +6,10 @@ import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { createCallbackReader } from "@app/lib/utils";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  concurrentExecutor,
+  setTimeoutAsync,
+} from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import {
@@ -256,9 +259,7 @@ export async function getMessagesEventsBatch({
     }
 
     if (liveEvents.length > 0 && !signal.aborted) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, MESSAGE_EVENTS_BATCH_WINDOW_MS)
-      );
+      await setTimeoutAsync(MESSAGE_EVENTS_BATCH_WINDOW_MS);
     }
 
     const events: MessageStreamBatchEvent[] = [...history, ...liveEvents].map(

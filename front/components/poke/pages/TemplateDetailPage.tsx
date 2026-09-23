@@ -12,6 +12,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { TAILWIND_BACKGROUND_COLORS } from "@app/types/assistant/avatar";
@@ -491,7 +492,7 @@ export function TemplateDetailPage() {
               assistantTemplate ? "updated" : "created"
             } successfully.`,
           });
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await setTimeoutAsync(1000);
           router.back();
         } catch (e) {
           setIsSubmitting(false);

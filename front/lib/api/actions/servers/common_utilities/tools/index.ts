@@ -7,6 +7,7 @@ import {
   SET_CONVERSATION_TITLE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { compile } from "mathjs";
@@ -38,7 +39,7 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
   },
 
   wait: async ({ duration_ms }, _extra) => {
-    await new Promise((resolve) => setTimeout(resolve, duration_ms));
+    await setTimeoutAsync(duration_ms);
 
     return new Ok([
       {

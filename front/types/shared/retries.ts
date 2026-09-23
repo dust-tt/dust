@@ -1,3 +1,4 @@
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import type { LoggerInterface } from "./logger";
 
 type RetryOptions = {
@@ -29,7 +30,7 @@ export function withRetries<T, U>(
           },
           "Error while executing retriable function. Retrying..."
         );
-        await new Promise((resolve) => setTimeout(resolve, sleepTime));
+        await setTimeoutAsync(sleepTime);
         errors.push(e);
       }
     }
