@@ -74,14 +74,13 @@ export const AttachContextSubMenuDropdown = forwardRef<
       onKeyDown: (props: { event: KeyboardEvent }) => boolean;
     }>(null);
 
-    const { emptyMessage, isLoading, items, loadingMessage } =
-      useAttachContextSlashMenuItems({
-        conversationId,
-        owner,
-        query,
-        spaceId,
-        useCase,
-      });
+    const { emptyMessage, isLoading, items } = useAttachContextSlashMenuItems({
+      conversationId,
+      owner,
+      query,
+      spaceId,
+      useCase,
+    });
 
     const slashItems = useMemo(() => items.map(toSlashCommandItem), [items]);
 
@@ -114,7 +113,6 @@ export const AttachContextSubMenuDropdown = forwardRef<
         command={handleSelect}
         emptyMessage={emptyMessage}
         isLoading={isLoading}
-        loadingMessage={loadingMessage}
         items={slashItems}
         onClose={onClose}
         subMenuNavigation={{

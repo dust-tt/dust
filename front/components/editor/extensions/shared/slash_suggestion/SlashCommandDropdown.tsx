@@ -3,10 +3,7 @@ import {
   flattenSlashCommandSections,
   SLASH_COMMAND_CAPABILITIES_SECTION_LABEL,
 } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
-import {
-  SLASH_COMMAND_DEFAULT_LOADING_MESSAGE,
-  SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME,
-} from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
+import { SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import {
   ArrowLeft,
   Button,
@@ -19,7 +16,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
-  Spinner,
+  LoadingBlock,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { SuggestionProps } from "@tiptap/suggestion";
@@ -47,11 +44,42 @@ const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME =
 
 const SKILL_NAME_TOOLTIP_DELAY_MS = 1000;
 
-function SlashCommandDropdownLoadingState({ message }: { message: string }) {
+// Enough rows to fill the list's minimum height when the placeholder is the whole list.
+const LIST_LOADING_PLACEHOLDER_ROW_COUNT = 4;
+// Under a section heading, fewer rows so a loading section stays in proportion with the others.
+const SECTION_LOADING_PLACEHOLDER_ROW_COUNT = 3;
+
+// Capability rows lead with a 36px `ResourceAvatar`; sub-menu rows (knowledge, models) with a
+// 24px icon.
+const CAPABILITY_LOADING_PLACEHOLDER_ICON_CLASS = "size-9 rounded";
+const LIST_LOADING_PLACEHOLDER_ICON_CLASS = "size-6 rounded";
+
+// Placeholder rows with the footprint of the menu items that replace them: the same padding and
+// gap, the icon at the size the screen renders, and a label line (`heading-sm`, 20px) over a
+// description line (`text-xs`, 16px), each holding a bar filling the row.
+function SlashCommandDropdownLoadingState({
+  iconClassName,
+  rowCount,
+}: {
+  iconClassName: string;
+  rowCount: number;
+}) {
   return (
-    <div className="flex h-14 items-center justify-center">
-      <Spinner size="sm" />
-      <span className="ml-2 text-sm text-muted-foreground">{message}</span>
+    <div role="status" aria-busy="true" className="flex flex-col">
+      <span className="sr-only">Loading</span>
+      {Array.from({ length: rowCount }, (_, index) => (
+        <div key={index} className="flex items-center gap-2.5 p-2">
+          <LoadingBlock className={iconClassName} />
+          <div className="flex flex-1 flex-col">
+            <div className="flex h-5 items-center">
+              <LoadingBlock className="h-3.5 w-full" />
+            </div>
+            <div className="flex h-4 items-center">
+              <LoadingBlock className="h-2.5 w-full" />
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -84,7 +112,6 @@ export interface SlashCommandDropdownProps
   header?: string;
   isLoading?: boolean;
   items?: SlashCommand[];
-  loadingMessage?: string;
   listMaxHeightClassName?: `max-h-${string}`;
   onClose?: () => void;
   onItemDetails?: (item: SlashCommand) => void;
@@ -168,7 +195,6 @@ export const SlashCommandDropdown = forwardRef<
       header,
       isLoading = false,
       listMaxHeightClassName = DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME,
-      loadingMessage = SLASH_COMMAND_DEFAULT_LOADING_MESSAGE,
       onClose,
       onItemDetails,
       subMenuNavigation,
@@ -500,7 +526,10 @@ export const SlashCommandDropdown = forwardRef<
                             {SLASH_COMMAND_CAPABILITIES_SECTION_LABEL}
                           </DropdownMenuLabel>
                           <SlashCommandDropdownLoadingState
-                            message={loadingMessage}
+                            iconClassName={
+                              CAPABILITY_LOADING_PLACEHOLDER_ICON_CLASS
+                            }
+                            rowCount={SECTION_LOADING_PLACEHOLDER_ROW_COUNT}
                           />
                         </>
                       ) : null}
@@ -509,7 +538,10 @@ export const SlashCommandDropdown = forwardRef<
                 })()
               ) : items.length === 0 ? (
                 isLoading ? (
-                  <SlashCommandDropdownLoadingState message={loadingMessage} />
+                  <SlashCommandDropdownLoadingState
+                    iconClassName={LIST_LOADING_PLACEHOLDER_ICON_CLASS}
+                    rowCount={LIST_LOADING_PLACEHOLDER_ROW_COUNT}
+                  />
                 ) : (
                   <div className="flex h-14 items-center justify-center px-2 text-center text-sm text-muted-foreground">
                     {emptyMessage}

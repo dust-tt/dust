@@ -105,7 +105,6 @@ export const PickModelSubMenuDropdown = forwardRef<
         defaultSelectedItemId={defaultSelectedItemId}
         emptyMessage="No models found"
         isLoading={isModelsLoading}
-        loadingMessage="Loading models…"
         items={items}
         onClose={onClose}
         subMenuNavigation={{

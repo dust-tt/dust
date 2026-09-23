@@ -21,7 +21,6 @@ import {
   handleSlashSubMenuCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { createAttachKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
-import { SLASH_COMMAND_CAPABILITIES_LOADING_MESSAGE } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { useSkillBuilderSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
 import { useSlashMenuStack } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashMenuStack";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -193,7 +192,6 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
         clientRect={clientRect}
         emptyMessage="No commands found"
         isLoading={isLoading}
-        loadingMessage={SLASH_COMMAND_CAPABILITIES_LOADING_MESSAGE}
         onClose={onClose}
         onItemDetails={handleItemDetails}
         size="wide"

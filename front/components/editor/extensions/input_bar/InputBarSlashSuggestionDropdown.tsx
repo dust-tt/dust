@@ -18,7 +18,6 @@ import {
   PICK_MODEL_SUB_MENU_ID,
   resolveSlashSubMenuFromQuery,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
-import { SLASH_COMMAND_CAPABILITIES_LOADING_MESSAGE } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { useInputBarSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
 import { useSlashMenuStack } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashMenuStack";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
@@ -242,7 +241,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         clientRect={clientRect}
         emptyMessage="No commands found"
         isLoading={isLoading}
-        loadingMessage={SLASH_COMMAND_CAPABILITIES_LOADING_MESSAGE}
         onClose={onClose}
         onItemDetails={
           onDetailsRef
