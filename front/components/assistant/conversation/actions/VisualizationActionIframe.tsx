@@ -1,6 +1,5 @@
 import { SandboxFunctionPersonalAuthCard } from "@app/components/actions/blocked/SandboxFunctionPersonalAuthCard";
 import { SandboxFunctionToolApprovalCard } from "@app/components/actions/blocked/SandboxFunctionToolApprovalCard";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useVisualizationRetry } from "@app/hooks/conversations";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -753,6 +752,11 @@ export interface VisualizationActionIframeProps {
   workspaceId: string;
 }
 
+/**
+ * @cc [owner:flvndvd,label:product] frame-theme-independent-of-host
+ * The iframe URL MUST omit Dust's theme so Frames use Viz's default theme.
+ * Changes to Dust's theme MUST NOT change the iframe URL or remount the iframe.
+ */
 export const VisualizationActionIframe = forwardRef<
   HTMLIFrameElement,
   VisualizationActionIframeProps
@@ -765,7 +769,6 @@ export const VisualizationActionIframe = forwardRef<
   const [retryClicked, setRetryClicked] = useState(false);
   const [isCodeDrawerOpen, setCodeDrawerOpened] = useState(false);
   const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
-  const { isDark } = useTheme();
 
   const functionReferenceScope = useMemo<FrameFunctionReferenceScope>(
     () =>
@@ -1038,7 +1041,6 @@ export const VisualizationActionIframe = forwardRef<
   const vizUrl = useMemo(() => {
     const params = new URLSearchParams();
     params.set("identifier", visualization.identifier);
-    params.set("theme", isDark ? "dark" : "light");
 
     if (visualization.accessToken) {
       params.set("accessToken", visualization.accessToken);
@@ -1053,7 +1055,7 @@ export const VisualizationActionIframe = forwardRef<
     }
 
     return `${props.vizUrl.replace(/\/$/, "")}/content?${params.toString()}`;
-  }, [visualization, isInDrawer, isEditable, props.vizUrl, isDark]);
+  }, [visualization, isInDrawer, isEditable, props.vizUrl]);
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
