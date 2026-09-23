@@ -43,6 +43,7 @@ import {
   AGENT_RESOURCE_CACHE_VERSION,
   agentResourceCacheKey,
   invalidateAgentResourceCache,
+  invalidateAgentResourceCaches,
 } from "@app/lib/resources/agent_resource_cache";
 import { launchAgentSearchIndexation } from "@app/lib/resources/agent_resource_indexation";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
@@ -1398,23 +1399,40 @@ export class AgentResource
     assert(this.scope !== "global");
     assert(auth.getNonNullableWorkspace().id === this.workspaceId);
 
+    await AgentResource.batchDestroyPermissionsAndGroups(auth, [this], {
+      transaction,
+    });
+  }
+
+  // Removes the agent grants and deletes the now-orphaned `regular_auto` editor groups for a set of
+  // agents, batched so the work does not scale per agent (see `batch-database-queries`).
+  private static async batchDestroyPermissionsAndGroups(
+    auth: Authenticator,
+    agents: AgentResource[],
+    { transaction }: { transaction: Transaction }
+  ): Promise<void> {
+    if (agents.length === 0) {
+      return;
+    }
+
+    const resourceIds = agents.map((agent) => agent.id);
     const grantGroups =
-      await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
+      await GroupPermissionResource.listRegularAutoGroupsForResources(auth, {
         resourceType: "agent",
-        resourceId: this.id,
+        resourceIds,
         transaction,
       });
-    await GroupPermissionResource.deleteAllForResource(auth, {
+    await GroupPermissionResource.deleteAllForResources(auth, {
       resourceType: "agent",
-      resourceId: this.id,
+      resourceIds,
       transaction,
     });
 
-    for (const grantGroup of grantGroups) {
-      const deleteResult = await grantGroup.delete(auth, { transaction });
-      if (deleteResult.isErr()) {
-        throw deleteResult.error;
-      }
+    const deleteResult = await GroupResource.batchDelete(auth, grantGroups, {
+      transaction,
+    });
+    if (deleteResult.isErr()) {
+      throw deleteResult.error;
     }
   }
 
@@ -1670,14 +1688,23 @@ export class AgentResource
   // (schedule / pending workflow) and favorite / agent-user-relation rows. Returns an error when the
   // Temporal-backed cleanup did not fully complete, so `delete` can abort before removing the
   // versions and a retry can finish it.
-  private async cleanupScopedResourcesForDeletion(
-    auth: Authenticator
+  // Cancels/deletes the scoped resources (triggers, wake-ups, favorites) of a set of agents before
+  // their versions are destroyed. Rows are listed and deleted with scoped (`IN`) queries so DB work
+  // does not scale per agent (see `batch-database-queries`); the unavoidable per-item Temporal calls
+  // (trigger schedule removal, wake-up cancellation) go through `concurrentExecutor`, which the
+  // contract allows for external services. A Temporal failure leaves its row in place, so this
+  // re-checks and returns `Err` if anything survives — after some rows may already be gone (see the
+  // `batch-delete-atomic` contract).
+  private static async batchCleanupScopedResourcesForDeletion(
+    auth: Authenticator,
+    agents: AgentResource[]
   ): Promise<Result<undefined, Error>> {
     const owner = auth.getNonNullableWorkspace();
+    const sIds = agents.map((agent) => agent.sId);
 
-    const triggers = await TriggerResource.listByAgentConfigurationId(
+    const triggers = await TriggerResource.listByAgentConfigurationIds(
       auth,
-      this.sId
+      sIds
     );
     await concurrentExecutor(
       triggers,
@@ -1687,33 +1714,37 @@ export class AgentResource
           logger.error(
             {
               workspaceId: owner.sId,
-              agentConfigurationId: this.sId,
+              agentConfigurationId: trigger.agentConfigurationId,
               triggerId: trigger.sId,
               error: deleteResult.error,
             },
-            `Failed to delete trigger ${trigger.sId} while hard-deleting agent ${this.sId}`
+            `Failed to delete trigger ${trigger.sId} while hard-deleting agent ${trigger.agentConfigurationId}`
           );
         }
       },
       { concurrency: 4 }
     );
 
-    const wakeUps = await WakeUpResource.listByAgentConfigurationId(
+    const wakeUps = await WakeUpResource.listByAgentConfigurationIds(
       auth,
-      this.sId
+      sIds
+    );
+    const cancelResults = await concurrentExecutor(
+      wakeUps,
+      async (wakeUp) => ({ wakeUp, result: await wakeUp.forceCancel(auth) }),
+      { concurrency: 4 }
     );
     const deletableWakeUpIds: ModelId[] = [];
-    for (const wakeUp of wakeUps) {
-      const cleanupResult = await wakeUp.forceCancel(auth);
-      if (cleanupResult.isErr()) {
+    for (const { wakeUp, result } of cancelResults) {
+      if (result.isErr()) {
         logger.error(
           {
             workspaceId: owner.sId,
-            agentConfigurationId: this.sId,
+            agentConfigurationId: wakeUp.agentConfigurationId,
             wakeUpId: wakeUp.sId,
-            error: cleanupResult.error,
+            error: result.error,
           },
-          `Failed cleaning up wake-up ${wakeUp.sId} Temporal state while hard-deleting agent ${this.sId}; leaving row for retry`
+          `Failed cleaning up wake-up ${wakeUp.sId} Temporal state while hard-deleting agent ${wakeUp.agentConfigurationId}; leaving row for retry`
         );
         continue;
       }
@@ -1721,18 +1752,16 @@ export class AgentResource
     }
     await WakeUpResource.deleteByModelIds(auth, deletableWakeUpIds);
 
-    await AgentUserRelationResource.deleteForAgent(auth, this.sId);
+    await AgentUserRelationResource.deleteForAgents(auth, sIds);
 
-    const remainingTriggers = await TriggerResource.listByAgentConfigurationId(
-      auth,
-      this.sId
-    );
-    const remainingWakeUps = await WakeUpResource.listByAgentConfigurationId(
-      auth,
-      this.sId
-    );
-    const remainingFavoriteCount =
-      await AgentUserRelationResource.countForAgent(auth, this.sId);
+    // Three independent, bounded verification reads — run together (not a per-item fan-out, so this
+    // stays within `batch-database-queries`).
+    const [remainingTriggers, remainingWakeUps, remainingFavoriteCount] =
+      await Promise.all([
+        TriggerResource.listByAgentConfigurationIds(auth, sIds),
+        WakeUpResource.listByAgentConfigurationIds(auth, sIds),
+        AgentUserRelationResource.countForAgents(auth, sIds),
+      ]);
 
     if (
       remainingTriggers.length > 0 ||
@@ -1742,7 +1771,7 @@ export class AgentResource
       logger.error(
         {
           workspaceId: owner.sId,
-          agentConfigurationId: this.sId,
+          agentConfigurationIds: sIds,
           remainingTriggerIds: remainingTriggers.map((t) => t.sId),
           remainingWakeUpIds: remainingWakeUps.map((w) => w.sId),
           remainingFavoriteCount,
@@ -1752,7 +1781,7 @@ export class AgentResource
       );
       return new Err(
         new Error(
-          `Agent scoped cleanup incomplete for ${this.sId}; aborted before deleting versions.`
+          `Agent scoped cleanup incomplete for [${sIds.join(", ")}]; aborted before deleting versions.`
         )
       );
     }
@@ -1764,33 +1793,76 @@ export class AgentResource
   // child-agent links, tags, skills, suggestions), the scoped resources (triggers, wake-ups,
   // favorites), the agent's permission grants and groups, and finally the `agents` identity row. The
   // cached entry is invalidated on commit and the agent is removed from the search index. This
-  // permanently destroys the agent. Like archive/restore, it requires the agent `admin` verb, checked
-  // here regardless of any caller-side gate (see `agent-archive-restore-requires-admin`).
+  // permanently destroys the agent. Like archive/restore, it requires the agent `admin` verb (checked
+  // in `batchDelete`, regardless of any caller-side gate; see `agent-archive-restore-requires-admin`).
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
-    assert(this.scope !== "global", "Global agents cannot be deleted.");
-    const owner = auth.getNonNullableWorkspace();
-    const workspaceId = owner.id;
-    assert(
-      workspaceId === this.workspaceId,
-      "Unexpected: agent belongs to another workspace"
-    );
-    if (!auth.can("admin", this)) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Deleting an agent requires the agent `admin` verb."
-        )
-      );
+    return AgentResource.batchDelete(auth, [this]);
+  }
+
+  /**
+   * @cc [owner:tdraier,label:backend] batch-delete-atomic
+   * `batchDelete` MUST hard-delete every passed agent as a set: for each agent it destroys all of its
+   * configuration versions and their satellites (tools and their data-source / table / child-agent
+   * links, tags, skills, suggestions), the permission grants and groups, and the `agents` identity
+   * row. All of these database deletions MUST run in a single transaction so the batch commits
+   * all-or-nothing (destroying every version before its identity keeps the delete valid for any agent,
+   * not only single-version pending drafts). Because the whole identity is removed, `batchDelete` MUST
+   * NOT be called with two resources sharing an `id`. Scoped resources (triggers, wake-ups, favorites)
+   * are cleaned up before the transaction; if any cannot be removed (e.g. a Temporal cancellation
+   * fails), `batchDelete` MUST abort before destroying any configuration version or identity row —
+   * best-effort scoped rows already deleted are tolerated, but no agent is left version-less. `delete`
+   * MUST delegate here so the two paths cannot diverge.
+   */
+  /**
+   * @cc [owner:tdraier,label:backend] batch-delete-search-index
+   * After the deletion commits, `batchDelete` MUST remove from the search index every deleted agent
+   * whose status could have been indexed — one `launchDeleteAgentSearchWorkflow` per such agent (see
+   * `agent-search-after-commit`). Agents whose status is in `NON_INDEXABLE_AGENT_STATUSES` are never
+   * indexed (enforced on write in `makeNew`) and MUST be skipped, so the purge of pending drafts adds
+   * no workflows. Every eligible launch MUST be attempted even if an earlier one fails; the first
+   * error is returned only after all have been attempted.
+   */
+  static async batchDelete(
+    auth: Authenticator,
+    agents: AgentResource[]
+  ): Promise<Result<undefined, Error>> {
+    if (agents.length === 0) {
+      return new Ok(undefined);
     }
 
-    const cleanupRes = await this.cleanupScopedResourcesForDeletion(auth);
+    const owner = auth.getNonNullableWorkspace();
+    const workspaceId = owner.id;
+
+    for (const agent of agents) {
+      assert(agent.scope !== "global", "Global agents cannot be deleted.");
+      assert(
+        workspaceId === agent.workspaceId,
+        "Unexpected: agent belongs to another workspace"
+      );
+      if (!auth.can("admin", agent)) {
+        return new Err(
+          new DustError(
+            "unauthorized",
+            "Deleting an agent requires the agent `admin` verb."
+          )
+        );
+      }
+    }
+
+    // Scoped-resource cleanup (triggers, wake-ups, favorites) happens before the transaction and must
+    // fully succeed; a failure aborts before any configuration version or identity row is destroyed.
+    const cleanupRes =
+      await AgentResource.batchCleanupScopedResourcesForDeletion(auth, agents);
     if (cleanupRes.isErr()) {
       return cleanupRes;
     }
 
+    const agentModelIds = agents.map((agent) => agent.id);
+    const sIds = agents.map((agent) => agent.sId);
+
     await withTransaction(async (t) => {
       const configurations = await AgentConfigurationModel.findAll({
-        where: { sId: this.sId, workspaceId },
+        where: { agentId: { [Op.in]: agentModelIds }, workspaceId },
         attributes: ["id"],
         transaction: t,
       });
@@ -1870,23 +1942,41 @@ export class AgentResource
       }
 
       // The `agent_configurations` rows (and their FK to `agents`) are gone, so the grants, groups
-      // and the identity row can be removed.
-      await this.destroyPermissionsAndGroups(auth, { transaction: t });
+      // and the identity rows can be removed.
+      await AgentResource.batchDestroyPermissionsAndGroups(auth, agents, {
+        transaction: t,
+      });
       await AgentModel.destroy({
-        where: { id: this.id, workspaceId },
+        where: { id: { [Op.in]: agentModelIds }, workspaceId },
         transaction: t,
       });
 
-      // Drop the cached entry once the deletion commits.
-      await AgentResource.invalidateCache(workspaceId, this.sId, t);
+      // Drop the cached entries once the deletion commits.
+      await invalidateAgentResourceCaches(workspaceId, sIds, t);
     });
 
-    // Remove the agent from the search index after the deletion commits (see
-    // `agent-search-after-commit`).
-    return launchDeleteAgentSearchWorkflow({
-      workspaceId: owner.sId,
-      agentId: this.sId,
-    });
+    // Remove every deleted agent that could have been indexed from the search index after the
+    // deletion commits (see `agent-search-after-commit` / `batch-delete-search-index`). Never-indexed
+    // statuses (pending drafts) are skipped. Launches go through `concurrentExecutor` so every one is
+    // attempted; the first failure is surfaced afterwards.
+    const indexedAgents = agents.filter(
+      (agent) => !NON_INDEXABLE_AGENT_STATUSES.includes(agent.status)
+    );
+    const launchResults = await concurrentExecutor(
+      indexedAgents,
+      (agent) =>
+        launchDeleteAgentSearchWorkflow({
+          workspaceId: owner.sId,
+          agentId: agent.sId,
+        }),
+      { concurrency: 8 }
+    );
+    const failedLaunch = launchResults.find((result) => result.isErr());
+    if (failedLaunch?.isErr()) {
+      return failedLaunch;
+    }
+
+    return new Ok(undefined);
   }
 
   // Whether the caller can read every space backing the agent's tools/skills/data. Space read comes

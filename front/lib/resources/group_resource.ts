@@ -2353,13 +2353,33 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
+    return GroupResource.batchDelete(auth, [this], { transaction });
+  }
+
+  // Hard-deletes every passed group as a set: their key references, memberships, permission grants,
+  // pinned items and identity rows, with the member/system-key caches invalidated on commit. All
+  // deletions run as scoped (`IN`) queries so the work does not scale per group (see
+  // `batch-database-queries`). `delete` delegates here so the single- and multi-group paths cannot
+  // diverge.
+  static async batchDelete(
+    auth: Authenticator,
+    groups: GroupResource[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<undefined, Error>> {
+    if (groups.length === 0) {
+      return new Ok(undefined);
+    }
+
     const owner = auth.getNonNullableWorkspace();
+    const workspaceId = owner.id;
+    const groupIds = [...new Set(groups.map((group) => group.id))];
+
     try {
-      // Fetch active member user IDs before deletion for cache invalidation
+      // Fetch active member user IDs before deletion for cache invalidation.
       const activeMemberships = await GroupMembershipModel.findAll({
         where: {
-          groupId: this.id,
-          workspaceId: owner.id,
+          groupId: groupIds,
+          workspaceId,
           status: "active",
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
@@ -2367,55 +2387,47 @@ export class GroupResource extends BaseResource<GroupModel> {
         attributes: ["userId"],
         transaction,
       });
-      const memberUserIds = activeMemberships.map((m) => m.userId);
+      const memberUserIds = [
+        ...new Set(activeMemberships.map((m) => m.userId)),
+      ];
 
+      // Strip every deleted group id from any key that references it, in a single UPDATE (nested
+      // `array_remove`s peel the ids off one by one).
+      const groupIdsExpr = groupIds.reduce<
+        ReturnType<typeof fn> | ReturnType<typeof col>
+      >((expr, groupId) => fn("array_remove", expr, groupId), col("groupIds"));
       await KeyModel.update(
-        {
-          groupIds: fn("array_remove", col("groupIds"), this.id),
-        },
+        { groupIds: groupIdsExpr },
         {
           where: {
-            groupIds: { [Op.contains]: [this.id] },
-            workspaceId: owner.id,
+            groupIds: { [Op.overlap]: groupIds },
+            workspaceId,
           },
           transaction,
         }
       );
 
       await GroupMembershipModel.destroy({
-        where: {
-          groupId: this.id,
-          workspaceId: owner.id,
-        },
+        where: { groupId: groupIds, workspaceId },
         transaction,
       });
 
       await GroupPermissionModel.destroy({
-        where: {
-          groupId: this.id,
-          workspaceId: owner.id,
-        },
+        where: { groupId: groupIds, workspaceId },
         transaction,
       });
 
       await GroupPinnedItemModel.destroy({
-        where: {
-          groupId: this.id,
-          workspaceId: owner.id,
-        },
+        where: { groupId: groupIds, workspaceId },
         transaction,
       });
 
-      await this.model.destroy({
-        where: {
-          id: this.id,
-          workspaceId: owner.id,
-        },
+      await GroupModel.destroy({
+        where: { id: groupIds, workspaceId },
         transaction,
       });
 
       if (memberUserIds.length > 0) {
-        const workspaceId = owner.id;
         invalidateCacheAfterCommit(transaction, async () => {
           await GroupResource.batchInvalidateGroupIdsCacheForUsers(
             memberUserIds.map((userId) => [
@@ -2425,7 +2437,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         });
       }
 
-      const workspaceId = owner.id;
       invalidateCacheAfterCommit(transaction, () =>
         GroupResource.invalidateWorkspaceGroupsFromSystemKeyCache(workspaceId)
       );

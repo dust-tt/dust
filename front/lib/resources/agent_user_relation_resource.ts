@@ -2,7 +2,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentUserRelationModel } from "@app/lib/models/agent/agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Attributes, Transaction } from "sequelize";
@@ -31,18 +30,17 @@ export class AgentUserRelationResource extends BaseResource<AgentUserRelationMod
   }
 
   static async deleteForAgents(
-    agentIds: string[],
-    {
-      workspaceId,
-      transaction,
-    }: { workspaceId: ModelId; transaction?: Transaction }
+    auth: Authenticator,
+    agentIds: string[]
   ): Promise<void> {
+    if (agentIds.length === 0) {
+      return;
+    }
     await this.model.destroy({
       where: {
         agentConfiguration: agentIds,
-        workspaceId,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
-      transaction,
     });
   }
 
@@ -53,6 +51,21 @@ export class AgentUserRelationResource extends BaseResource<AgentUserRelationMod
     return this.model.count({
       where: {
         agentConfiguration: agentId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
+  static async countForAgents(
+    auth: Authenticator,
+    agentIds: string[]
+  ): Promise<number> {
+    if (agentIds.length === 0) {
+      return 0;
+    }
+    return this.model.count({
+      where: {
+        agentConfiguration: agentIds,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
