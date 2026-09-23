@@ -12,6 +12,7 @@ import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conve
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
 import { GEMINI_3_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { STATIC_MODEL_IDS } from "@app/types/assistant/models/models";
@@ -264,7 +265,7 @@ describe("measureToolCallFootprints", () => {
       expect.any(Array),
       {
         ...modelConfig,
-        tokenCountAdjustment: modelConfig.tokenCountAdjustment ?? 1,
+        tokenCountAdjustment: 1,
       },
       expect.anything()
     );
@@ -284,6 +285,24 @@ describe("measureToolCallFootprints", () => {
         modelId: GPT_5_6_SOL_MODEL_ID,
         tokenCountAdjustment: 1,
         tokenizer: { type: "tiktoken", base: "o200k_base" },
+      }),
+      expect.anything()
+    );
+  });
+
+  it("tokenizes Anthropic footprints without the configured token count adjustment", async () => {
+    const res = await measureToolCallFootprints(auth, {
+      capabilities,
+      modelId: CLAUDE_OPUS_5_MODEL_ID,
+      toolCalls: [footprintInput(makeAction())],
+    });
+
+    expect(res.isOk()).toBe(true);
+    expect(tokenCountForTexts).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        modelId: CLAUDE_OPUS_5_MODEL_ID,
+        tokenCountAdjustment: 1,
       }),
       expect.anything()
     );
