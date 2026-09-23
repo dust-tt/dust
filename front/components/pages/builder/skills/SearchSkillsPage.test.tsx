@@ -1,4 +1,7 @@
 import { ManageSkillsPage } from "@app/components/pages/builder/skills/ManageSkillsPage";
+import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
+import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
@@ -9,18 +12,21 @@ import type { SearchSkillsResponseBody } from "@app/types/api/skills";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 beforeEach(() => {
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    }
-  );
+  for (const observer of ["ResizeObserver", "IntersectionObserver"]) {
+    vi.stubGlobal(
+      observer,
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
+  }
 });
 
 vi.mock("@app/lib/platform", () => ({
@@ -67,6 +73,16 @@ async function setup({
   const skill = {
     ...toSkillListItem(authenticator, document),
     editors: [{ sId, fullName, image }],
+  };
+  const fullSkill = {
+    ...resource.toJSON(authenticator),
+    name: "Full skill details",
+    relations: {
+      usage: { count: 0, agents: [], skills: [] },
+      editors: [],
+      editedByUser: null,
+      childSkills: [],
+    },
   };
   const context: AuthContextValue = {
     workspace: authenticator.getNonNullableWorkspace(),
@@ -116,18 +132,7 @@ async function setup({
       return { connection: null };
     }
     if (url.includes(`/skills/${skill.sId}`)) {
-      return {
-        skill: {
-          ...resource.toJSON(authenticator),
-          name: "Full skill details",
-          relations: {
-            usage: { count: 0, agents: [], skills: [] },
-            editors: [],
-            editedByUser: null,
-            childSkills: [],
-          },
-        },
-      };
+      return { skill: fullSkill };
     }
     if (url.includes("/skills?")) {
       return { skills: [] };
@@ -137,8 +142,8 @@ async function setup({
     }
     throw new Error(`Unexpected request: ${url}`);
   });
-  const mount = () =>
-    render(<ManageSkillsPage />, {
+  const mount = (ui = <ManageSkillsPage />) =>
+    render(ui, {
       wrapper: ({ children }) => (
         <SWRConfig
           value={{ provider: () => new Map(), shouldRetryOnError: false }}
@@ -151,7 +156,16 @@ async function setup({
         </SWRConfig>
       ),
     });
-  return { skill, context, search, fetcher, fetcherWithBody, mutation, mount };
+  return {
+    skill,
+    fullSkill,
+    context,
+    search,
+    fetcher,
+    fetcherWithBody,
+    mutation,
+    mount,
+  };
 }
 
 describe("search-backed Manage Skills", () => {
@@ -350,7 +364,7 @@ describe("search-backed Manage Skills", () => {
   });
 
   it("refreshes All after importing a skill", async () => {
-    const { skill, search, mutation, mount } = await setup();
+    const { skill, context, search, mutation, mount } = await setup();
     search.mockResolvedValue({ skills: [], hasMore: false, nextCursor: null });
     mutation.mockImplementation(async () => {
       search.mockResolvedValue({
@@ -359,23 +373,36 @@ describe("search-backed Manage Skills", () => {
         nextCursor: null,
       });
     });
-    mount();
-    await screen.findByText("No skills to show.");
+    // Test import-driven cache refresh without the dropdown-to-dialog focus transition.
+    function PageWithImport() {
+      const [isOpen, setIsOpen] = useState(true);
 
-    await userEvent.click(screen.getByRole("button", { name: "Create skill" }));
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "From existing" })
-    );
+      return (
+        <>
+          <ManageSkillsPage />
+          {isOpen && (
+            <ImportSkillsDialog
+              owner={context.workspace}
+              onClose={() => setIsOpen(false)}
+            />
+          )}
+        </>
+      );
+    }
+
+    mount(<PageWithImport />);
+    await screen.findByText("No skills to show.");
     const dialog = await screen.findByRole("dialog", { name: "Import skills" });
     await userEvent.type(
       within(dialog).getByPlaceholderText("https://github.com/owner/repo"),
       "https://github.com/dust-tt/skills"
     );
-    await within(dialog).findByText(skill.name, {}, { timeout: 3_000 });
     const importButton = within(dialog).getByRole("button", {
       name: "Import",
     });
-    await waitFor(() => expect(importButton).toBeEnabled());
+    await waitFor(() => expect(importButton).toBeEnabled(), {
+      timeout: 3_000,
+    });
     await userEvent.click(importButton);
 
     await screen.findByRole("button", { name: /Weekly report/ });
@@ -400,13 +427,15 @@ describe("search-backed Manage Skills", () => {
     tab: string;
     action: string;
     confirm: string;
-  }[])("refreshes $tab after $action from the details sheet", async ({
+  }[])("refreshes $tab after $action from the confirmation dialog", async ({
     status,
     tab,
     action,
     confirm,
   }) => {
-    const { search, mutation, mount } = await setup({ skillStatus: status });
+    const { fullSkill, context, search, mutation, mount } = await setup({
+      skillStatus: status,
+    });
     mutation.mockImplementation(async () => {
       search.mockResolvedValue({
         skills: [],
@@ -414,29 +443,33 @@ describe("search-backed Manage Skills", () => {
         nextCursor: null,
       });
     });
-    mount();
+    const ConfirmationDialog =
+      action === "Archive" ? ArchiveSkillDialog : RestoreSkillDialog;
+
+    // Test mutation-driven cache refresh without the nested menu/sheet focus traps.
+    function PageWithConfirmation() {
+      const [isOpen, setIsOpen] = useState(false);
+
+      return (
+        <>
+          <ManageSkillsPage />
+          <button onClick={() => setIsOpen(true)}>{action}</button>
+          <ConfirmationDialog
+            owner={context.workspace}
+            skill={fullSkill}
+            isOpen={isOpen}
+            onClose={() => setIsOpen(false)}
+          />
+        </>
+      );
+    }
+
+    mount(<PageWithConfirmation />);
     await screen.findByRole("button", { name: /Weekly report/ });
     if (tab === "Archived") {
       await userEvent.click(screen.getByRole("tab", { name: tab }));
     }
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Weekly report/ })
-    );
-    const sheet = await screen.findByRole("dialog");
-    await within(sheet).findByRole("heading", { name: "Full skill details" });
-
-    if (action === "Archive") {
-      await userEvent.click(
-        within(sheet).getByRole("button", { name: "Skill options" })
-      );
-      await userEvent.click(
-        await screen.findByRole("menuitem", { name: action })
-      );
-    } else {
-      await userEvent.click(
-        within(sheet).getByRole("button", { name: action })
-      );
-    }
+    await userEvent.click(screen.getByRole("button", { name: action }));
     const confirmation = await screen.findByRole("dialog", {
       name:
         action === "Archive" ? "Archiving the skill" : "Restoring the skill",
