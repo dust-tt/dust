@@ -73,13 +73,12 @@ const PINNED_MODEL_RETRY_ERROR_CATEGORIES = [
   "empty_content",
 ] as const;
 
-// Null for a tier without a picker row: a pinned failure on such a model offers
-// a plain retry rather than another tier.
-const PICKER_TIER_BY_MODELS_TIER: Record<ModelsTierName, ModelTierId | null> = {
+// A tier without a picker row maps to the closest row below it.
+const PICKER_TIER_BY_MODELS_TIER: Record<ModelsTierName, ModelTierId> = {
   cost_efficient: "fast",
   balanced: "standard",
   premium: "complex",
-  ultra: null,
+  ultra: "complex",
 };
 
 export function isPremiumOrAboveTier(tierName: ModelsTierName | null): boolean {
@@ -89,9 +88,10 @@ export function isPremiumOrAboveTier(tierName: ModelsTierName | null): boolean {
 /**
  * @cc [owner:frankaloia,label:product;error-handling] pinned-model-retry-uses-tier
  * When a model-related failure ran a pinned (non-stream) model, the failure UI MUST offer retry
- * on that model's tier and send that tier as `modelSelection`. After that retry, the conversation's
- * last requested model and the input-bar picker MUST show that tier so subsequent messages use the
- * same stream. Stream-resolved failures and every other retry MUST send no override.
+ * on that model's tier, or on the closest tier below it that has a picker row, and send that tier
+ * as `modelSelection`. After that retry, the conversation's last requested model and the input-bar
+ * picker MUST show that tier so subsequent messages use the same stream. Stream-resolved failures
+ * and every other retry MUST send no override.
  * Stream resolution consults the current degraded set server-side (`retry-model-selection`).
  */
 export function getPinnedModelRetryTier({
