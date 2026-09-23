@@ -855,7 +855,11 @@ type SeatCreditTransfer = {
   oldSeatType: MembershipSeatType;
   newSeatType: MembershipSeatType;
   oldCreditName: string;
-  newCreditName: string;
+  // The destination's seat credit name, or null when moving to a
+  // non-credit-bearing seat (none/free/workspace). A null destination is an
+  // EMPTY-ONLY transfer: the origin credit is still drained, but there is no
+  // credit to carry consumption onto (the carry step skips it).
+  newCreditName: string | null;
   // Remaining (unconsumed) balance on the old seat credit — emptied from it.
   remaining: number;
   // Amount already consumed on the old seat credit — carried onto the new one.
@@ -913,10 +917,15 @@ export function computeSeatCreditTransfers({
     }
     const oldCreditName = getSeatCreditNameForSeatType(oldSeatType);
     const newCreditName = getSeatCreditNameForSeatType(newSeatType);
-    // Both ends must be recurring-credit seats. (Distinct seat types always map
-    // to distinct recurring credits, even when they share a credit name — the
-    // transfer targets credits by id, not name.)
-    if (!oldCreditName || !newCreditName) {
+    // The ORIGIN must be a recurring-credit seat — that's the credit we drain.
+    // The destination MAY be non-credit-bearing (none/free/workspace): a
+    // downgrade to None must still empty the origin credit, just with no carry
+    // (the carry step skips a transfer whose `newCreditName` is null). Without
+    // this, a Max→None removal leaves the full max seat credit live on an
+    // unassigned seat — an orphan that is invisible to the seat-sync afterwards.
+    // (Distinct seat types always map to distinct recurring credits, even when
+    // they share a credit name — the transfer targets credits by id, not name.)
+    if (!oldCreditName) {
       continue;
     }
     const remaining = balanceByUser.get(userId);
@@ -1062,18 +1071,19 @@ async function emptyOriginSeatCreditsForTransfers({
   }
 
   // A real transfer candidate is a user whose seat type is actually changing
-  // between two types that both carry a recurring credit (pro/max and their
-  // _yearly variants — see `getSeatCreditNameForSeatType`). Balances are only
-  // needed to know how much to carry over for a CONFIRMED transfer, so if
-  // there are no candidates at all, skip that (expensive, bulk) fetch
-  // entirely instead of always fetching the whole eligible population.
+  // AND whose OLD tier carries a recurring credit (pro/max and their _yearly
+  // variants — see `getSeatCreditNameForSeatType`) — that's the credit we drain.
+  // The destination need NOT be credit-bearing: a downgrade to None/free/workspace
+  // must still empty the origin credit (with no carry), or the seat is left with a
+  // live orphan credit after it's unassigned. Balances are only needed to know how
+  // much to carry over for a CONFIRMED transfer, so if there are no candidates at
+  // all, skip that (expensive, bulk) fetch entirely.
   const transferCandidateUserIds = [...metronomeSeatByUser.entries()].flatMap(
     ([userId, oldSeatType]) => {
       const newSeatType = desiredSeatByUser.get(userId);
       return newSeatType &&
         newSeatType !== oldSeatType &&
-        getSeatCreditNameForSeatType(oldSeatType) &&
-        getSeatCreditNameForSeatType(newSeatType)
+        getSeatCreditNameForSeatType(oldSeatType)
         ? [userId]
         : [];
     }
@@ -1240,6 +1250,11 @@ async function carryConsumptionToNewSeatCredits({
     // regardless of which `continue` branch below it takes — a bulk seat-type
     // change can carry over many users' consumption in one sync.
     await heartbeat();
+    // Empty-only transfer (downgrade to a non-credit-bearing seat): the origin
+    // was drained upstream and there is no destination credit to carry onto.
+    if (!t.newCreditName) {
+      continue;
+    }
     const recurringCreditId = recurringCreditIdBySeatType.get(t.newSeatType);
     const targetAllocation = allocationBySeatType.get(t.newSeatType);
     if (!recurringCreditId || targetAllocation === undefined) {
