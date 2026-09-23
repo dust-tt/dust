@@ -77,10 +77,11 @@ describe("getAgentConfigurationsForView, 'current_user' view", () => {
       authenticator,
       { name: "No longer editable", scope: "hidden" }
     );
-    const resource = AgentResource.fromAgentConfiguration(
+    const resource = await AgentResource.fetchById(
       authenticator,
-      revokedAgent
+      revokedAgent.sId
     );
+    assert(resource !== null);
     assert(resource.id !== null);
 
     expect(

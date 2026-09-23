@@ -1,8 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import {
-  getAgentEditors,
-  updateAgentEditorsFromDelta,
-} from "@app/lib/api/assistant/editors";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -15,10 +10,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import {
-  ARCHIVED_AGENT_API_ERROR,
-  isArchivedAgent,
-} from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
+import { ARCHIVED_AGENT_API_ERROR } from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -56,14 +48,11 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    // Admins can see and manage the editors of every agent of the workspace, including the ones
-    // built on spaces they are not a member of.
-    const agent = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-      dangerouslySkipPermissionFiltering: auth.isAdmin(),
-    });
-    if (!agent) {
+    // Fetch the resource directly. Admins hold the agent `admin` verb (so `fetchById` returns hidden
+    // agents built on spaces they are not a member of); other members get it only when they can read
+    // it.
+    const agentResource = await AgentResource.fetchById(auth, aId);
+    if (!agentResource) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -73,8 +62,12 @@ app.get(
       });
     }
 
-    const editorsResult = await getAgentEditors(auth, agent);
-    if (editorsResult.isErr()) {
+    // Global agents have no editor grant.
+    const editors =
+      agentResource.scope === "global"
+        ? null
+        : await agentResource.listEditors(auth);
+    if (!editors) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -85,7 +78,7 @@ app.get(
     }
 
     // Any workspace member can read the editors of an agent.
-    const memberUsers = editorsResult.value.map((member) => member.toJSON());
+    const memberUsers = editors.map((member) => member.toJSON());
 
     // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
     if (auth.isAdmin()) {
@@ -110,14 +103,10 @@ app.patch(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    // Admins can see and manage the editors of every agent of the workspace, including the ones
-    // built on spaces they are not a member of.
-    const agent = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-      dangerouslySkipPermissionFiltering: auth.isAdmin(),
-    });
-    if (!agent) {
+    // Fetch the resource directly. Admins hold the agent `admin` verb (so `fetchById` returns hidden
+    // agents on spaces they are not a member of); a caller without a verb on it gets a 404.
+    const agentResource = await AgentResource.fetchById(auth, aId);
+    if (!agentResource) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -127,9 +116,8 @@ app.patch(
       });
     }
 
-    // Global agents have no editor grant. Preserve the existing 404 response without consulting
-    // the legacy editor-group association.
-    if (agent.scope === "global") {
+    // Global agents have no editor grant.
+    if (agentResource.scope === "global") {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -139,11 +127,7 @@ app.patch(
       });
     }
 
-    const canAdministrate = auth.can(
-      "admin",
-      AgentResource.fromAgentConfiguration(auth, agent)
-    );
-    if (!canAdministrate) {
+    if (!auth.can("admin", agentResource)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -154,7 +138,7 @@ app.patch(
       });
     }
 
-    if (isArchivedAgent(agent)) {
+    if (agentResource.status === "archived") {
       return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
@@ -186,7 +170,7 @@ app.patch(
       }
     }
 
-    const updateRes = await updateAgentEditorsFromDelta(auth, agent, {
+    const updateRes = await agentResource.updateEditorsFromDelta(auth, {
       usersToAdd,
       usersToRemove,
     });
@@ -223,11 +207,8 @@ app.patch(
       }
     }
 
-    const updatedMembers = await getAgentEditors(auth, agent);
-    if (updatedMembers.isErr()) {
-      throw updatedMembers.error;
-    }
-    const updatedEditors = updatedMembers.value.map((m) => m.toJSON());
+    const updatedMembers = (await updateRes.value.listEditors(auth)) ?? [];
+    const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
     // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
     if (auth.isAdmin()) {

@@ -24,7 +24,8 @@ it("uses agent grants for list, manage and archived views", async () => {
   );
   const member = await UserFactory.basic();
   await MembershipFactory.associate(workspace, member, { role: "user" });
-  const resource = AgentResource.fromAgentConfiguration(authorAuth, grantAgent);
+  const resource = await AgentResource.fetchById(authorAuth, grantAgent.sId);
+  assert(resource !== null);
   assert(resource.id !== null);
   assert(
     (
@@ -69,7 +70,8 @@ it("revokes active-agent author access and keeps admin redaction", async () => {
   const agent = await AgentConfigurationFactory.createTestAgent(authorAuth, {
     scope: "hidden",
   });
-  const resource = AgentResource.fromAgentConfiguration(authorAuth, agent);
+  const resource = await AgentResource.fetchById(authorAuth, agent.sId);
+  assert(resource !== null);
   assert(resource.id !== null);
   assert(
     (
@@ -103,10 +105,7 @@ it("revokes active-agent author access and keeps admin redaction", async () => {
     instructions: null,
   });
   // The admin role still administers the agent even though content is redacted.
-  expect(
-    adminAuth.can(
-      "admin",
-      AgentResource.fromAgentConfiguration(adminAuth, agent)
-    )
-  ).toBe(true);
+  const adminResource = await AgentResource.fetchById(adminAuth, agent.sId);
+  assert(adminResource !== null);
+  expect(adminAuth.can("admin", adminResource)).toBe(true);
 });

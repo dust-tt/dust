@@ -598,8 +598,8 @@ it("uses grants for editor responses and editor administration", async () => {
   const agent = await AgentConfigurationFactory.createTestAgent(authorAuth, {
     scope: "hidden",
   });
-  const resource = AgentResource.fromAgentConfiguration(authorAuth, agent);
-  assert(resource.id !== null);
+  const resource = await AgentResource.fetchById(authorAuth, agent.sId);
+  assert(resource !== null);
   assert(
     (
       await GroupPermissionResource.grantToUser(authorAuth, {
@@ -633,8 +633,10 @@ it("uses grants for editor responses and editor administration", async () => {
   expect((await removed.json()).editors).not.toEqual(
     expect.arrayContaining([expect.objectContaining({ sId: user.sId })])
   );
+  // Having removed itself as editor, the requester no longer holds any verb on the hidden agent, so
+  // it can no longer even fetch it: the endpoint fetches the resource directly and returns 404.
   const denied = await patchEditors(workspace, agent.sId, {
     removeEditorIds: [newEditor.sId],
   });
-  expect(denied.status).toBe(403);
+  expect(denied.status).toBe(404);
 });

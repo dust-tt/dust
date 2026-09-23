@@ -1,6 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
-import { AgentResource } from "@app/lib/resources/agent_resource";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 
 /**
  * @cc [owner:philipperolet,label:security] editable-agents-admin-or-write
@@ -10,15 +9,10 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
  */
 export function filterEditableAgents(
   auth: Authenticator,
-  agents: LightAgentConfigurationType[]
-): LightAgentConfigurationType[] {
-  const customAgents = agents.filter((agent) => agent.scope !== "global");
-  const resources = AgentResource.fromAgentConfigurations(auth, customAgents);
-  const editableIds = new Set(
-    resources
-      .filter((resource) => auth.isAdmin() || auth.can("write", resource))
-      .map((resource) => resource.sId)
+  agents: AgentResource[]
+): AgentResource[] {
+  return agents.filter(
+    (agent) =>
+      agent.scope !== "global" && (auth.isAdmin() || auth.can("write", agent))
   );
-
-  return agents.filter((agent) => editableIds.has(agent.sId));
 }

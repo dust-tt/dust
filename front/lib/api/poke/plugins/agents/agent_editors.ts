@@ -91,7 +91,10 @@ export const updateEditorsPlugin = createPlugin({
 
     // Editor changes go through the single editor-edit path (`updateConfiguration`, admin-gated and
     // applied in place — see `agent-edit-in-place`), which takes the complete editor set.
-    const agentResource = AgentResource.fromAgentConfiguration(auth, resource);
+    const agentResource = await AgentResource.fetchById(auth, resource.sId);
+    if (!agentResource) {
+      return new Err(new Error("Agent configuration not found"));
+    }
     const updateResult = await agentResource.updateConfiguration(auth, {
       editors: selectedMemberIds
         .map((id) => userMap.get(id))

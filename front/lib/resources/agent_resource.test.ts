@@ -12,6 +12,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -20,7 +21,11 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationScope,
+  AgentConfigurationType,
+  AgentStatus,
+} from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import assert from "assert";
 import type { JSONSchema7 } from "json-schema";
@@ -67,20 +72,39 @@ describe("AgentResource", () => {
     testContext = await createResourceTest({ role: "user" });
   });
 
-  it("builds a custom agent resource from a rendered configuration", async () => {
+  // Builds a real custom agent authored by `testContext` and forces its current version into the
+  // requested `status` so the permission derivation can be exercised for states the normal save path
+  // never persists (e.g. a "visible" draft). The resource is fetched as the author, who can always
+  // fetch it (via the editor grant, or draft ownership for a draft).
+  async function buildAgentInState({
+    scope,
+    status,
+    name,
+  }: {
+    scope: Exclude<AgentConfigurationScope, "global">;
+    status: AgentStatus;
+    name?: string;
+  }): Promise<{ agent: AgentConfigurationType; resource: AgentResource }> {
     const agent = await AgentConfigurationFactory.createTestAgent(
-      testContext.authenticator
-    );
-
-    const resource = AgentResource.fromAgentConfiguration(
       testContext.authenticator,
-      agent
+      { scope, ...(name ? { name } : {}) }
     );
-
-    expect(resource.id).not.toBeNull();
-    expect(resource.sId).toBe(agent.sId);
-    expect(resource.workspaceId).toBe(testContext.workspace.id);
-  });
+    if (status !== "active") {
+      const where = {
+        sId: agent.sId,
+        workspaceId: testContext.workspace.id,
+      };
+      await AgentConfigurationModel.update({ status }, { where });
+      await AgentModel.update({ status }, { where });
+      await AgentResource.invalidateCache(testContext.workspace.id, agent.sId);
+    }
+    const resource = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(resource !== null);
+    return { agent, resource };
+  }
 
   it("fetches an agent's latest active version by sId and by model id", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
@@ -170,10 +194,6 @@ describe("AgentResource", () => {
       agent.sId
     );
     const asAdmin = await AgentResource.fetchById(adminAuth, agent.sId);
-    const fromConfiguration = AgentResource.fromAgentConfiguration(
-      testContext.authenticator,
-      agent
-    );
 
     // The tables keyed by that id (skills, tools, tags) are read by callers who cannot read the
     // agent, so the id is core: the light shape carries it just like the full one.
@@ -181,9 +201,6 @@ describe("AgentResource", () => {
     expect(asAuthor?.agentConfigurationModelId).toBe(currentConfiguration.id);
     expect(asAdmin?.isFull()).toBe(false);
     expect(asAdmin?.agentConfigurationModelId).toBe(currentConfiguration.id);
-    expect(fromConfiguration.agentConfigurationModelId).toBe(
-      currentConfiguration.id
-    );
   });
 
   it("carries the head fields on full and light resources alike", async () => {
@@ -213,15 +230,11 @@ describe("AgentResource", () => {
       agent.sId
     );
     const asAdmin = await AgentResource.fetchById(adminAuth, agent.sId);
-    const fromConfiguration = AgentResource.fromAgentConfiguration(
-      testContext.authenticator,
-      agent
-    );
     assert(asAuthor && asAdmin);
 
     expect(asAuthor.isFull()).toBe(true);
     expect(asAdmin.isFull()).toBe(false);
-    for (const resource of [asAuthor, asAdmin, fromConfiguration]) {
+    for (const resource of [asAuthor, asAdmin]) {
       expect({
         name: resource.name,
         status: resource.status,
@@ -628,9 +641,9 @@ describe("AgentResource", () => {
       testContext.authenticator,
       { name: "Second agent" }
     );
-    const resources = AgentResource.fromAgentConfigurations(
+    const resources = await AgentResource.fetchByIds(
       testContext.authenticator,
-      [firstAgent, secondAgent]
+      [firstAgent.sId, secondAgent.sId]
     );
 
     const firstEditors = await resources[0].listEditors(
@@ -653,10 +666,11 @@ describe("AgentResource", () => {
   });
 
   it("applies admin and editor permissions to active custom agents", async () => {
-    const resource = AgentResource.fromAgentConfiguration(
-      testContext.authenticator,
-      makeAgentConfiguration({ versionAuthorId: testContext.user.id })
-    );
+    const { agent, resource } = await buildAgentInState({
+      scope: "hidden",
+      status: "active",
+    });
+    assert(agent.agentModelId !== null);
 
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, otherUser, {
@@ -676,17 +690,20 @@ describe("AgentResource", () => {
       testContext.workspace.sId
     );
 
-    expect(resource.id).toBe(AGENT_MODEL_ID);
+    expect(resource.id).toBe(agent.agentModelId);
+    // The author holds the editor grant created alongside the agent.
     expect([
       testContext.authenticator.hasPermission("read", resource),
       testContext.authenticator.hasPermission("write", resource),
       testContext.authenticator.hasPermission("admin", resource),
-    ]).toEqual([false, false, false]);
+    ]).toEqual([true, true, true]);
+    // A workspace member without a grant has no access to a hidden agent.
     expect([
       otherAuth.hasPermission("read", resource),
       otherAuth.hasPermission("write", resource),
       otherAuth.hasPermission("admin", resource),
     ]).toEqual([false, false, false]);
+    // Admins manage a hidden agent (admin) but do not read it without a grant.
     expect([
       adminAuth.hasPermission("read", resource),
       adminAuth.hasPermission("write", resource),
@@ -699,7 +716,7 @@ describe("AgentResource", () => {
         user: otherUser.toJSON(),
         grantType: "editor",
         resourceType: "agent",
-        resourceId: AGENT_MODEL_ID,
+        resourceId: agent.agentModelId,
       }
     );
     expect(grantResult.isOk()).toBe(true);
@@ -712,14 +729,25 @@ describe("AgentResource", () => {
     ]).toEqual([true, true, true]);
   });
 
-  it("grants draft ownership to the current author", () => {
-    const resource = AgentResource.fromAgentConfiguration(
+  it("grants draft ownership to the current author", async () => {
+    const { agent, resource } = await buildAgentInState({
+      scope: "hidden",
+      status: "draft",
+    });
+    assert(agent.agentModelId !== null);
+
+    // Revoke the editor grant so the author's access can come only from draft ownership.
+    const revokeResult = await GroupPermissionResource.revokeFromUser(
       testContext.authenticator,
-      makeAgentConfiguration({
-        status: "draft",
-        versionAuthorId: testContext.user.id,
-      })
+      {
+        user: testContext.user.toJSON(),
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: agent.agentModelId,
+      }
     );
+    expect(revokeResult.isOk()).toBe(true);
+    await testContext.authenticator.refresh();
 
     expect([
       testContext.authenticator.hasPermission("read", resource),
@@ -732,42 +760,42 @@ describe("AgentResource", () => {
     "admin",
     "user",
   ] as const)("applies the %s API-key write policy only to workspace custom agents", async (role) => {
-    const { auth } = await createPublicApiMockRequest({ role });
-    const configuration = makeAgentConfiguration({
-      versionAuthorId: testContext.user.id,
+    const { resource: hiddenResource } = await buildAgentInState({
+      scope: "hidden",
+      status: "active",
+      name: "Hidden agent",
+    });
+    const { resource: visibleResource } = await buildAgentInState({
+      scope: "visible",
+      status: "active",
+      name: "Visible agent",
     });
 
-    expect(
-      auth.can(
-        "read",
-        AgentResource.fromAgentConfiguration(auth, configuration)
-      )
-    ).toBe(false);
-    expect(
-      auth.can(
-        "read",
-        AgentResource.fromAgentConfiguration(auth, {
-          ...configuration,
-          scope: "visible",
-        })
-      )
-    ).toBe(true);
+    const key =
+      role === "admin"
+        ? await KeyFactory.admin(testContext.globalGroup)
+        : await KeyFactory.regular(testContext.globalGroup);
+    const auth = await Authenticator.fromKey(key, testContext.workspace.sId);
 
-    expect(
-      auth.can(
-        "write",
-        AgentResource.fromAgentConfiguration(auth, configuration)
-      )
-    ).toBe(role === "admin");
-    expect(
-      auth.can(
-        "write",
-        AgentResource.fromAgentConfiguration(
-          testContext.authenticator,
-          configuration
-        )
-      )
-    ).toBe(false);
+    // A regular member session without a grant is the write-denied baseline below.
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, member, {
+      role: "user",
+    });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      testContext.workspace.sId
+    );
+
+    // API keys never read hidden agents, but read every visible one.
+    expect(auth.can("read", hiddenResource)).toBe(false);
+    expect(auth.can("read", visibleResource)).toBe(true);
+
+    // Only an admin API key may write workspace custom agents; a member session never can.
+    expect(auth.can("write", hiddenResource)).toBe(role === "admin");
+    expect(memberAuth.can("write", hiddenResource)).toBe(false);
+
+    // The write policy applies only to workspace custom agents, never to global agents.
     expect(
       auth.can(
         "write",
@@ -786,13 +814,10 @@ describe("AgentResource", () => {
   });
 
   it("lets workspace members read visible agents without editing them", async () => {
-    const resource = AgentResource.fromAgentConfiguration(
-      testContext.authenticator,
-      makeAgentConfiguration({
-        scope: "visible",
-        versionAuthorId: testContext.user.id,
-      })
-    );
+    const { resource } = await buildAgentInState({
+      scope: "visible",
+      status: "active",
+    });
 
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, otherUser, {
@@ -812,14 +837,10 @@ describe("AgentResource", () => {
     "draft",
     "pending",
   ] as const)("does not grant workspace read to a visible %s agent", async (status) => {
-    const resource = AgentResource.fromAgentConfiguration(
-      testContext.authenticator,
-      makeAgentConfiguration({
-        status,
-        scope: "visible",
-        versionAuthorId: testContext.user.id,
-      })
-    );
+    const { resource } = await buildAgentInState({
+      scope: "visible",
+      status,
+    });
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, otherUser, {
       role: "user",
@@ -833,14 +854,10 @@ describe("AgentResource", () => {
   });
 
   it("keeps visible archived versions workspace-readable", async () => {
-    const resource = AgentResource.fromAgentConfiguration(
-      testContext.authenticator,
-      makeAgentConfiguration({
-        status: "archived",
-        scope: "visible",
-        versionAuthorId: testContext.user.id,
-      })
-    );
+    const { resource } = await buildAgentInState({
+      scope: "visible",
+      status: "archived",
+    });
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, otherUser, {
       role: "user",
