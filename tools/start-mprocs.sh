@@ -29,6 +29,10 @@ fi
 # Clear the dist of the sdks-js projectst
 rm -rf "$SCRIPT_DIR"/../sdks/js/dist
 
+# Clear sparkle's dist too: its watch rebuilds from scratch on startup, so a stale dist lets
+# dependents start and then read it mid-rebuild.
+rm -rf "$SCRIPT_DIR"/../sparkle/dist
+
 # Install npm workspaces dependencies
 cd "$SCRIPT_DIR"/../ && npm install
 
