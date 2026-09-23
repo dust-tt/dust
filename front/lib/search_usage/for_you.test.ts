@@ -312,7 +312,6 @@ describe("discovery for-you candidates", () => {
     });
     expect(shortlistSearch?.[1]).toMatchObject({
       size: 0,
-      track_total_hits: false,
       allow_partial_search_results: false,
       aggregations: {
         group_shortlists: {

@@ -449,7 +449,6 @@ async function fetchAndCacheDiscoveryGroupPools(
     GroupShortlistAggregations
   >(query, {
     size: 0,
-    track_total_hits: false,
     allow_partial_search_results: false,
     aggregations: {
       group_shortlists: {
@@ -488,7 +487,6 @@ async function fetchAndCacheDiscoveryGroupPools(
     GroupPoolAggregations
   >(query, {
     size: 0,
-    track_total_hits: false,
     allow_partial_search_results: false,
     aggregations: {
       group_pools: {
@@ -590,7 +588,6 @@ async function fetchDiscoveryViewerUsageUncached(
     ViewerUsageAggregations
   >(query, {
     size: 0,
-    track_total_hits: false,
     allow_partial_search_results: false,
     aggregations: {
       agents: viewerResourceAggregation(CONSUMPTION_DIMENSION_FIELDS.agent),
