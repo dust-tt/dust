@@ -13,16 +13,33 @@ const LATENCY_TOLERANT_ORIGINS: ReadonlySet<UserMessageOrigin> =
 /**
  * Asks for OpenAI flex processing on endpoints that accept it.
  */
+/**
+ * @cc [owner:Nils-Fedrigo,label:product;error-handling] flex-never-requested-on-retry
+ * When `isRetry` is true, the returned config MUST keep the caller's `serviceTier` (the provider
+ * default, in practice) instead of asking for `flex`. Flex is best-effort capacity that can be
+ * refused or time out, so a retry only buys the run something if it runs on standard capacity.
+ */
 export function withFlexProcessing(
   config: InputConfig,
-  featureFlags: WhitelistableFeature[],
-  userMessageOrigin: UserMessageOrigin | undefined
+  {
+    featureFlags,
+    isRetry,
+    userMessageOrigin,
+  }: {
+    featureFlags: WhitelistableFeature[];
+    isRetry: boolean;
+    userMessageOrigin: UserMessageOrigin | undefined;
+  }
 ): InputConfig {
   const isLatencyTolerant =
     userMessageOrigin !== undefined &&
     LATENCY_TOLERANT_ORIGINS.has(userMessageOrigin);
 
-  if (!featureFlags.includes(OPENAI_FLEX_PROCESSING) || !isLatencyTolerant) {
+  if (
+    isRetry ||
+    !featureFlags.includes(OPENAI_FLEX_PROCESSING) ||
+    !isLatencyTolerant
+  ) {
     return config;
   }
 

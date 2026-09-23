@@ -684,6 +684,7 @@ function convertBatchEventsToOld(
 abstract class BaseTransition extends LLM {
   protected override readonly router = "new" as const;
   private featureFlagsPromise: Promise<WhitelistableFeature[]> | undefined;
+  protected flexRequested = false;
 
   protected async withFeatureFlaggedInputConfig(
     config: InputConfig,
@@ -696,11 +697,18 @@ abstract class BaseTransition extends LLM {
     this.featureFlagsPromise ??= getFeatureFlags(this.authenticator);
     const featureFlags = await this.featureFlagsPromise;
 
-    return withFlexProcessing(
+    const flaggedConfig = withFlexProcessing(
       withConciseOpenAIReasoningSummary(config, featureFlags),
-      featureFlags,
-      this.context?.userMessageOrigin
+      {
+        featureFlags,
+        isRetry: this.isRetry,
+        userMessageOrigin: this.context?.userMessageOrigin,
+      }
     );
+
+    this.flexRequested = flaggedConfig.serviceTier === "flex";
+
+    return flaggedConfig;
   }
 
   // Builds the provider-agnostic conversation payload (system + messages) shared
@@ -912,6 +920,12 @@ export class StreamEndpointTransition extends BaseTransition {
   }
 
   protected async *sendRequest(payload: unknown): AsyncGenerator<LLMEvent> {
+    const events = this.streamEvents(payload);
+
+    yield* this.flexRequested ? withRetryableErrors(events) : events;
+  }
+
+  private async *streamEvents(payload: unknown): AsyncGenerator<LLMEvent> {
     try {
       const rawStream = this.model.streamRaw(payload);
       const newEvents = this.model.rawStreamOutputToEvents(rawStream);
@@ -919,6 +933,23 @@ export class StreamEndpointTransition extends BaseTransition {
     } catch (err) {
       yield handleGenericError(err, this.metadata);
     }
+  }
+}
+
+/**
+ * @cc [owner:Nils-Fedrigo,label:error-handling] flex-failures-are-retryable
+ * Every error event of a stream whose request asked for the `flex` service tier MUST be forwarded
+ * with `isRetryable` set, whatever `mapErrorType` decided. Flex is best-effort capacity that the
+ * provider can refuse outright, so such a run has not been tried on the standard tier yet and the
+ * retry — which `withFlexProcessing` runs without flex — is what buys it that attempt.
+ */
+export async function* withRetryableErrors(
+  events: AsyncGenerator<LLMEvent>
+): AsyncGenerator<LLMEvent> {
+  for await (const event of events) {
+    yield event instanceof EventError && !event.content.isRetryable
+      ? new EventError({ ...event.content, isRetryable: true }, event.metadata)
+      : event;
   }
 }
 

@@ -12,7 +12,13 @@ describe("withFlexProcessing", () => {
     "triggered_programmatic",
     "wakeup",
   ])("requests flex processing for %s runs in flagged workspaces", (origin) => {
-    expect(withFlexProcessing(CONFIG, FLAGS, origin)).toEqual({
+    expect(
+      withFlexProcessing(CONFIG, {
+        featureFlags: FLAGS,
+        isRetry: false,
+        userMessageOrigin: origin,
+      })
+    ).toEqual({
       ...CONFIG,
       serviceTier: "flex",
     });
@@ -24,10 +30,32 @@ describe("withFlexProcessing", () => {
     "api",
     undefined,
   ])("keeps the provider default for %s runs", (origin) => {
-    expect(withFlexProcessing(CONFIG, FLAGS, origin)).toEqual(CONFIG);
+    expect(
+      withFlexProcessing(CONFIG, {
+        featureFlags: FLAGS,
+        isRetry: false,
+        userMessageOrigin: origin,
+      })
+    ).toEqual(CONFIG);
   });
 
   it("keeps the provider default when the workspace is not flagged in", () => {
-    expect(withFlexProcessing(CONFIG, [], "triggered")).toEqual(CONFIG);
+    expect(
+      withFlexProcessing(CONFIG, {
+        featureFlags: [],
+        isRetry: false,
+        userMessageOrigin: "triggered",
+      })
+    ).toEqual(CONFIG);
+  });
+
+  it("keeps the provider default on a retry so the run gets its standard-tier attempt", () => {
+    expect(
+      withFlexProcessing(CONFIG, {
+        featureFlags: FLAGS,
+        isRetry: true,
+        userMessageOrigin: "triggered",
+      })
+    ).toEqual(CONFIG);
   });
 });
