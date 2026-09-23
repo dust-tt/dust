@@ -7,10 +7,10 @@ import {
   buildTierSelection,
   getEffortStops,
   getInitialEffort,
-  getModelLockReason,
   getModelWithReasoningEffortLabel,
   getTierLockReason,
   getTierResolvedModelLabel,
+  isModelLocked,
   MODEL_TIERS,
   SLIDER_EFFORTS,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -34,7 +34,7 @@ export function getSelectableEffortsForSlashMenu(
   model: EnabledModelConfigurationType,
   { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
 ): ReasoningEffort[] {
-  if (getModelLockReason(model, { lockPremiumEfforts })) {
+  if (isModelLocked(model, { lockPremiumEfforts })) {
     return [];
   }
 
