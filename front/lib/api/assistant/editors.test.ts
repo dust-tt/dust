@@ -22,7 +22,8 @@ it("serves single, batch, and context editor reads from grants", async () => {
     user.id,
   ]);
 
-  const resource = AgentResource.fromAgentConfiguration(authenticator, agent);
+  const resource = await AgentResource.fetchById(authenticator, agent.sId);
+  assert(resource !== null);
   assert(resource.id !== null);
   const revokeResult = await GroupPermissionResource.revokeFromUser(
     authenticator,

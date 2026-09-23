@@ -5,6 +5,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { Ok } from "@app/types/shared/result";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("agent search indexing activity", () => {
@@ -74,7 +75,8 @@ describe("agent search indexing activity", () => {
       role: "admin",
     });
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    const resource = AgentResource.fromAgentConfiguration(auth, agent);
+    const resource = await AgentResource.fetchById(auth, agent.sId);
+    assert(resource !== null);
     expect((await resource.setUserFavorite(auth, true)).isOk()).toBe(true);
 
     await indexAgentSearchActivity({
