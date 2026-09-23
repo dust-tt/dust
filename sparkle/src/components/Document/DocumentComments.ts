@@ -246,6 +246,11 @@ export const DocumentCommentMark = Mark.create({
  * it without growing from text inserted at its edges. A draft whose range collapses MUST
  * be dropped. Starting a draft MUST collapse the selection to the end of the range.
  */
+/**
+ * @cc [owner:flvndvd,label:product] document-comment-history
+ * Posting, replying to, resolving and deleting comments MUST stay out of text undo history.
+ * Undoing text MUST NOT restore an old comments array or remove another user's replies.
+ */
 export const DocumentComments = Extension.create({
   name: "documentComments",
   addGlobalAttributes: () => [
@@ -319,6 +324,7 @@ export const DocumentComments = Extension.create({
             type: "commit",
             id: comment.id,
           } satisfies DocumentCommentsMeta);
+          tr.setMeta("addToHistory", false);
         }
         return true;
       },
@@ -338,6 +344,7 @@ export const DocumentComments = Extension.create({
               replies: [...comment.replies, reply],
             }))
           );
+          tr.setMeta("addToHistory", false);
         }
         return true;
       },
@@ -354,6 +361,7 @@ export const DocumentComments = Extension.create({
             COMMENTS_ATTRIBUTE,
             updateComment(comments, id, (comment) => ({ ...comment, resolved }))
           );
+          tr.setMeta("addToHistory", false);
         }
         return true;
       },
@@ -376,6 +384,7 @@ export const DocumentComments = Extension.create({
             COMMENTS_ATTRIBUTE,
             comments.filter((comment) => comment.id !== id)
           );
+          tr.setMeta("addToHistory", false);
         }
         return true;
       },

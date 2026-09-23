@@ -842,6 +842,13 @@ export const PermissionChanges: Story = {
     await userEvent.click(editor);
     await userEvent.keyboard(" must not appear{Control>}s{/Control}");
     await expect(editor.textContent).toBe(draft);
+    await expect(canvas.getByRole("status")).toHaveTextContent("Not saved");
+    await expect(canvas.getByRole("alert")).toHaveTextContent(
+      "Your unsaved changes are still here"
+    );
+    await expect(
+      canvas.queryByRole("button", { name: "Retry" })
+    ).not.toBeInTheDocument();
     await new Promise((resolve) =>
       setTimeout(resolve, HOST_AUTOSAVE_DEBOUNCE_MS * 1.5)
     );
@@ -849,10 +856,18 @@ export const PermissionChanges: Story = {
     await userEvent.click(canvas.getByRole("checkbox", { name: "Read only" }));
     await expect(editor).toHaveAttribute("contenteditable", "true");
     await expect(editor.textContent).toBe(draft);
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
     await userEvent.click(
       canvas.getByRole("checkbox", { name: "Persistence available" })
     );
     await expect(editor).toHaveAttribute("contenteditable", "false");
+    await expect(canvas.getByRole("status")).toHaveTextContent("Not saved");
+    await expect(canvas.getByRole("alert")).toHaveTextContent(
+      "Saving is unavailable"
+    );
+    await expect(
+      canvas.queryByRole("button", { name: "Retry" })
+    ).not.toBeInTheDocument();
     await new Promise((resolve) =>
       setTimeout(resolve, HOST_AUTOSAVE_DEBOUNCE_MS * 1.5)
     );

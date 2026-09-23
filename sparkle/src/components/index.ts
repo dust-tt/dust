@@ -139,6 +139,7 @@ export {
   type DocumentCommentAuthor,
   type DocumentCommentReply,
   type DocumentProps,
+  type DocumentSaveOutcome,
   type DocumentSaveResult,
 } from "./Document";
 export type {

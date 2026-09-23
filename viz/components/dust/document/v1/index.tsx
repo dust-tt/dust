@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type DocumentSaveOutcome,
   type DocumentSaveResult,
   Document as SparkleDocument,
 } from "@dust-tt/sparkle/dist/esm/components/Document/index";
@@ -10,6 +11,7 @@ import {
   useUserIdentity,
 } from "@viz/app/lib/frame-function-hooks";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
+import type { WriteFileResult } from "@viz/app/types";
 import { cn } from "@viz/lib/utils";
 import { type ReactNode, useCallback, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -37,11 +39,24 @@ interface DocumentEditorProps extends DocumentProps {
   dataAPI: VisualizationDataAPI;
 }
 
-const readDocument = async ([, path, dataAPI]: readonly [
-  string,
-  string,
-  VisualizationDataAPI,
-]): Promise<DocumentFile | null> => {
+const CONFLICT_ERROR_MESSAGE =
+  "This file changed elsewhere. Your edits are still here. Copy them before reopening the document to get the latest version.";
+
+const documentSaveOutcome = (result: WriteFileResult): DocumentSaveOutcome =>
+  result.success
+    ? { ok: true }
+    : {
+        ok: false,
+        error:
+          result.error.code === "conflict"
+            ? CONFLICT_ERROR_MESSAGE
+            : result.error.message,
+      };
+
+const readDocument = async (
+  path: string,
+  dataAPI: VisualizationDataAPI
+): Promise<DocumentFile | null> => {
   const file = await dataAPI.fetchFile(path);
   if (!file) {
     return null;
@@ -69,6 +84,9 @@ const DocumentEditor = ({
   visuals,
 }: DocumentEditorProps) => {
   const revisionRef = useRef(file.revision);
+  const [canWrite, setCanWrite] = useState(
+    file.canWrite && file.revision !== null
+  );
   const { user } = useUserIdentity();
   const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(
     null
@@ -91,31 +109,54 @@ const DocumentEditor = ({
   const save = useCallback(
     async (content: string): Promise<DocumentSaveResult> => {
       const revision = revisionRef.current;
-      if (readOnly || !file.canWrite || revision === null) {
+      if (readOnly || !canWrite || revision === null) {
         return { ok: false, error: "This document is read-only." };
       }
 
-      const result = await dataAPI.writeFile({
-        path,
-        content,
-        contentType: "application/json",
-        revision,
-      });
+      const write = async (content: string, revision: string) => {
+        const result = await dataAPI.writeFile({
+          path,
+          content,
+          contentType: "application/json",
+          revision,
+        });
+        if (result.success) {
+          revisionRef.current = result.revision;
+        }
+        return result;
+      };
 
-      if (!result.success) {
-        return {
-          ok: false,
-          error:
-            result.error.code === "conflict"
-              ? "This file changed elsewhere. Your edits are still here. Copy them before reopening the document to get the latest version."
-              : result.error.message,
-        };
+      const result = await write(content, revision);
+      if (result.success || result.error.code !== "conflict") {
+        return documentSaveOutcome(result);
       }
 
-      revisionRef.current = result.revision;
-      return { ok: true };
+      const latest = await readDocument(path, dataAPI);
+      if (!latest) {
+        return documentSaveOutcome(result);
+      }
+      if (!latest.canWrite || latest.revision === null) {
+        setCanWrite(false);
+        return { ok: false, error: "This document is read-only." };
+      }
+      const latestRevision = latest.revision;
+      return {
+        ok: false,
+        error: CONFLICT_ERROR_MESSAGE,
+        conflict: {
+          content: latest.content,
+          adoptAndSave: async (recoveredContent) => {
+            // Sparkle adopts this snapshot before invoking this callback. Keep its revision even
+            // on failure so a later explicit save uses the recovered draft's baseline.
+            revisionRef.current = latestRevision;
+            return documentSaveOutcome(
+              await write(recoveredContent, latestRevision)
+            );
+          },
+        },
+      };
     },
-    [dataAPI, path, file.canWrite, readOnly]
+    [dataAPI, path, canWrite, readOnly]
   );
 
   return (
@@ -126,7 +167,7 @@ const DocumentEditor = ({
         saveFormat="json"
         className={cn("viz-sparkle viz-document", className)}
         mountPortalContainer={portalContainer ?? undefined}
-        readOnly={readOnly || !file.canWrite || file.revision === null}
+        readOnly={readOnly || !canWrite}
         autosaveDebounceMs={autosaveDebounceMs}
         onSave={save}
         visuals={scopedVisuals}
@@ -150,7 +191,7 @@ const DocumentSession = (props: DocumentProps) => {
   const sessionId = useId();
   const { data, error, isLoading } = useSWRImmutable(
     [sessionId, props.path, dataAPI] as const,
-    readDocument,
+    ([, path, api]) => readDocument(path, api),
     { shouldRetryOnError: false }
   );
 
@@ -183,8 +224,12 @@ const DocumentSession = (props: DocumentProps) => {
 /**
  * @cc [owner:flvndvd,label:product] frame-document-persistence
  * Each opening MUST load a fresh file snapshot. Background reads MUST NOT replace a draft.
- * Saves MUST use that snapshot's revision, advancing it only after a confirmed save.
+ * Saves MUST use that snapshot's revision. A confirmed save or the editor's explicit adoption
+ * of a freshly fetched snapshot MUST advance the revision. A conflict MUST NOT advance the
+ * revision unless the editor adopts that snapshot, and recovery MUST retry at most once.
  * Read-only files, hosts without revision metadata and PDF renders MUST disable editing.
+ * A conflict read that reveals revoked write access or missing revision metadata MUST
+ * disable further editing without replacing the draft or hiding its unsaved status.
  * A changed path MUST start a separate editing session. Comments MUST be authored as the
  * workspace user returned by the Frame identity, and be unavailable without one.
  */

@@ -22,6 +22,7 @@ export type {
   DocumentCommentAuthor,
   DocumentCommentReply,
   DocumentProps,
+  DocumentSaveOutcome,
   DocumentSaveResult,
 } from "./types";
 
@@ -60,7 +61,8 @@ const getClickedCommentIds = (target: EventTarget | null, root: Element) => {
  * @cc [owner:flvndvd,label:product] document-read-only
  * When readOnly is true or onSave is absent, Document MUST disable editing, formatting
  * controls, and save callbacks, including when these props change after mount. Hosts MUST
- * apply their permissions through readOnly.
+ * apply their permissions through readOnly. Losing editability MUST preserve unsaved
+ * content and show that saving is unavailable, without offering a Retry action.
  */
 /**
  * @cc [owner:flvndvd,label:product] document-comments-availability
@@ -188,6 +190,10 @@ export const Document = ({
   }
 
   const unresolvedCount = comments.unresolved.length;
+  const saveError =
+    !editable && dirty && !saving
+      ? "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
+      : error;
   const commentsToggle = showCommentsToggle && (
     <Button
       ref={comments.toggleRef}
@@ -228,12 +234,12 @@ export const Document = ({
             editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
           )}
         >
-          {editable ? (
+          {editable || dirty || saving ? (
             <DocumentSaveStatus
               dirty={dirty}
               saving={saving}
-              error={error}
-              onRetry={save}
+              error={saveError}
+              onRetry={editable ? save : undefined}
               autosaveDebounceMs={autosaveDebounceMs}
             >
               {commentsToggle}

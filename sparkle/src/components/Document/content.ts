@@ -92,7 +92,7 @@ const canRoundTripMarkdown = (document: JSONContent, markdown: string) => {
   );
 };
 
-const normalizeTextNodes = (node: Node): Node => {
+export const normalizeTextNodes = (node: Node): Node => {
   const children: Node[] = [];
   node.forEach((child) => children.push(normalizeTextNodes(child)));
   return node.copy(Fragment.fromArray(children));

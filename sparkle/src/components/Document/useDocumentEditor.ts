@@ -9,12 +9,29 @@ import {
 } from "react";
 import { parseDocumentContent, serializeDocumentMarkdown } from "./content";
 import { documentExtensions } from "./extensions";
+import { recoverCommentAdditions } from "./recoverCommentAdditions";
 import type { DocumentProps, DocumentSaveResult } from "./types";
 
 const SAVE_ERROR_MESSAGE =
   "Could not save. Your changes are still here. Try again.";
 const MARKDOWN_SAVE_ERROR_MESSAGE =
   "This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again.";
+
+/**
+ * @cc [owner:flvndvd,label:error-handling] document-save-callback-errors
+ * Host save callbacks MAY reject. This boundary MUST convert their rejections into failed
+ * save results so the editor can retain the draft and leave the saving state.
+ */
+const persistDocument = async (
+  persist: NonNullable<DocumentProps["onSave"]>,
+  content: string
+): Promise<DocumentSaveResult> => {
+  try {
+    return await persist(content);
+  } catch {
+    return { ok: false, error: SAVE_ERROR_MESSAGE };
+  }
+};
 
 interface UseDocumentEditorProps {
   initialContent: string;
@@ -33,11 +50,21 @@ interface UseDocumentEditorProps {
  * Returning to the saved content MUST clear save errors without making another save request.
  */
 /**
+ * @cc [owner:flvndvd,label:product] document-comment-save-retry
+ * A conflict MAY be retried once for comment additions on unchanged content. Recovery MUST
+ * stop if the draft changed while saving or write access was revoked. Before retrying, the
+ * editor MUST adopt the fetched snapshot as its baseline and preserve the local additions.
+ * Edits made during the retry MUST remain unsaved after its acknowledgement. A failed retry
+ * MUST preserve the recovered draft and suspend autosave until an explicit retry or a return
+ * to the adopted snapshot.
+ */
+/**
  * @cc [owner:flvndvd,label:product] document-autosave
  * Dirty, editable content MUST autosave after autosaveDebounceMs without edits (three seconds by default),
  * with at most one save in flight.
- * Failure MUST suspend automatic retries until the user explicitly retries or returns to saved
- * content. Unchanged content MUST NOT trigger saves. Cmd/Ctrl+S MUST allow an immediate save.
+ * After the bounded comment recovery attempt, failure MUST suspend automatic retries until
+ * the user explicitly retries or returns to saved content. Unchanged content MUST NOT trigger
+ * saves. Cmd/Ctrl+S MUST allow an immediate save.
  * Parent renders and callback identity changes MUST NOT restart the debounce. Saves MUST use
  * the latest committed callback.
  */
@@ -153,22 +180,47 @@ export const useDocumentEditor = ({
     setSaving(true);
     setError(null);
 
-    let result: DocumentSaveResult;
-    try {
-      result = await persist(serialized);
-    } catch {
-      result = { ok: false, error: SAVE_ERROR_MESSAGE };
+    let result = await persistDocument(persist, serialized);
+    let acknowledgedContent = content;
+    let failureBaseline = savedContent;
+    if (
+      !result.ok &&
+      result.conflict &&
+      format === "json" &&
+      !editor.isDestroyed &&
+      persistenceRef.current.editable &&
+      JSON.stringify(editor.getJSON()) === content
+    ) {
+      const latest = parseDocumentContent(result.conflict.content, "json");
+      if (latest.ok) {
+        const latestDoc = editor.schema.nodeFromJSON(latest.content);
+        const recovery = recoverCommentAdditions(
+          editor.state,
+          editor.schema.nodeFromJSON(JSON.parse(savedContent)),
+          latestDoc
+        );
+        if (recovery) {
+          failureBaseline = JSON.stringify(latestDoc.toJSON());
+          setBaseline(failureBaseline);
+          editor.view.dispatch(recovery);
+          acknowledgedContent = JSON.stringify(editor.getJSON());
+          result = await persistDocument(
+            result.conflict.adoptAndSave,
+            acknowledgedContent
+          );
+        }
+      }
     }
 
     savingRef.current = false;
     setSaving(false);
 
     if (result.ok) {
-      setBaseline(content);
+      setBaseline(acknowledgedContent);
       return;
     }
 
-    if (JSON.stringify(editor.getJSON()) !== savedContent) {
+    if (JSON.stringify(editor.getJSON()) !== failureBaseline) {
       setError(result.error || SAVE_ERROR_MESSAGE);
     }
   }, [editor]);
