@@ -514,8 +514,10 @@ function isReasoningModel(modelId: ModelIdType): boolean {
   return SLIDER_EFFORTS.some((effort) => support[effort]);
 }
 
-// Whether a whole model row must be locked
-export function isPremiumModel(
+// Whether a whole model row must be locked, and why: a reasoning model left
+// with no usable slider effort, or, on a legacy plan, a model whose every
+// effort is Premium or above.
+export function isModelLocked(
   enabledModel: ModelConfigurationType,
   { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
 ): boolean {
@@ -546,7 +548,7 @@ export function getModelLockReason(
   enabledModel: ModelConfigurationType,
   { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
 ): ModelLockReason | null {
-  if (!isPremiumModel(enabledModel, { lockPremiumEfforts })) {
+  if (!isModelLocked(enabledModel, { lockPremiumEfforts })) {
     return null;
   }
   return lockPremiumEfforts ? "premium" : "model_tier";

@@ -20,12 +20,12 @@ import {
   buildTierSelection,
   getDegradedModelTooltip,
   getInitialEffort,
+  getModelLockReason,
   getModelTier,
   getModelWithReasoningEffortLabel,
   getReasoningEffortLabel,
   getTierFallbackMessage,
   getTierLockReason,
-  isPremiumModel,
   isPremiumOrAboveTier,
   isSameSelection,
   resolveShownSelection,
@@ -228,7 +228,7 @@ export function ModelPicker({
   };
 
   const onSelectModel = (model: ModelConfigurationType) => {
-    if (isPremiumModel(model, { lockPremiumEfforts })) {
+    if (getModelLockReason(model, { lockPremiumEfforts })) {
       return;
     }
     const effort = getInitialEffort(model, { lockPremiumEfforts });
