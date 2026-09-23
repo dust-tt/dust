@@ -161,9 +161,7 @@ async function backfillAgentGrants(
   configuration: AgentConfigurationModel,
   spec: BackfillSpec
 ): Promise<AgentEditorGrantStats> {
-  const [agent] = await AgentResource.fromConfigurationModels(auth, [
-    configuration,
-  ]);
+  const agent = AgentResource.fromAgentConfigurationModel(auth, configuration);
   const initialState = await fetchEditorState(auth, agent, configuration);
   const changes = {
     toAdd: userDifference(

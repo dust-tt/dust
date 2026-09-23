@@ -307,6 +307,32 @@ export type AgentResourceSnapshot = {
 // Ship the cache dark: wired end to end but touching no Redis. Flip to `false` to turn it on.
 const AGENT_RESOURCE_CACHE_DRY_RUN = true;
 
+// The resource's identity is the `AgentModel` row (so all its attributes are carried, readonly),
+// plus the core fields resolved from the current `AgentConfigurationModel` version. The overlapping
+// head columns (`name`/`status`/`scope`/`reinforcement`) are re-declared here because the resource
+// exposes the configuration's values: non-null, and `scope` may be `"global"` for code-defined
+// agents (see `fromGlobalAgent`), unlike the agent row's nullable, non-global copies.
+// `createdAt`/`updatedAt` come from the `agents` row: `createdAt` is the agent's own creation date
+// (not the version's), `updatedAt` tracks the last time its `currentVersion` pointer moved.
+// Declared before the class so the `@cc` blocks below attach to `AgentResource` (the class), keeping
+// its verb contracts discoverable (see `access-control-verbs-documented`).
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface AgentResource
+  extends Omit<
+    ReadonlyAttributesType<AgentModel>,
+    "name" | "status" | "scope" | "reinforcement"
+  > {
+  readonly agentConfigurationModelId: ModelId;
+  readonly scope: AgentConfigurationScope;
+  readonly name: string;
+  readonly description: string;
+  readonly status: AgentConfigurationStatus;
+  readonly pictureUrl: string;
+  readonly reinforcement: AgentReinforcementMode;
+  readonly versionAuthorId: ModelId | null;
+  readonly modelConfiguration: AgentModelConfigurationType;
+}
+
 // The stable identity of an agent, backed by `AgentModel` (so `id` is the agent's `agentModelId`).
 // It comes in two shapes, discriminated by `variant`:
 // - `light`: identity + `agentConfigurationModelId`/`scope`/`name`/`description`/`status`/
@@ -315,6 +341,7 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
 //   by every resource — and are sufficient for permission decisions.
 // - `full`: additionally carries `content` (every remaining `AgentConfigurationModel` column of the
 //   resolved version). Produced by the access-controlled `fetch*` resolvers.
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 /**
  * @cc [owner:tdraier,label:backend] agent-resource-identity
  * The authoritative resolvers `fetchByModelIdWithAuth`/`fetchByModelIds`/`fetchById(s)` MUST resolve
@@ -399,31 +426,6 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  * API keys are the sole exception: the admin role grants them `write` (see `admin-key-agent-write`),
  * so an admin key may edit an agent it holds no editor grant on.
  */
-// The resource's identity is the `AgentModel` row (so all its attributes are carried, readonly),
-// plus the core fields resolved from the current `AgentConfigurationModel` version. The overlapping
-// head columns (`name`/`status`/`scope`/`reinforcement`) are re-declared here because the resource
-// exposes the configuration's values: non-null, and `scope` may be `"global"` for code-defined
-// agents (see `fromGlobalAgent`), unlike the agent row's nullable, non-global copies.
-// `createdAt`/`updatedAt` come from the `agents` row: `createdAt` is the agent's own creation date
-// (not the version's), `updatedAt` tracks the last time its `currentVersion` pointer moved.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentResource
-  extends Omit<
-    ReadonlyAttributesType<AgentModel>,
-    "name" | "status" | "scope" | "reinforcement"
-  > {
-  readonly agentConfigurationModelId: ModelId;
-  readonly scope: AgentConfigurationScope;
-  readonly name: string;
-  readonly description: string;
-  readonly status: AgentConfigurationStatus;
-  readonly pictureUrl: string;
-  readonly reinforcement: AgentReinforcementMode;
-  readonly versionAuthorId: ModelId | null;
-  readonly modelConfiguration: AgentModelConfigurationType;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentResource
   extends BaseResource<AgentModel>
   implements WithAccessControl
@@ -443,23 +445,21 @@ export class AgentResource
   // Both models are mandatory: the identity/timestamps (`id`/`sId`/`workspaceId`/`createdAt`/
   // `updatedAt`/`currentVersion`) come from the `agents` row, the head + remaining core fields and
   // `_content` from the resolved configuration version. Global agents have no real rows (their blobs
-  // are synthesized by `fromGlobalAgent`); they are recognized by their `sId` to carry
-  // `scope: "global"` and no author, which the configuration blob cannot represent.
+  // are synthesized by `fromGlobalAgent`, which patches their divergent head fields after construction).
   private constructor(
     agent: Attributes<AgentModel>,
     agentConfiguration: Attributes<AgentConfigurationModel>
   ) {
     super(AgentModel, agent);
 
-    const isGlobal = isGlobalAgentId(this.sId);
-
     // The core fields exposed by the resource come from the configuration version, overriding the
     // agent row's denormalized head copies. Assigned via `Object.assign` because they are declared
-    // `readonly` on the merged `AgentResource` interface. `scope`/`versionAuthorId` diverge for global
-    // agents, which have no configuration row to carry `"global"`/no-author.
+    // `readonly` on the merged `AgentResource` interface. Global agents' divergent head fields
+    // (`scope: "global"`, no author, a possibly disabled-* status) are applied by `fromGlobalAgent`
+    // after construction, since the configuration blob's types cannot represent them.
     Object.assign(this, {
       agentConfigurationModelId: agentConfiguration.id,
-      scope: isGlobal ? "global" : agentConfiguration.scope,
+      scope: agentConfiguration.scope,
       name: agentConfiguration.name,
       description: agentConfiguration.description,
       status: agentConfiguration.status,
@@ -468,7 +468,7 @@ export class AgentResource
       reinforcement: agentConfiguration.reinforcement,
       lastReinforcementAnalysisAt:
         agentConfiguration.lastReinforcementAnalysisAt,
-      versionAuthorId: isGlobal ? null : agentConfiguration.authorId,
+      versionAuthorId: agentConfiguration.authorId,
       modelConfiguration: {
         providerId: agentConfiguration.providerId,
         modelId: agentConfiguration.modelId,
@@ -519,9 +519,10 @@ export class AgentResource
   }
 
   // Global agents are code-defined and have no `agent`/configuration rows; their
-  // `AgentConfigurationType` is built from synthetic values by `getGlobalAgent(s)`. Their divergent
-  // head fields — `scope: "global"` and no author — are recognized from the `sId` by the constructor;
-  // only their disabled-* `status`, wider than a configuration row's `AgentStatus`, is carried through.
+  // `AgentConfigurationType` is built from synthetic values by `getGlobalAgent(s)`. Their head fields
+  // diverge from a configuration row's shape — `scope: "global"`, no author, and a status that may be
+  // `disabled_*` (wider than `AgentStatus`) — so the synthetic blobs use in-range placeholders and the
+  // real values are applied after construction (typed, no unsafe casts).
   static fromGlobalAgent(
     auth: Authenticator,
     configuration: AgentConfigurationType
@@ -555,13 +556,11 @@ export class AgentResource
         createdAt: now,
         updatedAt: now,
         version: configuration.version,
-        // No `agents` row: `-1` mirrors the synthetic identity. `scope`/`authorId` are ignored — the
-        // constructor forces `scope: "global"` and a null author for global sIds.
+        // Placeholders for the global-only divergent fields; overwritten below with the real values.
         agentId: -1,
-        // A global agent may be `disabled_*`, wider than the configuration column's `AgentStatus`; the
-        // resource's `AgentConfigurationStatus` preserves it.
-        status: configuration.status as AgentStatus,
+        status: "active",
         scope: "hidden",
+        authorId: -1,
         name: configuration.name,
         description: configuration.description,
         instructions: null,
@@ -572,7 +571,6 @@ export class AgentResource
         reasoningEffort: configuration.model.reasoningEffort ?? null,
         responseFormat: configuration.model.responseFormat,
         pictureUrl: configuration.pictureUrl,
-        authorId: -1,
         maxStepsPerRun: configuration.maxStepsPerRun,
         templateId: null,
         reinforcement: configuration.reinforcement ?? "auto",
@@ -580,6 +578,13 @@ export class AgentResource
         requestedSpaceIds: [],
       }
     );
+    // Apply the global-only head fields the configuration blob cannot represent (all in-range, no
+    // cast): `scope: "global"`, no author, and the possibly disabled-* `AgentConfigurationStatus`.
+    Object.assign(resource, {
+      scope: "global",
+      status: configuration.status,
+      versionAuthorId: null,
+    } satisfies Pick<AgentResource, "scope" | "status" | "versionAuthorId">);
     resource._content = null;
     resource.codeDefinedSkillIds = configuration.codeDefinedSkillIds ?? [];
 
@@ -907,6 +912,16 @@ export class AgentResource
       snapshot.versionAuthorId !== null,
       "Unexpected: cached custom agent is missing its author"
     );
+    // Cached agents are never global (see `toSnapshot`), so their stored status/scope narrow to the
+    // configuration's shapes — asserted rather than cast (see `no-unsafe-type-assertions`).
+    assert(
+      isAgentStatus(snapshot.status),
+      `Unexpected: cached agent has non-agent status "${snapshot.status}"`
+    );
+    assert(
+      snapshot.scope !== "global",
+      "Unexpected: cached a global AgentResource"
+    );
     const lastReinforcementAnalysisAt =
       snapshot.lastReinforcementAnalysisAt !== null
         ? new Date(snapshot.lastReinforcementAnalysisAt)
@@ -940,9 +955,8 @@ export class AgentResource
         updatedAt: new Date(content.updatedAt),
         version: content.version,
         agentId: snapshot.agentModelId,
-        // Cached agents are never global, so their stored status/scope are configuration-shaped.
-        status: snapshot.status as AgentStatus,
-        scope: snapshot.scope as Exclude<AgentConfigurationScope, "global">,
+        status: snapshot.status,
+        scope: snapshot.scope,
         name: snapshot.name,
         description: snapshot.description,
         instructions: content.instructions,
