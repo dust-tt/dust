@@ -4,11 +4,13 @@ import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import {
   AuthorizedFileAccessModel,
   FileModel,
 } from "@app/lib/resources/storage/models/files";
+import { FramePublicationModel } from "@app/lib/resources/storage/models/frame_publication";
 import { copyContent } from "@app/lib/utils/files";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -36,6 +38,21 @@ import {
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
+
+async function addPublicationRow(
+  auth: Authenticator,
+  frame: FileResource,
+  publicationId: string
+) {
+  await FramePublicationResource.makeNew(auth, {
+    description: "Track tasks.",
+    frame,
+    publicationId,
+    publishedAt: new Date(),
+    publishedByAgentConfigurationId: null,
+    uiBundleSha256: "0".repeat(64),
+  });
+}
 
 async function createFrameWithFunction(
   auth: Authenticator,
@@ -1804,6 +1821,7 @@ describe("FileResource", () => {
         role: "admin",
       });
       const frame = await createFrameWithFunction(auth, "workspace-delete");
+      await addPublicationRow(auth, frame, "workspace-delete");
       expect(
         await SandboxFunctionResource.listByFramePublication(auth, {
           frame,
@@ -1815,6 +1833,11 @@ describe("FileResource", () => {
 
       expect(deletedCount).toBe(1);
       expect(await FileResource.fetchById(auth, frame.sId)).toBeNull();
+      expect(
+        await FramePublicationModel.count({
+          where: { workspaceId: frame.workspaceId },
+        })
+      ).toBe(0);
     });
   });
 
@@ -1825,6 +1848,7 @@ describe("FileResource", () => {
     const frame = await createFrameWithFunction(auth, "frame-delete", {
       withSource: true,
     });
+    await addPublicationRow(auth, frame, "frame-delete");
     expect(
       await SandboxFunctionResource.listByFramePublication(auth, {
         frame,
@@ -1838,6 +1862,11 @@ describe("FileResource", () => {
       true
     );
     expect(await FileResource.fetchById(auth, frame.sId)).toBeNull();
+    expect(
+      await FramePublicationModel.count({
+        where: { workspaceId: frame.workspaceId, fileId: frame.id },
+      })
+    ).toBe(0);
   });
 
   it("rejects Frame deletion from another workspace", async () => {

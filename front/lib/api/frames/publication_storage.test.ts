@@ -23,6 +23,7 @@ import {
   SandboxFunctionResource,
 } from "@app/lib/resources/sandbox_function_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { FramePublicationModel } from "@app/lib/resources/storage/models/frame_publication";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -1153,5 +1154,85 @@ describe("publishFramePublication", () => {
       deletion.isErr() ? deletion.error.message : undefined
     ).toBe(true);
     await expect(FileResource.fetchById(auth, frame.sId)).resolves.toBeNull();
+  });
+});
+
+describe("frame_publications rows", () => {
+  async function listPublicationRows(frame: FileResource) {
+    return FramePublicationModel.findAll({
+      where: { workspaceId: frame.workspaceId, fileId: frame.id },
+    });
+  }
+
+  it("records a row mirroring the stored descriptor", async () => {
+    const { auth, frame, workspaceId } = await setupFrame();
+
+    const stored = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+    const { publicationId } = stored.value;
+    const descriptor = getStoredDescriptor(
+      getFramePublicationDescriptorPath({
+        workspaceId,
+        frameId: frame.sId,
+        publicationId,
+      })
+    );
+
+    const rows = await listPublicationRows(frame);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      publicationId,
+      publishedAt: new Date(descriptor.publishedAt),
+      publishedByUserId: auth.getNonNullableUser().id,
+      publishedByAgentConfigurationId: null,
+      description: manifest.description,
+      uiBundleSha256: descriptor.ui.bundleSha256,
+    });
+  });
+
+  it("commits the row before writing any publication object", async () => {
+    const { auth, frame } = await setupFrame();
+    fileStorageMock.setFileSaveFails(() => true);
+
+    await expect(
+      storeFramePublication(auth, {
+        frame,
+        functionArtifacts: [],
+        manifest,
+        sourceFiles,
+        uiBundleCode,
+      })
+    ).rejects.toThrow("Simulated GCS write failure");
+
+    expect(await listPublicationRows(frame)).toHaveLength(1);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("records the publishing agent on publish", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode,
+      publishedByAgentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+    });
+    expect(published.isOk()).toBe(true);
+
+    const rows = await listPublicationRows(frame);
+    expect(rows.map((row) => row.publishedByAgentConfigurationId)).toEqual([
+      GLOBAL_AGENTS_SID.DUST,
+    ]);
   });
 });

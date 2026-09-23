@@ -2,6 +2,7 @@ import { loadFramePublicationDescriptor } from "@app/lib/api/frames/publication_
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -40,8 +41,8 @@ type PublicationOutcome =
  * waiting always terminates.
  */
 /**
- * Delete the superseded publications of one Frame: their function rows and their whole GCS
- * prefix. Publications are enumerated from storage rather than from `sandbox_functions`, because
+ * Delete the superseded publications of one Frame: their function rows, their
+ * `frame_publications` row and their whole GCS prefix. Publications are enumerated from storage rather than from `sandbox_functions`, because
  * a publication that declares no function leaves no row behind to find it by.
  *
  * The age check reads `publishedAt` from the publication's own descriptor, which also keeps the
@@ -126,13 +127,17 @@ export async function purgeStaleFramePublications(
         return { outcome: "kept" };
       }
 
-      // Rows first: a crash between the two leaves a GCS prefix the next sweep collects, where
-      // the reverse would leave rows describing bundles that no longer exist.
+      // Rows first: a crash between the rows and the GCS delete leaves a GCS prefix the next
+      // sweep collects, where the reverse would leave rows describing bundles that no longer exist.
       const deletedFunctionCount =
         await SandboxFunctionResource.deleteAllForFramePublication(auth, {
           frame,
           publicationId,
         });
+      await FramePublicationResource.deleteForFramePublication(auth, {
+        frame,
+        publicationId,
+      });
       await storage.deleteByPrefix(
         getFramePublicationBasePath({
           workspaceId: owner.sId,
