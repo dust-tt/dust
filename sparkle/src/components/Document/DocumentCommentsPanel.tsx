@@ -30,6 +30,8 @@ const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 const WEEK_MS = 7 * DAY_MS;
 
+// Duplicates front's timeAgoFrom in spirit. Sparkle cannot import front, and no shared
+// relative time helper exists in Sparkle yet. Promote to src/lib when a second component needs it.
 export const formatCommentTime = (
   createdAt: string,
   now = Date.now()
