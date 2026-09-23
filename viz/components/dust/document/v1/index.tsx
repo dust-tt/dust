@@ -5,7 +5,10 @@ import {
   Document as SparkleDocument,
 } from "@dust-tt/sparkle/dist/esm/components/Document/index";
 import { useVizContext } from "@viz/app/components/VizContext";
-import { useFrameDataAPI } from "@viz/app/lib/frame-function-hooks";
+import {
+  useFrameDataAPI,
+  useUserIdentity,
+} from "@viz/app/lib/frame-function-hooks";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import { cn } from "@viz/lib/utils";
 import { type ReactNode, useCallback, useId, useRef, useState } from "react";
@@ -66,6 +69,7 @@ const DocumentEditor = ({
   visuals,
 }: DocumentEditorProps) => {
   const revisionRef = useRef(file.revision);
+  const { user } = useUserIdentity();
   const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(
     null
   );
@@ -126,6 +130,9 @@ const DocumentEditor = ({
         autosaveDebounceMs={autosaveDebounceMs}
         onSave={save}
         visuals={scopedVisuals}
+        commentAuthor={
+          user ? { name: user.fullName, avatarUrl: user.image } : undefined
+        }
       />
       {typeof document !== "undefined" &&
         createPortal(
@@ -178,7 +185,8 @@ const DocumentSession = (props: DocumentProps) => {
  * Each opening MUST load a fresh file snapshot. Background reads MUST NOT replace a draft.
  * Saves MUST use that snapshot's revision, advancing it only after a confirmed save.
  * Read-only files, hosts without revision metadata and PDF renders MUST disable editing.
- * A changed path MUST start a separate editing session.
+ * A changed path MUST start a separate editing session. Comments MUST be authored as the
+ * workspace user returned by the Frame identity, and be unavailable without one.
  */
 export const Document = (props: DocumentProps) => (
   <DocumentSession key={props.path} {...props} />

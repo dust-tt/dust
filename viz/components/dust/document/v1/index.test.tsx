@@ -359,6 +359,46 @@ describe("Frame Document", () => {
     expect(dataAPI.writeFile).not.toHaveBeenCalled();
   });
 
+  it("offers commenting only to an identified workspace user", async () => {
+    const dataAPI = makeAPI();
+    dataAPI.getUserIdentity.mockResolvedValue({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      isPodEditor: false,
+      isPodMember: true,
+      isFrameAuthor: false,
+      user: {
+        sId: "user-1",
+        firstName: "Maya",
+        lastName: "Chen",
+        fullName: "Maya Chen",
+        image: null,
+      },
+    });
+    const { unmount } = render(<TestFrame dataAPI={dataAPI} />);
+    await screen.findByRole("textbox", { name: "Document content" });
+    expect(
+      await screen.findByRole("button", { name: /Comments/ })
+    ).toBeTruthy();
+    unmount();
+
+    const anonymousAPI = makeAPI();
+    anonymousAPI.getUserIdentity.mockResolvedValue({
+      isAuthenticated: false,
+      isWorkspaceMember: false,
+      isPodEditor: false,
+      isPodMember: false,
+      isFrameAuthor: false,
+      user: null,
+    });
+    render(<TestFrame dataAPI={anonymousAPI} />);
+    await screen.findByRole("textbox", { name: "Document content" });
+    await waitFor(() =>
+      expect(anonymousAPI.getUserIdentity).toHaveBeenCalled()
+    );
+    expect(screen.queryByRole("button", { name: /Comments/ })).toBeNull();
+  });
+
   it("leaves invalid stored JSON untouched", async () => {
     const dataAPI = makeAPI();
     dataAPI.fetchFile.mockResolvedValue({

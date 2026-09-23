@@ -10,6 +10,8 @@ interface DocumentSaveStatusProps {
   error: string | null;
   autosaveDebounceMs: number;
   onRetry: () => Promise<void>;
+  /** Controls shown after the status, such as the comments toggle. */
+  children?: React.ReactNode;
 }
 
 export const DocumentSaveStatus = ({
@@ -18,6 +20,7 @@ export const DocumentSaveStatus = ({
   error,
   autosaveDebounceMs,
   onRetry,
+  children,
 }: DocumentSaveStatusProps) => (
   <>
     <div
@@ -62,6 +65,7 @@ export const DocumentSaveStatus = ({
           Retry
         </button>
       )}
+      {children}
     </div>
     {error && (
       <p
