@@ -309,6 +309,8 @@ describe("pod_manager set_file_tabs / get_information file tabs", () => {
     assert(path);
 
     const tools = createProjectManagerTools(auth);
+    // set_file_tabs / get_information resolve the Pod via dustPod and do not read
+    // runContext; cast through unknown like other tool-handler fixtures that omit it.
     const extra = {
       auth,
       requestId: "pod-manager-file-tabs-test",
@@ -317,7 +319,7 @@ describe("pod_manager set_file_tabs / get_information file tabs", () => {
         throw new Error("Unexpected MCP request");
       },
       signal: new AbortController().signal,
-    } as ToolHandlerExtra;
+    } as unknown as ToolHandlerExtra;
 
     return { auth, extra, path, pod, tools, workspace };
   }
