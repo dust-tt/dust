@@ -21,7 +21,7 @@ function SuggestedEditorRow({
     member?.fullName ?? (isMembersLoading ? "Loading…" : userId);
 
   return (
-    <div className="flex items-center gap-3 border-b border-border py-2.5 last:border-b-0">
+    <div className="flex items-center gap-3 py-2.5">
       <Avatar
         size="xs"
         visual={member?.image ?? null}
@@ -68,7 +68,7 @@ export function SuggestedSkillEditors({
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">Editors</span>
-      <div>
+      <div className="divide-y divide-border">
         {addUserIds.map((userId) => (
           <SuggestedEditorRow
             key={`add-${userId}`}

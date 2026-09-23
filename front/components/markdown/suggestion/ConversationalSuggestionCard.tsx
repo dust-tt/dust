@@ -53,39 +53,50 @@ export function ConversationalSuggestionCard({
   const hasActions = !!onAccept && !!onReject;
 
   return (
-    <Card variant="secondary" size="md" className="flex-col gap-4 shadow-2xl">
-      <div className="flex items-center gap-2">
-        {visual}
-        <span className="heading-base text-foreground">{title}</span>
+    <Card
+      variant="secondary"
+      size="md"
+      containerClassName="w-full max-w-lg"
+      className="flex-col p-0"
+    >
+      <div className="flex flex-col gap-4 p-4">
+        <div className="flex items-center gap-2">
+          {visual}
+          <span className="heading-base text-foreground">{title}</span>
+        </div>
+
+        {analysis && (
+          <p className="text-sm text-muted-foreground">{analysis}</p>
+        )}
+
+        {hasActions && (
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              label={rejectLabel}
+              onClick={onReject}
+              disabled={disabled}
+              isLoading={isDeclining}
+            />
+            <Button
+              variant="highlight"
+              size="sm"
+              label={acceptLabel}
+              onClick={onAccept}
+              disabled={disabled}
+              isLoading={isAccepting}
+            />
+          </div>
+        )}
       </div>
 
-      {analysis && <p className="text-sm text-muted-foreground">{analysis}</p>}
-
-      {hasActions && (
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            label={rejectLabel}
-            onClick={onReject}
-            disabled={disabled}
-            isLoading={isDeclining}
-          />
-          <Button
-            variant="highlight"
-            size="sm"
-            label={acceptLabel}
-            onClick={onAccept}
-            disabled={disabled}
-            isLoading={isAccepting}
-          />
-        </div>
-      )}
-
       {collapsibleContent && (
-        <Collapsible className="-mx-4 -mb-4 w-[calc(100%+2rem)]">
-          <CollapsibleContent className="bg-muted-background p-3">
-            {collapsibleContent}
+        <Collapsible>
+          {/* Padding lives on an inner element: padding on the animated one
+              can't shrink with its height, which makes the toggle jump. */}
+          <CollapsibleContent className="bg-muted-background">
+            <div className="p-3">{collapsibleContent}</div>
           </CollapsibleContent>
           <CollapsibleTrigger
             variant="secondary"

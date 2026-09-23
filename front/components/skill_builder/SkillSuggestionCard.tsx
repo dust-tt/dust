@@ -153,7 +153,12 @@ function InstructionEditDiffBlock({
     [blockHtml]
   );
 
-  return <DiffBlock>{editor && <EditorContent editor={editor} />}</DiffBlock>;
+  // The diff box's border is not configurable, so it is overridden here.
+  return (
+    <DiffBlock className="[&_.rounded-2xl.border]:border-0">
+      {editor && <EditorContent editor={editor} />}
+    </DiffBlock>
+  );
 }
 
 interface ConversationFooterProps {
@@ -411,19 +416,16 @@ export function SkillSuggestionCard({
 
   if (suggestion.source === "conversational") {
     return (
-      <div className={wrapperClassName} {...wrapperProps}>
-        <ConversationalSuggestionCard
-          title={suggestion.title ?? "Suggestion"}
-          analysis={suggestion.analysis}
-          onAccept={hasActions ? () => onAccept(suggestion) : undefined}
-          onReject={hasActions ? () => onDecline(suggestion) : undefined}
-          rejectLabel="Decline"
-          disabled={disabled}
-          isAccepting={isAccepting}
-          isDeclining={isDeclining}
-          collapsibleContent={details}
-        />
-      </div>
+      <ConversationalSuggestionCard
+        title={suggestion.title ?? "Suggestion"}
+        analysis={suggestion.analysis}
+        onAccept={hasActions ? () => onAccept(suggestion) : undefined}
+        onReject={hasActions ? () => onDecline(suggestion) : undefined}
+        disabled={disabled}
+        isAccepting={isAccepting}
+        isDeclining={isDeclining}
+        collapsibleContent={details}
+      />
     );
   }
 
