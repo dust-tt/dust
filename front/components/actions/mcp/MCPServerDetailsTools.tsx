@@ -41,13 +41,6 @@ import { useFormContext } from "react-hook-form";
 
 type ToolDefinition = MCPServerViewType["server"]["tools"][number];
 
-/**
- * Selection and search state for the Tools & Stakes tab.
- *
- * It lives here rather than in the tab because the bulk bar has to render
- * outside `SheetContainer`: the container scrolls inside a ScrollArea, where a
- * sticky element cannot pin itself to the bottom of the sheet.
- */
 export interface ToolsAndStakesController {
   search: string;
   setSearch: (search: string) => void;
@@ -61,17 +54,29 @@ export interface ToolsAndStakesController {
   clearSelection: () => void;
   getSettings: (toolName: string) => ToolSettings;
   updateTool: (toolName: string, patch: Partial<ToolSettings>) => void;
-  /** Stake levels offerable to the whole selection (medium needs a supporting tool). */
   selectionStakeLevels: MCPToolStakeLevelType[];
   applyToSelection: (patch: Partial<ToolSettings>) => void;
 }
 
+/**
+ * @cc [owner:id13,label:product] tool-selection-persistence
+ * Tool selection MUST survive search changes, including clearing search, and batch stake or state updates.
+ */
 export function useToolsAndStakesController(
   mcpServerView: MCPServerViewType | null
 ): ToolsAndStakesController {
   const form = useFormContext<MCPServerFormValues>();
   const [search, setSearch] = useState("");
   const [selectedToolNames, setSelectedToolNames] = useState<string[]>([]);
+  const serverViewId = mcpServerView?.sId ?? null;
+  const [previousServerViewId, setPreviousServerViewId] =
+    useState(serverViewId);
+
+  if (serverViewId !== previousServerViewId) {
+    setPreviousServerViewId(serverViewId);
+    setSearch("");
+    setSelectedToolNames([]);
+  }
 
   const tools = useMemo(
     () => mcpServerView?.server.tools ?? [],
@@ -90,17 +95,6 @@ export function useToolsAndStakesController(
         (tool.description ?? "").toLowerCase().includes(needle)
     );
   }, [tools, search]);
-
-  // A tool that drops out of view drops out of the selection with it, so the
-  // bulk bar never acts on something nobody can see. Adjusting during render
-  // (rather than in an effect) keeps the bar and the list in the same frame.
-  const selectionScopeKey = `${mcpServerView?.sId ?? ""}|${search}`;
-  const [prevSelectionScopeKey, setPrevSelectionScopeKey] =
-    useState(selectionScopeKey);
-  if (selectionScopeKey !== prevSelectionScopeKey) {
-    setPrevSelectionScopeKey(selectionScopeKey);
-    setSelectedToolNames([]);
-  }
 
   const watchedToolSettings = form.watch("toolSettings");
 
@@ -154,7 +148,6 @@ export function useToolsAndStakesController(
       }
       updateTool(toolName, patch);
     }
-    setSelectedToolNames([]);
   };
 
   return {
@@ -171,10 +164,21 @@ export function useToolsAndStakesController(
           : [...previous, toolName]
       ),
     areAllVisibleSelected,
-    toggleSelectAllVisible: () =>
-      setSelectedToolNames(
-        areAllVisibleSelected ? [] : visibleTools.map((tool) => tool.name)
-      ),
+    toggleSelectAllVisible: () => {
+      const visibleToolNames = new Set(visibleTools.map((tool) => tool.name));
+      setSelectedToolNames((previous) => {
+        if (areAllVisibleSelected) {
+          return previous.filter((name) => !visibleToolNames.has(name));
+        }
+        const previousNames = new Set(previous);
+        return [
+          ...previous,
+          ...visibleTools
+            .map((tool) => tool.name)
+            .filter((name) => !previousNames.has(name)),
+        ];
+      });
+    },
     clearSelection: () => setSelectedToolNames([]),
     getSettings,
     updateTool,
@@ -192,7 +196,7 @@ interface MCPServerDetailsToolsProps {
  * Every operation the server exposes, each one switchable and carrying the stake
  * level that decides whether Dust asks before running it. A real MCP server
  * declares dozens, hence the search and the per-row selection: batch actions
- * apply to the selection only, and the selection is scoped to the search.
+ * apply to the selection even when the search hides some selected tools.
  */
 export function MCPServerDetailsTools({
   mcpServerView,
@@ -392,13 +396,15 @@ function ToolRow({
  * These run to a paragraph in the wild, and thirty paragraphs would bury the
  * list they are meant to explain.
  */
+interface ClampedDescriptionProps {
+  description: string;
+  className?: string;
+}
+
 function ClampedDescription({
   description,
   className,
-}: {
-  description: string;
-  className?: string;
-}) {
+}: ClampedDescriptionProps) {
   const textRef = useRef<HTMLParagraphElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
@@ -435,16 +441,13 @@ function ClampedDescription({
   );
 }
 
-/**
- * Batch actions for the tool list, in the same bar the Agents and Skills tables
- * raise once rows are ticked. Rendered by the sheet outside `SheetContainer`, so
- * it floats over the footer rather than scrolling away with the list.
- */
+interface MCPServerDetailsToolsBulkBarProps {
+  controller: ToolsAndStakesController;
+}
+
 export function MCPServerDetailsToolsBulkBar({
   controller,
-}: {
-  controller: ToolsAndStakesController;
-}) {
+}: MCPServerDetailsToolsBulkBarProps) {
   const {
     selectedToolNames,
     visibleTools,
@@ -458,8 +461,6 @@ export function MCPServerDetailsToolsBulkBar({
       selectedCount={selectedToolNames.length}
       totalCount={visibleTools.length}
       itemLabel="tool"
-      // The list carries its own "Select all" next to the search, so the bar
-      // does not offer a second one.
       canSelectAll={false}
       onSelectAll={() => {}}
       onClear={clearSelection}
@@ -468,8 +469,6 @@ export function MCPServerDetailsToolsBulkBar({
         <DropdownMenuTrigger asChild>
           <Button size="sm" variant="primary" isSelect label="Set stake" />
         </DropdownMenuTrigger>
-        {/* The bar is pinned to the bottom of the sheet, so these menus open
-            upwards; dropping down would run them off the viewport. */}
         <DropdownMenuContent align="end" side="top">
           <DropdownMenuLabel label="Set stake" />
           {selectionStakeLevels.map((stakeLevel) => (

@@ -47,6 +47,7 @@
   "invitation.role_updated": 3,
   "mcp_connection.created": 2,
   "mcp_connection.deleted": 2,
+  "mcp_server.tool_settings_updated": 1,
   "member.bulk_invited": 3,
   "member.bulk_revoked": 3,
   "member.invited": 6,

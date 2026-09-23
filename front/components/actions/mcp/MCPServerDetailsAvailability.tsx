@@ -20,13 +20,12 @@ type RowData = {
   onClick: () => void;
 };
 
-const ActionCell = ({
-  isEnabled,
-  onToggle,
-}: {
+interface ActionCellProps {
   isEnabled: boolean;
   onToggle: () => void;
-}) => {
+}
+
+const ActionCell = ({ isEnabled, onToggle }: ActionCellProps) => {
   return (
     <DataTable.CellContent>
       <SliderToggle
@@ -40,18 +39,20 @@ const ActionCell = ({
   );
 };
 
+interface AvailabilityRuleProps {
+  title: string;
+  selected: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}
+
 /** One switchable availability rule, with the copy that explains its state. */
 function AvailabilityRule({
   title,
   selected,
   onToggle,
   children,
-}: {
-  title: string;
-  selected: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-}) {
+}: AvailabilityRuleProps) {
   return (
     <div className="flex w-full flex-col gap-y-2">
       <div className="flex w-full items-center justify-between overflow-visible">
@@ -139,7 +140,7 @@ export function MCPServerDetailsAvailability({
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const columns: ColumnDef<RowData, any>[] = [
+  const columns: ColumnDef<RowData>[] = [
     {
       id: "name",
       header: "Name",
@@ -152,7 +153,7 @@ export function MCPServerDetailsAvailability({
       meta: {
         className: "w-14",
       },
-      cell: (info: CellContext<RowData, boolean>) => (
+      cell: (info: CellContext<RowData, unknown>) => (
         <ActionCell
           isEnabled={info.row.original.isEnabled}
           onToggle={info.row.original.onClick}

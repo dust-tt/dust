@@ -75,7 +75,6 @@ export function MCPServerDetailsSheet({
   const toolsController = useToolsAndStakesController(mcpServerView);
 
   useEffect(() => {
-    // Only reset to the first tab when the sheet transitions from closed to open.
     if (isOpen && !prevIsOpen) {
       setSelectedTab("general");
     }
@@ -236,8 +235,6 @@ export function MCPServerDetailsSheet({
             </Tabs>
           )}
         </SheetContainer>
-        {/* Outside the container: the body scrolls inside a ScrollArea, where
-            nothing can stick to the bottom of the sheet. */}
         {!readOnly && selectedTab === "tools" && (
           <div className="px-5">
             <MCPServerDetailsToolsBulkBar controller={toolsController} />
