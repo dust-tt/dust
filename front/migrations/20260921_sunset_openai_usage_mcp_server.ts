@@ -131,21 +131,27 @@ async function deleteOpenAIUsageServerFromWorkspace(
   }
 }
 
-makeScript({}, async ({ execute }, logger) => {
-  logger.info(
-    { openaiUsageServerId: OPENAI_USAGE_SERVER_ID, execute },
-    execute
-      ? "Deleting openai_usage MCP server data across workspaces"
-      : "Dry run: listing openai_usage MCP server data across workspaces"
-  );
-
-  await runOnAllWorkspaces(async (workspace) => {
-    await deleteOpenAIUsageServerFromWorkspace(
-      workspace.sId,
-      { execute },
-      logger.child({ workspaceId: workspace.sId })
+makeScript(
+  { wId: { type: "string", description: "Restrict to a single workspace sId" } },
+  async ({ execute, wId }, logger) => {
+    logger.info(
+      { openaiUsageServerId: OPENAI_USAGE_SERVER_ID, execute, wId },
+      execute
+        ? "Deleting openai_usage MCP server data across workspaces"
+        : "Dry run: listing openai_usage MCP server data across workspaces"
     );
-  });
 
-  logger.info("Finished openai_usage MCP server data cleanup");
-});
+    await runOnAllWorkspaces(
+      async (workspace) => {
+        await deleteOpenAIUsageServerFromWorkspace(
+          workspace.sId,
+          { execute },
+          logger.child({ workspaceId: workspace.sId })
+        );
+      },
+      { wId }
+    );
+
+    logger.info("Finished openai_usage MCP server data cleanup");
+  }
+);
