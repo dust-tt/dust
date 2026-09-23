@@ -215,6 +215,7 @@ function changeForSuggestion(
       });
 
     case "knowledge":
+    case "scope":
     case "skills":
     case "sub_agent":
     case "tools":
