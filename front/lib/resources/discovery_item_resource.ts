@@ -208,6 +208,11 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
    * @cc [owner:frankaloia,label:product] pinned-item-artefact-unique
    * The same agent or skill is pinned at most once in a group.
    */
+  /**
+   * @cc [owner:frankaloia,label:product] pinned-item-group-kind
+   * A pin can be set only on a group that is not `regular_auto`. Implicit groups, such as agent
+   * editors and space members, are not discovery audiences.
+   */
   static async setPinnedForGroup(
     auth: Authenticator,
     {
@@ -251,12 +256,19 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
           id: groupModelId,
           workspaceId: workspaceModelId,
         },
-        lock: t.LOCK.UPDATE,
         transaction: t,
       });
       if (!group) {
         return new Err(
           new DustError("group_not_found", "Group not found in this workspace.")
+        );
+      }
+      if (group.kind === "regular_auto") {
+        return new Err(
+          new DustError(
+            "invalid_request_error",
+            "Pinned discovery items cannot target regular_auto groups."
+          )
         );
       }
 
