@@ -3,9 +3,10 @@
 // The function runner executes every invocation inside an AsyncLocalStorage
 // context carrying that invocation's environment (user identity, sandbox
 // token, pod paths), so one process can serve concurrent invocations without
-// mutating process.env. Runtime code reads the environment through podEnv():
-// the active context's env inside an invocation, process.env otherwise (cold
-// runs and local use, where the process environment IS the invocation's).
+// mutating process.env. Runtime code reads the environment through
+// invocationEnv(): the active context's env inside an invocation, process.env
+// otherwise (cold runs and local use, where the process environment IS the
+// invocation's).
 //
 // The storage instance is shared with the runner through the process-wide
 // `Symbol.for` registry rather than a module-level singleton: the runner is a
@@ -58,10 +59,13 @@ export function runWithInvocationEnv<T>(
  * invocation's environment can never leak into another. Outside any context
  * (cold runs, local use), this is plain process.env.
  */
-export function podEnv(name: string): string | undefined {
+export function invocationEnv(name: string): string | undefined {
   const context = contextStorage().getStore();
   if (context !== undefined) {
     return context.env[name];
   }
   return process.env[name];
 }
+
+/** Compatibility alias for existing `@dust/pod` consumers. */
+export const podEnv = invocationEnv;

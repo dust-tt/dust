@@ -85,11 +85,11 @@ function withCollectedToolTimings(
  *
  * When `invocationEnv` is provided, the whole invocation (import included:
  * module top-level code runs on first import) executes inside a per-invocation
- * context carrying that environment, which @dust/pod reads through `podEnv()`.
- * This is how a resident server runs concurrent invocations with different
- * callers without touching process.env. Without it (cold runs, where the
- * process environment IS the invocation's), no context is entered and
- * @dust/pod falls back to process.env.
+ * context carrying that environment, which @dust/pod reads through
+ * `invocationEnv()`. This is how a resident server runs concurrent invocations
+ * with different callers without touching process.env. Without it (cold runs,
+ * where the process environment IS the invocation's), no context is entered
+ * and @dust/pod falls back to process.env.
  *
  * `timingsMs` splits dynamic import from handler fetch so dsbx/front can see
  * which phase dominates cold runs.

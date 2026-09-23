@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { podEnv } from "./context.ts";
+import { invocationEnv } from "./context.ts";
 
 export const POD_USER_IDENTITY_ENV = "DUST_POD_USER_IDENTITY";
 export const POD_WORKSPACE_ID_ENV = "WORKSPACE_ID";
@@ -53,7 +53,7 @@ export class PodUserIdentityError extends Error {
  *   workspace than the current Pod's.
  */
 export function currentUser(): WorkspaceUserIdentity | null {
-  const rawIdentity = podEnv(POD_USER_IDENTITY_ENV);
+  const rawIdentity = invocationEnv(POD_USER_IDENTITY_ENV);
   if (!rawIdentity) {
     return null;
   }
@@ -71,7 +71,7 @@ export function currentUser(): WorkspaceUserIdentity | null {
   }
   const value: WorkspaceUserIdentityEnvelope = parsedIdentity.data;
 
-  const workspaceId = podEnv(POD_WORKSPACE_ID_ENV);
+  const workspaceId = invocationEnv(POD_WORKSPACE_ID_ENV);
   if (!workspaceId || value.workspaceId !== workspaceId) {
     throw new PodUserIdentityError(
       "The Pod user identity does not match the current workspace."

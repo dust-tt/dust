@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 
-import { podEnv } from "./context.ts";
+import { invocationEnv } from "./context.ts";
 
 /**
  * Frame state databases.
@@ -79,9 +79,9 @@ export const POD_DATABASE_MAX_SIZE_BYTES_ENV =
  * app folder.
  *
  * Front owns the value and derives it from the invoked function's slug, so no
- * layer below front knows how a prefix is built. Read through `podEnv`, so a
- * resident server serving two apps resolves each invocation against its own
- * prefix rather than a process-wide one.
+ * layer below front knows how a prefix is built. Read through `invocationEnv`,
+ * so a resident server serving two apps resolves each invocation against its
+ * own prefix rather than a process-wide one.
  *
  * Not a security boundary: the databases directory is local disk the workload
  * can read and write directly, so app prefixing prevents accidental collisions
@@ -284,7 +284,8 @@ class SandboxSqliteDatabase extends Database {
 
 function sandboxDatabasesDir(): string {
   const dir =
-    podEnv(SANDBOX_DATABASES_DIR_ENV) ?? podEnv(POD_DATABASES_DIR_ENV);
+    invocationEnv(SANDBOX_DATABASES_DIR_ENV) ??
+    invocationEnv(POD_DATABASES_DIR_ENV);
   if (dir === undefined || dir.length === 0) {
     throw new SandboxDatabaseError(
       `${SANDBOX_DATABASES_DIR_ENV} is not set: the databases directory is ` +
@@ -311,13 +312,13 @@ function sandboxDatabasesDir(): string {
  * db() opens is always the file reconcile applied the schema to.
  */
 function resolveDatabasePath(dir: string, name: string): string {
-  // Through podEnv, like every other env read here: a resident server runs
-  // concurrent invocations from different apps, and their prefixes differ. Read
-  // straight from process.env and every warm invocation would resolve against
-  // whichever prefix the cold run happened to leave there.
+  // Through invocationEnv, like every other env read here: a resident server
+  // runs concurrent invocations from different apps, and their prefixes differ.
+  // Read straight from process.env and every warm invocation would resolve
+  // against whichever prefix the cold run happened to leave there.
   const prefix =
-    podEnv(SANDBOX_DATABASE_PREFIX_ENV) ??
-    podEnv(POD_DATABASE_PREFIX_ENV) ??
+    invocationEnv(SANDBOX_DATABASE_PREFIX_ENV) ??
+    invocationEnv(POD_DATABASE_PREFIX_ENV) ??
     "";
   if (prefix.length > 0) {
     // No need to re-check the name contract here: a prefix long enough to push
@@ -333,8 +334,8 @@ function resolveDatabasePath(dir: string, name: string): string {
 
 function sandboxDatabaseMaxSizeBytes(): number {
   const raw =
-    podEnv(SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV) ??
-    podEnv(POD_DATABASE_MAX_SIZE_BYTES_ENV);
+    invocationEnv(SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV) ??
+    invocationEnv(POD_DATABASE_MAX_SIZE_BYTES_ENV);
   if (raw === undefined || raw.length === 0) {
     throw new SandboxDatabaseError(
       `${SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV} is not set: the per-database size ` +
@@ -401,7 +402,7 @@ const instances = new Map<string, SandboxDatabase>();
 
 /** Require a Frame-owned sandbox before opening state databases. */
 function assertFrameOwner(): void {
-  if (!podEnv(FRAME_ID_ENV)) {
+  if (!invocationEnv(FRAME_ID_ENV)) {
     throw new SandboxDatabasesUnavailableError();
   }
 }
