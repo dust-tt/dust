@@ -11,8 +11,8 @@ import { ConversationSidePanelProvider } from "../assistant/conversation/Convers
  *
  * ConversationFontProvider is intentionally NOT mounted here: this layout
  * wraps unauthenticated routes too, and the provider's user-metadata fetch
- * must only run behind an auth gate. It is mounted in `AppContentRouterLayout`,
- * where the font is actually consumed (conversation views and the sidebar settings popover).
+ * must only run behind an auth gate. It is mounted where the font is actually
+ * consumed.
  */
 export function RootLayout({ children }: { children: React.ReactNode }) {
   useStripUtmParams();

@@ -28,6 +28,7 @@ import {
   BuilderEditorLoadErrorMessage,
 } from "@app/components/shared/BuilderEditorGateMessage";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { ConversationFontProvider } from "@app/components/sparkle/ConversationFontContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useBuilderTracking } from "@app/hooks/useBuilderTracking";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
@@ -115,12 +116,14 @@ export default function AgentBuilder(props: AgentBuilderProps) {
   }
 
   return (
-    <AgentBuilderForm
-      {...props}
-      newAgentDefaultModel={
-        props.agentConfiguration ? undefined : defaultModel!
-      }
-    />
+    <ConversationFontProvider>
+      <AgentBuilderForm
+        {...props}
+        newAgentDefaultModel={
+          props.agentConfiguration ? undefined : defaultModel!
+        }
+      />
+    </ConversationFontProvider>
   );
 }
 
