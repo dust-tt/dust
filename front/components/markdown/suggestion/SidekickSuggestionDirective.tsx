@@ -188,6 +188,7 @@ interface ConversationAgentSuggestionProps {
   agentId: string;
   kind: ConversationAgentSuggestionKind;
   suggestionId: string;
+  conversationId: string;
 }
 
 function ConversationAgentSuggestion({
@@ -195,6 +196,7 @@ function ConversationAgentSuggestion({
   agentId,
   kind,
   suggestionId,
+  conversationId,
 }: ConversationAgentSuggestionProps) {
   const { openPanel } = useConversationSidePanelContext();
 
@@ -202,6 +204,7 @@ function ConversationAgentSuggestion({
     useAgentSuggestions({
       agentConfigurationId: agentId,
       workspaceId: owner.sId,
+      conversationId,
     });
 
   const { getPendingAction, acceptSuggestion, rejectSuggestion } =
@@ -269,7 +272,8 @@ interface ConversationAgentSuggestionPluginProps {
 }
 
 export function getConversationAgentSuggestionPlugin(
-  owner: LightWorkspaceType
+  owner: LightWorkspaceType,
+  conversationId?: string
 ) {
   const ConversationAgentSuggestionPlugin = ({
     suggestionId,
@@ -279,12 +283,14 @@ export function getConversationAgentSuggestionPlugin(
     suggestionId &&
     kind &&
     isConversationAgentSuggestionKind(kind) &&
-    agentId ? (
+    agentId &&
+    conversationId ? (
       <ConversationAgentSuggestion
         owner={owner}
         agentId={agentId}
         kind={kind}
         suggestionId={suggestionId}
+        conversationId={conversationId}
       />
     ) : null;
 

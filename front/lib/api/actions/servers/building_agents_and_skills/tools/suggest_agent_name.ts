@@ -3,6 +3,8 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentNameArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -17,6 +19,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 function getAgentNameSuggestionLockName(agentId: string): string {
   return `agent-suggestion:name:${agentId}`;
@@ -88,7 +91,8 @@ async function validateAgentNameChange(
 
 export async function suggestAgentName(
   auth: Authenticator,
-  { agentId, name, analysis }: SuggestAgentNameArgs
+  { agentId, name, analysis }: SuggestAgentNameArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   const agent = await getAgentConfiguration(auth, {
     agentId,
@@ -126,7 +130,7 @@ export async function suggestAgentName(
           suggestion: { name: validation.value.name },
           analysis: analysis ?? null,
           state: "pending",
-          conversationId: null,
+          conversationId: runContext.conversation.id,
           source: "conversational",
         }
       );
@@ -147,9 +151,11 @@ export async function suggestAgentName(
 
 export async function suggestAgentNameHandler(
   args: SuggestAgentNameArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestAgentName(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestAgentName(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

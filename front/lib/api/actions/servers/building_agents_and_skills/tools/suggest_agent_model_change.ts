@@ -3,6 +3,8 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentModelChangeArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -15,6 +17,7 @@ import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 const AGENT_MODEL_SUGGESTION_LOCK_TTL_MS = 30_000;
 
@@ -33,7 +36,8 @@ function getAgentModelSuggestionLockName(agentId: string): string {
  */
 export async function suggestAgentModelChange(
   auth: Authenticator,
-  { agentId, modelId, reasoningEffort, analysis }: SuggestAgentModelChangeArgs
+  { agentId, modelId, reasoningEffort, analysis }: SuggestAgentModelChangeArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   if (!auth.user()) {
     return new Err(
@@ -115,7 +119,7 @@ export async function suggestAgentModelChange(
           suggestion: { modelId, reasoningEffort },
           analysis: analysis ?? null,
           state: "pending",
-          conversationId: null,
+          conversationId: runContext.conversation.id,
           source: "conversational",
         }
       );
@@ -140,9 +144,11 @@ export async function suggestAgentModelChange(
 
 export async function suggestAgentModelChangeHandler(
   args: SuggestAgentModelChangeArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestAgentModelChange(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestAgentModelChange(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

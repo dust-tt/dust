@@ -19,6 +19,7 @@ import {
   SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -76,6 +77,20 @@ function getTool(name: string) {
 // made in, so a partial extra cast to ToolHandlerExtra is sufficient (mirroring skill_authoring).
 // `sourceConversationIds` has no foreign key, so a synthetic conversation id is enough here.
 const TEST_CONVERSATION_MODEL_ID = 424242;
+
+// Agent suggestions instead hold a real `conversationId` foreign key, so their tools need an
+// actual conversation row to point at.
+async function createTestConversationModelId(
+  auth: Authenticator
+): Promise<ModelId> {
+  const conversation = await createConversation(auth, {
+    title: "Test Conversation",
+    visibility: "unlisted",
+    spaceId: null,
+  });
+
+  return conversation.id;
+}
 
 function makeExtra(
   auth: Authenticator,
@@ -855,7 +870,10 @@ describe("building_agents_and_skills tools", () => {
           instructions: "Collect impact and timeline.",
           analysis: "Incident response had no dedicated helper.",
         },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
 
       expect(result.isOk()).toBe(true);
@@ -975,7 +993,10 @@ describe("building_agents_and_skills tools", () => {
 
       const first = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
         { agentId: agent.sId, analysis: "Unused for months." },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
       expect(first.isOk()).toBe(true);
       if (first.isErr()) {
@@ -1009,7 +1030,10 @@ describe("building_agents_and_skills tools", () => {
 
       const second = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
         { agentId: agent.sId },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
       expect(second.isOk()).toBe(true);
 
@@ -1089,7 +1113,7 @@ describe("building_agents_and_skills tools", () => {
     ) =>
       getTool(SUGGEST_AGENT_DESCRIPTION_TOOL_NAME).handler(
         args,
-        makeExtra(auth)
+        makeExtra(auth, await createTestConversationModelId(auth))
       );
 
     it("records a pending suggestion with the description, without changing the agent", async () => {
@@ -1231,7 +1255,10 @@ describe("building_agents_and_skills tools", () => {
           reasoningEffort: "high",
           analysis: "Better for complex tasks.",
         },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
       expect(first.isOk()).toBe(true);
       if (first.isErr()) {
@@ -1260,7 +1287,10 @@ describe("building_agents_and_skills tools", () => {
         SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME
       ).handler(
         { agentId: agent.sId, modelId: "claude-sonnet-4-6" },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
       expect(second.isOk()).toBe(true);
 
@@ -1379,7 +1409,11 @@ describe("building_agents_and_skills tools", () => {
     const suggestName = async (
       auth: Authenticator,
       args: { agentId: string; name: string; analysis?: string }
-    ) => getTool(SUGGEST_AGENT_NAME_TOOL_NAME).handler(args, makeExtra(auth));
+    ) =>
+      getTool(SUGGEST_AGENT_NAME_TOOL_NAME).handler(
+        args,
+        makeExtra(auth, await createTestConversationModelId(auth))
+      );
 
     it("records a pending suggestion with the name, without renaming", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
@@ -1553,7 +1587,7 @@ describe("building_agents_and_skills tools", () => {
     ) =>
       getTool(SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME).handler(
         args,
-        makeExtra(auth)
+        makeExtra(auth, await createTestConversationModelId(auth))
       );
 
     it("records a pending suggestion with the publish state, without changing the agent", async () => {
@@ -1588,6 +1622,8 @@ describe("building_agents_and_skills tools", () => {
       );
       expect(suggestion?.state).toBe("pending");
       expect(suggestion?.source).toBe("conversational");
+      // Which conversation is asserted by the scoping test below.
+      expect(suggestion?.conversationId).not.toBeNull();
       expect(suggestion?.toJSON()).toMatchObject({
         kind: "scope",
         suggestion: { scope: "visible" },
@@ -1600,6 +1636,45 @@ describe("building_agents_and_skills tools", () => {
         variant: "light",
       });
       expect(untouched?.scope).toBe("hidden");
+    });
+
+    it("records the conversation it ran in, so suggestions can be scoped to it", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "hidden" }
+      );
+
+      const suggestIn = async (conversationModelId: ModelId) => {
+        const result = await getTool(
+          SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME
+        ).handler(
+          { agentId: agent.sId, scope: "visible" },
+          makeExtra(authenticator, conversationModelId)
+        );
+        if (result.isErr() || result.value[0]?.type !== "text") {
+          throw new Error("Expected the suggestion to be created.");
+        }
+        return extractAgentScopeSuggestionDirective(result.value[0].text)
+          .suggestionId;
+      };
+
+      const firstConversationModelId =
+        await createTestConversationModelId(authenticator);
+      const secondConversationModelId =
+        await createTestConversationModelId(authenticator);
+
+      // The second call outdates the first, but both keep the conversation they were made in.
+      const firstId = await suggestIn(firstConversationModelId);
+      const secondId = await suggestIn(secondConversationModelId);
+
+      const scoped = await AgentSuggestionResource.listByAgentConfigurationId(
+        authenticator,
+        agent.sId,
+        { conversationModelId: secondConversationModelId }
+      );
+      expect(scoped.map((s) => s.sId)).toEqual([secondId]);
+      expect(scoped.map((s) => s.sId)).not.toContain(firstId);
     });
 
     it("outdates every other pending publish state suggestion, leaving other kinds alone", async () => {
@@ -1820,7 +1895,10 @@ describe("building_agents_and_skills tools", () => {
           },
           analysis: "Makes the assistant more concise.",
         },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
       expect(first.isOk()).toBe(true);
       if (first.isErr()) {
@@ -1863,7 +1941,10 @@ describe("building_agents_and_skills tools", () => {
             content: "<p>You are a friendly assistant.</p>",
           },
         },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
       expect(second.isOk()).toBe(true);
 

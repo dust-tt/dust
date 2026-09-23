@@ -255,6 +255,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     filters?: {
       states?: AgentSuggestionState[];
       kind?: AgentSuggestionKind;
+      conversationModelId?: ModelId;
       limit?: number;
     }
   ): Promise<AgentSuggestionResource[]> {
@@ -280,6 +281,9 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       ...(filters?.states &&
         filters.states.length > 0 && { state: filters.states }),
       ...(filters?.kind && { kind: filters.kind }),
+      ...(filters?.conversationModelId !== undefined && {
+        conversationId: filters.conversationModelId,
+      }),
     };
 
     return this.baseFetch(auth, {
