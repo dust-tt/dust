@@ -74,7 +74,7 @@ type TokenCounts = {
 
 type AttributionPricedUsage = Pick<
   RunUsageWithRunKeyType,
-  "completionTokens" | "isBatch" | "modelId" | "promptTokens"
+  "completionTokens" | "isBatch" | "modelId" | "promptTokens" | "serviceTier"
 >;
 
 const ToolOutputOffloadDescriptorSchema = z.object({
@@ -508,6 +508,7 @@ function cacheNaiveAttributedCreditAmountMicro({
     cachedTokens: null,
     cacheCreationTokens: null,
     isBatch: usage.isBatch,
+    serviceTier: usage.serviceTier,
   });
   const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
     modelId: usage.modelId,
@@ -516,6 +517,7 @@ function cacheNaiveAttributedCreditAmountMicro({
     cachedTokens: null,
     cacheCreationTokens: null,
     isBatch: usage.isBatch,
+    serviceTier: usage.serviceTier,
   });
 
   return creditAmountMicroFromCostMicroUsd(
@@ -653,6 +655,7 @@ makeScript(
           inferenceProvider: attempt.inferenceProvider,
           region: attempt.region,
           model: attempt.modelId,
+          serviceTier: attempt.serviceTier,
           promptTokens: attempt.promptTokens,
           cachedTokens: attempt.cachedTokens,
           newInputTokens: attempt.promptTokens - (attempt.cachedTokens ?? 0),
