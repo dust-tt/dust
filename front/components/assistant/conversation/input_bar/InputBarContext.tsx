@@ -8,6 +8,7 @@ import type {
 } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { ModelSelectionSchema } from "@app/types/assistant/models/types";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { MutableRefObject, ReactNode } from "react";
@@ -64,6 +65,11 @@ export type PendingInputText = {
   replace: boolean;
 };
 
+export type PendingSkill = Pick<
+  SkillWithoutInstructionsAndToolsType,
+  "sId" | "name" | "icon"
+>;
+
 type CaptureActions = {
   onCapture: (type: "text" | "screenshot") => void;
   isCapturing: boolean;
@@ -83,6 +89,8 @@ export const InputBarContext = createContext<{
     text: string | null,
     options?: { replace?: boolean }
   ) => void;
+  pendingSkill: PendingSkill | null;
+  setPendingSkill: (skill: PendingSkill | null) => void;
   peekPendingFirstMessage: (
     conversationId: string
   ) => PendingConversationMessage | null;
@@ -111,6 +119,8 @@ export const InputBarContext = createContext<{
   setSelectedSingleAgent: () => {},
   getAndClearPendingInputText: () => null,
   setPendingInputText: () => {},
+  pendingSkill: null,
+  setPendingSkill: () => {},
   peekPendingFirstMessage: () => null,
   setPendingFirstMessage: () => {},
   clearPendingFirstMessage: () => {},
@@ -162,6 +172,7 @@ export function InputBarContextProvider({
   // Useful when a component needs to pre-fill the input bar with text.
   const [pendingInputText, setPendingInputTextState] =
     useState<PendingInputText | null>(null);
+  const [pendingSkill, setPendingSkill] = useState<PendingSkill | null>(null);
   const [isLoadingGoTemplate, setIsLoadingGoTemplate] = useState(false);
 
   // Sticky model-picker override, hydrated from sessionStorage on mount and
@@ -258,6 +269,8 @@ export function InputBarContextProvider({
       setSelectedSingleAgent,
       getAndClearPendingInputText,
       setPendingInputText,
+      pendingSkill,
+      setPendingSkill,
       peekPendingFirstMessage,
       setPendingFirstMessage,
       clearPendingFirstMessage,
@@ -277,6 +290,7 @@ export function InputBarContextProvider({
       selectedSingleAgent,
       getAndClearPendingInputText,
       setPendingInputText,
+      pendingSkill,
       peekPendingFirstMessage,
       setPendingFirstMessage,
       clearPendingFirstMessage,

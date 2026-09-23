@@ -10,6 +10,7 @@ import { DiscoverContainer } from "@app/components/assistant/conversation/discov
 import { useDiscoverScroll } from "@app/components/assistant/conversation/discover/useDiscoverScroll";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { AGENT_INPUT_HEADER_ID } from "@app/components/assistant/conversation/scrollToAgentInputHeader";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useConversations } from "@app/hooks/conversations";
@@ -157,7 +158,8 @@ export function ConversationContainerVirtuoso({
 
   const [limitReachedCode, setLimitReachedCode] =
     useState<WorkspaceLimit | null>(null);
-  const { setSelectedSingleAgent } = useContext(InputBarContext);
+  const { setSelectedSingleAgent, setPendingSkill } =
+    useContext(InputBarContext);
 
   const router = useAppRouter();
 
@@ -339,7 +341,7 @@ export function ConversationContainerVirtuoso({
   const homeHero = (
     <>
       <div
-        id="agent-input-header"
+        id={AGENT_INPUT_HEADER_ID}
         className={classNames(
           "flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4",
           isDiscoveryHomepage ? "" : "md:min-h-[36vh]"
@@ -461,8 +463,8 @@ export function ConversationContainerVirtuoso({
               onAgentConfigurationClick={(agent) => {
                 setSelectedSingleAgent(toRichAgentMentionType(agent));
               }}
+              onSkillClick={setPendingSkill}
               owner={owner}
-              user={user}
             />
           ) : (
             isAgentsSectionVisible && (

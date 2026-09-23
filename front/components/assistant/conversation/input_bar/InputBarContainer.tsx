@@ -327,6 +327,8 @@ const InputBarContainer = ({
     setSelectedSingleAgent,
     isLoadingGoTemplate,
     setStickyModelOverride,
+    pendingSkill,
+    setPendingSkill,
   } = useContext(InputBarContext);
 
   const [startsWithUserMention, setStartsWithUserMention] = useState(false);
@@ -1284,6 +1286,34 @@ const InputBarContainer = ({
 
     editorService.setLoading(isLoadingGoTemplate);
   }, [editor, editorService, isLoadingGoTemplate]);
+
+  useEffect(() => {
+    if (
+      !pendingSkill ||
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
+      return;
+    }
+    setPendingSkill(null);
+    editor
+      .chain()
+      .focus()
+      .insertSkillNode({
+        skillId: pendingSkill.sId,
+        skillName: pendingSkill.name,
+        skillIcon: pendingSkill.icon,
+      })
+      .run();
+  }, [
+    pendingSkill,
+    setPendingSkill,
+    editor,
+    editor?.isInitialized,
+    editor?.isEditable,
+  ]);
 
   const pendingReplaceInputRef = useRef<PendingInputText | null>(null);
 

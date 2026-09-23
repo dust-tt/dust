@@ -1,8 +1,9 @@
 import { AgentBrowser } from "@app/components/assistant/conversation/agent_browser/AgentBrowser";
+import { scrollToAgentInputHeader } from "@app/components/assistant/conversation/scrollToAgentInputHeader";
 import { useClientType } from "@app/lib/context/clientType";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { classNames, smoothScrollIntoView } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Page } from "@dust-tt/sparkle";
@@ -34,20 +35,8 @@ export function AgentBrowserContainer({
   const isMobileOrExtension = isMobile || clientType === "extension";
 
   const handleAgentClick = useCallback(
-    // On click, scroll to the input bar and set the selected agent.
     async (agent: LightAgentConfigurationType) => {
-      const scrollContainerElement =
-        document.getElementById("agent-input-header");
-
-      if (!scrollContainerElement) {
-        console.log("Unexpected: scrollContainerElement not found");
-        return;
-      }
-
-      await smoothScrollIntoView({
-        element: scrollContainerElement,
-      });
-
+      await scrollToAgentInputHeader();
       onAgentConfigurationClick(agent);
     },
     [onAgentConfigurationClick]
