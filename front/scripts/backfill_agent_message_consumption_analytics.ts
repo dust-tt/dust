@@ -16,6 +16,9 @@
  *   npx tsx scripts/backfill_agent_message_consumption_analytics.ts \
  *     --fromDate 2026-08-01T00:00:00.000Z \
  *     --execute
+ *
+ * Pass --onlyFlexServiceTier to restrict the backfill to agent messages with at least one run usage
+ * billed at the flex service tier, e.g. to recompute them after attribution version 8.
  */
 import {
   CONSUMPTION_ANALYTICS_ALIAS_NAME,
@@ -194,6 +197,55 @@ async function listAgentMessageRefs({
   });
 }
 
+async function filterCandidatesWithFlexRunUsage({
+  candidates,
+  workspace,
+}: {
+  candidates: AgentMessageBackfillCandidate[];
+  workspace: LightWorkspaceType;
+}): Promise<AgentMessageBackfillCandidate[]> {
+  const dustRunIds = [
+    ...new Set(candidates.flatMap((candidate) => candidate.dustRunIds)),
+  ];
+  if (dustRunIds.length === 0) {
+    return [];
+  }
+
+  const runs = await RunModel.findAll({
+    attributes: ["id", "dustRunId"],
+    where: {
+      dustRunId: { [Op.in]: dustRunIds },
+      workspaceId: workspace.id,
+    },
+  });
+  const dustRunIdByRunModelId = new Map(
+    runs.map((run) => [run.id, run.dustRunId])
+  );
+  if (dustRunIdByRunModelId.size === 0) {
+    return [];
+  }
+
+  const flexRunUsages = await RunUsageModel.findAll({
+    attributes: ["runId"],
+    where: {
+      runId: { [Op.in]: [...dustRunIdByRunModelId.keys()] },
+      serviceTier: "flex",
+      workspaceId: workspace.id,
+    },
+  });
+  const flexDustRunIds = new Set(
+    flexRunUsages.map((runUsage) => {
+      const dustRunId = dustRunIdByRunModelId.get(runUsage.runId);
+      assert(dustRunId, "Fetched run usage has no run");
+      return dustRunId;
+    })
+  );
+
+  return candidates.filter((candidate) =>
+    candidate.dustRunIds.some((dustRunId) => flexDustRunIds.has(dustRunId))
+  );
+}
+
 async function backfillMissingRunUsageTypes({
   candidates,
   workspace,
@@ -284,6 +336,12 @@ makeScript(
       default: DEFAULT_CONCURRENCY,
       description: "Maximum concurrent Temporal workflow launches.",
     },
+    onlyFlexServiceTier: {
+      type: "boolean",
+      default: false,
+      description:
+        "Only process agent messages with at least one flex service tier run usage.",
+    },
   },
   async (
     {
@@ -292,6 +350,7 @@ makeScript(
       execute,
       fromDate,
       fromWorkspaceId,
+      onlyFlexServiceTier,
       toDate,
       workspaceId,
     },
@@ -325,19 +384,25 @@ makeScript(
         let workspaceUsageTypesBackfilled = 0;
 
         while (true) {
-          const candidates = await listAgentMessageRefs({
+          const agentMessageRefs = await listAgentMessageRefs({
             afterAgentMessageModelId,
             batchSize,
             fromDate: parsedFromDate,
             toDate: parsedToDate,
             workspace,
           });
-          if (candidates.length === 0) {
+          if (agentMessageRefs.length === 0) {
             break;
           }
 
           afterAgentMessageModelId =
-            candidates[candidates.length - 1].agentMessageModelId;
+            agentMessageRefs[agentMessageRefs.length - 1].agentMessageModelId;
+          const candidates = onlyFlexServiceTier
+            ? await filterCandidatesWithFlexRunUsage({
+                candidates: agentMessageRefs,
+                workspace,
+              })
+            : agentMessageRefs;
           workspaceCandidates += candidates.length;
 
           if (!execute) {
@@ -413,6 +478,7 @@ makeScript(
       {
         fromDate: parsedFromDate.toISOString(),
         toDate: parsedToDate.toISOString(),
+        onlyFlexServiceTier,
         totalCandidates,
         totalEnqueued,
         totalFailed,
