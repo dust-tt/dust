@@ -66,7 +66,7 @@ describe("getPinnedModelRetryTier", () => {
     });
   }
 
-  it("offers the Premium row for an ultra-tier pinned model", () => {
+  it("offers no tier for an ultra-tier pinned model, which has no picker row", () => {
     expect(
       getPinnedModelRetryTier({
         failedModel: {
@@ -77,7 +77,7 @@ describe("getPinnedModelRetryTier", () => {
         modelResolutionMethod: "user",
         errorCategory: "provider_internal_error",
       })
-    ).toBe("complex");
+    ).toBeNull();
   });
 
   it("offers the tier for an agent-configured pinned model", () => {

@@ -26,7 +26,7 @@ makeScript({}, async ({ execute }, logger) => {
     dangerouslyBypassWorkspaceIsolationSecurity: true,
   });
 
-  const groupIdsOnUltra = new Set(
+  const groupModelIdsOnUltra = new Set(
     tierRows
       .filter((row) => row.resourceId === ULTRA_TIER_RESOURCE_ID)
       .map((row) => row.groupId)
@@ -35,9 +35,9 @@ makeScript({}, async ({ execute }, logger) => {
     (row) => row.resourceId === PREMIUM_TIER_RESOURCE_ID
   );
   const rowsToPromote = premiumRows.filter(
-    (row) => !groupIdsOnUltra.has(row.groupId)
+    (row) => !groupModelIdsOnUltra.has(row.groupId)
   );
-  const workspaceIds = [
+  const workspaceModelIds = [
     ...new Set(rowsToPromote.map((row) => row.workspaceId)),
   ];
 
@@ -46,7 +46,7 @@ makeScript({}, async ({ execute }, logger) => {
       premiumRowCount: premiumRows.length,
       promotedRowCount: rowsToPromote.length,
       skippedRowCount: premiumRows.length - rowsToPromote.length,
-      workspaceCount: workspaceIds.length,
+      workspaceCount: workspaceModelIds.length,
     },
     `Found ${rowsToPromote.length} Premium tier grants to promote to Ultra.`
   );
@@ -66,13 +66,16 @@ makeScript({}, async ({ execute }, logger) => {
   const redis = await getRedisCacheClient({
     origin: "group_permissions_cache",
   });
-  for (const workspaceId of workspaceIds) {
+  for (const workspaceModelId of workspaceModelIds) {
     await redis.del(
       GroupPermissionResource.cacheOperations.buildKey({
-        workspaceModelId: String(workspaceId),
+        workspaceModelId: String(workspaceModelId),
       })
     );
   }
 
-  logger.info({ workspaceCount: workspaceIds.length }, "Migration complete.");
+  logger.info(
+    { workspaceCount: workspaceModelIds.length },
+    "Migration complete."
+  );
 });

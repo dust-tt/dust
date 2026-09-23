@@ -73,11 +73,13 @@ const PINNED_MODEL_RETRY_ERROR_CATEGORIES = [
   "empty_content",
 ] as const;
 
-const PICKER_TIER_BY_MODELS_TIER: Record<ModelsTierName, ModelTierId> = {
+// Null for a tier without a picker row: a pinned failure on such a model offers
+// a plain retry rather than another tier.
+const PICKER_TIER_BY_MODELS_TIER: Record<ModelsTierName, ModelTierId | null> = {
   cost_efficient: "fast",
   balanced: "standard",
   premium: "complex",
-  ultra: "complex",
+  ultra: null,
 };
 
 export function isPremiumOrAboveTier(tierName: ModelsTierName | null): boolean {
