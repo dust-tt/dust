@@ -1,4 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
+import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
+import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
@@ -11,9 +13,11 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
 // The openai_usage internal MCP server has been removed from the codebase. Its numeric id is kept
-// in LEGACY_INTERNAL_MCP_SERVER_IDS so historical actions still resolve, but the live wiring (MCP
-// server views, tool approvals, tool metadata) must be cleaned up. The id is hardcoded here because
-// the server is no longer present in INTERNAL_MCP_SERVERS.
+// in LEGACY_INTERNAL_MCP_SERVER_IDS so historical actions still resolve, but the live wiring must be
+// cleaned up: MCP server views, connections, tool metadata, bearer-token credentials, and tool
+// approvals. The id is hardcoded here because the server is no longer present in
+// INTERNAL_MCP_SERVERS. Same rows as InternalMCPServerInMemoryResource.delete, plus user tool
+// approvals, which that path does not clear.
 const OPENAI_USAGE_SERVER_ID = 32;
 
 async function deleteOpenAIUsageServerFromWorkspace(
@@ -38,7 +42,21 @@ async function deleteOpenAIUsageServerFromWorkspace(
     openaiUsageServerId
   );
 
+  const foundConnectionCount = await MCPServerConnectionModel.count({
+    where: {
+      workspaceId: workspaceModelId,
+      internalMCPServerId: openaiUsageServerId,
+    },
+  });
+
   const foundToolMetadataCount = await RemoteMCPServerToolMetadataModel.count({
+    where: {
+      workspaceId: workspaceModelId,
+      internalMCPServerId: openaiUsageServerId,
+    },
+  });
+
+  const foundCredentialCount = await InternalMCPServerCredentialModel.count({
     where: {
       workspaceId: workspaceModelId,
       internalMCPServerId: openaiUsageServerId,
@@ -54,7 +72,9 @@ async function deleteOpenAIUsageServerFromWorkspace(
 
   if (
     mcpServerViews.length === 0 &&
+    foundConnectionCount === 0 &&
     foundToolMetadataCount === 0 &&
+    foundCredentialCount === 0 &&
     foundUserToolApprovalCount === 0
   ) {
     return;
@@ -65,7 +85,9 @@ async function deleteOpenAIUsageServerFromWorkspace(
       workspaceId,
       openaiUsageServerId,
       foundViewCount: mcpServerViews.length,
+      foundConnectionCount,
       foundToolMetadataCount,
+      foundCredentialCount,
       foundUserToolApprovalCount,
     },
     execute
@@ -79,7 +101,21 @@ async function deleteOpenAIUsageServerFromWorkspace(
       await view.hardDelete(auth);
     }
 
+    await MCPServerConnectionModel.destroy({
+      where: {
+        workspaceId: workspaceModelId,
+        internalMCPServerId: openaiUsageServerId,
+      },
+    });
+
     await RemoteMCPServerToolMetadataModel.destroy({
+      where: {
+        workspaceId: workspaceModelId,
+        internalMCPServerId: openaiUsageServerId,
+      },
+    });
+
+    await InternalMCPServerCredentialModel.destroy({
       where: {
         workspaceId: workspaceModelId,
         internalMCPServerId: openaiUsageServerId,
