@@ -2347,6 +2347,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       execute_sql_read_only: "never_ask",
       poll_sql_result: "never_ask",
     },
+    featureFlag: "databricks_tool",
   },
   {
     id: 10031,
@@ -2377,6 +2378,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       genie_poll_response: "never_ask",
       genie_get_query_result: "never_ask",
     },
+    featureFlag: "databricks_tool",
   },
   {
     id: 10032,
