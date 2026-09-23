@@ -5,7 +5,10 @@ import {
   reasoningContentToLegacyMetadata,
   toBaseMessages,
   withMessageCacheBreakpoints,
+  withRetryableErrors,
 } from "@app/lib/api/llm/transitionLLM";
+import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { assistantReasoningMessageToInputItems } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
@@ -755,5 +758,68 @@ describe("convertToOldEvent — errors", () => {
         isRetryable: false,
       },
     });
+  });
+});
+
+describe("withRetryableErrors", () => {
+  async function* events(...items: LLMEvent[]): AsyncGenerator<LLMEvent> {
+    yield* items;
+  }
+
+  async function collect(
+    stream: AsyncGenerator<LLMEvent>
+  ): Promise<LLMEvent[]> {
+    const collected: LLMEvent[] = [];
+    for await (const event of stream) {
+      collected.push(event);
+    }
+    return collected;
+  }
+
+  function errorEvent(isRetryable: boolean): EventError {
+    return new EventError(
+      {
+        type: "refusal_error",
+        message: "refused",
+        isRetryable,
+        errorSource: "provider",
+      },
+      llmMetadata
+    );
+  }
+
+  it("marks a non-retryable error retryable", async () => {
+    const [event] = await collect(
+      withRetryableErrors(events(errorEvent(false)))
+    );
+
+    expect(event).toBeInstanceOf(EventError);
+    expect(event).toMatchObject({
+      type: "error",
+      content: {
+        type: "refusal_error",
+        message: "refused",
+        errorSource: "provider",
+        isRetryable: true,
+      },
+    });
+  });
+
+  it("forwards non-error events untouched", async () => {
+    const textDelta: LLMEvent = {
+      type: "text_delta",
+      content: { delta: "hello" },
+      metadata: llmMetadata,
+    };
+
+    expect(await collect(withRetryableErrors(events(textDelta)))).toEqual([
+      textDelta,
+    ]);
+  });
+
+  it("forwards an already retryable error untouched", async () => {
+    const event = errorEvent(true);
+
+    expect(await collect(withRetryableErrors(events(event)))).toEqual([event]);
   });
 });
