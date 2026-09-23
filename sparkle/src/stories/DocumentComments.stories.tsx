@@ -225,13 +225,13 @@ export const AddComment: Story = {
     ).toHaveTextContent("Select these words to comment on them.");
     const input = within(composer).getByRole("textbox", { name: "Comment" });
     await expect(input).toHaveFocus();
-    await expect(
-      within(composer).getByRole("button", { name: "Comment" })
-    ).toBeDisabled();
-    await userEvent.keyboard("Could we make this shorter?");
-    await userEvent.click(
-      within(composer).getByRole("button", { name: "Comment" })
+    await userEvent.keyboard("{Enter}");
+    await expect(composer).toBeVisible();
+    await userEvent.keyboard(
+      "Could we make this{Shift>}{Enter}{/Shift}shorter?"
     );
+    await expect(input).toHaveValue("Could we make this\nshorter?");
+    await userEvent.keyboard("{Enter}");
 
     await expect(
       canvas.queryByRole("dialog", { name: "New comment" })
@@ -259,7 +259,7 @@ export const AddComment: Story = {
     );
     await expect(saved.attrs.comments).toHaveLength(1);
     await expect(saved.attrs.comments[0]).toMatchObject({
-      body: "Could we make this shorter?",
+      body: "Could we make this\nshorter?",
       author: MAYA,
       resolved: false,
       replies: [],
@@ -333,9 +333,8 @@ export const ManageThreads: Story = {
     );
     await userEvent.type(
       within(reach).getByRole("textbox", { name: "Reply" }),
-      "Target was 30%, so we are ahead."
+      "Target was 30%, so we are ahead.{Enter}"
     );
-    await userEvent.click(within(reach).getByRole("button", { name: "Reply" }));
     await expect(reach).toHaveTextContent("Target was 30%, so we are ahead.");
     await expect(
       within(reach).getByRole("textbox", { name: "Reply" })

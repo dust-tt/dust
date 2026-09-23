@@ -1,12 +1,10 @@
 import { Avatar } from "@sparkle/components/Avatar";
-import { Button } from "@sparkle/components/Button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@sparkle/components/Collapsible";
 import { Icon } from "@sparkle/components/Icon";
-import { TextArea } from "@sparkle/components/TextArea";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import {
   Check,
@@ -18,6 +16,7 @@ import {
 import { cn } from "@sparkle/lib/utils";
 import type { Editor } from "@tiptap/core";
 import React, { type ComponentType, useEffect, useRef, useState } from "react";
+import { DocumentCommentInput } from "./DocumentCommentInput";
 import { getCommentedTexts } from "./DocumentComments";
 import type {
   DocumentComment,
@@ -129,47 +128,26 @@ const CommentByline = ({
 );
 
 interface ReplyComposerProps {
+  author: DocumentCommentAuthor | undefined;
   onReply: (body: string) => void;
 }
 
-const ReplyComposer = ({ onReply }: ReplyComposerProps) => {
+const ReplyComposer = ({ author, onReply }: ReplyComposerProps) => {
   const [body, setBody] = useState("");
-  const trimmed = body.trim();
-  const submit = () => {
-    if (trimmed) {
-      onReply(trimmed);
-      setBody("");
-    }
-  };
 
   return (
-    <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
-      <TextArea
-        aria-label="Reply"
-        placeholder="Reply…"
-        value={body}
-        onChange={(event) => setBody(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-            event.preventDefault();
-            submit();
-          }
-        }}
-        minRows={1}
-        resize="none"
-      />
-      {trimmed && (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="primary"
-            size="xs"
-            label="Reply"
-            onClick={submit}
-          />
-        </div>
-      )}
-    </div>
+    <DocumentCommentInput
+      label="Reply"
+      placeholder="Reply…"
+      author={author}
+      value={body}
+      onChange={setBody}
+      onSubmit={() => {
+        onReply(body.trim());
+        setBody("");
+      }}
+      className="-mb-1 border-t border-border pt-2"
+    />
   );
 };
 
@@ -178,6 +156,7 @@ interface CommentThreadProps {
   quote: string | undefined;
   active: boolean;
   canWrite: boolean;
+  author: DocumentCommentAuthor | undefined;
   onSelect: () => void;
   onReply: (body: string) => void;
   onSetResolved: (resolved: boolean) => void;
@@ -190,6 +169,7 @@ const CommentThread = ({
   quote,
   active,
   canWrite,
+  author,
   onSelect,
   onReply,
   onSetResolved,
@@ -276,7 +256,7 @@ const CommentThread = ({
         </ul>
       )}
       {canWrite && active && !comment.resolved && (
-        <ReplyComposer onReply={onReply} />
+        <ReplyComposer author={author} onReply={onReply} />
       )}
     </article>
   );
@@ -313,6 +293,7 @@ export const DocumentCommentsPanel = ({
   comments,
   activeId,
   canWrite,
+  author,
   onSelect,
   onReply,
   onSetResolved,
@@ -338,6 +319,7 @@ export const DocumentCommentsPanel = ({
       quote={quotes.get(comment.id)}
       active={comment.id === activeId}
       canWrite={canWrite}
+      author={author}
       onSelect={() => onSelect(comment.id)}
       onReply={(body) => onReply(comment.id, body)}
       onSetResolved={(value) => onSetResolved(comment.id, value)}

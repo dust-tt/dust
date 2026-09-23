@@ -1,6 +1,3 @@
-import { Avatar } from "@sparkle/components/Avatar";
-import { Button } from "@sparkle/components/Button";
-import { TextArea } from "@sparkle/components/TextArea";
 import { cn } from "@sparkle/lib/utils";
 import type { Editor } from "@tiptap/core";
 import React, {
@@ -10,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { DocumentCommentInput } from "./DocumentCommentInput";
 import type { DocumentCommentAuthor } from "./types";
 import { useEditorLayoutVersion } from "./useDocumentComments";
 
@@ -28,7 +26,7 @@ interface DocumentCommentComposerProps {
  * @cc [owner:flvndvd,label:react] document-comment-composer
  * The composer MUST sit below the last line of the draft highlight, aligned with its start
  * and kept inside the document container. Escape, and pointer presses outside the composer,
- * MUST cancel the draft. Cmd/Ctrl+Enter MUST submit. Blank comments MUST NOT be submitted.
+ * MUST cancel the draft. Enter MUST submit the trimmed text.
  */
 export const DocumentCommentComposer = ({
   editor,
@@ -97,13 +95,6 @@ export const DocumentCommentComposer = ({
       document.removeEventListener("pointerdown", handlePointerDown, true);
   }, [onCancel]);
 
-  const trimmed = body.trim();
-  const submit = () => {
-    if (trimmed) {
-      onSubmit(trimmed);
-    }
-  };
-
   return (
     <div
       ref={cardRef}
@@ -112,60 +103,20 @@ export const DocumentCommentComposer = ({
       data-document-selection=""
       style={position ?? { top: 0, left: 0 }}
       className={cn(
-        "absolute z-40 flex w-80 max-w-full flex-col gap-2 rounded-xl border border-border bg-overlay-background p-3 shadow-lg print:hidden",
+        "absolute z-40 w-80 max-w-full rounded-xl border border-border bg-overlay-background px-3 py-1.5 shadow-md print:hidden",
         position === null && "invisible"
       )}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          onCancel();
-        } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-          event.preventDefault();
-          submit();
-        }
-      }}
     >
-      <div className="flex items-center gap-2">
-        <Avatar
-          size="xxs"
-          isRounded
-          name={author.name}
-          visual={author.avatarUrl ?? undefined}
-        />
-        <span className="truncate text-sm font-medium">{author.name}</span>
-      </div>
-      <TextArea
+      <DocumentCommentInput
         ref={textareaRef}
-        aria-label="Comment"
+        label="Comment"
         placeholder="Add a comment…"
+        author={author}
         value={body}
-        onChange={(event) => setBody(event.target.value)}
-        minRows={2}
-        resize="none"
+        onChange={setBody}
+        onSubmit={() => onSubmit(body.trim())}
+        onCancel={onCancel}
       />
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">
-          {/Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl"}+Enter to
-          post
-        </span>
-        <div className="flex gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            label="Cancel"
-            onClick={onCancel}
-          />
-          <Button
-            type="button"
-            variant="primary"
-            size="xs"
-            label="Comment"
-            disabled={!trimmed}
-            onClick={submit}
-          />
-        </div>
-      </div>
     </div>
   );
 };
