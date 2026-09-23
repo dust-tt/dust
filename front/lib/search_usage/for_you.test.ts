@@ -82,12 +82,19 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
   };
 });
 
+import type { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { fetchDiscoveryForYouCandidates } from "@app/lib/search_usage/for_you";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
+
+type SearchOptions = NonNullable<
+  Parameters<typeof searchConsumptionAnalytics>[1]
+>;
 
 function groupCandidateBucket(resourceId: string, users: number) {
   return {
@@ -176,12 +183,47 @@ function viewerUsageResponse({
   });
 }
 
-function mockViewerGroups(groupIds: string[]) {
-  return vi
-    .spyOn(GroupResource, "listUserGroupsInWorkspace")
-    .mockResolvedValue(
-      groupIds.map((sId) => ({ sId })) as unknown as GroupResource[]
-    );
+function hasAggregation(
+  options: SearchOptions | undefined,
+  name: string
+): boolean {
+  return options?.aggregations?.[name] !== undefined;
+}
+
+function getAggregationFilterKeys(
+  options: SearchOptions | undefined,
+  name: string
+): string[] {
+  const filters = options?.aggregations?.[name]?.filters?.filters;
+  if (!filters || Array.isArray(filters)) {
+    throw new Error(`Expected keyed filters aggregation: ${name}`);
+  }
+  return Object.keys(filters);
+}
+
+function getSubAggregationKeys(
+  options: SearchOptions | undefined,
+  name: string
+): string[] {
+  const aggregations = options?.aggregations?.[name]?.aggs;
+  if (!aggregations) {
+    throw new Error(`Expected sub-aggregations: ${name}`);
+  }
+  return Object.keys(aggregations);
+}
+
+async function mockViewerGroups(
+  workspace: WorkspaceType,
+  groupNames: string[]
+): Promise<GroupResource[]> {
+  const groups: GroupResource[] = [];
+  for (const name of groupNames) {
+    groups.push(await GroupFactory.regularManual(workspace, name));
+  }
+  vi.spyOn(GroupResource, "listUserGroupsInWorkspace").mockResolvedValue(
+    groups
+  );
+  return groups;
 }
 
 describe("discovery for-you candidates", () => {
@@ -208,12 +250,21 @@ describe("discovery for-you candidates", () => {
       workspace,
     } = await createResourceTest({ role: "admin" });
     redis.set.mockClear();
-    mockViewerGroups(["group-small", "group-large", "group-small"]);
+    const [groupLarge, groupSmall] = await mockViewerGroups(workspace, [
+      "group-large",
+      "group-small",
+    ]);
+    vi.mocked(GroupResource.listUserGroupsInWorkspace).mockResolvedValue([
+      groupSmall,
+      groupLarge,
+      groupSmall,
+    ]);
+    const eligibleGroupIds = [groupLarge.sId, groupSmall.sId].sort();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-22T15:03:00Z"));
 
     const groups = {
-      "group-large": {
+      [groupLarge.sId]: {
         activeUsers: 10,
         agents: [
           groupCandidateBucket("dust", 10),
@@ -222,7 +273,7 @@ describe("discovery for-you candidates", () => {
         ],
         skills: [groupCandidateBucket("skill-used", 7)],
       },
-      "group-small": {
+      [groupSmall.sId]: {
         activeUsers: 2,
         agents: [
           groupCandidateBucket("agent-unused", 1),
@@ -230,43 +281,41 @@ describe("discovery for-you candidates", () => {
         ],
       },
     };
-    search.mockImplementation(
-      (_query, options: { aggregations: Record<string, unknown> }) => {
-        if ("group_shortlists" in options.aggregations) {
-          return groupShortlistResponse(groups);
-        }
-        if ("group_pools" in options.aggregations) {
-          return groupPoolResponse(groups);
-        }
-        return viewerUsageResponse({
-          agents: [viewerUsageBucket("agent-used", 4)],
-          skills: [viewerUsageBucket("skill-used", 1)],
-        });
+    search.mockImplementation((_query, options: SearchOptions) => {
+      if (hasAggregation(options, "group_shortlists")) {
+        return groupShortlistResponse(groups);
       }
-    );
+      if (hasAggregation(options, "group_pools")) {
+        return groupPoolResponse(groups);
+      }
+      return viewerUsageResponse({
+        agents: [viewerUsageBucket("agent-used", 4)],
+        skills: [viewerUsageBucket("skill-used", 1)],
+      });
+    });
 
     const result = await fetchDiscoveryForYouCandidates(auth);
 
     expect(
       result.isOk() && result.value?.map(({ resourceId }) => resourceId)
-    ).toEqual(["agent-unused", "agent-tiny-group", "skill-used", "agent-used"]);
+    ).toEqual(["agent-unused", "skill-used", "agent-tiny-group", "agent-used"]);
     expect(result.isOk() && result.value?.[0]).toMatchObject({
       resourceId: "agent-unused",
-      reasonGroupId: "group-large",
-      peerUsers: 5,
-      groupActivePeers: 9,
+      reasonGroupId: groupLarge.sId,
+      users: 5,
+      groupActiveUsers: 10,
     });
     expect(result.isOk() && result.value?.[0]?.score).toBeCloseTo(
-      ((5 + 1) / (9 + 2)) *
-        (0.5 + 0.5 * (9 / (9 + 5))) *
-        (1 + 0.25 / Math.sqrt(9 + 1))
+      ((5 + 1) / (10 + 2)) *
+        (0.5 + 0.5 * (10 / (10 + 5))) *
+        (1 + 0.25 / Math.sqrt(10 + 1))
     );
-    expect(result.isOk() && result.value?.[2]).toMatchObject({
+    expect(result.isOk() && result.value?.[1]).toMatchObject({
       resourceType: "skill",
       resourceId: "skill-used",
-      reasonGroupId: "group-large",
-      peerUsers: 6,
-      groupActivePeers: 9,
+      reasonGroupId: groupLarge.sId,
+      users: 7,
+      groupActiveUsers: 10,
       viewerConversations: 1,
     });
     expect(result.isOk() && result.value?.[3]).toMatchObject({
@@ -284,8 +333,8 @@ describe("discovery for-you candidates", () => {
     });
     expect(search).toHaveBeenCalledTimes(3);
 
-    const shortlistSearch = search.mock.calls.find(
-      ([, options]) => "group_shortlists" in options.aggregations
+    const shortlistSearch = search.mock.calls.find(([, options]) =>
+      hasAggregation(options, "group_shortlists")
     );
     expect(shortlistSearch).toBeDefined();
     expect(shortlistSearch?.[0]).toMatchObject({
@@ -296,7 +345,7 @@ describe("discovery for-you candidates", () => {
           { exists: { field: "user.id" } },
           {
             terms: {
-              "user.group_ids": ["group-large", "group-small"],
+              "user.group_ids": eligibleGroupIds,
             },
           },
           {
@@ -317,11 +366,11 @@ describe("discovery for-you candidates", () => {
         group_shortlists: {
           filters: {
             filters: {
-              "group-large": {
-                term: { "user.group_ids": "group-large" },
+              [groupLarge.sId]: {
+                term: { "user.group_ids": groupLarge.sId },
               },
-              "group-small": {
-                term: { "user.group_ids": "group-small" },
+              [groupSmall.sId]: {
+                term: { "user.group_ids": groupSmall.sId },
               },
             },
           },
@@ -344,15 +393,15 @@ describe("discovery for-you candidates", () => {
       },
     });
 
-    const recomputedSearch = search.mock.calls.find(
-      ([, options]) => "group_pools" in options.aggregations
+    const recomputedSearch = search.mock.calls.find(([, options]) =>
+      hasAggregation(options, "group_pools")
     );
     expect(recomputedSearch?.[1]).toMatchObject({
       aggregations: {
         group_pools: {
           aggs: {
-            "group-large": {
-              filter: { term: { "user.group_ids": "group-large" } },
+            [groupLarge.sId]: {
+              filter: { term: { "user.group_ids": groupLarge.sId } },
               aggs: {
                 active_users: {
                   cardinality: {
@@ -382,7 +431,7 @@ describe("discovery for-you candidates", () => {
 
     const viewerSearch = search.mock.calls.find(
       ([, options]) =>
-        "agents" in options.aggregations && "skills" in options.aggregations
+        hasAggregation(options, "agents") && hasAggregation(options, "skills")
     );
     expect(viewerSearch?.[0]).toMatchObject({
       bool: {
@@ -410,43 +459,46 @@ describe("discovery for-you candidates", () => {
     expect(poolWrites).toHaveLength(2);
     expect(poolWrites.map(([key]) => key)).toEqual(
       expect.arrayContaining([
-        `discovery-for-you-group-pool:v1:${workspace.sId}:group-large`,
-        `discovery-for-you-group-pool:v1:${workspace.sId}:group-small`,
+        `discovery-for-you-group-pool:v1:${workspace.sId}:${groupLarge.sId}`,
+        `discovery-for-you-group-pool:v1:${workspace.sId}:${groupSmall.sId}`,
       ])
     );
     expect(cache.keys).toEqual([`v1:${workspace.sId}:${user.sId}`]);
   });
 
   it("reuses independently cached group pools", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
     redis.set.mockClear();
-    mockViewerGroups(["group-a", "group-b"]);
+    const [groupA, groupB] = await mockViewerGroups(workspace, [
+      "group-a",
+      "group-b",
+    ]);
     const groups = {
-      "group-a": { activeUsers: 3 },
-      "group-b": { activeUsers: 4 },
+      [groupA.sId]: { activeUsers: 3 },
+      [groupB.sId]: { activeUsers: 4 },
     };
-    search.mockImplementation(
-      (_query, options: { aggregations: Record<string, unknown> }) => {
-        if ("group_shortlists" in options.aggregations) {
-          return groupShortlistResponse(groups);
-        }
-        return "group_pools" in options.aggregations
-          ? groupPoolResponse(groups)
-          : viewerUsageResponse();
+    search.mockImplementation((_query, options: SearchOptions) => {
+      if (hasAggregation(options, "group_shortlists")) {
+        return groupShortlistResponse(groups);
       }
-    );
+      return hasAggregation(options, "group_pools")
+        ? groupPoolResponse(groups)
+        : viewerUsageResponse();
+    });
 
     await fetchDiscoveryForYouCandidates(auth);
     await fetchDiscoveryForYouCandidates(auth);
 
     expect(
-      search.mock.calls.filter(
-        ([, options]) => "group_shortlists" in options.aggregations
+      search.mock.calls.filter(([, options]) =>
+        hasAggregation(options, "group_shortlists")
       )
     ).toHaveLength(1);
     expect(
-      search.mock.calls.filter(
-        ([, options]) => "group_pools" in options.aggregations
+      search.mock.calls.filter(([, options]) =>
+        hasAggregation(options, "group_pools")
       )
     ).toHaveLength(1);
     expect(redis.mGet).toHaveBeenCalledTimes(4);
@@ -460,22 +512,20 @@ describe("discovery for-you candidates", () => {
       role: "admin",
     });
     redis.set.mockClear();
-    mockViewerGroups(["group-a"]);
+    await mockViewerGroups(workspace, ["group-a"]);
     redis.values.set(
       `lock:discovery-for-you-group-pool-refresh:v1:${workspace.sId}`,
       "other-caller"
     );
-    search.mockImplementation(
-      (_query, options: { aggregations: Record<string, unknown> }) => {
-        if (
-          "group_shortlists" in options.aggregations ||
-          "group_pools" in options.aggregations
-        ) {
-          throw new Error("Duplicate group refresh");
-        }
-        return viewerUsageResponse();
+    search.mockImplementation((_query, options: SearchOptions) => {
+      if (
+        hasAggregation(options, "group_shortlists") ||
+        hasAggregation(options, "group_pools")
+      ) {
+        throw new Error("Duplicate group refresh");
       }
-    );
+      return viewerUsageResponse();
+    });
 
     const result = await fetchDiscoveryForYouCandidates(auth);
 
@@ -484,98 +534,98 @@ describe("discovery for-you candidates", () => {
     expect(redis.mGet).toHaveBeenCalledTimes(1);
   });
 
-  it("omits candidates without peer evidence", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+  it("uses total group adoption without subtracting the viewer", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
     redis.set.mockClear();
-    mockViewerGroups(["group-a"]);
+    const [group] = await mockViewerGroups(workspace, ["group-a"]);
     const groups = {
-      "group-a": {
+      [group.sId]: {
         activeUsers: 1,
         skills: [groupCandidateBucket("skill-viewer-only", 1)],
       },
     };
-    search.mockImplementation(
-      (_query, options: { aggregations: Record<string, unknown> }) => {
-        if ("group_shortlists" in options.aggregations) {
-          return groupShortlistResponse(groups);
-        }
-        return "group_pools" in options.aggregations
-          ? groupPoolResponse(groups)
-          : viewerUsageResponse({
-              skills: [viewerUsageBucket("skill-viewer-only", 1)],
-            });
+    search.mockImplementation((_query, options: SearchOptions) => {
+      if (hasAggregation(options, "group_shortlists")) {
+        return groupShortlistResponse(groups);
       }
-    );
+      return hasAggregation(options, "group_pools")
+        ? groupPoolResponse(groups)
+        : viewerUsageResponse({
+            skills: [viewerUsageBucket("skill-viewer-only", 1)],
+          });
+    });
 
     const result = await fetchDiscoveryForYouCandidates(auth);
 
-    expect(result).toEqual(new Ok([]));
+    expect(result.isOk() && result.value?.[0]).toMatchObject({
+      resourceId: "skill-viewer-only",
+      users: 1,
+      groupActiveUsers: 1,
+      viewerConversations: 1,
+    });
   });
 
   it("caps eligible groups at the safety ceiling", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
     redis.set.mockClear();
-    const groupIds = Array.from({ length: 60 }, (_, index) => `group-${index}`);
-    mockViewerGroups(groupIds);
-    search.mockImplementation(
-      (_query, options: { aggregations: Record<string, unknown> }) => {
-        const shortlists = options.aggregations.group_shortlists as
-          | {
-              filters: { filters: Record<string, unknown> };
-            }
-          | undefined;
-        if (shortlists) {
-          return groupShortlistResponse(
-            Object.fromEntries(
-              Object.keys(shortlists.filters.filters).map((groupId) => [
-                groupId,
-                { activeUsers: 2 },
-              ])
-            )
-          );
-        }
-
-        const groupPools = options.aggregations.group_pools as
-          | { aggs: Record<string, unknown> }
-          | undefined;
-        if (groupPools) {
-          return groupPoolResponse(
-            Object.fromEntries(
-              Object.keys(groupPools.aggs).map((groupId) => [
-                groupId,
-                { activeUsers: 2 },
-              ])
-            )
-          );
-        }
-        return viewerUsageResponse();
-      }
+    await mockViewerGroups(
+      workspace,
+      Array.from({ length: 60 }, (_, index) => `group-${index}`)
     );
+    search.mockImplementation((_query, options: SearchOptions) => {
+      if (hasAggregation(options, "group_shortlists")) {
+        return groupShortlistResponse(
+          Object.fromEntries(
+            getAggregationFilterKeys(options, "group_shortlists").map(
+              (groupId) => [groupId, { activeUsers: 2 }]
+            )
+          )
+        );
+      }
+
+      if (hasAggregation(options, "group_pools")) {
+        return groupPoolResponse(
+          Object.fromEntries(
+            getSubAggregationKeys(options, "group_pools").map((groupId) => [
+              groupId,
+              { activeUsers: 2 },
+            ])
+          )
+        );
+      }
+      return viewerUsageResponse();
+    });
 
     const result = await fetchDiscoveryForYouCandidates(auth);
 
     expect(result).toEqual(new Ok([]));
     expect(
-      search.mock.calls.filter(
-        ([, options]) => "group_shortlists" in options.aggregations
+      search.mock.calls.filter(([, options]) =>
+        hasAggregation(options, "group_shortlists")
       )
     ).toHaveLength(1);
     expect(
-      search.mock.calls.filter(
-        ([, options]) => "group_pools" in options.aggregations
+      search.mock.calls.filter(([, options]) =>
+        hasAggregation(options, "group_pools")
       )
     ).toHaveLength(1);
-    const shortlistSearch = search.mock.calls.find(
-      ([, options]) => "group_shortlists" in options.aggregations
+    const shortlistSearch = search.mock.calls.find(([, options]) =>
+      hasAggregation(options, "group_shortlists")
     );
-    const groupShortlists = shortlistSearch?.[1].aggregations
-      .group_shortlists as { filters: { filters: Record<string, unknown> } };
-    expect(Object.keys(groupShortlists.filters.filters)).toHaveLength(50);
+    expect(
+      getAggregationFilterKeys(shortlistSearch?.[1], "group_shortlists")
+    ).toHaveLength(50);
   });
 
   it("does not query Elasticsearch without a meaningful shared group", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
-    mockViewerGroups([]);
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    await mockViewerGroups(workspace, []);
 
     const result = await fetchDiscoveryForYouCandidates(auth);
 
@@ -584,24 +634,69 @@ describe("discovery for-you candidates", () => {
     expect(redis.mGet).not.toHaveBeenCalled();
   });
 
+  it("treats an invalid cached group pool as a cache miss", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const [group] = await mockViewerGroups(workspace, ["group-a"]);
+    redis.values.set(
+      `discovery-for-you-group-pool:v1:${workspace.sId}:${group.sId}`,
+      JSON.stringify({
+        groupId: group.sId,
+        candidates: [
+          {
+            resourceType: "agent",
+            resourceId: "agent-a",
+            users: 1,
+          },
+        ],
+      })
+    );
+    const groups = {
+      [group.sId]: {
+        activeUsers: 2,
+        agents: [groupCandidateBucket("agent-a", 1)],
+      },
+    };
+    search.mockImplementation((_query, options: SearchOptions) => {
+      if (hasAggregation(options, "group_shortlists")) {
+        return groupShortlistResponse(groups);
+      }
+      return hasAggregation(options, "group_pools")
+        ? groupPoolResponse(groups)
+        : viewerUsageResponse();
+    });
+
+    const result = await fetchDiscoveryForYouCandidates(auth);
+
+    const score = result.isOk() ? result.value?.[0]?.score : undefined;
+    expect(typeof score === "number" && Number.isFinite(score)).toBe(true);
+    expect(
+      search.mock.calls.filter(([, options]) =>
+        hasAggregation(options, "group_shortlists")
+      )
+    ).toHaveLength(1);
+  });
+
   it("rejects a malformed group pool response", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
-    mockViewerGroups(["group-a"]);
-    search.mockImplementation(
-      (_query, options: { aggregations: Record<string, unknown> }) =>
-        "group_shortlists" in options.aggregations
-          ? new Ok({
-              aggregations: {
-                group_shortlists: {
-                  buckets: {
-                    "group-a": {
-                      skills: { buckets: [] },
-                    },
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const [group] = await mockViewerGroups(workspace, ["group-a"]);
+    search.mockImplementation((_query, options: SearchOptions) =>
+      hasAggregation(options, "group_shortlists")
+        ? new Ok({
+            aggregations: {
+              group_shortlists: {
+                buckets: {
+                  [group.sId]: {
+                    skills: { buckets: [] },
                   },
                 },
               },
-            })
-          : viewerUsageResponse()
+            },
+          })
+        : viewerUsageResponse()
     );
 
     const result = await fetchDiscoveryForYouCandidates(auth);
@@ -610,14 +705,15 @@ describe("discovery for-you candidates", () => {
   });
 
   it("propagates an Elasticsearch failure", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
-    mockViewerGroups(["group-a"]);
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    await mockViewerGroups(workspace, ["group-a"]);
     const error = new ElasticsearchError("connection_error", "Search failed");
-    search.mockImplementation(
-      (_query, options: { aggregations: Record<string, unknown> }) =>
-        "group_shortlists" in options.aggregations
-          ? new Err(error)
-          : viewerUsageResponse()
+    search.mockImplementation((_query, options: SearchOptions) =>
+      hasAggregation(options, "group_shortlists")
+        ? new Err(error)
+        : viewerUsageResponse()
     );
 
     const result = await fetchDiscoveryForYouCandidates(auth);

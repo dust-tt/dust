@@ -7,11 +7,15 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
-import { getRedisCacheClient } from "@app/lib/api/redis";
+import {
+  getRedisCacheClient,
+  REDIS_CACHE_CONCURRENCY,
+} from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SearchUsageDimension } from "@app/lib/search_usage/usage";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedisResult } from "@app/lib/utils/cache";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
@@ -50,13 +54,13 @@ const DISCOVERY_FOR_YOU_ALGORITHM_VERSION = "v1";
 // We are intentionally bounding these effects. Each of these parameters below
 // are based on empirical observations. We SHOULD tune these as we see fit.
 
-// How quickly we trust a group's adoption rate: activePeers / (activePeers + 5).
-const SMALL_GROUP_CONFIDENCE_PEERS = 5;
+// How quickly we trust a group's adoption rate: activeUsers / (activeUsers + 5).
+const SMALL_GROUP_CONFIDENCE_USERS = 5;
 // Floor on that confidence term. Adoption is multiplied by
 // (0.5 + 0.5 × confidence), so a tiny group keeps at least half its signal.
 const MINIMUM_CONFIDENCE_WEIGHT = 0.5;
-// Bounded preference for closer groups: 1 + 0.25 / sqrt(activePeers + 1).
-// About +18% at one peer, fading toward zero as the group grows.
+// Bounded preference for closer groups: 1 + 0.25 / sqrt(activeUsers + 1).
+// About +18% at one active user, fading toward zero as the group grows.
 const SMALL_GROUP_BOOST_WEIGHT = 0.25;
 
 const ACTIVE_USERS_AGG = "active_users";
@@ -146,8 +150,8 @@ export type DiscoveryForYouCandidate = {
   resourceId: string;
   score: number;
   reasonGroupId: string;
-  peerUsers: number;
-  groupActivePeers: number;
+  users: number;
+  groupActiveUsers: number;
   viewerConversations: number;
 };
 
@@ -391,6 +395,29 @@ function groupPoolRefreshLockKey(workspaceId: string): string {
   ].join(":");
 }
 
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isGroupPoolCandidate(value: unknown): value is GroupPoolCandidate {
+  return (
+    isUnknownRecord(value) &&
+    (value.resourceType === "agent" || value.resourceType === "skill") &&
+    isString(value.resourceId) &&
+    isNonNegativeFiniteNumber(value.users)
+  );
+}
+
+function isCachedGroupPool(value: unknown): value is CachedGroupPool {
+  return (
+    isUnknownRecord(value) &&
+    isString(value.groupId) &&
+    isNonNegativeFiniteNumber(value.activeUsers) &&
+    Array.isArray(value.candidates) &&
+    value.candidates.every(isGroupPoolCandidate)
+  );
+}
+
 function collectCachedGroupPools(
   groupIds: string[],
   cachedValues: (string | null)[]
@@ -405,8 +432,8 @@ function collectCachedGroupPools(
     const cachedValue = cachedValues[index];
     if (cachedValue) {
       try {
-        const pool = JSON.parse(cachedValue) as CachedGroupPool;
-        if (pool.groupId === groupId && Array.isArray(pool.candidates)) {
+        const pool: unknown = JSON.parse(cachedValue);
+        if (isCachedGroupPool(pool) && pool.groupId === groupId) {
           poolsByGroupId.set(groupId, pool);
           continue;
         }
@@ -550,16 +577,18 @@ async function fetchAndCacheDiscoveryGroupPools(
 
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
-  await Promise.all(
-    pools.value.map((pool) =>
-      redis.set(
+  await concurrentExecutor(
+    pools.value,
+    async (pool) => {
+      await redis.set(
         groupPoolCacheKey(workspaceId, pool.groupId),
         JSON.stringify(pool),
         {
           PX: GROUP_POOL_CACHE_TTL_MS,
         }
-      )
-    )
+      );
+    },
+    { concurrency: REDIS_CACHE_CONCURRENCY }
   );
 
   // The fetched pools were written individually; there is no combined payload.
@@ -695,24 +724,24 @@ function viewerConversationsForCandidate(
 }
 
 function localOpportunity({
-  peerUsers,
-  groupActivePeers,
+  users,
+  groupActiveUsers,
 }: {
-  peerUsers: number;
-  groupActivePeers: number;
+  users: number;
+  groupActiveUsers: number;
 }): number {
-  if (groupActivePeers <= 0 || peerUsers <= 0) {
+  if (groupActiveUsers <= 0 || users <= 0) {
     return 0;
   }
 
-  const smoothedAdoption = (peerUsers + 1) / (groupActivePeers + 2);
+  const smoothedAdoption = (users + 1) / (groupActiveUsers + 2);
   const confidence =
-    groupActivePeers / (groupActivePeers + SMALL_GROUP_CONFIDENCE_PEERS);
+    groupActiveUsers / (groupActiveUsers + SMALL_GROUP_CONFIDENCE_USERS);
   const reliableAdoption =
     smoothedAdoption *
     (MINIMUM_CONFIDENCE_WEIGHT + (1 - MINIMUM_CONFIDENCE_WEIGHT) * confidence);
   const smallGroupModifier =
-    1 + SMALL_GROUP_BOOST_WEIGHT / Math.sqrt(groupActivePeers + 1);
+    1 + SMALL_GROUP_BOOST_WEIGHT / Math.sqrt(groupActiveUsers + 1);
 
   return reliableAdoption * smallGroupModifier;
 }
@@ -736,15 +765,10 @@ function rankCandidates(
         candidate,
         usage
       );
-      // Group adoption includes the viewer when they used the resource; remove
-      // them so the recommendation score reflects peer evidence only.
-      const viewerUsedResource = viewerConversations > 0;
-      const peerUsers = Math.max(
-        0,
-        candidate.users - (viewerUsedResource ? 1 : 0)
-      );
-      const groupActivePeers = Math.max(0, pool.activeUsers - 1);
-      const opportunity = localOpportunity({ peerUsers, groupActivePeers });
+      const opportunity = localOpportunity({
+        users: candidate.users,
+        groupActiveUsers: pool.activeUsers,
+      });
       if (opportunity <= 0) {
         continue;
       }
@@ -764,8 +788,8 @@ function rankCandidates(
           resourceId: candidate.resourceId,
           score,
           reasonGroupId: pool.groupId,
-          peerUsers,
-          groupActivePeers,
+          users: candidate.users,
+          groupActiveUsers: pool.activeUsers,
           viewerConversations,
         });
       }
@@ -787,14 +811,14 @@ function rankCandidates(
  * MUST be rechecked after acquiring the lock, then use bounded per-group shortlists followed by
  * keyed-filter recomputation of candidate and active-user metrics across all shards.
  * Viewer usage MUST be measured as distinct conversations and remain a continuous novelty penalty;
- * no candidate may be excluded because of a behavioral usage threshold. Eligible groups MUST come
- * from current workspace membership and be capped at 50 in stable ID order.
- * Ranking MUST use the candidate's strongest group opportunity, combining smoothed peer adoption,
- * bounded confidence shrinkage, a bounded smaller-group boost, and continuous viewer novelty. A
- * candidate with no active peers or no peer users MUST be omitted.
- * A timed-out, partial, or malformed response MUST return an error rather than treating missing data
- * as zero. Callers MUST recheck favorites, pins, permissions, availability, and agent-skill
- * relationships before display. A concurrent cache miss MAY return `Ok(null)`.
+ * omitted viewer terms MAY be treated as zero, and no candidate may be excluded because of a
+ * behavioral usage threshold. Eligible groups MUST come from current workspace membership and be
+ * capped at 50 in stable ID order. Ranking MUST use the candidate's strongest group opportunity,
+ * combining smoothed group adoption, bounded confidence shrinkage, a bounded smaller-group boost,
+ * and continuous viewer novelty. A candidate with no active group users or no resource users MUST
+ * be omitted. A timed-out, shard-failed, or malformed response MUST return an error. Callers MUST
+ * recheck favorites, pins, permissions, availability, and agent-skill relationships before display.
+ * A concurrent cache miss MAY return `Ok(null)`.
  */
 export async function fetchDiscoveryForYouCandidates(
   auth: Authenticator
