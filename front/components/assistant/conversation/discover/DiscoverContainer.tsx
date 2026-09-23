@@ -1,8 +1,10 @@
-import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
+import { DiscoverCatalog } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
+import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { UserType, WorkspaceType } from "@app/types/user";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
+  SearchInput,
   Tabs,
   TabsContent,
   TabsList,
@@ -22,15 +24,20 @@ const DISCOVER_SECTIONS = [
 
 interface DiscoverContainerProps {
   onAgentConfigurationClick: (agent: LightAgentConfigurationType) => void;
+  onSkillClick: (skill: PendingSkill) => void;
+  onFiltersChange: () => void;
   owner: WorkspaceType;
-  user: UserType;
 }
 
 export const DiscoverContainer = forwardRef<
   HTMLDivElement,
   DiscoverContainerProps
->(function DiscoverContainer({ onAgentConfigurationClick, owner, user }, ref) {
+>(function DiscoverContainer(
+  { onAgentConfigurationClick, onSkillClick, onFiltersChange, owner },
+  ref
+) {
   const [tab, setTab] = useState<DiscoverTab>("Discover");
+  const [search, setSearch] = useState("");
 
   return (
     <div
@@ -39,7 +46,22 @@ export const DiscoverContainer = forwardRef<
     >
       <Tabs value={tab} className="flex w-full max-w-4xl flex-col gap-12">
         <div className="flex flex-col gap-6">
-          <h1 className="heading-2xl text-foreground">Discover</h1>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h1 className="heading-2xl text-foreground">Discover</h1>
+            {tab === "Agents & Skills" && (
+              <div className="w-full sm:w-80">
+                <SearchInput
+                  name="discover-search"
+                  placeholder="Search for agents or skills"
+                  value={search}
+                  onChange={(value) => {
+                    setSearch(value);
+                    onFiltersChange();
+                  }}
+                />
+              </div>
+            )}
+          </div>
           <TabsList>
             {DISCOVER_TABS.map((t) => (
               <TabsTrigger
@@ -78,11 +100,14 @@ export const DiscoverContainer = forwardRef<
             </section>
           ))}
         </TabsContent>
-        <TabsContent value="Agents & Skills" className="flex justify-center">
-          <AgentBrowserContainer
-            onAgentConfigurationClick={onAgentConfigurationClick}
+        <TabsContent value="Agents & Skills">
+          <DiscoverCatalog
             owner={owner}
-            user={user}
+            search={search}
+            onClearSearch={() => setSearch("")}
+            onAgentClick={onAgentConfigurationClick}
+            onSkillClick={onSkillClick}
+            onFiltersChange={onFiltersChange}
           />
         </TabsContent>
       </Tabs>

@@ -157,7 +157,8 @@ export function ConversationContainerVirtuoso({
 
   const [limitReachedCode, setLimitReachedCode] =
     useState<WorkspaceLimit | null>(null);
-  const { setSelectedSingleAgent } = useContext(InputBarContext);
+  const { setSelectedSingleAgent, setPendingSkill } =
+    useContext(InputBarContext);
 
   const router = useAppRouter();
 
@@ -329,8 +330,14 @@ export function ConversationContainerVirtuoso({
   const { startConversationRef } = useWelcomeTourGuide();
   const isMobile = useIsMobile();
 
-  const { discoverRef, fillProgress, goToDiscover, scrollerRef } =
-    useDiscoverScroll({ isFillEnabled: isDiscoveryHomepage && !isMobile });
+  const {
+    alignDiscover,
+    discoverRef,
+    fillProgress,
+    goToDiscover,
+    goToHome,
+    scrollerRef,
+  } = useDiscoverScroll({ isFillEnabled: isDiscoveryHomepage && !isMobile });
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
@@ -458,11 +465,16 @@ export function ConversationContainerVirtuoso({
           {isDiscoveryHomepage ? (
             <DiscoverContainer
               ref={discoverRef}
-              onAgentConfigurationClick={(agent) => {
+              onAgentConfigurationClick={async (agent) => {
+                await goToHome();
                 setSelectedSingleAgent(toRichAgentMentionType(agent));
               }}
+              onFiltersChange={alignDiscover}
+              onSkillClick={async (skill) => {
+                await goToHome();
+                setPendingSkill(skill);
+              }}
               owner={owner}
-              user={user}
             />
           ) : (
             isAgentsSectionVisible && (
