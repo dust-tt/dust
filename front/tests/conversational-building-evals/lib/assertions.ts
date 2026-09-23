@@ -379,6 +379,25 @@ export function validateEntityMention(
     return { success: true };
   }
 
+  if (assertion.type === "suggestAgentInstructionsChange") {
+    const expectedAgentId = scenario.agentIdsByKey.get(assertion.agentKey);
+    if (!expectedAgentId) {
+      throw new Error(
+        `Scenario references unknown agent key "${assertion.agentKey}"`
+      );
+    }
+    const mentioned = mentionedIds(responseText, BUILD_AGENT_REGEX);
+    if (!mentioned.includes(expectedAgentId)) {
+      return {
+        success: false,
+        error:
+          `Expected the response to mention agent "${assertion.agentKey}" as ` +
+          `:build_agent[...]{sId=${expectedAgentId}}; mentioned ids: ${JSON.stringify(mentioned)}`,
+      };
+    }
+    return { success: true };
+  }
+
   const expectedSkillId = resolveSkillId(scenario, assertion.skillKey);
   const mentioned = mentionedIds(responseText, BUILD_SKILL_REGEX);
   if (!mentioned.includes(expectedSkillId)) {
