@@ -368,12 +368,15 @@ export function FrameRenderer({
       } catch {
         // Mutation succeeded server-side; remount anyway so the next load picks up content.
       }
+      // Leave Edit so Preview remounts on the published content (no leftover optimistic DOM).
+      setEditModeState({ fileId, enabled: false });
       setContentRevision((revision) => revision + 1);
     } finally {
       setIsSavingEdits(false);
     }
   }, [
     batchEditFrameText,
+    fileId,
     flushInProgressEditable,
     isSavingEdits,
     mutateFileContent,

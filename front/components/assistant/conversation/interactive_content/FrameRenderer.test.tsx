@@ -449,9 +449,16 @@ describe("FrameRenderer", () => {
     await waitFor(() => {
       expect(
         mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier
-      ).toBe("viz-frame_1-1-edit");
+      ).toBe("viz-frame_1-1-preview");
     });
     expect(mocks.mutateFileContent).toHaveBeenCalled();
+    expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(
+      screen.queryByRole("button", { name: "Save" })
+    ).not.toBeInTheDocument();
   });
 
   it("publishes legacy Frame edits immediately without a Save button", async () => {
