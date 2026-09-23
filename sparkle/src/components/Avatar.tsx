@@ -191,14 +191,9 @@ export interface AvatarProps {
   icon?: React.ComponentType<{ className?: string }>;
   /** Tailwind text-color class for the `icon` (default `text-foreground`). */
   iconColor?: string;
+  lazyLoad?: boolean;
 }
 
-/**
- * @cc [owner:ykmsd,label:performance] lazy-load-avatar-images
- * The avatar image MUST be rendered with `loading="lazy"` so that long avatar lists
- * (e.g. agent pickers, member tables) only fetch the images near the viewport instead
- * of firing one request per row on mount.
- */
 /**
  * Represents a user, agent, or entity with an image, emoji, icon, or initials
  * fallback, in a range of sizes with busy and clickable states. Use it to identify
@@ -222,6 +217,7 @@ export function Avatar({
   className,
   icon,
   iconColor = "text-foreground",
+  lazyLoad = false,
 }: AvatarProps) {
   const normalizedVisual = visual === "" ? null : visual;
   const emojiInfos =
@@ -270,8 +266,8 @@ export function Avatar({
         <ImageWrapper
           src={visualToUse}
           alt={name}
-          loading="lazy"
-          decoding="async"
+          loading={lazyLoad ? "lazy" : undefined}
+          decoding={lazyLoad ? "async" : undefined}
           className={cn(avatarVariants({ size }), "object-cover object-center")}
         />
       ) : visualToUse ? (
