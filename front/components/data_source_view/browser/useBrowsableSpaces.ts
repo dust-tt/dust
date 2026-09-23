@@ -1,7 +1,17 @@
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
+import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
+
+// The given spaces that hold at least one of the given data source views, in the given order.
+export function filterBrowsableSpaces<T extends { sId: string }>(
+  spaces: T[],
+  dataSourceViews: Pick<DataSourceViewType, "spaceId">[]
+): T[] {
+  const spaceIds = new Set(dataSourceViews.map((dsv) => dsv.spaceId));
+  return spaces.filter((space) => spaceIds.has(space.sId));
+}
 
 /**
  * @cc [owner:smb2268,label:product] browsable-spaces-have-data-source-views
@@ -32,8 +42,7 @@ export function useBrowsableSpaces({
     if (isDataSourceViewsLoading) {
       return [];
     }
-    const spaceIds = new Set(dataSourceViews.map((dsv) => dsv.spaceId));
-    return spaces.filter((space) => spaceIds.has(space.sId));
+    return filterBrowsableSpaces(spaces, dataSourceViews);
   }, [dataSourceViews, enabled, isDataSourceViewsLoading, spaces]);
 
   return {

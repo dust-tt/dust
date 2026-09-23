@@ -7,14 +7,12 @@ import {
 import { ConfirmContext } from "@app/components/Confirm";
 import type { KnowledgeBrowserItem } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { useKnowledgeBrowserItems } from "@app/components/data_source_view/browser/useKnowledgeBrowserItems";
+import { navigateToKnowledgeBrowserItem } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryState } from "@app/components/data_source_view/context/useNavigationHistory";
 import { getLatestNodeFromNavigationHistory } from "@app/components/data_source_view/context/utils";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
-import {
-  assertNever,
-  assertNeverAndIgnore,
-} from "@app/types/shared/utils/assert_never";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ArrowLeft, EmptyCTA, EmptyCTAButton, Spinner } from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo } from "react";
 
@@ -27,21 +25,10 @@ function getRowNavigation(
   item: KnowledgeBrowserItem,
   navigation: NavigationHistoryState
 ): (() => void) | undefined {
-  switch (item.kind) {
-    case "space":
-      return () => navigation.setSpaceEntry(item.space);
-    case "category":
-      return () => navigation.setCategoryEntry(item.category);
-    case "data_source":
-      return () => navigation.setDataSourceViewEntry(item.dataSourceView);
-    case "node":
-      return item.expandable
-        ? () => navigation.addNodeEntry(item.node)
-        : undefined;
-    default:
-      assertNeverAndIgnore(item);
-      return undefined;
+  if (item.kind === "node" && !item.expandable) {
+    return undefined;
   }
+  return () => navigateToKnowledgeBrowserItem(item, navigation);
 }
 
 /**

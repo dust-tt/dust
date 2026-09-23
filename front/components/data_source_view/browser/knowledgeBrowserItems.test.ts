@@ -89,7 +89,7 @@ describe("buildDataSourceViewItems", () => {
     expect(items.map((item) => item.id)).toEqual(["folder"]);
   });
 
-  it("titles a pod's own data source as the pod's files", () => {
+  it("keeps a pod's own data source under its stored name", () => {
     const podFiles = makeDataSourceView("pod-files", {
       name: "Project (vlt_abc): Launch",
       connectorProvider: "dust_project",
@@ -99,7 +99,9 @@ describe("buildDataSourceViewItems", () => {
       viewType: "all",
       isDark: false,
     });
-    expect(items.map((item) => item.title)).toEqual([POD_FILES_TITLE]);
+    expect(items.map((item) => item.title)).toEqual([
+      "Project (vlt_abc): Launch",
+    ]);
   });
 
   it("keeps every view otherwise, sorted by name", () => {
