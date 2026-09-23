@@ -28,41 +28,20 @@ import type { ComponentType, KeyboardEvent } from "react";
 
 const MAX_VISIBLE_CONVERSATIONS = 3;
 
-function getStatusChip(
-  state: SkillSuggestionState,
-  { actor, when }: { actor: string | undefined; when: string }
-): {
+export function getSuggestionStateChip(state: SkillSuggestionState): {
   color: "success" | "warning" | "primary";
   icon: ComponentType;
   label: string;
-  tooltip: string;
 } | null {
-  const by = actor ? ` by ${actor}` : "";
-
   switch (state) {
     case "pending":
       return null;
     case "approved":
-      return {
-        color: "success",
-        icon: CheckCircle,
-        label: "Accepted",
-        tooltip: `Accepted${by} ${when}`,
-      };
+      return { color: "success", icon: CheckCircle, label: "Accepted" };
     case "rejected":
-      return {
-        color: "warning",
-        icon: XCircle,
-        label: "Declined",
-        tooltip: `Declined${by} ${when}`,
-      };
+      return { color: "warning", icon: XCircle, label: "Declined" };
     case "outdated":
-      return {
-        color: "primary",
-        icon: Clock,
-        label: "Outdated",
-        tooltip: `Superseded by a later suggestion`,
-      };
+      return { color: "primary", icon: Clock, label: "Outdated" };
     default:
       assertNeverAndIgnore(state);
       return null;
@@ -79,10 +58,9 @@ function ReviewedSuggestionCard({ suggestion }: ReviewedSuggestionCardProps) {
 
   const isCurrentUser = !!updatedBy && updatedBy.sId === user?.sId;
 
-  const chip = getStatusChip(state, {
-    actor: isCurrentUser ? "you" : updatedBy?.fullName,
-    when: formatRelativeTime(updatedAt),
-  });
+  const chip = getSuggestionStateChip(state);
+  const actor = isCurrentUser ? "you" : updatedBy?.fullName;
+  const by = actor ? ` by ${actor}` : "";
 
   return (
     <Card variant="primary" size="sm" className="flex-col gap-1">
@@ -97,7 +75,11 @@ function ReviewedSuggestionCard({ suggestion }: ReviewedSuggestionCardProps) {
                 label={chip.label}
               />
             }
-            label={chip.tooltip}
+            label={
+              state === "outdated"
+                ? "Superseded by a later suggestion"
+                : `${chip.label}${by} ${formatRelativeTime(updatedAt)}`
+            }
           />
         )}
         <span className="truncate text-sm text-muted-foreground">

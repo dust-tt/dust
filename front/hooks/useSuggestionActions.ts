@@ -38,27 +38,30 @@ export function useSuggestionActions<TSuggestion extends { sId: string }>({
     [pendingActions]
   );
 
-  const setSuggestionState = useCallback(
+  const setSuggestionsState = useCallback(
     async (
-      suggestion: { sId: string },
+      suggestions: { sId: string }[],
       action: SuggestionReviewAction,
       options?: { apply?: boolean }
     ): Promise<boolean> => {
+      const sIds = suggestions.map((s) => s.sId);
       setPendingActions((current) => ({
         ...current,
-        [suggestion.sId]: action,
+        ...Object.fromEntries(sIds.map((sId) => [sId, action])),
       }));
 
       const result = await patchSuggestions(
-        [suggestion.sId],
+        sIds,
         action === "accept" ? "approved" : "rejected",
         options
       );
 
-      setPendingActions((current) => {
-        const { [suggestion.sId]: _removed, ...rest } = current;
-        return rest;
-      });
+      const reviewedIds = new Set(sIds);
+      setPendingActions((current) =>
+        Object.fromEntries(
+          Object.entries(current).filter(([sId]) => !reviewedIds.has(sId))
+        )
+      );
 
       if (!result || result.suggestions.length === 0) {
         return false;
@@ -79,19 +82,30 @@ export function useSuggestionActions<TSuggestion extends { sId: string }>({
     [patchSuggestions, mutateSuggestions]
   );
 
+  const batchAcceptSuggestions = useCallback(
+    (suggestions: { sId: string }[]) =>
+      setSuggestionsState(suggestions, "accept", { apply: true }),
+    [setSuggestionsState]
+  );
+  const batchRejectSuggestions = useCallback(
+    (suggestions: { sId: string }[]) =>
+      setSuggestionsState(suggestions, "reject"),
+    [setSuggestionsState]
+  );
   const acceptSuggestion = useCallback(
-    (suggestion: { sId: string }) =>
-      setSuggestionState(suggestion, "accept", { apply: true }),
-    [setSuggestionState]
+    (suggestion: { sId: string }) => batchAcceptSuggestions([suggestion]),
+    [batchAcceptSuggestions]
   );
   const rejectSuggestion = useCallback(
-    (suggestion: { sId: string }) => setSuggestionState(suggestion, "reject"),
-    [setSuggestionState]
+    (suggestion: { sId: string }) => batchRejectSuggestions([suggestion]),
+    [batchRejectSuggestions]
   );
 
   return {
     getPendingAction,
     acceptSuggestion,
     rejectSuggestion,
+    batchAcceptSuggestions,
+    batchRejectSuggestions,
   };
 }
