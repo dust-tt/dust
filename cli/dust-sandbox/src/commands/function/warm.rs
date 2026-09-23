@@ -457,15 +457,15 @@ mod tests {
         )
         .expect("serialize pod context import");
         format!(
-            r#"import {{ podEnv }} from {context_import};
+            r#"import {{ invocationEnv }} from {context_import};
 
 export default {{
   async fetch() {{
     const child = Bun.spawnSync(["/usr/bin/env"]);
     const childEnv = new TextDecoder().decode(child.stdout);
     return Response.json({{
-      contextToken: podEnv("DUST_SANDBOX_TOKEN") ?? null,
-      contextIdentity: podEnv("DUST_POD_USER_IDENTITY") ?? null,
+      contextToken: invocationEnv("DUST_SANDBOX_TOKEN") ?? null,
+      contextIdentity: invocationEnv("DUST_POD_USER_IDENTITY") ?? null,
       childHasToken: childEnv.includes("DUST_SANDBOX_TOKEN="),
       childHasIdentity: childEnv.includes("DUST_POD_USER_IDENTITY="),
     }});
