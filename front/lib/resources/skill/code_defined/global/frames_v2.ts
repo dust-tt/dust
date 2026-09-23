@@ -1,7 +1,16 @@
-import { INTERACTIVE_CONTENT_AUTHORING_PROSE_V2 } from "@app/lib/api/actions/servers/interactive_content/instructions_v2";
+import { buildInteractiveContentAuthoringProseV2 } from "@app/lib/api/actions/servers/interactive_content/instructions_v2";
 import { MAX_FRAME_DATABASE_COUNT } from "@app/types/api/frame_manifest";
 
-export const FRAMES_V2_INSTRUCTIONS = `\
+/**
+ * @cc [owner:flvndvd,label:product] frame-document-selection
+ * Document guidance MUST select narrative deliverables by their primary purpose, not editability
+ * or page count. Existing formats MUST be preserved unless the user requests a format change.
+ */
+export const buildFramesV2Instructions = ({
+  hasDocuments,
+}: {
+  hasDocuments: boolean;
+}) => `\
 # Frames v2
 
 Frames are interactive React applications. Use the Computer to create and edit their source, and
@@ -21,10 +30,24 @@ the \`dsbx frame\` CLI for their lifecycle.
 
 ## Before authoring
 
+${
+  hasDocuments
+    ? `Choose the format around the user's main task. Use Document for narrative deliverables such as
+one-pagers, briefs, memos and written reports, where the text carries the explanation. Supporting
+charts and interactive visuals can sit within that narrative. The user need not ask for editing.
+Use ordinary Frame UI for dashboards and applications centered on exploring data or managing
+records and workflows. Editable fields or a one-page layout alone do not make an app a document.
+Follow explicit format requests. When editing an existing Frame, preserve its format unless the
+user asks to change it.
+
+`
+    : ""
+}
 Decide whether the Frame is a throwaway visualization or an application with durable state before
-writing source. Chat apps, task lists, trackers, forms, CRUD apps, and anything users can change
+writing source. Chat apps, task lists, trackers, forms, CRUD apps, and ${hasDocuments ? "other editable applications" : "anything users can change"}
 default to durable: declare the database plus the read and mutation functions in the
 manifest. Do not store durable application state in memory; use a Frame database.
+${hasDocuments ? "\nDocument saves its narrative text to a JSON file. Durable records inside its custom visuals still need a Frame database.\n" : ""}
 
 ## Create a Frame
 
@@ -580,4 +603,4 @@ the UI linter for v2 Frames, and run \`dsbx frame publish\` in the same Computer
 When fixing a validation or runtime problem, preserve working structure and make the smallest
 targeted edit. Do not replace an entire UI or function for a localized state, schema, or styling bug.
 
-${INTERACTIVE_CONTENT_AUTHORING_PROSE_V2}`;
+${buildInteractiveContentAuthoringProseV2({ hasDocuments })}`;

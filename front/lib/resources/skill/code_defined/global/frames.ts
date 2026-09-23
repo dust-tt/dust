@@ -4,13 +4,18 @@ import {
 } from "@app/lib/api/actions/servers/interactive_content/instructions";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags, hasFeatureFlag } from "@app/lib/auth";
-import { FRAME_SKILL_FILES } from "@app/lib/resources/skill/code_defined/global/frames/files";
-import { FRAMES_V2_INSTRUCTIONS } from "@app/lib/resources/skill/code_defined/global/frames_v2";
+import { fetchFrameSkillFiles } from "@app/lib/resources/skill/code_defined/global/frames/files";
+import { buildFramesV2Instructions } from "@app/lib/resources/skill/code_defined/global/frames_v2";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
+/**
+ * @cc [owner:flvndvd,label:product] frame-document-disclosure
+ * Document authoring instructions and attachments MUST require both frames_v2 and frame_documents.
+ * Disabling discovery MUST NOT change the runtime behavior of existing Frames.
+ */
 export const framesSkill = {
   sId: "frames",
   kind: "global",
@@ -38,8 +43,11 @@ export const framesSkill = {
     auth: Authenticator,
     params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
-    if (await hasFeatureFlag(auth, "frames_v2")) {
-      return FRAMES_V2_INSTRUCTIONS;
+    const flags = await getFeatureFlags(auth);
+    if (flags.includes("frames_v2")) {
+      return buildFramesV2Instructions({
+        hasDocuments: flags.includes("frame_documents"),
+      });
     }
 
     const conversation = params.agentLoopData?.conversation;
@@ -47,7 +55,6 @@ export const framesSkill = {
       return INTERACTIVE_CONTENT_INSTRUCTIONS;
     }
 
-    const flags = await getFeatureFlags(auth);
     return buildInteractiveContentInstructions({
       hasComputer: isComputerFeatureEnabled(flags),
       isPod: conversation ? isPodConversation(conversation) : false,
@@ -57,10 +64,10 @@ export const framesSkill = {
     { name: "interactive_content" },
     { name: "conversation_side_panel" },
   ],
-  files: FRAME_SKILL_FILES,
+  fetchFiles: fetchFrameSkillFiles,
   // Frames v2 authoring runs entirely through the Computer.
   warmsConversationSandbox: (auth: Authenticator) =>
     hasFeatureFlag(auth, "frames_v2"),
-  version: 13,
+  version: 14,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;

@@ -39,6 +39,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fontanierh",
   },
+  frame_documents: {
+    description:
+      "Expose editable Document guidance and examples in the Frame skill",
+    stage: "dust_only",
+    owner: "flvndvd",
+  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",

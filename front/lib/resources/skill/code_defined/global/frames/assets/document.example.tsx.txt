@@ -1,0 +1,55 @@
+import { Document } from "@dust/document/v1";
+import { FrameRoot } from "@dust/frame";
+import { useState } from "react";
+
+const RevenueChart = () => {
+  const [selectedQuarter, setSelectedQuarter] = useState("Q3");
+  const quarters = [
+    { label: "Q1", revenue: 24 },
+    { label: "Q2", revenue: 32 },
+    { label: "Q3", revenue: 45 },
+  ];
+
+  return (
+    <figure className="my-6 rounded-xl border border-border bg-muted p-6">
+      <figcaption className="mb-4 text-sm font-medium text-foreground">
+        Illustrative quarterly revenue ($k)
+      </figcaption>
+      <div className="space-y-3">
+        {quarters.map(({ label, revenue }) => (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={selectedQuarter === label}
+            onClick={() => setSelectedQuarter(label)}
+            className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          >
+            <span className="w-8 text-sm text-muted-foreground">{label}</span>
+            <span className="flex-1" aria-hidden="true">
+              <span
+                className="block h-6 rounded bg-primary"
+                style={{ width: `${(revenue / 45) * 100}%` }}
+              />
+            </span>
+            <span className="w-12 text-right text-sm font-semibold tabular-nums text-foreground">
+              ${revenue}k
+            </span>
+          </button>
+        ))}
+      </div>
+      <p className="mt-4 text-sm text-muted-foreground" aria-live="polite">
+        Selected quarter: {selectedQuarter}
+      </p>
+    </figure>
+  );
+};
+
+const App = () => (
+  <FrameRoot className="min-h-screen bg-background text-foreground">
+    <main className="mx-auto max-w-3xl px-6 py-8">
+      <Document path="./content.json" visuals={{ revenue: <RevenueChart /> }} />
+    </main>
+  </FrameRoot>
+);
+
+export default App;
