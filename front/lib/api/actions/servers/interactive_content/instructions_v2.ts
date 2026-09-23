@@ -56,10 +56,8 @@ content file using the \`Slideshow\` and \`Slide\` components.
 - Fit each slide's content within its available space. Simplify dense content or split it across
   additional slides while preserving the slide dimensions.
 
-Before creating a slideshow, read \`skills/Create Frames/slideshow.example.tsx\` from the conversation
-files (\`/files/conversation-<conversationId>/skills/Create Frames/slideshow.example.tsx\` on the
-Computer). If missing, re-enable \`Create Frames\` to load it. Adapt its content and visual design to
-the user's request.
+Before creating a slideshow, read the attached \`slideshow.example.tsx\`. Adapt its content and
+visual design to the user's request.
 
 ### Page and dashboard layout
 
