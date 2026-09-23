@@ -1,5 +1,5 @@
 import { cn } from "@sparkle/lib/utils";
-import { AnimatePresence, motion, useIsPresent } from "framer-motion";
+import { AnimatePresence, usePresence } from "framer-motion";
 import React from "react";
 
 // Ordered from the layer right behind the front card to the farthest one.
@@ -22,21 +22,30 @@ const FrontCard = React.forwardRef<
   HTMLDivElement,
   { children: React.ReactNode }
 >(function FrontCard({ children }, ref) {
-  // A leaving card lingers during its fade; keep it out of reach of assistive tech.
-  const isPresent = useIsPresent();
+  const [isPresent, safeToRemove] = usePresence();
+
+  // The fade is a CSS animation holding its end state: an exit animated by the motion library
+  // flashes the card back to full opacity for a frame right before it unmounts.
+  const handleAnimationEnd = (event: React.AnimationEvent) => {
+    if (!isPresent && event.target === event.currentTarget) {
+      safeToRemove();
+    }
+  };
 
   return (
-    <motion.div
+    <div
       ref={ref}
+      // A leaving card lingers during its fade; keep it out of reach of assistive tech.
       aria-hidden={!isPresent}
       className={cn(
         "relative rounded-2xl shadow",
-        !isPresent && "pointer-events-none z-10"
+        !isPresent &&
+          "pointer-events-none z-10 animate-out fade-out duration-300 ease-out fill-mode-forwards"
       )}
-      exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeOut" } }}
+      onAnimationEnd={handleAnimationEnd}
     >
       {children}
-    </motion.div>
+    </div>
   );
 });
 
