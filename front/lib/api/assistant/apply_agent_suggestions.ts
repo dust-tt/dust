@@ -76,13 +76,14 @@ async function applyCreateSuggestion(
   // The suggested instructions are HTML: run them through the editor schema so the stored
   // markdown and block HTML match what the builder would have saved.
   const converted = applyInstructionEditsToHtml(
-    convertMarkdownToBlockHtml(""),
+    convertMarkdownToBlockHtml("", { schema: "agent" }),
     [
       {
         targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
         content: instructions,
       },
-    ]
+    ],
+    { schema: "agent" }
   );
   if (converted.isErr()) {
     return converted;
@@ -305,7 +306,8 @@ function resolveInstructionsEdits(
 
   return applyInstructionEditsToHtml(
     agentConfiguration.instructionsHtml,
-    edits.map(({ targetBlockId, content }) => ({ targetBlockId, content }))
+    edits.map(({ targetBlockId, content }) => ({ targetBlockId, content })),
+    { schema: "agent" }
   );
 }
 
