@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   ),
   hasFrameFunctions: false,
   isFrameAuthor: true,
+  isMobile: false,
   mutateFileContent: vi.fn(),
 }));
 
@@ -151,7 +152,7 @@ vi.mock("@app/lib/swr/spaces", () => ({
   useSpaceInfo: () => ({ spaceInfo: null, isSpaceInfoLoading: false }),
 }));
 vi.mock("@app/lib/swr/useIsMobile", () => ({
-  useIsMobile: () => false,
+  useIsMobile: () => mocks.isMobile,
 }));
 
 const owner: LightWorkspaceType = {
@@ -191,6 +192,7 @@ afterEach(() => {
   vi.clearAllMocks();
   mocks.hasFrameFunctions = false;
   mocks.isFrameAuthor = true;
+  mocks.isMobile = false;
 });
 
 describe("FrameRenderer", () => {
@@ -498,6 +500,27 @@ describe("FrameRenderer", () => {
         mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier
       ).toBe("viz-frame_1-1-edit");
     });
+  });
+
+  it("keeps the v2 Save control identifiable when labels are hidden on mobile", async () => {
+    mocks.isMobile = true;
+
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    expect(saveButton).toBeDisabled();
+    // Icon-only on mobile: still an accessible name, and not an empty control.
+    expect(saveButton.querySelector("svg")).not.toBeNull();
   });
 
   it("asks to discard unsaved v2 edits when leaving Edit", async () => {

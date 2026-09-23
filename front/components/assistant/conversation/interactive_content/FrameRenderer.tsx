@@ -38,6 +38,7 @@ import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  Check,
   CheckCircle,
   CodeBlock,
   Eye,
@@ -607,7 +608,10 @@ export function FrameRenderer({
                   />
                   {usesBatchEdit && isEditable && (
                     <Button
+                      // Keep an icon so the control stays visible when the label is
+                      // hidden on narrow headers (same pattern as Preview|Edit).
                       label={isMobile ? undefined : "Save"}
+                      icon={Check}
                       size="xs"
                       variant="ghost"
                       isLoading={isSavingEdits}
