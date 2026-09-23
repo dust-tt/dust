@@ -458,6 +458,23 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return servers.map((server) => server.id);
   }
 
+  // Admin operations - don't use in non-temporal code.
+  static async dangerouslyFetchByModelIdAcrossWorkspaces(
+    id: ModelId
+  ): Promise<RemoteMCPServerResource | null> {
+    const blob = await this.model.findByPk(id, {
+      // WORKSPACE_ISOLATION_BYPASS: daily sync job resolves each server listed by
+      // dangerouslyListAllServersIds before building an Authenticator for its workspace.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+    if (!blob) {
+      return null;
+    }
+
+    return new this(this.model, blob.get());
+  }
+
   // sId
   get sId(): string {
     return remoteMCPServerNameToSId({
