@@ -149,6 +149,17 @@ app.post(
       });
     }
 
+    // Batch `edits[]` is Frames v2 only. Legacy Frames keep one-edit-per-request publish-on-blur.
+    if (body.edits && body.edits.length > 0) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Batch text edits are only supported for Frames v2.",
+        },
+      });
+    }
+
     if (
       isConversationFileUseCase(file.useCase) &&
       file.useCaseMetadata?.conversationId
@@ -181,28 +192,18 @@ app.post(
       });
     }
 
-    const locationEdits = edits.filter((edit) => edit.source);
-    const legacyEdits = edits.filter((edit) => !edit.source);
-
-    if (locationEdits.length > 0 && legacyEdits.length > 0) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "Cannot mix location-based and legacy context edits in one request.",
-        },
-      });
-    }
-
-    if (locationEdits.length > 0) {
+    // Batch rejected above: remaining legacy/published-v1 path is one edit per request.
+    const [edit] = edits;
+    if (edit.source) {
       const editResult = await editFrameTextsAtSource(auth, {
         file,
-        edits: locationEdits.map((edit) => ({
-          source: edit.source!,
-          oldText: edit.oldText,
-          newText: edit.newText,
-        })),
+        edits: [
+          {
+            source: edit.source,
+            oldText: edit.oldText,
+            newText: edit.newText,
+          },
+        ],
       });
       if (editResult.isErr()) {
         return apiError(ctx, {
@@ -217,25 +218,20 @@ app.post(
       return ctx.json({ success: true });
     }
 
-    // Legacy context-string edits: apply sequentially (each write updates the rendered file).
-    // These frames do not use the publish-rebuild path.
-    for (const edit of legacyEdits) {
-      const editFileId = edit.targetFileId ?? fileId;
-      const editResult = await editClientExecutableFile(auth, {
-        fileId: editFileId,
-        oldString: edit.oldText,
-        newString: edit.newText,
-      });
+    const editResult = await editClientExecutableFile(auth, {
+      fileId: edit.targetFileId ?? fileId,
+      oldString: edit.oldText,
+      newString: edit.newText,
+    });
 
-      if (editResult.isErr()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: editResult.error.message,
-          },
-        });
-      }
+    if (editResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: editResult.error.message,
+        },
+      });
     }
 
     return ctx.json({ success: true });

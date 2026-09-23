@@ -515,8 +515,11 @@ export type FrameV2TextEdit = {
 
 /**
  * Apply one or more location-based text edits to a Frames v2 package, then publish once.
- * All source writes and the publish run under the Frame source lock; on publish failure every
- * touched file is rolled back to its pre-edit bytes.
+ *
+ * Each edit is a small diff (`oldText` → `newText`) anchored at `data-source`. Edits are applied
+ * against the **current** source on disk (not a client snapshot), so concurrent agent edits to
+ * other spans still succeed as long as each `oldText` remains findable. All writes and the
+ * publish run under the Frame source lock; on publish failure every touched file is rolled back.
  */
 export async function editFrameV2TextsAtSource(
   auth: Authenticator,

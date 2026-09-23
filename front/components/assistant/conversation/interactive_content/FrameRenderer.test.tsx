@@ -16,6 +16,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   batchEditFrameText: vi.fn(),
   confirm: vi.fn(),
+  editFrameText: vi.fn(),
   iframe: vi.fn(
     (_props: {
       frameId?: string;
@@ -134,6 +135,7 @@ vi.mock("@app/components/Confirm", async () => {
 
 vi.mock("@app/lib/swr/frames", () => ({
   useBatchEditFrameText: () => mocks.batchEditFrameText,
+  useEditFrameText: () => mocks.editFrameText,
   useFramePermissions: () => ({
     isFrameAuthor: mocks.isFrameAuthor,
     packageRoot: null,
@@ -376,7 +378,7 @@ describe("FrameRenderer", () => {
     );
   });
 
-  it("stages edits without publishing until Save", async () => {
+  it("stages v2 edits without publishing until Save", async () => {
     mocks.batchEditFrameText.mockResolvedValue({ success: true });
     mocks.mutateFileContent.mockResolvedValue(
       "export default function Frame() { return <p>Done</p>; }"
@@ -415,6 +417,7 @@ describe("FrameRenderer", () => {
     });
 
     expect(mocks.batchEditFrameText).not.toHaveBeenCalled();
+    expect(mocks.editFrameText).not.toHaveBeenCalled();
     expect(mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier).toBe(
       identifierBefore
     );
@@ -449,7 +452,55 @@ describe("FrameRenderer", () => {
     expect(mocks.mutateFileContent).toHaveBeenCalled();
   });
 
-  it("asks to discard unsaved edits when leaving Edit", async () => {
+  it("publishes legacy Frame edits immediately without a Save button", async () => {
+    mocks.editFrameText.mockResolvedValue({ success: true });
+    mocks.mutateFileContent.mockResolvedValue(
+      "export default function Frame() { return <p>Done</p>; }"
+    );
+
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="legacy"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
+
+    expect(
+      screen.queryByRole("button", { name: "Save" })
+    ).not.toBeInTheDocument();
+
+    const onEditText = mocks.iframe.mock.calls.at(-1)?.[0].onEditText;
+    if (!onEditText) {
+      throw new Error("Expected legacy Frame to be editable.");
+    }
+
+    await act(async () => {
+      await onEditText({
+        newText: "Done",
+        oldText: "Ready",
+        source: "index.tsx:1:42",
+      });
+    });
+
+    expect(mocks.editFrameText).toHaveBeenCalledWith({
+      newText: "Done",
+      oldText: "Ready",
+      source: "index.tsx:1:42",
+    });
+    expect(mocks.batchEditFrameText).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(
+        mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier
+      ).toBe("viz-frame_1-1-edit");
+    });
+  });
+
+  it("asks to discard unsaved v2 edits when leaving Edit", async () => {
     mocks.confirm.mockResolvedValue(false);
 
     render(

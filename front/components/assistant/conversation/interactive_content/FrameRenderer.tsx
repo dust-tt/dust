@@ -25,6 +25,7 @@ import {
 } from "@app/lib/swr/files";
 import {
   useBatchEditFrameText,
+  useEditFrameText,
   useFramePermissions,
 } from "@app/lib/swr/frames";
 import { usePodFiles } from "@app/lib/swr/pods";
@@ -179,21 +180,28 @@ export function FrameRenderer({
   // refreshed bundle. Without this, react-runner keeps the old module and any Frame re-render
   // overwrites the optimistic DOM textContent patch — edits look saved then snap back (#10579).
   const [contentRevision, setContentRevision] = useState(0);
-  // Staged live edits accumulate until Save; discarded when leaving Edit without saving.
+  // Frames v2 only: staged location edits accumulate until Save (one publish). Legacy frames still
+  // save per blur. Discarding Edit clears the queue without writing.
   const [pendingEdits, setPendingEdits] = useState<Parameters<EditTextFn>[0][]>(
     []
   );
   const pendingEditsRef = useRef(pendingEdits);
   pendingEditsRef.current = pendingEdits;
   const [isSavingEdits, setIsSavingEdits] = useState(false);
+  // Legacy concurrent blurs: defer remount until in-flight publishes settle.
+  const inFlightEditsRef = useRef(0);
+  const pendingRemountRef = useRef(false);
   if (editModeState.fileId !== fileId) {
     setEditModeState({ fileId, enabled: false });
     setContentRevision(0);
     setPendingEdits([]);
     setIsSavingEdits(false);
+    inFlightEditsRef.current = 0;
+    pendingRemountRef.current = false;
   }
   const isEditMode = editModeState.enabled;
   const hasPendingEdits = pendingEdits.length > 0;
+  const usesBatchEdit = renderMode === "v2";
 
   // A legacy Frame renders its own source, so `fileContent` is the code. A Frames v2 package
   // renders a built bundle, so its sources are fetched separately, and only once shown.
@@ -229,6 +237,11 @@ export function FrameRenderer({
   // permissions (packageRoot) have loaded so the iframe does not mount with a null root.
   const isFramePathPending =
     renderMode === "v2" && Boolean(conversation) && isFramePermissionsLoading;
+  const editFrameText = useEditFrameText({
+    owner,
+    fileId,
+    conversationId: conversation?.sId,
+  });
   const batchEditFrameText = useBatchEditFrameText({
     owner,
     fileId,
@@ -247,30 +260,58 @@ export function FrameRenderer({
   // Include edit mode so Preview↔Edit remounts and resets contentHeight (async-network-loading-state).
   const vizInstanceId = `viz-${fileId}-${contentRevision}-${isEditable ? "edit" : "preview"}`;
 
-  // Stage edits locally. Coalesce repeats on the same source so Save still matches the on-disk
-  // oldText from the first edit of that span.
-  const handleEditText = useCallback<EditTextFn>(async (params) => {
-    setPendingEdits((prev) => {
-      const key =
-        params.source ?? `${params.targetFileId ?? ""}:${params.oldText}`;
-      const existingIndex = prev.findIndex((edit) => {
-        const editKey =
-          edit.source ?? `${edit.targetFileId ?? ""}:${edit.oldText}`;
-        return editKey === key;
+  // Legacy: publish on every blur. v2: stage location edits until Save (one publish).
+  const handleEditText = useCallback<EditTextFn>(
+    async (params) => {
+      if (!usesBatchEdit) {
+        inFlightEditsRef.current += 1;
+        try {
+          const result = await editFrameText(params);
+          if (result.success) {
+            try {
+              await mutateFileContent();
+              pendingRemountRef.current = true;
+            } catch {
+              // Mutation already succeeded; keep the inline edit rather than failing the blur.
+            }
+          }
+          return result;
+        } finally {
+          inFlightEditsRef.current -= 1;
+          if (inFlightEditsRef.current === 0 && pendingRemountRef.current) {
+            pendingRemountRef.current = false;
+            setContentRevision((revision) => revision + 1);
+          }
+        }
+      }
+
+      // v2 batch: only location-based edits. Context-string edits are too brittle to stage.
+      if (!params.source) {
+        return {
+          success: false,
+          error:
+            "This text can't be batch-edited; reload the Frame and try again.",
+        };
+      }
+
+      setPendingEdits((prev) => {
+        const key = params.source!;
+        const existingIndex = prev.findIndex((edit) => edit.source === key);
+        const next =
+          existingIndex >= 0
+            ? prev.map((edit, index) =>
+                index === existingIndex
+                  ? { ...edit, newText: params.newText }
+                  : edit
+              )
+            : [...prev, params];
+        pendingEditsRef.current = next;
+        return next;
       });
-      const next =
-        existingIndex >= 0
-          ? prev.map((edit, index) =>
-              index === existingIndex
-                ? { ...edit, newText: params.newText }
-                : edit
-            )
-          : [...prev, params];
-      pendingEditsRef.current = next;
-      return next;
-    });
-    return { success: true };
-  }, []);
+      return { success: true };
+    },
+    [editFrameText, mutateFileContent, usesBatchEdit]
+  );
 
   const flushInProgressEditable = useCallback(async () => {
     const contentWindow = iframeRef.current?.contentWindow;
@@ -298,14 +339,14 @@ export function FrameRenderer({
   }, []);
 
   const handleSaveEdits = useCallback(async () => {
-    if (isSavingEdits) {
+    if (!usesBatchEdit || isSavingEdits) {
       return;
     }
 
     setIsSavingEdits(true);
     try {
       await flushInProgressEditable();
-      const editsToSave = pendingEditsRef.current;
+      const editsToSave = pendingEditsRef.current.filter((edit) => edit.source);
       if (editsToSave.length === 0) {
         return;
       }
@@ -336,6 +377,7 @@ export function FrameRenderer({
     isSavingEdits,
     mutateFileContent,
     sendNotification,
+    usesBatchEdit,
   ]);
 
   const handleViewModeChange = useCallback(
@@ -345,7 +387,7 @@ export function FrameRenderer({
         return;
       }
 
-      if (!hasPendingEdits) {
+      if (!usesBatchEdit || !hasPendingEdits) {
         setEditModeState({ fileId, enabled: false });
         return;
       }
@@ -366,7 +408,7 @@ export function FrameRenderer({
       // Remount so optimistic DOM text is wiped and Preview shows the last published content.
       setContentRevision((revision) => revision + 1);
     },
-    [confirm, fileId, hasPendingEdits]
+    [confirm, fileId, hasPendingEdits, usesBatchEdit]
   );
 
   const restoreLayout = useCallback(() => {
@@ -563,11 +605,11 @@ export function FrameRenderer({
                       void handleViewModeChange(mode);
                     }}
                   />
-                  {isEditable && (
+                  {usesBatchEdit && isEditable && (
                     <Button
                       label={isMobile ? undefined : "Save"}
                       size="xs"
-                      variant="primary"
+                      variant="ghost"
                       isLoading={isSavingEdits}
                       disabled={!hasPendingEdits || isSavingEdits}
                       onClick={() => {

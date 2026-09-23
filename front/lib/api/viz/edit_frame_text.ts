@@ -41,9 +41,10 @@ export type FrameTextEdit = {
 /**
  * Apply one or more human live edits to a published Frame by source location, then rebuild once.
  *
- * Each edit is `{ source: "<relPath>:<line>:<col>", oldText, newText }` from the viz runtime.
- * Edits to the same file are applied in order in memory (so intermediate publishes are skipped),
- * written back, then a single {@link publishFrame} refreshes the rendered bundle.
+ * Each edit is a diff (`oldText` → `newText`) at `source` (`<relPath>:<line>:<col>`). Edits are
+ * matched against the **current** source bytes (oldText primary, location as tiebreaker), so they
+ * remain compatible with intervening agent edits that do not remove or rewrite the same span.
+ * Same-file edits are applied in memory, written once, then a single {@link publishFrame} runs.
  */
 export async function editFrameTextsAtSource(
   auth: Authenticator,
