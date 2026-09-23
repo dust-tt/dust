@@ -4,8 +4,8 @@ import { readFileSync } from "fs";
 /**
  * @cc [owner:flvndvd,label:product] frame-skill-checker-assets
  * The Frame skill MUST attach the checker script, configs and lint plugin from the checked-in
- * assets, along with an editable theme.ts example. These files MUST remain resolvable from
- * production API and worker bundles.
+ * assets, along with an editable theme.ts example and slideshow.example.tsx. These files MUST
+ * remain resolvable from production API and worker bundles.
  */
 export const FRAME_SKILL_FILES: readonly CodeDefinedSkillFile[] = [
   { fileName: "lint.sh", contentType: "text/x-shellscript" },
@@ -15,6 +15,11 @@ export const FRAME_SKILL_FILES: readonly CodeDefinedSkillFile[] = [
   {
     fileName: "theme.ts",
     assetName: "theme.ts.txt",
+    contentType: "text/plain",
+  },
+  {
+    fileName: "slideshow.example.tsx",
+    assetName: "slideshow.example.tsx.txt",
     contentType: "text/plain",
   },
 ].map(({ fileName, contentType, assetName = fileName }) => ({
