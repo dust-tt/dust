@@ -30,6 +30,7 @@ import {
   SKILL_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { ActionCardStackExitDirection } from "@dust-tt/sparkle";
 import {
   ActionCardStack,
   Avatar,
@@ -497,6 +498,9 @@ function SuggestionPileView({
   const [bulkDecision, setBulkDecision] = useState<"accept" | "reject" | null>(
     null
   );
+  const [exitDirection, setExitDirection] =
+    useState<ActionCardStackExitDirection>();
+  const [previousPendingIds, setPreviousPendingIds] = useState<string[]>([]);
 
   if (targets.some((t) => t.isLoading)) {
     return <LoadingBlock className="h-24 w-full max-w-lg" />;
@@ -513,6 +517,19 @@ function SuggestionPileView({
   const pendingEntries = entries.filter((e) => e.state === "pending");
   const isBusy = bulkDecision !== null || targets.some((t) => t.isBusy);
 
+  // Decisions land through each target's own hooks, so the side a card leaves to is read from the
+  // outcome of the suggestions that just stopped being pending.
+  const pendingIds = pendingEntries.map((e) => e.sId);
+  if (pendingIds.join() !== previousPendingIds.join()) {
+    const decided = entries.find(
+      (e) => previousPendingIds.includes(e.sId) && e.state !== "pending"
+    );
+    if (decided) {
+      setExitDirection(decided.state === "approved" ? "right" : "left");
+    }
+    setPreviousPendingIds(pendingIds);
+  }
+
   const reviewAll = async (decision: "accept" | "reject") => {
     setBulkDecision(decision);
     try {
@@ -524,8 +541,31 @@ function SuggestionPileView({
     }
   };
 
-  if (pendingEntries.length === 0) {
-    return (
+  const startReview = () => {
+    setExitDirection("right");
+    setIsReviewing(true);
+  };
+
+  const pendingCards = pendingEntries.map((entry) => ({
+    key: entry.sId,
+    card: entry.renderCard({
+      titleAside: `Edit ${entries.indexOf(entry) + 1} of ${entries.length}`,
+      secondaryAction: (
+        <Button
+          variant="ghost-secondary"
+          size="sm"
+          label="Accept remaining"
+          onClick={() => void reviewAll("accept")}
+          disabled={isBusy}
+          isLoading={bulkDecision === "accept"}
+        />
+      ),
+    }),
+  }));
+
+  const summaryCard = {
+    key: "summary",
+    card: (
       <SuggestionPileSummaryCard
         title={
           <>
@@ -537,49 +577,38 @@ function SuggestionPileView({
         entries={entries}
         showEntryState
       />
-    );
-  }
+    ),
+  };
 
-  if (!isReviewing) {
-    return (
-      // The recap card is part of the pile, on top of the pending suggestions.
-      <ActionCardStack cardCount={pendingEntries.length + 1}>
-        <SuggestionPileSummaryCard
-          title={`${formatEditCount(pendingEntries.length)} ready for your review`}
-          recap={recap}
-          entries={pendingEntries}
-          actions={
-            <SuggestionPileRecapActions
-              isBusy={isBusy}
-              bulkDecision={bulkDecision}
-              onReview={() => setIsReviewing(true)}
-              onAcceptAll={() => void reviewAll("accept")}
-              onRejectAll={() => void reviewAll("reject")}
-            />
-          }
-        />
-      </ActionCardStack>
-    );
-  }
-
-  const [current] = pendingEntries;
-  return (
-    <ActionCardStack key={current.sId} cardCount={pendingEntries.length}>
-      {current.renderCard({
-        titleAside: `Edit ${entries.indexOf(current) + 1} of ${entries.length}`,
-        secondaryAction: (
-          <Button
-            variant="ghost-secondary"
-            size="sm"
-            label="Accept remaining"
-            onClick={() => void reviewAll("accept")}
-            disabled={isBusy}
-            isLoading={bulkDecision === "accept"}
+  // The recap card is part of the pile, on top of the pending suggestions.
+  const recapCard = {
+    key: "recap",
+    card: (
+      <SuggestionPileSummaryCard
+        title={`${formatEditCount(pendingEntries.length)} ready for your review`}
+        recap={recap}
+        entries={pendingEntries}
+        actions={
+          <SuggestionPileRecapActions
+            isBusy={isBusy}
+            bulkDecision={bulkDecision}
+            onReview={startReview}
+            onAcceptAll={() => void reviewAll("accept")}
+            onRejectAll={() => void reviewAll("reject")}
           />
-        ),
-      })}
-    </ActionCardStack>
-  );
+        }
+      />
+    ),
+  };
+
+  const cards =
+    pendingCards.length === 0
+      ? [summaryCard]
+      : isReviewing
+        ? pendingCards
+        : [recapCard, ...pendingCards];
+
+  return <ActionCardStack cards={cards} exitDirection={exitDirection} />;
 }
 
 interface ConversationSuggestionPileProps {
