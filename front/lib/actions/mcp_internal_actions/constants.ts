@@ -55,7 +55,6 @@ import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_t
 import { MISSING_ACTION_CATCHER_SERVER } from "@app/lib/api/actions/servers/missing_action_catcher/metadata";
 import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
-import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { PLAN_MODE_SERVER } from "@app/lib/api/actions/servers/plan_mode/metadata";
@@ -158,10 +157,11 @@ export const ASHBY_SERVER_NAME = "ashby";
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
 // 1047 was workspace_people, folded into workspace_management as list_workspace_members.
 export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [
+  // 32 (openai_usage) was a preview MCP gated by openai_usage_mcp; unused, removed.
   // 45 (databricks) was removed in favor of the official Databricks managed MCP servers, added as
   // remote MCP server presets (see DEFAULT_REMOTE_MCP_SERVERS).
   4,
-  28, 45, 1004, 1016, 1047,
+  28, 32, 45, 1004, 1016, 1047,
 ];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
@@ -210,7 +210,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "missing_action_catcher",
   "monday",
   "notion",
-  "openai_usage",
   "outlook_calendar",
   "outlook",
   "productboard",
@@ -628,20 +627,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: SLACK_BOT_SERVER,
-  },
-  openai_usage: {
-    id: 32,
-    availability: "manual",
-    allowMultipleInstances: false,
-    isPreview: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("openai_usage_mcp");
-    },
-    requiresBearerToken: true,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: OPENAI_USAGE_SERVER,
   },
   confluence: {
     id: 33,
