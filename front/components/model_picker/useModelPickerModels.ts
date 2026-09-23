@@ -1,7 +1,7 @@
 import type { MakerGroup } from "@app/components/model_picker/modelPickerUtils";
 import { MODEL_TIERS } from "@app/components/model_picker/modelPickerUtils";
 import { useRunsOnRegionalHosting } from "@app/hooks/useRunsOnRegionalHosting";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { useModels } from "@app/lib/swr/models";
@@ -47,10 +47,12 @@ export function useModelPickerModels({
   // surfaces configuring a durable default (the agent builder) turn them off.
   showDegradations?: boolean;
 }) {
+  const { hasFeature } = useFeatureFlags();
   const { subscription } = useAuth();
   const canSelectPremiumModels =
     isCreditPricedPlan(subscription.plan) ||
-    subscription.plan.hasAdvancedModelAccess;
+    subscription.plan.hasAdvancedModelAccess ||
+    hasFeature("premium_model_access");
   const isFilterMode = mode === "filter";
   const lockPremiumEfforts = !canSelectPremiumModels;
 

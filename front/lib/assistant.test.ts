@@ -258,6 +258,14 @@ describe("isModelAvailable", () => {
     it("should be unavailable without an entitlement", () => {
       expect(isSolAvailable(createMockPlan(PRO_PLAN_SEAT_29_CODE))).toBe(false);
     });
+
+    it("should be available with premium_model_access on a plan that is neither credit-priced nor advanced", () => {
+      expect(
+        isSolAvailable(createMockPlan(PRO_PLAN_SEAT_29_CODE), [
+          "premium_model_access",
+        ])
+      ).toBe(true);
+    });
   });
 
   it("should preserve the upgraded-plan requirement for other feature-gated large models", () => {
@@ -453,6 +461,10 @@ describe("isModelReleased", () => {
     });
 
     expect(isModelReleased(model)).toBe(false);
+  });
+
+  it("should return true for a premium model waived by premium_model_access", () => {
+    expect(isModelReleased(GPT_5_6_SOL_MODEL_CONFIG)).toBe(true);
   });
 });
 

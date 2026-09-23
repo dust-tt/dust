@@ -214,8 +214,8 @@ const WORKSPACE_ACCESS_CASES: WorkspaceAccessCase[] = [
       featureGatedNonLarge: true,
       featureGatedLarge: true,
       advancedNonLarge: true,
-      opus: false,
-      sol: false,
+      opus: true,
+      sol: true,
     },
   },
   {
@@ -256,8 +256,8 @@ const WORKSPACE_ACCESS_CASES: WorkspaceAccessCase[] = [
       featureGatedNonLarge: true,
       featureGatedLarge: true,
       advancedNonLarge: true,
-      opus: false,
-      sol: false,
+      opus: true,
+      sol: true,
     },
   },
   {
