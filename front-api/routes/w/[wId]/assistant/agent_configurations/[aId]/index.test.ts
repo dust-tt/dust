@@ -1,7 +1,4 @@
-import {
-  createPendingAgentConfiguration,
-  getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -241,7 +238,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - pending agent"
     });
     await SpaceFactory.defaults(auth);
 
-    const pendingAgentRes = await createPendingAgentConfiguration(auth);
+    const pendingAgentRes = await AgentResource.createPending(auth);
     if (pendingAgentRes.isErr()) {
       throw pendingAgentRes.error;
     }

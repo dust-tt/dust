@@ -13,6 +13,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getEffectiveReasoningEffort } from "@app/lib/llms/model_configurations";
+import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -144,6 +145,13 @@ export type EditorDeltaErrorCode =
   | "user_not_member"
   | "user_not_found"
   | "internal_error";
+
+// Placeholder values for the pending agent created when the builder opens for a new agent, before its
+// first real save (see `AgentResource.createPending`).
+const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
+const PENDING_AGENT_PLACEHOLDER_DESCRIPTION = "";
+const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
+  "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
 // Human workspace admins manage editors but must grant themselves editor access to change the agent.
 // The admin role alone does not read a hidden agent (see the `hidden-agent-content` contract).
@@ -365,7 +373,7 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  * superuser status. The instructions are the only private fields: the head fields (`name`,
  * `status`, `scope`, `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and
  * carried by every resource. This holds for every `fetch*` resolver and for
- * `fromAgentConfigurationModel`, so a caller allowed to enumerate agents they cannot read (an admin
+ * `fromModels`, so a caller allowed to enumerate agents they cannot read (an admin
  * listing hidden agents, a superuser) sees identity and core fields only. Callers MUST NOT
  * re-attach the instructions to a `light` resource from another read path.
  */
@@ -455,7 +463,7 @@ export class AgentResource
   readonly modelConfiguration: AgentModelConfigurationType;
   private readonly codeDefinedSkillIds: string[];
   // Mutable so a light resource can be enriched to full in place once read access is confirmed
-  // (see `fromAgentConfigurationModel`). `variant` is derived from its presence.
+  // (see `fromModels`). `variant` is derived from its presence.
   private _content: AgentResourceContent | null;
 
   // The loading caller's permission context, stamped by `materializeResource` at the per-call read
@@ -551,40 +559,30 @@ export class AgentResource
 
   // -- Full/light factory --
 
-  // Caller-independent: builds the `full` resource (identity + core + `content`) from a configuration
-  // row and, when available, its agent row, with no read-access decision folded in. This is the shape
-  // the cache stores; the downgrade is applied separately at the read boundary (`materializeResource`).
-  // `agent` is null on the `fromAgentConfigurationModel` path, where only a configuration is in hand;
-  // the identity is then derived from the configuration (its `agentId`/`version` match the agent).
+  // Caller-independent: builds the `full` resource (identity + core + `content`) from an agent row and
+  // one of its configuration rows, with no read-access decision folded in. This is the shape the cache
+  // stores; the downgrade is applied separately at the read boundary (`materializeResource`). The
+  // identity and head fields always come from the real `agents` row, never synthesized from a
+  // configuration.
   private static buildResource(
-    agent: AgentModel | null,
+    agent: AgentModel,
     configuration: AgentConfigurationModel
   ): FullAgentResource {
     const resource = new AgentResource(
-      agent
-        ? {
-            id: agent.id,
-            workspaceId: agent.workspaceId,
-            sId: agent.sId,
-            createdAt: agent.createdAt,
-            updatedAt: agent.updatedAt,
-            currentVersion: agent.currentVersion,
-            name: agent.name,
-            status: agent.status,
-            scope: agent.scope,
-            templateId: agent.templateId,
-            reinforcement: agent.reinforcement,
-            lastReinforcementAnalysisAt: agent.lastReinforcementAnalysisAt,
-          }
-        : {
-            id: configuration.agentId,
-            workspaceId: configuration.workspaceId,
-            sId: configuration.sId,
-            createdAt: configuration.createdAt,
-            updatedAt: configuration.updatedAt,
-            currentVersion: configuration.version,
-            ...headFieldsOf(configuration),
-          },
+      {
+        id: agent.id,
+        workspaceId: agent.workspaceId,
+        sId: agent.sId,
+        createdAt: agent.createdAt,
+        updatedAt: agent.updatedAt,
+        currentVersion: agent.currentVersion,
+        name: agent.name,
+        status: agent.status,
+        scope: agent.scope,
+        templateId: agent.templateId,
+        reinforcement: agent.reinforcement,
+        lastReinforcementAnalysisAt: agent.lastReinforcementAnalysisAt,
+      },
       {
         agentConfigurationModelId: configuration.id,
         scope: configuration.scope,
@@ -637,16 +635,54 @@ export class AgentResource
     return cachedResource;
   }
 
-  // Builds a resource from an already-loaded configuration row: `full` (with `content`) when the
-  // caller can read the agent, `light` otherwise.
-  static fromAgentConfigurationModel(
+  // Builds a resource from an agent row and one of its already-loaded configuration rows: `full`
+  // (with `content`) when the caller can read the agent, `light` otherwise. Private: external callers
+  // holding only configuration rows go through `fromConfigurationModels` (which loads the real agent
+  // rows), and callers with an `sId` use `fetchById`.
+  private static fromModels(
     auth: Authenticator,
-    configuration: AgentConfigurationModel
+    agent: AgentModel,
+    agentConfiguration: AgentConfigurationModel
   ): AgentResource {
     return this.materializeResource(
       auth,
-      this.buildResource(null, configuration)
+      this.buildResource(agent, agentConfiguration)
     );
+  }
+
+  // Builds resources from already-loaded configuration rows, loading their `agents` identity rows in
+  // one batch so a resource is never synthesized without a real agent row (see `buildResource`).
+  // Returns one resource per input configuration, in the same order. Runs within `transaction` when
+  // given (e.g. to observe rows written earlier in the same save).
+  static async fromConfigurationModels(
+    auth: Authenticator,
+    agentConfigurations: AgentConfigurationModel[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<AgentResource[]> {
+    if (agentConfigurations.length === 0) {
+      return [];
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const agentModelIds = [
+      ...new Set(
+        agentConfigurations.map((configuration) => configuration.agentId)
+      ),
+    ];
+    const agents = await AgentModel.findAll({
+      where: { id: agentModelIds, workspaceId },
+      transaction,
+    });
+    const agentById = new Map(agents.map((agent) => [agent.id, agent]));
+
+    return agentConfigurations.map((configuration) => {
+      const agent = agentById.get(configuration.agentId);
+      assert(
+        agent,
+        `Unexpected: missing agent ${configuration.agentId} for configuration ${configuration.id}`
+      );
+      return this.fromModels(auth, agent, configuration);
+    });
   }
 
   // -- Resolvers: current version, full when readable, light otherwise --
@@ -2155,6 +2191,38 @@ export class AgentResource
     });
   }
 
+  // Creates the pending placeholder agent captured when the builder opens for a new agent, before its
+  // first real save. Reuses `makeNew` (create capability + normal save path: identity + configuration
+  // + author editor grant) so no resource is ever synthesized from a bare configuration row; it is
+  // overwritten on the first real save.
+  static async createPending(
+    auth: Authenticator
+  ): Promise<Result<AgentResource, Error>> {
+    const user = auth.getNonNullableUser();
+    const { defaultModel } = await getModelsForAuth(auth);
+
+    return AgentResource.makeNew(auth, {
+      name: PENDING_AGENT_PLACEHOLDER_NAME,
+      description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
+      instructions: null,
+      instructionsHtml: null,
+      pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
+      status: "pending",
+      scope: "hidden",
+      model: {
+        providerId: defaultModel.providerId,
+        modelId: defaultModel.modelId,
+        temperature: 0.7,
+        reasoningEffort: defaultModel.defaultReasoningEffort,
+      },
+      templateId: null,
+      requestedSpaceIds: [],
+      tags: [],
+      editors: [user.toJSON()],
+      authorId: user.id,
+    });
+  }
+
   // Applies a partial update to `this` existing agent: only properties present in `update` are
   // considered, an omitted property is left untouched, and a provided property equal to the current
   // value is a no-op. Each changed property is routed to its own path and permission (see
@@ -2570,6 +2638,7 @@ export class AgentResource
         // carries the head fields of the version 0 row written just below. `findOrCreate` covers an
         // identity left behind by an interrupted creation.
         let agentModelId = existingAgent?.agentId;
+        let agentModel: AgentModel | null = null;
         if (!agentModelId) {
           const [agentIdentity] = await AgentModel.findOrCreate({
             where: { sId, workspaceId: owner.id },
@@ -2585,6 +2654,7 @@ export class AgentResource
             transaction: t,
           });
           agentModelId = agentIdentity.id;
+          agentModel = agentIdentity;
         }
 
         const agentConfigurationInstance = await writeAgentConfigurationRow({
@@ -2608,11 +2678,25 @@ export class AgentResource
           transaction: t,
         });
 
+        // Load the `agents` identity row for an existing agent (a brand-new one was just created
+        // above), so resources built below carry the real identity, never a configuration-derived one.
+        if (!agentModel) {
+          agentModel = await AgentModel.findOne({
+            where: { id: agentModelId, workspaceId: owner.id },
+            transaction: t,
+          });
+        }
+        assert(
+          agentModel,
+          `Unexpected: agent identity ${agentModelId} missing after save`
+        );
+
         // A brand-new agent's identity was just created at version 0 with its head fields; an
         // upgrade or a pending activation moves the pointer and mirrors the new ones.
         if (existingAgent) {
-          await AgentResource.fromAgentConfigurationModel(
+          await AgentResource.fromModels(
             auth,
+            agentModel,
             agentConfigurationInstance
           ).setCurrentConfiguration(auth, agentConfigurationInstance, {
             transaction: t,
@@ -2630,14 +2714,16 @@ export class AgentResource
 
         // Editors are agent-level grants managed in place by `updateEditorsInPlace`, not a versioned
         // field: an existing agent's editors are already granted and carry across versions untouched,
-        // so a new version re-grants nothing. Only a brand-new agent needs its initial editor grants.
-        if (status === "active" && !existingAgent) {
+        // so a new version re-grants nothing. Only a brand-new agent (active or the pending
+        // placeholder) needs its initial editor grants.
+        if ((status === "active" || status === "pending") && !existingAgent) {
           assert(
             editors.some((e) => e.id === authorId) || isAdmin(owner),
             "Unexpected: author must be an editor or admin"
           );
-          await AgentResource.fromAgentConfigurationModel(
+          await AgentResource.fromModels(
             auth,
+            agentModel,
             agentConfigurationInstance
           ).grantEditors(auth, { editors, transaction: t });
           createdInitialEditorGrant = true;
@@ -2646,8 +2732,9 @@ export class AgentResource
         // Create the MCP actions and skill associations in the same transaction as the
         // configuration row, so any failure rolls the whole save back and never leaves a partial
         // version behind (see `agent-save-atomic`).
-        const savedResource = AgentResource.fromAgentConfigurationModel(
+        const savedResource = AgentResource.fromModels(
           auth,
+          agentModel,
           agentConfigurationInstance
         );
         for (const action of actions) {

@@ -111,7 +111,9 @@ async function deleteAgentAndRelatedResources(
   });
 
   // 6. Finally delete the agent configuration itself, re-pointing or deleting its identity.
-  const agentResource = AgentResource.fromAgentConfigurationModel(auth, agent);
+  const [agentResource] = await AgentResource.fromConfigurationModels(auth, [
+    agent,
+  ]);
   const { agentDeleted } = await withTransaction(async (t) =>
     destroyAgentConfigurationRow(
       auth,

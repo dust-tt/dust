@@ -1,9 +1,7 @@
-import {
-  createPendingAgentConfiguration,
-  getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
@@ -503,7 +501,7 @@ describe("PATCH with applyToAgent", () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
     });
-    const pending = await createPendingAgentConfiguration(auth);
+    const pending = await AgentResource.createPending(auth);
     if (pending.isErr()) {
       throw pending.error;
     }
