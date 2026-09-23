@@ -22,9 +22,11 @@ Cmd/Ctrl+S. Undoing back to saved content also clears the error without a reques
 Later edits are not acknowledged by an earlier save. Parent renders and changes
 to the save callback do not restart the debounce timer.
 
-`className` applies to the outer container. Typography and editor configuration
-remain controlled by Document. Initial content is captured at mount. Remount with
-a new key to open a different document. Invalid stored JSON disables editing.
+`className` applies to the outer container. Typography layout and editor configuration
+remain controlled by Document. Hosts may theme fonts and colors inside `.tiptap`,
+the document content subtree. Editing controls stay outside that subtree and retain
+Sparkle's theme. Initial content is captured at mount. Remount with a new key to
+open a different document. Invalid stored JSON disables editing.
 Navigation protection and synchronization with external changes belong to the host.
 
 For a Markdown file, the host supplies persistence for the string it receives:

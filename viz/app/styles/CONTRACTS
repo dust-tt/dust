@@ -8,3 +8,9 @@ V4 rendering behavior and does not promise V3 visual equivalence.
 Default semantic colors MUST follow the consuming element's color scheme. A Frame subtree with
 `color-scheme: light` MUST retain the light palette inside a dark host, and an explicit dark subtree
 MUST retain the dark palette inside a light host. Authored theme variable overrides MUST take precedence.
+
+@cc [owner:flvndvd,label:product] frame-document-content-theme
+Document prose MUST inherit Frame font and semantic color variables. Code MUST use the Frame's
+monospace font, and links MUST use its primary color. Content theme overrides MUST NOT restyle
+editor controls, tooltips, or named Frame visual subtrees. Body text and headings use the sans font
+unless the authored content explicitly selects another font.
