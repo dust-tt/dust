@@ -61,6 +61,7 @@ import type {
   ResourceFindOptions,
 } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import type { ToolReference } from "@app/lib/tools/format";
 import { mcpToolsRequireConfiguration } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
@@ -1590,6 +1591,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         name: this.getServerDisplayMetadata().name,
       },
     });
+  }
+
+  toRefJSON(): ToolReference {
+    return {
+      icon: this.getServerDisplayMetadata().icon,
+      id: this.sId,
+      name: this.getDisplayName(),
+    };
   }
 
   /**
