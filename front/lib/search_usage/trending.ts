@@ -11,6 +11,7 @@ import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import type { SearchUsageDimension } from "@app/lib/search_usage/usage";
 import { cacheWithRedisResult } from "@app/lib/utils/cache";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isNumber, isString } from "@app/types/shared/utils/general";
@@ -22,8 +23,9 @@ export const DISCOVERY_TRENDING_WINDOW_DAYS = 7;
 // apply current-viewer permissions before limiting it.
 const TRENDING_CANDIDATES_PER_TYPE = 100;
 const TRENDING_CARDINALITY_PRECISION_THRESHOLD = 1_000;
+const PREFERRED_CURRENT_USERS = 5;
 const DISCOVERY_TRENDING_CACHE_TTL_MS = 60 * 60 * 1000;
-const DISCOVERY_TRENDING_ALGORITHM_VERSION = "v1";
+const DISCOVERY_TRENDING_ALGORITHM_VERSION = "v2";
 
 type ActiveUsersAggregation = {
   users?: {
@@ -64,6 +66,11 @@ export type DiscoveryTrendingCandidate = {
   currentUsers: number;
   previousUsers: number;
   userGrowth: number;
+};
+
+export type DiscoveryTrendingCandidatePools = {
+  agents: DiscoveryTrendingCandidate[];
+  skills: DiscoveryTrendingCandidate[];
 };
 
 function periodAggregation(
@@ -340,17 +347,7 @@ async function fetchDiscoveryTrendingCandidatesUncached(
     return skillCandidates;
   }
 
-  return new Ok(
-    [...agentCandidates.value, ...skillCandidates.value]
-      .filter(({ userGrowth }) => userGrowth > 0)
-      .sort(
-        (left, right) =>
-          right.userGrowth - left.userGrowth ||
-          right.currentUsers - left.currentUsers ||
-          left.resourceType.localeCompare(right.resourceType) ||
-          left.resourceId.localeCompare(right.resourceId)
-      )
-  );
+  return new Ok([...agentCandidates.value, ...skillCandidates.value]);
 }
 
 const fetchCachedDiscoveryTrendingCandidates = cacheWithRedisResult(
@@ -368,6 +365,26 @@ const fetchCachedDiscoveryTrendingCandidates = cacheWithRedisResult(
   }
 );
 
+function rankCandidatePool(
+  candidates: DiscoveryTrendingCandidate[]
+): DiscoveryTrendingCandidate[] {
+  const ranked = candidates.sort(
+    (left, right) =>
+      right.userGrowth - left.userGrowth ||
+      right.currentUsers - left.currentUsers ||
+      left.resourceId.localeCompare(right.resourceId)
+  );
+
+  return [
+    ...ranked.filter(
+      ({ currentUsers }) => currentUsers >= PREFERRED_CURRENT_USERS
+    ),
+    ...ranked.filter(
+      ({ currentUsers }) => currentUsers < PREFERRED_CURRENT_USERS
+    ),
+  ];
+}
+
 /**
  * @cc [owner:frankaloia,label:product;backend;performance;error-handling] discovery-trending-candidates
  * Candidates MUST compare approximate distinct attributed human users in the last rolling seven
@@ -375,14 +392,34 @@ const fetchCachedDiscoveryTrendingCandidates = cacheWithRedisResult(
  * candidates from the current seven-day window, then one filtered query MUST compute their metrics
  * across all shards when the one-hour workspace cache is populated.
  * A timed-out, partial, or malformed response MUST return an error rather than treating missing data
- * as zero. Results MUST have positive growth, ordered by growth, current users, type, then id, and
- * cached without viewer-specific permission filtering.
- * The returned pool is intentionally larger than the roughly five displayed items so callers can
+ * as zero. Agent and skill pools MUST be returned separately, exclude the default Dust agent, and
+ * prefer candidates with at least five current-period users before lower-volume candidates. Within
+ * each volume group, results MUST be ordered by growth, current users, then id; non-positive growth
+ * remains eligible. Cached metrics MUST remain free of viewer-specific permission filtering.
+ * Each returned pool is intentionally larger than the roughly five displayed items so callers can
  * apply current-viewer permissions before limiting it. A concurrent fleet-wide cache miss MUST
  * return `Ok(null)` while the lock holder populates the cache.
  */
-export function fetchDiscoveryTrendingCandidates(
+export async function fetchDiscoveryTrendingCandidates(
   auth: Authenticator
-): Promise<Result<DiscoveryTrendingCandidate[] | null, ElasticsearchError>> {
-  return fetchCachedDiscoveryTrendingCandidates(auth);
+): Promise<Result<DiscoveryTrendingCandidatePools | null, ElasticsearchError>> {
+  const result = await fetchCachedDiscoveryTrendingCandidates(auth);
+  if (result.isErr()) {
+    return result;
+  }
+  if (result.value === null) {
+    return new Ok(null);
+  }
+
+  return new Ok({
+    agents: rankCandidatePool(
+      result.value.filter(
+        ({ resourceType, resourceId }) =>
+          resourceType === "agent" && resourceId !== GLOBAL_AGENTS_SID.DUST
+      )
+    ),
+    skills: rankCandidatePool(
+      result.value.filter(({ resourceType }) => resourceType === "skill")
+    ),
+  });
 }

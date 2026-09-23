@@ -72,7 +72,7 @@ describe("discovery trending candidates", () => {
     vi.useRealTimers();
   });
 
-  it("shortlists current usage and ranks distinct-user growth", async () => {
+  it("returns separate pools that prefer broad current usage and keep non-positive growth", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -86,6 +86,8 @@ describe("discovery trending candidates", () => {
             "agent-alpha",
             "agent-lower-current",
             "small-workspace-adoption",
+            "high-volume-decline",
+            "dust",
           ],
           skills: [
             "skill-alpha",
@@ -93,6 +95,7 @@ describe("discovery trending candidates", () => {
             "zero-baseline",
             "single-user-growth",
             "not-growing",
+            "declining",
           ],
         })
       )
@@ -103,6 +106,8 @@ describe("discovery trending candidates", () => {
             bucket("agent-alpha", 5, 1),
             bucket("agent-lower-current", 4, 0),
             bucket("small-workspace-adoption", 2, 0),
+            bucket("high-volume-decline", 7, 8),
+            bucket("dust", 108, 1),
           ],
           skills: [
             bucket("skill-alpha", 5, 1),
@@ -110,70 +115,96 @@ describe("discovery trending candidates", () => {
             bucket("zero-baseline", 3, 0),
             bucket("single-user-growth", 5, 4),
             bucket("not-growing", 3, 3),
+            bucket("declining", 6, 7),
           ],
         })
       );
 
     const result = await fetchDiscoveryTrendingCandidates(auth);
 
-    expect(result.isOk() && result.value).toEqual([
-      {
-        resourceType: "agent",
-        resourceId: "highest-growth",
-        currentUsers: 6,
-        previousUsers: 1,
-        userGrowth: 5,
-      },
-      {
-        resourceType: "agent",
-        resourceId: "agent-alpha",
-        currentUsers: 5,
-        previousUsers: 1,
-        userGrowth: 4,
-      },
-      {
-        resourceType: "skill",
-        resourceId: "skill-alpha",
-        currentUsers: 5,
-        previousUsers: 1,
-        userGrowth: 4,
-      },
-      {
-        resourceType: "skill",
-        resourceId: "skill-beta",
-        currentUsers: 5,
-        previousUsers: 1,
-        userGrowth: 4,
-      },
-      {
-        resourceType: "agent",
-        resourceId: "agent-lower-current",
-        currentUsers: 4,
-        previousUsers: 0,
-        userGrowth: 4,
-      },
-      {
-        resourceType: "skill",
-        resourceId: "zero-baseline",
-        currentUsers: 3,
-        previousUsers: 0,
-        userGrowth: 3,
-      },
-      {
-        resourceType: "agent",
-        resourceId: "small-workspace-adoption",
-        currentUsers: 2,
-        previousUsers: 0,
-        userGrowth: 2,
-      },
-      {
-        resourceType: "skill",
-        resourceId: "single-user-growth",
-        currentUsers: 5,
-        previousUsers: 4,
-        userGrowth: 1,
-      },
-    ]);
+    expect(result.isOk() && result.value).toEqual({
+      agents: [
+        {
+          resourceType: "agent",
+          resourceId: "highest-growth",
+          currentUsers: 6,
+          previousUsers: 1,
+          userGrowth: 5,
+        },
+        {
+          resourceType: "agent",
+          resourceId: "agent-alpha",
+          currentUsers: 5,
+          previousUsers: 1,
+          userGrowth: 4,
+        },
+        {
+          resourceType: "agent",
+          resourceId: "high-volume-decline",
+          currentUsers: 7,
+          previousUsers: 8,
+          userGrowth: -1,
+        },
+        {
+          resourceType: "agent",
+          resourceId: "agent-lower-current",
+          currentUsers: 4,
+          previousUsers: 0,
+          userGrowth: 4,
+        },
+        {
+          resourceType: "agent",
+          resourceId: "small-workspace-adoption",
+          currentUsers: 2,
+          previousUsers: 0,
+          userGrowth: 2,
+        },
+      ],
+      skills: [
+        {
+          resourceType: "skill",
+          resourceId: "skill-alpha",
+          currentUsers: 5,
+          previousUsers: 1,
+          userGrowth: 4,
+        },
+        {
+          resourceType: "skill",
+          resourceId: "skill-beta",
+          currentUsers: 5,
+          previousUsers: 1,
+          userGrowth: 4,
+        },
+        {
+          resourceType: "skill",
+          resourceId: "single-user-growth",
+          currentUsers: 5,
+          previousUsers: 4,
+          userGrowth: 1,
+        },
+        {
+          resourceType: "skill",
+          resourceId: "declining",
+          currentUsers: 6,
+          previousUsers: 7,
+          userGrowth: -1,
+        },
+        {
+          resourceType: "skill",
+          resourceId: "zero-baseline",
+          currentUsers: 3,
+          previousUsers: 0,
+          userGrowth: 3,
+        },
+        {
+          resourceType: "skill",
+          resourceId: "not-growing",
+          currentUsers: 3,
+          previousUsers: 3,
+          userGrowth: 0,
+        },
+      ],
+    });
     expect(search).toHaveBeenCalledTimes(2);
 
     const [selectionQuery, selectionOptions] = search.mock.calls[0];
@@ -230,6 +261,8 @@ describe("discovery trending candidates", () => {
                       "agent-alpha",
                       "agent-lower-current",
                       "small-workspace-adoption",
+                      "high-volume-decline",
+                      "dust",
                     ],
                   },
                 },
@@ -241,6 +274,7 @@ describe("discovery trending candidates", () => {
                       "zero-baseline",
                       "single-user-growth",
                       "not-growing",
+                      "declining",
                     ],
                   },
                 },
@@ -370,7 +404,7 @@ describe("discovery trending candidates", () => {
 
     const result = await fetchDiscoveryTrendingCandidates(auth);
 
-    expect(result).toEqual(new Ok([]));
+    expect(result).toEqual(new Ok({ agents: [], skills: [] }));
     expect(search).toHaveBeenCalledTimes(1);
   });
 
