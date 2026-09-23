@@ -39,6 +39,7 @@ import {
 } from "@app/types/shared/utils/assert_never";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
@@ -232,7 +233,7 @@ export function CapabilitiesPicker({
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
 
-  const isAdmin = owner.role === "admin";
+  const isWorkspaceAdmin = isAdmin(owner);
 
   const { serverViews, isLoading: isServerViewsLoading } =
     useJITMCPServerViewsFromSpaces(
@@ -244,7 +245,7 @@ export function CapabilitiesPicker({
   const { availableMCPServers, isAvailableMCPServersLoading } =
     useAvailableMCPServers({
       owner,
-      disabled: !isAdmin,
+      disabled: !isWorkspaceAdmin,
       swrOptions: CAPABILITIES_SWR_OPTIONS,
     });
 
@@ -278,7 +279,8 @@ export function CapabilitiesPicker({
     ? resolvedSearchTerm !== null || isSkillsError
     : !isListedSkillsLoading;
   const isToolsDataReady =
-    !isServerViewsLoading && (!isAdmin || !isAvailableMCPServersLoading);
+    !isServerViewsLoading &&
+    (!isWorkspaceAdmin || !isAvailableMCPServersLoading);
 
   const closeDropdown = () => {
     setSearchText("");
@@ -368,7 +370,7 @@ export function CapabilitiesPicker({
       }
     }
 
-    if (isAdmin && isToolsDataReady) {
+    if (isWorkspaceAdmin && isToolsDataReady) {
       const installedServerNames = new Set(
         serverViews.map((v) => v.server.name)
       );
@@ -400,7 +402,7 @@ export function CapabilitiesPicker({
     return items;
   }, [
     availableMCPServers,
-    isAdmin,
+    isWorkspaceAdmin,
     isSkillsDataReady,
     isToolsDataReady,
     serverViews,

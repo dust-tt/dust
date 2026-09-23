@@ -23,6 +23,7 @@ import {
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import { Button, ContentMessage } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
@@ -42,18 +43,18 @@ export function ToolSetupCard({
 }: ToolSetupCardProps) {
   const [isActivating, setIsActivating] = useState(false);
   const [isSetupSheetOpen, setIsSetupSheetOpen] = useState(false);
-  const isAdmin = owner.role === "admin";
+  const isWorkspaceAdmin = isAdmin(owner);
 
   const { spaces: spacesAsUser } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global", "regular"],
-    disabled: isAdmin,
+    disabled: isWorkspaceAdmin,
   });
   const { spaces: spacesAsAdmin } = useSpacesAsAdmin({
     workspaceId: owner.sId,
-    disabled: !isAdmin,
+    disabled: !isWorkspaceAdmin,
   });
-  const spaces = isAdmin ? spacesAsAdmin : spacesAsUser;
+  const spaces = isWorkspaceAdmin ? spacesAsAdmin : spacesAsUser;
   const { addToSpace } = useAddMCPServerToSpace(owner);
 
   const globalSpace = useMemo(() => {
@@ -117,7 +118,7 @@ export function ToolSetupCard({
   }
 
   const getButtonLabel = () => {
-    if (!isAdmin) {
+    if (!isWorkspaceAdmin) {
       return "Only admins can configure tools";
     }
     if (isActivating) {
@@ -200,7 +201,9 @@ export function ToolSetupCard({
               label={getButtonLabel()}
               onClick={getButtonClickHandler()}
               disabled={
-                !isAdmin || isToolActivatedInGlobalSpace || isActivating
+                !isWorkspaceAdmin ||
+                isToolActivatedInGlobalSpace ||
+                isActivating
               }
             />
           </div>

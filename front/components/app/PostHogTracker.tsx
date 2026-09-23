@@ -19,6 +19,7 @@ import {
   MARKETING_PARAMS,
 } from "@app/lib/utils/utm";
 import { isString } from "@app/types/shared/utils/general";
+import { isAdmin } from "@app/types/user";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useMemo, useRef } from "react";
@@ -110,11 +111,11 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
       ? user.workspaces.find((w) => w.sId === workspaceId)
       : undefined;
 
-  const isAdmin = currentWorkspace?.role === "admin";
+  const isWorkspaceAdmin = isAdmin(currentWorkspace ?? null);
 
   const { activeSubscription } = useWorkspaceActiveSubscription({
     owner: currentWorkspace,
-    disabled: !isAdmin,
+    disabled: !isWorkspaceAdmin,
   });
 
   const planProperties = useMemo(() => {
@@ -427,14 +428,14 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     const planPropsString = JSON.stringify(planProperties);
     const planChanged = lastPlanPropertiesString.current !== planPropsString;
 
-    if (workspaceChanged || (isAdmin && planChanged)) {
+    if (workspaceChanged || (isWorkspaceAdmin && planChanged)) {
       posthog.group(
         "workspace",
         workspaceId,
-        isAdmin && planProperties ? planProperties : undefined
+        isWorkspaceAdmin && planProperties ? planProperties : undefined
       );
       lastIdentifiedWorkspaceId.current = workspaceId;
-      if (isAdmin) {
+      if (isWorkspaceAdmin) {
         lastPlanPropertiesString.current = planPropsString;
       }
     }
@@ -449,7 +450,7 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     workspaceId,
     planProperties,
     hasAcceptedCookies,
-    isAdmin,
+    isWorkspaceAdmin,
     currentWorkspace?.role,
   ]);
 

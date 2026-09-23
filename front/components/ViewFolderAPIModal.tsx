@@ -7,6 +7,7 @@ import type { DataSourceType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Button,
   Clipboard,
@@ -183,7 +184,7 @@ export function ViewFolderAPIModal({
               <Page.SectionHeader title="API Keys" />
               <Page.P>
                 <div className="pb-2">
-                  {owner.role === "admin" ? (
+                  {isAdmin(owner) ? (
                     <Hoverable
                       href={`/w/${owner.sId}/developers/api-keys`}
                       variant="highlight"

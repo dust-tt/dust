@@ -7,6 +7,7 @@ import type { AppType } from "@app/types/app";
 import type { RunConfig, RunType } from "@app/types/run";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Button,
   Clipboard,
@@ -165,7 +166,7 @@ export function ViewAppAPIModal({
               <Page.SectionHeader title="API Keys" />
               <Page.P>
                 <div className="pb-2">
-                  {owner.role === "admin" ? (
+                  {isAdmin(owner) ? (
                     <Hoverable
                       href={`/w/${owner.sId}/developers/api-keys`}
                       variant="highlight"

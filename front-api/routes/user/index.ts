@@ -11,13 +11,13 @@ import type {
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import { isAdmin } from "@app/types/user";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { sessionAuth } from "@front-api/middlewares/session_auth";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
 import metadata from "./metadata";
 import onboarding from "./onboarding";
 
@@ -180,7 +180,7 @@ app.patch(
     }
 
     const workspace = user.workspaces[0];
-    if (workspace?.role === "admin") {
+    if (isAdmin(workspace ?? null)) {
       sendUserOperationMessage({
         message:
           `workspace_sid: ${workspace?.sId}; email: [${user.email}]; ` +
