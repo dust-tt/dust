@@ -194,7 +194,7 @@ function ConversationSkillSuggestion({
         openPanel({
           type: SKILL_SIDE_PANEL_TYPE,
           skillId,
-          previewSuggestions: [suggestion],
+          previewSuggestionIds: [suggestion.sId],
         })
       }
       getSkillInstructionsHtml={getSkillInstructionsHtml}

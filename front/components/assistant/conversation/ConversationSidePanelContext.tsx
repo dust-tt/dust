@@ -21,12 +21,10 @@ import {
   assertNever,
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
-import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
-import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
-export type OpenPanelParams =
+type OpenPanelParams =
   | {
       type: "actions";
       messageId: string;
@@ -52,7 +50,7 @@ export type OpenPanelParams =
   | {
       type: "skill";
       skillId: string;
-      previewSuggestions?: SkillSuggestionType[];
+      previewSuggestionIds?: string[];
     }
   | {
       type: "tool";
@@ -61,7 +59,7 @@ export type OpenPanelParams =
   | {
       type: "agent";
       agentId: string;
-      previewSuggestions?: AgentSuggestionType[];
+      previewSuggestionIds?: string[];
     };
 
 const FILE_PREVIEW_FILE_ID_PREFIX = "id:";
@@ -81,6 +79,18 @@ export function parseFilePreviewData(
   return data.startsWith(FILE_PREVIEW_FILE_ID_PREFIX)
     ? { kind: "id", fileId: data.slice(FILE_PREVIEW_FILE_ID_PREFIX.length) }
     : { kind: "path", filePath: data };
+}
+
+export interface SuggestionPreviewTarget {
+  entityId: string;
+  suggestionIds: string;
+}
+
+export function parseSuggestionPreviewData(
+  data: string | undefined
+): SuggestionPreviewTarget {
+  const [entityId, suggestionIds = ""] = (data ?? "").split("@");
+  return { entityId, suggestionIds };
 }
 
 function filePreviewDataKey(target: FilePreviewTarget): string {
@@ -112,11 +122,15 @@ function panelDataKey(params: OpenPanelParams): string {
     case PLAN_SIDE_PANEL_TYPE:
       return params.type;
     case SKILL_SIDE_PANEL_TYPE:
-      return params.skillId;
+      return params.previewSuggestionIds?.length
+        ? `${params.skillId}@${params.previewSuggestionIds.join(",")}`
+        : params.skillId;
     case TOOL_SIDE_PANEL_TYPE:
       return params.toolId;
     case AGENT_SIDE_PANEL_TYPE:
-      return params.agentId;
+      return params.previewSuggestionIds?.length
+        ? `${params.agentId}@${params.previewSuggestionIds.join(",")}`
+        : params.agentId;
     default:
       return assertNever(params);
   }
@@ -166,12 +180,28 @@ function panelParamsFromHash(
     case CREDITS_SIDE_PANEL_TYPE:
     case PLAN_SIDE_PANEL_TYPE:
       return { type };
-    case SKILL_SIDE_PANEL_TYPE:
-      return { type, skillId: data };
+    case SKILL_SIDE_PANEL_TYPE: {
+      const { entityId, suggestionIds } = parseSuggestionPreviewData(data);
+      return {
+        type,
+        skillId: entityId,
+        previewSuggestionIds: suggestionIds
+          ? suggestionIds.split(",")
+          : undefined,
+      };
+    }
     case TOOL_SIDE_PANEL_TYPE:
       return { type, toolId: data };
-    case AGENT_SIDE_PANEL_TYPE:
-      return { type, agentId: data };
+    case AGENT_SIDE_PANEL_TYPE: {
+      const { entityId, suggestionIds } = parseSuggestionPreviewData(data);
+      return {
+        type,
+        agentId: entityId,
+        previewSuggestionIds: suggestionIds
+          ? suggestionIds.split(",")
+          : undefined,
+      };
+    }
     default:
       assertNeverAndIgnore(type);
       return null;
@@ -211,9 +241,6 @@ interface ConversationSidePanelContextType {
   setVirtuosoMsg: (msg: AgentMessageWithStreaming) => void;
   virtuosoMsg: AgentMessageWithStreaming | null;
   data: string | undefined;
-  // Full params of the shown panel. Unlike `data`, this carries what does not fit in the hash
-  // (suggestions being previewed), so a deep link restores the panel without them.
-  panelParams: OpenPanelParams | null;
 }
 
 // Past a few levels, going back one panel at a time stops matching what the user remembers, so
@@ -284,9 +311,6 @@ export function ConversationSidePanelProvider({
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
   const [hasConversation, setHasConversation] = React.useState(false);
   const [isPanelClosing, setIsPanelClosing] = React.useState(false);
-  const [panelParams, setPanelParams] = React.useState<OpenPanelParams | null>(
-    null
-  );
   const [virtuosoMsg, setVirtuosoMsg] =
     React.useState<AgentMessageWithStreaming | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -310,7 +334,6 @@ export function ConversationSidePanelProvider({
   const onPanelClosed = useCallback(() => {
     setIsPanelClosing(false);
     currentParamsRef.current = null;
-    setPanelParams(null);
     panelHistoryRef.current = [];
     setData(undefined);
     setCurrentPanel(undefined);
@@ -341,7 +364,6 @@ export function ConversationSidePanelProvider({
       setIsPanelClosing(false);
       const previous = currentParamsRef.current;
       currentParamsRef.current = params;
-      setPanelParams(params);
       setCurrentPanel(params.type);
       setData(panelDataKey(params));
       // Only FrameRenderer can leave full screen, so a panel of another type would otherwise be
@@ -492,7 +514,6 @@ export function ConversationSidePanelProvider({
       setVirtuosoMsg,
       virtuosoMsg,
       data,
-      panelParams,
     }),
     [
       currentPanel,
@@ -506,7 +527,6 @@ export function ConversationSidePanelProvider({
       setPanelRef,
       virtuosoMsg,
       data,
-      panelParams,
     ]
   );
 

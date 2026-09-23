@@ -50,7 +50,6 @@ function renderWithPreviewProviders(children: React.ReactNode) {
           setVirtuosoMsg: vi.fn(),
           virtuosoMsg: null,
           data: undefined,
-          panelParams: null,
         }}
       >
         <FilePreviewProvider owner={mockOwner}>{children}</FilePreviewProvider>

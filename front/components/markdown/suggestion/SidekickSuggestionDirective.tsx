@@ -223,7 +223,7 @@ function ConversationAgentSuggestion({
           openPanel({
             type: AGENT_SIDE_PANEL_TYPE,
             agentId,
-            previewSuggestions: [suggestion],
+            previewSuggestionIds: [suggestion.sId],
           })
         }
       />
