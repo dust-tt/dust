@@ -26,7 +26,6 @@ import {
   getTierFallbackMessage,
   getTierLockReason,
   isModelLocked,
-  isPremiumOrAboveTier,
   isSameSelection,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -35,6 +34,7 @@ import { useModelPickerModels } from "@app/components/model_picker/useModelPicke
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useClientType } from "@app/lib/context/clientType";
+import { isPremiumOrAboveTier } from "@app/lib/model_tiers/tier_order";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";

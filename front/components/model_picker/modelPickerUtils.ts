@@ -2,7 +2,7 @@ import {
   getSupportedModelConfig,
   getSupportedModelConfigs,
 } from "@app/lib/llms/model_configurations";
-import { isTierAtLeast } from "@app/lib/model_tiers/tier_order";
+import { isPremiumOrAboveTier } from "@app/lib/model_tiers/tier_order";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionsType,
@@ -80,10 +80,6 @@ const PICKER_TIER_BY_MODELS_TIER: Record<ModelsTierName, ModelTierId> = {
   premium: "complex",
   ultra: "complex",
 };
-
-export function isPremiumOrAboveTier(tierName: ModelsTierName | null): boolean {
-  return tierName !== null && isTierAtLeast(tierName, "premium");
-}
 
 /**
  * @cc [owner:frankaloia,label:product;error-handling] pinned-model-retry-uses-tier

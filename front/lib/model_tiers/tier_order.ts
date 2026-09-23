@@ -50,6 +50,12 @@ export function isTierAtLeast(
   return getTierIndex(tierName) >= getTierIndex(minTierName);
 }
 
+// The floor of the legacy-plan lock and of the weekly premium allowance. A null
+// tier (an effort the model does not support) is below it.
+export function isPremiumOrAboveTier(tierName: ModelsTierName | null): boolean {
+  return tierName !== null && isTierAtLeast(tierName, "premium");
+}
+
 export function formatMaxTierDescription(
   maxTierName: ModelsTierName
 ): string | undefined {
