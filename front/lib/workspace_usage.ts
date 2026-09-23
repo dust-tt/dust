@@ -18,6 +18,7 @@ import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import { stringify } from "csv-stringify/sync";
 import { endOfDay } from "date-fns/endOfDay";
 import { endOfMonth } from "date-fns/endOfMonth";
@@ -662,8 +663,7 @@ async function getAssistantsUsageData(
   const includeInactiveAgents = options?.includeInactive ?? false;
   const readReplica = getFrontReplicaDbConnection();
   // Include unpublished agents for workspace admins.
-  const scopeFilter =
-    workspace.role === "admin" ? "" : "AND ac.\"scope\" != 'hidden'";
+  const scopeFilter = isAdmin(workspace) ? "" : "AND ac.\"scope\" != 'hidden'";
   // biome-ignore lint/plugin/noRawSql: Leggit
   const agents = await readReplica.query<AgentUsageQueryResult>(
     `

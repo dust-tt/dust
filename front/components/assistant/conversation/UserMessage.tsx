@@ -33,6 +33,7 @@ import {
 } from "@app/types/assistant/mentions";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -155,7 +156,7 @@ export function UserMessage({
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
     useHover();
-  const isAdmin = owner.role === "admin";
+  const isWorkspaceAdmin = isAdmin(owner);
   const { deleteMessage, isDeleting } = useDeleteMessage({
     owner,
     conversationId,
@@ -246,7 +247,7 @@ export function UserMessage({
   const shouldHideMessageContent =
     isEmpty && hasCitations && !isDeleted && !isPending;
   const canDelete =
-    (isCurrentUser || isAdmin) && !isDeleted && !isProjectArchived;
+    (isCurrentUser || isWorkspaceAdmin) && !isDeleted && !isProjectArchived;
   const canEdit = isCurrentUser && !isDeleted && !isProjectArchived;
 
   const handleDeleteMessage = useCallback(async () => {

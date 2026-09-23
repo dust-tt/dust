@@ -50,7 +50,7 @@ import type { SubscriptionType } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import { isOnlyAdmin, isOnlyManager, isOnlyUser } from "@app/types/user";
+import { isAdmin, isOnlyManager, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Announcement01,
@@ -618,7 +618,7 @@ export function UserMenu({
                     )}
                     {isDevelopment() && (
                       <>
-                        {!isOnlyAdmin(owner) && (
+                        {!isAdmin(owner) && (
                           <DropdownMenuItem
                             label="Become Admin"
                             onClick={() => forceRoleUpdate("admin")}
@@ -651,7 +651,7 @@ export function UserMenu({
                       onClick={devMode.toggle}
                       icon={Terminal}
                     />
-                    {owner.role === "admin" && (
+                    {isAdmin(owner) && (
                       <DropdownMenuItem
                         label="Send onboarding conversation"
                         onClick={handleSendOnboarding}
