@@ -2,6 +2,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
+import { useResumeOngoingAgentLoopsPolling } from "@app/lib/swr/ongoing_agent_loops";
 import { useFetcher } from "@app/lib/swr/swr";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -31,6 +32,11 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import { useCallback, useContext } from "react";
 import type { z } from "zod";
 
+/**
+ * @cc [owner:id13,label:performance;react] first-message-resumes-agent-loop-polling
+ * After a first-message request succeeds, ongoing-loop polling MUST resume at the active interval
+ * without waiting for the idle poll.
+ */
 export function useCreateConversationWithMessage({
   owner,
   user,
@@ -41,6 +47,9 @@ export function useCreateConversationWithMessage({
   const { fetcher } = useFetcher();
   const contextOrigin = useClientType();
   const sendNotification = useSendNotification();
+  const resumeOngoingAgentLoopsPolling = useResumeOngoingAgentLoopsPolling(
+    owner.sId
+  );
   const { setPendingFirstMessage, clearPendingFirstMessage } =
     useContext(InputBarContext);
 
@@ -137,6 +146,7 @@ export function useCreateConversationWithMessage({
           // Stash the message so `ConversationViewer` can render optimistic
           // placeholders immediately (display only).
           const conversationId = conversationData.conversation.sId;
+          resumeOngoingAgentLoopsPolling();
 
           setPendingFirstMessage(conversationId, {
             input,
@@ -243,6 +253,8 @@ export function useCreateConversationWithMessage({
           })
         );
 
+        resumeOngoingAgentLoopsPolling();
+
         return new Ok(conversationData.conversation);
       } catch (e) {
         return toConversationCreationError(e);
@@ -256,6 +268,7 @@ export function useCreateConversationWithMessage({
       sendNotification,
       setPendingFirstMessage,
       clearPendingFirstMessage,
+      resumeOngoingAgentLoopsPolling,
     ]
   );
 }
@@ -379,6 +392,7 @@ async function postFirstMessageInBackground({
           onError(errResult.error);
         }
       }
+      return;
     }
   } catch (e) {
     logger.error({ err: e }, "Failed to post first message in background");

@@ -31,6 +31,10 @@ export abstract class MistralStream extends WithMistralAIInputConverter(
     super();
     this.client = new Mistral({
       apiKey: MISTRAL_API_KEY,
+      // `api.mistral.ai` commits to no inference location. Needs SDK >= 2.5.0: before that
+      // `ServerList.eu` pointed at the global host, making this a no-op.
+      // https://docs.mistral.ai/inference/regional-inference (verified 2026-09-22)
+      server: "eu",
       // Keep the SDK's current single-attempt default explicit: the agent loop
       // owns retries so every attempt gets its own Dust trace.
       retryConfig: { strategy: "none" },

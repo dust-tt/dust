@@ -1,0 +1,91 @@
+import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
+import { forwardRef, useState } from "react";
+
+const DISCOVER_TABS = ["Discover", "Agents & Skills"] as const;
+type DiscoverTab = (typeof DISCOVER_TABS)[number];
+
+const FEATURED_SLOT_COUNT = 3;
+
+const DISCOVER_SECTIONS = [
+  "Agent & Skill for you",
+  "Trending in the workspace",
+] as const;
+
+interface DiscoverContainerProps {
+  onAgentConfigurationClick: (agent: LightAgentConfigurationType) => void;
+  owner: WorkspaceType;
+  user: UserType;
+}
+
+export const DiscoverContainer = forwardRef<
+  HTMLDivElement,
+  DiscoverContainerProps
+>(function DiscoverContainer({ onAgentConfigurationClick, owner, user }, ref) {
+  const [tab, setTab] = useState<DiscoverTab>("Discover");
+
+  return (
+    <div
+      ref={ref}
+      className="flex min-h-panel w-full shrink-0 flex-col items-center pb-16 pt-10"
+    >
+      <Tabs value={tab} className="flex w-full max-w-4xl flex-col gap-12">
+        <div className="flex flex-col gap-6">
+          <h1 className="heading-2xl text-foreground">Discover</h1>
+          <TabsList>
+            {DISCOVER_TABS.map((t) => (
+              <TabsTrigger
+                key={t}
+                value={t}
+                label={t}
+                onClick={() => setTab(t)}
+              />
+            ))}
+          </TabsList>
+        </div>
+        <TabsContent value="Discover" className="flex flex-col gap-12">
+          <section className="flex flex-col gap-3">
+            <h2 className="heading-lg text-foreground">Featured</h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {Array.from({ length: FEATURED_SLOT_COUNT }, (_, slot) => (
+                <div
+                  key={slot}
+                  aria-hidden
+                  className="h-56 rounded-2xl border border-dashed border-border-dark bg-muted-background"
+                />
+              ))}
+            </div>
+          </section>
+          {DISCOVER_SECTIONS.map((title) => (
+            <section key={title} className="flex min-w-0 flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h2 className="heading-lg text-foreground">{title}</h2>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  label="Find more"
+                  onClick={() => setTab("Agents & Skills")}
+                />
+              </div>
+            </section>
+          ))}
+        </TabsContent>
+        <TabsContent value="Agents & Skills" className="flex justify-center">
+          <AgentBrowserContainer
+            onAgentConfigurationClick={onAgentConfigurationClick}
+            owner={owner}
+            user={user}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+});

@@ -10,6 +10,7 @@ import {
   SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME,
   SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME,
   SUGGEST_AGENT_NAME_TOOL_NAME,
+  SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME,
   SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
   SUGGEST_SKILL_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
@@ -56,6 +57,8 @@ const AGENT_MODEL_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=model agentId=(\S+)\}$/;
 const AGENT_NAME_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=name agentId=(\S+)\}$/;
+const AGENT_SCOPE_SUGGESTION_DIRECTIVE_REGEX =
+  /^:agent_suggestion\[\]\{sId=(\S+) kind=scope agentId=(\S+)\}$/;
 const AGENT_INSTRUCTIONS_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=instructions agentId=(\S+)\}$/;
 
@@ -186,6 +189,17 @@ function extractAgentNameSuggestionDirective(text: string): {
   agentId: string;
 } {
   const match = AGENT_NAME_SUGGESTION_DIRECTIVE_REGEX.exec(text);
+  if (!match) {
+    throw new Error(`Unexpected tool output: ${text}`);
+  }
+  return { suggestionId: match[1], agentId: match[2] };
+}
+
+function extractAgentScopeSuggestionDirective(text: string): {
+  suggestionId: string;
+  agentId: string;
+} {
+  const match = AGENT_SCOPE_SUGGESTION_DIRECTIVE_REGEX.exec(text);
   if (!match) {
     throw new Error(`Unexpected tool output: ${text}`);
   }
@@ -1471,6 +1485,168 @@ describe("building_agents_and_skills tools", () => {
           { kind: "name" }
         );
       expect(suggestions).toHaveLength(0);
+    });
+  });
+
+  describe(SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME, () => {
+    const suggestPublishState = async (
+      auth: Authenticator,
+      args: {
+        agentId: string;
+        scope: "hidden" | "visible";
+        analysis?: string;
+      }
+    ) =>
+      getTool(SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME).handler(
+        args,
+        makeExtra(auth)
+      );
+
+    it("records a pending suggestion with the publish state, without changing the agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "hidden" }
+      );
+
+      const result = await suggestPublishState(authenticator, {
+        agentId: agent.sId,
+        scope: "visible",
+        analysis: "The agent is ready to be shared with the workspace.",
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      const output = result.value[0];
+      if (output?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const { suggestionId, agentId } = extractAgentScopeSuggestionDirective(
+        output.text
+      );
+      expect(agentId).toBe(agent.sId);
+
+      const suggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.toJSON()).toMatchObject({
+        kind: "scope",
+        suggestion: { scope: "visible" },
+        analysis: "The agent is ready to be shared with the workspace.",
+      });
+
+      // The agent itself is untouched.
+      const untouched = await getAgentConfiguration(authenticator, {
+        agentId: agent.sId,
+        variant: "light",
+      });
+      expect(untouched?.scope).toBe("hidden");
+    });
+
+    it("outdates every other pending publish state suggestion, leaving other kinds alone", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "hidden" }
+      );
+      const deletion = await AgentSuggestionFactory.createDelete(
+        authenticator,
+        agent
+      );
+      const idOf = async () => {
+        const result = await suggestPublishState(authenticator, {
+          agentId: agent.sId,
+          scope: "visible",
+        });
+        if (result.isErr() || result.value[0]?.type !== "text") {
+          throw new Error("Expected the suggestion to be created.");
+        }
+        return extractAgentScopeSuggestionDirective(result.value[0].text)
+          .suggestionId;
+      };
+      const stateOf = async (suggestionId: string) =>
+        (await AgentSuggestionResource.fetchById(authenticator, suggestionId))
+          ?.state;
+
+      const firstId = await idOf();
+      const secondId = await idOf();
+
+      expect(await stateOf(firstId)).toBe("outdated");
+      expect(await stateOf(secondId)).toBe("pending");
+      expect(await stateOf(deletion.sId)).toBe("pending");
+    });
+
+    it("rejects a caller who is not an editor, creating no row", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      // Scope defaults to "visible" so the outsider can still read (but not edit) the agent,
+      // exercising the canEdit gate rather than the readability of a hidden agent.
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const outsider = await addMember(workspace);
+      const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        outsider.sId,
+        workspace.sId
+      );
+
+      const result = await suggestPublishState(outsiderAuth, {
+        agentId: agent.sId,
+        scope: "hidden",
+      });
+
+      expectMcpError(
+        result,
+        "Only editors of this agent can change its publish state"
+      );
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agent.sId,
+          { kind: "scope" }
+        );
+      expect(suggestions).toHaveLength(0);
+    });
+
+    it("rejects an archived agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "hidden" }
+      );
+      await (await AgentResource.fetchById(authenticator, agent.sId))!.archive(
+        authenticator
+      );
+
+      const result = await suggestPublishState(authenticator, {
+        agentId: agent.sId,
+        scope: "visible",
+      });
+
+      expectMcpError(
+        result,
+        "Only active agents can have their publish state changed"
+      );
+    });
+
+    it("rejects a publish state matching the agent's current one", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "hidden" }
+      );
+
+      const result = await suggestPublishState(authenticator, {
+        agentId: agent.sId,
+        scope: "hidden",
+      });
+
+      expectMcpError(result, "already unpublished");
     });
   });
 

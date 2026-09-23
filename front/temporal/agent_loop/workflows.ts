@@ -397,10 +397,10 @@ export async function agentLoopWorkflow({
 
         // The decision is made on the spend measured before this step ran. The step itself may
         // have crossed it, in which case the pause lands one step late.
-        if (
-          creditSpendCheckpointCrossed &&
-          patched("credit-spend-checkpoint-gate")
-        ) {
+        if (creditSpendCheckpointCrossed) {
+          // TODO(2026-10-27): Remove deprecatePatch() once no replayable history still carries
+          // the non-deprecated marker.
+          deprecatePatch("credit-spend-checkpoint-gate");
           creditSpendCheckpointPaused = true;
           break;
         }

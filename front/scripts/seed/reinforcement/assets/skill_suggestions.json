@@ -87,6 +87,23 @@
     }
   },
   {
+    "skillName": "MeetingNotesFormatter",
+    "kind": "edit",
+    "title": "Resolve attendee names",
+    "analysis": "Notes usually name attendees by first name only, which makes the formatted output ambiguous. Rather than describing how to look people up, delegate that to the existing contact search skill, which already owns the directory lookup rules.",
+    "state": "pending",
+    "source": "reinforcement",
+    "suggestion": {
+      "instructionEdits": [
+        {
+          "targetBlockId": "mn02intr",
+          "content": "<p>When formatting meeting notes, follow these steps. Attendees are often written down as first names only: resolve each of them to a full name and team with <skill id=\"__SEARCHINFOCONTACTWITHSUGGESTION_SKILL_ID__\" name=\"SearchInfoContactWithSuggestion\"></skill> before listing them, and keep the first name as written when no match is found.</p>",
+          "type": "replace"
+        }
+      ]
+    }
+  },
+  {
     "skillName": "BookKeeper",
     "kind": "edit",
     "title": "Check borrower history before recommending",

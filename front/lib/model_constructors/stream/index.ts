@@ -3,6 +3,8 @@ import { AnthropicClaudeFableFiveDotOneGlobalAnthropicStream } from "@app/lib/mo
 import { AnthropicClaudeFableFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_fable_five_global_anthropic";
 import { AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_haiku_four_dot_five_eu_agent_platform";
 import { AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_haiku_four_dot_five_global_anthropic";
+import { AnthropicClaudeOpusFiveDotFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_five_dot_five_eu_agent_platform";
+import { AnthropicClaudeOpusFiveDotFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_five_dot_five_global_anthropic";
 import { AnthropicClaudeOpusFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_five_eu_agent_platform";
 import { AnthropicClaudeOpusFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_five_global_anthropic";
 import { AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_four_dot_eight_eu_agent_platform";
@@ -68,6 +70,10 @@ import { OpenAIGptFiveNanoEuropeOpenAIResponsesStream } from "@app/lib/model_con
 import { OpenAIGptFiveNanoGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_nano_global_openai_responses";
 import { OpenAIGptSixAstraEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_astra_eu_openai_responses";
 import { OpenAIGptSixAstraGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_astra_global_openai_responses";
+import { OpenAIGptSixLunaEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_luna_eu_openai_responses";
+import { OpenAIGptSixLunaGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_luna_global_openai_responses";
+import { OpenAIGptSixSolEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_sol_eu_openai_responses";
+import { OpenAIGptSixSolGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_sol_global_openai_responses";
 import { OpenAISimulatedFailureModelGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_simulated_failure_model_global_openai_responses";
 import { ThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_five_global_xai";
@@ -81,6 +87,8 @@ export const STREAM_ENDPOINTS = {
     AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream,
   [AnthropicClaudeOpusFiveEuropeAgentPlatformStream.id]:
     AnthropicClaudeOpusFiveEuropeAgentPlatformStream,
+  [AnthropicClaudeOpusFiveDotFiveEuropeAgentPlatformStream.id]:
+    AnthropicClaudeOpusFiveDotFiveEuropeAgentPlatformStream,
   [AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream.id]:
     AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream,
   [AnthropicClaudeOpusFourDotSevenEuropeAgentPlatformStream.id]:
@@ -119,6 +127,8 @@ export const STREAM_ENDPOINTS = {
     AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream,
   [AnthropicClaudeOpusFiveGlobalAnthropicStream.id]:
     AnthropicClaudeOpusFiveGlobalAnthropicStream,
+  [AnthropicClaudeOpusFiveDotFiveGlobalAnthropicStream.id]:
+    AnthropicClaudeOpusFiveDotFiveGlobalAnthropicStream,
   [AnthropicClaudeOpusFourDotEightGlobalAnthropicStream.id]:
     AnthropicClaudeOpusFourDotEightGlobalAnthropicStream,
   [AnthropicClaudeOpusFourDotSevenGlobalAnthropicStream.id]:
@@ -179,6 +189,10 @@ export const STREAM_ENDPOINTS = {
     OpenAIGptFiveDotSixLunaEuropeOpenAIResponsesStream,
   [OpenAIGptSixAstraEuropeOpenAIResponsesStream.id]:
     OpenAIGptSixAstraEuropeOpenAIResponsesStream,
+  [OpenAIGptSixLunaEuropeOpenAIResponsesStream.id]:
+    OpenAIGptSixLunaEuropeOpenAIResponsesStream,
+  [OpenAIGptSixSolEuropeOpenAIResponsesStream.id]:
+    OpenAIGptSixSolEuropeOpenAIResponsesStream,
   [OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream.id]:
     OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream,
   [OpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream.id]:
@@ -207,6 +221,10 @@ export const STREAM_ENDPOINTS = {
     OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream,
   [OpenAIGptSixAstraGlobalOpenAIResponsesStream.id]:
     OpenAIGptSixAstraGlobalOpenAIResponsesStream,
+  [OpenAIGptSixLunaGlobalOpenAIResponsesStream.id]:
+    OpenAIGptSixLunaGlobalOpenAIResponsesStream,
+  [OpenAIGptSixSolGlobalOpenAIResponsesStream.id]:
+    OpenAIGptSixSolGlobalOpenAIResponsesStream,
   [OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream.id]:
     OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream,
   [OpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream.id]:

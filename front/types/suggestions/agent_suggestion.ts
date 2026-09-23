@@ -17,6 +17,7 @@ export const AGENT_SUGGESTION_KINDS = [
   "delete",
   "name",
   "description",
+  "scope",
 ] as const;
 
 export type AgentSuggestionKind = (typeof AGENT_SUGGESTION_KINDS)[number];
@@ -112,6 +113,10 @@ const DescriptionSuggestionSchema = z.object({
   description: z.string().trim().min(1),
 });
 
+const ScopeSuggestionSchema = z.object({
+  scope: z.enum(["hidden", "visible"]),
+});
+
 const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;
 const KnowledgeSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]),
@@ -141,6 +146,7 @@ export type DescriptionSuggestionType = z.infer<
   typeof DescriptionSuggestionSchema
 >;
 export type NameSuggestionType = z.infer<typeof NameSuggestionSchema>;
+export type ScopeSuggestionType = z.infer<typeof ScopeSuggestionSchema>;
 
 export function isToolsSuggestion(data: unknown): data is ToolsSuggestionType {
   return ToolsSuggestionSchema.safeParse(data).success;
@@ -172,6 +178,7 @@ export type SuggestionPayload =
   | KnowledgeSuggestionType
   | ModelSuggestionType
   | NameSuggestionType
+  | ScopeSuggestionType
   | SkillsSuggestionType
   | SubAgentSuggestionType
   | ToolsSuggestionType;
@@ -199,6 +206,7 @@ export const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
     kind: z.literal("description"),
     suggestion: DescriptionSuggestionSchema,
   }),
+  z.object({ kind: z.literal("scope"), suggestion: ScopeSuggestionSchema }),
 ]);
 
 export type AgentSuggestionData = z.infer<typeof AgentSuggestionDataSchema>;
@@ -215,6 +223,7 @@ const BaseAgentSuggestionSchema = z.object({
   agentConfigurationId: z.number(),
   analysis: z.string().nullable(),
   state: z.enum(AGENT_SUGGESTION_STATES),
+  source: z.enum(AGENT_SUGGESTION_SOURCES),
   conversationId: z.string().nullable(),
 });
 
@@ -274,6 +283,11 @@ export type AgentNameSuggestionType = Extract<
   { kind: "name" }
 >;
 
+export type AgentScopeSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "scope" }
+>;
+
 export interface ToolSuggestionRelations {
   tool: MCPServerViewType;
 }
@@ -313,13 +327,14 @@ export type AgentKnowledgeSuggestionWithRelationsType =
   AgentKnowledgeSuggestionType & { relations: KnowledgeSuggestionRelations };
 
 export type AgentSuggestionWithRelationsType =
-  | AgentToolsSuggestionWithRelationsType
-  | AgentSubAgentSuggestionWithRelationsType
-  | AgentSkillsSuggestionWithRelationsType
-  | AgentModelSuggestionWithRelationsType
-  | AgentKnowledgeSuggestionWithRelationsType
-  | (AgentInstructionsSuggestionType & { relations: null })
   | (AgentCreateSuggestionType & { relations: null })
   | (AgentDeleteSuggestionType & { relations: null })
   | (AgentDescriptionSuggestionType & { relations: null })
-  | (AgentNameSuggestionType & { relations: null });
+  | (AgentInstructionsSuggestionType & { relations: null })
+  | AgentKnowledgeSuggestionWithRelationsType
+  | AgentModelSuggestionWithRelationsType
+  | (AgentNameSuggestionType & { relations: null })
+  | (AgentScopeSuggestionType & { relations: null })
+  | AgentSkillsSuggestionWithRelationsType
+  | AgentSubAgentSuggestionWithRelationsType
+  | AgentToolsSuggestionWithRelationsType;

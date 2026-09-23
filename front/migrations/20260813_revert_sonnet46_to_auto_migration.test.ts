@@ -260,10 +260,15 @@ async function seedAgent({
   versions: SeededVersion[];
 }): Promise<string> {
   const agentId = generateRandomModelSId("agent");
+  // The identity carries the head fields of its highest version, set once every row exists.
   const agentIdentity = await AgentModel.create({
     sId: agentId,
     workspaceId: workspace.id,
+    status: versions[0]?.status ?? "archived",
+    scope: "visible",
+    reinforcement: "auto",
   });
+  let latestRow: AgentConfigurationModel | null = null;
 
   for (const version of versions) {
     const providerId: ModelProviderIdType =
@@ -302,6 +307,16 @@ async function seedAgent({
         where: { id: row.id, workspaceId: workspace.id },
         silent: true,
       }
+    );
+    if (!latestRow || row.version > latestRow.version) {
+      latestRow = row;
+    }
+  }
+
+  if (latestRow) {
+    await AgentModel.update(
+      { currentVersion: latestRow.version, status: latestRow.status },
+      { where: { id: agentIdentity.id, workspaceId: workspace.id } }
     );
   }
 

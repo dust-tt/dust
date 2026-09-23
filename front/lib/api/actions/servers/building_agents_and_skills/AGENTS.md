@@ -68,7 +68,7 @@ Directives carry ids only; a remark plugin resolves the suggestion via SWR and s
 Skills:
 Server-side: `PATCH /w/:wId/assistant/skills/:sId/suggestions` with `applyToSkill: true` calls
 `applySkillSuggestions` (`front/lib/api/skills/apply_skill_suggestions.ts`) before
-`bulkUpdateState`. The route already enforces `approved`, `skill.canWrite(auth)` and `pending`.
+`bulkUpdateState`. The route already enforces `approved`, `auth.can("write", skill)` and `pending`.
 
 - Add a `case "<kind>"` in `editsForSuggestion` returning the `SkillEdits` to apply (or `Err` if
   not applicable yet) and extend `mergeSkillEdits`. `updateSkill` replaces the whole skill, so

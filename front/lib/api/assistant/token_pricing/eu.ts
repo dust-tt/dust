@@ -7,6 +7,7 @@ import {
   CLAUDE_OPUS_4_6_MODEL_ID,
   CLAUDE_OPUS_4_7_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
+  CLAUDE_OPUS_5_5_MODEL_ID,
   CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
@@ -16,6 +17,12 @@ import {
   GEMINI_3_7_FLASH_MODEL_ID,
   GEMINI_3_8_FLASH_MODEL_ID,
 } from "@app/types/assistant/models/google_ai_studio";
+import {
+  MISTRAL_CODESTRAL_MODEL_ID,
+  MISTRAL_LARGE_MODEL_ID,
+  MISTRAL_MEDIUM_3_5_MODEL_ID,
+  MISTRAL_SMALL_MODEL_ID,
+} from "@app/types/assistant/models/mistral";
 import type { StaticModelIdType } from "@app/types/assistant/models/models";
 import {
   GPT_5_4_MINI_MODEL_ID,
@@ -27,12 +34,17 @@ import {
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
   GPT_5_6_TERRA_MODEL_ID,
   GPT_6_ASTRA_MODEL_ID,
+  GPT_6_LUNA_MODEL_ID,
+  GPT_6_SOL_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 
 // Regional and multi-region endpoints charge a 10% premium over global endpoints.
 // Anthropic: Claude 4.5 and later models served through Vertex AI in EU.
 // OpenAI: models whose pricing pages specify the data-residency uplift.
 // Google: Gemini served through a non-global agent-platform endpoint.
+// Mistral: every model served through `api.eu.mistral.ai`.
+// Verified 2026-09-22:
+// https://docs.mistral.ai/inference/regional-inference
 // Verified 2026-08-13:
 // https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai
 // https://openai.com/api/pricing/
@@ -53,19 +65,26 @@ export const EU_UPLIFT_MODEL_IDS = [
   CLAUDE_OPUS_4_7_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_OPUS_5_MODEL_ID,
+  CLAUDE_OPUS_5_5_MODEL_ID,
   CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
   GPT_5_4_MODEL_ID,
   GPT_5_4_MINI_MODEL_ID,
   GPT_5_4_NANO_MODEL_ID,
   GPT_5_5_MODEL_ID,
   GPT_5_6_SOL_MODEL_ID,
+  GPT_6_SOL_MODEL_ID,
   GPT_6_ASTRA_MODEL_ID,
   GPT_5_6_TERRA_MODEL_ID,
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
   GPT_5_6_LUNA_MODEL_ID,
+  GPT_6_LUNA_MODEL_ID,
   GEMINI_3_6_FLASH_MODEL_ID,
   GEMINI_3_7_FLASH_MODEL_ID,
   GEMINI_3_8_FLASH_MODEL_ID,
+  MISTRAL_CODESTRAL_MODEL_ID,
+  MISTRAL_LARGE_MODEL_ID,
+  MISTRAL_MEDIUM_3_5_MODEL_ID,
+  MISTRAL_SMALL_MODEL_ID,
 ] as const satisfies readonly StaticModelIdType[];
 
 function applyRegionalUplift(pricing: PricingEntry): PricingEntry {

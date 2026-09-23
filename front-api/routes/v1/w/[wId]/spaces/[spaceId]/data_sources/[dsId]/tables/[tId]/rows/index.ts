@@ -204,7 +204,7 @@ app.get(
     if (
       !dataSource ||
       dataSource.space.sId !== spaceId ||
-      !dataSource.canRead(auth)
+      !auth.can("read", dataSource)
     ) {
       return apiError(ctx, {
         status_code: 404,
@@ -287,7 +287,7 @@ app.post(
     if (
       !dataSource ||
       dataSource.space.sId !== spaceId ||
-      !dataSource.canRead(auth)
+      !auth.can("read", dataSource)
     ) {
       return apiError(ctx, {
         status_code: 404,
@@ -308,8 +308,8 @@ app.post(
       });
     }
 
-    // To write we must have canWrite or be a systemAPIKey
-    if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+    // To write we must have the write verb or be a system API key
+    if (!(auth.can("write", dataSource) || auth.isSystemKey())) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

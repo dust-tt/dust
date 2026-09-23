@@ -4,6 +4,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "aubin-tchoi",
   },
+  new_manage_skills_page: {
+    description:
+      "Enable the search-backed Manage Skills page (requires skills_search)",
+    stage: "dust_only",
+    owner: "aubin-tchoi",
+  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
@@ -98,11 +104,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fontanierh",
   },
-  claude_4_5_opus_feature: {
+  premium_model_access: {
     description:
-      "Access to Claude Opus and GPT 5.6 Sol models in the agent builder",
-    stage: "self_serve",
-    owner: "fontanierh",
+      "Access to premium models (Claude Opus, GPT Sol, GPT Astra) on workspaces without a credit-priced plan or advanced model access. Hands out paid-tier models for free, so it is an entitlement override, not a preview toggle.",
+    stage: "ask_owner",
+    owner: "pmilliotte",
   },
   claude_fable_5_feature: {
     description:
@@ -239,16 +245,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "id13",
   },
+  agent_stream_long_polling: {
+    description:
+      "Start agent event streams with long polling for this workspace",
+    stage: "dust_only",
+    owner: "id13",
+  },
   discord_bot: {
     description:
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
     owner: "frankaloia",
-  },
-  servicenow_tool: {
-    description: "ServiceNow MCP tool",
-    stage: "self_serve",
-    owner: "thomasvicaire",
   },
   shopify_tool: {
     description: "Shopify MCP tool",

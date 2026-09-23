@@ -27,7 +27,7 @@ app.get(
     // Check that user can administrate this skill.
     const skill = await SkillResource.fetchById(auth, sId);
 
-    if (!skill || !skill.canAdministrate(auth)) {
+    if (!skill || !auth.can("admin", skill)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

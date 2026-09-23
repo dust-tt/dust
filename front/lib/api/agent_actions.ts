@@ -100,7 +100,7 @@ async function fetchSkillsByMCPServer(
     : workspaceSkills.filter((skill) =>
         isSkillVisibleToViewer({
           availability: skill.availability,
-          viewerCanWrite: skill.canWrite(auth),
+          viewerCanWrite: auth.can("write", skill),
         })
       );
 

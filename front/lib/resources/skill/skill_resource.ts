@@ -64,6 +64,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
+import type { SkillReference } from "@app/lib/skills/format";
 import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
@@ -320,7 +321,9 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
  * An admin may explicitly fetch a skill it cannot read through the redaction path. That path may
  * expose public metadata such as its name and descriptions, but MUST hide instructions, tools and
  * files. The admin override above may expose them in full.
- * Global (code-defined) skills are `read`-only for every workspace member.
+ * Admin-role API keys hold all three verbs on every skill. Other API keys follow the same grant
+ * and role rules as user callers. For user callers and non-admin API keys, global (code-defined)
+ * skills are `read`-only for every workspace member.
  */
 /**
  * @cc [owner:fabiencelier,label:security;product] skill-create-capability
@@ -359,9 +362,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   // serialized to the front-end. Custom skills always expose their own.
   private readonly exposeInstructions: boolean;
   // Set on the skills an admin fetched without being able to read them (built on spaces they are
-  // not a member of): `canRead` answers false and `toJSON` drops the private fields. The other
-  // permissions are left as they are, so an admin can still administrate such a skill (archive,
-  // availability). See the "redact_unreadable" permission filtering mode of the fetchers.
+  // not a member of): `auth.can("read", skill)` answers false and `toJSON` drops the private
+  // fields. The other permissions are left as they are, so an admin can still administrate such a
+  // skill (archive, availability). See the "redact_unreadable" permission filtering mode of the
+  // fetchers.
   private redactedForCaller = false;
 
   private _mcpServerConfigurations: SkillMCPServerConfiguration[];
@@ -806,10 +810,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * The skills of `skills` the caller can read. Two checks, both required: the caller must be able
-   * to read the skill itself (see `canRead`) and every space it requests. A missing/deleted
-   * requested space is treated as not readable (see `canReadRequestedSpaces`), so skills
-   * referencing one are dropped too. This is what the fetch path applies (see
-   * `SkillPermissionFilteringMode`).
+   * to read the skill itself and every space it requests. A missing/deleted requested space is
+   * treated as not readable (see `canReadRequestedSpaces`), so skills referencing one are dropped
+   * too. This is what the fetch path applies (see `SkillPermissionFilteringMode`).
    */
   private static async filterReadable(
     auth: Authenticator,
@@ -2501,56 +2504,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  canRead(auth: Authenticator): boolean {
-    if (this.redactedForCaller) {
-      return false;
-    }
-
-    // See canWrite: API keys hold no skill grant, so any key reads any skill.
-    if (auth.isKey()) {
-      return true;
-    }
-
-    // Read comes from the role grants and from the groups holding a `read` verb on skills: the
-    // global group's workspace-wide `reader` grant (seeded by `seedWorkspaceCapabilities`) and the
-    // editors' own `editor` grant on this skill. `getGovernanceGrantVerbs` folds the type-wide
-    // grants in.
-    return auth.hasPermission("read", this);
-  }
-
-  canWrite(auth: Authenticator): boolean {
-    // TODO(governance): cleanup once we'll be able to grant API keys editorship on a skill.
-    // TODO(@jd): Revisit this shortcircuit with our current ACLs stack.
-    // API keys cannot hold a skill's `editor` grant (no such assignment mechanism exists),
-    // so any key is allowed to write to any skill. Skill *creation* is separately gated by
-    // `auth.hasWorkspacePermission("create", "skill")`; this only governs already-existing skills.
-    if (auth.isKey()) {
-      return true;
-    }
-
-    return auth.hasPermission("write", this);
-  }
-
-  canAdministrate(auth: Authenticator): boolean {
-    // See canWrite: API keys have no editor-group assignment mechanism, so any key can
-    // administrate any skill.
-    if (auth.isKey()) {
-      return true;
-    }
-
-    return auth.hasPermission("admin", this);
-  }
-
   /**
    * @cc [owner:achilleburah,label:security] canAdministrateCustomSkillId-matches-canAdministrate
-   * For a custom (never code-defined) skill, MUST return the same verdict as `canAdministrate`
-   * would for the fetched `SkillResource` with this id, without fetching or hydrating the row.
+   * For a custom (never code-defined) skill, MUST return the same verdict as
+   * `auth.can("admin", skill)` would for the fetched `SkillResource` with this id, without fetching
+   * or hydrating the row.
    */
   static canAdministrateCustomSkillId(
     auth: Authenticator,
     { id, workspaceId }: { id: ModelId; workspaceId: ModelId }
   ): boolean {
-    if (auth.isKey()) {
+    if (auth.isKey() && auth.isAdmin()) {
       return true;
     }
 
@@ -2563,15 +2527,28 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * held by the regular_auto group (see `grantToUser`).
    */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
+    // Admin API keys cannot receive a skill's editor grant, so the API-key exception grants them
+    // every verb on existing skills. Skill creation is separately gated by the workspace `create`
+    // capability.
     // Global skills carry no row, so there is no grant to look up (and their synthetic `id` of -1
     // is the type-wide sentinel, which would resolve the workspace-wide capability grants instead).
-    if (this.codeDefinedSkillId) {
-      return new Set(
+    let allowedVerbs: Set<GrantVerb>;
+    if (auth.isKey() && auth.isAdmin()) {
+      allowedVerbs = new Set(["read", "write", "admin"]);
+    } else if (this.codeDefinedSkillId) {
+      allowedVerbs = new Set(
         verbsFromRoleGrants(auth, GLOBAL_SKILL_ROLE_GRANTS, this.workspaceId)
       );
+    } else {
+      allowedVerbs = SkillResource.customSkillAllowedVerbs(auth, this);
     }
 
-    return SkillResource.customSkillAllowedVerbs(auth, this);
+    // A redacted admin keeps administrative access but must not read the private skill fields.
+    if (this.redactedForCaller) {
+      allowedVerbs.delete("read");
+    }
+
+    return allowedVerbs;
   }
 
   // The verbs the caller holds on a custom skill, from its row: what `getAllowedVerbs` serves for a
@@ -2587,14 +2564,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ]);
   }
 
-  // `canRead` against a custom skill's row: the fetch path filters before building resources, so a
-  // skill the caller cannot read is never hydrated.
+  // The equivalent of `auth.can("read", skill)` against a custom skill's row: the fetch path
+  // filters before building resources, so a skill the caller cannot read is never hydrated.
   private static canReadRow(
     auth: Authenticator,
     skill: SkillConfigurationModel
   ): boolean {
-    // See canWrite: API keys hold no skill grant, so any key reads any skill.
-    if (auth.isKey()) {
+    // Keep this pre-hydration check aligned with the admin-key exception in `getAllowedVerbs`.
+    if (auth.isKey() && auth.isAdmin()) {
       return true;
     }
 
@@ -2911,7 +2888,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new Ok(undefined);
     }
 
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new Error("User is not authorized to update skill editors.")
       );
@@ -2946,7 +2923,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new Ok(undefined);
     }
 
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -2973,7 +2950,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new Ok(undefined);
     }
 
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -3348,7 +3325,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
     assert(
-      this.canAdministrate(auth),
+      auth.can("admin", this),
       "User is not authorized to archive this skill"
     );
 
@@ -3440,7 +3417,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   async restore(auth: Authenticator): Promise<{ affectedCount: number }> {
     assert(
-      this.canAdministrate(auth),
+      auth.can("admin", this),
       "User is not authorized to restore this skill"
     );
 
@@ -3529,7 +3506,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       userFacingDescription: string;
     }
   ): Promise<void> {
-    assert(this.canWrite(auth), "User is not authorized to update this skill");
+    assert(
+      auth.can("write", this),
+      "User is not authorized to update this skill"
+    );
     SkillNameSchema.parse(name);
 
     const availabilityChanged =
@@ -4126,7 +4106,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     assert(
-      this.canWrite(auth),
+      auth.can("write", this),
       "User does not have permission to update this skill."
     );
 
@@ -4213,7 +4193,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async delete(auth: Authenticator): Promise<Result<number, Error>> {
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new Error("User does not have permission to delete this skill.")
       );
@@ -4873,6 +4853,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     };
   }
 
+  toRefJSON(): SkillReference {
+    return { icon: this.icon, id: this.sId, name: this.name };
+  }
+
   toJSON(auth: Authenticator): SkillType {
     const toSpaceId = (spaceId: ModelId) =>
       SpaceResource.modelIdToSId({
@@ -4941,9 +4925,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           fileName: file.fileName,
         })
       ),
-      canRead: this.canRead(auth),
-      canWrite: this.canWrite(auth),
-      canAdministrate: this.canAdministrate(auth),
+      canRead: auth.can("read", this),
+      canWrite: auth.can("write", this),
+      canAdministrate: auth.can("admin", this),
       isDefault: isDefaultFromAvailability(this.availability),
       availability: this.availability,
     };

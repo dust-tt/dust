@@ -5,6 +5,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  AGENT_SIDE_PANEL_TYPE,
   CREDITS_SIDE_PANEL_TYPE,
   FILE_PREVIEW_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
@@ -49,10 +50,16 @@ type OpenPanelParams =
   | {
       type: "skill";
       skillId: string;
+      previewSuggestionIds?: string[];
     }
   | {
       type: "tool";
       toolId: string;
+    }
+  | {
+      type: "agent";
+      agentId: string;
+      previewSuggestionIds?: string[];
     };
 
 const FILE_PREVIEW_FILE_ID_PREFIX = "id:";
@@ -72,6 +79,18 @@ export function parseFilePreviewData(
   return data.startsWith(FILE_PREVIEW_FILE_ID_PREFIX)
     ? { kind: "id", fileId: data.slice(FILE_PREVIEW_FILE_ID_PREFIX.length) }
     : { kind: "path", filePath: data };
+}
+
+export interface SuggestionPreviewTarget {
+  entityId: string;
+  suggestionIds: string;
+}
+
+export function parseSuggestionPreviewData(
+  data: string | undefined
+): SuggestionPreviewTarget {
+  const [entityId, suggestionIds = ""] = (data ?? "").split("@");
+  return { entityId, suggestionIds };
 }
 
 function filePreviewDataKey(target: FilePreviewTarget): string {
@@ -103,9 +122,15 @@ function panelDataKey(params: OpenPanelParams): string {
     case PLAN_SIDE_PANEL_TYPE:
       return params.type;
     case SKILL_SIDE_PANEL_TYPE:
-      return params.skillId;
+      return params.previewSuggestionIds?.length
+        ? `${params.skillId}@${params.previewSuggestionIds.join(",")}`
+        : params.skillId;
     case TOOL_SIDE_PANEL_TYPE:
       return params.toolId;
+    case AGENT_SIDE_PANEL_TYPE:
+      return params.previewSuggestionIds?.length
+        ? `${params.agentId}@${params.previewSuggestionIds.join(",")}`
+        : params.agentId;
     default:
       return assertNever(params);
   }
@@ -155,10 +180,28 @@ function panelParamsFromHash(
     case CREDITS_SIDE_PANEL_TYPE:
     case PLAN_SIDE_PANEL_TYPE:
       return { type };
-    case SKILL_SIDE_PANEL_TYPE:
-      return { type, skillId: data };
+    case SKILL_SIDE_PANEL_TYPE: {
+      const { entityId, suggestionIds } = parseSuggestionPreviewData(data);
+      return {
+        type,
+        skillId: entityId,
+        previewSuggestionIds: suggestionIds
+          ? suggestionIds.split(",")
+          : undefined,
+      };
+    }
     case TOOL_SIDE_PANEL_TYPE:
       return { type, toolId: data };
+    case AGENT_SIDE_PANEL_TYPE: {
+      const { entityId, suggestionIds } = parseSuggestionPreviewData(data);
+      return {
+        type,
+        agentId: entityId,
+        previewSuggestionIds: suggestionIds
+          ? suggestionIds.split(",")
+          : undefined,
+      };
+    }
     default:
       assertNeverAndIgnore(type);
       return null;
@@ -175,7 +218,8 @@ const isSupportedPanelType = (
   type === "files" ||
   type === "plan" ||
   type === "skill" ||
-  type === "tool";
+  type === "tool" ||
+  type === "agent";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;

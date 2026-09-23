@@ -35,7 +35,7 @@ app.get(
     const { aId, runId } = ctx.req.valid("param");
 
     const found = await AppResource.fetchById(auth, aId);
-    if (!found || !found.canRead(auth) || found.space.sId !== space.sId) {
+    if (!found || !auth.can("read", found) || found.space.sId !== space.sId) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

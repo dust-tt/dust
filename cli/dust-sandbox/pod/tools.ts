@@ -13,8 +13,8 @@
 //
 // Auth and routing come from the invocation environment (DUST_API_URL is
 // workspace-scoped, DUST_SANDBOX_TOKEN is minted per invocation), read through
-// podEnv() and passed explicitly to the child, so concurrent invocations in
-// one process stay isolated even though the child inherits the rest of
+// invocationEnv() and passed explicitly to the child, so concurrent invocations
+// in one process stay isolated even though the child inherits the rest of
 // process.env.
 //
 // Tool outputs above front's offload threshold are resolved by dsbx itself
@@ -25,7 +25,7 @@
 
 import { z } from "zod";
 
-import { podEnv } from "./context.ts";
+import { invocationEnv } from "./context.ts";
 import {
   recordToolTiming,
   type ToolCallServerTimingsMs,
@@ -235,7 +235,7 @@ function tryParseJson(text: string): unknown {
 }
 
 function requiredEnv(name: string): string {
-  const value = podEnv(name);
+  const value = invocationEnv(name);
   if (!value) {
     throw new ToolCallError(
       "missing_env",
@@ -365,7 +365,7 @@ export const tools = {
   ): Promise<ToolCallResult> {
     const apiUrl = requiredEnv(TOOLS_API_URL_ENV);
     const token = requiredEnv(TOOLS_SANDBOX_TOKEN_ENV);
-    const dsbxPath = podEnv(DSBX_PATH_ENV) ?? DEFAULT_DSBX_PATH;
+    const dsbxPath = invocationEnv(DSBX_PATH_ENV) ?? DEFAULT_DSBX_PATH;
     const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
     // Wall clock around the whole `dsbx tools` child. Prefer dsbx's own

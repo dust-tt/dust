@@ -75,6 +75,11 @@ export async function createPendingAgentConfiguration(
       {
         sId,
         workspaceId: owner.id,
+        name: PENDING_AGENT_PLACEHOLDER_NAME,
+        status: "pending",
+        scope: "hidden",
+        reinforcement: "auto",
+        templateId: null,
       },
       { transaction: t }
     );
@@ -560,7 +565,6 @@ export async function destroyAgentConfigurationRow(
 
   const remainingConfiguration = await AgentConfigurationModel.findOne({
     where: { sId: agent.sId, workspaceId },
-    attributes: ["agentId", "version"],
     order: [["version", "DESC"]],
     transaction,
   });

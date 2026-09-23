@@ -1,7 +1,8 @@
+import { useIsAgentLoopStreaming } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import { AgentLoopStreamProvider } from "@app/components/assistant/conversation/AgentLoopStreamProvider";
 import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseOngoingAgentLoops = vi.hoisted(() => vi.fn());
@@ -17,6 +18,10 @@ vi.mock("@app/lib/swr/ongoing_agent_loops", () => ({
 }));
 
 const owner = LightWorkspaceFactory.build({ sId: "w_1" });
+
+function StreamIndicator() {
+  return useIsAgentLoopStreaming("conv_1") ? "active" : "inactive";
+}
 
 describe("AgentLoopStreamProvider", () => {
   beforeEach(() => {
@@ -90,5 +95,29 @@ describe("AgentLoopStreamProvider", () => {
       "message-msg_cached",
       "w_1"
     );
+  });
+
+  it("observes every registered stream for a conversation", () => {
+    mockUseOngoingAgentLoops.mockReturnValue({
+      ongoingAgentLoops: [
+        { conversationId: "conv_1", messageId: "msg_open" },
+        { conversationId: "conv_1", messageId: "msg_failed" },
+      ],
+      refreshOngoingAgentLoops: mockRefreshOngoingAgentLoops,
+    });
+    vi.spyOn(eventSourceManager, "getConnectionState").mockImplementation(
+      (streamId) =>
+        streamId === "message-msg_open"
+          ? { kind: "open", openedAt: 1 }
+          : { kind: "failed", attempt: 1, error: new Error("failed") }
+    );
+
+    render(
+      <AgentLoopStreamProvider owner={owner}>
+        <StreamIndicator />
+      </AgentLoopStreamProvider>
+    );
+
+    expect(screen.getByText("active")).toBeInTheDocument();
   });
 });

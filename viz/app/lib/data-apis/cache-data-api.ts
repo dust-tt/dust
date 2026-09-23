@@ -1,6 +1,13 @@
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
-import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
-import type { UserIdentityState } from "@viz/app/types";
+import type {
+  FrameFile,
+  VisualizationDataAPI,
+} from "@viz/app/lib/visualization-api";
+import type {
+  UserIdentityState,
+  WriteFileParams,
+  WriteFileResult,
+} from "@viz/app/types";
 
 export interface PreFetchedFile {
   data: string; // base64
@@ -61,8 +68,16 @@ export class CacheDataAPI implements VisualizationDataAPI {
     };
   }
 
-  async fetchFile(fileId: string): Promise<File | null> {
-    return this.fileCache.get(fileId) || null;
+  async fetchFile(fileId: string): Promise<FrameFile | null> {
+    const file = this.fileCache.get(fileId);
+    return file ? { file, revision: null, canWrite: false } : null;
+  }
+
+  async writeFile(_params: WriteFileParams): Promise<WriteFileResult> {
+    return {
+      success: false,
+      error: { code: "read_only", message: "This Frame is read-only." },
+    };
   }
 
   async fetchCode(): Promise<string | null> {

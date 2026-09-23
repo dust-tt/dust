@@ -404,7 +404,7 @@ export async function exportApps(
   ]);
 
   const enhancedApps = await concurrentExecutor(
-    apps.filter((app) => app.canRead(auth)),
+    apps.filter((app) => auth.can("read", app)),
 
     async (app) => {
       const specsToFetch = await getSpecificationsHashesFromCore(

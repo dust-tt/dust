@@ -13,8 +13,12 @@ import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 // False if the model requires an on-demand/dust-only feature flag (not GA).
+// `premium_model_access` is not one: it waives a paid entitlement on a model
+// that is already released, so it must not hide the model from the GA list.
 export function isModelReleased(m: ModelConfigurationType): boolean {
-  return !m.availableIfOneOf?.featureFlag;
+  const { featureFlag } = m.availableIfOneOf ?? {};
+
+  return featureFlag === undefined || featureFlag === "premium_model_access";
 }
 
 function checkModelSpecificAccessRules(

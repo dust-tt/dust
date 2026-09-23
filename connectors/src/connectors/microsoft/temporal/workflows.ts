@@ -5,12 +5,19 @@ import type * as sync_status from "@connectors/lib/sync_status";
 import type { ModelId } from "@connectors/types";
 import {
   continueAsNew,
+  patched,
   proxyActivities,
   setHandler,
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 import uniq from "lodash/uniq";
+
+// Gates the SharePoint list-sync steps added to the full and incremental sync
+// workflows. Without it, workflows started before this shipped fail to replay
+// with "activity type ... does not match" once list sync was inserted before
+// syncSucceeded. Remove via deprecatePatch once no pre-patch history remains.
+const SYNC_SHAREPOINT_LISTS_PATCH = "microsoft-sync-sharepoint-lists";
 
 const {
   getRootNodesToSync,
@@ -185,14 +192,18 @@ export async function fullSyncWorkflow({
   // SharePoint lists are not part of the drive/folder BFS above: they live at
   // the site level and are synced as standalone tables. Re-sync all selected
   // lists once the drive sync has drained.
-  const listNodeIds = await getListNodesToSync(connectorId);
-  for (const listInternalId of listNodeIds) {
-    await syncOneListActivity({
-      connectorId,
-      listInternalId,
-      skipIfUnchanged: false,
-      startSyncTs,
-    });
+  // Guarded by patched() so workflows already in-flight when list sync shipped
+  // replay deterministically (they never scheduled these activities).
+  if (patched(SYNC_SHAREPOINT_LISTS_PATCH)) {
+    const listNodeIds = await getListNodesToSync(connectorId);
+    for (const listInternalId of listNodeIds) {
+      await syncOneListActivity({
+        connectorId,
+        listInternalId,
+        skipIfUnchanged: false,
+        startSyncTs,
+      });
+    }
   }
 
   const hasPendingNodeUpdates =
@@ -315,14 +326,18 @@ export async function incrementalSyncWorkflowV2({
 
   // Lists have no delta endpoint in this pipeline: re-sync each selected list,
   // skipping the upload when its lastModifiedDateTime has not advanced.
-  const listNodeIds = await getListNodesToSync(connectorId);
-  for (const listInternalId of listNodeIds) {
-    await syncOneListActivity({
-      connectorId,
-      listInternalId,
-      skipIfUnchanged: true,
-      startSyncTs,
-    });
+  // Guarded by patched() so workflows already in-flight when list sync shipped
+  // replay deterministically (they never scheduled these activities).
+  if (patched(SYNC_SHAREPOINT_LISTS_PATCH)) {
+    const listNodeIds = await getListNodesToSync(connectorId);
+    for (const listInternalId of listNodeIds) {
+      await syncOneListActivity({
+        connectorId,
+        listInternalId,
+        skipIfUnchanged: true,
+        startSyncTs,
+      });
+    }
   }
 
   if (!fullSyncRunning) {

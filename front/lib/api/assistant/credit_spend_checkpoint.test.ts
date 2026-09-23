@@ -1,4 +1,5 @@
 import {
+  getCreditSpendCheckpointEnabled,
   hasCrossedCreditSpendCheckpoint,
   hasReachedCreditSpendCheckpoint,
   isExemptFromCreditSpendCheckpoint,
@@ -6,7 +7,9 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { describe, expect, it } from "vitest";
 
 describe("isExemptFromCreditSpendCheckpoint", () => {
@@ -75,6 +78,44 @@ describe("hasReachedCreditSpendCheckpoint", () => {
     expect(
       hasReachedCreditSpendCheckpoint({ totalCostMicroUsd: thresholdMicroUsd })
     ).toBe(true);
+  });
+});
+
+describe("getCreditSpendCheckpointEnabled", () => {
+  it("defaults to enabled when no configuration row exists", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    expect(await getCreditSpendCheckpointEnabled(auth)).toBe(true);
+  });
+
+  it("is disabled when the workspace cleared the threshold", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const createResult = await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      creditSpendCheckpointThresholdAwuCredits: null,
+    });
+    expect(createResult.isOk()).toBe(true);
+
+    expect(await getCreditSpendCheckpointEnabled(auth)).toBe(false);
+  });
+
+  it("is enabled when the workspace set a threshold", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const createResult = await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      creditSpendCheckpointThresholdAwuCredits:
+        CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+    });
+    expect(createResult.isOk()).toBe(true);
+
+    expect(await getCreditSpendCheckpointEnabled(auth)).toBe(true);
   });
 });
 

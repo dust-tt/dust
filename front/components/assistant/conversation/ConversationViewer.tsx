@@ -26,12 +26,13 @@ import {
   convertLightMessageTypeToVirtuosoMessages,
   getPredicateForRank,
   isAgentMessageWithStreaming,
-  isAtInitialStreamState,
   isCompactionMessage,
   isConversationForkNotice,
   isPlaceholderMessage,
   isUserMessage,
   makeInitialMessageStreamState,
+  reconcileAgentMessage,
+  reconcileCachedAgentMessage,
 } from "@app/components/assistant/conversation/types";
 import {
   CONVERSATION_MESSAGES_PAGE_LIMIT,
@@ -68,6 +69,7 @@ import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_des
 import logger from "@app/logger/logger";
 import type { GetConversationPlanModeResponseBody } from "@app/types/api/assistant/plan_mode";
 import type {
+  AgentMessageType,
   ConversationForkedChildType,
   ConversationListItemType,
 } from "@app/types/assistant/conversation";
@@ -249,6 +251,11 @@ function buildFirstMessagePlaceholders(
   return { userMessage, agentMessages };
 }
 
+/**
+ * @cc [owner:id13,label:react;reliability] terminal-message-state-is-canonical
+ * `agent_message_done` MUST revalidate persisted messages instead of synthesizing terminal message
+ * state from the live stream, which may not have received the final answer or activity steps yet.
+ */
 export const ConversationViewer = ({
   owner,
   user,
@@ -346,6 +353,29 @@ export const ConversationViewer = ({
     limit: CONVERSATION_MESSAGES_PAGE_LIMIT,
     disabled,
   });
+
+  const handleAgentMessageRetry = useCallback(
+    (message: AgentMessageType) => {
+      const lightMessage = getLightAgentMessageFromAgentMessage(message);
+      const retriedMessage = makeInitialMessageStreamState(lightMessage);
+
+      virtuosoMessageListRef.current?.data.map((current) =>
+        reconcileAgentMessage(current, retriedMessage)
+      );
+
+      void mutateMessages(
+        (pages) =>
+          pages?.map((page) => ({
+            ...page,
+            messages: page.messages.map((current) =>
+              reconcileCachedAgentMessage(current, lightMessage)
+            ),
+          })),
+        { revalidate: false }
+      );
+    },
+    [mutateMessages]
+  );
 
   const { mutateConversationParticipants } = useConversationParticipants({
     conversationId,
@@ -528,6 +558,18 @@ export const ConversationViewer = ({
     const minRank = Math.min(...ranks);
 
     const messagesFromBackend = messages.flatMap((m) => m.messages);
+    const renderedMessagesFromBackend =
+      convertLightMessageTypeToVirtuosoMessages(messagesFromBackend);
+    const agentMessagesByRank = new Map(
+      renderedMessagesFromBackend
+        .filter(isAgentMessageWithStreaming)
+        .map((message) => [message.rank, message])
+    );
+
+    virtuosoMessageListRef.current.data.map((current) => {
+      const incoming = agentMessagesByRank.get(current.rank);
+      return incoming ? reconcileAgentMessage(current, incoming) : current;
+    });
 
     const olderMessagesFromBackend = messagesFromBackend.filter(
       (m) => m.rank < minRank
@@ -767,43 +809,9 @@ export const ConversationViewer = ({
                 virtuosoMessageListRef.current.data.find(predicate);
 
               if (exists) {
-                // Guard against conversation SSE replays overwriting a message
-                // that the message-level SSE has already partially or fully
-                // streamed.
-                //
-                // Two independent SSE streams feed each message:
-                //   1. Conversation stream — carries agent_message_new (structural events)
-                //   2. Message stream      — carries generation_tokens, tool_* (content events)
-                //
-                // When the conversation stream drops and reconnects, the server
-                // replays agent_message_new with the message's original "created"
-                // payload: null content, agentState = "thinking", empty steps.
-                // Replacing the Virtuoso entry with that stale payload would wipe
-                // whatever the message stream already delivered, so we skip the
-                // replace when the existing entry is the same logical message
-                // (same sId) and has already progressed past its initial state.
-                //
-                // Retries carry a new sId at the same rank/branch, so they
-                // always fall through to the replace path.
-                const shouldSkipReplace =
-                  isAgentMessageWithStreaming(exists) &&
-                  exists.sId === agentMessage.sId &&
-                  !isAtInitialStreamState(exists);
-
-                if (shouldSkipReplace && agentMessage.richMentions.length > 0) {
-                  // User mentions are resolved after the agent finishes and
-                  // arrive through a second agent_message_new event. Keep the
-                  // streamed message state, but apply the resolved mentions.
-                  virtuosoMessageListRef.current.data.map((m) =>
-                    isAgentMessageWithStreaming(m) && m.sId === agentMessage.sId
-                      ? { ...m, richMentions: agentMessage.richMentions }
-                      : m
-                  );
-                } else if (!shouldSkipReplace) {
-                  virtuosoMessageListRef.current.data.map((m) =>
-                    predicate(m) ? agentMessage : m
-                  );
-                }
+                virtuosoMessageListRef.current.data.map((current) =>
+                  reconcileAgentMessage(current, agentMessage)
+                );
               } else {
                 const currentData = virtuosoMessageListRef.current.data.get();
                 // Insert before the first message with a strictly greater rank, or append if none.
@@ -887,43 +895,7 @@ export const ConversationViewer = ({
             // Re-fetch context usage after the agent finishes so the indicator is up-to-date.
             void mutateContextUsage();
 
-            // Terminal errors are persisted before `agent_message_done` is
-            // published. Revalidate from that canonical row: the independent
-            // message stream may not have put the error in Virtuoso yet.
-            if (event.status === "error") {
-              void mutateMessages();
-            } else {
-              const vMsg = virtuosoMessageListRef.current?.data.find(
-                (m) => m.sId === event.messageId
-              );
-              const msg =
-                vMsg && isAgentMessageWithStreaming(vMsg) ? vMsg : null;
-
-              void mutateMessages(
-                (pages) =>
-                  pages?.map((page) => ({
-                    ...page,
-                    messages: page.messages.map((m) =>
-                      isLightAgentMessageType(m) && m.sId === event.messageId
-                        ? {
-                            ...m,
-                            status: "succeeded" as const,
-                            ...(msg !== null
-                              ? {
-                                  content: msg.content,
-                                  completionDurationMs:
-                                    msg.completionDurationMs,
-                                  activitySteps:
-                                    msg.streaming.inlineActivitySteps,
-                                }
-                              : {}),
-                          }
-                        : m
-                    ),
-                  })),
-                { revalidate: msg === null }
-              );
-            }
+            void mutateMessages();
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
@@ -1436,6 +1408,7 @@ export const ConversationViewer = ({
       projectSpaceName: spaceInfo?.name,
       isNoSeat: limitReachedCode === "no_seat",
       setLimitReachedCode,
+      onAgentMessageRetry: handleAgentMessageRetry,
     };
   }, [
     user,
@@ -1455,6 +1428,7 @@ export const ConversationViewer = ({
     spaceInfo?.name,
     limitReachedCode,
     setLimitReachedCode,
+    handleAgentMessageRetry,
   ]);
 
   return (

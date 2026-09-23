@@ -33,7 +33,7 @@ export interface SkillEditorsChange {
 /**
  * @cc [owner:achilleburah,label:security;product] same-rules-as-manual-editors-route
  * A change MUST pass exactly when `PATCH /skills/:sId/editors` would accept it from the same
- * caller: `skill.canAdministrate(auth)`, skill not archived, every user found, added editors
+ * caller: `auth.can("admin", skill)`, skill not archived, every user found, added editors
  * active members able to read the skill's requested spaces. Removed users need no membership:
  * the route lets a departed member be removed, and so does this. Two deliberate additions the
  * route permits: a user in both lists fails with `user_in_both_lists`, as the recorded change
@@ -55,7 +55,7 @@ export async function validateSkillEditorsChange(
     removeUserIds,
   }: { addUserIds: string[]; removeUserIds: string[] }
 ): Promise<Result<SkillEditorsChange, SkillEditorsChangeError>> {
-  if (!skill.canAdministrate(auth)) {
+  if (!auth.can("admin", skill)) {
     return new Err(
       new SkillEditorsChangeError(
         "not_authorized",

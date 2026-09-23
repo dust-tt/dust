@@ -6,6 +6,9 @@ import {
 } from "@viz/app/lib/frame-function-hooks";
 import type { FrameRuntimeImportName } from "@viz/app/lib/frame-runtime-imports";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
+import type { WriteFileParams } from "@viz/app/types";
+import * as dustDocumentV1 from "@viz/components/dust/document/v1";
+import * as dustFrame from "@viz/components/dust/frame";
 import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
 import * as dustSlideshowV2 from "@viz/components/dust/slideshow/v2";
 import * as shadcn from "@viz/components/ui";
@@ -44,6 +47,8 @@ export function createFrameRuntimeImports({
     "@viz/lib/utils": utils,
     "lucide-react": lucide,
     "motion/react": motion,
+    "@dust/document/v1": dustDocumentV1,
+    "@dust/frame": dustFrame,
     "@dust/slideshow/v1": dustSlideshowV1,
     "@dust/slideshow/v2": dustSlideshowV2,
     "@dust/react-hooks": {
@@ -53,6 +58,12 @@ export function createFrameRuntimeImports({
       captureScreenshot,
       triggerUserFileDownload,
       useFile,
+      readFile: (path: string) => dataAPI.fetchFile(path),
+      writeFile: (
+        path: string,
+        content: string,
+        options: Pick<WriteFileParams, "revision" | "contentType">
+      ) => dataAPI.writeFile({ ...options, path, content }),
       useFrameFunction,
       useFrameFunctionMutation,
       // Previously published Frames still import these names.

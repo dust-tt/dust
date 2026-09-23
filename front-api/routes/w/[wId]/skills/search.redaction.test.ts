@@ -125,6 +125,58 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     });
   });
 
+  it.each([
+    { sortBy: "name", field: "name.keyword", value: "resume" },
+    { sortBy: "usage", field: "active_users_count", value: 42 },
+    { sortBy: "updatedAt", field: "updated_at", value: null },
+  ] as const)("sorts by $sortBy in both directions and preserves pagination", async ({
+    sortBy,
+    field,
+    value,
+  }) => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    await FeatureFlagFactory.basic(auth, "skills_search");
+    const skill = await SkillFactory.create(auth);
+    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
+    const sort = [value, skill.sId];
+    mockSearch.mockResolvedValue({
+      hits: { hits: [{ _source: document, sort }] },
+    });
+
+    for (const sortOrder of ["asc", "desc"] as const) {
+      const first = await searchRequest(workspace.sId, {
+        sortBy,
+        sortOrder,
+        limit: 1,
+      });
+      expect(first.status).toBe(200);
+      const { nextCursor } = await first.json();
+
+      const second = await searchRequest(workspace.sId, {
+        sortBy,
+        sortOrder,
+        limit: 1,
+        cursor: nextCursor,
+      });
+      expect(second.status).toBe(200);
+      expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
+        search_after: sort,
+        sort: [
+          {
+            [field]: {
+              order: sortOrder,
+              missing: "_last",
+              ...(sortBy === "updatedAt" ? { format: "epoch_millis" } : {}),
+            },
+          },
+          { skill_id: { order: "asc" } },
+        ],
+      });
+    }
+  });
+
   it("uses the encoded cursor from the last returned hit for the next page", async () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "user",

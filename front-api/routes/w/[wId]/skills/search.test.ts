@@ -86,6 +86,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       cursor: undefined,
       permissionFiltering: undefined,
       sortBy: undefined,
+      sortOrder: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,
@@ -141,6 +142,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       cursor,
       permissionFiltering: undefined,
       sortBy: undefined,
+      sortOrder: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,
@@ -167,7 +169,8 @@ describe("POST /api/w/:wId/skills/search", () => {
     { editedByMe: false },
     { editedByMe: 1 },
     { codeDefinedOnly: false },
-    { sortBy: "name" },
+    { sortBy: "unknown" },
+    { sortOrder: "unknown" },
     { availability: ["unknown"] },
     { status: ["suggested"] },
     { status: ["active", "suggested"] },
@@ -218,6 +221,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       cursor: undefined,
       permissionFiltering: "redact_unreadable",
       sortBy: undefined,
+      sortOrder: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,

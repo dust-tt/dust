@@ -8,6 +8,7 @@ import type { DustError } from "@app/lib/error";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  AgentMessageType,
   CompactionMessageType,
   ConversationWithoutContentType,
   InlineActivityStep,
@@ -148,6 +149,7 @@ export type VirtuosoMessageListContext = {
   projectSpaceName?: string;
   isNoSeat?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
+  onAgentMessageRetry: (message: AgentMessageType) => void;
 };
 
 export const areSameRank = (
@@ -280,6 +282,73 @@ export const isAtInitialStreamState = (
     actionProgress.size === 0
   );
 };
+
+/**
+ * @cc [owner:id13,label:react;reliability] newest-agent-message-version-wins
+ * An incoming agent message MUST replace a message at the same rank when its version is newer.
+ * An older incoming version MUST NOT replace the current message.
+ */
+/**
+ * @cc [owner:id13,label:react;reliability] preserve-live-agent-message-progress
+ * An initial snapshot of the same agent-message version MUST NOT erase live streaming progress.
+ * A terminal snapshot of that version MUST replace the live state.
+ */
+export function reconcileAgentMessage(
+  current: VirtuosoMessage,
+  incoming: AgentMessageWithStreaming
+): VirtuosoMessage {
+  if (
+    current.rank !== incoming.rank ||
+    isConversationForkNotice(current) ||
+    current.version > incoming.version
+  ) {
+    return current;
+  }
+
+  if (
+    isAgentMessageWithStreaming(current) &&
+    current.sId === incoming.sId &&
+    !isAtInitialStreamState(current) &&
+    isAtInitialStreamState(incoming)
+  ) {
+    return incoming.richMentions.length > 0
+      ? { ...current, richMentions: incoming.richMentions }
+      : current;
+  }
+
+  return incoming;
+}
+
+/**
+ * @cc [owner:id13,label:react;reliability] cache-keeps-newest-agent-message
+ * A retried agent message MUST replace an older cached message at the same rank so remounting the
+ * conversation cannot restore the previous answer.
+ */
+/**
+ * @cc [owner:id13,label:react;reliability] cache-terminal-state-monotonic
+ * An initial snapshot MUST NOT replace a terminal cached snapshot of the same agent-message
+ * version.
+ */
+export function reconcileCachedAgentMessage(
+  current: LightMessageType,
+  incoming: LightAgentMessageType
+): LightMessageType {
+  if (current.rank !== incoming.rank || current.version > incoming.version) {
+    return current;
+  }
+
+  if (
+    isLightAgentMessageType(current) &&
+    current.sId === incoming.sId &&
+    current.version === incoming.version &&
+    isTerminalAgentMessageStatus(current.status) &&
+    !isTerminalAgentMessageStatus(incoming.status)
+  ) {
+    return current;
+  }
+
+  return incoming;
+}
 
 const BOOTSTRAP_MESSAGE_ORIGINS: UserMessageOrigin[] = [
   "agent_sidekick",

@@ -49,7 +49,7 @@ app.get(
       });
     }
 
-    if (!dataSource.canAdministrate(auth)) {
+    if (!auth.can("admin", dataSource)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

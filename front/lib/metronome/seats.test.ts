@@ -1108,9 +1108,9 @@ describe("computeSeatCreditTransfers", () => {
     expect(transfers[0]).toMatchObject({ remaining: 39994, consumed: 6 });
   });
 
-  it("skips moves involving non-recurring-credit seats (workspace, free, none)", () => {
+  it("skips moves whose ORIGIN has no recurring seat credit (workspace/none → anything)", () => {
     const balanceByUser = new Map([["u1", 6000]]);
-    // workspace → pro: origin has no recurring seat credit.
+    // workspace → pro: origin has no recurring seat credit, nothing to drain.
     expect(
       computeSeatCreditTransfers({
         metronomeSeatByUser: new Map([["u1", "workspace"]]),
@@ -1119,15 +1119,39 @@ describe("computeSeatCreditTransfers", () => {
         allocationBySeatType: ALLOCATIONS,
       })
     ).toEqual([]);
-    // pro → none: destination has no recurring seat credit (downgrade anyway).
+    // none → pro: origin has no recurring seat credit.
     expect(
       computeSeatCreditTransfers({
-        metronomeSeatByUser: new Map([["u1", "pro"]]),
-        desiredSeatByUser: new Map([["u1", "none"]]),
+        metronomeSeatByUser: new Map([["u1", "none"]]),
+        desiredSeatByUser: new Map([["u1", "pro"]]),
         balanceByUser,
         allocationBySeatType: ALLOCATIONS,
       })
     ).toEqual([]);
+  });
+
+  it("empties the origin (no carry) on a downgrade to a non-credit-bearing seat (max → none)", () => {
+    // 11000/40000 consumed on max, then removed to None. The max credit must be
+    // drained (remaining 29000) or it is left live on the now-unassigned seat.
+    // The destination (none) has no credit, so `newCreditName` is null and the
+    // carry step skips it.
+    const transfers = computeSeatCreditTransfers({
+      metronomeSeatByUser: new Map([["u1", "max"]]),
+      desiredSeatByUser: new Map([["u1", "none"]]),
+      balanceByUser: new Map([["u1", 29000]]),
+      allocationBySeatType: ALLOCATIONS,
+    });
+    expect(transfers).toEqual([
+      {
+        userId: "u1",
+        oldSeatType: "max",
+        newSeatType: "none",
+        oldCreditName: MAX_SEAT_CREDIT_NAME,
+        newCreditName: null,
+        remaining: 29000,
+        consumed: 11000,
+      },
+    ]);
   });
 
   it("handles multiple users moving in one sync", () => {

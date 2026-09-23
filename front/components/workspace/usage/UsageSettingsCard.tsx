@@ -1,5 +1,6 @@
 import { parseDefaultLimitInput } from "@app/components/workspace/member_spend_limit_helpers";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import {
   useDefaultUserSpendLimit,
   useUpdateDefaultUserSpendLimit,
@@ -59,6 +60,12 @@ export function UsageSettingsCard({
   const handleToggleAutoSeatUpgrade = async () => {
     await doUpdateUsageSettings({
       autoSeatUpgradeEnabled: !usageSettings.autoSeatUpgradeEnabled,
+    });
+  };
+
+  const handleToggleCreditSpendCheckpointEnabled = async () => {
+    await doUpdateUsageSettings({
+      creditSpendCheckpointEnabled: !usageSettings.creditSpendCheckpointEnabled,
     });
   };
 
@@ -182,6 +189,17 @@ export function UsageSettingsCard({
                 !usageSettings.autoSeatUpgradeAvailable
               }
               onClick={() => void handleToggleAutoSeatUpgrade()}
+            />
+          }
+        />
+        <SettingsList.Row
+          title="Credit spend checkpoint"
+          description={`Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches ${CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS.toLocaleString()} credits.`}
+          action={
+            <SliderToggle
+              selected={usageSettings.creditSpendCheckpointEnabled}
+              disabled={isUpdatingUsageSettings || isUsageSettingsLoading}
+              onClick={() => void handleToggleCreditSpendCheckpointEnabled()}
             />
           }
         />

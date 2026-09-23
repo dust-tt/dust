@@ -113,7 +113,7 @@ app.get(
     if (
       !dataSource ||
       dataSource.space.sId !== spaceId ||
-      !dataSource.canRead(auth)
+      !auth.can("read", dataSource)
     ) {
       return apiError(ctx, {
         status_code: 404,

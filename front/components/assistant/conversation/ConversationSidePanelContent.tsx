@@ -1,4 +1,5 @@
 import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
+import { ConversationAgentPanel } from "@app/components/assistant/conversation/agent_panel/ConversationAgentPanel";
 import { ConversationCreditUsagePanel } from "@app/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel";
 import { ConversationFilesPanel } from "@app/components/assistant/conversation/files_panel/ConversationFilesPanel";
 import { FilePreviewPanel } from "@app/components/assistant/conversation/files_panel/FilePreviewPanel";
@@ -10,6 +11,7 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  AGENT_SIDE_PANEL_TYPE,
   CREDITS_SIDE_PANEL_TYPE,
   FILE_PREVIEW_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
@@ -69,6 +71,9 @@ export default function ConversationSidePanelContent({
 
     case TOOL_SIDE_PANEL_TYPE:
       return <ConversationToolPanel owner={owner} />;
+
+    case AGENT_SIDE_PANEL_TYPE:
+      return <ConversationAgentPanel owner={owner} />;
 
     default:
       return null;

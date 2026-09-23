@@ -7,6 +7,7 @@ import { DocumentBlockMenu, useDocumentBlockMenu } from "./DocumentBlockMenu";
 import { DocumentSaveStatus } from "./DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "./DocumentSelectionToolbar";
 import { DocumentSourcePreview } from "./DocumentSourcePreview";
+import { DocumentVisualsContext } from "./DocumentVisual";
 import type { DocumentProps } from "./types";
 import { useDocumentEditor } from "./useDocumentEditor";
 
@@ -32,9 +33,11 @@ export const Document = ({
   contentType = "markdown",
   saveFormat = "json",
   className,
+  mountPortalContainer,
   readOnly = false,
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
+  visuals,
 }: DocumentProps) => {
   const {
     editor,
@@ -120,11 +123,16 @@ export const Document = ({
         )}
         {editor && editable && (
           <>
-            <DocumentSelectionToolbar editor={editor} />
+            <DocumentSelectionToolbar
+              editor={editor}
+              mountPortalContainer={mountPortalContainer}
+            />
             <DocumentBlockMenu editor={editor} menu={blockMenu} />
           </>
         )}
-        <EditorContent editor={editor} />
+        <DocumentVisualsContext.Provider value={visuals}>
+          <EditorContent editor={editor} />
+        </DocumentVisualsContext.Provider>
       </div>
     </article>
   );

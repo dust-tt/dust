@@ -4,7 +4,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 
 /**
- * Fetches `SkillResource` named by `:sId`, enforces `canAdministrate`, and
+ * Fetches `SkillResource` named by `:sId`, enforces `auth.can("admin", skill)`, and
  * stashes it on `ctx.var.skill`. Apply after `workspaceAuth` so
  * `ctx.get("auth")` is available.
  */
@@ -23,7 +23,7 @@ export const withSkill = createMiddleware<SkillCtx>(async (ctx, next) => {
     });
   }
 
-  if (!skill.canAdministrate(auth)) {
+  if (!auth.can("admin", skill)) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {

@@ -18,6 +18,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
+import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -183,6 +184,60 @@ describe("AgentResource", () => {
     expect(fromConfiguration.agentConfigurationModelId).toBe(
       currentConfiguration.id
     );
+  });
+
+  it("carries the head fields on full and light resources alike", async () => {
+    // Hidden, so the non-author admin below gets it light.
+    const template = await TemplateFactory.published();
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      {
+        name: "Head fields",
+        scope: "hidden",
+        templateId: template.sId,
+        reinforcement: "off",
+      }
+    );
+
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, adminUser, {
+      role: "admin",
+    });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      testContext.workspace.sId
+    );
+
+    const asAuthor = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    const asAdmin = await AgentResource.fetchById(adminAuth, agent.sId);
+    const fromConfiguration = AgentResource.fromAgentConfiguration(
+      testContext.authenticator,
+      agent
+    );
+    assert(asAuthor && asAdmin);
+
+    expect(asAuthor.isFull()).toBe(true);
+    expect(asAdmin.isFull()).toBe(false);
+    for (const resource of [asAuthor, asAdmin, fromConfiguration]) {
+      expect({
+        name: resource.name,
+        status: resource.status,
+        scope: resource.scope,
+        templateId: resource.templateId,
+        reinforcement: resource.reinforcement,
+        lastReinforcementAnalysisAt: resource.lastReinforcementAnalysisAt,
+      }).toEqual({
+        name: "Head fields",
+        status: "active",
+        scope: "hidden",
+        templateId: template.id,
+        reinforcement: "off",
+        lastReinforcementAnalysisAt: null,
+      });
+    }
   });
 
   it("returns a light resource when the caller holds a verb but cannot read the agent", async () => {
@@ -406,6 +461,9 @@ describe("AgentResource", () => {
       "description",
       "status",
       "pictureUrl",
+      "templateId",
+      "reinforcement",
+      "lastReinforcementAnalysisAt",
       "authorId",
       "requestedSpaceIds",
       // Carried by the core `modelConfiguration`, not `content`.

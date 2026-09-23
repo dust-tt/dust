@@ -22,9 +22,13 @@ import {
 import { DEEPSEEK_CHAT_MODEL_CONFIG } from "@app/types/assistant/models/deepseek";
 import {
   FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG,
+  FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_CONFIG,
+  FIREWORKS_DEEPSEEK_V4_PRO_0813_MODEL_CONFIG,
   FIREWORKS_GLM_5_MODEL_CONFIG,
+  FIREWORKS_GLM_5P2_MODEL_CONFIG,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG,
   FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
 } from "@app/types/assistant/models/fireworks";
 import {
@@ -65,6 +69,12 @@ import { Err, Ok } from "@app/types/shared/result";
 
 // Consumption attribution also runs for historical messages. These models are no longer in the
 // serving registry, but their immutable tokenizer configurations remain valid for old run usage.
+/**
+ * @cc [owner:sfriquet,label:backend;product] tokenizer-for-every-static-model
+ * Every `STATIC_MODEL_IDS` entry MUST resolve to a tokenizer configuration through either
+ * `SUPPORTED_MODEL_CONFIGS` or this list. A change removing a model from `SUPPORTED_MODEL_CONFIGS`
+ * MUST add its configuration here in the same change.
+ */
 const HISTORICAL_TOKENIZATION_MODEL_CONFIGS = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
@@ -101,6 +111,10 @@ const HISTORICAL_TOKENIZATION_MODEL_CONFIGS = [
   FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
   FIREWORKS_GLM_5_MODEL_CONFIG,
+  FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_CONFIG,
+  FIREWORKS_DEEPSEEK_V4_PRO_0813_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2P6_MODEL_CONFIG,
+  FIREWORKS_GLM_5P2_MODEL_CONFIG,
   GROK_3_MODEL_CONFIG,
   GROK_3_MINI_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
@@ -110,14 +124,18 @@ const HISTORICAL_TOKENIZATION_MODEL_CONFIGS = [
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
 ];
 
+/**
+ * @cc [owner:sfriquet,label:product] raw-tool-footprint-token-counts
+ * Tool footprints MUST be tokenized with a `tokenCountAdjustment` of 1, whatever the model
+ * configuration declares. Configured adjustments are context-window safety margins and MUST NOT
+ * inflate attributed tokens.
+ */
 function modelForToolFootprintAttribution(
   model: ModelConfigurationType
 ): ModelConfigurationType {
   return {
     ...model,
-    // The shared default is a context-window safety margin. Attribution needs the raw estimate.
-    // Preserve only explicit adjustments that compensate for a model-specific tokenizer mismatch.
-    tokenCountAdjustment: model.tokenCountAdjustment ?? 1,
+    tokenCountAdjustment: 1,
   };
 }
 

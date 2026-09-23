@@ -405,7 +405,7 @@ export async function processTranscriptActivity(
       return;
     }
 
-    const canWrite = datasourceView.canWrite(auth);
+    const canWrite = auth.can("write", datasourceView);
     if (!canWrite) {
       localLogger.error(
         {},

@@ -51,7 +51,7 @@ app.get(
       !dataSource ||
       dataSource.space.sId !== spaceId ||
       dataSource.space.isConversations() ||
-      !dataSource.canReadOrAdministrate(auth)
+      !(auth.can("read", dataSource) || auth.can("admin", dataSource))
     ) {
       return apiError(ctx, {
         status_code: 404,

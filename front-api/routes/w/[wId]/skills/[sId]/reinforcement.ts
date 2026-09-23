@@ -101,7 +101,7 @@ app.patch(
     // Toggling reinforcement requires skill administration access; if the
     // skill is locked, only admins can flip it.
     if (reinforcement !== undefined) {
-      if (!skill.canAdministrate(auth)) {
+      if (!auth.can("admin", skill)) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {

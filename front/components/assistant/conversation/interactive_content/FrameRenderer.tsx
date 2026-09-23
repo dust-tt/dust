@@ -191,8 +191,11 @@ export function FrameRenderer({
     frameId: fileId,
     disabled: renderMode !== "v2" || !conversation,
   });
-  const resolvedFramePath = framePath ?? packageRoot;
-  // useFile("./…") resolves against framePath on first fetch and never retries. Wait until
+  const framePackageRoot =
+    framePath && framePath.includes("/")
+      ? framePath.slice(0, framePath.lastIndexOf("/"))
+      : packageRoot;
+  // useFile("./…") resolves against framePackageRoot on first fetch and never retries. Wait until
   // permissions (packageRoot) have loaded so the iframe does not mount with a null root.
   const isFramePathPending =
     renderMode === "v2" && Boolean(conversation) && isFramePermissionsLoading;
@@ -495,10 +498,10 @@ export function FrameRenderer({
                 complete: true,
                 identifier: `viz-${fileId}`,
               }}
-              key={`viz-${fileId}-${resolvedFramePath ?? ""}`}
+              key={`viz-${fileId}-${framePath ?? packageRoot ?? ""}`}
               conversationId={conversation?.sId ?? null}
               spaceId={frameSpaceId ?? undefined}
-              framePath={resolvedFramePath}
+              framePackageRoot={framePackageRoot}
               frameId={renderMode === "v2" ? fileId : undefined}
               isInDrawer={true}
               isEditable={isEditable}
