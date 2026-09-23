@@ -174,7 +174,7 @@ describe("getSandboxFunctionInvocationAccessError", () => {
 });
 
 describe("VisualizationActionIframe", () => {
-  it("passes the resolved Dust theme in the iframe URL and reloads on changes", () => {
+  it("omits Dust's theme and keeps the iframe stable when it changes", () => {
     mocks.isDark = true;
     const props = {
       agentConfigurationId: null,
@@ -198,11 +198,13 @@ describe("VisualizationActionIframe", () => {
     if (!iframe) {
       throw new Error("Expected the visualization iframe to be mounted.");
     }
-    expect(new URL(iframe.src).searchParams.get("theme")).toBe("dark");
+    const initialSrc = iframe.src;
+    expect(new URL(initialSrc).searchParams.has("theme")).toBe(false);
 
     mocks.isDark = false;
     rerender(createElement(VisualizationActionIframe, props));
-    expect(new URL(iframe.src).searchParams.get("theme")).toBe("light");
+    expect(container.querySelector("iframe")).toBe(iframe);
+    expect(iframe.src).toBe(initialSrc);
     expect(new URL(iframe.src).searchParams.get("identifier")).toBe(
       "viz-fil_frame"
     );
