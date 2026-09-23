@@ -2,12 +2,12 @@ import { DustError } from "@app/lib/error";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   SkillInstructionEditItemType,
   SkillSuggestionType,
 } from "@app/types/suggestions/skill_suggestion";
-import { parseSkillSuggestionData } from "@app/types/suggestions/skill_suggestion";
+import { SkillSuggestionDataSchema } from "@app/types/suggestions/skill_suggestion";
 
 export interface SkillEdits {
   agentFacingDescription?: string;
@@ -27,11 +27,17 @@ type SkillSuggestionEditsInput = Pick<
 function editsForSuggestion(
   suggestion: SkillSuggestionEditsInput
 ): Result<SkillEdits, DustError<"invalid_request_error">> {
-  const data = parseSkillSuggestionData({
+  const parsed = SkillSuggestionDataSchema.safeParse({
     kind: suggestion.kind,
     suggestion: suggestion.suggestion,
   });
+  if (!parsed.success) {
+    return new Err(
+      new DustError("invalid_request_error", "Unsupported skill suggestion.")
+    );
+  }
 
+  const data = parsed.data;
   switch (data.kind) {
     case "availability":
       return new Ok({ availability: data.suggestion.availability });
@@ -66,7 +72,10 @@ function editsForSuggestion(
       });
 
     default:
-      assertNever(data);
+      assertNeverAndIgnore(data);
+      return new Err(
+        new DustError("invalid_request_error", "Unsupported skill suggestion.")
+      );
   }
 }
 
