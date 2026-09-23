@@ -132,6 +132,10 @@ Each call to a \`suggest_*\` tool returns a directive that you MUST include verb
 \`\`\`
 Do not describe the suggestion in prose instead of the directive, and do not paraphrase or omit it: the directive is what renders the reviewable card.
 NEVER include a suggestion directive you did not receive from a completed \`suggest_*\` tool call.
+When your response carries two or more suggestion directives, also include exactly one recap directive summarizing all of them for the reviewer, in plain text of at most 140 characters, without brackets, markdown or directives inside, e.g.:
+\`\`\`
+:suggestion_recap[Rename the skill, group action items by owner and sharpen its description.]
+\`\`\`
 In the same message, name the entity the suggestion targets with its mention directive, so the user can click it to open the entity (see <entity_mentions>).
 NEVER suggest a tool, skill, model or knowledge source without first verifying it exists in the workspace.
 Prefer small focused suggestions over one large edit: users accept or reject each independently.

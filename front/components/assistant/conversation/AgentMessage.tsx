@@ -39,6 +39,8 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getQuickReplyPlugin } from "@app/components/markdown/QuickReplyBlock";
+import { ConversationSuggestionPile } from "@app/components/markdown/suggestion/SuggestionPile";
+import { extractSuggestionPile } from "@app/components/markdown/suggestion/suggestion_directives";
 import { getToolSetupPlugin } from "@app/components/markdown/tool/tool";
 import {
   getVisualizationPlugin,
@@ -1449,6 +1451,14 @@ function AgentMessageContent({
     isLastMessage,
   });
 
+  const answer = useMemo(
+    () =>
+      extractSuggestionPile(
+        sanitizeVisualizationContent(agentMessage.content ?? "")
+      ),
+    [agentMessage.content]
+  );
+
   const blockedActionElement = blockedAction ? (
     <BlockedAction
       // Key on the action id so that when the queue advances to the next
@@ -1583,7 +1593,7 @@ function AgentMessageContent({
             // messages and the input bar stay in the app font.
             <div className="font-conversation">
               <AgentMessageMarkdown
-                content={sanitizeVisualizationContent(agentMessage.content)}
+                content={answer.content}
                 owner={owner}
                 conversationId={conversationId}
                 streamingState={
@@ -1593,6 +1603,13 @@ function AgentMessageContent({
                 additionalMarkdownComponents={additionalMarkdownComponents}
                 additionalMarkdownPlugins={additionalMarkdownPlugins}
               />
+              {answer.pileDirectives.length > 0 && (
+                <ConversationSuggestionPile
+                  owner={owner}
+                  directives={answer.pileDirectives}
+                  recap={answer.recap}
+                />
+              )}
             </div>
           )}
         {uiView !== "compact" && generatedFiles.length > 0 && (
