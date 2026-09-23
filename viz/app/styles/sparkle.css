@@ -1,4 +1,5 @@
 @import "./sparkle-scoped.generated.css";
+@import "./document-theme.css";
 
 /* Put .viz-sparkle on Sparkle UI and its portal containers.
    Put data-viz-sparkle-slot on model visuals nested inside that UI. */
