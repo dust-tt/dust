@@ -14,7 +14,6 @@ import {
   CONVERSATION_FONT_LABELS,
   CONVERSATION_FONTS,
   ConversationFontContext,
-  useConversationFontOptional,
 } from "@app/components/sparkle/ConversationFontContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -366,7 +365,7 @@ function CustomizationSection() {
   // Null outside ConversationFontProvider: this
   // popover also renders on pages without conversations (e.g. /no-workspace,
   // /subscribe), where the font setting is hidden.
-  const fontContext =  useContext(ConversationFontContext) ?? null;;
+  const fontContext = useContext(ConversationFontContext) ?? null;
   const sendNotification = useSendNotification();
   const [localConversationFont, setLocalConversationFont] =
     useState<ConversationFont>(fontContext?.conversationFont ?? "sans");
