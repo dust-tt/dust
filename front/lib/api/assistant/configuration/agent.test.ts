@@ -1,8 +1,6 @@
 import {
-  destroyAgentConfigurationRow,
   getAgentConfiguration,
   getAgentConfigurations,
-  syncAgentSearchAfterRowDestroyed,
   updateAgentConfigurationsScope,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getEditors } from "@app/lib/api/assistant/editors";
@@ -11,19 +9,18 @@ import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -39,7 +36,6 @@ import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -293,25 +289,6 @@ describe("getAgentConfigurations", () => {
   });
 });
 
-// Hard-deletes a single configuration version through the kept row-destruction primitive, mirroring
-// what the removed `unsafeHardDeleteAgentConfiguration` helper did for a minimal agent (no tools,
-// tags or skills to clean up first).
-async function hardDeleteAgentVersion(
-  auth: Authenticator,
-  version: LightAgentConfigurationType
-): Promise<void> {
-  const agent = await AgentResource.fetchById(auth, version.sId);
-  assert(agent !== null);
-  const { agentDeleted } = await withTransaction((t) =>
-    destroyAgentConfigurationRow(
-      auth,
-      { agent, configurationId: agent.agentConfigurationModelId },
-      t
-    )
-  );
-  await syncAgentSearchAfterRowDestroyed(auth, { agent, agentDeleted });
-}
-
 describe("stable agent identities", () => {
   it("reuses one identity across agent versions", async () => {
     const { authenticator, workspace } = await createResourceTest({
@@ -333,36 +310,6 @@ describe("stable agent identities", () => {
     expect(versions).toHaveLength(2);
     expect(agentModelIds.size).toBe(1);
     expect([...agentModelIds][0]).not.toBeNull();
-  });
-
-  it("keeps the identity at its highest version, including after a rollback", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const currentVersion = async (sId: string) => {
-      const identity = await AgentModel.findOne({
-        where: { sId, workspaceId: workspace.id },
-      });
-      return identity?.currentVersion ?? null;
-    };
-
-    const firstVersion =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-    expect(await currentVersion(firstVersion.sId)).toBe(0);
-
-    const secondVersion = await AgentConfigurationFactory.updateTestAgent(
-      authenticator,
-      firstVersion.sId
-    );
-    expect(secondVersion.version).toBe(1);
-    expect(await currentVersion(firstVersion.sId)).toBe(1);
-
-    // Rolling back the newest version moves the pointer back to the previous one.
-    await hardDeleteAgentVersion(authenticator, secondVersion);
-    expect(await currentVersion(firstVersion.sId)).toBe(0);
-
-    await hardDeleteAgentVersion(authenticator, firstVersion);
-    expect(await currentVersion(firstVersion.sId)).toBeNull();
   });
 
   it("mirrors the current configuration's head fields onto the identity", async () => {
@@ -445,49 +392,6 @@ describe("stable agent identities", () => {
     expect((await headFields(agent.sId)).status).toBe("active");
   });
 
-  it("re-mirrors the head fields of the version restored by a rollback", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const template = await TemplateFactory.published();
-    const firstVersion = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      {
-        name: "Before rename",
-        scope: "hidden",
-        templateId: template.sId,
-        reinforcement: "off",
-      }
-    );
-    const secondVersion = await AgentConfigurationFactory.updateTestAgent(
-      authenticator,
-      firstVersion.sId,
-      { name: "After rename" }
-    );
-    expect(secondVersion.version).toBe(1);
-
-    const identityAfterUpgrade = await AgentModel.findOne({
-      where: { sId: firstVersion.sId, workspaceId: workspace.id },
-    });
-    assert(identityAfterUpgrade);
-    expect(identityAfterUpgrade.templateId).toBeNull();
-    expect(identityAfterUpgrade.name).toBe("After rename");
-
-    // Deleting the current version makes the previous one current again, so the identity has to
-    // pick its head fields back up.
-    await hardDeleteAgentVersion(authenticator, secondVersion);
-
-    const identityAfterRollback = await AgentModel.findOne({
-      where: { sId: firstVersion.sId, workspaceId: workspace.id },
-    });
-    assert(identityAfterRollback);
-    expect(identityAfterRollback.currentVersion).toBe(0);
-    expect(identityAfterRollback.templateId).toBe(template.id);
-    expect(identityAfterRollback.reinforcement).toBe("off");
-    expect(identityAfterRollback.scope).toBe("hidden");
-    expect(identityAfterRollback.name).toBe("Before rename");
-  });
-
   it("stores a draft agent as hidden on both the identity and its configuration", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
@@ -560,99 +464,6 @@ describe("stable agent identities", () => {
     expect(identityAfter?.status).toBe("active");
     expect(identityAfter?.name).toBe("Activated");
     expect(identityAfter?.scope).toBe("hidden");
-  });
-
-  it("deletes the identity and grants only after its last version is deleted", async () => {
-    const { authenticator, globalGroup, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const firstVersion =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-    const secondVersion = await AgentConfigurationFactory.updateTestAgent(
-      authenticator,
-      firstVersion.sId
-    );
-    const agentResource = await AgentResource.fetchById(
-      authenticator,
-      firstVersion.sId
-    );
-    assert(agentResource !== null);
-    if (agentResource.id === null) {
-      throw new Error("Agent identity was not created");
-    }
-    const grantGroup =
-      await GroupPermissionResource.findRegularAutoGroupForGrant(
-        authenticator,
-        {
-          grantType: "editor",
-          resourceType: "agent",
-          resourceId: agentResource.id,
-        }
-      );
-    if (!grantGroup) {
-      throw new Error("Agent editor grant was not created");
-    }
-    const replaceResult = await DiscoveryItemResource.setPinnedForGroup(
-      authenticator,
-      {
-        groupModelId: globalGroup.id,
-        item: { type: "agent", itemId: firstVersion.sId, position: 0 },
-      }
-    );
-    expect(replaceResult.isOk()).toBe(true);
-    expect(
-      await DiscoveryItemResource.listPinnedForAuth(authenticator)
-    ).toHaveLength(1);
-
-    await hardDeleteAgentVersion(authenticator, secondVersion);
-    expect(
-      await AgentModel.findOne({
-        where: { sId: firstVersion.sId, workspaceId: workspace.id },
-      })
-    ).not.toBeNull();
-    expect(
-      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
-        grantGroup.id,
-      ])
-    ).toHaveLength(1);
-    // The pin row stays until the identity is gone. The previous version was archived when it
-    // was superseded, so the user-facing list omits that inactive target.
-    expect(
-      await GroupPinnedItemModel.count({
-        where: {
-          workspaceId: workspace.id,
-          type: "agent",
-          itemId: firstVersion.sId,
-        },
-      })
-    ).toBe(1);
-    expect(
-      await DiscoveryItemResource.listPinnedForAuth(authenticator)
-    ).toEqual([]);
-
-    await hardDeleteAgentVersion(authenticator, firstVersion);
-    expect(
-      await AgentModel.findOne({
-        where: { sId: firstVersion.sId, workspaceId: workspace.id },
-      })
-    ).toBeNull();
-    expect(
-      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
-        grantGroup.id,
-      ])
-    ).toHaveLength(0);
-    expect(
-      await GroupPinnedItemModel.count({
-        where: {
-          workspaceId: workspace.id,
-          type: "agent",
-          itemId: firstVersion.sId,
-        },
-      })
-    ).toBe(0);
-    expect(
-      await DiscoveryItemResource.listPinnedForAuth(authenticator)
-    ).toEqual([]);
   });
 });
 
@@ -1591,6 +1402,61 @@ describe("AgentResource.delete scoped-resource cleanup", () => {
 
     launchSpy.mockRestore();
     cancelSpy.mockRestore();
+  });
+
+  it("removes the agent's memories", async () => {
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    // Agent memories are keyed by the stable `sId` and have no FK to `agents`, so they must be
+    // cleaned up explicitly by the hard-delete.
+    await AgentMemoryResource.makeNew(authenticator, {
+      agentConfigurationId: agent.sId,
+      content: "Remember this",
+      userId: authenticator.getNonNullableUser().id,
+    });
+
+    await (await AgentResource.fetchById(authenticator, agent.sId))!.delete(
+      authenticator
+    );
+
+    const remainingMemories =
+      await AgentMemoryResource.findByAgentConfigurationIdAndUser(
+        authenticator,
+        { agentConfigurationId: agent.sId }
+      );
+    expect(remainingMemories).toHaveLength(0);
+  });
+
+  it("removes the agent's group discovery pins", async () => {
+    const { authenticator, globalGroup, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    // Discovery pins reference the agent by its stable `sId` with no FK to cascade, so they must be
+    // cleaned up explicitly by the hard-delete.
+    const pinResult = await DiscoveryItemResource.setPinnedForGroup(
+      authenticator,
+      {
+        groupModelId: globalGroup.id,
+        item: { type: "agent", itemId: agent.sId, position: 0 },
+      }
+    );
+    expect(pinResult.isOk()).toBe(true);
+
+    await (await AgentResource.fetchById(authenticator, agent.sId))!.delete(
+      authenticator
+    );
+
+    const remainingPins = await GroupPinnedItemModel.count({
+      where: { workspaceId: workspace.id, type: "agent", itemId: agent.sId },
+    });
+    expect(remainingPins).toBe(0);
   });
 });
 

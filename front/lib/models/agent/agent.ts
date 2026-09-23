@@ -24,9 +24,10 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
  * @cc [owner:sfriquet,label:backend] agent-current-version-pointer
  * `currentVersion` MUST equal the highest `version` among the agent's rows in
  * `agent_configurations`, and an agent MUST NOT exist without such a row. A transaction that
- * inserts a configuration row or deletes the one with the highest version MUST leave
- * `currentVersion` satisfying this before it commits (`AgentResource.setCurrentConfiguration`,
- * `destroyAgentConfigurationRow`). The current configuration is the row matching
+ * inserts a configuration row MUST leave `currentVersion` satisfying this before it commits
+ * (`AgentResource.setCurrentConfiguration`); a transaction that deletes configuration rows MUST
+ * either leave the highest remaining row matched by `currentVersion` or remove the identity row
+ * entirely (`AgentResource.delete`). The current configuration is the row matching
  * `(agentId, version) = (agents.id, agents.currentVersion)`, served by that unique index.
  */
 export class AgentModel extends WorkspaceAwareModel<AgentModel> {

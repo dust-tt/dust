@@ -57,6 +57,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { SkillFetchContext } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
+import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -1821,10 +1823,11 @@ export class AgentResource
 
   // Hard-deletes the agent: every version and its satellites (tools and their data-source / table /
   // child-agent links, tags, skills, suggestions), the scoped resources (triggers, wake-ups,
-  // favorites), the agent's permission grants and groups, and finally the `agents` identity row. The
-  // cached entry is invalidated on commit and the agent is removed from the search index. This
-  // permanently destroys the agent. Like archive/restore, it requires the agent `admin` verb (checked
-  // in `batchDelete`, regardless of any caller-side gate; see `agent-archive-restore-requires-admin`).
+  // favorites, agent memories, group discovery pins), the agent's permission grants and groups, and
+  // finally the `agents` identity row. The cached entry is invalidated on commit and the agent is
+  // removed from the search index. This permanently destroys the agent. Like archive/restore, it
+  // requires the agent `admin` verb (checked in `batchDelete`, regardless of any caller-side gate;
+  // see `agent-archive-restore-requires-admin`).
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     return AgentResource.batchDelete(auth, [this]);
   }
@@ -1833,8 +1836,9 @@ export class AgentResource
    * @cc [owner:tdraier,label:backend] batch-delete-atomic
    * `batchDelete` MUST hard-delete every passed agent as a set: for each agent it destroys all of its
    * configuration versions and their satellites (tools and their data-source / table / child-agent
-   * links, tags, skills, suggestions), the permission grants and groups, and the `agents` identity
-   * row. All of these database deletions MUST run in a single transaction so the batch commits
+   * links, tags, skills, suggestions), the rows keyed off the stable `sId` with no FK to cascade
+   * (agent memories, group discovery pins), the permission grants and groups, and the `agents`
+   * identity row. All of these database deletions MUST run in a single transaction so the batch commits
    * all-or-nothing (destroying every version before its identity keeps the delete valid for any agent,
    * not only single-version pending drafts). Because the whole identity is removed, `batchDelete` MUST
    * NOT be called with two resources sharing an `id`. Scoped resources (triggers, wake-ups, favorites)
@@ -1970,6 +1974,21 @@ export class AgentResource
           transaction: t,
         });
       }
+
+      // Agent memories are keyed by the stable `sId` (not by version) and have no FK to `agents`,
+      // so they are removed here along with the identities.
+      await AgentMemoryModel.destroy({
+        where: { workspaceId, agentConfigurationId: { [Op.in]: sIds } },
+        transaction: t,
+      });
+
+      // Group discovery pins reference the agent by its stable `sId` with no FK to cascade, so they
+      // are removed here along with the identities. Deleted through the model (not
+      // `DiscoveryItemResource`) to avoid an import cycle back into `AgentResource`.
+      await GroupPinnedItemModel.destroy({
+        where: { workspaceId, type: "agent", itemId: { [Op.in]: sIds } },
+        transaction: t,
+      });
 
       // The `agent_configurations` rows (and their FK to `agents`) are gone, so the grants, groups
       // and the identity rows can be removed.

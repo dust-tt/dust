@@ -7,16 +7,11 @@ import {
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentConfigurationModel,
-  AgentModel,
-} from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { tracer } from "@app/logger/tracer";
-import { launchDeleteAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -33,7 +28,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { Transaction } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
 
 export async function getAgentConfigurationsWithVersion<
@@ -437,88 +431,6 @@ export async function resolveAgentConfigurationIdByName(
     (a) => a.name.trim().toLowerCase() === normalizedAgentName
   );
   return exactMatch?.sId ?? matches[0].sId;
-}
-
-/**
- * Deletes one `agent_configurations` row and keeps its identity consistent: `currentVersion` is
- * moved to the highest remaining version, or the agent is deleted with its grants when no row
- * remains. The row's satellites (tools, tags, skills, editor links, suggestions) must be gone
- * already.
- * Returns whether the agent's identity row is deleted,
- */
-export async function destroyAgentConfigurationRow(
-  auth: Authenticator,
-  {
-    agent,
-    configurationId,
-  }: { agent: AgentResource; configurationId: ModelId },
-  transaction: Transaction
-): Promise<{ agentDeleted: boolean }> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
-
-  await AgentConfigurationModel.destroy({
-    where: { id: configurationId, workspaceId },
-    transaction,
-  });
-
-  // Hold the identity row from here to commit: two transactions deleting two different versions of
-  // the same agent would otherwise each pick a replacement from its own snapshot and commit a
-  // `currentVersion` pointing at the row the other one deleted. The lock is taken after the
-  // deletion above, not before: an upgrade locks `agent_configurations` (archiving the previous
-  // versions) before it locks `agents` (the FK check of the new version row, then the pointer
-  // update), so locking `agents` first would invert that order and deadlock.
-  await AgentModel.findOne({
-    where: { id: agent.id, workspaceId },
-    lock: transaction.LOCK.UPDATE,
-    transaction,
-  });
-
-  // Deleting a row changes (or removes) the agent's current version; invalidate after commit.
-  await AgentResource.invalidateCache(workspaceId, agent.sId, transaction);
-
-  const remainingConfiguration = await AgentConfigurationModel.findOne({
-    where: { sId: agent.sId, workspaceId },
-    order: [["version", "DESC"]],
-    transaction,
-  });
-  if (remainingConfiguration) {
-    await agent.setCurrentConfiguration(auth, remainingConfiguration, {
-      transaction,
-    });
-    return { agentDeleted: false };
-  }
-
-  await DiscoveryItemResource.deleteAllForItem(auth, {
-    type: "agent",
-    itemId: agent.sId,
-    transaction,
-  });
-  await agent.destroyPermissionsAndGroups(auth, { transaction });
-  await AgentModel.destroy({
-    where: { sId: agent.sId, workspaceId },
-    transaction,
-  });
-
-  return { agentDeleted: true };
-}
-
-/**
- * Reflects a destroyed configuration row in the search index: an agent whose last version is gone
- * leaves the index, any other one is reindexed under its new current version.
- */
-export async function syncAgentSearchAfterRowDestroyed(
-  auth: Authenticator,
-  { agent, agentDeleted }: { agent: AgentResource; agentDeleted: boolean }
-): Promise<Result<undefined, Error>> {
-  if (!agentDeleted) {
-    await AgentResource.launchSearchIndexation(auth, [agent.sId]);
-    return new Ok(undefined);
-  }
-
-  return launchDeleteAgentSearchWorkflow({
-    workspaceId: auth.getNonNullableWorkspace().sId,
-    agentId: agent.sId,
-  });
 }
 
 export async function updateAgentConfigurationsScope(
