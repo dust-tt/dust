@@ -5,6 +5,11 @@ import {
   VisualizationActionIframe,
 } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { ScopedWorkspaceUserIdentity } from "@app/types/assistant/visualization";
+import {
+  DUST_FILE_CAN_WRITE_HEADER,
+  DUST_FILE_REVISION_HEADER,
+  DUST_IF_REVISION_MATCH_HEADER,
+} from "@app/types/files";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -480,14 +485,18 @@ const fileWriteMessage = {
     path: "./notes.json",
     content: "{}",
     contentType: "application/json",
-    revision: '\"123\"',
+    revision: "123",
   },
 };
 
 describe("Frame file RPC", () => {
   it("adds revision metadata to the existing getFile response", async () => {
     const { iframe, postMessage } = renderFileFrame();
-    const headers = { ETag: '\"123\"', "X-Dust-File-Can-Write": "true" };
+    const headers = {
+      [DUST_FILE_REVISION_HEADER]: "123",
+      [DUST_FILE_CAN_WRITE_HEADER]: "true",
+      ETag: 'W/"123"',
+    };
     mocks.clientFetch.mockResolvedValueOnce(new Response("{}", { headers }));
     window.dispatchEvent(
       new MessageEvent("message", {
@@ -508,7 +517,7 @@ describe("Frame file RPC", () => {
           messageUniqueId: "file-read",
           result: {
             fileBlob: expect.any(Blob),
-            revision: '\"123\"',
+            revision: "123",
             canWrite: true,
           },
         },
@@ -523,7 +532,7 @@ describe("Frame file RPC", () => {
   it("accepts writes only from the mounted Frame window and identifier", async () => {
     const { iframe, postMessage } = renderFileFrame();
     mocks.clientFetch.mockResolvedValue(
-      new Response(null, { headers: { ETag: '\"124\"' } })
+      new Response(null, { headers: { [DUST_FILE_REVISION_HEADER]: "124" } })
     );
     window.dispatchEvent(
       new MessageEvent("message", {
@@ -537,16 +546,8 @@ describe("Frame file RPC", () => {
         data: { ...fileWriteMessage, identifier: "another-frame" },
       })
     );
-    window.dispatchEvent(
-      new MessageEvent("message", {
-        source: iframe.contentWindow,
-        data: {
-          ...fileWriteMessage,
-          params: { ...fileWriteMessage.params, revision: undefined },
-        },
-      })
-    );
     expect(mocks.clientFetch).not.toHaveBeenCalled();
+    expect(postMessage).not.toHaveBeenCalled();
 
     window.dispatchEvent(
       new MessageEvent("message", {
@@ -557,12 +558,60 @@ describe("Frame file RPC", () => {
     await waitFor(() =>
       expect(postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          result: { success: true, revision: '\"124\"' },
+          result: { success: true, revision: "124" },
         }),
         { targetOrigin: "*" }
       )
     );
-    expect(mocks.clientFetch).toHaveBeenCalledTimes(1);
+    expect(mocks.clientFetch).toHaveBeenCalledExactlyOnceWith(
+      "/api/w/w_current/files/path/conversation-c_test/report/notes.json",
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          [DUST_IF_REVISION_MATCH_HEADER]: "123",
+        },
+        body: "{}",
+      }
+    );
+  });
+
+  it.each([
+    null,
+    { ...fileWriteMessage.params, revision: undefined },
+    { ...fileWriteMessage.params, revision: 'W/"123"' },
+  ])("answers invalid save parameters %j without writing", (params) => {
+    const { iframe, postMessage } = renderFileFrame();
+    const data = { ...fileWriteMessage, params };
+    window.dispatchEvent(new MessageEvent("message", { source: window, data }));
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: { ...data, identifier: "another-frame" },
+      })
+    );
+    expect(postMessage).not.toHaveBeenCalled();
+
+    window.dispatchEvent(
+      new MessageEvent("message", { source: iframe.contentWindow, data })
+    );
+    expect(postMessage).toHaveBeenCalledExactlyOnceWith(
+      {
+        command: "answer",
+        identifier: fileWriteMessage.identifier,
+        messageUniqueId: fileWriteMessage.messageUniqueId,
+        result: {
+          success: false,
+          error: {
+            code: "save_failed",
+            message:
+              "Invalid save request. Reload the file before trying again.",
+          },
+        },
+      },
+      { targetOrigin: "*" }
+    );
+    expect(mocks.clientFetch).not.toHaveBeenCalled();
   });
 
   it("rejects writes from shared Frames even for workspace members", async () => {

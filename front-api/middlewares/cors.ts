@@ -8,13 +8,13 @@ import {
   DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
+  DUST_FILE_REVISION_HEADER,
 } from "@app/types/files";
 import { isDevelopment } from "@app/types/shared/env";
 import type { MiddlewareHandler } from "hono";
 
 const ALLOW_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
 const EXPOSE_HEADERS = [
-  "ETag",
   "X-Reload-Required",
   "WWW-Authenticate",
   "mcp-session-id",
@@ -22,6 +22,7 @@ const EXPOSE_HEADERS = [
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_ID_HEADER,
+  DUST_FILE_REVISION_HEADER,
 ].join(", ");
 
 // The MCP server endpoint authenticates strictly through a Bearer JWT in the

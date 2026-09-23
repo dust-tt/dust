@@ -33,6 +33,7 @@ import type {
 import {
   isVisualizationRPCRequest,
   TailwindMissingClassesMessageSchema,
+  WriteFileRequestEnvelopeSchema,
 } from "@app/types/assistant/visualization";
 import { isAPIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
@@ -167,7 +168,10 @@ async function resolveFrameUserIdentity({
 }
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
-  request: { command: T } & VisualizationRPCRequest,
+  request: { command: T } & Pick<
+    VisualizationRPCRequest,
+    "identifier" | "messageUniqueId"
+  >,
   response: CommandResultMap[T],
   target: MessageEventSource
 ) => {
@@ -436,6 +440,12 @@ function nextBlockedActionGroup(
 
 // Custom hook to encapsulate the logic for handling visualization messages.
 /**
+ * @cc [owner:flvndvd,label:security;error-handling] frame-write-validation-response
+ * A writeFile request with a valid envelope from this iframe and identifier MUST receive
+ * a correlated failure response if its parameters are invalid, without attempting a write.
+ * Requests from another window or identifier MUST be ignored.
+ */
+/**
  * @cc [owner:flvndvd,label:security] frame-style-diagnostics-source
  * Missing-style diagnostics MUST be schema-validated and originate from this
  * Frame's iframe window with its matching identifier before they are logged.
@@ -508,11 +518,13 @@ function useVisualizationDataHandler({
 
       const isOriginatingFromViz =
         event.source && event.source === vizIframeRef.current?.contentWindow;
+      if (!isOriginatingFromViz) {
+        return;
+      }
 
       const missingStyles = TailwindMissingClassesMessageSchema.safeParse(data);
       if (
         missingStyles.success &&
-        isOriginatingFromViz &&
         missingStyles.data.identifier === visualization.identifier
       ) {
         datadogLogger.info("Frame uses unavailable Tailwind classes", {
@@ -527,8 +539,7 @@ function useVisualizationDataHandler({
 
       // Handle EXPORT_ERROR messages
       if (
-        data.type === "EXPORT_ERROR" &&
-        isOriginatingFromViz &&
+        data?.type === "EXPORT_ERROR" &&
         data.identifier === visualization.identifier
       ) {
         sendNotification({
@@ -542,11 +553,29 @@ function useVisualizationDataHandler({
         return;
       }
 
-      if (
-        !isVisualizationRPCRequest(data) ||
-        !isOriginatingFromViz ||
-        data.identifier !== visualization.identifier
-      ) {
+      if (!isVisualizationRPCRequest(data)) {
+        const writeRequest = WriteFileRequestEnvelopeSchema.safeParse(data);
+        if (
+          writeRequest.success &&
+          writeRequest.data.identifier === visualization.identifier
+        ) {
+          sendResponseToIframe(
+            writeRequest.data,
+            {
+              success: false,
+              error: {
+                code: "save_failed",
+                message:
+                  "Invalid save request. Reload the file before trying again.",
+              },
+            },
+            event.source
+          );
+        }
+        return;
+      }
+
+      if (data.identifier !== visualization.identifier) {
         return;
       }
 
