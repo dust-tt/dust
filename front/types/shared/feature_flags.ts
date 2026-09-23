@@ -104,6 +104,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fontanierh",
   },
+  premium_model_access: {
+    description:
+      "Access to premium models (Claude Opus, GPT Sol, GPT Astra) on workspaces without a credit-priced plan or advanced model access. Hands out paid-tier models for free, so it is an entitlement override, not a preview toggle.",
+    stage: "ask_owner",
+    owner: "pmilliotte",
+  },
   claude_fable_5_feature: {
     description:
       "Access to Claude Fable family of models (served through the EAP Anthropic key)",

@@ -248,6 +248,7 @@ export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
+    featureFlag: "premium_model_access",
   },
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   regionalAvailability: {
@@ -288,6 +289,7 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
+    featureFlag: "premium_model_access",
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
@@ -331,6 +333,7 @@ export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
+    featureFlag: "premium_model_access",
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
@@ -375,6 +378,7 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
+    featureFlag: "premium_model_access",
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
@@ -420,6 +424,7 @@ export const CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
+    featureFlag: "premium_model_access",
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
@@ -468,6 +473,7 @@ export const CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
+    featureFlag: "premium_model_access",
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
