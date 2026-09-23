@@ -194,7 +194,7 @@ export function UsageSettingsCard({
         />
         <SettingsList.Row
           title="Credit spend checkpoint"
-          description={`Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches ${CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS.toLocaleString()} credits. Turning this off never pauses, whatever the spend.`}
+          description={`Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches ${CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS.toLocaleString()} credits.`}
           action={
             <SliderToggle
               selected={usageSettings.creditSpendCheckpointEnabled}
