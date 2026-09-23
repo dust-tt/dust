@@ -1,12 +1,9 @@
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import {
-  AgentConfigurationModel,
-  AgentModel,
-} from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AppFactory } from "@app/tests/utils/AppFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -28,32 +25,9 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/apps/:aId", () => {
 
     const app = await AppFactory.basic(workspace, globalSpace);
 
-    const agentId = generateRandomModelSId();
-    const agentIdentity = await AgentModel.create({
-      sId: agentId,
-      workspaceId: workspace.id,
-    });
-    const agent = await AgentConfigurationModel.create({
-      sId: agentId,
-      agentId: agentIdentity.id,
-      version: 0,
-      status: "active",
-      scope: "visible",
+    // Goes through the create path so the agent row carries its head fields.
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Agent using app",
-      description: "Agent description",
-      instructions: null,
-      instructionsHtml: null,
-      providerId: "openai",
-      modelId: "gpt-4-turbo",
-      temperature: 0.7,
-      reasoningEffort: null,
-      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
-      workspaceId: workspace.id,
-      authorId: user.id,
-      templateId: null,
-      reinforcement: "auto",
-      requestedSpaceIds: [],
-      maxStepsPerRun: 8,
     });
 
     const internalMCPServerId = autoInternalMCPServerNameToSId({

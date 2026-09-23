@@ -1,5 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
-import { AgentModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -10,7 +13,9 @@ import {
   deleteSpacesActivity,
 } from "@app/poke/temporal/activities";
 import { launchDeleteWorkspaceAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -35,17 +40,21 @@ vi.mock("@app/lib/api/data_sources", async (importOriginal) => {
 });
 
 describe("deleteAgentsActivity", () => {
-  it("deletes stable agent identities left by a partial previous run", async () => {
-    const workspace = await WorkspaceFactory.byok();
-    await AgentModel.create({
-      sId: "agent-test",
-      workspaceId: workspace.id,
+  it("deletes agents together with their configurations", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
     });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    await AgentConfigurationFactory.updateTestAgent(authenticator, agent.sId);
 
     await deleteAgentsActivity({ workspaceId: workspace.sId });
 
     await expect(
       AgentModel.count({ where: { workspaceId: workspace.id } })
+    ).resolves.toBe(0);
+    await expect(
+      AgentConfigurationModel.count({ where: { workspaceId: workspace.id } })
     ).resolves.toBe(0);
   });
 

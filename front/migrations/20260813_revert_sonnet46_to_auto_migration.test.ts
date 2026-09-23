@@ -264,6 +264,7 @@ async function seedAgent({
   const agentIdentity = await AgentModel.create({
     sId: agentId,
     workspaceId: workspace.id,
+    name,
     status: versions[0]?.status ?? "archived",
     scope: "visible",
     reinforcement: "auto",
