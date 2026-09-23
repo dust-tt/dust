@@ -213,10 +213,6 @@ const DELTA_READ_HEARTBEAT_INTERVAL_MS = 30_000;
 //
 // `sortedChangedItems` is written pre-sorted, so windowing by array index is
 // stable across successive batches of the same file.
-//
-// The whole array is still parsed on every call (the metadata and the array
-// share one token stream), so one call can take longer than the activity's
-// heartbeatTimeout on a large delta: the read heartbeats as it goes.
 /**
  * @cc [owner:tdraier,label:performance] delta-read-heartbeats
  * The read MUST call `heartbeat` before consuming the file and then at least
@@ -301,10 +297,9 @@ async function readDeltaBatchFromGCSStream(
   } catch (error) {
     // The failures here come from the GCS read stream and the stream-json
     // parser (external libraries), or from `heartbeat` (Temporal SDK). Return
-    // them as an Err so the activity entrypoint reports the failure at the
-    // boundary, per the temporal-activity-failure-boundary contract.
-    // normalizeError returns Error instances as is, so a CancelledFailure
-    // reaches the boundary unchanged.
+    // them as an Err (a CancelledFailure passes through unchanged) so the
+    // activity entrypoint reports the failure at the boundary, per the
+    // temporal-activity-failure-boundary contract.
     return new Err(normalizeError(error));
   } finally {
     // Tear everything down so the underlying TLS socket is released back to the
