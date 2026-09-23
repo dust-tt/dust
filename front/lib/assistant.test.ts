@@ -16,8 +16,8 @@ import {
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import {
+  GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_6_SOL_MODEL_CONFIG,
   GPT_6_ASTRA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
@@ -34,9 +34,10 @@ const TEST_WORKSPACE: WorkspaceType = LightWorkspaceFactory.build();
 function createMockModel(
   overrides: Partial<ModelConfigurationType>
 ): ModelConfigurationType {
-  const baseModel = SUPPORTED_MODEL_CONFIGS[0];
+  // Use a stable, ungated model — not catalog index 0, whose availability
+  // gates change when catalog order changes.
   return {
-    ...baseModel,
+    ...GPT_5_6_LUNA_MODEL_CONFIG,
     ...overrides,
   };
 }
