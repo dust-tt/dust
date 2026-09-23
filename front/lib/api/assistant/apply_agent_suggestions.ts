@@ -170,6 +170,7 @@ interface AgentFieldEdits {
   name?: string;
   model?: ModelSuggestionType;
   description?: string;
+  scope?: "hidden" | "visible";
   instructions?: InstructionsSuggestionSchemaType[];
 }
 
@@ -208,6 +209,13 @@ function changeForSuggestion(
         type: "fields",
         fields: { description: data.suggestion.description },
       });
+
+    case "scope":
+      return new Ok({
+        type: "fields",
+        fields: { scope: data.suggestion.scope },
+      });
+
     case "instructions":
       return new Ok({
         type: "fields",
@@ -336,7 +344,7 @@ async function resolveModelEdit(
 async function applyAgentFieldEdits(
   auth: Authenticator,
   agent: LightAgentConfigurationType,
-  { name, model, description, instructions }: AgentFieldEdits
+  { name, model, description, scope, instructions }: AgentFieldEdits
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
   const contextRes = await getAgentConfigurationContext(auth, agent.sId, {
     requireEditorGroup: true,
@@ -384,7 +392,7 @@ async function applyAgentFieldEdits(
       instructionsHtml: nextInstructionsHtml,
       pictureUrl: agentConfiguration.pictureUrl,
       status: agentConfiguration.status,
-      scope: agentConfiguration.scope,
+      scope: scope ?? agentConfiguration.scope,
       model: nextModel,
       actions: agentConfiguration.actions.filter(
         isServerSideMCPServerConfiguration
