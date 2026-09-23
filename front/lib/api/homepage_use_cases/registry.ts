@@ -22,7 +22,7 @@ export const HOMEPAGE_USE_CASES: HomepageUseCaseDefinition[] = [
     id: "meeting-prep",
     label: "Get me ready for my next meeting",
     prompt:
-      "Get me ready for my next meeting: who is attending, what we discussed last time, open action items on our side, and two or three points I should raise. Keep it to one page.",
+      "Get me ready for my next meeting: who is attending, what we discussed last time, open action items on my side, and two or three points I should raise. Keep it to one page.",
     icon: "GcalLogo",
     requires: [{ type: "internalServer", name: "google_calendar" }],
   },
