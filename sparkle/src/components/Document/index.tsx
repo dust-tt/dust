@@ -33,6 +33,7 @@ export const Document = ({
   contentType = "markdown",
   saveFormat = "json",
   className,
+  mountPortalContainer,
   readOnly = false,
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
@@ -122,7 +123,10 @@ export const Document = ({
         )}
         {editor && editable && (
           <>
-            <DocumentSelectionToolbar editor={editor} />
+            <DocumentSelectionToolbar
+              editor={editor}
+              mountPortalContainer={mountPortalContainer}
+            />
             <DocumentBlockMenu editor={editor} menu={blockMenu} />
           </>
         )}

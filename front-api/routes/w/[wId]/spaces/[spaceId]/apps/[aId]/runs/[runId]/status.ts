@@ -36,7 +36,7 @@ app.get(
         api_error: { type: "app_not_found", message: "The app was not found." },
       });
     }
-    if (!found.canRead(auth)) {
+    if (!auth.can("read", found)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

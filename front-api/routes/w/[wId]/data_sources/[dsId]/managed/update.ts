@@ -67,7 +67,7 @@ app.post(
       });
     }
 
-    if (!dataSource.canAdministrate(auth) || !auth.isAdmin()) {
+    if (!auth.can("admin", dataSource) || !auth.isAdmin()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

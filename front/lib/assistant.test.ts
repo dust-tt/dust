@@ -255,12 +255,6 @@ describe("isModelAvailable", () => {
       expect(isSolAvailable(plan)).toBe(true);
     });
 
-    it("should be available with the Opus feature flag", () => {
-      const plan = createMockPlan(FREE_UPGRADED_PLAN_CODE);
-
-      expect(isSolAvailable(plan, ["claude_4_5_opus_feature"])).toBe(true);
-    });
-
     it("should be unavailable without an entitlement", () => {
       expect(isSolAvailable(createMockPlan(PRO_PLAN_SEAT_29_CODE))).toBe(false);
     });

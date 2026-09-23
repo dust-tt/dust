@@ -168,8 +168,8 @@ export class WorkspaceFactory {
     await GroupResource.makeDefaultsForWorkspace(workspaceType);
 
     // Every workspace reads its own skills: the global group holds `reader` on `skill:-1`, seeded by
-    // `seedWorkspaceCapabilities` in real provisioning. Without it `SkillResource.canRead` denies
-    // and no test could fetch a skill. The action-gating capabilities are deliberately left unset,
+    // `seedWorkspaceCapabilities` in real provisioning. Without it skill reads are denied and no
+    // test could fetch a skill. The action-gating capabilities are deliberately left unset,
     // so a test that needs one grants it explicitly (see `grantWorkspacePermission`) and the suites
     // asserting denial keep their baseline.
     const auth = await Authenticator.internalAdminForWorkspace(

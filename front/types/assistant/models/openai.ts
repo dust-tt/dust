@@ -21,10 +21,12 @@ export const GPT_5_4_MODEL_ID = "gpt-5.4" as const;
 export const GPT_5_5_MODEL_ID = "gpt-5.5" as const;
 export const GPT_6_ASTRA_MODEL_ID = "gpt-6-astra" as const;
 export const GPT_5_6_SOL_MODEL_ID = "gpt-5.6-sol" as const;
+export const GPT_6_SOL_MODEL_ID = "gpt-6-sol" as const;
 export const GPT_5_6_TERRA_MODEL_ID = "gpt-5.6-terra" as const;
 export const GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID =
   "gpt-5.6-terra-long-context" as const;
 export const GPT_5_6_LUNA_MODEL_ID = "gpt-5.6-luna" as const;
+export const GPT_6_LUNA_MODEL_ID = "gpt-6-luna" as const;
 export const GPT_5_4_MINI_MODEL_ID = "gpt-5.4-mini" as const;
 export const GPT_5_4_NANO_MODEL_ID = "gpt-5.4-nano" as const;
 export const GPT_5_MINI_MODEL_ID = "gpt-5-mini" as const;
@@ -470,7 +472,6 @@ export const GPT_6_ASTRA_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
-    featureFlag: "claude_4_5_opus_feature",
   },
   unavailableIfOneOf: {
     featureFlag: "disable_gpt_6_astra",
@@ -515,7 +516,50 @@ export const GPT_5_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
-    featureFlag: "claude_4_5_opus_feature",
+  },
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+// Verified 2026-09-22: https://developers.openai.com/api/docs/models/gpt-6-sol
+// gpt-6-sol is the GPT-6 family's reasoning model for complex coding and
+// agentic workflows, sitting below gpt-6-astra. Dust caps the native
+// 1,050,000-token context at the family's 272,000 tokens.
+export const GPT_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_6_SOL_MODEL_ID,
+  displayName: "GPT 6 Sol",
+  contextSize: 272_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "OpenAI's GPT 6 Sol model for complex reasoning, coding, and agentic tasks (272k context).",
+  shortDescription: "OpenAI's GPT 6 reasoning model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  // Mirrored by the endpoints' `PREMIUM_MODEL_ENDPOINT_FILTER` so the picker
+  // and the router agree.
+  availableIfOneOf: {
+    creditPricedPlan: true,
+    plansWithAdvancedModels: true,
   },
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
@@ -614,7 +658,46 @@ export const GPT_5_6_LUNA_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: false,
   description:
-    "OpenAI's GPT 5.6 Luna model, its fastest and most cost-efficient option for well-defined tasks (272k context).",
+    "OpenAI's GPT 5.6 Luna model, a fast and cost-efficient option for well-defined tasks (272k context).",
+  shortDescription: "OpenAI's fast, cost-efficient model.",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+// Verified 2026-09-22: https://developers.openai.com/api/docs/models/gpt-6-luna
+// gpt-6-luna is the fastest, most cost-efficient member of the gpt-6 family;
+// same reasoning abstraction mapping as gpt-6-astra, plus the "none" effort
+// that Astra dropped. Dust caps the native 1,050,000-token context at the
+// family's 272,000 tokens.
+export const GPT_6_LUNA_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_6_LUNA_MODEL_ID,
+  displayName: "GPT 6 Luna",
+  contextSize: 272_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: false,
+  description:
+    "OpenAI's GPT 6 Luna model, its fastest and most cost-efficient option for well-defined tasks (272k context).",
   shortDescription: "OpenAI's fastest, most cost-efficient model.",
   isLegacy: false,
   isLatest: true,

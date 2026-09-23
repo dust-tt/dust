@@ -223,7 +223,7 @@ export async function describeMcpServer(
   });
   // A view the caller cannot read or admin is reported like an unknown id, so that the tool names and
   // schemas of restricted spaces are not disclosed.
-  if (!view || !view.canReadOrAdministrate(auth)) {
+  if (!view || !(auth.can("read", view) || auth.can("admin", view))) {
     return null;
   }
   return view.toJSON()?.server ?? null;

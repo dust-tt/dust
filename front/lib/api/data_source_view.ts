@@ -298,7 +298,7 @@ export async function handlePatchDataSourceView(
     }
   >
 > {
-  if (!dataSourceView.canAdministrate(auth)) {
+  if (!auth.can("admin", dataSourceView)) {
     return new Err({
       name: "dust_error",
       code: "unauthorized",
@@ -347,7 +347,7 @@ export async function handleDeleteDataSourceView(
     }
   >
 > {
-  if (!dataSourceView.canAdministrate(auth)) {
+  if (!auth.can("admin", dataSourceView)) {
     return new Err({
       name: "dust_error",
       code: "unauthorized",

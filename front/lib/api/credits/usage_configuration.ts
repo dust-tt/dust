@@ -1,11 +1,13 @@
 import { passesBillingGate } from "@app/lib/api/credits/auto_seat_upgrade";
 import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
 import type { Authenticator } from "@app/lib/auth";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { isEnterprisePlanPrefix, isFreePlan } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import {
   DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
   DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+  DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED,
   DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
   DEFAULT_TOP_UP_ENABLED,
   DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
@@ -45,6 +47,9 @@ export async function getUsageConfiguration(
       DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
     autoSeatUpgradeEnabled:
       config?.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+    creditSpendCheckpointEnabled: config
+      ? config.creditSpendCheckpointThresholdAwuCredits !== null
+      : DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED,
     autoSeatUpgradeAvailable: subscription
       ? passesBillingGate(subscription)
       : false,
@@ -59,6 +64,14 @@ export async function getUsageConfiguration(
   };
 }
 
+// Admins can only flip the checkpoint gate on/off, not pick the threshold: `true` fills the
+// column with the fixed threshold constant, `false` clears it back to NULL (off).
+function creditSpendCheckpointThresholdFromToggle(
+  enabled: boolean
+): number | null {
+  return enabled ? CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS : null;
+}
+
 async function setConfigurationToggles(
   auth: Authenticator,
   toggles: {
@@ -66,12 +79,24 @@ async function setConfigurationToggles(
     upgradeRequestEmailEnabled?: boolean;
     requireUpgradeRequestReason?: boolean;
     autoSeatUpgradeEnabled?: boolean;
+    creditSpendCheckpointEnabled?: boolean;
   }
 ): Promise<Result<undefined, Error>> {
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
   if (config) {
-    return config.updateConfiguration(auth, toggles);
+    return config.updateConfiguration(auth, {
+      allowMemberUpgradeRequests: toggles.allowMemberUpgradeRequests,
+      upgradeRequestEmailEnabled: toggles.upgradeRequestEmailEnabled,
+      requireUpgradeRequestReason: toggles.requireUpgradeRequestReason,
+      autoSeatUpgradeEnabled: toggles.autoSeatUpgradeEnabled,
+      creditSpendCheckpointThresholdAwuCredits:
+        toggles.creditSpendCheckpointEnabled === undefined
+          ? undefined
+          : creditSpendCheckpointThresholdFromToggle(
+              toggles.creditSpendCheckpointEnabled
+            ),
+    });
   }
 
   // No configuration row yet — create one carrying the requested toggles, with
@@ -90,6 +115,11 @@ async function setConfigurationToggles(
       DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
     autoSeatUpgradeEnabled:
       toggles.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+    creditSpendCheckpointThresholdAwuCredits:
+      creditSpendCheckpointThresholdFromToggle(
+        toggles.creditSpendCheckpointEnabled ??
+          DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED
+      ),
   });
   if (createResult.isErr()) {
     return new Err(createResult.error);
@@ -136,13 +166,15 @@ export async function updateUsageConfiguration(
     patch.allowMemberUpgradeRequests !== undefined ||
     patch.upgradeRequestEmailEnabled !== undefined ||
     patch.requireUpgradeRequestReason !== undefined ||
-    patch.autoSeatUpgradeEnabled !== undefined
+    patch.autoSeatUpgradeEnabled !== undefined ||
+    patch.creditSpendCheckpointEnabled !== undefined
   ) {
     const toggleResult = await setConfigurationToggles(auth, {
       allowMemberUpgradeRequests: patch.allowMemberUpgradeRequests,
       upgradeRequestEmailEnabled: patch.upgradeRequestEmailEnabled,
       requireUpgradeRequestReason: patch.requireUpgradeRequestReason,
       autoSeatUpgradeEnabled: patch.autoSeatUpgradeEnabled,
+      creditSpendCheckpointEnabled: patch.creditSpendCheckpointEnabled,
     });
     if (toggleResult.isErr()) {
       return new Err(toggleResult.error);

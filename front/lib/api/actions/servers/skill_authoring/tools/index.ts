@@ -360,7 +360,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       });
       skills =
         resolvedFilter === "writable"
-          ? allSkills.filter((skill) => skill.canWrite(auth))
+          ? allSkills.filter((skill) => auth.can("write", skill))
           : allSkills;
     }
 
@@ -386,7 +386,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       sId: skill.sId,
       name: skill.name,
       agentFacingDescription: skill.agentFacingDescription,
-      canWrite: skill.canWrite(auth),
+      canWrite: auth.can("write", skill),
     }));
 
     return new Ok([
@@ -413,7 +413,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
     if (!skill) {
       return new Err(new MCPError("Skill not found."));
     }
-    if (!skill.canWrite(auth)) {
+    if (!auth.can("write", skill)) {
       return new Err(new MCPError("Skill not found."));
     }
 
@@ -532,7 +532,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       return new Err(new MCPError("Skill not found."));
     }
 
-    if (!skill.canWrite(auth)) {
+    if (!auth.can("write", skill)) {
       return new Err(
         new MCPError(
           "You need to be added as an editor of this skill before you can make changes."

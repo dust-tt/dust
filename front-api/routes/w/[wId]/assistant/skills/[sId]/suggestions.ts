@@ -27,7 +27,7 @@ import { validate } from "@front-api/middlewares/validator";
 
 // Mounted at /api/w/:wId/assistant/skills/:sId/suggestions.
 // The `skill` context variable is set by the parent skills/[sId]/index.ts
-// middleware, which also enforces canAdministrate.
+// middleware, which also enforces `auth.can("admin", skill)`.
 const app = skillApp();
 
 async function listEnabledSources(

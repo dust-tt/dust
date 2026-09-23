@@ -16,7 +16,7 @@ import type {
   VisualizationDataAPI,
 } from "@viz/app/lib/visualization-api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Document } from ".";
+import { Document, type DocumentProps } from ".";
 
 vi.mock("lottie-react", () => ({ default: () => null }));
 
@@ -57,6 +57,7 @@ interface TestFrameProps {
   path?: string;
   readOnly?: boolean;
   isPdfMode?: boolean;
+  visuals?: DocumentProps["visuals"];
 }
 
 const TestFrame = ({
@@ -64,12 +65,14 @@ const TestFrame = ({
   path = "./content.json",
   readOnly,
   isPdfMode = false,
+  visuals,
 }: TestFrameProps) => (
   <FrameFunctionHooksProvider dataAPI={dataAPI}>
     <VizContext.Provider value={{ isPdfMode, editText: null }}>
       <Document
         path={path}
         readOnly={readOnly}
+        visuals={visuals}
         autosaveDebounceMs={AUTOSAVE_DEBOUNCE_MS}
       />
     </VizContext.Provider>
@@ -104,6 +107,55 @@ afterEach(() => {
 });
 
 describe("Frame Document", () => {
+  it("keeps visual interactions separate from document saves and preserves missing visuals", async () => {
+    const dataAPI = makeAPI();
+    const onVisualClick = vi.fn();
+    dataAPI.fetchFile.mockResolvedValue({
+      ...makeFile(),
+      file: new File(
+        [
+          JSON.stringify({
+            type: "doc",
+            content: [
+              { type: "paragraph", content: [{ type: "text", text: "Draft" }] },
+              { type: "dustVisual", attrs: { name: "chart" } },
+              { type: "dustVisual", attrs: { name: "missing" } },
+            ],
+          }),
+        ],
+        "content.json"
+      ),
+    });
+    render(
+      <TestFrame
+        dataAPI={dataAPI}
+        visuals={{
+          chart: <button onClick={onVisualClick}>Change chart</button>,
+          missing: null,
+        }}
+      />
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Change chart" })
+    );
+    expect(onVisualClick).toHaveBeenCalledOnce();
+    expect(dataAPI.writeFile).not.toHaveBeenCalled();
+    expect(screen.getByText("Visual “missing” is unavailable.")).toBeTruthy();
+
+    paste(screen.getByRole("textbox"), "Updated ");
+    await waitFor(() => expect(dataAPI.writeFile).toHaveBeenCalledOnce());
+    expect(dataAPI.writeFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('"name":"chart"'),
+      })
+    );
+    expect(dataAPI.writeFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('"name":"missing"'),
+      })
+    );
+  });
+
   it("autosaves JSON with the loaded revision and advances it after each save", async () => {
     const dataAPI = makeAPI();
     render(<TestFrame dataAPI={dataAPI} />);

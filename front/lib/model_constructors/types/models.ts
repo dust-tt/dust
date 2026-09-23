@@ -1,4 +1,6 @@
 export const GPT_6_ASTRA = "gpt-6-astra" as const;
+export const GPT_6_LUNA = "gpt-6-luna" as const;
+export const GPT_6_SOL = "gpt-6-sol" as const;
 export const GPT_5_6_SOL = "gpt-5.6-sol" as const;
 export const GPT_5_6_TERRA = "gpt-5.6-terra" as const;
 export const GPT_5_6_TERRA_LONG_CONTEXT = "gpt-5.6-terra-long-context" as const;
@@ -21,6 +23,7 @@ export const CLAUDE_OPUS_4_6 = "claude-opus-4-6" as const;
 export const CLAUDE_OPUS_4_7 = "claude-opus-4-7" as const;
 export const CLAUDE_OPUS_4_8 = "claude-opus-4-8" as const;
 export const CLAUDE_OPUS_5 = "claude-opus-5" as const;
+export const CLAUDE_OPUS_5_5 = "claude-opus-5-5" as const;
 export const CLAUDE_HAIKU_4_5 = "claude-haiku-4-5-20251001" as const;
 
 export const GEMINI_3_1_PRO = "gemini-3.1-pro-preview" as const;
@@ -60,6 +63,8 @@ export const SIMULATED_FAILURE_MODEL = "simulated-failure-model" as const;
 // Include a few examples for now
 export const MODELS = [
   GPT_6_ASTRA,
+  GPT_6_LUNA,
+  GPT_6_SOL,
   GPT_5_6_SOL,
   GPT_5_6_TERRA,
   GPT_5_6_TERRA_LONG_CONTEXT,
@@ -81,6 +86,7 @@ export const MODELS = [
   CLAUDE_OPUS_4_7,
   CLAUDE_OPUS_4_8,
   CLAUDE_OPUS_5,
+  CLAUDE_OPUS_5_5,
   CLAUDE_HAIKU_4_5,
   GEMINI_3_1_PRO,
   GEMINI_3_5_FLASH,
@@ -120,6 +126,7 @@ export function isModel(value: string): value is Model {
 export const ORDERED_LARGE_MODELS = [
   CLAUDE_FABLE_5_1,
   CLAUDE_FABLE_5,
+  CLAUDE_OPUS_5_5,
   CLAUDE_OPUS_5,
   CLAUDE_OPUS_4_8,
   CLAUDE_OPUS_4_7,

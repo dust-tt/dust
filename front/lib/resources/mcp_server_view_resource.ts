@@ -933,9 +933,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       { includeHeavyAttributes, isRestrictedToSkills }
     );
 
-    // Permission parity with listBySpaces: the canReadOrAdministrate pre-filter on fetched
+    // Permission parity with listBySpaces: the read-or-admin pre-filter on fetched
     // spaces becomes a post-filter on the space hydrated by baseFetchWithAuthorization.
-    return views.filter((view) => view.canReadOrAdministrate(auth));
+    return views.filter(
+      (view) => auth.can("read", view) || auth.can("admin", view)
+    );
   }
 
   static async listBySpace(
@@ -1319,7 +1321,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     // scope from the view, so this is what bounds members to the admin's consent.
     oauthScope?: string
   ): Promise<Result<number, DustError<"unauthorized">>> {
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError("unauthorized", "Not allowed to update OAuth use case.")
       );
@@ -1337,7 +1339,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   public async clearOAuthScope(
     auth: Authenticator
   ): Promise<Result<number, DustError<"unauthorized">>> {
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError("unauthorized", "Not allowed to clear OAuth scope.")
       );
@@ -1352,7 +1354,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     name?: string,
     description?: string
   ): Promise<Result<number, DustError<"unauthorized">>> {
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1379,7 +1381,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       this.mcpServerId
     );
 
-    if (views.some((view) => !view.canAdministrate(auth))) {
+    if (views.some((view) => !auth.can("admin", view))) {
       return new Err(
         new DustError(
           "unauthorized",

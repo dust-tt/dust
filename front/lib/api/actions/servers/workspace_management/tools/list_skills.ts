@@ -77,7 +77,7 @@ export async function listSkills(
             kind: skill.kind,
             availability: skill.availability,
             status: skill.status,
-            canWrite: skill.canWrite(auth),
+            canWrite: auth.can("write", skill),
             agentsUsing: usageBySkillId
               ? (usageBySkillId.get(skill.sId)?.count ?? 0)
               : null,

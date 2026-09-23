@@ -7,7 +7,9 @@ import {
 import { useVizContext } from "@viz/app/components/VizContext";
 import { useFrameDataAPI } from "@viz/app/lib/frame-function-hooks";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
-import { type ReactNode, useCallback, useId, useRef } from "react";
+import { cn } from "@viz/lib/utils";
+import { type ReactNode, useCallback, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import useSWRImmutable from "swr/immutable";
 
 export interface DocumentProps {
@@ -49,6 +51,11 @@ const readDocument = async ([, path, dataAPI]: readonly [
   };
 };
 
+/**
+ * @cc [owner:flvndvd,label:product] frame-document-style-isolation
+ * Editor controls and tooltips MUST render inside Sparkle scopes.
+ * Named Frame visuals MUST render outside those scopes and retain Viz utilities.
+ */
 const DocumentEditor = ({
   file,
   dataAPI,
@@ -59,6 +66,23 @@ const DocumentEditor = ({
   visuals,
 }: DocumentEditorProps) => {
   const revisionRef = useRef(file.revision);
+  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(
+    null
+  );
+  const scopedVisuals =
+    visuals &&
+    Object.fromEntries(
+      Object.entries(visuals).map(([name, visual]) => [
+        name,
+        visual == null ? (
+          visual
+        ) : (
+          <div key={name} data-viz-sparkle-slot>
+            {visual}
+          </div>
+        ),
+      ])
+    );
 
   const save = useCallback(
     async (content: string): Promise<DocumentSaveResult> => {
@@ -91,16 +115,24 @@ const DocumentEditor = ({
   );
 
   return (
-    <SparkleDocument
-      initialContent={file.content}
-      contentType="json"
-      saveFormat="json"
-      className={className}
-      readOnly={readOnly || !file.canWrite || file.revision === null}
-      autosaveDebounceMs={autosaveDebounceMs}
-      onSave={save}
-      visuals={visuals}
-    />
+    <>
+      <SparkleDocument
+        initialContent={file.content}
+        contentType="json"
+        saveFormat="json"
+        className={cn("viz-sparkle viz-document", className)}
+        mountPortalContainer={portalContainer ?? undefined}
+        readOnly={readOnly || !file.canWrite || file.revision === null}
+        autosaveDebounceMs={autosaveDebounceMs}
+        onSave={save}
+        visuals={scopedVisuals}
+      />
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div className="viz-sparkle" ref={setPortalContainer} />,
+          document.body
+        )}
+    </>
   );
 };
 

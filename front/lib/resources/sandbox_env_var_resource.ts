@@ -57,6 +57,9 @@ export type HttpsSecretSandboxEnvVar = SandboxEnvVarResource & {
   allowedDomains: string[];
 };
 
+// 16 bytes = 32 hex chars in the rendered `__DSEC_<32hex>__` placeholder.
+export const PLACEHOLDER_NONCE_BYTES = 16;
+
 const USER_JOIN_INCLUDES: Includeable[] = [
   {
     association: "createdByUser",
@@ -440,11 +443,12 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
           spaceId: scope.kind === "pod" ? scope.pod.id : null,
           name,
           kind,
-          // 16 bytes = 32 hex chars in the placeholder; matches the
-          // `__DSEC_<32hex>__` format from the design doc. Stable for the
-          // life of the row (rotations and allowedDomains edits don't touch
-          // it).
-          placeholderNonce: kind === "https_secret" ? randomBytes(16) : null,
+          // Stable for the life of the row (rotations and allowedDomains
+          // edits don't touch it).
+          placeholderNonce:
+            kind === "https_secret"
+              ? randomBytes(PLACEHOLDER_NONCE_BYTES)
+              : null,
           allowedDomains: normalizedAllowedDomains.value ?? null,
           encryptedValue,
           createdByUserId: user.id,
@@ -615,7 +619,7 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
 
     await this.update({
       kind: "https_secret",
-      placeholderNonce: randomBytes(16),
+      placeholderNonce: randomBytes(PLACEHOLDER_NONCE_BYTES),
       allowedDomains: normalizedAllowedDomainsValue,
       lastUpdatedByUserId: user.id,
     });

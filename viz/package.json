@@ -6,16 +6,18 @@
   },
   "private": true,
   "scripts": {
-    "predev": "npm run build:runtime-types",
+    "predev": "npm run build:runtime-types && npm run build:sparkle-styles",
     "dev": "next dev -p 3007",
-    "build": "npm run build:runtime-types && next build && npm run audit:tailwind",
+    "build": "npm run build:runtime-types && npm run build:sparkle-styles && next build && npm run audit:tailwind",
     "build:runtime-types": "node scripts/build-frame-runtime-types.mjs",
     "start": "next start",
     "test": "vitest --run",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "test:styles": "node scripts/check-tailwind-styles.mjs",
-    "audit:tailwind": "node scripts/audit-tailwind.mjs"
+    "audit:tailwind": "node scripts/audit-tailwind.mjs",
+    "build:sparkle-styles": "node scripts/build-sparkle-styles.mjs",
+    "test:sparkle-styles": "npm run build:sparkle-styles && node scripts/check-sparkle-styles.mjs"
   },
   "dependencies": {
     "@dust-tt/sparkle": "^0.7.7",
@@ -86,6 +88,7 @@
     "playwright": "1.57.0",
     "postcss": "^8",
     "postcss-selector-parser": "^7.1.1",
+    "postcss-value-parser": "^4.2.0",
     "tailwindcss": "^4.3.0",
     "tsup": "^8.4.0",
     "vitest": "^4.0.16"

@@ -8,8 +8,9 @@ const config: Config = {
   ],
   theme: {
     fontFamily: {
-      sans: ["var(--font-geist)", "sans-serif"],
-      mono: ["var(--font-geist-mono)", "monospace"],
+      sans: ["var(--font-sans)"],
+      serif: ["var(--font-serif)"],
+      mono: ["var(--font-mono)"],
     },
     extend: {
       colors: {

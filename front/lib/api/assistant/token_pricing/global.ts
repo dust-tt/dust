@@ -79,6 +79,38 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
       cache_read_input_tokens: 0.4,
     },
   },
+  // Verified 2026-09-22: https://developers.openai.com/api/docs/pricing
+  // Prompts above 272K input tokens cost 2x input and 1.5x output for the full request.
+  "gpt-6-sol": {
+    input: 2.0,
+    output: 10.0,
+    cache_creation_input_tokens: 2.5,
+    cache_read_input_tokens: 0.2,
+    long_context: {
+      // `computeTokensCostForUsageInMicroUsd` switches tiers inclusively.
+      prompt_token_threshold: 272_001,
+      input: 4.0,
+      output: 15.0,
+      cache_creation_input_tokens: 5.0,
+      cache_read_input_tokens: 0.4,
+    },
+  },
+  // Verified 2026-09-22: https://developers.openai.com/api/docs/pricing
+  // Prompts above 272K input tokens cost 2x input and 1.5x output for the full request.
+  "gpt-6-luna": {
+    input: 0.1,
+    output: 0.5,
+    cache_creation_input_tokens: 0.125,
+    cache_read_input_tokens: 0.01,
+    long_context: {
+      // `computeTokensCostForUsageInMicroUsd` switches tiers inclusively.
+      prompt_token_threshold: 272_001,
+      input: 0.2,
+      output: 0.75,
+      cache_creation_input_tokens: 0.25,
+      cache_read_input_tokens: 0.02,
+    },
+  },
   // https://openai.com/api/pricing
   "gpt-5.6-luna": {
     input: 0.2,
@@ -265,6 +297,15 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 6.25,
     long_cache_creation_input_tokens: 10.0,
     cache_read_input_tokens: 0.5,
+  },
+  // https://platform.claude.com/docs/en/about-claude/pricing (2026-09-22).
+  // Cache reads are 0.05x base input on Opus 5.5, not the usual 0.1x.
+  "claude-opus-5-5": {
+    input: 4.0,
+    output: 20.0,
+    cache_creation_input_tokens: 5.0,
+    long_cache_creation_input_tokens: 8.0,
+    cache_read_input_tokens: 0.2,
   },
   // https://platform.claude.com/docs/en/about-claude/models/overview
   "claude-fable-5": {

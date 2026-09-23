@@ -11,6 +11,8 @@ export interface DocumentProps {
   saveFormat?: "markdown" | "json";
   /** Classes for the outer container. */
   className?: string;
+  /** Optional container for formatting tooltips. Defaults to the enclosing sheet or body. */
+  mountPortalContainer?: HTMLElement;
   readOnly?: boolean;
   /** React content for named visual blocks. JSON stores only the name. */
   visuals?: Record<string, ReactNode>;

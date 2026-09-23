@@ -145,7 +145,7 @@ export type CapabilitySpec = Pick<
   "grantType" | "resourceType"
 >;
 
-// The workspace-level (type-wide) verbs a caller holds, grouped by resource type.
+// The type-level capabilities a caller holds, grouped by resource type.
 export type WorkspacePermissions = Record<ConcreteResourceType, GrantVerb[]>;
 
 export function emptyWorkspacePermissions(): WorkspacePermissions {

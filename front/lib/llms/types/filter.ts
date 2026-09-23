@@ -8,6 +8,9 @@ export type WorkspaceConfig = {
   featureFlags: WhitelistableFeature[];
   isEnterprise: boolean;
   isCreditPriced: boolean;
+  // Mirrors `availableIfOneOf.plansWithAdvancedModels` on the model config, so
+  // an endpoint can gate on the same entitlement the model picker gates on.
+  isAdvancedModels: boolean;
 };
 
 export type EndpointConfig = {

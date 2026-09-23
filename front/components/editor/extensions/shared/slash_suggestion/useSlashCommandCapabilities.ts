@@ -68,16 +68,36 @@ export function useInputBarSlashCommandCapabilities({
   owner: LightWorkspaceType;
   query: string;
 }) {
+  const { hasFeature } = useFeatureFlags();
+  const useSkillSearch = hasFeature("skills_search");
   const { spaces: globalSpaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global"],
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
-  const { skills, isSkillsLoading } = useSkills({
+  const { skills: listedSkills, isSkillsLoading: isListedSkillsLoading } =
+    useSkills({
+      owner,
+      status: "active",
+      disabled: useSkillSearch,
+      swrOptions: CAPABILITIES_SWR_OPTIONS,
+    });
+  const {
+    skills: searchSkills,
+    resolvedSearchTerm,
+    isSkillsLoading: isSearchSkillsLoading,
+  } = useSearchSkills({
     owner,
-    status: "active",
-    swrOptions: CAPABILITIES_SWR_OPTIONS,
+    searchTerm: query,
+    limit: MAX_RENDERED_CAPABILITY_ITEMS,
+    disabled: !useSkillSearch,
   });
+  const skills = useSkillSearch ? searchSkills : listedSkills;
+  // Use the displayed skills' query so tools and skills update together.
+  const capabilityQuery = useSkillSearch ? (resolvedSearchTerm ?? "") : query;
+  const isSkillsLoading = useSkillSearch
+    ? isSearchSkillsLoading
+    : isListedSkillsLoading;
   // The JIT views endpoint only returns views whose tools can be enabled directly in a
   // conversation, no further filtering needed here.
   const { serverViews, isLoading: isServerViewsLoading } =
@@ -91,15 +111,17 @@ export function useInputBarSlashCommandCapabilities({
     () =>
       buildCapabilitySlashCommandItems({
         excludeSkillId,
-        query,
+        query: capabilityQuery,
+        useSearchRanking: useSkillSearch,
         skills,
         tools: serverViews,
       }),
-    [excludeSkillId, query, serverViews, skills]
+    [capabilityQuery, excludeSkillId, serverViews, skills, useSkillSearch]
   );
 
   return {
     capabilityItems,
+    resolvedQuery: capabilityQuery,
     // Every workspace has at least one global skill and one tool, so stop loading
     // as soon as either source returns a matching capability.
     isLoading:

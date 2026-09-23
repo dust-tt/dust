@@ -80,7 +80,7 @@ export async function fetchWritableSkill(
 
   const skill = skillResult.value;
 
-  if (!skill.canWrite(auth)) {
+  if (!auth.can("write", skill)) {
     return new Err(
       new SkillWriteAccessError(
         "not_authorized",

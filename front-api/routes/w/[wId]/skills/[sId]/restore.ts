@@ -33,7 +33,7 @@ app.post(
       });
     }
 
-    if (!skillResource.canAdministrate(auth)) {
+    if (!auth.can("admin", skillResource)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

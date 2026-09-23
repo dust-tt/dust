@@ -4,6 +4,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "aubin-tchoi",
   },
+  new_manage_skills_page: {
+    description:
+      "Enable the search-backed Manage Skills page (requires skills_search)",
+    stage: "dust_only",
+    owner: "aubin-tchoi",
+  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
@@ -95,12 +101,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
-    stage: "self_serve",
-    owner: "fontanierh",
-  },
-  claude_4_5_opus_feature: {
-    description:
-      "Access to Claude Opus and GPT 5.6 Sol models in the agent builder",
     stage: "self_serve",
     owner: "fontanierh",
   },
@@ -250,11 +250,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
     owner: "frankaloia",
-  },
-  servicenow_tool: {
-    description: "ServiceNow MCP tool",
-    stage: "self_serve",
-    owner: "thomasvicaire",
   },
   shopify_tool: {
     description: "Shopify MCP tool",

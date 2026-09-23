@@ -82,6 +82,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
+  "gpt-6-sol": {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "gpt-5.6-sol": {
     none: true,
     light: true,
@@ -95,6 +101,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     high: true,
   },
   "gpt-5.6-terra-long-context": {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  "gpt-6-luna": {
     none: true,
     light: true,
     medium: true,
@@ -203,6 +215,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     high: true,
   },
   "claude-opus-5": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  "claude-opus-5-5": {
     none: false,
     light: true,
     medium: true,

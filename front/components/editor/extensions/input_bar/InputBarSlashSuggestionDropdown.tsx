@@ -121,11 +121,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       [includeAttachKnowledgeRef, includePickModelRef, slashCommandsRef]
     );
 
-    const commandItems = useMemo(
-      () => filterInputBarSlashCommandItems(allCommandItems, query),
-      [allCommandItems, query]
-    );
-
     // "/model fab" opens the model sub-menu with "fab" as its query without pushing a frame.
     // Back then relies on `pop` deleting the text after "/", not on the (empty) stack.
     const queryFrame = useMemo(
@@ -141,10 +136,16 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     const activeFrame = stackFrame ?? queryFrame?.frame ?? null;
     const subMenuQuery = queryFrame?.query ?? query;
 
-    const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
-      owner,
-      query,
-    });
+    const { capabilityItems, isLoading, resolvedQuery } =
+      useInputBarSlashCommandCapabilities({
+        owner,
+        query,
+      });
+
+    const commandItems = useMemo(
+      () => filterInputBarSlashCommandItems(allCommandItems, resolvedQuery),
+      [allCommandItems, resolvedQuery]
+    );
 
     const sections = useMemo(
       () =>

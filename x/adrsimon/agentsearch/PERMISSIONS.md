@@ -34,7 +34,10 @@ An agent's tools point at data. The spaces holding that data are denormalized on
 
 ```ts
 return requestedSpaceIds.every(
-  (spaceId) => spaceById.get(spaceId)?.canRead(auth) ?? false
+  (spaceId) => {
+    const space = spaceById.get(spaceId);
+    return space ? auth.can("read", space) : false;
+  }
 );
 ```
 
@@ -64,7 +67,7 @@ pod_space_ids[],       pod_space_count
 
 `editors` holds emails, resolved at export time by `getAgentsEditors`, which reads the agent's editor group. It is a denormalization of front's `agentIdsForUserAsEditor`, computed per agent instead of per caller.
 
-The caller is a profile: the output of `scripts/export_user_profile.ts`, holding `auth.groupIds()` and the spaces where `space.canRead(auth)` holds, split into pods and non-pods. It is a snapshot of an `Authenticator`, so it answers as the user was at `generatedAt`.
+The caller is a profile: the output of `scripts/export_user_profile.ts`, holding `auth.groupIds()` and the spaces where `auth.can("read", space)` holds, split into pods and non-pods. It is a snapshot of an `Authenticator`, so it answers as the user was at `generatedAt`.
 
 `scripts/query.ts` turns the two into one `bool` query. Access clauses go in `filter`, so they are unscored and cacheable. Ranking goes in `must` and `should`.
 

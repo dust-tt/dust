@@ -8,7 +8,6 @@ import {
   resolveStreamModelWithFallback,
   withModelSelectability,
 } from "@app/lib/model_tiers/enabled_models";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -184,9 +183,8 @@ describe("resolveStreamModel", () => {
   let adminAuth: Authenticator;
 
   beforeEach(async () => {
-    workspace = await WorkspaceFactory.basic();
+    workspace = await WorkspaceFactory.creditPriced();
     adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    await FeatureFlagFactory.basic(adminAuth, "claude_4_5_opus_feature");
   });
 
   async function userAuthForTierCap(tierName: "cost_efficient" | "balanced") {

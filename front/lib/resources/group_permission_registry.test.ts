@@ -36,6 +36,16 @@ describe("assertValidGrant", () => {
       ).not.toThrow();
     });
 
+    it.each([
+      { grantType: "reader", resourceType: "space" },
+      { grantType: "editor", resourceType: "agent" },
+      { grantType: "use", resourceType: "models_tier" },
+    ] as const)("instance role $grantType on all $resourceType instances", (role) => {
+      expect(() =>
+        assertValidGrant({ ...role, resourceId: WHOLE_TYPE_RESOURCE_ID })
+      ).not.toThrow();
+    });
+
     it("type-level capability (publish) with -1", () => {
       expect(() =>
         assertValidGrant({
@@ -138,16 +148,6 @@ describe("assertValidGrant", () => {
       ).toThrow(/positive resourceId/);
     });
 
-    it("type-wide grant on models_tier", () => {
-      expect(() =>
-        assertValidGrant({
-          grantType: "use",
-          resourceType: "models_tier",
-          resourceId: WHOLE_TYPE_RESOURCE_ID,
-        })
-      ).toThrow(/cannot be granted type-wide/);
-    });
-
     it("instance-level publish on an agent (publish is type-level)", () => {
       expect(() =>
         assertValidGrant({
@@ -156,26 +156,6 @@ describe("assertValidGrant", () => {
           resourceId: 5,
         })
       ).toThrow(/type-level/);
-    });
-
-    it("type-wide editor on an agent (editor is instance-only)", () => {
-      expect(() =>
-        assertValidGrant({
-          grantType: "editor",
-          resourceType: "agent",
-          resourceId: WHOLE_TYPE_RESOURCE_ID,
-        })
-      ).toThrow(/cannot be granted type-wide/);
-    });
-
-    it("type-wide grant on a space (space roles are instance-only)", () => {
-      expect(() =>
-        assertValidGrant({
-          grantType: "reader",
-          resourceType: "space",
-          resourceId: WHOLE_TYPE_RESOURCE_ID,
-        })
-      ).toThrow(/cannot be granted type-wide/);
     });
   });
 });
@@ -208,7 +188,7 @@ describe("ROLE_REGISTRY invariants", () => {
 
   it("lets the skill editor role administrate its skill", () => {
     // A skill's editor group is also its administrator (archive / restore / manage editors, all
-    // gated by SkillResource.canAdministrate), so `editor` must confer `admin` at instance level —
+    // gated by the `admin` verb), so `editor` must confer `admin` at instance level —
     // otherwise editors lose those actions once group_permissions becomes the read source.
     expect(grantTypesForVerb("skill", "admin", "instance")).toContain("editor");
   });
@@ -221,9 +201,7 @@ describe("ROLE_REGISTRY invariants", () => {
 
   it("keeps every type-level role a singleton", () => {
     // The Governance page toggles capabilities one verb at a time, so a type-level role must carry
-    // exactly one verb. The name is not required to be that verb: a governance capability is named
-    // after its verb because it stays type-level forever, while a role that describes access to a
-    // resource (skill `reader`) keeps its role name so it can also be granted per instance later.
+    // exactly one verb. Instance roles can bundle verbs, even when granted on every instance.
     for (const roles of roleMaps) {
       for (const role of Object.values(roles)) {
         if (role.levels.includes("type")) {
@@ -350,6 +328,18 @@ describe("GroupPermissions wildcard grant", () => {
     const restored = GroupPermissions.fromJSON(perms.toJSON());
     expect(restored.toJSON()).toEqual(perms.toJSON());
     expect(restored.resolvedVerbsForResource("space", 12)).toContain("admin");
+  });
+
+  it("reports only type-level capabilities while retaining instance access", () => {
+    const perms = GroupPermissions.fromGrants([...WILDCARD]);
+    const restored = GroupPermissions.fromJSON(perms.toJSON());
+
+    expect(restored.toWorkspacePermissions()).toMatchObject({
+      skill: ["create", "publish", "make_discoverable"],
+      space: [],
+      models_tier: [],
+    });
+    expect(restored.resolvedVerbsForResource("skill", 42)).toContain("read");
   });
 
   it("enumerates as every instance, not as none", () => {

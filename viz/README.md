@@ -11,3 +11,5 @@ Sparkle is used by Viz's own UI. Generated Frames continue to use the existing r
 Import individual components through Sparkle's exported `dist/esm/*` paths to avoid unrelated CSS side effects from the package entry point. The slideshow icons use Viz's existing styles. Styled components such as Document will require a separate integration of Sparkle's theme, which changes typography and colors used by saved Frames.
 
 Embedded Frames receive Dust's resolved theme through `?theme=light|dark`. Changing Dust's theme reloads the iframe and resets its local state. Missing or invalid theme values and PDF rendering use light mode. Theme support uses Viz's existing semantic colors and emitted dark variants.
+
+Semantic colors respect an authored `color-scheme`, so a Frame that declares `style={{ colorScheme: "light" }}` keeps its light palette even inside a dark host. Explicit theme variable values still take precedence. Content without an authored color scheme inherits the host's theme; fixed colors are not automatically converted.

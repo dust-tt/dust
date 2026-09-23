@@ -152,6 +152,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "premium",
     high: "premium",
   },
+  "gpt-6-sol": {
+    none: "balanced",
+    light: "premium",
+    medium: "premium",
+    high: "premium",
+  },
   "gpt-5.6-sol": {
     none: "balanced",
     light: "premium",
@@ -169,6 +175,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     light: "premium",
     medium: "premium",
     high: "premium",
+  },
+  "gpt-6-luna": {
+    none: "cost_efficient",
+    light: "cost_efficient",
+    medium: "balanced",
+    high: "balanced",
   },
   "gpt-5.6-luna": {
     none: "cost_efficient",
@@ -251,6 +263,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     high: "premium",
   },
   "claude-opus-5": {
+    light: "premium",
+    medium: "premium",
+    high: "premium",
+  },
+  "claude-opus-5-5": {
     light: "premium",
     medium: "premium",
     high: "premium",

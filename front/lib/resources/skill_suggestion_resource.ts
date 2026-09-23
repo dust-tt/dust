@@ -70,10 +70,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     this.notificationConversationId = notificationConversationId;
   }
 
-  /**
-   * Check if the user has permission to write (edit/delete) this suggestion's skill.
-   */
-  canWrite(auth: Authenticator): boolean {
+  private hasWriteAccess(auth: Authenticator): boolean {
     if (auth.isAdmin()) {
       return true;
     }
@@ -425,7 +422,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   }
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
-    if (!this.canWrite(auth)) {
+    if (!this.hasWriteAccess(auth)) {
       return new Err(
         new Error("User does not have permission to edit this skill")
       );
@@ -453,7 +450,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       return new Ok(0);
     }
 
-    const nonWritable = suggestions.filter((s) => !s.canWrite(auth));
+    const nonWritable = suggestions.filter((s) => !s.hasWriteAccess(auth));
     if (nonWritable.length > 0) {
       return new Err(
         new Error(

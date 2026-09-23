@@ -151,6 +151,7 @@ describe("GPT 5.6 model configurations", () => {
       featureFlags: [],
       isEnterprise: true,
       isCreditPriced: true,
+      isAdvancedModels: false,
     };
     const modelFilter = {
       model: { eq: GPT_5_6_TERRA_LONG_CONTEXT },

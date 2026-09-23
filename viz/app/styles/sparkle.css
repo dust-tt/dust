@@ -1,0 +1,29 @@
+@import "./sparkle-scoped.generated.css";
+
+/* Put .viz-sparkle on Sparkle UI and its portal containers.
+   Put data-viz-sparkle-slot on model visuals nested inside that UI. */
+@scope (.viz-sparkle) to ([data-viz-sparkle-slot]) {
+  :scope {
+    --viz-sparkle-font-sans: var(--font-geist), sans-serif;
+    --viz-sparkle-font-mono: var(--font-geist-mono), monospace;
+    font-family: var(--viz-sparkle-font-sans);
+  }
+}
+
+@scope (.viz-document) to ([data-viz-sparkle-slot]) {
+  [role="status"] {
+    color: var(--muted-foreground);
+  }
+
+  .ProseMirror {
+    --viz-sparkle-font-sans: var(--font-sans);
+    --viz-sparkle-font-serif: var(--font-serif);
+    --viz-sparkle-font-mono: var(--font-mono);
+    --viz-sparkle-color-foreground: var(--foreground);
+    --viz-sparkle-color-muted-foreground: var(--muted-foreground);
+    --viz-sparkle-color-border: var(--border);
+    --viz-sparkle-color-muted-background: var(--muted);
+    font-family: var(--font-sans);
+    color: var(--foreground);
+  }
+}

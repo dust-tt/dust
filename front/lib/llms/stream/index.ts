@@ -3,6 +3,8 @@ import { DustAnthropicClaudeFableFiveDotOneGlobalAnthropicStream } from "@app/li
 import { DustAnthropicClaudeFableFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_fable_five_global_anthropic";
 import { DustAnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_haiku_four_dot_five_eu_agent_platform";
 import { DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_haiku_four_dot_five_global_anthropic";
+import { DustAnthropicClaudeOpusFiveDotFiveEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_five_dot_five_eu_agent_platform";
+import { DustAnthropicClaudeOpusFiveDotFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_five_dot_five_global_anthropic";
 import { DustAnthropicClaudeOpusFiveEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_five_eu_agent_platform";
 import { DustAnthropicClaudeOpusFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_five_global_anthropic";
 import { DustAnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_four_dot_eight_eu_agent_platform";
@@ -68,6 +70,10 @@ import { DustOpenAIGptFiveNanoEuropeOpenAIResponsesStream } from "@app/lib/llms/
 import { DustOpenAIGptFiveNanoGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_nano_global_openai_responses";
 import { DustOpenAIGptSixAstraEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_six_astra_eu_openai_responses";
 import { DustOpenAIGptSixAstraGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_six_astra_global_openai_responses";
+import { DustOpenAIGptSixLunaEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_six_luna_eu_openai_responses";
+import { DustOpenAIGptSixLunaGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_six_luna_global_openai_responses";
+import { DustOpenAIGptSixSolEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_six_sol_eu_openai_responses";
+import { DustOpenAIGptSixSolGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_six_sol_global_openai_responses";
 import { DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_simulated_failure_model_global_openai_responses";
 import { DustThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { DustXaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_five_global_xai";
@@ -88,6 +94,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustAnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream,
   [DustAnthropicClaudeOpusFiveEuropeAgentPlatformStream.id]:
     DustAnthropicClaudeOpusFiveEuropeAgentPlatformStream,
+  [DustAnthropicClaudeOpusFiveDotFiveEuropeAgentPlatformStream.id]:
+    DustAnthropicClaudeOpusFiveDotFiveEuropeAgentPlatformStream,
   [DustAnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream.id]:
     DustAnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream,
   [DustAnthropicClaudeOpusFourDotSevenEuropeAgentPlatformStream.id]:
@@ -126,6 +134,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream,
   [DustAnthropicClaudeOpusFiveGlobalAnthropicStream.id]:
     DustAnthropicClaudeOpusFiveGlobalAnthropicStream,
+  [DustAnthropicClaudeOpusFiveDotFiveGlobalAnthropicStream.id]:
+    DustAnthropicClaudeOpusFiveDotFiveGlobalAnthropicStream,
   [DustAnthropicClaudeOpusFourDotEightGlobalAnthropicStream.id]:
     DustAnthropicClaudeOpusFourDotEightGlobalAnthropicStream,
   [DustAnthropicClaudeOpusFourDotSevenGlobalAnthropicStream.id]:
@@ -196,6 +206,10 @@ export const DUST_STREAM_ENDPOINTS = {
     DustOpenAIGptFiveDotSixLunaEuropeOpenAIResponsesStream,
   [DustOpenAIGptSixAstraEuropeOpenAIResponsesStream.id]:
     DustOpenAIGptSixAstraEuropeOpenAIResponsesStream,
+  [DustOpenAIGptSixLunaEuropeOpenAIResponsesStream.id]:
+    DustOpenAIGptSixLunaEuropeOpenAIResponsesStream,
+  [DustOpenAIGptSixSolEuropeOpenAIResponsesStream.id]:
+    DustOpenAIGptSixSolEuropeOpenAIResponsesStream,
   [DustOpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream.id]:
     DustOpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream,
   [DustOpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream.id]:
@@ -224,6 +238,10 @@ export const DUST_STREAM_ENDPOINTS = {
     DustOpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream,
   [DustOpenAIGptSixAstraGlobalOpenAIResponsesStream.id]:
     DustOpenAIGptSixAstraGlobalOpenAIResponsesStream,
+  [DustOpenAIGptSixLunaGlobalOpenAIResponsesStream.id]:
+    DustOpenAIGptSixLunaGlobalOpenAIResponsesStream,
+  [DustOpenAIGptSixSolGlobalOpenAIResponsesStream.id]:
+    DustOpenAIGptSixSolGlobalOpenAIResponsesStream,
   [DustOpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream.id]:
     DustOpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream,
   [DustOpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream.id]:

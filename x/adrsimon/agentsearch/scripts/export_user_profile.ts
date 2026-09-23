@@ -48,7 +48,7 @@ makeScript(
       includeConversationsSpace: true,
       includeProjectSpaces: true,
     });
-    const readableSpaces = spaces.filter((space) => space.canRead(auth));
+    const readableSpaces = spaces.filter((space) => auth.can("read", space));
 
     const toSpace = (space: (typeof readableSpaces)[number]) => ({
       sId: space.sId,

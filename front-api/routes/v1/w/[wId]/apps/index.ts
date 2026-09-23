@@ -36,7 +36,7 @@ app.get(
 
     return ctx.json({
       apps: apps
-        .filter((a) => a.canRead(auth))
+        .filter((a) => auth.can("read", a))
         .map((a) => a.enrichWithSpaceAccess(enrichedSpace)),
     });
   }

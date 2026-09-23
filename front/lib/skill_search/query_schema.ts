@@ -1,4 +1,8 @@
 import { MAX_SKILL_SEARCH_RESULTS } from "@app/lib/skill_search/query";
+import {
+  SKILL_SEARCH_SORT_ORDERS,
+  SKILL_SEARCH_SORTS,
+} from "@app/types/api/skills";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { z } from "zod";
 
@@ -19,5 +23,6 @@ export const SearchSkillsQuerySchema = z.object({
     .optional(),
   editedByMe: z.literal(true).optional(),
   codeDefinedOnly: z.literal(true).optional(),
-  sortBy: z.enum(["relevance", "usage"]).optional(),
+  sortBy: z.enum(SKILL_SEARCH_SORTS).optional(),
+  sortOrder: z.enum(SKILL_SEARCH_SORT_ORDERS).optional(),
 });
