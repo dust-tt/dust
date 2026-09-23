@@ -7,7 +7,7 @@ import type {
 import type { MembershipOriginType, MembershipSeatType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import { DbModelIdSchema } from "./shared/model_id";
-import { assertNeverAndIgnore } from "./shared/utils/assert_never";
+import { assertNever } from "./shared/utils/assert_never";
 import { decodeUtf8HeaderValue } from "./shared/utils/http_headers";
 
 export type WorkspaceSegmentationType = "interesting" | null;
@@ -296,8 +296,7 @@ export function isAdmin(
     case "none":
       return false;
     default:
-      assertNeverAndIgnore(owner.role);
-      return false;
+      assertNever(owner.role);
   }
 }
 
@@ -315,8 +314,7 @@ export function isManager(
     case "none":
       return false;
     default:
-      assertNeverAndIgnore(owner.role);
-      return false;
+      assertNever(owner.role);
   }
 }
 
@@ -334,8 +332,7 @@ export function isUser(owner: WorkspaceType | null): owner is WorkspaceType & {
     case "none":
       return false;
     default:
-      assertNeverAndIgnore(owner.role);
-      return false;
+      assertNever(owner.role);
   }
 }
 
