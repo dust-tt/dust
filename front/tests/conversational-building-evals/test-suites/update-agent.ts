@@ -7,44 +7,48 @@ import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_
 const CONCIERGE_AGENT_KEY = "support-concierge";
 
 // Block ids are hand-picked so the scenario can assert on which blocks the edit targets. The
-// structure mirrors what the agent builder stores: an `instructions-root` div holding
-// `instruction-block` sections, each with its own paragraphs.
-const TONE_BLOCK_ID = "tone0001";
+// instructions are a flat sequence of sections, each a heading followed by a paragraph, inside
+// the `instructions-root` div the editor stores.
+const TONE_HEADING_ID = "tone0001";
 const TONE_PARAGRAPH_ID = "tone0002";
 
-function instructionBlock(
-  type: string,
-  blockId: string,
-  content: string
+function section(
+  title: string,
+  headingId: string,
+  paragraphId: string,
+  text: string
 ): string {
   return (
-    `<div data-type="instruction-block" data-instruction-type="${type}" data-collapsed="false" data-block-id="${blockId}">` +
-    content +
-    "</div>"
+    `<h2 data-block-id="${headingId}">${title}</h2>` +
+    `<p data-block-id="${paragraphId}">${text}</p>`
   );
 }
 
 const CONCIERGE_INSTRUCTIONS_HTML =
   `<div data-type="instructions-root" data-block-id="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">` +
-  instructionBlock(
-    "role",
+  section(
+    "Role",
     "role0001",
-    '<p data-block-id="role0002">You are the support concierge of Acme, a B2B invoicing SaaS. You answer customer questions about invoices, payments and account settings.</p>'
+    "role0002",
+    "You are the support concierge of Acme, a B2B invoicing SaaS. You answer customer questions about invoices, payments and account settings."
   ) +
-  instructionBlock(
-    "tone",
-    TONE_BLOCK_ID,
-    `<p data-block-id="${TONE_PARAGRAPH_ID}">Be upbeat and casual! Use the customer's first name, feel free to add an emoji or two, and keep the energy high.</p>`
+  section(
+    "Tone",
+    TONE_HEADING_ID,
+    TONE_PARAGRAPH_ID,
+    "Be upbeat and casual! Use the customer's first name, feel free to add an emoji or two, and keep the energy high."
   ) +
-  instructionBlock(
-    "escalation",
+  section(
+    "Escalation",
     "esca0001",
-    '<p data-block-id="esca0002">Escalate to a human agent when the customer mentions a legal dispute, a chargeback, or asks to close their account.</p>'
+    "esca0002",
+    "Escalate to a human agent when the customer mentions a legal dispute, a chargeback, or asks to close their account."
   ) +
-  instructionBlock(
-    "formatting",
+  section(
+    "Formatting",
     "form0001",
-    '<p data-block-id="form0002">Answer in at most three short paragraphs. Use a numbered list for step-by-step instructions.</p>'
+    "form0002",
+    "Answer in at most three short paragraphs. Use a numbered list for step-by-step instructions."
   ) +
   "</div>";
 
@@ -75,17 +79,17 @@ export const updateAgentSuite: TestSuite = {
       expectedFinalToolCall: {
         type: "suggestAgentInstructionsChange",
         agentKey: CONCIERGE_AGENT_KEY,
-        allowedTargetBlockIds: [TONE_BLOCK_ID, TONE_PARAGRAPH_ID],
+        allowedTargetBlockIds: [TONE_PARAGRAPH_ID],
       },
       judgeCriteria: `
-- The request only concerns the tone section, so the edit must target the tone block (or its
-  paragraph) and nothing else: the role, escalation and formatting blocks must not appear in any
-  edit, and the root must not be rewritten.
+- The request only concerns the Tone section, so the edit must target the Tone paragraph and
+  nothing else: the Role, Escalation and Formatting sections must not be touched, the "Tone"
+  heading must stay, and the root must not be rewritten.
 - The new tone must be formal: no exclamation marks, no emojis, and customers addressed by last
   name. The upbeat/casual/first-name/emoji guidance must be gone.
-- The agent must have read the agent's instructions (get_agent_details) before editing, since
+- The agent must have read the agent's instructions (describe_agent) before editing, since
   block ids come from there.
-- Score 0-1 if any block other than the tone block is targeted, or if the whole instructions
+- Score 0-1 if any block other than the Tone paragraph is targeted, or if the whole instructions
   are rewritten.
 - The closing message must surface the recorded suggestion directive to the user.
 `.trim(),

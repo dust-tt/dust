@@ -1,5 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
-import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
+import {
+  convertBlockHtmlToMarkdown,
+  convertMarkdownToBlockHtml,
+} from "@app/lib/editor/skill_instructions_html";
 import type {
   SeededKnowledgeNode,
   SeededScenario,
@@ -124,15 +127,10 @@ export async function seedScenario(
 
     const agentIdsByKey = new Map<string, string>();
     for (const agent of testCase.workspaceSeed.agents ?? []) {
-      // The factory's create path has no instructions override; a second version carries them.
       const created = await AgentConfigurationFactory.createTestAgent(auth, {
         name: agent.name,
         description: agent.description,
-      });
-      await AgentConfigurationFactory.updateTestAgent(auth, created.sId, {
-        name: agent.name,
-        description: agent.description,
-        instructions: agent.instructionsHtml,
+        instructions: convertBlockHtmlToMarkdown(agent.instructionsHtml),
         instructionsHtml: agent.instructionsHtml,
       });
       agentIdsByKey.set(agent.key, created.sId);

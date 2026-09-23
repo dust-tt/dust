@@ -19,6 +19,8 @@ export class AgentConfigurationFactory {
     overrides: Partial<{
       name: string;
       description: string;
+      instructions: string;
+      instructionsHtml: string | null;
       scope: Exclude<AgentConfigurationType["scope"], "global">;
       model: {
         providerId: ModelProviderIdType;
@@ -30,6 +32,8 @@ export class AgentConfigurationFactory {
   ): Promise<AgentConfigurationType> {
     const name = overrides.name ?? "Test Agent";
     const description = overrides.description ?? "Test Agent Description";
+    const instructions = overrides.instructions ?? "Test Instructions";
+    const instructionsHtml = overrides.instructionsHtml ?? null;
     const scope = overrides.scope ?? "visible";
     const providerId = overrides.model?.providerId ?? "openai";
     const modelId = overrides.model?.modelId ?? "gpt-5-mini";
@@ -52,8 +56,8 @@ export class AgentConfigurationFactory {
     const result = await AgentResource.makeNew(internalAuth, {
       name,
       description,
-      instructions: "Test Instructions",
-      instructionsHtml: null,
+      instructions,
+      instructionsHtml,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
       scope,
