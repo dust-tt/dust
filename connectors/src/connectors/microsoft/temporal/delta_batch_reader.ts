@@ -69,7 +69,7 @@ function isDeltaMetadata(
 // share one token stream), so one call can take longer than the activity's
 // heartbeatTimeout on a large delta: the read heartbeats as it goes.
 /**
- * @cc [owner:PopDaph,label:performance] delta-read-heartbeats
+ * @cc [owner:tdraier,label:performance] delta-read-heartbeats
  * The read MUST call `heartbeat` before consuming the file and then at least
  * once per `DELTA_READ_HEARTBEAT_INTERVAL_MS` of wall-clock time while array
  * items keep arriving, so a read that outlasts the activity's heartbeatTimeout

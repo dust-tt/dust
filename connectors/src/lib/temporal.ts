@@ -217,7 +217,7 @@ export async function terminateAllWorkflowsForConnectorId({
 }
 
 /**
- * @cc [owner:PopDaph,label:error-handling] heartbeat-rejects-on-cancellation
+ * @cc [owner:tdraier,label:error-handling] heartbeat-rejects-on-cancellation
  * Heartbeats to Temporal and awaits `sleep(0)` so that, inside an activity,
  * this rejects with the Temporal cancellation failure once the activity is
  * cancelled or timed out, and resolves otherwise. Callers MUST await it:
