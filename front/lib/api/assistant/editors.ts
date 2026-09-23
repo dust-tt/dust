@@ -35,10 +35,12 @@ export async function getAgentEditors(
     );
   }
 
-  const resource = AgentResource.fromAgentConfiguration(
-    auth,
-    agentConfiguration
-  );
+  const resource = await AgentResource.fetchById(auth, agentConfiguration.sId);
+  if (!resource) {
+    return new Err(
+      new DustError("group_not_found", "Unable to find the agent.")
+    );
+  }
   const editors = await resource.listEditors(auth);
   assert(editors !== null);
 
@@ -65,9 +67,11 @@ export const getAgentsEditors = async (
   auth: Authenticator,
   agentConfigurations: LightAgentConfigurationType[]
 ): Promise<Record<string, UserType[]>> => {
-  const resources = AgentResource.fromAgentConfigurations(
+  const resources = await AgentResource.fetchByIds(
     auth,
-    agentConfigurations.filter((agent) => agent.scope !== "global")
+    agentConfigurations
+      .filter((agent) => agent.scope !== "global")
+      .map((agent) => agent.sId)
   );
   const editorsByAgentId = await AgentResource.batchListEditors(
     auth,
@@ -102,7 +106,12 @@ export async function updateAgentEditorsFromDelta(
     usersToRemove,
   }: { usersToAdd: UserResource[]; usersToRemove: UserResource[] }
 ): Promise<Result<AgentResource, DustError<EditorDeltaErrorCode>>> {
-  const agentResource = AgentResource.fromAgentConfiguration(auth, agent);
+  const agentResource = await AgentResource.fetchById(auth, agent.sId);
+  if (!agentResource) {
+    return new Err(
+      new DustError("internal_error", "Unable to find the agent.")
+    );
+  }
   const currentEditors = (await agentResource.listEditors(auth)) ?? [];
   const currentEditorModelIds = new Set(currentEditors.map((u) => u.id));
 

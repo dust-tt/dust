@@ -139,10 +139,12 @@ app.patch(
       });
     }
 
-    const canAdministrate = auth.can(
-      "admin",
-      AgentResource.fromAgentConfiguration(auth, agent)
-    );
+    // A caller who cannot fetch the agent as a resource (no verb on it) cannot administrate it: the
+    // agent's existence was already confirmed above via `getAgentConfiguration`, so treat a missing
+    // resource as "not administrable" (403) rather than "not found" (404).
+    const agentResource = await AgentResource.fetchById(auth, aId);
+    const canAdministrate =
+      agentResource !== null && auth.can("admin", agentResource);
     if (!canAdministrate) {
       return apiError(ctx, {
         status_code: 403,
