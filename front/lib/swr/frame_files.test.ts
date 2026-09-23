@@ -61,35 +61,22 @@ describe("Frame file access", () => {
     expect(clientFetch).toHaveBeenCalledExactlyOnceWith(url);
   });
 
-  it.each([
-    "conversation-c_test/report/manifest.json",
-    "conversation-c_test/report",
-  ])("supports the legacy Frame path %s for reads only", async (framePath) => {
-    clientFetch.mockResolvedValue(
-      new Response("{}", {
-        headers: { ETag: '"123"', [DUST_FILE_CAN_WRITE_HEADER]: "true" },
-      })
-    );
+  it("requires a package root for package-relative reads and writes", async () => {
     const { result } = renderHook(() =>
       useFrameFiles({
         workspaceId: options.workspaceId,
         canWrite: true,
-        framePath,
       })
     );
 
     await expect(result.current.readFile(edit.path)).resolves.toMatchObject({
-      fileBlob: expect.any(Blob),
-      canWrite: false,
+      fileBlob: null,
     });
-    expect(clientFetch).toHaveBeenCalledExactlyOnceWith(
-      "/api/w/w_test/files/path/conversation-c_test/report/notes.json"
-    );
     await expect(result.current.writeFile(edit)).resolves.toMatchObject({
       success: false,
       error: { code: "invalid_path" },
     });
-    expect(clientFetch).toHaveBeenCalledTimes(1);
+    expect(clientFetch).not.toHaveBeenCalled();
   });
 
   it("reads a package file and saves with its exact revision", async () => {
@@ -159,7 +146,7 @@ describe("Frame file access", () => {
   it.each([
     "report.v2",
     "manifest.json",
-  ])("preserves the package directory %s", async (folderName) => {
+  ])("preserves the package directory %s for reads and writes", async (folderName) => {
     const { result } = renderHook(() =>
       useFrameFiles({
         ...options,
@@ -168,6 +155,10 @@ describe("Frame file access", () => {
     );
     clientFetch.mockResolvedValue(
       new Response(null, { headers: { ETag: '"124"' } })
+    );
+    await result.current.readFile(edit.path);
+    expect(clientFetch).toHaveBeenCalledWith(
+      `/api/w/w_test/files/path/conversation-c_test/${folderName}/notes.json`
     );
     await result.current.writeFile(edit);
     expect(clientFetch).toHaveBeenCalledWith(

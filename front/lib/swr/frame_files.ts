@@ -17,30 +17,9 @@ interface FrameFilesOptions {
   workspaceId: string;
   conversationId?: string | null;
   spaceId?: string;
-  framePath?: string | null;
   packageRoot?: string | null;
   canWrite: boolean;
 }
-
-// Older hosts provide either the entry file or its directory for package reads.
-const resolveLegacyPackageRoot = (framePath: string | null) => {
-  if (!framePath) {
-    return null;
-  }
-
-  const normalized = framePath.replace(/\/+$/, "");
-  if (!normalized.includes("/")) {
-    return null;
-  }
-
-  const base = normalized.slice(normalized.lastIndexOf("/") + 1);
-  const looksLikeEntryFile =
-    base === "manifest.json" || /\.[A-Za-z0-9]+$/.test(base);
-
-  return looksLikeEntryFile
-    ? normalized.slice(0, normalized.lastIndexOf("/")) || null
-    : normalized;
-};
 
 const resolveFilePath = (filePath: string, packageRoot: string | null) => {
   if (!packageRoot) {
@@ -59,9 +38,52 @@ const resolveFilePath = (filePath: string, packageRoot: string | null) => {
     : null;
 };
 
+interface FrameReadUrlParams {
+  fileId: string;
+  workspaceId: string;
+  conversationId: string | null;
+  spaceId?: string;
+  packageRoot: string | null;
+}
+
+const resolveReadUrl = ({
+  fileId,
+  workspaceId,
+  conversationId,
+  spaceId,
+  packageRoot,
+}: FrameReadUrlParams): string | null => {
+  if (fileId.startsWith("conversation-") || fileId.startsWith("pod-")) {
+    return getFilePathContentApiPath({ sId: workspaceId }, fileId);
+  }
+
+  if (fileId.startsWith("conversation/")) {
+    const relativePath = fileId.slice("conversation/".length);
+    return conversationId
+      ? `/api/w/${workspaceId}/files/path/conversation-${conversationId}/${relativePath}`
+      : null;
+  }
+
+  if (fileId.startsWith("pod/") || fileId.startsWith("project/")) {
+    const relativePath = fileId.slice(fileId.indexOf("/") + 1);
+    return spaceId
+      ? `/api/w/${workspaceId}/files/path/pod-${spaceId}/${relativePath}`
+      : null;
+  }
+
+  if (isFramePackageRelativePath(fileId)) {
+    const filePath = resolveFilePath(fileId, packageRoot);
+    return filePath
+      ? getFilePathContentApiPath({ sId: workspaceId }, filePath)
+      : null;
+  }
+
+  return `/api/w/${workspaceId}/files/${fileId}?action=view`;
+};
+
 /**
  * @cc [owner:flvndvd,label:security;concurrency] frame-file-writes
- * Writes MUST stay within the host-provided Frame package and require the caller's
+ * Writes MUST stay within the explicit host-provided packageRoot and require the caller's
  * revision in If-Match. Read-only hosts MUST reject writes before any request.
  * File permissions MUST remain enforced by the canonical file API.
  */
@@ -69,43 +91,20 @@ export const useFrameFiles = ({
   workspaceId,
   conversationId = null,
   spaceId,
-  framePath = null,
   packageRoot = null,
   canWrite,
 }: FrameFilesOptions) => {
-  const readPackageRoot = packageRoot ?? resolveLegacyPackageRoot(framePath);
-
   const readFile = useCallback(
     async (fileId: string): Promise<CommandResultMap["getFile"]> => {
-      let url: string;
-
-      if (fileId.startsWith("conversation-") || fileId.startsWith("pod-")) {
-        url = getFilePathContentApiPath({ sId: workspaceId }, fileId);
-      } else if (fileId.startsWith("conversation/")) {
-        if (!conversationId) {
-          return { fileBlob: null };
-        }
-
-        const relativePath = fileId.slice("conversation/".length);
-        url = `/api/w/${workspaceId}/files/path/conversation-${conversationId}/${relativePath}`;
-      } else if (fileId.startsWith("pod/") || fileId.startsWith("project/")) {
-        if (!spaceId) {
-          return { fileBlob: null };
-        }
-
-        const relativePath = fileId.startsWith("pod/")
-          ? fileId.slice("pod/".length)
-          : fileId.slice("project/".length);
-        url = `/api/w/${workspaceId}/files/path/pod-${spaceId}/${relativePath}`;
-      } else if (isFramePackageRelativePath(fileId)) {
-        const filePath = resolveFilePath(fileId, readPackageRoot);
-        if (!filePath) {
-          return { fileBlob: null };
-        }
-
-        url = getFilePathContentApiPath({ sId: workspaceId }, filePath);
-      } else {
-        url = `/api/w/${workspaceId}/files/${fileId}?action=view`;
+      const url = resolveReadUrl({
+        fileId,
+        workspaceId,
+        conversationId,
+        spaceId,
+        packageRoot,
+      });
+      if (!url) {
+        return { fileBlob: null };
       }
 
       let response: Response;
@@ -137,14 +136,7 @@ export const useFrameFiles = ({
           response.headers.get(DUST_FILE_CAN_WRITE_HEADER) === "true",
       };
     },
-    [
-      canWrite,
-      conversationId,
-      packageRoot,
-      readPackageRoot,
-      spaceId,
-      workspaceId,
-    ]
+    [canWrite, conversationId, packageRoot, spaceId, workspaceId]
   );
 
   const writeFile = useCallback(

@@ -738,13 +738,7 @@ export interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
   canInvokeFunctions: boolean;
   conversationId: string | null;
-  /**
-   * Canonical scoped path of the Frame being rendered (`pod-{podId}/MyApp/MyApp.tsx` or a Frames
-   * v2 `…/manifest.json`), when the host knows it. Used to resolve package-relative `useFile`
-   * paths and (for legacy Pod Frames) bare function names.
-   */
-  framePath?: string | null;
-  /** Canonical package directory for revision-aware file access. */
+  /** Canonical package directory for file reads and writes. */
   framePackageRoot?: string | null;
   /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
   frameId?: string;
@@ -920,7 +914,6 @@ export const VisualizationActionIframe = forwardRef<
     workspaceId,
     conversationId,
     spaceId,
-    framePath: props.framePath,
     packageRoot: props.framePackageRoot,
     canWrite:
       !isPublic &&

@@ -448,7 +448,6 @@ const renderFileFrame = (
       canInvokeFunctions: true,
       conversationId: "c_test",
       frameId: "fil_frame",
-      framePath: "conversation-c_test/report/manifest.json",
       framePackageRoot: "conversation-c_test/report",
       scopedUserIdentity,
       viewer: null,

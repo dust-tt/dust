@@ -45,9 +45,10 @@ export function PodFrameVisualization({
       }}
       conversationId={null}
       spaceId={spaceId}
-      framePath={framePath}
       framePackageRoot={
-        framePath ? framePath.slice(0, framePath.lastIndexOf("/")) : null
+        framePath && framePath.includes("/")
+          ? framePath.slice(0, framePath.lastIndexOf("/"))
+          : null
       }
       frameId={frameId}
       isInDrawer={true}

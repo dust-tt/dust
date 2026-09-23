@@ -26,7 +26,11 @@ afterEach(() => {
 });
 
 describe("PodFrameVisualization", () => {
-  it("passes the Frame identity and package directory to the iframe host", () => {
+  it.each([
+    ["pod-spc_pod/Admin/Admin.frame.json", "pod-spc_pod/Admin"],
+    ["manifest.json", null],
+    [undefined, null],
+  ])("passes the Frame identity and package directory for %s", (framePath, framePackageRoot) => {
     render(
       <PodFrameVisualization
         owner={{ sId: "w_current" } as LightWorkspaceType}
@@ -35,14 +39,14 @@ describe("PodFrameVisualization", () => {
         vizUrl="https://viz.dust.tt"
         identifier="viz-frame"
         frameId="fil_frame"
-        framePath="pod-spc_pod/Admin/Admin.frame.json"
+        framePath={framePath}
       />
     );
 
     expect(mocks.iframe).toHaveBeenCalledWith(
       expect.objectContaining({
         frameId: "fil_frame",
-        framePackageRoot: "pod-spc_pod/Admin",
+        framePackageRoot,
       })
     );
   });
