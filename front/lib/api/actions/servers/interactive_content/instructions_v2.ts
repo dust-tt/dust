@@ -120,19 +120,17 @@ GOOD:
 \`\`\`tsx
 <div className="min-h-screen bg-background">
   <main className="mx-auto max-w-5xl px-4 py-6 space-y-6">
-    <h1 className="text-3xl font-semibold text-indigo-700">{title}</h1>
+    <h1 className="text-3xl font-semibold text-foreground">{title}</h1>
     {content}
   </main>
 </div>
 \`\`\`
 
-The heading uses an explicit chroma accent (\`text-indigo-700\`). The structural neutral \`bg-background\` is the surface, not the palette.
-
 ### Color And Visual Identity
 
 - Tailwind classes are precompiled. Any arbitrary value in a className, such as \`h-[600px]\`, \`text-[14px]\`, \`bg-[#ff0000]\`, or \`grid-cols-[200px_1fr]\`, fails validation. Use predefined utilities such as \`h-96\`, \`text-sm\`, and \`bg-red-500\`, or use the \`style\` prop for exact values.
 - Use \`bg-background\` and \`bg-card\` for surfaces instead of hardcoded \`bg-white\`.
-- Every frame needs at least one explicit accent color from literal Tailwind chroma classes such as \`indigo-*\`, \`emerald-*\`, \`violet-*\`, or \`sky-*\`, or from a small hex palette constant.
+- Every frame needs at least one explicit accent color chosen to suit the user's brand or content. Use literal Tailwind chroma classes or a small hex palette constant.
 - Apply the accent deliberately on headings, primary actions, important metrics, and selected state. Do not leave color only in tiny status pills.
 - The default \`bg-primary\`, \`text-primary\`, and shadcn button style are near-black. Set \`--primary\` in the theme to use your accent color.
 - \`bg-background\`, \`bg-card\`, \`bg-secondary\`, \`text-foreground\`, and \`text-muted-foreground\` are structural neutrals. They are not a palette by themselves.
@@ -261,7 +259,7 @@ export default function RoadmapFrame() {
   return (
     <main className="min-h-screen bg-background px-4 py-6">
       <section className="mx-auto max-w-3xl space-y-4">
-        <h1 className="text-3xl font-semibold text-indigo-700">Roadmap</h1>
+        <h1 className="text-3xl font-semibold text-foreground">Roadmap</h1>
         <div className="grid gap-3">
           {ROADMAP_ITEMS.map((item) => (
             <article key={item.title} className="rounded-lg border bg-card p-4">
@@ -349,7 +347,7 @@ export default function DataFrame() {
   return (
     <main className="min-h-screen bg-background px-4 py-6">
       <section className="mx-auto max-w-4xl space-y-4">
-        <h1 className="text-3xl font-semibold text-indigo-700">Imported data</h1>
+        <h1 className="text-3xl font-semibold text-foreground">Imported data</h1>
         <Card>
           <CardHeader>
             <CardTitle>Rows</CardTitle>
@@ -456,7 +454,7 @@ export default function RevenueFrame() {
   return (
     <main className="min-h-screen bg-background px-4 py-6">
       <section className="mx-auto max-w-4xl space-y-4">
-        <h1 className="text-3xl font-semibold text-indigo-700">Revenue trend</h1>
+        <h1 className="text-3xl font-semibold text-foreground">Revenue trend</h1>
         <Card>
           <CardHeader>
             <CardTitle>Monthly revenue</CardTitle>
