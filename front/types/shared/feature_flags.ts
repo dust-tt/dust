@@ -264,7 +264,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   conversations_slack_notifications: {
     description: "Enable slack notifications",
-    stage: "dust_only",
+    stage: "ask_owner",
     owner: "matteotrab",
   },
   reinforced_agents: {
