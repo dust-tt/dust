@@ -1,5 +1,4 @@
 import {
-  createPendingAgentConfiguration,
   destroyAgentConfigurationRow,
   getAgentConfiguration,
   getAgentConfigurations,
@@ -535,7 +534,7 @@ describe("stable agent identities", () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    const pending = await createPendingAgentConfiguration(authenticator);
+    const pending = await AgentResource.createPending(authenticator);
     assert(pending.isOk());
     const identityBefore = await AgentModel.findOne({
       where: { sId: pending.value.sId, workspaceId: workspace.id },
@@ -655,8 +654,7 @@ describe("saveAgentConfiguration with pending agent", () => {
     await MembershipFactory.associate(workspace, newEditor, { role: "user" });
 
     // Create a pending agent using the helper function
-    const pendingAgentRes =
-      await createPendingAgentConfiguration(authenticator);
+    const pendingAgentRes = await AgentResource.createPending(authenticator);
     if (pendingAgentRes.isErr()) {
       throw pendingAgentRes.error;
     }
@@ -668,10 +666,10 @@ describe("saveAgentConfiguration with pending agent", () => {
     if (!pendingAgent) {
       throw new Error("Pending agent was not created");
     }
-    const pendingAgentResource = AgentResource.fromAgentConfigurationModel(
-      authenticator,
-      pendingAgent
-    );
+    const [pendingAgentResource] =
+      await AgentResource.dangerouslyFromConfigurationModels(authenticator, [
+        pendingAgent,
+      ]);
     if (!pendingAgentResource.id) {
       throw new Error("Pending agent identity was not created");
     }
@@ -753,7 +751,7 @@ describe("saveAgentConfiguration with pending agent", () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    const pending = await createPendingAgentConfiguration(authenticator);
+    const pending = await AgentResource.createPending(authenticator);
     assert(pending.isOk());
     const resource = await AgentResource.fetchById(
       authenticator,
@@ -799,7 +797,7 @@ describe("saveAgentConfiguration with pending agent", () => {
     expect(authenticator.hasWorkspacePermission("publish", "agent")).toBe(
       false
     );
-    const pending = await createPendingAgentConfiguration(authenticator);
+    const pending = await AgentResource.createPending(authenticator);
     assert(pending.isOk());
 
     // Simulate a pending agent made visible before non-active scopes were restricted.
@@ -897,7 +895,7 @@ describe("saveAgentConfiguration with pending agent", () => {
 
     // Create a pending agent owned by the other user using the helper function
     const otherPendingAgentRes =
-      await createPendingAgentConfiguration(otherAuthenticator);
+      await AgentResource.createPending(otherAuthenticator);
     if (otherPendingAgentRes.isErr()) {
       throw otherPendingAgentRes.error;
     }
@@ -980,8 +978,7 @@ describe("saveAgentConfiguration with pending agent", () => {
     const { authenticator, user } = await createResourceTest({
       role: "admin",
     });
-    const pendingAgentRes =
-      await createPendingAgentConfiguration(authenticator);
+    const pendingAgentRes = await AgentResource.createPending(authenticator);
     if (pendingAgentRes.isErr()) {
       throw pendingAgentRes.error;
     }
@@ -1218,7 +1215,7 @@ describe("create agent capability", () => {
     const { workspace } = await createResourceTest({ role: "admin" });
     const { authenticator } = await memberAuthInGroup(workspace);
 
-    const result = await createPendingAgentConfiguration(authenticator);
+    const result = await AgentResource.createPending(authenticator);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -1238,7 +1235,7 @@ describe("create agent capability", () => {
     });
     const { authenticator } = await memberAuthInGroup(workspace, group);
 
-    const result = await createPendingAgentConfiguration(authenticator);
+    const result = await AgentResource.createPending(authenticator);
 
     expect(result.isOk()).toBe(true);
   });

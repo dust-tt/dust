@@ -5,11 +5,9 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentCreationArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
-import {
-  createPendingAgentConfiguration,
-  getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -39,7 +37,7 @@ export async function suggestAgentCreation(
     return new Err(new MCPError("Creating agents is restricted."));
   }
 
-  const pendingResult = await createPendingAgentConfiguration(auth);
+  const pendingResult = await AgentResource.createPending(auth);
   if (pendingResult.isErr()) {
     return new Err(new MCPError(pendingResult.error.message));
   }

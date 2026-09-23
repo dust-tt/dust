@@ -1,4 +1,3 @@
-import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -45,7 +44,7 @@ afterEach(() => {
 async function createPendingAgent(
   authenticator: Authenticator
 ): Promise<{ sId: string }> {
-  const res = await createPendingAgentConfiguration(authenticator);
+  const res = await AgentResource.createPending(authenticator);
   if (res.isErr()) {
     throw res.error;
   }
@@ -85,7 +84,11 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     }
     const grantGroupModelId = await getEditorGrantGroupModelId(
       authenticator,
-      AgentResource.fromAgentConfigurationModel(authenticator, agent)
+      (
+        await AgentResource.dangerouslyFromConfigurationModels(authenticator, [
+          agent,
+        ])
+      )[0]
     );
 
     // Advance time past the retention threshold.
@@ -121,7 +124,11 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     }
     const grantGroupModelId = await getEditorGrantGroupModelId(
       authenticator,
-      AgentResource.fromAgentConfigurationModel(authenticator, agent)
+      (
+        await AgentResource.dangerouslyFromConfigurationModels(authenticator, [
+          agent,
+        ])
+      )[0]
     );
 
     await purgeExpiredPendingAgentsActivity();
@@ -218,7 +225,11 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     }
     const expiredGroupModelId = await getEditorGrantGroupModelId(
       authenticator,
-      AgentResource.fromAgentConfigurationModel(authenticator, expiredAgent)
+      (
+        await AgentResource.dangerouslyFromConfigurationModels(authenticator, [
+          expiredAgent,
+        ])
+      )[0]
     );
 
     // Advance time past the threshold.
@@ -234,7 +245,11 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     }
     const freshGroupModelId = await getEditorGrantGroupModelId(
       authenticator,
-      AgentResource.fromAgentConfigurationModel(authenticator, freshAgent)
+      (
+        await AgentResource.dangerouslyFromConfigurationModels(authenticator, [
+          freshAgent,
+        ])
+      )[0]
     );
 
     // Create an active agent.

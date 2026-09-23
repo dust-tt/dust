@@ -94,13 +94,12 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
 
   // Finally delete the agent configuration, re-pointing or deleting its identity.
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const [agentResource] =
+    await AgentResource.dangerouslyFromConfigurationModels(auth, [agent]);
   await withTransaction(async (t) => {
     await destroyAgentConfigurationRow(
       auth,
-      {
-        agent: AgentResource.fromAgentConfigurationModel(auth, agent),
-        configurationId: agent.id,
-      },
+      { agent: agentResource, configurationId: agent.id },
       t
     );
   });

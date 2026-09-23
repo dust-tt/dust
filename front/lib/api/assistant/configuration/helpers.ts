@@ -20,6 +20,7 @@ import type {
 } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
 import partition from "lodash/partition";
 import uniq from "lodash/uniq";
 
@@ -127,6 +128,16 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       : [];
   const spaceById = new Map(spacesForApiKey.map((space) => [space.id, space]));
 
+  // Build the resources (used below for the per-agent read/write permission checks) from the real
+  // `agents` identity rows, batch-loaded once, rather than synthesizing them from configuration rows.
+  const resources = await AgentResource.dangerouslyFromConfigurationModels(
+    auth,
+    agentConfigurations
+  );
+  const resourceByConfigurationModelId = new Map(
+    resources.map((resource) => [resource.agentConfigurationModelId, resource])
+  );
+
   const agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
     const actions =
@@ -137,7 +148,11 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const model = getModelForAgentConfiguration(agent);
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
-    const resource = AgentResource.fromAgentConfigurationModel(auth, agent);
+    const resource = resourceByConfigurationModelId.get(agent.id);
+    assert(
+      resource,
+      `Unexpected: missing resource for configuration ${agent.id}`
+    );
 
     const canRead = auth.can("read", resource);
     const canEdit = isRegularApiKey

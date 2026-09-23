@@ -7,7 +7,6 @@ import {
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
-import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import {
   AgentConfigurationModel,
   AgentModel,
@@ -22,7 +21,6 @@ import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { tracer } from "@app/logger/tracer";
 import { launchDeleteAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
@@ -44,84 +42,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Transaction } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
-
-// Placeholder constants for pending agents
-const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
-const PENDING_AGENT_PLACEHOLDER_DESCRIPTION = "";
-const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
-  "https://dust.tt/static/systemavatar/dust_avatar_full.png";
-
-/**
- * Creates a pending agent configuration.
- * Pending agents are placeholders created when the agent builder is opened for a new agent,
- * before it is saved for the first time. This allows capturing the sId early.
- */
-export async function createPendingAgentConfiguration(
-  auth: Authenticator
-): Promise<Result<{ sId: string }, Error>> {
-  const canCreate = auth.hasWorkspacePermission("create", "agent");
-  if (!canCreate) {
-    return new Err(new Error("Creating agents is restricted."));
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-  const user = auth.getNonNullableUser();
-
-  const sId = generateRandomModelSId();
-  const { defaultModel } = await getModelsForAuth(auth);
-
-  await withTransaction(async (t) => {
-    const agentIdentity = await AgentModel.create(
-      {
-        sId,
-        workspaceId: owner.id,
-        name: PENDING_AGENT_PLACEHOLDER_NAME,
-        status: "pending",
-        scope: "hidden",
-        reinforcement: "auto",
-        templateId: null,
-      },
-      { transaction: t }
-    );
-    const agent = await AgentConfigurationModel.create(
-      {
-        sId,
-        agentId: agentIdentity.id,
-        version: 0,
-        status: "pending",
-        scope: "hidden",
-        name: PENDING_AGENT_PLACEHOLDER_NAME,
-        description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
-        instructions: null,
-        providerId: defaultModel.providerId,
-        modelId: defaultModel.modelId,
-        temperature: 0.7,
-        reasoningEffort: defaultModel.defaultReasoningEffort,
-        maxStepsPerRun: 8,
-        reinforcement: "auto",
-        pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
-        workspaceId: owner.id,
-        authorId: user.id,
-        templateId: null,
-        requestedSpaceIds: [],
-      },
-      { transaction: t }
-    );
-
-    await AgentResource.fromAgentConfigurationModel(auth, agent).grantEditors(
-      auth,
-      {
-        editors: [user.toJSON()],
-        transaction: t,
-      }
-    );
-  });
-
-  // The pending agent's editor grant was created after this authenticator's permission snapshot.
-  await auth.refresh();
-
-  return new Ok({ sId });
-}
 
 export async function getAgentConfigurationsWithVersion<
   V extends AgentFetchVariant,
