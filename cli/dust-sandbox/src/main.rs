@@ -1,8 +1,10 @@
 mod api;
 mod commands;
 mod egress_secrets;
+mod sandbox_owner;
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
+use sandbox_owner::SandboxOwner;
 use tracing::error;
 
 #[derive(Parser)]
@@ -97,8 +99,64 @@ fn exit_code_for(error: &anyhow::Error) -> i32 {
     1
 }
 
+/**
+ * @cc [owner:davidebbo,label:product] owner-scoped-help
+ * In a conversation or Frame sandbox, `--help` MUST NOT list a subcommand or flag that the owner
+ * cannot run, and MUST mark a flag as required when that owner cannot run the subcommand without
+ * it. A subcommand hidden this way MUST still parse, so its runtime guard (or the Dust API) reports
+ * why it is unavailable. Outside a known sandbox (`SandboxOwner::Unknown`) the full CLI is shown.
+ */
+fn command_for_owner(owner: SandboxOwner) -> clap::Command {
+    let command = Cli::command();
+    match owner {
+        // Function publications live in Frame sandboxes, and conversations have no local
+        // databases: every Frame database is reached through `--frame`.
+        SandboxOwner::Conversation => command
+            .mut_subcommand("function", |function| {
+                function
+                    .about("Build sandbox functions")
+                    .mut_subcommand("run", |run| run.hide(true))
+                    .mut_subcommand("get", |get| get.hide(true))
+                    .mut_subcommand("materialize-archive", |archive| archive.hide(true))
+            })
+            .mut_subcommand("db", |db| {
+                db.about("Inspect and query Frame databases")
+                    .mut_subcommand("reconcile", |reconcile| reconcile.hide(true))
+                    .mut_subcommand("schema", |schema| schema.hide(true))
+                    .mut_subcommand("list", |list| {
+                        list.about("List a Frame's databases with sizes")
+                            .mut_arg("frame", require_frame_target)
+                    })
+                    .mut_subcommand("query", |query| {
+                        query
+                            .mut_arg("name", |arg| arg.help("Database name in the target Frame"))
+                            .mut_arg("frame", require_frame_target)
+                    })
+            }),
+        // The Frame API only accepts conversation tokens, and a Frame's databases are local.
+        SandboxOwner::Frame => command
+            .mut_subcommand("frame", |frame| frame.hide(true))
+            .mut_subcommand("db", |db| {
+                db.mut_subcommand("list", |list| list.mut_arg("frame", |arg| arg.hide(true)))
+                    .mut_subcommand("query", |query| {
+                        query.mut_arg("frame", |arg| arg.hide(true))
+                    })
+            }),
+        SandboxOwner::Unknown => command,
+    }
+}
+
+fn require_frame_target(arg: clap::Arg) -> clap::Arg {
+    arg.required(true).help("Target Frame ID")
+}
+
+fn parse_cli(owner: SandboxOwner) -> Cli {
+    let matches = command_for_owner(owner).get_matches();
+    Cli::from_arg_matches(&matches).unwrap_or_else(|error| error.exit())
+}
+
 async fn run() -> anyhow::Result<()> {
-    let cli = Cli::parse();
+    let cli = parse_cli(sandbox_owner::detect());
 
     match cli.command {
         Commands::Version => commands::cmd_version(),
@@ -189,11 +247,150 @@ fn init_tracing() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::CommandFactory;
 
     #[test]
     fn verify_cli() {
-        Cli::command().debug_assert();
+        for owner in [
+            SandboxOwner::Conversation,
+            SandboxOwner::Frame,
+            SandboxOwner::Unknown,
+        ] {
+            command_for_owner(owner).debug_assert();
+        }
+    }
+
+    fn find_subcommand<'a>(command: &'a clap::Command, path: &[&str]) -> &'a clap::Command {
+        path.iter().fold(command, |current, name| {
+            current
+                .find_subcommand(name)
+                .unwrap_or_else(|| panic!("missing subcommand {name}"))
+        })
+    }
+
+    fn visible_subcommands(command: &clap::Command, path: &[&str]) -> Vec<String> {
+        find_subcommand(command, path)
+            .get_subcommands()
+            .filter(|subcommand| !subcommand.is_hide_set())
+            .map(|subcommand| subcommand.get_name().to_string())
+            .collect()
+    }
+
+    fn frame_arg(command: &clap::Command, path: &[&str]) -> clap::Arg {
+        find_subcommand(command, path)
+            .get_arguments()
+            .find(|arg| arg.get_id() == "frame")
+            .cloned()
+            .expect("missing --frame")
+    }
+
+    fn try_parse_for_owner(owner: SandboxOwner, argv: &[&str]) -> Result<Cli, clap::Error> {
+        let matches = command_for_owner(owner).try_get_matches_from(argv)?;
+        Cli::from_arg_matches(&matches)
+    }
+
+    #[test]
+    fn conversation_help_lists_only_conversation_commands() {
+        let command = command_for_owner(SandboxOwner::Conversation);
+
+        assert!(visible_subcommands(&command, &[]).contains(&"frame".to_string()));
+        assert_eq!(visible_subcommands(&command, &["function"]), vec!["build"]);
+        assert_eq!(
+            visible_subcommands(&command, &["db"]),
+            vec!["list", "query"]
+        );
+        for path in [["db", "list"], ["db", "query"]] {
+            let frame = frame_arg(&command, &path);
+            assert!(
+                frame.is_required_set(),
+                "{path:?} --frame should be required"
+            );
+            assert!(!frame.is_hide_set());
+        }
+    }
+
+    #[test]
+    fn frame_help_lists_only_frame_commands() {
+        let command = command_for_owner(SandboxOwner::Frame);
+
+        assert!(!visible_subcommands(&command, &[]).contains(&"frame".to_string()));
+        assert_eq!(
+            visible_subcommands(&command, &["function"]),
+            vec!["run", "get", "build", "materialize-archive"]
+        );
+        assert_eq!(
+            visible_subcommands(&command, &["db"]),
+            vec!["reconcile", "schema", "list", "query"]
+        );
+        for path in [["db", "list"], ["db", "query"]] {
+            let frame = frame_arg(&command, &path);
+            assert!(frame.is_hide_set(), "{path:?} --frame should be hidden");
+            assert!(!frame.is_required_set());
+        }
+    }
+
+    #[test]
+    fn unknown_owner_help_lists_everything() {
+        let command = command_for_owner(SandboxOwner::Unknown);
+        let all_subcommands = |path: &[&str]| -> Vec<String> {
+            find_subcommand(&command, path)
+                .get_subcommands()
+                .map(|subcommand| subcommand.get_name().to_string())
+                .collect()
+        };
+
+        for path in [&[][..], &["function"], &["db"], &["frame"]] {
+            assert_eq!(visible_subcommands(&command, path), all_subcommands(path));
+        }
+        let frame = frame_arg(&command, &["db", "list"]);
+        assert!(!frame.is_hide_set());
+        assert!(!frame.is_required_set());
+    }
+
+    #[test]
+    fn conversation_requires_frame_target_for_databases() {
+        assert!(try_parse_for_owner(SandboxOwner::Conversation, &["dsbx", "db", "list"]).is_err());
+        assert!(
+            try_parse_for_owner(SandboxOwner::Conversation, &["dsbx", "db", "query", "chat"])
+                .is_err()
+        );
+        assert!(try_parse_for_owner(
+            SandboxOwner::Conversation,
+            &["dsbx", "db", "list", "--frame", "fil_abc123"]
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn hidden_commands_still_parse() {
+        for (owner, argv) in [
+            (
+                SandboxOwner::Conversation,
+                &[
+                    "dsbx",
+                    "db",
+                    "reconcile",
+                    "chat",
+                    "/files/pod-x/databases/chat.db.ts",
+                ][..],
+            ),
+            (
+                SandboxOwner::Conversation,
+                &["dsbx", "function", "run", "greet"],
+            ),
+            (
+                SandboxOwner::Frame,
+                &["dsbx", "frame", "call", "fil_abc123", "get-status"],
+            ),
+            (
+                SandboxOwner::Frame,
+                &["dsbx", "db", "list", "--frame", "fil_abc123"],
+            ),
+        ] {
+            assert!(
+                try_parse_for_owner(owner, argv).is_ok(),
+                "{argv:?} should parse in {owner:?}"
+            );
+        }
     }
 
     #[test]
