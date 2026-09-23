@@ -71,8 +71,8 @@ export const documentExtensions = [
           : "Heading"
         : node.type.name === "paragraph"
           ? editor.isEmpty
-            ? "Start writing, or type / for blocks…"
-            : "Type / for blocks…"
+            ? "Start writing, or type / for elements…"
+            : "Type / for elements…"
           : "",
   }),
 ];
