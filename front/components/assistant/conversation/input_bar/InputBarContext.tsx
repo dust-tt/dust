@@ -60,9 +60,16 @@ export type PendingConversationMessage = {
   modelSelection?: ModelSelectionType;
 };
 
+/**
+ * @cc [owner:adrsimon,label:react] typed-suffix-carries-no-tags
+ * `typedSuffix` is revealed character by character after `text` is applied, so a caller MUST
+ * put every serialized skill or tool tag in `text`: a partially revealed tag renders as raw
+ * text instead of a chip.
+ */
 export type PendingInputText = {
   text: string;
   replace: boolean;
+  typedSuffix?: string;
 };
 
 export type PendingSkill = Pick<
@@ -87,7 +94,7 @@ export const InputBarContext = createContext<{
   getAndClearPendingInputText: () => PendingInputText | null;
   setPendingInputText: (
     text: string | null,
-    options?: { replace?: boolean }
+    options?: { replace?: boolean; typedSuffix?: string }
   ) => void;
   pendingSkill: PendingSkill | null;
   setPendingSkill: (skill: PendingSkill | null) => void;
@@ -247,7 +254,10 @@ export function InputBarContextProvider({
   }, [pendingInputText]);
 
   const setPendingInputText = useCallback(
-    (text: string | null, options?: { replace?: boolean }) => {
+    (
+      text: string | null,
+      options?: { replace?: boolean; typedSuffix?: string }
+    ) => {
       if (text === null) {
         setPendingInputTextState(null);
         return;
@@ -255,6 +265,7 @@ export function InputBarContextProvider({
       setPendingInputTextState({
         text,
         replace: options?.replace ?? false,
+        typedSuffix: options?.typedSuffix,
       });
     },
     []
