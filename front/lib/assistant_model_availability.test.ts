@@ -52,9 +52,10 @@ const TEST_REGION: RegionType = "us-central1";
 function createMockModel(
   overrides: Partial<ModelConfigurationType>
 ): ModelConfigurationType {
-  const baseModel = SUPPORTED_MODEL_CONFIGS[0];
+  // Use a stable, ungated model — not catalog index 0, whose availability
+  // gates change when catalog order changes.
   return {
-    ...baseModel,
+    ...GPT_5_6_LUNA_MODEL_CONFIG,
     ...overrides,
   };
 }
