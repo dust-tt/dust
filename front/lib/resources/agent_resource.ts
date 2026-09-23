@@ -374,13 +374,14 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  * @cc [owner:philipperolet,label:security;product] agent-publish-capability
  * `publish` on the `agent` type means deciding whether an active agent is visible to the whole
  * workspace. Creating or activating a visible agent, or changing an active agent's scope, MUST
- * require the `publish` capability — resolved per-resource as `auth.can("publish", r)` for a scope
- * write (see `scope-change-requires-edit-and-publish`) — even for its editors. Draft and pending
- * agents MUST be persisted and authorized as hidden. An archived agent's scope MUST remain stored
- * and MUST NOT change until restore; archived versions with stored scope `visible` remain readable
- * so historical references keep working. Restoring a stored visible scope MUST require `publish`.
- * Editing an agent without changing its workspace visibility MUST NOT require `publish`. Protected
- * tags and linking Slack channels to an agent are gated by it too.
+ * require the `publish` capability — a workspace-wide capability resolved via
+ * `auth.hasWorkspacePermission("publish", "agent")` (see `scope-change-requires-edit-and-publish`) —
+ * even for its editors. Draft and pending agents MUST be persisted and authorized as hidden. An
+ * archived agent's scope MUST remain stored and MUST NOT change until restore; archived versions with
+ * stored scope `visible` remain readable so historical references keep working. Restoring a stored
+ * visible scope MUST require `publish`. Editing an agent without changing its workspace visibility
+ * MUST NOT require `publish`. Protected tags and linking Slack channels to an agent are gated by it
+ * too.
  */
 /**
  * @cc [owner:tdraier,label:security] agent-edit-requires-write
@@ -2232,7 +2233,7 @@ export class AgentResource
       if (this.status === "archived" || targetStatus !== "active") {
         return new Err(new Error("Only active agents can change scope."));
       }
-      if (!this.canWriteScope(auth)) {
+      if (!this.canChangeScope(auth)) {
         return new Err(
           new Error("You don't have permission to publish agents.")
         );
@@ -2290,25 +2291,28 @@ export class AgentResource
     return new Ok({ resource: updated ?? target, changed: true });
   }
 
-  // Whether `auth` may publish or unpublish this agent.
-  private canWriteScope(auth: Authenticator): boolean {
-    const canEdit = auth.can("write", this) || auth.can("admin", this);
-    return canEdit && auth.can("publish", this);
+  // Whether `auth` may publish or unpublish this agent. `write` never appears without `admin` on an
+  // agent (editor grants bundle both, workspace admins hold `admin` by role), so `admin` alone is the
+  // edit gate here.
+  private canChangeScope(auth: Authenticator): boolean {
+    return (
+      auth.can("admin", this) && auth.hasWorkspacePermission("publish", "agent")
+    );
   }
 
   // Changes this agent's scope in place — no new version. A no-op when the scope is unchanged, so it
   // is safe to call unconditionally and does not require permission for an unchanged value. A real
-  // change requires scope-write permission (see `canWriteScope`) and, on `visible` -> `hidden`,
+  // change requires scope-write permission (see `canChangeScope`) and, on `visible` -> `hidden`,
   // disables the triggers of non-editors.
   /**
    * @cc [owner:tdraier,label:security;product] scope-change-requires-edit-and-publish
-   * Changing an active agent's scope requires `write` OR `admin` on the agent, plus `publish`, all
-   * resolved per-resource via `auth.can`. A draft or pending agent MUST remain hidden, and an
-   * archived agent's scope MUST NOT be changed. This MUST be enforced wherever a scope is written
-   * (`updateScopeInPlace`, and `bulkUpdate` per agent): the scope of an agent the caller does not
-   * satisfy MUST NOT be written. `publish` is a workspace-wide capability that
-   * `getGovernanceGrantVerbs` folds into every instance's verbs, so it resolves per-resource via
-   * `auth.can("publish", r)` (grant-backed, never role-derived).
+   * Changing an active agent's scope requires `write` OR `admin` on the agent (resolved per-resource
+   * via `auth.can`), plus the workspace-wide `publish` capability
+   * (`auth.hasWorkspacePermission("publish", "agent")`). A draft or pending agent MUST remain hidden,
+   * and an archived agent's scope MUST NOT be changed. This MUST be enforced wherever a scope is
+   * written (`updateScopeInPlace`, and `bulkUpdate` per agent): the scope of an agent the caller does
+   * not satisfy MUST NOT be written. `publish` is a workspace-wide capability (admins hold it by
+   * default), never resolved per-resource or role-derived.
    */
   /**
    * @cc [owner:tdraier,label:security] hide-disables-non-editor-triggers
@@ -2326,7 +2330,7 @@ export class AgentResource
     if (this.status !== "active") {
       return new Err(new Error("Only active agents can change scope."));
     }
-    if (!this.canWriteScope(auth)) {
+    if (!this.canChangeScope(auth)) {
       return new Err(new Error("You don't have permission to publish agents."));
     }
 
