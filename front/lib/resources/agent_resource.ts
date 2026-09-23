@@ -713,7 +713,7 @@ export class AgentResource
     const customAgentIds = uniqueAgentIds.filter((id) => !isGlobalAgentId(id));
 
     const [customResources, globalResources] = await Promise.all([
-      this.store.fetchMany(auth, customAgentIds),
+      this.fetchManyFromStore(auth, customAgentIds),
       this.fetchGlobalAgents(auth, globalAgentIds),
     ]);
 
@@ -800,6 +800,7 @@ export class AgentResource
   private static async loadManyFromDatabase(
     inputs: readonly AgentResourceCacheKey[]
   ): Promise<(FullAgentResource | null)[]> {
+    assert(inputs.length > 0, "Agent cache batches must not be empty");
     const { workspaceModelId } = inputs[0];
     assert(
       inputs.every((input) => input.workspaceModelId === workspaceModelId),
@@ -823,38 +824,34 @@ export class AgentResource
    * `invalidateAgentResourceCaches` helpers that lower-level write and deletion paths can import
    * without forming a cycle back to this resource.
    */
-  private static readonly store = (() => {
-    const lookup = defineCachedResourceValue<
-      AgentResourceCacheKey,
-      AgentResourceSnapshot,
-      FullAgentResource
-    >({
-      id: AGENT_RESOURCE_CACHE_ID,
-      version: AGENT_RESOURCE_CACHE_VERSION,
-      key: agentResourceCacheKey,
-      dryRun: AGENT_RESOURCE_CACHE_DRY_RUN,
-      loadManyFromDatabase: (inputs) =>
-        AgentResource.loadManyFromDatabase(inputs),
-      toSnapshot: (cachedResource) => cachedResource.toSnapshot(),
-      fromSnapshot: (snapshot) => AgentResource.fromSnapshot(snapshot),
-    });
+  private static readonly lookup = defineCachedResourceValue<
+    AgentResourceCacheKey,
+    AgentResourceSnapshot,
+    FullAgentResource
+  >({
+    id: AGENT_RESOURCE_CACHE_ID,
+    version: AGENT_RESOURCE_CACHE_VERSION,
+    key: agentResourceCacheKey,
+    dryRun: AGENT_RESOURCE_CACHE_DRY_RUN,
+    loadManyFromDatabase: (inputs) =>
+      AgentResource.loadManyFromDatabase(inputs),
+    toSnapshot: (cachedResource) => cachedResource.toSnapshot(),
+    fromSnapshot: (snapshot) => AgentResource.fromSnapshot(snapshot),
+  });
 
-    return {
-      /**
-       * @cc [owner:flvndvd,label:backend;security] agent-store-workspace
-       * Batch reads MUST derive the workspace for every lookup key from the supplied Authenticator.
-       */
-      fetchMany(
-        auth: Authenticator,
-        agentIds: readonly string[]
-      ): Promise<FullAgentResource[]> {
-        const workspaceModelId = auth.getNonNullableWorkspace().id;
-        return lookup.fetchMany(
-          agentIds.map((id) => ({ workspaceModelId, id }))
-        );
-      },
-    };
-  })();
+  /**
+   * @cc [owner:flvndvd,label:backend;security] agent-store-workspace
+   * Batch reads MUST derive the workspace for every lookup key from the supplied Authenticator.
+   */
+  private static fetchManyFromStore(
+    auth: Authenticator,
+    agentIds: readonly string[]
+  ): Promise<FullAgentResource[]> {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    return this.lookup.fetchMany(
+      agentIds.map((id) => ({ workspaceModelId, id }))
+    );
+  }
 
   static async invalidateCache(
     workspaceId: ModelId,

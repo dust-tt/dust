@@ -81,23 +81,22 @@ function warnCacheFailure(cacheId: string, err: unknown) {
   );
 }
 
-// A missing map entry is a cache miss. null means the Redis read itself failed.
+// A missing map entry is a cache miss.
 async function readBatchCacheValues<T>(
   redis: RedisCacheClient,
   keys: string[],
   cacheId: string
-): Promise<Map<string, JsonSerializable<T>> | null> {
+): Promise<Result<Map<string, JsonSerializable<T>>, Error>> {
   const values = new Map<string, JsonSerializable<T>>();
   if (keys.length === 0) {
-    return values;
+    return new Ok(values);
   }
 
   let serializedValues;
   try {
     serializedValues = await redis.mGet(keys);
   } catch (err) {
-    warnCacheFailure(cacheId, err);
-    return null;
+    return new Err(normalizeError(err));
   }
 
   serializedValues.forEach((serialized, index) => {
@@ -114,7 +113,7 @@ async function readBatchCacheValues<T>(
       warnCacheFailure(cacheId, err);
     }
   });
-  return values;
+  return new Ok(values);
 }
 
 async function writeBatchCacheValues<T>(
@@ -196,14 +195,16 @@ export function cacheManyWithRedis<T, Input>(
       return load(inputs);
     }
 
-    const values = await readBatchCacheValues<T>(
+    const valuesRes = await readBatchCacheValues<T>(
       redis,
       entries.map(({ readKey }) => readKey),
       cacheId
     );
-    if (values === null) {
+    if (valuesRes.isErr()) {
+      warnCacheFailure(cacheId, valuesRes.error);
       return load(inputs);
     }
+    const values = valuesRes.value;
     const misses = entries.filter(({ readKey }) => !values.has(readKey));
 
     // The loader stays outside Redis error handling: database failures must propagate.
