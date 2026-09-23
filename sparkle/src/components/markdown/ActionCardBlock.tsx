@@ -88,7 +88,7 @@ export interface ActionCardBlockProps {
 
   // Content
   subtitle?: string;
-  /** Short info at the end of the title row, e.g. a position in a series ("Edit 1 of 4"); hidden once resolved. */
+  /** Short info at the end of the title row; hidden once resolved. */
   titleAside?: React.ReactNode;
   /** Body text of the proposal; hidden (moved to a tooltip) once the card is resolved. */
   description?: React.ReactNode;

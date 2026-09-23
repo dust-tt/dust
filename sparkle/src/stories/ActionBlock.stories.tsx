@@ -204,8 +204,7 @@ export const InteractiveLifecycle: Story = {
 };
 
 /**
- * `titleAside` adds short info at the end of the title row, e.g. the card's
- * position when proposals are reviewed one after another. Long titles wrap
+ * `titleAside` adds short info at the end of the title row. Long titles wrap
  * next to it instead of pushing it to its own line.
  *
  * @summary Position in a series shown next to the title.
