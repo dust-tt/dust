@@ -366,6 +366,7 @@ export function useWorkspaceUsageStatus({
     hasPendingUpgradeRequest: data?.hasPendingUpgradeRequest ?? false,
     willAutoUpgrade: data?.willAutoUpgrade ?? false,
     requireReason: data?.requireReason ?? false,
+    creditSpendCheckpointEnabled: data?.creditSpendCheckpointEnabled ?? false,
     isUsageStatusLoading: !error && !data && !disabled,
   };
 }
