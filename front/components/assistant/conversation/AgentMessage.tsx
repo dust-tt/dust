@@ -1451,12 +1451,8 @@ function AgentMessageContent({
     isLastMessage,
   });
 
-  const answer = useMemo(
-    () =>
-      extractSuggestionPile(
-        sanitizeVisualizationContent(agentMessage.content ?? "")
-      ),
-    [agentMessage.content]
+  const answer = extractSuggestionPile(
+    sanitizeVisualizationContent(agentMessage.content ?? "")
   );
 
   const blockedActionElement = blockedAction ? (
