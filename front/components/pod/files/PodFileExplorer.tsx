@@ -54,11 +54,7 @@ import type {
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import { isFilePreviewableContentType } from "@app/types/file_preview";
-import {
-  frameV2ContentType,
-  getSupportedFileExtensions,
-  isInteractiveContentType,
-} from "@app/types/files";
+import { frameV2ContentType, isInteractiveContentType } from "@app/types/files";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
   DEFAULT_POD_FILE_TAB_ICON,
@@ -906,7 +902,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
           ref={fileInputRef}
           type="file"
           accept={[
-            ...getSupportedFileExtensions(),
+            ...podFileUpload.acceptedFileExtensions,
             ARCHIVE_FILE_EXTENSION,
           ].join(",")}
           multiple

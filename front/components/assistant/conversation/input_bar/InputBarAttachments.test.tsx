@@ -67,6 +67,7 @@ function makeFileBlob(overrides: Partial<FileBlob> = {}): FileBlob {
 
 function makeService(fileBlobs: FileBlob[]): FileUploaderService {
   return {
+    acceptedFileExtensions: [],
     addUploadedFile: vi.fn(),
     fileBlobs,
     getFileBlob: vi.fn(),

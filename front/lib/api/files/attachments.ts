@@ -3,8 +3,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { isPastedFile } from "@app/lib/files";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
+  isAudioTranscriptionAvailable,
+} from "@app/lib/workspace_policies";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isSupportedAudioContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -36,6 +41,20 @@ export async function maybeUpsertFileAttachment(
 
   if (filesIds.length > 0) {
     const fileResources = await FileResource.fetchByIds(auth, filesIds);
+
+    // An audio attachment only carries meaning through its transcript. Without transcription the
+    // file has no processed version, so resolving its mount path below would fail on the missing
+    // object. Refuse the attachment explicitly instead.
+    if (
+      fileResources.some((f) => isSupportedAudioContentType(f.contentType)) &&
+      !isAudioTranscriptionAvailable({
+        owner: auth.getNonNullableWorkspace(),
+        plan: auth.getNonNullablePlan(),
+      })
+    ) {
+      return new Err(new Error(AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE));
+    }
+
     const results = await concurrentExecutor(
       fileResources,
       async (fileResource): Promise<Result<undefined, Error>> => {
