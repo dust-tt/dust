@@ -145,8 +145,11 @@ function addBlockIds(node: JSONContent | undefined): void {
 /**
  * Strip presentation attributes from HTML so it is not permanently stored.
  */
-function stripPresentationAttributes(html: string): string {
-  const $ = getMarkdownPipeline().cheerio.load(html, { xmlMode: false }, false);
+function stripPresentationAttributes(
+  html: string,
+  pipeline: MarkdownPipeline
+): string {
+  const $ = pipeline.cheerio.load(html, { xmlMode: false }, false);
   // Strip class from all elements except <code>. The codeBlock extension
   // stores the fenced-code language as class="language-typescript", which is
   // the round-trip mechanism for recovering the language on generateJSON
@@ -239,13 +242,17 @@ function recoverCustomInlineNodes(node: JSONContent): JSONContent {
   return node;
 }
 
+// Browser callers pass a pipeline built on window.document, so they never reach the jsdom
+// loader in getMarkdownPipeline.
 /**
  * Convert Markdown to stored skill instructionsHtml.
  * Uses the same extension schema as the browser editor, then strips CSS class attrs.
  */
-export function convertMarkdownToBlockHtml(markdown: string): string {
+export function convertMarkdownToBlockHtml(
+  markdown: string,
+  pipeline: MarkdownPipeline = getMarkdownPipeline()
+): string {
   const preprocessed = preprocessMarkdownForEditor(markdown);
-  const pipeline = getMarkdownPipeline();
   const parsedDoc = preprocessed.trim()
     ? pipeline.markdownManager.parse(preprocessed)
     : null;
@@ -269,7 +276,7 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
     extensions: pipeline.extensions,
   });
 
-  return stripPresentationAttributes(rendered);
+  return stripPresentationAttributes(rendered, pipeline);
 }
 
 export interface AppliedSkillInstructions {
@@ -279,7 +286,8 @@ export interface AppliedSkillInstructions {
 
 export function applyInstructionEditsToHtml(
   instructionsHtml: string,
-  edits: { targetBlockId: string; content: string }[]
+  edits: { targetBlockId: string; content: string }[],
+  pipeline: MarkdownPipeline = getMarkdownPipeline()
 ): Result<AppliedSkillInstructions, DustError<"invalid_request_error">> {
   const {
     createTransform,
@@ -288,7 +296,7 @@ export function applyInstructionEditsToHtml(
     extensions,
     markdownManager,
     renderToHTMLString,
-  } = getMarkdownPipeline();
+  } = pipeline;
 
   let doc = parseInstructionsHtml(instructionsHtml, { document, domParser });
 
@@ -337,7 +345,8 @@ export function applyInstructionEditsToHtml(
       renderToHTMLString({
         content: prepareNodesForStaticRenderer(json),
         extensions,
-      })
+      }),
+      pipeline
     ),
   });
 }

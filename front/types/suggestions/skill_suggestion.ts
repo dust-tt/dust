@@ -250,7 +250,7 @@ const SkillAvailabilitySuggestionDataSchema = z.object({
   suggestion: SkillAvailabilitySuggestionSchema,
 });
 
-const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
+export const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillEditSuggestionDataSchema,
   SkillEditorsSuggestionDataSchema,
   SkillUserFacingDescriptionSuggestionDataSchema,
