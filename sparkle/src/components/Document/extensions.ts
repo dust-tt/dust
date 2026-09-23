@@ -4,10 +4,13 @@ import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
 
 import { DocumentAnchors } from "./DocumentAnchors";
+import { DocumentCommentMark, DocumentComments } from "./DocumentComments";
 import { DocumentVisual } from "./DocumentVisual";
 
 export const documentExtensions = [
   DocumentAnchors,
+  DocumentComments,
+  DocumentCommentMark,
   DocumentVisual,
   StarterKit.configure({
     heading: {

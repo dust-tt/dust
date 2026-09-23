@@ -135,6 +135,9 @@ export type { DiscoveryGlintProps } from "./DiscoveryGlint";
 export { DiscoveryGlint } from "./DiscoveryGlint";
 export {
   Document,
+  type DocumentComment,
+  type DocumentCommentAuthor,
+  type DocumentCommentReply,
   type DocumentProps,
   type DocumentSaveResult,
 } from "./Document";
