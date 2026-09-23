@@ -107,28 +107,6 @@ import { Op, UniqueConstraintError, ValidationError } from "sequelize";
 // grant: once the agent leaves draft status, only explicit grants confer editorship.
 const DRAFT_OWNER_VERBS: GrantVerb[] = ["read", "write", "admin"];
 
-// Columns of the current configuration that `agents` mirrors.
-export type AgentHeadFields = Pick<
-  AgentConfigurationModel,
-  | "name"
-  | "status"
-  | "scope"
-  | "reinforcement"
-  | "lastReinforcementAnalysisAt"
-  | "templateId"
->;
-
-function headFieldsOf(configuration: AgentHeadFields): AgentHeadFields {
-  return {
-    name: configuration.name,
-    status: configuration.status,
-    scope: configuration.scope,
-    reinforcement: configuration.reinforcement,
-    lastReinforcementAnalysisAt: configuration.lastReinforcementAnalysisAt,
-    templateId: configuration.templateId,
-  };
-}
-
 // Agents in these statuses only exist inside the builder — behind its "try" button or before the
 // first save — and are never indexed.
 const NON_INDEXABLE_AGENT_STATUSES: AgentConfigurationStatus[] = [
@@ -1408,15 +1386,31 @@ export class AgentResource
     await AgentModel.update(
       {
         currentVersion: configuration.version,
-        ...headFieldsOf(configuration),
+        name: configuration.name,
+        status: configuration.status,
+        scope: configuration.scope,
+        reinforcement: configuration.reinforcement,
+        lastReinforcementAnalysisAt: configuration.lastReinforcementAnalysisAt,
+        templateId: configuration.templateId,
       },
       { where: { id: this.id, workspaceId: this.workspaceId }, transaction }
     );
   }
 
+  // `fields` are the columns of the current configuration that `agents` mirrors (the head fields).
   private async updateAgentIdentity(
     auth: Authenticator,
-    fields: Partial<AgentHeadFields>,
+    fields: Partial<
+      Pick<
+        AgentConfigurationModel,
+        | "name"
+        | "status"
+        | "scope"
+        | "reinforcement"
+        | "lastReinforcementAnalysisAt"
+        | "templateId"
+      >
+    >,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<boolean> {
     const workspaceId = auth.getNonNullableWorkspace().id;
