@@ -40,6 +40,7 @@ import {
 } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
+import { readDeltaBatchFromGCSStream } from "@connectors/connectors/microsoft/temporal/delta_batch_reader";
 import {
   computeDisallowedLabels,
   deleteFile,
@@ -84,8 +85,8 @@ import {
   isDevelopment,
   normalizeError,
 } from "@connectors/types";
-import type { LoggerInterface, Result } from "@dust-tt/client";
-import { Err, Ok, removeNulls } from "@dust-tt/client";
+import type { LoggerInterface } from "@dust-tt/client";
+import { removeNulls } from "@dust-tt/client";
 import type { Bucket } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
@@ -94,19 +95,6 @@ import { WorkflowNotFoundError } from "@temporalio/client";
 import chunk from "lodash/chunk";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
-import { parser } from "stream-json";
-import Assembler from "stream-json/Assembler";
-import Ignore from "stream-json/filters/Ignore";
-import Pick from "stream-json/filters/Pick";
-import StreamArray from "stream-json/streamers/StreamArray";
-
-// Delta data stored in GCS for Microsoft incremental sync batch processing
-interface DeltaDataInGCS {
-  deltaLink: string;
-  rootNodeIds: string[];
-  sortedChangedItems: DriveItem[];
-  totalItems: number;
-}
 
 let _deltaSyncBucket: Bucket | null = null;
 function getDeltaSyncBucket(): Bucket {
@@ -169,124 +157,6 @@ function createDeltaJsonStream(
       this.push(null);
     },
   });
-}
-
-interface DeltaBatchFromGCS {
-  deltaLink: string;
-  rootNodeIds: string[];
-  totalItems: number;
-  batch: DriveItem[];
-}
-
-// Runtime validation of the delta file's metadata (every field but the
-// changed-items array). The cursor logic trusts `totalItems`, so the parsed JSON
-// must be validated with a type guard rather than cast (no-unsafe-type-assertions).
-function isDeltaMetadata(
-  value: unknown
-): value is Omit<DeltaDataInGCS, "sortedChangedItems"> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "deltaLink" in value &&
-    typeof value.deltaLink === "string" &&
-    "totalItems" in value &&
-    typeof value.totalItems === "number" &&
-    "rootNodeIds" in value &&
-    Array.isArray(value.rootNodeIds) &&
-    value.rootNodeIds.every((id) => typeof id === "string")
-  );
-}
-
-// Reads only the [startIndex, startIndex + batchSize) window of
-// `sortedChangedItems` from a GCS delta file, plus the (small) metadata fields.
-//
-// The changed-items array can hold hundreds of thousands of DriveItems;
-// materializing it whole (as a previous implementation did, times the concurrent
-// delta activities) OOMs the worker. Here two branches read off a single token
-// stream: one strips the array and assembles only the metadata, the other
-// streams the array element by element and keeps just the requested window, so
-// peak memory is bounded to `batchSize` items regardless of delta size.
-//
-// `sortedChangedItems` is written pre-sorted, so windowing by array index is
-// stable across successive batches of the same file.
-async function readDeltaBatchFromGCSStream(
-  file: ReturnType<Bucket["file"]>,
-  startIndex: number,
-  batchSize: number
-): Promise<Result<DeltaBatchFromGCS, Error>> {
-  const readStream = file.createReadStream();
-  const jsonParser = parser();
-
-  // Branch 1: everything except the big array -> assembled metadata.
-  const ignore = new Ignore({ filter: "sortedChangedItems" });
-  const metaAssembler = Assembler.connectTo(ignore);
-
-  // Branch 2: the array, streamed element by element; keep only the window.
-  const pick = new Pick({ filter: "sortedChangedItems" });
-  const streamArray = new StreamArray();
-  const endIndex = startIndex + batchSize;
-  const batch: DriveItem[] = [];
-
-  try {
-    const metaDone = new Promise<unknown>((resolve, reject) => {
-      metaAssembler.on("done", (asm: Assembler) => resolve(asm.current));
-      ignore.on("error", reject);
-    });
-
-    const itemsDone = new Promise<void>((resolve, reject) => {
-      streamArray.on(
-        "data",
-        ({ key, value }: { key: number; value: DriveItem }) => {
-          if (key >= startIndex && key < endIndex) {
-            batch.push(value);
-          }
-        }
-      );
-      streamArray.on("end", () => resolve());
-      streamArray.on("error", reject);
-      pick.on("error", reject);
-    });
-
-    // Reject if the source or parser fails; never resolves on its own.
-    const sourceError = new Promise<never>((_resolve, reject) => {
-      readStream.on("error", reject);
-      jsonParser.on("error", reject);
-    });
-
-    readStream.pipe(jsonParser);
-    jsonParser.pipe(ignore);
-    jsonParser.pipe(pick).pipe(streamArray);
-
-    const meta = await Promise.race([
-      Promise.all([metaDone, itemsDone]).then(([m]) => m),
-      sourceError,
-    ]);
-
-    if (!isDeltaMetadata(meta)) {
-      return new Err(new Error("Delta file metadata is missing or malformed."));
-    }
-
-    return new Ok({
-      deltaLink: meta.deltaLink,
-      rootNodeIds: meta.rootNodeIds,
-      totalItems: meta.totalItems,
-      batch,
-    });
-  } catch (error) {
-    // The failures here come from the GCS read stream and the stream-json
-    // parser (external libraries). Return them as an Err so the activity
-    // entrypoint reports the failure at the boundary, per the
-    // temporal-activity-failure-boundary contract.
-    return new Err(normalizeError(error));
-  } finally {
-    // Tear everything down so the underlying TLS socket is released back to the
-    // agent pool, mirroring the previous `pipeline()`-based cleanup.
-    readStream.destroy();
-    jsonParser.destroy();
-    ignore.destroy();
-    pick.destroy();
-    streamArray.destroy();
-  }
 }
 
 // Kept low because a single file sync can be an Excel spreadsheet whose full
@@ -2695,12 +2565,14 @@ export async function processDeltaChangesFromGCS({
   const file = getDeltaSyncBucket().file(gcsFilePath);
 
   // Stream only the current batch window out of the (potentially huge) delta
-  // file to avoid materializing all changed items in memory.
+  // file to avoid materializing all changed items in memory. The read
+  // heartbeats itself: it can outlast the activity's heartbeatTimeout.
   const startIndex = cursor;
   const deltaBatchRes = await readDeltaBatchFromGCSStream(
     file,
     startIndex,
-    batchSize
+    batchSize,
+    heartbeat
   );
   if (deltaBatchRes.isErr()) {
     // Convert the helper failure into a thrown activity failure at this

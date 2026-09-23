@@ -216,8 +216,14 @@ export async function terminateAllWorkflowsForConnectorId({
   return;
 }
 
-// This function allows to heartbeat back to the temporal workflow, but also
-// awaits a temporal sleep(0), which allows to throw an exception if the activity should be cancelled.
+/**
+ * @cc [owner:PopDaph,label:error-handling] heartbeat-rejects-on-cancellation
+ * Heartbeats to Temporal and awaits `sleep(0)` so that, inside an activity,
+ * this rejects with the Temporal cancellation failure once the activity is
+ * cancelled or timed out, and resolves otherwise. Callers MUST await it:
+ * long-running helpers rely on the rejection to stop their work (e.g.
+ * readDeltaBatchFromGCSStream tears down its streams).
+ */
 export async function heartbeat() {
   try {
     Context.current();
