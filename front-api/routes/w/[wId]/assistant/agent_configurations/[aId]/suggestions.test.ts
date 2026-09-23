@@ -707,6 +707,67 @@ describe("PATCH with applyToAgent", () => {
     expect(updated?.instructionsHtml).toContain("Be extremely helpful.");
   });
 
+  it("keeps the builder's instruction blocks when applying an instructions suggestion", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const instructionsHtml =
+      '<div data-type="instructions-root" data-block-id="instructions-root">' +
+      '<div data-block-id="c920ce2e" data-instruction-type="role" data-collapsed="false" data-type="instruction-block">' +
+      '<p data-block-id="201659ea">Yu are a nice agent</p>' +
+      "</div>" +
+      '<div data-block-id="9411f1af" data-instruction-type="tools" data-collapsed="false" data-type="instruction-block">' +
+      '<p data-block-id="7abb764c">Yu have access to many tools</p>' +
+      "</div>" +
+      "</div>";
+    const updatedAgent = await AgentConfigurationFactory.updateTestAgent(
+      auth,
+      agent.sId,
+      {
+        instructions:
+          "<role>\n\nYou are a nice agent\n\n</role>\n\n<tools>\n\nYou have access to many tools\n\n</tools>",
+        instructionsHtml,
+      }
+    );
+
+    const suggestion = await AgentSuggestionFactory.createInstructions(
+      auth,
+      updatedAgent,
+      {
+        suggestion: {
+          targetBlockId: "7abb764c",
+          type: "replace",
+          content: "<p>You have access to many tools.</p>",
+        },
+        source: "conversational",
+      }
+    );
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+    expect(response.status).toBe(200);
+
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "full",
+    });
+    const html = updated?.instructionsHtml ?? "";
+    expect(html).toContain("You have access to many tools.");
+    // Both sections survive, with their type and id, so the builder still shows them as blocks.
+    expect(html).toContain(
+      'data-block-id="c920ce2e" data-instruction-type="role"'
+    );
+    expect(html).toContain(
+      'data-block-id="9411f1af" data-instruction-type="tools"'
+    );
+    // The markdown the model reads keeps the section tags.
+    expect(updated?.instructions).toContain("<role>");
+    expect(updated?.instructions).toContain("</role>");
+    expect(updated?.instructions).toContain("<tools>");
+    expect(updated?.instructions).toContain("</tools>");
+  });
+
   it("returns 400 and leaves the suggestion pending when changing the instructions of a non-active agent", async () => {
     const { workspace, auth, agent } = await setupPendingAgent();
     const suggestion = await AgentSuggestionFactory.createInstructions(

@@ -22,8 +22,9 @@ import { parseSkillReferenceTag } from "@app/lib/skills/format";
 import { parseToolTag } from "@app/lib/tools/format";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
-import type { JSONContent } from "@tiptap/core";
+import type { Extensions, JSONContent } from "@tiptap/core";
 import type { MarkdownManager } from "@tiptap/markdown";
 import type {
   DOMParser as ProseMirrorDOMParser,
@@ -36,10 +37,12 @@ import type { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string"
 // instructions are actually converted, and building the extension list runs
 // every node definition. Resolved on first use so front-api does not pay for it
 // at boot; the exported helpers are synchronous, hence require over import().
+// Which editor's schema converts the instructions. Agents and skills share the block model but
+// only agent instructions hold `instructionBlock` sections, so each gets its own pipeline.
+export type InstructionsSchema = "skill" | "agent";
+
 export interface MarkdownPipeline {
-  extensions: ReturnType<
-    typeof import("@app/lib/editor/build_skill_instructions_extensions_server").buildSkillInstructionsExtensionsForServer
-  >;
+  extensions: Extensions;
   markdownManager: MarkdownManager;
   renderToHTMLString: typeof renderToHTMLString;
   cheerio: typeof import("cheerio");
@@ -49,18 +52,34 @@ export interface MarkdownPipeline {
   createTransform: (doc: ProseMirrorNode) => Transform;
 }
 
-let markdownPipeline: MarkdownPipeline | undefined;
+const markdownPipelines: Partial<Record<InstructionsSchema, MarkdownPipeline>> =
+  {};
 
 export function setMarkdownPipelineForTesting(
-  pipeline: MarkdownPipeline
+  pipeline: MarkdownPipeline,
+  schema: InstructionsSchema = "skill"
 ): void {
-  markdownPipeline = pipeline;
+  markdownPipelines[schema] = pipeline;
 }
 
-function getMarkdownPipeline(): MarkdownPipeline {
+function buildExtensionsForServer(schema: InstructionsSchema): Extensions {
+  switch (schema) {
+    case "skill":
+      return (
+        require("@app/lib/editor/build_skill_instructions_extensions_server") as typeof import("@app/lib/editor/build_skill_instructions_extensions_server")
+      ).buildSkillInstructionsExtensionsForServer();
+    case "agent":
+      return (
+        require("@app/lib/editor/build_agent_instructions_extensions_server") as typeof import("@app/lib/editor/build_agent_instructions_extensions_server")
+      ).buildAgentInstructionsExtensionsForServer();
+    default:
+      assertNever(schema);
+  }
+}
+
+function getMarkdownPipeline(schema: InstructionsSchema): MarkdownPipeline {
+  let markdownPipeline = markdownPipelines[schema];
   if (!markdownPipeline) {
-    const { buildSkillInstructionsExtensionsForServer } =
-      require("@app/lib/editor/build_skill_instructions_extensions_server") as typeof import("@app/lib/editor/build_skill_instructions_extensions_server");
     const { getSchema } =
       require("@tiptap/core") as typeof import("@tiptap/core");
     const { MarkdownManager } =
@@ -70,7 +89,7 @@ function getMarkdownPipeline(): MarkdownPipeline {
     const { Transform } =
       require("@tiptap/pm/transform") as typeof import("@tiptap/pm/transform");
     const { JSDOM } = require("jsdom") as typeof import("jsdom");
-    const extensions = buildSkillInstructionsExtensionsForServer();
+    const extensions = buildExtensionsForServer(schema);
 
     markdownPipeline = {
       extensions,
@@ -83,6 +102,7 @@ function getMarkdownPipeline(): MarkdownPipeline {
       domParser: DOMParser.fromSchema(getSchema(extensions)),
       createTransform: (doc) => new Transform(doc),
     };
+    markdownPipelines[schema] = markdownPipeline;
   }
 
   return markdownPipeline;
@@ -145,8 +165,11 @@ function addBlockIds(node: JSONContent | undefined): void {
 /**
  * Strip presentation attributes from HTML so it is not permanently stored.
  */
-function stripPresentationAttributes(html: string): string {
-  const $ = getMarkdownPipeline().cheerio.load(html, { xmlMode: false }, false);
+function stripPresentationAttributes(
+  html: string,
+  cheerio: MarkdownPipeline["cheerio"]
+): string {
+  const $ = cheerio.load(html, { xmlMode: false }, false);
   // Strip class from all elements except <code>. The codeBlock extension
   // stores the fenced-code language as class="language-typescript", which is
   // the round-trip mechanism for recovering the language on generateJSON
@@ -243,9 +266,12 @@ function recoverCustomInlineNodes(node: JSONContent): JSONContent {
  * Convert Markdown to stored skill instructionsHtml.
  * Uses the same extension schema as the browser editor, then strips CSS class attrs.
  */
-export function convertMarkdownToBlockHtml(markdown: string): string {
+export function convertMarkdownToBlockHtml(
+  markdown: string,
+  { schema = "skill" }: { schema?: InstructionsSchema } = {}
+): string {
   const preprocessed = preprocessMarkdownForEditor(markdown);
-  const pipeline = getMarkdownPipeline();
+  const pipeline = getMarkdownPipeline(schema);
   const parsedDoc = preprocessed.trim()
     ? pipeline.markdownManager.parse(preprocessed)
     : null;
@@ -269,7 +295,7 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
     extensions: pipeline.extensions,
   });
 
-  return stripPresentationAttributes(rendered);
+  return stripPresentationAttributes(rendered, pipeline.cheerio);
 }
 
 export interface AppliedSkillInstructions {
@@ -279,16 +305,18 @@ export interface AppliedSkillInstructions {
 
 export function applyInstructionEditsToHtml(
   instructionsHtml: string,
-  edits: { targetBlockId: string; content: string }[]
+  edits: { targetBlockId: string; content: string }[],
+  { schema = "skill" }: { schema?: InstructionsSchema } = {}
 ): Result<AppliedSkillInstructions, DustError<"invalid_request_error">> {
   const {
+    cheerio,
     createTransform,
     document,
     domParser,
     extensions,
     markdownManager,
     renderToHTMLString,
-  } = getMarkdownPipeline();
+  } = getMarkdownPipeline(schema);
 
   let doc = parseInstructionsHtml(instructionsHtml, { document, domParser });
 
@@ -337,7 +365,8 @@ export function applyInstructionEditsToHtml(
       renderToHTMLString({
         content: prepareNodesForStaticRenderer(json),
         extensions,
-      })
+      }),
+      cheerio
     ),
   });
 }
