@@ -25,6 +25,25 @@ const GetFileParamsSchema = z.object({
 
 type GetFileParams = z.infer<typeof GetFileParamsSchema>;
 
+const WriteFileParamsSchema = z.object({
+  path: z.string(),
+  content: z.string(),
+  contentType: z.string().optional(),
+  revision: z.string().regex(/^"[1-9][0-9]*"$/),
+});
+
+export type WriteFileParams = z.infer<typeof WriteFileParamsSchema>;
+
+export type WriteFileResult =
+  | { success: true; revision: string }
+  | {
+      success: false;
+      error: {
+        code: "read_only" | "invalid_path" | "conflict" | "save_failed";
+        message: string;
+      };
+    };
+
 const CallFunctionParamsSchema = z.object({
   functionIdOrSlug: z.string(),
   input: z.unknown().optional(),
@@ -102,6 +121,11 @@ const GetFileRequestSchema = VisualizationRPCRequestBaseSchema.extend({
   params: GetFileParamsSchema,
 });
 
+const WriteFileRequestSchema = VisualizationRPCRequestBaseSchema.extend({
+  command: z.literal("writeFile"),
+  params: WriteFileParamsSchema,
+});
+
 const CallFunctionRequestSchema = VisualizationRPCRequestBaseSchema.extend({
   command: z.literal("callFunction"),
   params: CallFunctionParamsSchema,
@@ -162,6 +186,7 @@ const VisualizationRPCRequestSchema = z.union([
   CallFunctionRequestSchema,
   GetUserIdentityRequestSchema,
   GetFileRequestSchema,
+  WriteFileRequestSchema,
   GetCodeToExecuteRequestSchema,
   SetContentHeightRequestSchema,
   SetErrorMessageRequestSchema,
@@ -182,6 +207,7 @@ export type VisualizationRPCRequestMap = {
   callFunction: CallFunctionParams;
   getUserIdentity: null;
   getFile: GetFileParams;
+  writeFile: WriteFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
   setErrorMessage: SetErrorMessageParams;
@@ -195,7 +221,12 @@ export interface CommandResultMap {
   callFunction: unknown;
   getUserIdentity: UserIdentityState;
   getCodeToExecute: { code: string };
-  getFile: { fileBlob: Blob | null };
+  getFile: {
+    fileBlob: Blob | null;
+    revision?: string | null;
+    canWrite?: boolean;
+  };
+  writeFile: WriteFileResult;
   downloadFileRequest: { blob: Blob; filename?: string };
   setContentHeight: void;
   setErrorMessage: void;

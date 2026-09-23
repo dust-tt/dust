@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
     viewer: unknown;
   } | null,
   hasFrameFunctions: false,
+  framePath: null as string | null,
   isAuthenticatedMember: true,
   isPodEditor: false,
   isPodMember: false,
@@ -60,6 +61,7 @@ vi.mock("@app/lib/swr/frames", () => ({
     isPodMember: mocks.isPodMember,
     isPodEditor: mocks.isPodEditor,
     hasFrameFunctions: mocks.hasFrameFunctions,
+    framePath: mocks.framePath,
   }),
 }));
 
@@ -87,6 +89,7 @@ afterEach(() => {
   cleanup();
   mocks.iframeProps = null;
   mocks.hasFrameFunctions = false;
+  mocks.framePath = null;
   mocks.isAuthenticatedMember = true;
   mocks.isPodEditor = false;
   mocks.isPodMember = false;
@@ -154,6 +157,7 @@ describe("PublicFrameRenderer", () => {
     mocks.isUserLoading = false;
     mocks.user = user;
     mocks.isPodMember = true;
+    mocks.framePath = "pod-vlt_project/App.v2/manifest.json";
 
     render(
       createElement(PublicFrameRenderer, {
@@ -170,6 +174,7 @@ describe("PublicFrameRenderer", () => {
     expect(mocks.iframeProps).toMatchObject({
       canInvokeFunctions: true,
       frameId: "fil_frame",
+      framePackageRoot: "pod-vlt_project/App.v2",
       scopedUserIdentity: {
         workspaceId: "w_current",
         isPodMember: true,
@@ -235,6 +240,7 @@ describe("PublicFrameRenderer", () => {
 
     expect(mocks.iframeProps).toMatchObject({
       canInvokeFunctions: false,
+      framePackageRoot: null,
       scopedUserIdentity: undefined,
       viewer: null,
     });

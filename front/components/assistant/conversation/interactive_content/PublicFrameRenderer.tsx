@@ -163,7 +163,11 @@ export function PublicFrameRenderer({
             canInvokeFunctions={publicUserIdentity !== undefined}
             scopedUserIdentity={publicUserIdentity}
             viewer={viewer}
-            framePath={framePath}
+            framePackageRoot={
+              framePath && framePath.includes("/")
+                ? framePath.slice(0, framePath.lastIndexOf("/"))
+                : null
+            }
             frameId={frameId}
             isInDrawer
           />
