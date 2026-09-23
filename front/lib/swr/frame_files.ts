@@ -10,7 +10,12 @@ import type {
   WriteFileParams,
   WriteFileResult,
 } from "@app/types/assistant/visualization";
-import { DUST_FILE_CAN_WRITE_HEADER } from "@app/types/files";
+import {
+  DUST_FILE_CAN_WRITE_HEADER,
+  DUST_FILE_REVISION_HEADER,
+  DUST_IF_REVISION_MATCH_HEADER,
+  FileRevisionSchema,
+} from "@app/types/files";
 import { useCallback } from "react";
 
 interface FrameFilesOptions {
@@ -84,7 +89,7 @@ const resolveReadUrl = ({
 /**
  * @cc [owner:flvndvd,label:security;concurrency] frame-file-writes
  * Writes MUST stay within the explicit host-provided packageRoot and require the caller's
- * revision in If-Match. Read-only hosts MUST reject writes before any request.
+ * revision in X-Dust-If-Revision-Match. Read-only hosts MUST reject writes before any request.
  * File permissions MUST remain enforced by the canonical file API.
  */
 export const useFrameFiles = ({
@@ -125,7 +130,10 @@ export const useFrameFiles = ({
         return { fileBlob: null };
       }
 
-      const revision = response.headers.get("ETag");
+      const parsedRevision = FileRevisionSchema.safeParse(
+        response.headers.get(DUST_FILE_REVISION_HEADER)
+      );
+      const revision = parsedRevision.success ? parsedRevision.data : null;
       return {
         fileBlob,
         revision,
@@ -170,7 +178,10 @@ export const useFrameFiles = ({
           getFilePathContentApiPath({ sId: workspaceId }, filePath),
           {
             method: "PUT",
-            headers: { "Content-Type": contentType, "If-Match": revision },
+            headers: {
+              "Content-Type": contentType,
+              [DUST_IF_REVISION_MATCH_HEADER]: revision,
+            },
             body: content,
           }
         );
@@ -203,8 +214,10 @@ export const useFrameFiles = ({
         };
       }
 
-      const savedRevision = response.headers.get("ETag");
-      if (!response.ok || !savedRevision) {
+      const savedRevision = FileRevisionSchema.safeParse(
+        response.headers.get(DUST_FILE_REVISION_HEADER)
+      );
+      if (!response.ok || !savedRevision.success) {
         return {
           success: false,
           error: {
@@ -215,7 +228,7 @@ export const useFrameFiles = ({
         };
       }
 
-      return { success: true, revision: savedRevision };
+      return { success: true, revision: savedRevision.data };
     },
     [canWrite, packageRoot, workspaceId]
   );

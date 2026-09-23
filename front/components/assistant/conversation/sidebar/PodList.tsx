@@ -6,6 +6,7 @@ import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { getPodRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/types/api/assistant/conversation/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -160,7 +161,7 @@ const PodListItem = memo(
           if (sidebarOpen) {
             setSidebarOpen(false);
             // Wait a bit before moving to the new space to avoid the sidebar from flickering.
-            await new Promise((resolve) => setTimeout(resolve, 600));
+            await setTimeoutAsync(600);
           }
         }}
         moreMenu={

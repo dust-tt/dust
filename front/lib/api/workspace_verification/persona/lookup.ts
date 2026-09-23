@@ -1,4 +1,5 @@
 import { trustedFetch } from "@app/lib/egress/server";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -111,10 +112,6 @@ function isCompletedReport(
     typeof attrs["phone-risk-score"] === "number" &&
     typeof attrs["phone-risk-recommendation"] === "string"
   );
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function createReport(
@@ -251,7 +248,7 @@ export async function lookupPhoneNumber(
   let lastFetchError: string | undefined;
 
   for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
-    await sleep(POLL_INTERVAL_MS);
+    await setTimeoutAsync(POLL_INTERVAL_MS);
 
     const fetchResult = await fetchReport(client, reportId);
     if (fetchResult.isErr()) {

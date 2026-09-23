@@ -12,6 +12,8 @@ import {
   DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
+  DUST_FILE_REVISION_HEADER,
+  DUST_IF_REVISION_MATCH_HEADER,
   frameV2ContentType,
 } from "@app/types/files";
 import { honoApp } from "@front-api/app";
@@ -811,9 +813,9 @@ const setupRevisionedFile = async () => {
   const content = '{"arbitrary":"ordinary JSON file"}';
   fileStorageMock.setObject(mountPath, content);
   const loaded = await request(workspace, path);
-  const etag = loaded.headers.get("ETag");
-  assert(etag);
-  return { workspace, auth, path, mountPath, content, loaded, etag };
+  const revision = loaded.headers.get(DUST_FILE_REVISION_HEADER);
+  assert(revision);
+  return { workspace, auth, path, mountPath, content, loaded, revision };
 };
 
 describe("conditional updates through Files paths", () => {
@@ -829,7 +831,7 @@ describe("conditional updates through Files paths", () => {
   });
 
   it("reads ordinary JSON, conditionally saves it, and reopens the saved bytes", async () => {
-    const { workspace, path, loaded, etag } = await setupRevisionedFile();
+    const { workspace, path, loaded, revision } = await setupRevisionedFile();
     expect(loaded.status).toBe(200);
     expect(await loaded.json()).toEqual({ arbitrary: "ordinary JSON file" });
     expect(loaded.headers.get(DUST_FILE_CAN_WRITE_HEADER)).toBe("true");
@@ -837,27 +839,31 @@ describe("conditional updates through Files paths", () => {
     const edited = '{"anything":[1,2,3]}';
     const saved = await request(workspace, path, {
       method: "PUT",
-      headers: { "If-Match": etag, "Content-Type": "application/json" },
+      headers: {
+        [DUST_IF_REVISION_MATCH_HEADER]: revision,
+        "Content-Type": "application/json",
+      },
       body: edited,
     });
     expect(saved.status).toBe(200);
     expect(await saved.text()).toBe("");
-    const savedEtag = saved.headers.get("ETag");
-    expect(savedEtag).not.toBe(etag);
+    const savedRevision = saved.headers.get(DUST_FILE_REVISION_HEADER);
+    expect(savedRevision).not.toBe(revision);
 
     const reopened = await request(workspace, path);
     expect(await reopened.text()).toBe(edited);
-    expect(reopened.headers.get("ETag")).toBe(savedEtag);
+    expect(reopened.headers.get(DUST_FILE_REVISION_HEADER)).toBe(savedRevision);
   });
 
   it("allows only one competing write for the same revision", async () => {
-    const { workspace, path, mountPath, etag } = await setupRevisionedFile();
+    const { workspace, path, mountPath, revision } =
+      await setupRevisionedFile();
     const edits = ['{"writer":1}', '{"writer":2}'];
     const results = await Promise.all(
       edits.map((body) =>
         request(workspace, path, {
           method: "PUT",
-          headers: { "If-Match": etag },
+          headers: { [DUST_IF_REVISION_MATCH_HEADER]: revision },
           body,
         })
       )
@@ -877,13 +883,13 @@ describe("conditional updates through Files paths", () => {
     }));
     fileStorageMock.setObject(mountPath, "# First");
     const loaded = await request(workspace, path);
-    const etag = loaded.headers.get("ETag");
-    assert(etag);
+    const revision = loaded.headers.get(DUST_FILE_REVISION_HEADER);
+    assert(revision);
     fileStorageMock.setObject(mountPath, "# Agent edit");
 
     const response = await request(workspace, path, {
       method: "PUT",
-      headers: { "If-Match": etag },
+      headers: { [DUST_IF_REVISION_MATCH_HEADER]: revision },
       body: "# Browser edit",
     });
     expect(response.status).toBe(412);
@@ -891,12 +897,16 @@ describe("conditional updates through Files paths", () => {
   });
 
   it("does not recreate a deleted file from an outdated revision", async () => {
-    const { workspace, path, mountPath, etag } = await setupRevisionedFile();
+    const { workspace, path, mountPath, revision } =
+      await setupRevisionedFile();
     await getPrivateUploadBucket().delete(mountPath);
 
     const response = await request(workspace, path, {
       method: "PUT",
-      headers: { "If-Match": etag, "Content-Type": "application/json" },
+      headers: {
+        [DUST_IF_REVISION_MATCH_HEADER]: revision,
+        "Content-Type": "application/json",
+      },
       body: "{}",
     });
     expect(response.status).toBe(412);
@@ -904,7 +914,7 @@ describe("conditional updates through Files paths", () => {
   });
 
   it("pins streamed bytes to the returned revision when another writer updates during the read", async () => {
-    const { workspace, path, mountPath, content, etag } =
+    const { workspace, path, mountPath, content, revision } =
       await setupRevisionedFile();
     fileStorageMock.setFileMetadata((storagePath) => {
       if (storagePath !== mountPath) {
@@ -914,26 +924,27 @@ describe("conditional updates through Files paths", () => {
       return {
         contentType: "application/json",
         size: "32",
-        generation: etag.slice(1, -1),
+        generation: revision,
       };
     });
 
     const response = await request(workspace, path);
     expect(await response.text()).toBe(content);
-    expect(response.headers.get("ETag")).toBe(etag);
+    expect(response.headers.get(DUST_FILE_REVISION_HEADER)).toBe(revision);
   });
 
   it.each([
     'W/"1"',
     '"1", "2"',
     "*",
-    "1",
-    '"0"',
-  ])("rejects unsupported If-Match %s without writing", async (etag) => {
+    '"1"',
+    "0",
+    "",
+  ])("rejects invalid revision %s without writing", async (revision) => {
     const { workspace, path, mountPath, content } = await setupRevisionedFile();
     const response = await request(workspace, path, {
       method: "PUT",
-      headers: { "If-Match": etag },
+      headers: { [DUST_IF_REVISION_MATCH_HEADER]: revision },
       body: "{}",
     });
     expect(response.status).toBe(400);
@@ -941,7 +952,8 @@ describe("conditional updates through Files paths", () => {
   });
 
   it("returns this write's revision even if another writer saves before the response", async () => {
-    const { workspace, path, mountPath, etag } = await setupRevisionedFile();
+    const { workspace, path, mountPath, revision } =
+      await setupRevisionedFile();
     const bucket = getInspectablePrivateUploadBucket();
     const file = bucket.file(mountPath);
     const getFile = vi.mocked(bucket.file).getMockImplementation();
@@ -958,16 +970,18 @@ describe("conditional updates through Files paths", () => {
 
     const saved = await request(workspace, path, {
       method: "PUT",
-      headers: { "If-Match": etag },
+      headers: { [DUST_IF_REVISION_MATCH_HEADER]: revision },
       body: '{"myWrite":true}',
     });
     expect(saved.status).toBe(200);
     const reloaded = await request(workspace, path);
     expect(await reloaded.text()).toBe('{"laterWriter":true}');
-    expect(saved.headers.get("ETag")).not.toBe(reloaded.headers.get("ETag"));
+    expect(saved.headers.get(DUST_FILE_REVISION_HEADER)).not.toBe(
+      reloaded.headers.get(DUST_FILE_REVISION_HEADER)
+    );
   });
 
-  it("exposes read-only Pod access and rejects writes even with its current ETag", async () => {
+  it("exposes read-only Pod access and rejects writes even with its current revision", async () => {
     const { workspace, auth, globalGroup } = await createPrivateApiMockRequest({
       role: "admin",
     });
@@ -982,8 +996,8 @@ describe("conditional updates through Files paths", () => {
     await createPrivateApiMockRequest({ role: "user", workspace });
 
     const loaded = await request(workspace, path);
-    const etag = loaded.headers.get("ETag");
-    assert(etag);
+    const revision = loaded.headers.get(DUST_FILE_REVISION_HEADER);
+    assert(revision);
     expect(loaded.status).toBe(200);
     expect(loaded.headers.get(DUST_FILE_CAN_WRITE_HEADER)).toBe("false");
     const head = await request(workspace, path, { method: "HEAD" });
@@ -991,7 +1005,7 @@ describe("conditional updates through Files paths", () => {
 
     const saved = await request(workspace, path, {
       method: "PUT",
-      headers: { "If-Match": etag },
+      headers: { [DUST_IF_REVISION_MATCH_HEADER]: revision },
       body: '{"unauthorized":true}',
     });
     expect(saved.status).toBe(403);
@@ -1015,7 +1029,7 @@ describe("conditional updates through Files paths", () => {
     expect(loaded.status).toBe(403);
     const saved = await request(workspace, path, {
       method: "PUT",
-      headers: { "If-Match": '"1"' },
+      headers: { [DUST_IF_REVISION_MATCH_HEADER]: "1" },
       body: '{"unauthorized":true}',
     });
     expect(saved.status).toBe(403);
@@ -1034,7 +1048,10 @@ describe("conditional updates through Files paths", () => {
     const path = `pod-${pod.sId}/notes.json`;
     const saved = await request(workspace, path, {
       method: "PUT",
-      headers: { "If-Match": '"1"', "Content-Type": "application/json" },
+      headers: {
+        [DUST_IF_REVISION_MATCH_HEADER]: "1",
+        "Content-Type": "application/json",
+      },
       body: "{}",
     });
     expect(saved.status).toBe(400);
@@ -1044,14 +1061,14 @@ describe("conditional updates through Files paths", () => {
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
-  it("preserves overwrite behavior for callers without If-Match", async () => {
+  it("preserves overwrite behavior for unconditional writes", async () => {
     const { workspace, path, mountPath } = await setupRevisionedFile();
     const response = await request(workspace, path, {
       method: "PUT",
       body: '{"overwrite":true}',
     });
     expect(response.status).toBe(200);
-    expect(response.headers.get("ETag")).toBeTruthy();
+    expect(response.headers.get(DUST_FILE_REVISION_HEADER)).toBeTruthy();
     expect(fileStorageMock.getObject(mountPath)).toBe('{"overwrite":true}');
   });
 });

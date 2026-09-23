@@ -379,6 +379,7 @@ export async function deleteAgentsActivity({
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
         },
+        workspaceId: workspace.id,
       },
     });
     await AgentTablesQueryConfigurationTableModel.destroy({
@@ -386,6 +387,7 @@ export async function deleteAgentsActivity({
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
         },
+        workspaceId: workspace.id,
       },
     });
 
@@ -407,6 +409,7 @@ export async function deleteAgentsActivity({
     await AgentUserRelationModel.destroy({
       where: {
         agentConfiguration: agent.sId,
+        workspaceId: workspace.id,
       },
     });
 

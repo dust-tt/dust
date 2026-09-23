@@ -82,6 +82,7 @@ import PdfLogo from "./Pdf";
 import PowerBiLogo from "./PowerBi";
 import PraizLogo from "./Praiz";
 import ProductboardLogo from "./Productboard";
+import QobraLogo from "./Qobra";
 import ReplicateLogo from "./Replicate";
 import SalesforceLogo from "./Salesforce";
 import SalesloftLogo from "./Salesloft";
@@ -200,6 +201,7 @@ export const PLATFORM_LOGOS = {
   PowerBiLogo,
   PraizLogo,
   ProductboardLogo,
+  QobraLogo,
   ReplicateLogo,
   SalesforceLogo,
   SalesloftLogo,

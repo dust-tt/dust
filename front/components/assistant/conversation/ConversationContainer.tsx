@@ -7,6 +7,7 @@ import { AgentBrowserContainer } from "@app/components/assistant/conversation/Ag
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { DiscoverButton } from "@app/components/assistant/conversation/discover/DiscoverButton";
 import { DiscoverContainer } from "@app/components/assistant/conversation/discover/DiscoverContainer";
+import { HomepageUseCases } from "@app/components/assistant/conversation/discover/HomepageUseCases";
 import { useDiscoverScroll } from "@app/components/assistant/conversation/discover/useDiscoverScroll";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -21,10 +22,13 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
+import { serializeSkillTag } from "@app/lib/skills/format";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
+import { serializeToolTag } from "@app/lib/tools/format";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { HomepageUseCaseType } from "@app/types/api/homepage_use_cases";
 import type {
   ConversationListItemType,
   SubmitMessageError,
@@ -118,6 +122,14 @@ const chatWithEntranceStyle = heroEntranceStyle({
   delaySeconds: CHAT_WITH_ENTER_DELAY_SECONDS,
 });
 
+const USE_CASES_ENTER_DELAY_SECONDS = 0.22;
+const useCasesEntranceStyle = heroEntranceStyle({
+  yPx: 8,
+  blurPx: 3,
+  durationSeconds: 0.28,
+  delaySeconds: USE_CASES_ENTER_DELAY_SECONDS,
+});
+
 const DISCOVER_BUTTON_ENTER_DELAY_SECONDS = 0.42;
 const discoverButtonEntranceStyle = heroEntranceStyle({
   yPx: 8,
@@ -157,7 +169,8 @@ export function ConversationContainerVirtuoso({
 
   const [limitReachedCode, setLimitReachedCode] =
     useState<WorkspaceLimit | null>(null);
-  const { setSelectedSingleAgent } = useContext(InputBarContext);
+  const { setPendingInputText, setSelectedSingleAgent, setPendingSkill } =
+    useContext(InputBarContext);
 
   const router = useAppRouter();
 
@@ -170,6 +183,18 @@ export function ConversationContainerVirtuoso({
 
   const { isAgentsSectionVisible } = useAgentsSectionVisibility();
   const isDiscoveryHomepage = hasFeature("discovery_homepage");
+
+  const handleUseCasePick = (useCase: HomepageUseCaseType) => {
+    const references = [
+      ...useCase.skills.map((skill) => serializeSkillTag(skill)),
+      ...useCase.tools.map((tool) => serializeToolTag(tool)),
+    ].join(" ");
+
+    setPendingInputText(references, {
+      replace: true,
+      typedSuffix: references ? ` ${useCase.prompt}` : useCase.prompt,
+    });
+  };
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -329,8 +354,14 @@ export function ConversationContainerVirtuoso({
   const { startConversationRef } = useWelcomeTourGuide();
   const isMobile = useIsMobile();
 
-  const { discoverRef, fillProgress, goToDiscover, scrollerRef } =
-    useDiscoverScroll({ isFillEnabled: isDiscoveryHomepage && !isMobile });
+  const {
+    alignDiscover,
+    discoverRef,
+    fillProgress,
+    goToDiscover,
+    goToHome,
+    scrollerRef,
+  } = useDiscoverScroll({ isFillEnabled: isDiscoveryHomepage && !isMobile });
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
@@ -389,6 +420,14 @@ export function ConversationContainerVirtuoso({
           defaultAgentId={workspaceDefaultAgentId}
         />
       </div>
+
+      {isDiscoveryHomepage && (
+        <HomepageUseCases
+          onPick={handleUseCasePick}
+          style={shouldReduceMotion ? undefined : useCasesEntranceStyle}
+          workspaceId={owner.sId}
+        />
+      )}
 
       {suggestion && (
         <div className="w-full max-w-conversation mt-1">
@@ -458,11 +497,16 @@ export function ConversationContainerVirtuoso({
           {isDiscoveryHomepage ? (
             <DiscoverContainer
               ref={discoverRef}
-              onAgentConfigurationClick={(agent) => {
+              onAgentConfigurationClick={async (agent) => {
+                await goToHome();
                 setSelectedSingleAgent(toRichAgentMentionType(agent));
               }}
+              onFiltersChange={alignDiscover}
+              onSkillClick={async (skill) => {
+                await goToHome();
+                setPendingSkill(skill);
+              }}
               owner={owner}
-              user={user}
             />
           ) : (
             isAgentsSectionVisible && (

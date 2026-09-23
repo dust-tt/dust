@@ -3232,6 +3232,492 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10034,
+    name: "Qobra",
+    description:
+      "Qobra tools to read your sales compensation data — commission plans, quotas, statements, payouts, reports, and dashboards, scoped to your Qobra permissions (Region: EU).",
+    url: "https://mcp.qobra.co/mcp",
+    icon: "QobraLogo",
+    documentationUrl: "https://docs.qobra.co/mcp_documentation/introduction",
+    connectionInstructions:
+      "Qobra uses OAuth with dynamic client registration. You will be prompted to sign in with your Qobra account. Access is read-only and scoped to your Qobra role permissions. The MCP server must be enabled for your company by one of your own Qobra admins. If the sign-in screen says the feature isn't available for your account, ask your Qobra admin to turn it on from Your account > Settings > AI > MCP.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      get_identity: "never_ask",
+      get_company_settings: "never_ask",
+      list_sandboxes: "never_ask",
+      list_data_tables: "never_ask",
+      get_data_table: "never_ask",
+      list_data_table_records: "never_ask",
+      list_integrations: "never_ask",
+      list_users: "never_ask",
+      get_user: "never_ask",
+      list_user_attributes: "never_ask",
+      list_roles: "never_ask",
+      get_role: "never_ask",
+      list_groups: "never_ask",
+      get_group: "never_ask",
+      list_group_dimensions: "never_ask",
+      list_quotas: "never_ask",
+      list_quota_values: "never_ask",
+      list_plans: "never_ask",
+      get_plan: "never_ask",
+      list_commission_letters_campaigns: "never_ask",
+      get_commission_letters_campaign: "never_ask",
+      list_reports: "never_ask",
+      get_report: "never_ask",
+      get_report_data: "never_ask",
+      get_report_pivot_data: "never_ask",
+      get_report_chart_data: "never_ask",
+      list_dashboards: "never_ask",
+      get_dashboard: "never_ask",
+      list_requests: "never_ask",
+      get_request: "never_ask",
+      list_sales_coach_discussions: "never_ask",
+      get_sales_coach_discussion: "never_ask",
+      list_statements: "never_ask",
+      get_statement: "never_ask",
+      get_statement_compensation: "never_ask",
+      list_statement_records: "never_ask",
+      list_statement_periods: "never_ask",
+      list_exchange_rates: "never_ask",
+      list_imports: "never_ask",
+      get_import: "never_ask",
+      list_audit_logs: "never_ask",
+      get_audit_log: "never_ask",
+      list_dependencies: "never_ask",
+      list_help_center_articles: "never_ask",
+      get_help_center_article: "never_ask",
+    },
+    // Les labels sont résolus par slugify(name), donc "qobra" et "qobra-us"
+    // sont deux espaces de noms distincts : la copie est nécessaire.
+    toolDisplayLabels: {
+      get_identity: {
+        running: "Fetching your Qobra identity",
+        done: "Fetched your Qobra identity",
+      },
+      get_company_settings: {
+        running: "Fetching company settings from Qobra",
+        done: "Fetched company settings from Qobra",
+      },
+      list_sandboxes: {
+        running: "Listing sandboxes on Qobra",
+        done: "Listed sandboxes on Qobra",
+      },
+      list_data_tables: {
+        running: "Listing data tables on Qobra",
+        done: "Listed data tables on Qobra",
+      },
+      get_data_table: {
+        running: "Fetching data table from Qobra",
+        done: "Fetched data table from Qobra",
+      },
+      list_data_table_records: {
+        running: "Listing data table records on Qobra",
+        done: "Listed data table records on Qobra",
+      },
+      list_integrations: {
+        running: "Listing integrations on Qobra",
+        done: "Listed integrations on Qobra",
+      },
+      list_users: {
+        running: "Listing users on Qobra",
+        done: "Listed users on Qobra",
+      },
+      get_user: {
+        running: "Fetching user from Qobra",
+        done: "Fetched user from Qobra",
+      },
+      list_user_attributes: {
+        running: "Listing user attributes on Qobra",
+        done: "Listed user attributes on Qobra",
+      },
+      list_roles: {
+        running: "Listing roles on Qobra",
+        done: "Listed roles on Qobra",
+      },
+      get_role: {
+        running: "Fetching role from Qobra",
+        done: "Fetched role from Qobra",
+      },
+      list_groups: {
+        running: "Listing groups on Qobra",
+        done: "Listed groups on Qobra",
+      },
+      get_group: {
+        running: "Fetching group from Qobra",
+        done: "Fetched group from Qobra",
+      },
+      list_group_dimensions: {
+        running: "Listing group dimensions on Qobra",
+        done: "Listed group dimensions on Qobra",
+      },
+      list_quotas: {
+        running: "Listing quotas on Qobra",
+        done: "Listed quotas on Qobra",
+      },
+      list_quota_values: {
+        running: "Listing quota values on Qobra",
+        done: "Listed quota values on Qobra",
+      },
+      list_plans: {
+        running: "Listing compensation plans on Qobra",
+        done: "Listed compensation plans on Qobra",
+      },
+      get_plan: {
+        running: "Fetching compensation plan from Qobra",
+        done: "Fetched compensation plan from Qobra",
+      },
+      list_commission_letters_campaigns: {
+        running: "Listing commission letter campaigns on Qobra",
+        done: "Listed commission letter campaigns on Qobra",
+      },
+      get_commission_letters_campaign: {
+        running: "Fetching commission letter campaign from Qobra",
+        done: "Fetched commission letter campaign from Qobra",
+      },
+      list_reports: {
+        running: "Listing reports on Qobra",
+        done: "Listed reports on Qobra",
+      },
+      get_report: {
+        running: "Fetching report from Qobra",
+        done: "Fetched report from Qobra",
+      },
+      get_report_data: {
+        running: "Fetching report data from Qobra",
+        done: "Fetched report data from Qobra",
+      },
+      get_report_pivot_data: {
+        running: "Fetching report pivot data from Qobra",
+        done: "Fetched report pivot data from Qobra",
+      },
+      get_report_chart_data: {
+        running: "Fetching report chart data from Qobra",
+        done: "Fetched report chart data from Qobra",
+      },
+      list_dashboards: {
+        running: "Listing dashboards on Qobra",
+        done: "Listed dashboards on Qobra",
+      },
+      get_dashboard: {
+        running: "Fetching dashboard from Qobra",
+        done: "Fetched dashboard from Qobra",
+      },
+      list_requests: {
+        running: "Listing requests on Qobra",
+        done: "Listed requests on Qobra",
+      },
+      get_request: {
+        running: "Fetching request from Qobra",
+        done: "Fetched request from Qobra",
+      },
+      list_sales_coach_discussions: {
+        running: "Listing Sales Coach discussions on Qobra",
+        done: "Listed Sales Coach discussions on Qobra",
+      },
+      get_sales_coach_discussion: {
+        running: "Fetching Sales Coach discussion from Qobra",
+        done: "Fetched Sales Coach discussion from Qobra",
+      },
+      list_statements: {
+        running: "Listing statements on Qobra",
+        done: "Listed statements on Qobra",
+      },
+      get_statement: {
+        running: "Fetching statement from Qobra",
+        done: "Fetched statement from Qobra",
+      },
+      get_statement_compensation: {
+        running: "Fetching statement compensation from Qobra",
+        done: "Fetched statement compensation from Qobra",
+      },
+      list_statement_records: {
+        running: "Listing statement records on Qobra",
+        done: "Listed statement records on Qobra",
+      },
+      list_statement_periods: {
+        running: "Listing statement periods on Qobra",
+        done: "Listed statement periods on Qobra",
+      },
+      list_exchange_rates: {
+        running: "Listing exchange rates on Qobra",
+        done: "Listed exchange rates on Qobra",
+      },
+      list_imports: {
+        running: "Listing imports on Qobra",
+        done: "Listed imports on Qobra",
+      },
+      get_import: {
+        running: "Fetching import from Qobra",
+        done: "Fetched import from Qobra",
+      },
+      list_audit_logs: {
+        running: "Listing audit logs on Qobra",
+        done: "Listed audit logs on Qobra",
+      },
+      get_audit_log: {
+        running: "Fetching audit log from Qobra",
+        done: "Fetched audit log from Qobra",
+      },
+      list_dependencies: {
+        running: "Listing dependencies on Qobra",
+        done: "Listed dependencies on Qobra",
+      },
+      list_help_center_articles: {
+        running: "Listing Help Center articles on Qobra",
+        done: "Listed Help Center articles on Qobra",
+      },
+      get_help_center_article: {
+        running: "Fetching Help Center article from Qobra",
+        done: "Fetched Help Center article from Qobra",
+      },
+    },
+  },
+  {
+    id: 10035,
+    name: "Qobra US",
+    description:
+      "Qobra tools to read your sales compensation data — commission plans, quotas, statements, payouts, reports, and dashboards, scoped to your Qobra permissions (Region: US).",
+    url: "https://mcp-us.qobra.co/mcp",
+    icon: "QobraLogo",
+    documentationUrl: "https://docs.qobra.co/mcp_documentation/introduction",
+    connectionInstructions:
+      "Qobra uses OAuth with dynamic client registration. You will be prompted to sign in with your Qobra account. Access is read-only and scoped to your Qobra role permissions. The MCP server must be enabled for your company by one of your own Qobra admins. If the sign-in screen says the feature isn't available for your account, ask your Qobra admin to turn it on from Your account > Settings > AI > MCP.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      get_identity: "never_ask",
+      get_company_settings: "never_ask",
+      list_sandboxes: "never_ask",
+      list_data_tables: "never_ask",
+      get_data_table: "never_ask",
+      list_data_table_records: "never_ask",
+      list_integrations: "never_ask",
+      list_users: "never_ask",
+      get_user: "never_ask",
+      list_user_attributes: "never_ask",
+      list_roles: "never_ask",
+      get_role: "never_ask",
+      list_groups: "never_ask",
+      get_group: "never_ask",
+      list_group_dimensions: "never_ask",
+      list_quotas: "never_ask",
+      list_quota_values: "never_ask",
+      list_plans: "never_ask",
+      get_plan: "never_ask",
+      list_commission_letters_campaigns: "never_ask",
+      get_commission_letters_campaign: "never_ask",
+      list_reports: "never_ask",
+      get_report: "never_ask",
+      get_report_data: "never_ask",
+      get_report_pivot_data: "never_ask",
+      get_report_chart_data: "never_ask",
+      list_dashboards: "never_ask",
+      get_dashboard: "never_ask",
+      list_requests: "never_ask",
+      get_request: "never_ask",
+      list_sales_coach_discussions: "never_ask",
+      get_sales_coach_discussion: "never_ask",
+      list_statements: "never_ask",
+      get_statement: "never_ask",
+      get_statement_compensation: "never_ask",
+      list_statement_records: "never_ask",
+      list_statement_periods: "never_ask",
+      list_exchange_rates: "never_ask",
+      list_imports: "never_ask",
+      get_import: "never_ask",
+      list_audit_logs: "never_ask",
+      get_audit_log: "never_ask",
+      list_dependencies: "never_ask",
+      list_help_center_articles: "never_ask",
+      get_help_center_article: "never_ask",
+    },
+    // Les labels sont résolus par slugify(name), donc "qobra" et "qobra-us"
+    // sont deux espaces de noms distincts : la copie est nécessaire.
+    toolDisplayLabels: {
+      get_identity: {
+        running: "Fetching your Qobra identity",
+        done: "Fetched your Qobra identity",
+      },
+      get_company_settings: {
+        running: "Fetching company settings from Qobra",
+        done: "Fetched company settings from Qobra",
+      },
+      list_sandboxes: {
+        running: "Listing sandboxes on Qobra",
+        done: "Listed sandboxes on Qobra",
+      },
+      list_data_tables: {
+        running: "Listing data tables on Qobra",
+        done: "Listed data tables on Qobra",
+      },
+      get_data_table: {
+        running: "Fetching data table from Qobra",
+        done: "Fetched data table from Qobra",
+      },
+      list_data_table_records: {
+        running: "Listing data table records on Qobra",
+        done: "Listed data table records on Qobra",
+      },
+      list_integrations: {
+        running: "Listing integrations on Qobra",
+        done: "Listed integrations on Qobra",
+      },
+      list_users: {
+        running: "Listing users on Qobra",
+        done: "Listed users on Qobra",
+      },
+      get_user: {
+        running: "Fetching user from Qobra",
+        done: "Fetched user from Qobra",
+      },
+      list_user_attributes: {
+        running: "Listing user attributes on Qobra",
+        done: "Listed user attributes on Qobra",
+      },
+      list_roles: {
+        running: "Listing roles on Qobra",
+        done: "Listed roles on Qobra",
+      },
+      get_role: {
+        running: "Fetching role from Qobra",
+        done: "Fetched role from Qobra",
+      },
+      list_groups: {
+        running: "Listing groups on Qobra",
+        done: "Listed groups on Qobra",
+      },
+      get_group: {
+        running: "Fetching group from Qobra",
+        done: "Fetched group from Qobra",
+      },
+      list_group_dimensions: {
+        running: "Listing group dimensions on Qobra",
+        done: "Listed group dimensions on Qobra",
+      },
+      list_quotas: {
+        running: "Listing quotas on Qobra",
+        done: "Listed quotas on Qobra",
+      },
+      list_quota_values: {
+        running: "Listing quota values on Qobra",
+        done: "Listed quota values on Qobra",
+      },
+      list_plans: {
+        running: "Listing compensation plans on Qobra",
+        done: "Listed compensation plans on Qobra",
+      },
+      get_plan: {
+        running: "Fetching compensation plan from Qobra",
+        done: "Fetched compensation plan from Qobra",
+      },
+      list_commission_letters_campaigns: {
+        running: "Listing commission letter campaigns on Qobra",
+        done: "Listed commission letter campaigns on Qobra",
+      },
+      get_commission_letters_campaign: {
+        running: "Fetching commission letter campaign from Qobra",
+        done: "Fetched commission letter campaign from Qobra",
+      },
+      list_reports: {
+        running: "Listing reports on Qobra",
+        done: "Listed reports on Qobra",
+      },
+      get_report: {
+        running: "Fetching report from Qobra",
+        done: "Fetched report from Qobra",
+      },
+      get_report_data: {
+        running: "Fetching report data from Qobra",
+        done: "Fetched report data from Qobra",
+      },
+      get_report_pivot_data: {
+        running: "Fetching report pivot data from Qobra",
+        done: "Fetched report pivot data from Qobra",
+      },
+      get_report_chart_data: {
+        running: "Fetching report chart data from Qobra",
+        done: "Fetched report chart data from Qobra",
+      },
+      list_dashboards: {
+        running: "Listing dashboards on Qobra",
+        done: "Listed dashboards on Qobra",
+      },
+      get_dashboard: {
+        running: "Fetching dashboard from Qobra",
+        done: "Fetched dashboard from Qobra",
+      },
+      list_requests: {
+        running: "Listing requests on Qobra",
+        done: "Listed requests on Qobra",
+      },
+      get_request: {
+        running: "Fetching request from Qobra",
+        done: "Fetched request from Qobra",
+      },
+      list_sales_coach_discussions: {
+        running: "Listing Sales Coach discussions on Qobra",
+        done: "Listed Sales Coach discussions on Qobra",
+      },
+      get_sales_coach_discussion: {
+        running: "Fetching Sales Coach discussion from Qobra",
+        done: "Fetched Sales Coach discussion from Qobra",
+      },
+      list_statements: {
+        running: "Listing statements on Qobra",
+        done: "Listed statements on Qobra",
+      },
+      get_statement: {
+        running: "Fetching statement from Qobra",
+        done: "Fetched statement from Qobra",
+      },
+      get_statement_compensation: {
+        running: "Fetching statement compensation from Qobra",
+        done: "Fetched statement compensation from Qobra",
+      },
+      list_statement_records: {
+        running: "Listing statement records on Qobra",
+        done: "Listed statement records on Qobra",
+      },
+      list_statement_periods: {
+        running: "Listing statement periods on Qobra",
+        done: "Listed statement periods on Qobra",
+      },
+      list_exchange_rates: {
+        running: "Listing exchange rates on Qobra",
+        done: "Listed exchange rates on Qobra",
+      },
+      list_imports: {
+        running: "Listing imports on Qobra",
+        done: "Listed imports on Qobra",
+      },
+      get_import: {
+        running: "Fetching import from Qobra",
+        done: "Fetched import from Qobra",
+      },
+      list_audit_logs: {
+        running: "Listing audit logs on Qobra",
+        done: "Listed audit logs on Qobra",
+      },
+      get_audit_log: {
+        running: "Fetching audit log from Qobra",
+        done: "Fetched audit log from Qobra",
+      },
+      list_dependencies: {
+        running: "Listing dependencies on Qobra",
+        done: "Listed dependencies on Qobra",
+      },
+      list_help_center_articles: {
+        running: "Listing Help Center articles on Qobra",
+        done: "Listed Help Center articles on Qobra",
+      },
+      get_help_center_article: {
+        running: "Fetching Help Center article from Qobra",
+        done: "Fetched Help Center article from Qobra",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

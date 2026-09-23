@@ -16,6 +16,7 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 describe("resolveSkillMCPServers", () => {
@@ -64,11 +65,13 @@ describe("resolveSkillMCPServers", () => {
     if (!discoverKnowledge) {
       throw new Error("Expected Discover Knowledge skill.");
     }
+    const agentResource = await AgentResource.fetchById(
+      authenticator,
+      agentConfiguration.sId
+    );
+    assert(agentResource !== null);
     await SkillResource.addManyToAgent(authenticator, {
-      agentResource: AgentResource.fromAgentConfiguration(
-        authenticator,
-        agentConfiguration
-      ),
+      agentResource,
       skills: [discoverKnowledge],
     });
 
@@ -245,11 +248,13 @@ describe("resolveSkillMCPServers", () => {
       throw new Error("Expected Discover Knowledge and Go Deep skills.");
     }
 
+    const agentResource = await AgentResource.fetchById(
+      authenticator,
+      agentConfiguration.sId
+    );
+    assert(agentResource !== null);
     await SkillResource.addManyToAgent(authenticator, {
-      agentResource: AgentResource.fromAgentConfiguration(
-        authenticator,
-        agentConfiguration
-      ),
+      agentResource,
       skills: [discoverKnowledge, goDeep],
     });
     await goDeep.enableForAgent(authenticator, {

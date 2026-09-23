@@ -19,6 +19,7 @@ import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
@@ -73,10 +74,6 @@ function getProxyHost(): string {
 
 function getProxyTlsName(): string {
   return config.getEgressProxyTlsName() ?? getProxyHost();
-}
-
-async function sleep(delayMs: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
 async function resolveProxyAddr(): Promise<string> {
@@ -734,7 +731,7 @@ export async function setupEgressForwarder(
           return new Ok(undefined);
         }
 
-        await sleep(EGRESS_SETUP_WAIT_MS);
+        await setTimeoutAsync(EGRESS_SETUP_WAIT_MS);
       }
 
       return new Err(

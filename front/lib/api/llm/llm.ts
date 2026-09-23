@@ -89,6 +89,7 @@ export abstract class LLM<
   protected metadata: LLMClientMetadata;
   protected host: Host;
   private serviceTier: ServiceTier | undefined;
+  protected readonly isRetry: boolean;
   // Temporary during the router migration; "new" is set by BaseTransition.
   protected readonly router: "legacy" | "new" = "legacy";
 
@@ -106,6 +107,7 @@ export abstract class LLM<
       bypassFeatureFlag = false,
       context,
       getTraceOutput,
+      isRetry = false,
       modelInfo,
     }: LLMParameters<TEndpoint>
   ) {
@@ -120,6 +122,7 @@ export abstract class LLM<
     this.reasoningEffort = modelInfo.reasoningEffort ?? "none";
     this.responseFormat = modelInfo.responseFormat ?? null;
     this.bypassFeatureFlag = bypassFeatureFlag;
+    this.isRetry = isRetry;
     this.metadata = {
       clientId: providerId,
       inferenceProvider: providerId,

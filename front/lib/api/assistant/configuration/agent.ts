@@ -688,15 +688,11 @@ export async function updateAgentConfigurationsScope(
 
   // Publishing/unpublishing needs the workspace `publish` capability (checked below) plus edit
   // rights on each agent. Admins may additionally act on agents built on spaces they cannot read
-  // (the manage agents page lists those behind "Show hidden agents"); changing the scope touches
-  // nothing the spaces protect.
-  const agentConfigs = await getAgentConfigurations(auth, {
-    agentIds,
-    variant: "light",
-    dangerouslySkipPermissionFiltering: auth.isAdmin(),
-  });
+  // (the manage agents page lists those behind "Show hidden agents"): `fetchByIds` returns those to
+  // admins via the agent `admin` verb, and changing the scope touches nothing the spaces protect.
+  const agentResources = await AgentResource.fetchByIds(auth, agentIds);
 
-  const archivedAgentNames = agentConfigs
+  const archivedAgentNames = agentResources
     .filter((agent) => agent.status === "archived")
     .map((agent) => agent.name);
   if (archivedAgentNames.length > 0) {
@@ -707,7 +703,7 @@ export async function updateAgentConfigurationsScope(
     );
   }
 
-  const editableAgents = filterEditableAgents(auth, agentConfigs);
+  const editableAgents = filterEditableAgents(auth, agentResources);
   if (editableAgents.length === 0) {
     return new Ok(undefined);
   }

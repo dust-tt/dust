@@ -39,6 +39,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fontanierh",
   },
+  frame_documents: {
+    description:
+      "Expose editable Document guidance and examples in the Frame skill",
+    stage: "dust_only",
+    owner: "flvndvd",
+  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",
@@ -162,11 +168,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fontanierh",
   },
-  openai_usage_mcp: {
-    description: "OpenAI tool for tracking API consumption and costs",
-    stage: "self_serve",
-    owner: "frankaloia",
-  },
   openai_concise_reasoning_summaries: {
     description:
       "Use concise reasoning summaries for supported OpenAI models in the new LLM router",
@@ -269,7 +270,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   conversations_slack_notifications: {
     description: "Enable slack notifications",
-    stage: "dust_only",
+    stage: "ask_owner",
     owner: "matteotrab",
   },
   reinforced_agents: {

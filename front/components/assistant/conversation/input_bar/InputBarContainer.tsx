@@ -37,6 +37,8 @@ import { knowledgeNodeToItem } from "@app/components/editor/extensions/skill_bui
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor, {
   INPUT_BAR_DEFAULT_PLACEHOLDER,
+  TYPING_INTERVAL_MS,
+  TYPING_MAX_DURATION_MS,
 } from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
@@ -59,6 +61,7 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { isVoiceTranscriptionAllowed } from "@app/lib/workspace_policies";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -106,6 +109,8 @@ import {
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
+import type { BezierDefinition } from "framer-motion";
+import { animate, useReducedMotion } from "framer-motion";
 import type React from "react";
 import {
   useCallback,
@@ -138,6 +143,7 @@ function narrowToKnownSlashCommand(
 }
 
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
+const TYPING_EASE: BezierDefinition = [0.86, 0, 0.07, 1];
 const EMPTY_SPACE_IDS: string[] = [];
 const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
 const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
@@ -326,6 +332,8 @@ const InputBarContainer = ({
     setSelectedSingleAgent,
     isLoadingGoTemplate,
     setStickyModelOverride,
+    pendingSkill,
+    setPendingSkill,
   } = useContext(InputBarContext);
 
   const [startsWithUserMention, setStartsWithUserMention] = useState(false);
@@ -849,6 +857,8 @@ const InputBarContainer = ({
     },
   });
 
+  const shouldReduceMotion = useReducedMotion();
+
   const editorServiceRef = useRef(editorService);
   editorServiceRef.current = editorService;
   const saveDraftRef = useRef(saveDraft);
@@ -1284,7 +1294,61 @@ const InputBarContainer = ({
     editorService.setLoading(isLoadingGoTemplate);
   }, [editor, editorService, isLoadingGoTemplate]);
 
+  useEffect(() => {
+    if (
+      !pendingSkill ||
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
+      return;
+    }
+    setPendingSkill(null);
+    editor
+      .chain()
+      .focus()
+      .insertSkillNode({
+        skillId: pendingSkill.sId,
+        skillName: pendingSkill.name,
+        skillIcon: pendingSkill.icon,
+      })
+      .run();
+  }, [
+    pendingSkill,
+    setPendingSkill,
+    editor,
+    editor?.isInitialized,
+    editor?.isEditable,
+  ]);
+
   const pendingReplaceInputRef = useRef<PendingInputText | null>(null);
+  const typeIntoEditor = useCallback(
+    (text: string) => {
+      if (shouldReduceMotion) {
+        editorServiceRef.current.appendText(text);
+        return;
+      }
+
+      let typed = 0;
+      animate(0, text.length, {
+        duration:
+          Math.min(text.length * TYPING_INTERVAL_MS, TYPING_MAX_DURATION_MS) /
+          1000,
+        ease: TYPING_EASE,
+        onUpdate: (progress) => {
+          const next = Math.round(progress);
+          if (next > typed) {
+            editorServiceRef.current.appendTextPreservingSelection(
+              text.slice(typed, next)
+            );
+            typed = next;
+          }
+        },
+      });
+    },
+    [shouldReduceMotion]
+  );
 
   // Apply replace-mode pending text once the editor is ready. The async /go
   // template fetch often completes before TipTap initializes; applying earlier
@@ -1312,6 +1376,9 @@ const InputBarContainer = ({
     queueMicrotask(() => {
       editorService.setContent(pending.text, { focus: !disableAutoFocus });
       hasCompletedInitialContentRestoreRef.current = true;
+      if (pending.typedSuffix) {
+        typeIntoEditor(pending.typedSuffix);
+      }
     });
   }, [
     pendingInputText,
@@ -1320,6 +1387,7 @@ const InputBarContainer = ({
     editor?.isEditable,
     editorService,
     disableAutoFocus,
+    typeIntoEditor,
   ]);
 
   // Restore draft text when switching conversations (including new conversations).
@@ -1508,7 +1576,7 @@ const InputBarContainer = ({
       editorService.blur();
       if (isMobile) {
         editorService.setLoading(true);
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await setTimeoutAsync(500);
         editorService.setLoading(false);
       }
     }
@@ -1930,9 +1998,7 @@ const InputBarContainer = ({
                                 // wait a bit for the keyboard to be closed on mobile
                                 if (isMobile) {
                                   editorService.setLoading(true);
-                                  await new Promise((resolve) =>
-                                    setTimeout(resolve, 500)
-                                  );
+                                  await setTimeoutAsync(500);
                                   editorService.setLoading(false);
                                 }
                               }

@@ -620,18 +620,6 @@ const QUERIES: LabeledQuery[] = [
     expected: "outlook_calendar.check_availability",
   },
 
-  // --- openai_usage ---
-  {
-    query: "get OpenAI token usage by model",
-    expected: "openai_usage.get_completions_usage",
-    maxRank: 1,
-  },
-  {
-    query: "get OpenAI spending costs for my organization",
-    expected: "openai_usage.get_organization_costs",
-    maxRank: 1,
-  },
-
   // --- microsoft_teams ---
   {
     query: "search microsoft teams messages for the budget discussion",
@@ -1115,6 +1103,14 @@ const QUERIES: LabeledQuery[] = [
     query: "make this pod open to the whole workspace",
     expected: "pod_manager.edit_information",
     maxRank: 2,
+  },
+  {
+    query: "add this markdown file as a custom tab in the pod",
+    expected: "pod_manager.set_file_tabs",
+  },
+  {
+    query: "clear the pod file tabs from the navigation",
+    expected: "pod_manager.set_file_tabs",
   },
 
   // --- val_town ---

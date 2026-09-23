@@ -8,7 +8,7 @@ import type {
   SourceReader,
 } from "@app/lib/api/bundler/bundle_module";
 import { bundleModule } from "@app/lib/api/bundler/bundle_module";
-import { setTimeoutAync } from "@app/lib/utils/async_utils";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { describe, expect, it } from "vitest";
 
 // Default output options for the generic suite. Individual tests override (e.g. node platform for
@@ -40,11 +40,11 @@ function asyncLatencyReader(files: Record<string, string>): {
   const delayMsFor = (rel: string) => Math.max(1, 30 - rel.length);
   const reader: SourceReader = {
     list: async () => {
-      await setTimeoutAync(1);
+      await setTimeoutAsync(1);
       return Object.keys(files);
     },
     read: async (rel) => {
-      await setTimeoutAync(delayMsFor(rel));
+      await setTimeoutAsync(delayMsFor(rel));
       reads.push(rel);
       return rel in files ? files[rel] : null;
     },

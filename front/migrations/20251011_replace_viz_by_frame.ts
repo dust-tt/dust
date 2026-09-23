@@ -99,6 +99,15 @@ async function updateLegacyVizByFrame(
             INTERNAL_MCP_SERVERS["interactive_content"].metadata;
 
           if (execute) {
+            const frameAgentResource = await AgentResource.fetchById(
+              auth,
+              agentConfiguration.sId
+            );
+            if (!frameAgentResource) {
+              throw new Error(
+                `Agent ${agentConfiguration.sId} not found while adding frame action`
+              );
+            }
             // Create the action for interactive_content.
             await createAgentActionConfiguration(
               auth,
@@ -118,7 +127,7 @@ async function updateLegacyVizByFrame(
                 timeFrame: null,
                 jsonSchema: null,
               } as ServerSideMCPServerConfigurationType,
-              AgentResource.fromAgentConfiguration(auth, agentConfiguration)
+              frameAgentResource
             );
           }
 

@@ -1,3 +1,5 @@
+// @ts-nocheck: completed backfill, kept as a historical record. It inserts `agents` rows
+// without the head fields those columns now require.
 import {
   AgentConfigurationModel,
   AgentModel,

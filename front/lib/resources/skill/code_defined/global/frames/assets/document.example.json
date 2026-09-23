@@ -1,0 +1,69 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "heading",
+      "attrs": { "level": 1 },
+      "content": [{ "type": "text", "text": "Quarterly review" }]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "Use this illustrative brief to plan a " },
+        {
+          "type": "text",
+          "marks": [{ "type": "bold" }],
+          "text": "focused pilot"
+        },
+        { "type": "text", "text": " and decide what to learn next." }
+      ]
+    },
+    {
+      "type": "heading",
+      "attrs": { "level": 2 },
+      "content": [{ "type": "text", "text": "Early signals" }]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Select a quarter in the chart to explore the example data."
+        }
+      ]
+    },
+    { "type": "dustVisual", "attrs": { "name": "revenue" } },
+    {
+      "type": "heading",
+      "attrs": { "level": 2 },
+      "content": [{ "type": "text", "text": "Next steps" }]
+    },
+    {
+      "type": "bulletList",
+      "content": [
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "Choose the pilot customer group." }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "Agree on the success criteria." }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

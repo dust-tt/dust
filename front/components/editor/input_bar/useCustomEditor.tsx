@@ -46,7 +46,8 @@ const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 const SUBMIT_COOLDOWN_MS = 750;
 export const INPUT_BAR_DEFAULT_PLACEHOLDER = "Get work done";
 // Matches the sidebar conversation title TypingAnimation cadence.
-const PLACEHOLDER_TYPING_INTERVAL_MS = 32;
+export const TYPING_INTERVAL_MS = 32;
+export const TYPING_MAX_DURATION_MS = 700;
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
@@ -64,6 +65,17 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
       // Append text at the end of the document (always at the end, regardless of cursor position).
       appendText: (text: string) => {
         editor?.chain().focus("end").insertContent(text).run();
+      },
+      appendTextPreservingSelection: (text: string) => {
+        if (!editor) {
+          return;
+        }
+        editor
+          .chain()
+          .insertContentAt(editor.state.doc.content.size - 1, text, {
+            updateSelection: false,
+          })
+          .run();
       },
       // Insert or update the animated voicePartial node at the end of the document.
       // Called on each partial transcript while voice recording is active.
@@ -638,7 +650,7 @@ const useCustomEditor = ({
       length += 1;
       placeholderRef.current = target.substring(0, length);
       editor.view.dispatch(editor.state.tr);
-    }, PLACEHOLDER_TYPING_INTERVAL_MS);
+    }, TYPING_INTERVAL_MS);
 
     return () => clearInterval(typingEffect);
   }, [editor, placeholderOverride, animatePlaceholder]);

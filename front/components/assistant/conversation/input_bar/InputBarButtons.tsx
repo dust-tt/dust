@@ -30,7 +30,6 @@ import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
-import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
 import { isProjectType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -264,7 +263,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   // the same action.
   const hiddenFileInput = actions.includes("attachment") && (
     <input
-      accept={getSupportedFileExtensions().join(",")}
+      accept={fileUploaderService.acceptedFileExtensions.join(",")}
       onChange={async (e) => {
         await fileUploaderService.handleFileChange(e);
         if (fileInputRef.current) {

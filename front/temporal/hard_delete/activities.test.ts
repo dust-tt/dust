@@ -18,6 +18,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import type { ModelId } from "@app/types/shared/model_id";
+import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@temporalio/activity", () => ({
@@ -172,9 +173,14 @@ describe("purgeExpiredPendingAgentsActivity", () => {
       authenticator,
       { name: "Active Agent" }
     );
+    const activeResource = await AgentResource.fetchById(
+      authenticator,
+      agentConfig.sId
+    );
+    assert(activeResource !== null);
     const grantGroupModelId = await getEditorGrantGroupModelId(
       authenticator,
-      AgentResource.fromAgentConfiguration(authenticator, agentConfig)
+      activeResource
     );
 
     // Advance time past the retention threshold.
@@ -236,9 +242,14 @@ describe("purgeExpiredPendingAgentsActivity", () => {
       authenticator,
       { name: "Survivor" }
     );
+    const activeResource = await AgentResource.fetchById(
+      authenticator,
+      activeAgent.sId
+    );
+    assert(activeResource !== null);
     const activeGroupModelId = await getEditorGrantGroupModelId(
       authenticator,
-      AgentResource.fromAgentConfiguration(authenticator, activeAgent)
+      activeResource
     );
 
     await purgeExpiredPendingAgentsActivity();

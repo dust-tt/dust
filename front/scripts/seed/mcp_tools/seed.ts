@@ -185,6 +185,13 @@ async function createAgentWithTool({
     throw agentResult.error;
   }
 
+  const seedAgentResource = await AgentResource.fetchById(
+    auth,
+    agentResult.value.sId
+  );
+  if (!seedAgentResource) {
+    throw new Error(`Agent ${agentResult.value.sId} not found`);
+  }
   const actionResult = await createAgentActionConfiguration(
     auth,
     {
@@ -208,7 +215,7 @@ async function createAgentWithTool({
       dustProject: null,
       jsonSchema: agent.jsonSchema,
     } satisfies UnsavedServerSideMCPServerConfigurationType,
-    AgentResource.fromAgentConfiguration(auth, agentResult.value)
+    seedAgentResource
   );
   if (actionResult.isErr()) {
     throw actionResult.error;

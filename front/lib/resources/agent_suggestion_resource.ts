@@ -1,4 +1,3 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
@@ -72,17 +71,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       return new Map();
     }
 
-    // Fetch agent configurations.
-    const agentConfigs = await getAgentConfigurations(auth, {
-      agentIds: agentIds,
-      variant: "extra_light",
-    });
-
-    if (agentConfigs.length === 0) {
-      return new Map();
-    }
-
-    const resources = AgentResource.fromAgentConfigurations(auth, agentConfigs);
+    const resources = await AgentResource.fetchByIds(auth, agentIds);
 
     return new Map(resources.map((resource) => [resource.sId, resource]));
   }

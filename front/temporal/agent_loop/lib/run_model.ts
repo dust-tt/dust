@@ -785,10 +785,13 @@ export async function runModel(
     skipEmbeddingApiKeyRequirement: true,
   });
 
+  const currentAttempt = Context.current().info.attempt;
+
   const llm = await getStreamLLM(auth, {
     credentials,
     modelInfo,
     context: traceContext,
+    isRetry: currentAttempt > 1,
     omittedThinking: agentConfiguration.omittedThinking,
     // Custom trace input: show only the last user message instead of full conversation.
     getTraceInput: (conv) => {
@@ -893,7 +896,6 @@ export async function runModel(
       case "shouldRetryMessage": {
         const { type, isRetryable } = error.content;
         const errorDustRunId = llm?.getTraceId();
-        const currentAttempt = Context.current().info.attempt;
         const plan = auth.getNonNullablePlan();
 
         if (

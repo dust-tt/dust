@@ -32,6 +32,8 @@ import {
   DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
+  DUST_FILE_REVISION_HEADER,
+  FileRevisionSchema,
   getFileFormat,
   normalizeMimeType,
 } from "@app/types/files";
@@ -48,10 +50,7 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const RevisionHeaderSchema = z.object({
-  "if-match": z
-    .string()
-    .regex(/^"[1-9][0-9]*"$/)
-    .optional(),
+  "x-dust-if-revision-match": FileRevisionSchema.optional(),
 });
 
 const ParamsSchema = z.object({
@@ -68,12 +67,14 @@ const ParamsSchema = z.object({
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"rename", fileName }
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"move",   dest }
  *   POST   /api/w/:wId/files/path/{...canonicalPath}?action=extract    expand a ZIP into the folder
- *   PUT    /api/w/:wId/files/path/{...canonicalPath}                    replace text or JSON content, optional If-Match
+ *   PUT    /api/w/:wId/files/path/{...canonicalPath}                    replace text or JSON content, optional X-Dust-If-Revision-Match
  *   DELETE /api/w/:wId/files/path/{...canonicalPath}
  *
- * Raw GCS reads return ETag for exactly the streamed bytes. PUT accepts that ETag
- * in If-Match and returns 412 on a revision mismatch. Successful GCS writes return
- * their new ETag. Backends without revision support reject conditional writes.
+ * Raw GCS reads return X-Dust-File-Revision for exactly the streamed bytes. PUT accepts
+ * that revision in X-Dust-If-Revision-Match and returns 412 on a revision mismatch.
+ * Successful GCS writes return their new X-Dust-File-Revision. Revisions are unquoted
+ * positive generation strings, independent of HTTP ETags. Backends without revision
+ * support reject conditional writes.
  * GET and HEAD expose current mount write permission in X-Dust-File-Can-Write.
  */
 const app = workspaceApp();
@@ -432,7 +433,7 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
     ),
   };
   if (revision !== undefined) {
-    headers.ETag = `"${revision}"`;
+    headers[DUST_FILE_REVISION_HEADER] = revision;
     headers["Cache-Control"] = "private, no-cache";
   }
 
@@ -682,7 +683,7 @@ app.put(
       canonicalPath,
       new Uint8Array(contentBuffer),
       ctx.req.header("content-type") ?? undefined,
-      ctx.req.valid("header")["if-match"]?.slice(1, -1)
+      ctx.req.valid("header")["x-dust-if-revision-match"]
     );
 
     if (writeResult.isErr()) {
@@ -726,7 +727,7 @@ app.put(
       status: writeResult.value.created ? 201 : 200,
       headers:
         writeResult.value.revision !== undefined
-          ? { ETag: `"${writeResult.value.revision}"` }
+          ? { [DUST_FILE_REVISION_HEADER]: writeResult.value.revision }
           : undefined,
     });
   }

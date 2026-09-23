@@ -1,5 +1,6 @@
 import type { RedisClientType } from "@app/lib/api/redis";
 import { getRedisStreamClient } from "@app/lib/api/redis";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import tracer from "@app/logger/tracer";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -111,7 +112,7 @@ async function acquireLock(
       // waiters spread out instead of stampeding the same retry tick.
       const jitteredWaitMs =
         retryIntervalMs / 2 + Math.random() * (retryIntervalMs / 2);
-      await new Promise((resolve) => setTimeout(resolve, jitteredWaitMs));
+      await setTimeoutAsync(jitteredWaitMs);
     }
     return acquired;
   };

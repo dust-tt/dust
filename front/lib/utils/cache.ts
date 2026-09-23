@@ -1,5 +1,6 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -210,9 +211,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 
           // Spin-wait for the lock owner to populate the cache.
           while (!lockValue) {
-            await new Promise((resolve) =>
-              setTimeout(resolve, SPIN_WAIT_INTERVAL_MS)
-            );
+            await setTimeoutAsync(SPIN_WAIT_INTERVAL_MS);
             cacheVal = await redisCli.get(readKey);
             if (cacheVal) {
               await copyToOtherKey(cacheVal, { fromCacheHit: true });

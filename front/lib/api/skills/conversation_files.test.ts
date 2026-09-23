@@ -5,6 +5,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SKILL_ICON } from "@app/lib/skill";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -69,12 +70,44 @@ async function createSkillFileAttachment(
 }
 
 describe("upsertSkillFilesToConversation", () => {
-  it("loads the Frame checker, configs, plugin and examples as skill attachments", async () => {
+  it.each([
+    { framesV2: false, documents: false, exposesDocuments: false },
+    { framesV2: true, documents: false, exposesDocuments: false },
+    { framesV2: false, documents: true, exposesDocuments: false },
+    { framesV2: true, documents: true, exposesDocuments: true },
+  ])("loads Frame attachments with frames_v2=$framesV2 and frame_documents=$documents", async ({
+    framesV2,
+    documents,
+    exposesDocuments,
+  }) => {
     const { auth, workspace, conversation } =
       await setupConversationAndSkillPermissions();
+
+    if (framesV2) {
+      await FeatureFlagFactory.basic(auth, "frames_v2");
+    }
+    if (documents) {
+      await FeatureFlagFactory.basic(auth, "frame_documents");
+    }
+
     const skill = await SkillResource.fetchById(auth, "frames");
     assert(skill);
-    expect(skill.getCodeDefinedFiles()).toEqual(FRAME_SKILL_FILES);
+    if (exposesDocuments) {
+      expect(skill.instructions).toContain("### Editable documents");
+      expect(skill.instructions).toContain("`document.example.tsx`");
+      expect(skill.instructions).toContain("`document.example.json`");
+      expect(skill.instructions).toContain("`document.md`");
+      expect(skill.instructions).toContain("`@dust/document/v1`");
+      expect(skill.instructions).not.toContain(
+        "Illustrative quarterly revenue"
+      );
+    } else {
+      expect(skill.instructions).not.toContain("### Editable documents");
+      expect(skill.instructions).not.toContain("document.example");
+      expect(skill.instructions).not.toContain("document.md");
+      expect(skill.instructions).not.toContain("@dust/document/v1");
+      expect(skill.getCodeDefinedFiles()).toEqual(FRAME_SKILL_FILES);
+    }
     fileStorageMock.setFileExists(() => false);
 
     const result = await upsertSkillFilesToConversation(auth, {
@@ -91,12 +124,15 @@ describe("upsertSkillFilesToConversation", () => {
         "frame-rules.cjs",
         "theme.ts",
         "slideshow.example.tsx",
+        ...(exposesDocuments
+          ? ["document.md", "document.example.tsx", "document.example.json"]
+          : []),
       ].map(
         (fileName) =>
           `conversation-${conversation.sId}/skills/Create Frames/${fileName}`
       )
     );
-    for (const file of FRAME_SKILL_FILES) {
+    for (const file of skill.getCodeDefinedFiles()) {
       expect(fileStorageMock.saveFileCalls).toContainEqual({
         filePath: gcsPathForSkillFile({
           workspaceId: workspace.sId,

@@ -120,10 +120,6 @@ export async function getInternalMCPServer(
         auth,
         toolContext
       );
-    case "openai_usage":
-      return (
-        await import("@app/lib/api/actions/servers/openai_usage")
-      ).default(auth, toolContext);
     case "include_data":
       return (
         await import("@app/lib/api/actions/servers/include_data")

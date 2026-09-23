@@ -69,19 +69,19 @@ AgentModel.init(
     },
     name: {
       type: DANGEROUSLY_UNBOUNDED_TEXT,
-      allowNull: true,
+      allowNull: false,
     },
     status: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     scope: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     reinforcement: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     lastReinforcementAnalysisAt: {
       type: DataTypes.DATE,

@@ -172,8 +172,8 @@ export type GlobalAgentContext = {
 // in-memory permission snapshot (`canRead`/`canEdit` need no query). This is exactly what
 // `AgentResource.toJSON` renders; the `*EnrichmentSchema`s below add the fields that each need a
 // query, and `Light`/`AgentConfigurationSchema` are recomposed from base + enrichments.
-// `agentModelId` carries the agent's stable identity onto every rendered configuration so callers
-// can build an `AgentResource` (`AgentResource.fromAgentConfiguration`) without a database lookup.
+// `agentModelId` carries the agent's stable identity (the `AgentModel.id`) onto every rendered
+// configuration so callers can correlate a configuration back to its `agents` row.
 /**
  * @cc [owner:tdraier,label:backend] agent-model-id-population
  * `agentModelId` MUST be the stable `AgentModel.id` for custom agents (`scope !== "global"`) and

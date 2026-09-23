@@ -54,7 +54,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { SkillFetchContext } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -75,7 +74,6 @@ import type {
   AgentModelConfigurationType,
   AgentReinforcementMode,
   AgentStatus,
-  LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { isAgentStatus } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -141,6 +139,12 @@ const NON_INDEXABLE_AGENT_STATUSES: AgentConfigurationStatus[] = [
 // so keep the parallelism low: enough to keep a large selection responsive, not enough to flood the
 // connection pool.
 const BULK_UPDATE_CONCURRENCY = 4;
+
+export type EditorDeltaErrorCode =
+  | "user_already_member"
+  | "user_not_member"
+  | "user_not_found"
+  | "internal_error";
 
 // Human workspace admins manage editors but must grant themselves editor access to change the agent.
 // The admin role alone does not read a hidden agent (see the `hidden-agent-content` contract).
@@ -501,80 +505,6 @@ export class AgentResource
     );
 
     return this._content;
-  }
-
-  // -- Light factories (no query; identity + core only) --
-  // Built without the `agents` row, so `createdAt` is a placeholder (`new Date()`): a caller
-  // reasoning about the agent's age must use a `fetch*` resolver.
-
-  static fromAgentConfiguration(
-    auth: Authenticator,
-    configuration: LightAgentConfigurationType
-  ): AgentResource {
-    assert(configuration.scope !== "global");
-    assert(
-      configuration.agentModelId !== null,
-      "Unexpected: custom agent identity is missing"
-    );
-    assert(
-      configuration.versionAuthorId !== null,
-      "Unexpected: custom agent author is missing"
-    );
-    const templateId = configuration.templateId
-      ? getResourceIdFromSId(configuration.templateId)
-      : null;
-    const reinforcement = configuration.reinforcement ?? "auto";
-    const lastReinforcementAnalysisAt =
-      configuration.lastReinforcementAnalysisAt
-        ? new Date(configuration.lastReinforcementAnalysisAt)
-        : null;
-
-    return new AgentResource(
-      {
-        id: configuration.agentModelId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        sId: configuration.sId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        currentVersion: configuration.version,
-        name: configuration.name,
-        status: isAgentStatus(configuration.status)
-          ? configuration.status
-          : null,
-        scope: configuration.scope,
-        templateId,
-        reinforcement,
-        lastReinforcementAnalysisAt,
-      },
-      {
-        agentConfigurationModelId: configuration.id,
-        scope: configuration.scope,
-        name: configuration.name,
-        description: configuration.description,
-        status: configuration.status,
-        pictureUrl: configuration.pictureUrl,
-        templateId,
-        reinforcement,
-        lastReinforcementAnalysisAt,
-        versionAuthorId: configuration.versionAuthorId,
-        // `LightAgentConfigurationType.requestedSpaceIds` are space sIds; the resource holds model ids.
-        requestedSpaceIds: removeNulls(
-          configuration.requestedSpaceIds.map(getResourceIdFromSId)
-        ),
-        modelConfiguration: configuration.model,
-        codeDefinedSkillIds: [],
-        content: null,
-      }
-    );
-  }
-
-  static fromAgentConfigurations(
-    auth: Authenticator,
-    configurations: LightAgentConfigurationType[]
-  ): AgentResource[] {
-    return configurations.map((configuration) =>
-      this.fromAgentConfiguration(auth, configuration)
-    );
   }
 
   // Global agents are code-defined and have no `agent`/configuration rows; their
@@ -1157,6 +1087,68 @@ export class AgentResource
     if (revokeResult.isErr()) {
       throw revokeResult.error;
     }
+  }
+
+  /**
+   * @cc [owner:philipperolet,label:security;product] editor-removal-uses-grants
+   * Translating add/remove deltas MUST validate against the grant-backed editor set (`listEditors`):
+   * removing a user who holds no editor grant MUST fail with `user_not_member`, and adding a user who
+   * already holds one MUST fail with `user_already_member`. Neither changes any grant.
+   */
+  // Applies add/remove editor deltas by translating them into the complete editor set and persisting
+  // it through `updateConfiguration` (the single editor-edit path, admin-gated and in place). The
+  // caller owns fetching/gating `this`.
+  async updateEditorsFromDelta(
+    auth: Authenticator,
+    {
+      usersToAdd,
+      usersToRemove,
+    }: { usersToAdd: UserResource[]; usersToRemove: UserResource[] }
+  ): Promise<Result<AgentResource, DustError<EditorDeltaErrorCode>>> {
+    const currentEditors = (await this.listEditors(auth)) ?? [];
+    const currentEditorModelIds = new Set(currentEditors.map((u) => u.id));
+
+    if (usersToAdd.some((u) => currentEditorModelIds.has(u.id))) {
+      return new Err(
+        new DustError(
+          "user_already_member",
+          "The user is already a member of the agent editors group."
+        )
+      );
+    }
+
+    if (usersToRemove.some((u) => !currentEditorModelIds.has(u.id))) {
+      return new Err(
+        new DustError(
+          "user_not_member",
+          "The user is not a member of the agent editors group."
+        )
+      );
+    }
+
+    const removeEditorModelIds = new Set(usersToRemove.map((u) => u.id));
+    const nextEditors = [
+      ...currentEditors.filter((u) => !removeEditorModelIds.has(u.id)),
+      ...usersToAdd,
+    ].map((u) => u.toJSON());
+
+    const updateRes = await this.updateConfiguration(auth, {
+      editors: nextEditors,
+    });
+    if (updateRes.isErr()) {
+      const { error } = updateRes;
+      if (error instanceof DustError && error.code === "user_not_found") {
+        return new Err(
+          new DustError(
+            "user_not_found",
+            "The user was not found in the workspace."
+          )
+        );
+      }
+      return new Err(new DustError("internal_error", error.message));
+    }
+
+    return new Ok(updateRes.value.resource);
   }
 
   // Sets the requesting user's favorite flag for this agent. Favoriting is a per-user relation keyed

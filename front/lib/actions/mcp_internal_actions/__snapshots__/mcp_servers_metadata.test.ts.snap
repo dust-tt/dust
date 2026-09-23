@@ -1777,16 +1777,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
   },
-  "openai_usage": {
-    "get_completions_usage": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-    "get_organization_costs": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-  },
   "outlook": {
     "create_contact": {
       "freeUsage": false,
@@ -1951,6 +1941,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
     "set_default_agent": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "set_file_tabs": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -3281,10 +3275,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_row_database": "low",
     "update_schema_datasource": "low",
   },
-  "openai_usage": {
-    "get_completions_usage": "low",
-    "get_organization_costs": "low",
-  },
   "outlook": {
     "create_contact": "high",
     "create_draft": "medium",
@@ -3332,6 +3322,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "retrieve_recent_documents": "never_ask",
     "semantic_search": "never_ask",
     "set_default_agent": "low",
+    "set_file_tabs": "never_ask",
     "set_pinned_frame": "never_ask",
     "update_members": "low",
   },

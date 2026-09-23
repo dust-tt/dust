@@ -15,12 +15,19 @@ import type { DustError } from "@app/lib/error";
 import { withRetryOnTransientGCSError } from "@app/lib/file_storage";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { transcribeFile } from "@app/lib/utils/transcribe_service";
+import {
+  AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
+  isAudioTranscriptionAvailable,
+} from "@app/lib/workspace_policies";
 import logger from "@app/logger/logger";
 import type {
   AllSupportedFileContentType,
   FileUseCase,
 } from "@app/types/files";
-import { extensionsForContentType } from "@app/types/files";
+import {
+  extensionsForContentType,
+  isSupportedAudioContentType,
+} from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import {
@@ -42,6 +49,13 @@ type ProcessingFunction = (
   auth: Authenticator,
   file: FileResource
 ) => Promise<Result<undefined, Error>>;
+
+function isAudioTranscriptionAvailableForAuth(auth: Authenticator): boolean {
+  return isAudioTranscriptionAvailable({
+    owner: auth.getNonNullableWorkspace(),
+    plan: auth.getNonNullablePlan(),
+  });
+}
 
 const extractTextFromFileAndUpload: ProcessingFunction = async (
   auth: Authenticator,
@@ -97,16 +111,8 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
-  // Skip transcription for BYOK workspaces (voice uses third-party services).
-  if (auth.getNonNullablePlan().isByok) {
-    return new Ok(undefined);
-  }
-
-  // Skip transcription if the workspace has disabled voice transcription.
-  if (
-    auth.getNonNullableWorkspace().metadata?.allowVoiceTranscription === false
-  ) {
-    return new Ok(undefined);
+  if (!isAudioTranscriptionAvailableForAuth(auth)) {
+    return new Err(new Error(AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE));
   }
 
   // Strategy:
@@ -491,6 +497,13 @@ export type ProcessAndStoreFileError = Omit<DustError, "code"> & {
     | "file_is_empty";
 };
 
+/**
+ * @cc [owner:Nils-Fedrigo,label:product;backend] audio-upload-requires-transcription
+ * When `isAudioTranscriptionAvailable` is false for the workspace, storing a file whose content
+ * type is audio MUST fail with `file_type_not_supported` before the original bytes are written,
+ * and the file MUST be marked as failed. Storing the audio anyway would produce a ready file whose
+ * `processed` transcript never exists, which breaks every later read of that file.
+ */
 export async function processAndStoreFile(
   auth: Authenticator,
   {
@@ -501,6 +514,18 @@ export async function processAndStoreFile(
     content: ProcessAndStoreFileContent;
   }
 ): Promise<Result<FileResource, ProcessAndStoreFileError>> {
+  if (
+    isSupportedAudioContentType(file.contentType) &&
+    !isAudioTranscriptionAvailableForAuth(auth)
+  ) {
+    await file.markAsFailed();
+    return new Err({
+      name: "dust_error",
+      code: "file_type_not_supported",
+      message: AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
+    });
+  }
+
   if (file.isReady || file.isFailed) {
     return new Err({
       name: "dust_error",

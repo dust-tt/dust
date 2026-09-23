@@ -10,6 +10,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
@@ -109,7 +110,7 @@ const triggerProjectNewConversationNotifications = async (
 
   // Wait before triggering the notification. This is useful to ensure that
   // the conversation has a title and its participants are fully created.
-  await new Promise((resolve) => setTimeout(resolve, NOTIFICATION_DELAY_MS));
+  await setTimeoutAsync(NOTIFICATION_DELAY_MS);
 
   const conversationResource = await ConversationResource.fetchById(
     auth,

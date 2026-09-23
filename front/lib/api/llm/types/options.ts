@@ -104,6 +104,7 @@ export type LLMParameters<E> = {
   bypassFeatureFlag?: boolean;
   context?: LLMTraceContext;
   credentials: LLMCredentialsType;
+  isRetry?: boolean;
   modelInfo: Omit<ModelInfo<E>, "temperature"> & { temperature?: number };
   omittedThinking?: boolean;
 } & LLMTraceCustomization;

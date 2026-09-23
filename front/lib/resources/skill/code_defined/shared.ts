@@ -32,6 +32,9 @@ interface BaseSkillDefinition<
   // Files that ship with the skill and are loaded into the conversation file
   // system when the skill is enabled, exactly like custom-skill attachments.
   readonly files?: readonly CodeDefinedSkillFile[];
+  readonly fetchFiles?: (
+    auth: Authenticator
+  ) => Promise<readonly CodeDefinedSkillFile[]>;
   readonly inheritAgentConfigurationDataSources?: boolean;
   // When true, the skill's instructions are exposed to the front-end so builders
   // can read them in the skill details panel and build on top of the skill.

@@ -1,3 +1,4 @@
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -64,9 +65,7 @@ export async function sendOtp(
           { phoneNumber: phoneNumber.slice(0, 6) + "***", attempt },
           "Twilio sendOtp transient error, retrying"
         );
-        await new Promise((resolve) =>
-          setTimeout(resolve, RETRY_BASE_DELAY_MS * attempt)
-        );
+        await setTimeoutAsync(RETRY_BASE_DELAY_MS * attempt);
         continue;
       }
 
