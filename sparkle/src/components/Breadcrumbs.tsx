@@ -21,6 +21,12 @@ import React from "react";
 const DEFAULT_LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
 const DEFAULT_LABEL_TRUNCATE_LENGTH_END = 30;
 const ELLIPSIS_STRING = "...";
+const COLLAPSED_SEGMENT_LABEL = "…";
+// The last segment may truncate when the trail's container is narrower than the trail, so the
+// current location always ends visibly instead of being clipped. Needs a container with a
+// definite width: inside a shrink-to-fit ancestor (a Radix scroll viewport's `display: table`
+// wrapper, an inline-block) give the wrapper `w-0 min-w-full`.
+const LAST_SEGMENT_CLASS = "min-w-0 shrink [&_span]:min-w-0 [&_span]:truncate";
 
 const breadcrumbTextVariants = cva("", {
   variants: {
@@ -87,6 +93,8 @@ const isButtonItem = (
 
 interface BreadcrumbItemRendererProps {
   item: BreadcrumbsItem;
+  // Rendered as a bare ellipsis that still navigates, with the label as its tooltip.
+  isCollapsed: boolean;
   isLast: boolean;
   itemsHidden?: BreadcrumbsItem[];
   size?: "xs" | "sm";
@@ -98,6 +106,7 @@ interface BreadcrumbItemRendererProps {
 
 function BreadcrumbItemRenderer({
   item,
+  isCollapsed,
   isLast,
   itemsHidden,
   size = "sm",
@@ -141,12 +150,35 @@ function BreadcrumbItemRenderer({
     hasLighterFont,
   });
 
+  if (isCollapsed) {
+    if (isLinkItem(item) || isButtonItem(item)) {
+      return (
+        <Button
+          href={isLinkItem(item) ? item.href : undefined}
+          onClick={isButtonItem(item) ? item.onClick : undefined}
+          variant={buttonVariant ?? "ghost-secondary"}
+          label={COLLAPSED_SEGMENT_LABEL}
+          tooltip={item.label}
+          size={size}
+          hasLighterFont={hasLighterFont}
+        />
+      );
+    }
+    return (
+      <div className={cn("px-2 py-1.5", textClassName)} title={item.label}>
+        {COLLAPSED_SEGMENT_LABEL}
+      </div>
+    );
+  }
+
   const truncatedLabel = truncateTextToLength(
     item.label,
     isLast ? truncateLengthEnd : truncateLengthMiddle
   );
 
   const isLabelTruncated = truncatedLabel !== item.label;
+
+  const segmentClassName = isLast ? LAST_SEGMENT_CLASS : undefined;
 
   if (isLinkItem(item)) {
     return (
@@ -158,6 +190,7 @@ function BreadcrumbItemRenderer({
         tooltip={isLabelTruncated ? item.label : undefined}
         size={size}
         hasLighterFont={hasLighterFont}
+        className={segmentClassName}
       />
     );
   }
@@ -172,6 +205,7 @@ function BreadcrumbItemRenderer({
         tooltip={isLabelTruncated ? item.label : undefined}
         size={size}
         hasLighterFont={hasLighterFont}
+        className={segmentClassName}
       />
     );
   }
@@ -189,7 +223,13 @@ function BreadcrumbItemRenderer({
     );
   }
 
-  return <div className={cn("px-2 py-1.5", textClassName)}>{item.label}</div>;
+  return (
+    <div
+      className={cn("px-2 py-1.5", isLast && "min-w-0 truncate", textClassName)}
+    >
+      {item.label}
+    </div>
+  );
 }
 
 interface BreadcrumbProps {
@@ -205,6 +245,12 @@ interface BreadcrumbProps {
   truncateLengthMiddle?: number;
   /** Max characters for the last label before truncation (default 30). */
   truncateLengthEnd?: number;
+  /**
+   * Render every segment between the first and the last as a bare ellipsis that still navigates
+   * to its level, with the full label as a tooltip. For narrow containers where only the root and
+   * the current location fit; the trail keeps one segment per level so depth stays visible.
+   */
+  collapseIntermediates?: boolean;
 }
 
 interface BreadcrumbsAccumulator {
@@ -215,7 +261,9 @@ interface BreadcrumbsAccumulator {
 /**
  * Displays the user's location within a hierarchy as a trail of clickable segments,
  * driven by an `items` array. Long trails automatically collapse middle segments
- * into an ellipsis menu and truncate overflowing labels. Use it to show and navigate
+ * into an ellipsis menu and truncate overflowing labels; `collapseIntermediates`
+ * instead renders each middle segment as its own linked ellipsis, for narrow
+ * containers. Use it to show and navigate
  * the path to the current page; for switching between sibling views rather than
  * levels of depth, use Tabs instead.
  * @summary Hierarchical navigation trail.
@@ -228,10 +276,16 @@ export function Breadcrumbs({
   hasLighterFont = true,
   truncateLengthMiddle,
   truncateLengthEnd,
+  collapseIntermediates = false,
 }: BreadcrumbProps) {
   const { itemsShown, itemsHidden } = items.reduce(
     (acc: BreadcrumbsAccumulator, item, index) => {
-      if (items.length <= 5 || index < 2 || index >= items.length - 2) {
+      if (
+        collapseIntermediates ||
+        items.length <= 5 ||
+        index < 2 ||
+        index >= items.length - 2
+      ) {
         acc.itemsShown.push(item);
       } else if (index === 2) {
         acc.itemsShown.push({ label: ELLIPSIS_STRING });
@@ -245,16 +299,21 @@ export function Breadcrumbs({
   );
 
   return (
-    <div className={cn("flex flex-row items-center gap-0", className)}>
+    <div className={cn("flex min-w-0 flex-row items-center gap-0", className)}>
       {itemsShown.map((item, index) => {
+        const isLast = index === itemsShown.length - 1;
         return (
           <div
             key={`breadcrumbs-${index}`}
-            className="flex flex-row items-center gap-0"
+            className={cn(
+              "flex flex-row items-center gap-0",
+              isLast ? "min-w-0 shrink" : "shrink-0"
+            )}
           >
             <BreadcrumbItemRenderer
               item={item}
-              isLast={index === itemsShown.length - 1}
+              isCollapsed={collapseIntermediates && index > 0 && !isLast}
+              isLast={isLast}
               itemsHidden={itemsHidden}
               size={size}
               buttonVariant={buttonVariant}
@@ -262,10 +321,10 @@ export function Breadcrumbs({
               truncateLengthMiddle={truncateLengthMiddle}
               truncateLengthEnd={truncateLengthEnd}
             />
-            {index === itemsShown.length - 1 ? null : (
+            {isLast ? null : (
               <Icon
                 visual={ChevronRight}
-                className="text-faint"
+                className="shrink-0 text-faint"
                 size={size === "xs" ? "xs" : "sm"}
               />
             )}
