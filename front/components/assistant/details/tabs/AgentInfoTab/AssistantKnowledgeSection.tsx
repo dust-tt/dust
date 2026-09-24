@@ -1,3 +1,5 @@
+import { EditedSectionBar } from "@app/components/assistant/details/DetailsSectionHeading";
+import { useEditedAgentSections } from "@app/components/assistant/details/SuggestionPreviewContext";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -58,6 +60,7 @@ export function AssistantKnowledgeSection({
   agentConfiguration,
   owner,
 }: AssistantKnowledgeSectionProps) {
+  const editedSections = useEditedAgentSections();
   const { dataSourceViews, isDataSourceViewsLoading } = useDataSourceViews(
     owner,
     {
@@ -259,7 +262,8 @@ export function AssistantKnowledgeSection({
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="relative flex flex-col gap-4">
+      {editedSections.has("knowledge") && <EditedSectionBar />}
       <div className="heading-lg text-foreground">Knowledge</div>
       {hasDocuments && hasTables ? (
         <Tree isBoxed className="max-h-[400px] overflow-y-auto">
