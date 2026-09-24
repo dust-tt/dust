@@ -159,8 +159,8 @@ describe("group management scope", () => {
       manager.sId,
       workspace.sId
     );
-    expect(await getMemberScopeWithGroupVerb(managerAuth, "read_usage")).toEqual(
-      { kind: "all" }
-    );
+    expect(
+      await getMemberScopeWithGroupVerb(managerAuth, "read_usage")
+    ).toEqual({ kind: "all" });
   });
 });
