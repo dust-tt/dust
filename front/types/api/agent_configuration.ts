@@ -153,8 +153,10 @@ const ModelConfigurationSchema = z
     responseFormat: z.string().optional(),
   });
 
-const IsSupportedModelSchema = z.custom<SupportedModel>(
-  (val) => isSupportedModel(val),
+// A refinement rather than an intersection with `z.custom`: an intersection merges the raw input
+// back in, so any transformed field (e.g. a normalized `reasoningEffort`) would fail to merge.
+const SupportedModelConfigurationSchema = ModelConfigurationSchema.refine(
+  (val): val is typeof val & SupportedModel => isSupportedModel(val),
   { message: "Unsupported model" }
 );
 
@@ -182,7 +184,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = z.object({
       status: z.enum(["active", "archived", "draft", "pending"]),
       scope: z.enum(["hidden", "visible"]),
       ignoreCreditSpendThresholdAlert: z.boolean().optional(),
-      model: ModelConfigurationSchema.and(IsSupportedModelSchema),
+      model: SupportedModelConfigurationSchema,
       actions: z.array(MCPServerActionConfigurationSchema),
       templateId: z.string().nullable().optional(),
       tags: z.array(TagSchema),
