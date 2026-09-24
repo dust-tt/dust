@@ -21,6 +21,7 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { AGENT_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
+import { LoadingBlock } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import { SKIP, visit } from "unist-util-visit";
 
@@ -213,7 +214,7 @@ function ConversationAgentSuggestion({
   });
 
   if (isSuggestionsLoading) {
-    return <SuggestionCardSkeleton kind={kind} />;
+    return <LoadingBlock className="h-24 w-full" />;
   }
 
   const suggestion = suggestions.find((s) => s.sId === suggestionId);
