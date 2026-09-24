@@ -57,6 +57,20 @@ export function getAllBlockIds(instructionsHtml: string): Set<string> {
 }
 
 /**
+ * Returns the targeted block ids that do not exist in the instructions HTML. The instructions root
+ * is always a valid target.
+ */
+export function findUnknownTargetBlockIds(
+  instructionsHtml: string,
+  targetBlockIds: string[]
+): string[] {
+  const blockIds = getAllBlockIds(instructionsHtml);
+  return targetBlockIds.filter(
+    (id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID && !blockIds.has(id)
+  );
+}
+
+/**
  * Parses instructions HTML once and returns a map of blockId -> descendant block IDs
  * for the given block IDs. Use this to avoid repeated HTML parsing when checking
  * conflicts for multiple block IDs.

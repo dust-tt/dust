@@ -260,7 +260,7 @@ export const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillAvailabilitySuggestionDataSchema,
 ]);
 
-type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
+export type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
 
 export function parseSkillSuggestionData(data: unknown): SkillSuggestionData {
   return SkillSuggestionDataSchema.parse(data);

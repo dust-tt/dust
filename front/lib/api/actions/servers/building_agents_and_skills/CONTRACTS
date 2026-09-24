@@ -3,3 +3,5 @@ Tools of the `building_agents_and_skills` MCP server MUST NOT modify an agent or
 Every tool that proposes a change records a `pending` agent or skill suggestion with source `conversational` for the
 editors to review, marks conflicting pending suggestions `outdated`, and returns the suggestion
 `sId` embedded in a directive (`:skill_suggestion[]{sId=... kind=... skillId=...}`) so the conversation UI can render it inline.
+The `suggest` tool records all its suggestions in one batch and returns the batch `sId` in a single
+directive (`:batch_edit[]{sId=...}`).

@@ -78,8 +78,17 @@ export async function fetchWritableSkill(
     );
   }
 
-  const skill = skillResult.value;
+  return checkSkillWritable(auth, skillResult.value);
+}
 
+/**
+ * The write checks of `fetchWritableSkill` for a skill that is already resolved: the caller can
+ * write it and it is not archived.
+ */
+export function checkSkillWritable(
+  auth: Authenticator,
+  skill: SkillResource
+): Result<SkillResource, SkillWriteAccessError> {
   if (!auth.can("write", skill)) {
     return new Err(
       new SkillWriteAccessError(

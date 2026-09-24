@@ -552,6 +552,9 @@ export const SUGGEST_DESCRIPTION =
   "delete agents and skills. The changes are not applied directly: they are recorded as " +
   "pending suggestions that editors can review, accept, or reject.";
 
+// Bounded by the `batch_suggestions.analysis` column.
+const BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH = 255;
+
 export const SUGGEST_INPUT_SCHEMA = z.object({
   title: z
     .string()
@@ -559,7 +562,12 @@ export const SUGGEST_INPUT_SCHEMA = z.object({
     .describe(
       "A short, action-oriented user-facing title for these suggestions (at most 25 characters)."
     ),
-  analysis: z.string().describe("Why these changes are needed."),
+  analysis: z
+    .string()
+    .max(BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH)
+    .describe(
+      `Why these changes are needed (at most ${BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH} characters).`
+    ),
   suggestions: z
     .array(SuggestionSchema)
     .min(1)
