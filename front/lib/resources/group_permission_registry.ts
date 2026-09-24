@@ -410,7 +410,8 @@ export class GroupPermissions {
   // sourced ACLs carry this as `grantedVerbs`.
   resolvedVerbsForResource(
     resourceType: ConcreteResourceType,
-    resourceId: number
+    resourceId: number,
+    grantLevel: GrantLevel
   ): GrantVerb[] {
     const byId = this.grants.get(resourceType);
     if (!byId) {
@@ -420,7 +421,9 @@ export class GroupPermissions {
     for (const key of new Set([resourceId, WHOLE_TYPE_RESOURCE_ID])) {
       mask |= byId.get(key) ?? 0;
     }
-    return maskToVerbs(mask);
+    return maskToVerbs(mask).filter(
+      (verb) => grantTypesForVerb(resourceType, verb, grantLevel).length > 0
+    );
   }
 
   // The instances of `resourceType` on which the caller holds `verb` — the reverse of
@@ -435,6 +438,10 @@ export class GroupPermissions {
     resourceType: ConcreteResourceType,
     verb: GrantVerb
   ): ResourcesWithVerb {
+    assert(
+      grantTypesForVerb(resourceType, verb, "instance").length > 0,
+      `Verb "${verb}" is type-level only on "${resourceType}" and has no instances to enumerate (use hasWorkspacePermission).`
+    );
     const bit = VERB_BIT.get(verb) ?? 0;
     const byId = this.grants.get(resourceType);
     if (!byId || bit === 0) {

@@ -20,6 +20,7 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import type {
+  GrantLevel,
   GroupPermissionsJSON,
   ResourcesWithVerb,
 } from "@app/lib/resources/group_permission_registry";
@@ -1312,7 +1313,8 @@ export class Authenticator {
     return this.getGovernanceGrantVerbs(
       resourceType,
       WHOLE_TYPE_RESOURCE_ID,
-      this.getNonNullableWorkspace().id
+      this.getNonNullableWorkspace().id,
+      "type"
     ).includes(verb);
   }
 
@@ -1595,12 +1597,17 @@ export class Authenticator {
   getGovernanceGrantVerbs(
     resourceType: ConcreteResourceType,
     resourceId: number,
-    workspaceModelId: ModelId
+    workspaceModelId: ModelId,
+    grantLevel: GrantLevel = "instance"
   ): GrantVerb[] {
     if (this.getNonNullableWorkspace().id !== workspaceModelId) {
       return [];
     }
-    return this._permissions.resolvedVerbsForResource(resourceType, resourceId);
+    return this._permissions.resolvedVerbsForResource(
+      resourceType,
+      resourceId,
+      grantLevel
+    );
   }
 
   /**
@@ -1621,7 +1628,10 @@ export class Authenticator {
    */
   /**
    * @cc [owner:tdraier,label:security] type-wide-grant-is-all
-   * A type-wide (-1) grant confers `verb` on every instance and names none, so it MUST be reported as
+   * `verb` MUST be a verb `resourceType` defines at the `instance` level (enumerating instances by a
+   * type-only capability like `create`/`publish` is a category error — those are held workspace-wide
+   * and answered by `hasWorkspacePermission`; passing one throws). For such an instance verb, a
+   * type-wide (-1) grant confers it on every instance and names none, so it MUST be reported as
    * `{ kind: "all" }` — never expanded into a concrete id list and never dropped. Dropping it would
    * make this method answer "no instances" while `getGovernanceGrantVerbs` answers "yes" for the same
    * verb on any single id, since that method folds the -1 grant into every lookup.

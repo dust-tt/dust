@@ -251,7 +251,7 @@ describe("GroupPermissions.fromJSON", () => {
     const perms = GroupPermissions.fromJSON({
       grants: { agent: { 42: 0b11 } },
     });
-    expect(perms.resolvedVerbsForResource("agent", 42)).toEqual([
+    expect(perms.resolvedVerbsForResource("agent", 42, "instance")).toEqual([
       "read",
       "write",
     ]);
@@ -263,7 +263,7 @@ describe("GroupPermissions.fromJSON", () => {
     const perms = GroupPermissions.fromJSON({
       grants: { agent: { 42: { 7: 0b01, 9: 0b10 } } },
     });
-    expect(perms.resolvedVerbsForResource("agent", 42)).toEqual([
+    expect(perms.resolvedVerbsForResource("agent", 42, "instance")).toEqual([
       "read",
       "write",
     ]);
@@ -284,30 +284,38 @@ describe("GroupPermissions wildcard grant", () => {
     },
   ] as const;
 
-  it("confers every verb the registry defines, at every level", () => {
+  it("resolves only the requested level's verbs, even for a wildcard", () => {
     const perms = GroupPermissions.fromGrants([...WILDCARD]);
 
-    // Instance-level roles: `space` declares no type-level role at all, so a wildcard would confer
-    // nothing there if it only expanded type-level verbs.
-    expect(perms.resolvedVerbsForResource("space", 12).sort()).toEqual([
-      "admin",
-      "read",
-      "write",
-    ]);
-    // Type-level capabilities alongside the instance ones.
-    expect(perms.resolvedVerbsForResource("agent", 42).sort()).toEqual([
-      "admin",
-      "create",
-      "publish",
-      "read",
-      "write",
-    ]);
-    expect(perms.resolvedVerbsForResource("billing", 1)).toEqual(["admin"]);
+    // Instance level: only the instance-valid verbs, never the type-level capabilities the wildcard
+    // also confers. `space` declares no type-level role at all.
+    expect(
+      perms.resolvedVerbsForResource("space", 12, "instance").sort()
+    ).toEqual(["admin", "read", "write"]);
+    expect(
+      perms.resolvedVerbsForResource("agent", 42, "instance").sort()
+    ).toEqual(["admin", "read", "write"]);
+    // `billing` has no instance-level role, so instance resolution is empty.
+    expect(perms.resolvedVerbsForResource("billing", 1, "instance")).toEqual(
+      []
+    );
+
+    // Type level (the type-wide entry): only the type-level capabilities.
+    expect(
+      perms
+        .resolvedVerbsForResource("agent", WHOLE_TYPE_RESOURCE_ID, "type")
+        .sort()
+    ).toEqual(["create", "publish"]);
+    expect(
+      perms.resolvedVerbsForResource("billing", WHOLE_TYPE_RESOURCE_ID, "type")
+    ).toEqual(["admin"]);
   });
 
   it("confers them on instances it has never seen", () => {
     const perms = GroupPermissions.fromGrants([...WILDCARD]);
-    expect(perms.resolvedVerbsForResource("space", 999999)).toContain("write");
+    expect(
+      perms.resolvedVerbsForResource("space", 999999, "instance")
+    ).toContain("write");
   });
 
   it("confers only the instance-level roles on a concrete id", () => {
@@ -316,18 +324,18 @@ describe("GroupPermissions wildcard grant", () => {
     const perms = GroupPermissions.fromGrants([
       { grantType: "*", resourceType: "agent", resourceId: 42 },
     ]);
-    expect(perms.resolvedVerbsForResource("agent", 42).sort()).toEqual([
-      "admin",
-      "read",
-      "write",
-    ]);
+    expect(
+      perms.resolvedVerbsForResource("agent", 42, "instance").sort()
+    ).toEqual(["admin", "read", "write"]);
   });
 
   it("round-trips through toJSON / fromJSON", () => {
     const perms = GroupPermissions.fromGrants([...WILDCARD]);
     const restored = GroupPermissions.fromJSON(perms.toJSON());
     expect(restored.toJSON()).toEqual(perms.toJSON());
-    expect(restored.resolvedVerbsForResource("space", 12)).toContain("admin");
+    expect(
+      restored.resolvedVerbsForResource("space", 12, "instance")
+    ).toContain("admin");
   });
 
   it("reports only type-level capabilities while retaining instance access", () => {
@@ -339,7 +347,9 @@ describe("GroupPermissions wildcard grant", () => {
       space: [],
       models_tier: [],
     });
-    expect(restored.resolvedVerbsForResource("skill", 42)).toContain("read");
+    expect(
+      restored.resolvedVerbsForResource("skill", 42, "instance")
+    ).toContain("read");
   });
 
   it("enumerates as every instance, not as none", () => {
@@ -384,18 +394,27 @@ describe("GroupPermissions.resourceIdsWithVerb", () => {
     });
   });
 
-  it("reports the type-wide (-1) entry as every instance", () => {
+  it("reports a type-wide (-1) grant of an instance verb as every instance", () => {
     const perms = GroupPermissions.fromJSON({
-      grants: { agent: { [WHOLE_TYPE_RESOURCE_ID]: 0b1000, 42: 0b011 } },
+      grants: { skill: { [WHOLE_TYPE_RESOURCE_ID]: 0b001, 42: 0b011 } },
     });
-    // `read` is held on 42 only; `create` comes from the type-wide entry, so it covers every agent.
-    expect(perms.resourceIdsWithVerb("agent", "read")).toEqual({
+    // `read` comes from the type-wide entry (the workspace-wide `reader` grant), so it covers every
+    // skill; `write` is held on 42 only.
+    expect(perms.resourceIdsWithVerb("skill", "read")).toEqual({ kind: "all" });
+    expect(perms.resourceIdsWithVerb("skill", "write")).toEqual({
       kind: "ids",
       resourceIds: [42],
     });
-    expect(perms.resourceIdsWithVerb("agent", "create")).toEqual({
-      kind: "all",
+  });
+
+  it("throws when asked to enumerate a type-only verb", () => {
+    const perms = GroupPermissions.fromJSON({
+      grants: { agent: { [WHOLE_TYPE_RESOURCE_ID]: 0b1000 } },
     });
+    // `create`/`publish` are workspace capabilities (`hasWorkspacePermission`), not instances to
+    // enumerate: asking for them here is a category error, not `{ kind: "all" }`.
+    expect(() => perms.resourceIdsWithVerb("agent", "create")).toThrow();
+    expect(() => perms.resourceIdsWithVerb("agent", "publish")).toThrow();
   });
 
   it("returns an empty list when the resource type has no grants", () => {
