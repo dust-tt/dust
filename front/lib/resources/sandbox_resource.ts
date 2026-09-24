@@ -151,6 +151,31 @@ const SANDBOX_OWNER_ENV_VAR_CONTRACT_NAMES = new Set([
   "FRAME_ID",
 ]);
 
+/**
+ * @cc [owner:pmilliotte,label:product] outdated-sleeper-recreated-on-wake
+ * A `sleeping` sandbox whose `baseImage`/`version` differs from the current
+ * sandbox image MUST be recreated on the current image instead of being woken.
+ * `running` and `pending_approval` sandboxes MUST NOT be recreated for being
+ * outdated. When the current image cannot be resolved, the sandbox MUST be
+ * woken as before.
+ */
+function isSleepingOnOutdatedImage(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): boolean {
+  if (sandbox.status !== "sleeping") {
+    return false;
+  }
+  const imageResult = getSandboxImage(auth);
+  const imageId = imageResult.isOk() ? imageResult.value.imageId : undefined;
+  if (!imageId) {
+    return false;
+  }
+  return (
+    sandbox.baseImage !== imageId.imageName || sandbox.version !== imageId.tag
+  );
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -884,13 +909,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       let freshlyCreated = false;
       let wokeFromSleep = false;
 
-      // If a kill was requested, destroy the existing sandbox at the provider
-      // (best-effort) and fall through to recreation. This races with the
-      // reaper's killRequested phase; the lifecycle lock keeps it serialised.
-      if (existing.killRequestedAt && existing.status !== "deleted") {
+      // If a kill was requested, or a sleeper is about to wake on an image
+      // that is no longer the current one, destroy the existing sandbox at the
+      // provider (best-effort) and fall through to recreation. This races with
+      // the reaper's killRequested phase; the lifecycle lock keeps it
+      // serialised.
+      const isOutdatedSleeper = isSleepingOnOutdatedImage(auth, existing);
+      if (
+        (existing.killRequestedAt || isOutdatedSleeper) &&
+        existing.status !== "deleted"
+      ) {
         logger.info(
-          { sandbox: existing.toLogJSON() },
-          "Sandbox has killRequestedAt — destroying and recreating."
+          { sandbox: existing.toLogJSON(), isOutdatedSleeper },
+          "Sandbox has killRequestedAt or an outdated image — destroying and recreating."
         );
         // Best-effort pre-destroy flush. Unlike the reaper's kill sweep this
         // PROCEEDS on failure: this branch is the user-facing
