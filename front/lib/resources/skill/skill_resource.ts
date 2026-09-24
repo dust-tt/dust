@@ -33,7 +33,7 @@ import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_re
 import type { AgentResource } from "@app/lib/resources/agent_resource";
 import {
   destroyAgentSkillLinksForCustomSkill,
-  launchAgentSearchIndexationForCustomSkill,
+  onCustomSkillStatusChanged,
 } from "@app/lib/resources/agent_skills";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -3386,7 +3386,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             { transaction }
           );
 
-          await launchAgentSearchIndexationForCustomSkill(auth, {
+          await onCustomSkillStatusChanged(auth, {
             customSkillId: this.id,
             transaction,
           });
@@ -3451,7 +3451,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             { transaction }
           );
 
-          await launchAgentSearchIndexationForCustomSkill(auth, {
+          await onCustomSkillStatusChanged(auth, {
             customSkillId: this.id,
             transaction,
           });

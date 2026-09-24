@@ -45,15 +45,15 @@ async function listAgentIdsUsingCustomSkill(
 /**
  * @cc [owner:tdraier,label:backend;performance] agent-skill-cascade-through-agent-domain
  * A custom skill lifecycle change that alters the skills an agent exposes (the skill archived,
- * restored or deleted) MUST go through this module, so the agent-skill link removal and the search
- * reindex of every agent linked to the skill (any configuration version) stay owned by the agent
- * domain. Runtime callers MUST NOT destroy a skill's `AgentSkillModel` rows directly (the workspace
+ * restored or deleted) MUST be signalled through this module, which owns every agent-side effect of
+ * it: the agent-skill link removal on deletion and the refresh of the derived state (today the
+ * search index) of every agent linked to the skill, on any configuration version. Callers MUST NOT
+ * destroy a skill's `AgentSkillModel` rows directly nor refresh the agents themselves (the workspace
  * scrub, which drops every row of the workspace, is exempt). Link removal applies in place, with no
- * new agent version, and is NOT gated on the agent's `write`/`admin` verbs. The agent cache is not
- * invalidated: skills are not part of its snapshot. Under a transaction, the reindex runs after
- * commit.
+ * new agent version, and is NOT gated on the agent's `write`/`admin` verbs. Under a transaction,
+ * the refresh runs after commit.
  */
-export async function launchAgentSearchIndexationForCustomSkill(
+export async function onCustomSkillStatusChanged(
   auth: Authenticator,
   {
     customSkillId,
