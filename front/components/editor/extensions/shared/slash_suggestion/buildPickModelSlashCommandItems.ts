@@ -12,7 +12,6 @@ import {
   getTierResolvedModelLabel,
   isModelLocked,
   MODEL_TIERS,
-  SLIDER_EFFORTS,
 } from "@app/components/model_picker/modelPickerUtils";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type {
@@ -24,12 +23,12 @@ import {
   getModelMaker,
   getModelMakerDisplayName,
 } from "@app/types/assistant/models/providers";
+import { REASONING_EFFORT_LABELS } from "@app/types/assistant/models/reasoning";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import type { ComponentType } from "react";
 
-// Match the model picker's effort slider: low/medium/high only. `none` is not
-// a selectable effort row for reasoning models — it only appears as the single
-// row for non-reasoning models that have no slider stops.
+// Match the model picker's effort slider: one row per selectable stop, or a
+// single `none` row for non-reasoning models that have no slider stops.
 export function getSelectableEffortsForSlashMenu(
   model: EnabledModelConfigurationType,
   { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
@@ -58,25 +57,58 @@ function getCompactSearchName(item: SelectModelSlashCommand): string {
   return name.toLowerCase().replace(/[\s-]+/g, "");
 }
 
-// Whether the model's display name has a word that is an effort name starting with `word`, as
-// "Mistral Medium 3.5" does for "me": that word then belongs to the name, not to the effort.
-function nameHasEffortWord(
+// Whether `queryWords` also read as a name for this model: the last word, two letters or more,
+// starts a name word that no earlier query word starts, as "mini" does in "gpt mini" for
+// "GPT-5 Mini" ("mistral mi" does not count "mistral").
+function queryMatchesAsName(
   item: SelectModelSlashCommand,
-  word: string
+  queryWords: string[]
 ): boolean {
   const { display } = item.data.selection;
-  if (display.kind !== "model") {
+  const lastWord = queryWords.at(-1);
+  if (
+    display.kind !== "model" ||
+    queryWords.length < 2 ||
+    lastWord === undefined ||
+    lastWord.length < 2
+  ) {
     return false;
   }
 
-  return display.model.displayName
+  const earlierWords = queryWords.slice(0, -1);
+  const lastWordStartsNameWord = display.model.displayName
     .toLowerCase()
     .split(/[\s-]+/)
     .some(
       (nameWord) =>
-        SLIDER_EFFORTS.some((candidate) => candidate === nameWord) &&
-        nameWord.startsWith(word)
+        nameWord.startsWith(lastWord) &&
+        !earlierWords.some((word) => nameWord.startsWith(word))
     );
+
+  return (
+    lastWordStartsNameWord &&
+    subFilter(queryWords.join(""), getCompactSearchName(item))
+  );
+}
+
+// Efforts match on a prefix of their value or label; ties go to the earliest one here, so "m" is
+// medium and "mi" or "ma" reach minimal or maximal.
+const EFFORT_PREFIX_PRIORITY: readonly ReasoningEffort[] = [
+  "low",
+  "medium",
+  "high",
+  "none",
+  "xhigh",
+  "minimal",
+  "maximal",
+];
+
+function getEffortForQueryWord(word: string): ReasoningEffort | undefined {
+  return EFFORT_PREFIX_PRIORITY.find(
+    (effort) =>
+      effort.startsWith(word) ||
+      REASONING_EFFORT_LABELS[effort].toLowerCase().startsWith(word)
+  );
 }
 
 function filterAndRankByQuery(
@@ -90,33 +122,43 @@ function filterAndRankByQuery(
     .filter((word) => word.length > 0);
   const lastWord = queryWords.at(-1);
   const effort =
-    lastWord === undefined
-      ? undefined
-      : SLIDER_EFFORTS.find((candidate) => candidate.startsWith(lastWord));
+    lastWord === undefined ? undefined : getEffortForQueryWord(lastWord);
   const nameQuery = (effort ? queryWords.slice(0, -1) : queryWords).join("");
-
-  const matching = items.filter((item) => {
-    const { display } = item.data.selection;
-    // An effort word alone ("m") always filters by effort; only "mistral me" reads it as a name.
-    if (
-      effort &&
-      lastWord !== undefined &&
-      queryWords.length > 1 &&
-      nameHasEffortWord(item, lastWord)
-    ) {
-      return subFilter(queryWords.join(""), getCompactSearchName(item));
-    }
-    if (effort && (display.kind !== "model" || display.effort !== effort)) {
-      return false;
-    }
-
-    return subFilter(nameQuery, getCompactSearchName(item));
-  });
-  if (nameQuery.length === 0) {
-    return matching;
+  if (!effort) {
+    return rankByName(
+      items.filter((item) => subFilter(nameQuery, getCompactSearchName(item))),
+      nameQuery
+    );
   }
 
-  return matching.sort((a, b) =>
+  const nameMatches = items.filter((item) =>
+    queryMatchesAsName(item, queryWords)
+  );
+  const effortMatches = items.filter((item) => {
+    const { display } = item.data.selection;
+    return (
+      display.kind === "model" &&
+      display.effort === effort &&
+      !nameMatches.includes(item) &&
+      subFilter(nameQuery, getCompactSearchName(item))
+    );
+  });
+
+  return [
+    ...rankByName(nameMatches, queryWords.join("")),
+    ...rankByName(effortMatches, nameQuery),
+  ];
+}
+
+function rankByName(
+  items: SelectModelSlashCommand[],
+  nameQuery: string
+): SelectModelSlashCommand[] {
+  if (nameQuery.length === 0) {
+    return items;
+  }
+
+  return items.sort((a, b) =>
     compareForFuzzySort(
       nameQuery,
       getCompactSearchName(a),
@@ -190,15 +232,16 @@ function buildTierSlashCommandItems({
 
 /**
  * @cc [owner:PopDaph,label:product] query-selects-name-then-effort
- * `query` is split on whitespace and hyphens. When its last word is a prefix of a slider effort
- * (`low`, `medium`, `high`), only model rows at that effort are kept and the other words form
- * the name query, except for models whose display name contains that effort word ("Mistral
- * Medium 3.5"), which are matched on the whole query when other words precede it; otherwise
- * every word does. A row is kept when the name query, joined, is an
- * in-order subsequence (`subFilter`) of its name (tier name or model display name) without
- * spaces or hyphens. Kept rows are ranked with `compareForFuzzySort`, ties keeping catalog order
- * so a model's efforts stay low, medium, high. Descriptions are never searched; an empty query
- * keeps every row.
+ * `query` is split on whitespace and hyphens. A row's name is its tier name or model display name
+ * without spaces or hyphens; a query "matches" a name when, joined, it is an in-order subsequence
+ * (`subFilter`) of it. When the last word is a prefix of an effort's value or label (ties resolved
+ * low, medium, high, none, xhigh, minimal, maximal, so "m" is medium), a model row is kept when
+ * the other words match its name and it is at that effort, or, with more than one word, when the
+ * last word (two letters or more) starts a word of its display name that no earlier query word
+ * starts and the whole query matches its name ("gpt mini" keeps every GPT-5 Mini effort). Those
+ * name matches rank first. Without an effort word, a row is kept when every word matches its
+ * name. Each group is ranked with `compareForFuzzySort`, ties keeping catalog order so a model's
+ * efforts stay in slider order. Descriptions are never searched; an empty query keeps every row.
  */
 export function buildPickModelSlashCommandItems({
   getModelIcon,
