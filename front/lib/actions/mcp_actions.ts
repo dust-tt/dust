@@ -107,7 +107,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { heartbeat } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
@@ -131,7 +130,7 @@ import {
   CallToolResultSchema,
   ProgressNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { Context } from "@temporalio/activity";
+import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 import tracer from "dd-trace";
 import EventEmitter from "events";
