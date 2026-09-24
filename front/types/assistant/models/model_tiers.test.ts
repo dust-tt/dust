@@ -1,4 +1,5 @@
 import {
+  CLAUDE_FABLE_5_1_MODEL_ID,
   CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
@@ -80,10 +81,15 @@ describe("model_tiers", () => {
     }
   });
 
-  it("classifies opus as premium and fable as ultra", () => {
+  it("classifies opus as premium and every fable as ultra", () => {
     expect(getTierForModel(CLAUDE_OPUS_4_8_MODEL_ID, "light")).toBe("premium");
-    for (const effort of ["light", "medium", "high"] as const) {
-      expect(getTierForModel(CLAUDE_FABLE_5_MODEL_ID, effort)).toBe("ultra");
+    for (const modelId of [
+      CLAUDE_FABLE_5_MODEL_ID,
+      CLAUDE_FABLE_5_1_MODEL_ID,
+    ] as const) {
+      for (const effort of ["light", "medium", "high"] as const) {
+        expect(getTierForModel(modelId, effort)).toBe("ultra");
+      }
     }
   });
 
