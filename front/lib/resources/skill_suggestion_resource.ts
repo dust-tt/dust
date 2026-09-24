@@ -118,11 +118,14 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     auth: Authenticator,
     options?: ResourceFindOptions<SkillSuggestionModel> & {
       dangerouslyBypassConversationsVisibilityCheck?: boolean;
+      // Throw instead of silently dropping the suggestions the caller cannot access.
+      throwOnInaccessible?: boolean;
     }
   ) {
     const {
       where,
       dangerouslyBypassConversationsVisibilityCheck,
+      throwOnInaccessible,
       ...otherOptions
     } = options ?? {};
     const owner = auth.getNonNullableWorkspace();
@@ -174,6 +177,11 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
             workspaceId: owner.id,
           })
         ) {
+          if (throwOnInaccessible) {
+            throw new Error(
+              "User does not have permission to access every requested skill suggestion"
+            );
+          }
           return null;
         }
         const user = suggestion.updatedByUser;
@@ -315,8 +323,8 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   }
 
   /**
-   * Lists the suggestions belonging to the given batches (by batch model id), restricted to the
-   * skills the caller can administrate. Batch members are listed whatever their source.
+   * Lists the suggestions belonging to the given batches (by batch model id), whatever their
+   * source. Throws if the caller cannot administrate the skill of any of them.
    */
   static async listByBatchModelIds(
     auth: Authenticator,
@@ -329,6 +337,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     return this.baseFetch(auth, {
       where: { batchId: batchModelIds },
       order: [["id", "ASC"]],
+      throwOnInaccessible: true,
     });
   }
 

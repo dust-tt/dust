@@ -122,7 +122,7 @@ describe("BatchSuggestionResource", () => {
     ).toBeNull();
   });
 
-  it("does not return a batch when one member is not accessible", async () => {
+  it("throws when one member of the batch is not accessible", async () => {
     const { batch } = await createBatchWithMembers(authenticator);
 
     // Another member edits a skill of their own, and adds a suggestion on it to the same batch.
@@ -142,12 +142,12 @@ describe("BatchSuggestionResource", () => {
     });
 
     // Neither user can access every member.
-    expect(
-      await BatchSuggestionResource.fetchById(authenticator, batch.sId)
-    ).toBeNull();
-    expect(
-      await BatchSuggestionResource.fetchById(otherAuth, batch.sId)
-    ).toBeNull();
+    await expect(
+      BatchSuggestionResource.fetchById(authenticator, batch.sId)
+    ).rejects.toThrow();
+    await expect(
+      BatchSuggestionResource.fetchById(otherAuth, batch.sId)
+    ).rejects.toThrow();
   });
 
   it("updates the state of the batch and of all its members", async () => {

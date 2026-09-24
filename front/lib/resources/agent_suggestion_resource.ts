@@ -151,9 +151,12 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<AgentSuggestionModel>
+    options?: ResourceFindOptions<AgentSuggestionModel> & {
+      // Throw instead of silently dropping the suggestions the caller cannot access.
+      throwOnInaccessible?: boolean;
+    }
   ) {
-    const { where, ...otherOptions } = options ?? {};
+    const { where, throwOnInaccessible, ...otherOptions } = options ?? {};
     const owner = auth.getNonNullableWorkspace();
 
     const suggestions = await AgentSuggestionModel.findAll({
@@ -194,6 +197,11 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
         const agentConfig = suggestion.agentConfiguration;
         const agentAccess = agentAccessById.get(agentConfig.sId) ?? null;
         if (!this.canEditAgent(auth, agentAccess)) {
+          if (throwOnInaccessible) {
+            throw new Error(
+              "User does not have permission to access every requested agent suggestion"
+            );
+          }
           return null;
         }
         return new this(
@@ -429,8 +437,8 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   }
 
   /**
-   * Lists the suggestions belonging to the given batches (by batch model id), restricted to the
-   * agents the caller can edit.
+   * Lists the suggestions belonging to the given batches (by batch model id). Throws if the caller
+   * cannot edit the agent of any of them.
    */
   static async listByBatchModelIds(
     auth: Authenticator,
@@ -443,6 +451,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     return this.baseFetch(auth, {
       where: { batchId: batchModelIds },
       order: [["id", "ASC"]],
+      throwOnInaccessible: true,
     });
   }
 

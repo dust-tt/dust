@@ -1,8 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
-import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BatchSuggestionModel } from "@app/lib/models/batch_suggestion";
-import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -18,7 +16,6 @@ import type {
   BatchSuggestionState,
   LightBatchSuggestionType,
 } from "@app/types/suggestions/batch_suggestion";
-import countBy from "lodash/countBy";
 import groupBy from "lodash/groupBy";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 
@@ -93,9 +90,10 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
 
   /**
    * @cc [owner:fabiencelier,label:security] batch-visible-only-with-all-members
-   * A batch MUST only be returned when it has at least one member and the caller can access every
-   * one of its agent and skill suggestions (the members' own resources decide access). A batch with
-   * a single member the caller cannot access MUST NOT be returned, nor its title and analysis.
+   * A batch MUST only be returned when the caller can access every one of its agent and skill
+   * suggestions (the members' own resources decide access): fetching a batch with a member the
+   * caller cannot access MUST throw, so its title and analysis are never returned. A batch without
+   * any member is not returned.
    */
   static async fetchByIds(
     auth: Authenticator,
@@ -106,11 +104,12 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
       return [];
     }
 
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const [batches, agentMemberRows, skillMemberRows] = await Promise.all([
+    const [batches, agentSuggestions, skillSuggestions] = await Promise.all([
       this.model.findAll({
-        where: { workspaceId, id: batchModelIds },
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: batchModelIds,
+        },
         include: [
           {
             model: ConversationModel,
@@ -120,29 +119,10 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
           },
         ],
       }),
-      AgentSuggestionModel.findAll({
-        where: { workspaceId, batchId: batchModelIds },
-        attributes: ["id", "batchId"],
-      }),
-      SkillSuggestionModel.findAll({
-        where: { workspaceId, batchId: batchModelIds },
-        attributes: ["id", "batchId"],
-      }),
-    ]);
-
-    if (batches.length === 0) {
-      return [];
-    }
-
-    const [agentSuggestions, skillSuggestions] = await Promise.all([
       AgentSuggestionResource.listByBatchModelIds(auth, batchModelIds),
       SkillSuggestionResource.listByBatchModelIds(auth, batchModelIds),
     ]);
 
-    const memberCountByBatchId = countBy(
-      [...agentMemberRows, ...skillMemberRows],
-      (r) => r.batchId
-    );
     const agentSuggestionsByBatchId = groupBy(
       agentSuggestions,
       (s) => s.batchId
@@ -154,15 +134,10 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
 
     return removeNulls(
       batches.map((batch) => {
-        const memberCount = memberCountByBatchId[batch.id] ?? 0;
         const batchAgentSuggestions = agentSuggestionsByBatchId[batch.id] ?? [];
         const batchSkillSuggestions = skillSuggestionsByBatchId[batch.id] ?? [];
 
-        if (
-          memberCount === 0 ||
-          batchAgentSuggestions.length + batchSkillSuggestions.length !==
-            memberCount
-        ) {
+        if (batchAgentSuggestions.length + batchSkillSuggestions.length === 0) {
           return null;
         }
 
