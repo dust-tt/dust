@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
+import type { GroupResource } from "@app/lib/resources/group_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -19,6 +20,7 @@ describe("DiscoveryItemResource", () => {
   let agentAId: string;
   let agentBId: string;
   let groupModelId: number;
+  let globalGroup: GroupResource;
   let globalSpaceModelId: number;
   let skill: SkillResource;
   let skillId: string;
@@ -28,6 +30,7 @@ describe("DiscoveryItemResource", () => {
     const setup = await createResourceTest({ role: "admin" });
     auth = setup.authenticator;
     groupModelId = setup.globalGroup.id;
+    globalGroup = setup.globalGroup;
     globalSpaceModelId = setup.globalSpace.id;
     user = setup.user;
     agentAId = (
@@ -405,6 +408,57 @@ describe("DiscoveryItemResource", () => {
         await DiscoveryItemResource.listPinnedForGroup(auth, { groupModelId })
       ).map(({ pin }) => pin.itemId)
     ).toEqual([agentAId]);
+  });
+
+  it("accepts pins using the global group's grants on open spaces", async () => {
+    const audienceGroup = await GroupFactory.regularManual(
+      auth.getNonNullableWorkspace(),
+      "Open-space audience"
+    );
+    const openRegularSpace = await SpaceFactory.regular(
+      auth.getNonNullableWorkspace()
+    );
+    await SpaceFactory.attachGroup(openRegularSpace, globalGroup);
+    const openProjectSpace = await SpaceFactory.project(
+      auth.getNonNullableWorkspace()
+    );
+    await SpaceFactory.attachGroup(
+      openProjectSpace,
+      globalGroup,
+      "project_viewer"
+    );
+
+    const openSpaceAgent = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      {
+        name: "Open-space agent",
+        scope: "visible",
+        requestedSpaceIds: [openRegularSpace.id, openProjectSpace.id],
+      }
+    );
+    const openSpaceSkill = await SkillFactory.create(auth, {
+      name: "Open-space skill",
+      requestedSpaceIds: [openRegularSpace.id, openProjectSpace.id],
+    });
+
+    const agentResult = await DiscoveryItemResource.setPinnedForGroup(auth, {
+      groupModelId: audienceGroup.id,
+      item: { type: "agent", itemId: openSpaceAgent.sId, position: 0 },
+    });
+    const skillResult = await DiscoveryItemResource.setPinnedForGroup(auth, {
+      groupModelId: audienceGroup.id,
+      item: { type: "skill", itemId: openSpaceSkill.sId, position: 1 },
+    });
+
+    expect(agentResult.isOk()).toBe(true);
+    expect(skillResult.isOk()).toBe(true);
+    expect(
+      (
+        await DiscoveryItemResource.listPinnedForGroup(auth, {
+          groupModelId: audienceGroup.id,
+        })
+      ).map(({ pin }) => pin.itemId)
+    ).toEqual([openSpaceAgent.sId, openSpaceSkill.sId]);
   });
 
   it("rejects pins on regular_auto groups", async () => {
