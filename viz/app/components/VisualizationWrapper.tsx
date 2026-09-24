@@ -623,7 +623,9 @@ export function VisualizationWrapper({
       return;
     }
     return addEventListener("SET_EDIT_MODE", (message) => {
-      setEditModeActive(message.enabled);
+      if (message.type === "SET_EDIT_MODE") {
+        setEditModeActive(message.enabled);
+      }
     });
   }, [addEventListener, stagedEdits]);
 

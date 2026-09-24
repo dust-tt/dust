@@ -690,26 +690,3 @@ export async function editFrameV2TextsAtSource(
 
   return publication;
 }
-
-export async function editFrameV2TextAtSource(
-  auth: Authenticator,
-  {
-    conversation,
-    frame,
-    source,
-    oldText,
-    newText,
-  }: {
-    conversation: ConversationWithoutContentType;
-    frame: FileResource;
-    source: string;
-    oldText: string;
-    newText: string;
-  }
-): Promise<Result<{ publicationId: string }, PublishFrameFromSourceError>> {
-  return editFrameV2TextsAtSource(auth, {
-    conversation,
-    frame,
-    edits: [{ source, oldText, newText }],
-  });
-}
