@@ -1,8 +1,9 @@
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { ModelId } from "@app/types/shared/model_id";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
@@ -53,12 +54,12 @@ export async function createAgentInstructionSuggestions(
     agentConfiguration,
     edits,
     source,
-    conversationModelId,
+    conversation: conversation,
   }: {
     agentConfiguration: AgentConfigurationType;
     edits: InstructionSuggestionEditInput[];
     source: AgentSuggestionSource;
-    conversationModelId: ModelId | null;
+    conversation: ConversationResource | ConversationWithoutContentType | null;
   }
 ): Promise<Result<CreatedInstructionSuggestion[], string>> {
   // Reject batches where multiple edits target the same block.
@@ -109,7 +110,7 @@ export async function createAgentInstructionSuggestions(
       analysis: analysis ?? null,
       state: "pending" as const,
       source,
-      conversationId: conversationModelId,
+      conversationId: conversation?.id,
     }))
   );
 

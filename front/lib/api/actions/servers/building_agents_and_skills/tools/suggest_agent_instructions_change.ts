@@ -86,7 +86,7 @@ export async function suggestAgentInstructionsChange(
     agentConfiguration: agent,
     edits: [{ ...instructionEdit, analysis }],
     source: "conversational",
-    conversationModelId: runContext.conversation.id,
+    conversation: runContext.conversation,
   });
   if (result.isErr()) {
     return new Err(new MCPError(result.error));
