@@ -394,18 +394,27 @@ describe("GroupPermissions.resourceIdsWithVerb", () => {
     });
   });
 
-  it("reports the type-wide (-1) entry as every instance", () => {
+  it("reports a type-wide (-1) grant of an instance verb as every instance", () => {
     const perms = GroupPermissions.fromJSON({
-      grants: { agent: { [WHOLE_TYPE_RESOURCE_ID]: 0b1000, 42: 0b011 } },
+      grants: { skill: { [WHOLE_TYPE_RESOURCE_ID]: 0b001, 42: 0b011 } },
     });
-    // `read` is held on 42 only; `create` comes from the type-wide entry, so it covers every agent.
-    expect(perms.resourceIdsWithVerb("agent", "read")).toEqual({
+    // `read` comes from the type-wide entry (the workspace-wide `reader` grant), so it covers every
+    // skill; `write` is held on 42 only.
+    expect(perms.resourceIdsWithVerb("skill", "read")).toEqual({ kind: "all" });
+    expect(perms.resourceIdsWithVerb("skill", "write")).toEqual({
       kind: "ids",
       resourceIds: [42],
     });
-    expect(perms.resourceIdsWithVerb("agent", "create")).toEqual({
-      kind: "all",
+  });
+
+  it("throws when asked to enumerate a type-only verb", () => {
+    const perms = GroupPermissions.fromJSON({
+      grants: { agent: { [WHOLE_TYPE_RESOURCE_ID]: 0b1000 } },
     });
+    // `create`/`publish` are workspace capabilities (`hasWorkspacePermission`), not instances to
+    // enumerate: asking for them here is a category error, not `{ kind: "all" }`.
+    expect(() => perms.resourceIdsWithVerb("agent", "create")).toThrow();
+    expect(() => perms.resourceIdsWithVerb("agent", "publish")).toThrow();
   });
 
   it("returns an empty list when the resource type has no grants", () => {

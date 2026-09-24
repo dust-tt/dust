@@ -438,6 +438,10 @@ export class GroupPermissions {
     resourceType: ConcreteResourceType,
     verb: GrantVerb
   ): ResourcesWithVerb {
+    assert(
+      grantTypesForVerb(resourceType, verb, "instance").length > 0,
+      `Verb "${verb}" is type-level only on "${resourceType}" and has no instances to enumerate (use hasWorkspacePermission).`
+    );
     const bit = VERB_BIT.get(verb) ?? 0;
     const byId = this.grants.get(resourceType);
     if (!byId || bit === 0) {

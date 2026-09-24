@@ -1628,7 +1628,10 @@ export class Authenticator {
    */
   /**
    * @cc [owner:tdraier,label:security] type-wide-grant-is-all
-   * A type-wide (-1) grant confers `verb` on every instance and names none, so it MUST be reported as
+   * `verb` MUST be a verb `resourceType` defines at the `instance` level (enumerating instances by a
+   * type-only capability like `create`/`publish` is a category error — those are held workspace-wide
+   * and answered by `hasWorkspacePermission`; passing one throws). For such an instance verb, a
+   * type-wide (-1) grant confers it on every instance and names none, so it MUST be reported as
    * `{ kind: "all" }` — never expanded into a concrete id list and never dropped. Dropping it would
    * make this method answer "no instances" while `getGovernanceGrantVerbs` answers "yes" for the same
    * verb on any single id, since that method folds the -1 grant into every lookup.
