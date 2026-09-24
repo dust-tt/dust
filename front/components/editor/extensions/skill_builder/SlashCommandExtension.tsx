@@ -22,6 +22,7 @@ import {
   handleSlashSubMenuCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { createAttachKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
+import { getSlashTriggerText } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { useSkillBuilderSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
 import { useSlashMenuStack } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashMenuStack";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -291,15 +292,9 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
       () =>
       ({ chain }: { chain: () => ChainedCommands }) => {
         storage.hasBeenFocused = true;
-        // The suggestion plugin only activates a "/" preceded by a space or at
-        // the start of a text block
-        const { nodeBefore } = editor.state.selection.$from;
-        const needsLeadingSpace =
-          nodeBefore !== null &&
-          (!nodeBefore.isText || !(nodeBefore.text ?? "").endsWith(" "));
         return chain()
           .focus()
-          .insertContent(needsLeadingSpace ? " /" : "/")
+          .insertContent(getSlashTriggerText(editor.state))
           .run();
       },
     openAttachKnowledgeSlashCommand:

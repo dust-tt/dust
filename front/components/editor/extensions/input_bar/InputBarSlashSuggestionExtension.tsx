@@ -9,16 +9,28 @@ import {
   getSlashSubMenuQueryPlaceholder,
   handleSlashSubMenuCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
-import { isAllowedSlashQuery } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
+import {
+  getSlashTriggerText,
+  isAllowedSlashQuery,
+} from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WorkspaceType } from "@app/types/user";
+import type { ChainedCommands } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import type { RefObject } from "react";
 
 export const inputBarSlashSuggestionPluginKey = new PluginKey(
   "inputBarSlashSuggestion"
 );
+
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    inputBarSlashSuggestion: {
+      openInputBarSlashCommand: () => ReturnType;
+    };
+  }
+}
 
 interface InputBarSlashSuggestionStorage {
   dismissedTriggerStart: number | null;
@@ -82,6 +94,20 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     // Inside a sub-menu the text after "/" is its query, so a leading space is allowed.
     (getActiveSlashSubMenuFrame(storage) !== null ||
       isAllowedSlashQuery(state, range)),
+  // Inserts a "/" at the cursor to open the dropdown, even if the editor was
+  // never focused or the dropdown was dismissed at this position.
+  addCommands: ({ storage, editor }) => ({
+    openInputBarSlashCommand:
+      () =>
+      ({ chain }: { chain: () => ChainedCommands }) => {
+        storage.hasBeenFocused = true;
+        storage.dismissedTriggerStart = null;
+        return chain()
+          .focus()
+          .insertContent(getSlashTriggerText(editor.state))
+          .run();
+      },
+  }),
   shouldShow: ({ transaction }) =>
     !transaction.getMeta("paste") && transaction.getMeta("uiEvent") !== "paste",
   items: () => [],
