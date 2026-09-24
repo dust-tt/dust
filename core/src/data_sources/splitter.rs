@@ -495,7 +495,7 @@ impl Splitter for BaseV0Splitter {
 
         info!(
             tokenized_section_tree_size = tokenized_section.size(),
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             "Splitter tokenized section"
         );
 
@@ -512,7 +512,7 @@ impl Splitter for BaseV0Splitter {
 
         info!(
             chunks_count = chunks.len(),
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             "Splitter generated chunks"
         );
 

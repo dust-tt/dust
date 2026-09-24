@@ -743,7 +743,7 @@ impl App {
                 block_name = name.as_str(),
                 successes = success,
                 errors = errors.len(),
-                duration = utils::now() - time_block_start,
+                duration_ms = utils::now() - time_block_start,
                 "Execution block"
             );
 

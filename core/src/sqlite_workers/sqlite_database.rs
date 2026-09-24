@@ -188,7 +188,7 @@ impl SqliteDatabase {
             }
 
             info!(
-                duration = utils::now() - time_query_start,
+                duration_ms = utils::now() - time_query_start,
                 "DSSTRUCTSTAT - WORKER Finished executing user query"
             );
 
@@ -369,7 +369,7 @@ async fn create_in_memory_sqlite_db_with_csv(
     let csv_results = try_join_all(csv_tasks).await?;
 
     info!(
-        duration = utils::now() - now,
+        duration_ms = utils::now() - now,
         "DSSTRUCTSTAT - WORKER Finished downloading CSV files"
     );
 
@@ -393,7 +393,7 @@ async fn create_in_memory_sqlite_db_with_csv(
     .await??;
 
     info!(
-        duration = utils::now() - now,
+        duration_ms = utils::now() - now,
         "DSSTRUCTSTAT - WORKER Finished creating tables from CSV files"
     );
 
