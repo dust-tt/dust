@@ -904,10 +904,7 @@ export async function deleteTagsActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const tags = await TagResource.findAll(auth);
-  for (const tag of tags) {
-    await tag.delete(auth);
-  }
+  await TagResource.deleteAllForWorkspace(auth);
 }
 
 export async function deleteWorkspaceUserMetadataActivity({

@@ -328,10 +328,7 @@ async function deleteMembershipUpgradeRequests(auth: Authenticator) {
 }
 
 async function deleteTags(auth: Authenticator) {
-  const tags = await TagResource.findAll(auth);
-  for (const tag of tags) {
-    await tag.delete(auth);
-  }
+  await TagResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteSandboxEnvVars(auth: Authenticator) {
