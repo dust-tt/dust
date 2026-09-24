@@ -54,7 +54,7 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
     );
   }
 
-  private static readonly listAllCache = defineCachedResourceList<
+  private static readonly store = defineCachedResourceList<
     "all",
     CachedGlobalFeatureFlagData[],
     GlobalFeatureFlagResource
@@ -86,7 +86,7 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
 
   static async listAll(): Promise<GlobalFeatureFlagResource[]> {
     return listAllQuery.get("all", () =>
-      GlobalFeatureFlagResource.listAllCache.fetch("all")
+      GlobalFeatureFlagResource.store.fetch("all")
     );
   }
 
@@ -105,7 +105,7 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
     } else {
       await GlobalFeatureFlagModel.upsert({ name, rolloutPercentage });
     }
-    await GlobalFeatureFlagResource.listAllCache.invalidate("all");
+    await GlobalFeatureFlagResource.store.invalidate("all");
   }
 
   async delete(
@@ -116,7 +116,7 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
       where: { id: this.id },
       transaction,
     });
-    await GlobalFeatureFlagResource.listAllCache.invalidate("all", transaction);
+    await GlobalFeatureFlagResource.store.invalidate("all", transaction);
     return new Ok(this.id);
   }
 
