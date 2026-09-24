@@ -3,13 +3,9 @@
  * Shared authoring instructions MUST leave Slideshow and Slide in control of their dimensions.
  * Scrolling-page layout guidance MUST be scoped to pages and dashboards.
  */
-export const buildInteractiveContentAuthoringProseV2 = ({
-  hasDocuments,
-  hasFunctions,
-}: {
-  hasDocuments: boolean;
-  hasFunctions: boolean;
-}) => `\
+// Used only by the legacy (pre-Frames v2) instructions; Frames v2 owns its prose in
+// `frames_v2.ts`.
+export const buildInteractiveContentAuthoringProseV2 = () => `\
 ### Rendering Context
 
 Frames render inside a resizable iframe in the conversation side panel. The default panel is two-thirds of the browser width, and inline frames are capped at 600px high before the user expands them. Make the top 600px useful: clear title, primary visual or metric, and the first meaningful controls or status.
@@ -64,21 +60,6 @@ content file using the \`Slideshow\` and \`Slide\` components.
 
 Before creating a slideshow, read the attached \`slideshow.example.tsx\`. Adapt its content and
 visual design to the user's request.
-${
-  hasDocuments
-    ? `
-### Editable documents
-
-\`Document\` from \`@dust/document/v1\` provides rich text editing and autosaves to a JSON file in
-the Frame folder. Named visual blocks
-let you place your React charts and interactive components within the text.
-
-After choosing the document format, read the attached \`document.md\` before creating or editing it.
-For a new document, also read \`document.example.tsx\` and \`document.example.json\`, then adapt their
-content and visual design to the user's request.
-`
-    : ""
-}
 
 ### Page and dashboard layout
 
@@ -180,7 +161,7 @@ The same decision rule applies regardless of where the data came from:
 - Import \`useUserIdentity\` from \`@dust/react-hooks\` to know who is viewing the Frame.
 - It returns \`{ isAuthenticated, isWorkspaceMember, isFrameAuthor, isPodMember, isPodEditor, user, isLoading, error }\`. When \`isAuthenticated\` is true, \`user\` is \`{ sId, firstName, lastName, fullName, image }\`; otherwise \`user\` is \`null\`.
 - \`isAuthenticated\` is only true for a signed-in member of the workspace that owns the Frame. A viewer of a shared Frame who is signed out, or signed in to a different workspace, is not authenticated.
-- \`isFrameAuthor\` is true when the viewer can modify the Frame v2 source files. For a standalone conversation this follows conversation access; in a Pod it follows write access to the Pod. Use it to show author-only controls${hasFunctions ? ", and declare the functions behind those controls with \`frame_author_required\` so the server enforces the same capability" : ""}.
+- \`isFrameAuthor\` is true when the viewer can modify the Frame v2 source files. For a standalone conversation this follows conversation access; in a Pod it follows write access to the Pod. Use it to show author-only controls.
 - \`isPodMember\` is true when the viewer belongs to the Pod hosting the Frame (its member or editor group); \`isPodEditor\` when they are one of its editors or a workspace admin. Both are false when the Frame is viewed outside a Pod (a conversation, a public share) even if the viewer is in fact a member, so treat false as "do not show Pod-scoped affordances here", not as proof of the viewer's standing.
 - Render the \`isLoading\` state, and treat \`error\` and the unauthenticated case identically: fall back to the unauthenticated view rather than showing an error.
 - A Frame cannot sign anyone in. The viewer is already authenticated to Dust or they are not, and nothing the Frame renders can change that. When a Frame only makes sense for an authenticated member, render a plain view saying the content is unavailable to them, rather than a login prompt or a button that will not work.
@@ -201,7 +182,7 @@ return (
 \`\`\`
 
 - Use it for presentation: greet the viewer, highlight their rows, or hide author-only controls.
-- Client-side conditions are not access control: whatever a Frame renders, its viewer can inspect.${hasFunctions ? " Protect every author-only operation with a server function declared \`frame_author_required\`." : " Do not put data in a Frame that some of its viewers must not see."}
+- Client-side conditions are not access control: whatever a Frame renders, its viewer can inspect. Do not put data in a Frame that some of its viewers must not see.
 
 ### Interaction Rules
 
@@ -225,7 +206,7 @@ These apply to data from any source: the user's prompt, attached files, tool out
 
 - Default output is a single Frame React component with a default export.
 - Use \`@dust/slideshow/v2\` only when the user explicitly asks for slides, a presentation, a deck, or multi-slide content.
-- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/frame\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, ${hasDocuments ? "`@dust/document/v1`, " : ""}\`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
+- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/frame\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, \`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
 - No other third-party libraries are installed or available.
 `;
 
