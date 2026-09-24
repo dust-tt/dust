@@ -715,10 +715,7 @@ describe("ensureConversationSandboxReady", () => {
     const refreshError = new Error("refresh failed");
     mockRefreshSandboxMount.mockResolvedValue(new Err(refreshError));
 
-    const result = await ensureConversationSandboxReady(
-      auth as never,
-      conversation as never
-    );
+    const result = await ensureConversationSandboxReady(auth, conversation);
 
     expect(result.isErr()).toBe(true);
     if (result.isOk()) {
@@ -736,10 +733,7 @@ describe("ensureConversationSandboxReady", () => {
     );
     mockEnsureSandboxEgressOnExec.mockResolvedValue(new Err(egressError));
 
-    const result = await ensureConversationSandboxReady(
-      auth as never,
-      conversation as never
-    );
+    const result = await ensureConversationSandboxReady(auth, conversation);
 
     expect(result.isErr()).toBe(true);
     if (result.isOk()) {
@@ -764,10 +758,7 @@ describe("ensureConversationSandboxReady", () => {
       return refreshResult.promise;
     });
 
-    const resultPromise = ensureConversationSandboxReady(
-      auth as never,
-      conversation as never
-    );
+    const resultPromise = ensureConversationSandboxReady(auth, conversation);
 
     await refreshStarted.promise;
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledTimes(1);
