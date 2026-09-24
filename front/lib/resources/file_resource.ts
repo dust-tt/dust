@@ -163,6 +163,27 @@ export type ShareFileResponseBody = {
   viewerFiles: ShareFrameViewerFile[];
 };
 
+/** Where a legacy Frame's FileResource lives once converted to a Frames v2 manifest. */
+export type LegacyFrameConversionTarget = {
+  fileSize: number;
+  mountFilePath: string;
+  useCase: FileUseCase;
+  useCaseMetadata: FileUseCaseMetadata;
+};
+
+/** The legacy Frame fields a conversion overwrites, kept to undo it. */
+export type LegacyFrameFields = Pick<
+  FileModel,
+  | "contentType"
+  | "fileName"
+  | "fileSize"
+  | "fileSystemNodeId"
+  | "mountFilePath"
+  | "status"
+  | "useCase"
+  | "useCaseMetadata"
+>;
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -1056,6 +1077,59 @@ export class FileResource extends BaseResource<FileModel> {
     }
 
     return this.update({ status: "ready" }, transaction);
+  }
+
+  /**
+   * @cc [owner:pierremilliotte,label:product;backend] legacy-frame-conversion-keeps-identity
+   * Converting a legacy Frame to Frames v2 MUST reuse its FileResource, so its sId, share link,
+   * sharing grants and conversation references survive the migration. The returned fields MUST
+   * be enough for `restoreLegacyFrame` to undo the conversion.
+   */
+  async convertLegacyFrameToFrameV2(
+    auth: Authenticator,
+    {
+      fileSize,
+      mountFilePath,
+      useCase,
+      useCaseMetadata,
+    }: LegacyFrameConversionTarget,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<LegacyFrameFields> {
+    assert(this.isInteractiveContent, "Only a legacy Frame can be converted");
+
+    const legacyFields: LegacyFrameFields = {
+      contentType: this.contentType,
+      fileName: this.fileName,
+      fileSize: this.fileSize,
+      fileSystemNodeId: this.fileSystemNodeId,
+      mountFilePath: this.mountFilePath,
+      status: this.status,
+      useCase: this.useCase,
+      useCaseMetadata: this.useCaseMetadata,
+    };
+
+    await this.update(
+      {
+        contentType: frameV2ContentType,
+        fileName: FRAME_MANIFEST_FILE,
+        fileSize,
+        fileSystemNodeId: null,
+        mountFilePath,
+        useCase,
+        useCaseMetadata,
+      },
+      transaction
+    );
+    await this.markFrameV2AsReadyFromMount(auth, { transaction });
+
+    return legacyFields;
+  }
+
+  async restoreLegacyFrame(
+    legacyFields: LegacyFrameFields,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.update(legacyFields, transaction);
   }
 
   get isReady(): boolean {

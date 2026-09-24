@@ -25,8 +25,8 @@ the \`dsbx frame\` CLI for their lifecycle.
   atomically activates the publication. The first publish also assigns the Frame's stable identity.
 - A legacy (v1) Frame is anchored by a single \`.tsx\` entry file. Publishing resolves that entry
   file and its local imports, then updates the existing Frame through the legacy bundle pipeline.
-- \`dsbx frame publish\` supports both formats. Edit and publish an existing legacy Frame in place;
-  do not recreate it just to make it v2.
+- Edit a legacy Frame in place, unless the change needs server functions or a Frame database:
+  then migrate it to Frames v2 first, see "Migrating a legacy Frame" below.
 
 ## Before authoring
 
@@ -589,12 +589,6 @@ The ID form requires Frame use rights; the path form additionally requires read 
 mounted source. Use this to exercise published server behavior directly; it does not test the Frame
 UI.
 
-For a legacy Frame, pass its entry source file instead:
-
-\`\`\`bash
-dsbx frame publish /files/<scope>/<frame>.tsx
-\`\`\`
-
 The only interactive-content MCP tool available under Frames v2 is
 \`export_interactive_content_file\`: use it to export a Frame as a PNG screenshot or PDF document.
 Use the Computer and CLI for all other Frame operations. Use \`dsbx frame --help\` as the authority
@@ -602,6 +596,49 @@ for available operations.
 
 Do not use \`mv\` or \`cp\` on a Frame folder: move and clone are not supported in this
 initial scope.
+
+## Migrating a legacy Frame
+
+Migrate a legacy Frame to Frames v2 only when the requested change needs server functions or a
+Frame database, for example to persist data across reloads. Legacy Frames can declare neither. For any other change, edit the legacy entry and its local imports in
+place and publish it with \`dsbx frame publish /files/<scope>/<frame>.tsx\`.
+
+Publishing the replacement with \`--replaces\` converts the legacy Frame in place: it keeps
+its Frame ID, its share link and recipients, its conversation cards and, in a Pod, its pin and tab.
+
+1. Read the legacy entry \`<frame>.tsx\` and every local file it imports, recursively.
+2. Create the v2 folder next to the entry, named after it without \`.tsx\`:
+   \`dashboards/Sales.tsx\` becomes \`dashboards/Sales/\`. The Frame keeps its name.
+3. Write the entry's source to \`index.tsx\`, with its component named \`App\`. Copy each local
+   import into the new folder, never move it: another legacy Frame may import the same file, such
+   as a \`theme.ts\` shared by every Frame of a folder. Keep the copies at the same relative path
+   so imports still resolve, and rewrite an import that climbs above the entry's folder.
+4. Leave \`useFile\` calls on file IDs and on scoped paths outside the Frame unchanged: the data
+   files stay where they are.
+5. Write \`manifest.json\`, apply the requested change and lint. Keep the Frame's look: do not
+   restyle it while migrating.
+6. Publish the manifest, naming the legacy entry it replaces:
+
+   \`\`\`bash
+   dsbx frame publish /files/<scope>/dashboards/Sales/manifest.json \\
+     --replaces /files/<scope>/dashboards/Sales.tsx
+   \`\`\`
+
+   The legacy Frame is only converted once the replacement builds; a failed publish leaves it
+   untouched. Fix the reported error and publish again with the same \`--replaces\`. If publish
+   reports that a separate Frame already exists at the manifest path, stop: do not publish the
+   folder without \`--replaces\`. Tell the user that folder is already its own Frame and ask
+   whether to delete it from the Dust UI, then retry, or keep both Frames.
+7. A successful publish deletes the legacy entry file for you. Delete a legacy local import only
+   once no remaining legacy Frame imports it:
+   \`grep\` the other legacy \`.tsx\` files of the folder before each \`rm\`. Migrating the last
+   of them removes the shared file.
+8. Open the Frame with \`conversation_side_panel.open_frame\` on its manifest path.
+
+If you cannot get the replacement to publish, for example an error you cannot fix without
+rewriting the Frame, abandon the migration: delete the new folder, apply the requested change to
+the legacy entry in place, and publish it with \`dsbx frame publish /files/<scope>/<frame>.tsx\`.
+Tell the user the Frame stayed a legacy Frame and why.
 
 ## Editing
 

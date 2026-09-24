@@ -20,6 +20,7 @@ import share from "./share";
 
 const FramePublishRequestSchema = z.object({
   manifestPath: z.string().min(1),
+  replacesPath: z.string().min(1).optional(),
 });
 
 type FramePublishResponse = {
@@ -79,11 +80,12 @@ app.post(
     }
 
     // Keep the request field name for compatibility. Legacy Frames pass their entry source path.
-    const { manifestPath } = ctx.req.valid("json");
+    const { manifestPath, replacesPath } = ctx.req.valid("json");
     const publication = await publishFrameFromSource(auth, {
       conversation: conversation.toJSON(),
       publishedByAgentConfigurationId: claims.aId,
       sourcePath: manifestPath,
+      replacesPath,
     });
     if (publication.isErr()) {
       const status = frameSourceErrorStatus(publication.error);

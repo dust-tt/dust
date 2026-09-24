@@ -64,6 +64,8 @@ pub struct FrameCallResponse {
 #[serde(rename_all = "camelCase")]
 pub struct FramePublishRequest<'a> {
     pub manifest_path: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replaces_path: Option<&'a str>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
