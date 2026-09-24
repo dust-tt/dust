@@ -4,6 +4,8 @@ import { ServerSideVisualizationWrapper } from "@viz/app/content/ServerVisualiza
 interface RenderVisualizationSearchParams {
   accessToken?: string;
   editable?: string;
+  /** When "true", EditableFrame uses click + staged commits (Frames v2 Edit). */
+  stagedEdits?: string;
   fullHeight?: string;
   identifier?: string;
   pdfMode?: string;
@@ -20,10 +22,17 @@ export default function RenderVisualization({
     ? ALLOWED_VISUALIZATION_ORIGIN.split(",").map((s) => s.trim())
     : [];
 
-  const { accessToken, editable, fullHeight, identifier, pdfMode } =
-    searchParams;
+  const {
+    accessToken,
+    editable,
+    stagedEdits,
+    fullHeight,
+    identifier,
+    pdfMode,
+  } = searchParams;
 
   const isEditable = editable === "true";
+  const isStagedEdits = stagedEdits === "true";
   const isFullHeight = fullHeight === "true";
   const isPdfMode = pdfMode === "true";
 
@@ -48,6 +57,7 @@ export default function RenderVisualization({
         identifier={identifier}
         allowedOrigins={allowedOrigins}
         isEditable={isEditable}
+        stagedEdits={isStagedEdits}
         isFullHeight={isFullHeight}
       />
     );

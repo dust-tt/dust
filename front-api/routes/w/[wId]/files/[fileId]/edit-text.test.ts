@@ -318,4 +318,40 @@ describe("POST /api/w/:wId/files/:fileId/edit-text", () => {
       error: { type: "file_not_found", message: "File not found." },
     });
   });
+
+  it("rejects batch edits[] for legacy Frames", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+
+    const file = await FileFactory.create(auth, user, {
+      contentType: "application/vnd.dust.frame",
+      fileName: "frame.tsx",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const response = await postEdit(workspace, file.sId, {
+      edits: [
+        { oldText: "Hello", newText: "World", source: "frame.tsx:1:1" },
+        { oldText: "Foo", newText: "Bar", source: "frame.tsx:2:1" },
+      ],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Batch text edits are only supported for Frames v2.",
+      },
+    });
+  });
 });

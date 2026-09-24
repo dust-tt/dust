@@ -507,22 +507,36 @@ export async function publishFrameV2FromSource(
   return publication;
 }
 
-export async function editFrameV2TextAtSource(
+export type FrameV2TextEdit = {
+  source: string;
+  oldText: string;
+  newText: string;
+};
+
+/**
+ * Apply one or more location-based text edits to a Frames v2 package, then publish once.
+ *
+ * Each edit is a small diff (`oldText` → `newText`) anchored at `data-source`. Edits are applied
+ * against the **current** source on disk (not a client snapshot), so concurrent agent edits to
+ * other spans still succeed as long as each `oldText` remains findable. All writes and the
+ * publish run under the Frame source lock; on publish failure every touched file is rolled back.
+ */
+export async function editFrameV2TextsAtSource(
   auth: Authenticator,
   {
     conversation,
     frame,
-    source,
-    oldText,
-    newText,
+    edits,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
-    source: string;
-    oldText: string;
-    newText: string;
+    edits: FrameV2TextEdit[];
   }
 ): Promise<Result<{ publicationId: string }, PublishFrameFromSourceError>> {
+  if (edits.length === 0) {
+    return frameError("invalid_source", "No edits provided.");
+  }
+
   if (!frame.isFrameV2) {
     return frameError(
       "invalid_frame",
@@ -530,9 +544,28 @@ export async function editFrameV2TextAtSource(
     );
   }
 
-  const location = parseSourceLocation(source);
-  if (!location || !isSafeFrameRelativePath(location.relPath)) {
-    return frameError("invalid_source", `Invalid source location: ${source}.`);
+  const parsedEdits: Array<{
+    relPath: string;
+    line: number;
+    col: number;
+    oldText: string;
+    newText: string;
+  }> = [];
+  for (const edit of edits) {
+    const location = parseSourceLocation(edit.source);
+    if (!location || !isSafeFrameRelativePath(location.relPath)) {
+      return frameError(
+        "invalid_source",
+        `Invalid source location: ${edit.source}.`
+      );
+    }
+    parsedEdits.push({
+      relPath: location.relPath,
+      line: location.line,
+      col: location.col,
+      oldText: edit.oldText,
+      newText: edit.newText,
+    });
   }
 
   const publication = await withFrameSourceLock<
@@ -552,54 +585,76 @@ export async function editFrameV2TextAtSource(
       return resolved;
     }
     const { canonicalManifestPath: manifestPath, dustFs } = resolved.value;
+    const packageDir = path.posix.dirname(manifestPath);
 
-    const sourcePath = path.posix.join(
-      path.posix.dirname(manifestPath),
-      location.relPath
-    );
-    const sourceBuffer = await dustFs.readBuffer(sourcePath);
-    if (sourceBuffer.isErr()) {
-      return new Err(sourceBuffer.error);
+    const editsByPath = new Map<
+      string,
+      Array<{ line: number; col: number; oldText: string; newText: string }>
+    >();
+    for (const edit of parsedEdits) {
+      const sourcePath = path.posix.join(packageDir, edit.relPath);
+      const list = editsByPath.get(sourcePath) ?? [];
+      list.push({
+        line: edit.line,
+        col: edit.col,
+        oldText: edit.oldText,
+        newText: edit.newText,
+      });
+      editsByPath.set(sourcePath, list);
     }
-    if (sourceBuffer.value === null) {
-      return frameError(
-        "invalid_source",
-        `Frame source file not found: ${location.relPath}`
+
+    const rollbacks: Array<
+      () => Promise<Result<unknown, DustFileSystemError>>
+    > = [];
+
+    for (const [sourcePath, fileEdits] of editsByPath) {
+      const sourceBuffer = await dustFs.readBuffer(sourcePath);
+      if (sourceBuffer.isErr()) {
+        return new Err(sourceBuffer.error);
+      }
+      if (sourceBuffer.value === null) {
+        return frameError(
+          "invalid_source",
+          `Frame source file not found: ${path.posix.relative(packageDir, sourcePath)}`
+        );
+      }
+      const originalSource = sourceBuffer.value;
+
+      let content = originalSource.toString("utf8");
+      for (const fileEdit of fileEdits) {
+        const edited = replaceJsxTextAtSourceLocation(content, fileEdit);
+        if (edited.isErr()) {
+          return frameError("invalid_source", edited.error.message);
+        }
+        content = edited.value;
+      }
+
+      const stat = await dustFs.stat(sourcePath);
+      if (stat.isErr()) {
+        return new Err(stat.error);
+      }
+      const contentType =
+        stat.value?.contentType ??
+        contentTypeFromFileName(path.posix.basename(sourcePath)) ??
+        "text/plain";
+      const writeResult = await dustFs.write(sourcePath, content, contentType);
+      if (writeResult.isErr()) {
+        return new Err(writeResult.error);
+      }
+      rollbacks.push(() =>
+        dustFs.write(sourcePath, originalSource, contentType)
       );
     }
-    const originalSource = sourceBuffer.value;
 
-    const edited = replaceJsxTextAtSourceLocation(
-      originalSource.toString("utf8"),
-      {
-        line: location.line,
-        col: location.col,
-        oldText,
-        newText,
+    const rollbackAll = async () => {
+      for (const rollback of [...rollbacks].reverse()) {
+        const rollbackResult = await rollback();
+        if (rollbackResult.isErr()) {
+          return rollbackResult;
+        }
       }
-    );
-    if (edited.isErr()) {
-      return frameError("invalid_source", edited.error.message);
-    }
-
-    const stat = await dustFs.stat(sourcePath);
-    if (stat.isErr()) {
-      return new Err(stat.error);
-    }
-    const contentType =
-      stat.value?.contentType ??
-      contentTypeFromFileName(location.relPath) ??
-      "text/plain";
-    const writeResult = await dustFs.write(
-      sourcePath,
-      edited.value,
-      contentType
-    );
-    if (writeResult.isErr()) {
-      return new Err(writeResult.error);
-    }
-    const rollbackSource = () =>
-      dustFs.write(sourcePath, originalSource, contentType);
+      return new Ok(undefined);
+    };
 
     try {
       const publishResult = await publishFrameV2FromSourceWithSourceLockHeld(
@@ -611,7 +666,7 @@ export async function editFrameV2TextAtSource(
         }
       );
       if (publishResult.isErr()) {
-        const rollbackResult = await rollbackSource();
+        const rollbackResult = await rollbackAll();
         if (rollbackResult.isErr()) {
           return new Err(rollbackResult.error);
         }
@@ -619,7 +674,7 @@ export async function editFrameV2TextAtSource(
 
       return publishResult;
     } catch (error) {
-      const rollbackResult = await rollbackSource();
+      const rollbackResult = await rollbackAll();
       if (rollbackResult.isErr()) {
         throw rollbackResult.error;
       }

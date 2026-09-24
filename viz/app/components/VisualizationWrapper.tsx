@@ -383,11 +383,14 @@ export function VisualizationWrapper({
   const {
     identifier,
     isEditable = false,
+    stagedEdits = false,
     isFullHeight = false,
     isPdfMode = false,
   } = config;
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
   const [vizReady, setVizReady] = useState(false);
+  // Frames v2: parent toggles Preview|Edit via SET_EDIT_MODE without remounting the iframe.
+  const [editModeActive, setEditModeActive] = useState(false);
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
@@ -613,9 +616,28 @@ export function VisualizationWrapper({
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [addEventListener, handleScreenshotDownload, handleSVGDownload]);
 
+  // Preview|Edit without remount: parent posts SET_EDIT_MODE; EditableFrame gates affordances.
+  useEffect(() => {
+    if (!stagedEdits) {
+      setEditModeActive(false);
+      return;
+    }
+    return addEventListener("SET_EDIT_MODE", (message) => {
+      if (message.type === "SET_EDIT_MODE") {
+        setEditModeActive(message.enabled);
+      }
+    });
+  }, [addEventListener, stagedEdits]);
+
   const vizContextValue = useMemo(
-    () => ({ isPdfMode, editText }),
-    [isPdfMode, editText]
+    () => ({
+      isPdfMode,
+      editText,
+      addEventListener,
+      stagedEdits,
+      editModeActive,
+    }),
+    [addEventListener, editModeActive, editText, isPdfMode, stagedEdits]
   );
 
   if (errored) {

@@ -60,6 +60,7 @@ import type { SetStateAction } from "react";
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -771,6 +772,13 @@ export interface VisualizationActionIframeProps {
   /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
   frameId?: string;
   isEditable?: boolean;
+  /** Frames v2 Edit session: click-to-edit + staged commits until Save. */
+  stagedEdits?: boolean;
+  /**
+   * Frames v2 Preview|Edit: when stagedEdits is set, toggles inline-edit affordances via
+   * SET_EDIT_MODE without changing the iframe URL (avoids reload on entering Edit).
+   */
+  editModeActive?: boolean;
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
   scopedUserIdentity?: ScopedWorkspaceUserIdentity;
@@ -913,6 +921,8 @@ export const VisualizationActionIframe = forwardRef<
     canInvokeFunctions,
     conversationId,
     isEditable = false,
+    stagedEdits = false,
+    editModeActive = false,
     isInDrawer = false,
     onEditText,
     scopedUserIdentity,
@@ -1086,8 +1096,28 @@ export const VisualizationActionIframe = forwardRef<
       params.set("editable", "true");
     }
 
+    if (stagedEdits) {
+      params.set("stagedEdits", "true");
+    }
+
     return `${props.vizUrl.replace(/\/$/, "")}/content?${params.toString()}`;
-  }, [visualization, isInDrawer, isEditable, props.vizUrl]);
+  }, [visualization, isInDrawer, isEditable, stagedEdits, props.vizUrl]);
+
+  // Toggle Preview|Edit affordances inside the already-loaded viz (no URL / remount change).
+  const postEditMode = useCallback(() => {
+    const contentWindow = vizIframeRef.current?.contentWindow;
+    if (!contentWindow || !stagedEdits) {
+      return;
+    }
+    contentWindow.postMessage(
+      { type: "SET_EDIT_MODE", enabled: editModeActive },
+      "*"
+    );
+  }, [editModeActive, stagedEdits]);
+
+  useEffect(() => {
+    postEditMode();
+  }, [postEditMode]);
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
@@ -1164,6 +1194,7 @@ export const VisualizationActionIframe = forwardRef<
                     src={vizUrl}
                     allowFullScreen
                     sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+                    onLoad={postEditMode}
                   />
                 </div>
               )}
