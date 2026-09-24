@@ -8,10 +8,8 @@ import {
   isFolder,
   isWebsite,
 } from "@app/lib/data_sources";
-import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
-import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
+import { destroyAgentMCPServerConfigurationsForDataSourceView } from "@app/lib/resources/agent_mcp_server_views";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -777,41 +775,8 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const agentDataSourceConfigurations =
-      await AgentDataSourceConfigurationModel.findAll({
-        where: {
-          dataSourceViewId: this.id,
-          workspaceId,
-        },
-      });
-
-    const agentTablesQueryConfigurations =
-      await AgentTablesQueryConfigurationTableModel.findAll({
-        where: {
-          dataSourceViewId: this.id,
-          workspaceId,
-        },
-      });
-
-    const mcpServerConfigurationIds = removeNulls(
-      [...agentDataSourceConfigurations, ...agentTablesQueryConfigurations].map(
-        (a) => a.mcpServerConfigurationId
-      )
-    );
-
-    await AgentDataSourceConfigurationModel.destroy({
-      where: {
-        dataSourceViewId: this.id,
-        workspaceId,
-      },
-      transaction,
-    });
-
-    await AgentTablesQueryConfigurationTableModel.destroy({
-      where: {
-        dataSourceViewId: this.id,
-        workspaceId,
-      },
+    await destroyAgentMCPServerConfigurationsForDataSourceView(auth, {
+      dataSourceViewId: this.id,
       transaction,
     });
 
@@ -822,19 +787,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       },
       transaction,
     });
-
-    // Delete associated MCP server configurations.
-    if (mcpServerConfigurationIds.length > 0) {
-      await AgentMCPServerConfigurationModel.destroy({
-        where: {
-          id: {
-            [Op.in]: mcpServerConfigurationIds,
-          },
-          workspaceId,
-        },
-        transaction,
-      });
-    }
 
     const deletedCount = await DataSourceViewModel.destroy({
       where: {
