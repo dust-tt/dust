@@ -15,16 +15,17 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 // Leaf module (imports only agent models and the agent cache/indexation leaves, never
-// `AgentResource`) so the MCP server view and data source view resources — which `AgentResource`
-// transitively depends on — can import it without forming a cycle.
+// `AgentResource`) so the MCP server view, data source view and data source resources — which
+// `AgentResource` transitively depends on — can import it without forming a cycle.
 
 /**
  * @cc [owner:tdraier,label:backend;performance] agent-tools-cascade-through-agent-domain
  * A system cascade that removes agent tools because a capability they use goes away (an MCP server
- * view deleted or restricted to skills, a data source view deleted) MUST go through this module, so
- * the tool rows (and their data-source / table / child-agent links), the cache invalidation and the
- * search reindex of every agent whose configurations referenced a removed tool stay owned by the
- * agent domain. Runtime callers MUST NOT destroy `AgentMCPServerConfigurationModel` rows directly.
+ * view deleted or restricted to skills, a data source view or data source deleted) MUST go through
+ * this module, so the tool rows (and their data-source / table / child-agent links), the cache
+ * invalidation and the search reindex of every agent whose configurations referenced a removed tool
+ * stay owned by the agent domain. Runtime callers MUST NOT destroy `AgentMCPServerConfigurationModel`
+ * rows or their data-source / table links directly.
  * The removal applies in place to every configuration version — no new version — and is NOT gated
  * on the agent's `write`/`admin` verbs. Under a transaction, invalidation and reindex run after
  * commit.
@@ -135,39 +136,37 @@ export async function destroyAgentMCPServerConfigurationsForViews(
   });
 }
 
-// Removes every agent data-source / table link to the given data source view, and the whole tools
-// that carried one.
-export async function destroyAgentMCPServerConfigurationsForDataSourceView(
+// Removes every agent data-source / table link matching `linkFilter`, and the whole tools that
+// carried one.
+async function destroyAgentMCPServerConfigurationsForDataSourceLinks(
   auth: Authenticator,
   {
-    dataSourceViewId,
+    linkFilter,
     transaction,
   }: {
-    dataSourceViewId: ModelId;
+    linkFilter: { dataSourceViewId: ModelId } | { dataSourceId: ModelId };
     transaction?: Transaction;
   }
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().id;
+  const where = { workspaceId, ...linkFilter };
 
   const dataSourceConfigurations =
     await AgentDataSourceConfigurationModel.findAll({
       attributes: ["mcpServerConfigurationId"],
-      where: { workspaceId, dataSourceViewId },
+      where,
       transaction,
     });
   const tablesQueryConfigurations =
     await AgentTablesQueryConfigurationTableModel.findAll({
       attributes: ["mcpServerConfigurationId"],
-      where: { workspaceId, dataSourceViewId },
+      where,
       transaction,
     });
 
   // Links without a tool (legacy rows with a null `mcpServerConfigurationId`) are not reached by
   // the tool cascade below.
-  await AgentDataSourceConfigurationModel.destroy({
-    where: { workspaceId, dataSourceViewId },
-    transaction,
-  });
+  await AgentDataSourceConfigurationModel.destroy({ where, transaction });
 
   const mcpConfigurationModelIds = uniq(
     removeNulls(
@@ -188,6 +187,38 @@ export async function destroyAgentMCPServerConfigurationsForDataSourceView(
 
   await destroyAgentMCPServerConfigurations(auth, {
     mcpConfigurations,
+    transaction,
+  });
+}
+
+export async function destroyAgentMCPServerConfigurationsForDataSourceView(
+  auth: Authenticator,
+  {
+    dataSourceViewId,
+    transaction,
+  }: {
+    dataSourceViewId: ModelId;
+    transaction?: Transaction;
+  }
+): Promise<void> {
+  await destroyAgentMCPServerConfigurationsForDataSourceLinks(auth, {
+    linkFilter: { dataSourceViewId },
+    transaction,
+  });
+}
+
+export async function destroyAgentMCPServerConfigurationsForDataSource(
+  auth: Authenticator,
+  {
+    dataSourceId,
+    transaction,
+  }: {
+    dataSourceId: ModelId;
+    transaction?: Transaction;
+  }
+): Promise<void> {
+  await destroyAgentMCPServerConfigurationsForDataSourceLinks(auth, {
+    linkFilter: { dataSourceId },
     transaction,
   });
 }
