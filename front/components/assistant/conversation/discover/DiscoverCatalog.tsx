@@ -1,4 +1,4 @@
-import { getSkillAvatarIcon } from "@app/lib/skill";
+import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import {
@@ -14,6 +14,7 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
+  CheckVerified01,
   Chip,
   EmptyCTA,
   Icon,
@@ -108,11 +109,25 @@ function isMine(item: CatalogItem): boolean {
   return item.kind === "agent" ? item.agent.canEdit : item.skill.canWrite;
 }
 
+function isDustProvided(item: CatalogItem): boolean {
+  return item.kind === "agent"
+    ? item.agent.scope === "global"
+    : isDustProvidedSkill(item.skill);
+}
+
 interface ItemAuthorProps {
   item: CatalogItem;
 }
 
 export function ItemAuthor({ item }: ItemAuthorProps) {
+  if (isDustProvided(item)) {
+    return (
+      <span className="flex shrink-0 items-center gap-1 text-highlight">
+        <Icon visual={CheckVerified01} size="xs" />
+        Dust
+      </span>
+    );
+  }
   const authors = getItemAuthors(item);
   if (authors.length === 0) {
     return null;
@@ -353,13 +368,15 @@ export function CatalogRow({ item, onUse, onDetails }: CatalogRowProps) {
           <span className="heading-base notranslate text-foreground">
             {getItemName(item)}
           </span>
-          {item.kind === "agent" && (
-            <Chip
-              size="xs"
-              label={`@${item.agent.name}`}
-              className="font-mono"
-            />
-          )}
+          <Chip
+            size="xs"
+            label={
+              item.kind === "agent"
+                ? `@${item.agent.name}`
+                : `/${item.skill.name}`
+            }
+            className="font-mono"
+          />
         </div>
         <div className="flex h-5 items-center gap-4 copy-sm">
           <ItemAuthor item={item} />
