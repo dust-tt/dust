@@ -31,6 +31,10 @@ import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_requested_spaces";
 import type { AgentResource } from "@app/lib/resources/agent_resource";
+import {
+  destroyAgentSkillLinksForCustomSkill,
+  launchAgentSearchIndexationForCustomSkill,
+} from "@app/lib/resources/agent_skills";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -3382,6 +3386,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             { transaction }
           );
 
+          await launchAgentSearchIndexationForCustomSkill(auth, {
+            customSkillId: this.id,
+            transaction,
+          });
+
           referencingSkillIds =
             await this.propagateReferenceUpdatesToParentSkills(
               auth,
@@ -3441,6 +3450,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             },
             { transaction }
           );
+
+          await launchAgentSearchIndexationForCustomSkill(auth, {
+            customSkillId: this.id,
+            transaction,
+          });
 
           referencingSkillIds =
             await this.propagateReferenceUpdatesToParentSkills(
@@ -4241,12 +4255,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             { transaction }
           );
 
-        // Delete agent-skill associations.
-        await AgentSkillModel.destroy({
-          where: {
-            customSkillId: this.id,
-            workspaceId: workspace.id,
-          },
+        await destroyAgentSkillLinksForCustomSkill(auth, {
+          customSkillId: this.id,
           transaction,
         });
 
