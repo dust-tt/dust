@@ -181,6 +181,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = z.object({
       pictureUrl: z.string(),
       status: z.enum(["active", "archived", "draft", "pending"]),
       scope: z.enum(["hidden", "visible"]),
+      ignoreCreditSpendThresholdAlert: z.boolean().optional(),
       model: ModelConfigurationSchema.and(IsSupportedModelSchema),
       actions: z.array(MCPServerActionConfigurationSchema),
       templateId: z.string().nullable().optional(),

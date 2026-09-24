@@ -28,6 +28,8 @@ export function transformAgentConfigurationToFormData(
       slackProvider: null, // Will be populated reactively from supportedDataSourceViews
       slackChannels: [], // Will be populated reactively if needed
       tags: agentConfiguration.tags,
+      ignoreCreditSpendThresholdAlert:
+        agentConfiguration.ignoreCreditSpendThresholdAlert ?? false,
     },
     instructions: agentConfiguration.instructions ?? "",
     instructionsHtml: agentConfiguration.instructionsHtml ?? undefined,
@@ -67,6 +69,7 @@ export function getDefaultAgentFormData({
       slackProvider: null,
       slackChannels: [],
       tags: [],
+      ignoreCreditSpendThresholdAlert: false,
     },
     instructions: "",
     generationSettings: {

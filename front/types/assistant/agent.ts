@@ -203,6 +203,7 @@ export const AgentConfigurationBaseSchema = z.object({
   requestedSpaceIds: z.array(z.string()),
   reinforcement: z.enum(AGENT_REINFORCEMENT_MODES).optional(),
   lastReinforcementAnalysisAt: z.string().nullable().optional(),
+  ignoreCreditSpendThresholdAlert: z.boolean().optional(),
   canRead: z.boolean(),
   canEdit: z.boolean(),
   omittedThinking: z.boolean().optional(),

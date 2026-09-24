@@ -198,6 +198,7 @@ export type SaveAgentConfigurationParams = {
   editors: UserType[];
   authorId: ModelId;
   reinforcement?: AgentReinforcementMode;
+  ignoreCreditSpendThresholdAlert?: boolean;
   // MCP action configurations to create atomically with the agent version. Created inside the same
   // transaction as the configuration row (see `agent-save-atomic`), so a failure rolls the whole
   // save back and no partial version is ever committed. Defaults to none.
@@ -262,6 +263,7 @@ const AGENT_CONFIGURATION_KEYS = [
   "templateId",
   "requestedSpaceIds",
   "reinforcement",
+  "ignoreCreditSpendThresholdAlert",
   "tags",
   "actions",
   "skills",
@@ -1547,6 +1549,8 @@ export class AgentResource
       // Preserve the version's author rather than re-attributing it to the caller.
       authorId: this.versionAuthorId ?? auth.getNonNullableUser().id,
       reinforcement: this.reinforcement,
+      ignoreCreditSpendThresholdAlert:
+        this.content.creditSpendCheckpointThresholdAwuCredits === null,
       actions,
       skills,
     };
@@ -2520,6 +2524,8 @@ export class AgentResource
       reinforcement: this.reinforcement,
       lastReinforcementAnalysisAt:
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
+      ignoreCreditSpendThresholdAlert:
+        content.creditSpendCheckpointThresholdAwuCredits === null,
       canRead: this._verbs.has("read"),
       // Regular API keys hold `write` from the admin role but may only edit an active version
       // (see the `regular-key-agent-editability` contract on `enrichAgentConfigurations`).
@@ -2593,8 +2599,9 @@ export class AgentResource
    * @cc [owner:tdraier,label:security;product] agent-edit-in-place
    * Saving an existing agent MUST route each changed property by kind and gate it on its own
    * permission: a definition field other than the model and tags (name, description, instructions,
-   * picture, status, template, requested spaces, reinforcement, tools or skills) creates a new
-   * version and MUST require `write`; the `model` creates a new version but MUST require `write` OR
+   * picture, status, template, requested spaces, reinforcement, credit spend alert bypass, tools or
+   * skills) creates a new version and MUST require `write`; the `model` creates a new version but
+   * MUST require `write` OR
    * `admin`, and `tags` a new version requiring `write` OR workspace-admin (see
    * `model-change-requires-edit`/`tags-change-requires-edit`); `scope` is
    * applied in place (no new version) and MUST satisfy
@@ -2913,6 +2920,11 @@ export class AgentResource
    * transaction owned by this method, so a failure in any part leaves no partial agent version behind
    * and needs no external rollback.
    */
+  /**
+   * @cc [owner:avervaet,label:security;product] credit-spend-alert-bypass-manager-only
+   * Only workspace admins and managers MAY change whether an agent bypasses the credit spend
+   * threshold alert; a save by anyone else MUST keep the previously stored value.
+   */
   private static async _saveConfiguration(
     auth: Authenticator,
     {
@@ -2931,6 +2943,7 @@ export class AgentResource
       editors,
       authorId,
       reinforcement,
+      ignoreCreditSpendThresholdAlert,
       actions = [],
       skills = [],
     }: {
@@ -2949,6 +2962,7 @@ export class AgentResource
       editors: UserType[];
       authorId: ModelId;
       reinforcement?: AgentReinforcementMode;
+      ignoreCreditSpendThresholdAlert?: boolean;
       actions?: ServerSideMCPServerConfigurationType[];
       skills?: SkillResource[];
     }
@@ -3035,6 +3049,9 @@ export class AgentResource
           templateModelId: template?.id,
           requestedSpaceIds,
           reinforcement,
+          ignoreCreditSpendThresholdAlert: auth.isManager()
+            ? ignoreCreditSpendThresholdAlert
+            : undefined,
           owner,
           transaction: t,
         });
