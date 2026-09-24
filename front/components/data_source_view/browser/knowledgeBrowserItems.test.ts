@@ -3,6 +3,8 @@ import {
   buildDataSourceViewItems,
   buildNodeItems,
   buildSpaceItems,
+  getKnowledgeBrowserEntryLabel,
+  POD_FILES_TITLE,
 } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import {
   makeDataSourceViewFixture as makeDataSourceView,
@@ -87,6 +89,19 @@ describe("buildDataSourceViewItems", () => {
     expect(items.map((item) => item.id)).toEqual(["folder"]);
   });
 
+  it("titles a pod's own data source as the pod's files", () => {
+    const podFiles = makeDataSourceView("pod-files", {
+      name: "Project (vlt_abc): Launch",
+      connectorProvider: "dust_project",
+      connectorId: "c2",
+    });
+    const items = buildDataSourceViewItems([podFiles], {
+      viewType: "all",
+      isDark: false,
+    });
+    expect(items.map((item) => item.title)).toEqual([POD_FILES_TITLE]);
+  });
+
   it("keeps every view otherwise, sorted by name", () => {
     const items = buildDataSourceViewItems([remote, folder], {
       viewType: "all",
@@ -142,5 +157,39 @@ describe("buildNodeItems", () => {
       excludeNonRemoteDatabaseTables: true,
     });
     expect(items.map((item) => item.id)).toEqual(["doc", "folder"]);
+  });
+});
+
+describe("getKnowledgeBrowserEntryLabel", () => {
+  it("labels the root, pod files, and other entries", () => {
+    const podFiles = makeDataSourceView("dsv-pod", {
+      name: "Project (vlt_abc): Launch",
+      connectorProvider: "dust_project",
+      connectorId: "c3",
+    });
+    expect(getKnowledgeBrowserEntryLabel({ type: "root" })).toBe("All");
+    expect(
+      getKnowledgeBrowserEntryLabel({
+        type: "space",
+        space: makeSpace({ sId: "space1", name: "Series C" }),
+      })
+    ).toBe("Series C");
+    expect(
+      getKnowledgeBrowserEntryLabel({ type: "category", category: "managed" })
+    ).toBe("Connected Data");
+    expect(
+      getKnowledgeBrowserEntryLabel({
+        type: "data_source",
+        dataSourceView: podFiles,
+        tagsFilter: null,
+      })
+    ).toBe(POD_FILES_TITLE);
+    expect(
+      getKnowledgeBrowserEntryLabel({
+        type: "node",
+        node: makeNode("onboarding"),
+        tagsFilter: null,
+      })
+    ).toBe("onboarding");
   });
 });

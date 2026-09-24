@@ -5,6 +5,7 @@ import { Extension } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { ReactRenderer } from "@tiptap/react";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
 import type { ComponentType } from "react";
@@ -12,6 +13,10 @@ import type { ComponentType } from "react";
 interface SlashSuggestionBaseStorage {
   hasBeenFocused: boolean;
 }
+
+// tiptap does not export its plugin state type; recover it from the plugin factory's return type.
+type SuggestionPluginState =
+  ReturnType<typeof Suggestion> extends Plugin<infer S> ? S : never;
 
 interface SlashSuggestionAllowContext<
   Options,
@@ -94,7 +99,9 @@ interface CreateSlashSuggestionExtensionConfig<
   // Runs whenever the suggestion session ends, including exits that bypass `onDropdownClose`
   // (cursor moved away, trigger deleted, content replaced), so per-session state can reset.
   onDropdownExit?: (ctx: { storage: Storage }) => void;
-  pluginKey: PluginKey;
+  pluginKey: PluginKey<SuggestionPluginState>;
+  // Ghost text rendered after the trigger while the suggestion is active with an empty query.
+  getQueryPlaceholder?: (ctx: { storage: Storage }) => string | null;
   preventEscapeDefault?: boolean;
   shouldMountDropdown?: (
     ctx: SlashSuggestionDropdownContext<Options, Storage, Item>
@@ -137,6 +144,7 @@ export function createSlashSuggestionExtension<
   notifyActiveChange,
   onDropdownClose,
   onDropdownExit,
+  getQueryPlaceholder,
   preventEscapeDefault = false,
 }: CreateSlashSuggestionExtensionConfig<Options, Storage, Item>) {
   return Extension.create<Options, Storage>({
@@ -325,6 +333,41 @@ export function createSlashSuggestionExtension<
             };
           },
         }),
+        ...(getQueryPlaceholder
+          ? [
+              new Plugin({
+                key: new PluginKey(`${name}QueryPlaceholder`),
+                props: {
+                  decorations: (state) => {
+                    const suggestion = pluginKey.getState(state);
+                    if (!suggestion?.active || suggestion.query) {
+                      return null;
+                    }
+                    const placeholder = getQueryPlaceholder({
+                      storage: extensionStorage,
+                    });
+                    if (!placeholder) {
+                      return null;
+                    }
+                    return DecorationSet.create(state.doc, [
+                      Decoration.widget(
+                        suggestion.range.to,
+                        () => {
+                          const span = document.createElement("span");
+                          span.className =
+                            "pointer-events-none select-none text-faint dark:text-stone-400";
+                          span.contentEditable = "false";
+                          span.textContent = placeholder;
+                          return span;
+                        },
+                        { side: 1 }
+                      ),
+                    ]);
+                  },
+                },
+              }),
+            ]
+          : []),
         ...(triggerCleanupStorageKey
           ? [
               new Plugin({
