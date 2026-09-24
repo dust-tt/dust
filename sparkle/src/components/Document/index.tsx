@@ -9,6 +9,7 @@ import { DocumentBlockMenu, useDocumentBlockMenu } from "./DocumentBlockMenu";
 import { DocumentCommentComposer } from "./DocumentCommentComposer";
 import { DocumentCommentMarkers } from "./DocumentCommentMarkers";
 import { DocumentCommentsPanel } from "./DocumentCommentsPanel";
+import { DocumentDragHandle } from "./DocumentDragHandle";
 import { DocumentSaveStatus } from "./DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "./DocumentSelectionToolbar";
 import { DocumentSourcePreview } from "./DocumentSourcePreview";
@@ -49,7 +50,7 @@ const getClickedCommentIds = (target: EventTarget | null, root: Element) => {
  * Typography layout and formatting controls MUST remain fixed. Hosts MAY theme content fonts
  * and colors through CSS, without restyling editing controls. Callers MUST NOT supply editor
  * instances, extensions, or toolbar configuration. Inline controls MUST require a nonempty
- * text selection. Block commands MUST require an editable document and a typed `/`.
+ * text selection. Block insertion MUST require an editable document and a typed `/`.
  * className MUST apply only to the outer container.
  */
 /**
@@ -253,6 +254,10 @@ export const Document = ({
           )}
           {editor && editable && (
             <>
+              <DocumentDragHandle
+                editor={editor}
+                mountPortalContainer={mountPortalContainer}
+              />
               <DocumentSelectionToolbar
                 editor={editor}
                 mountPortalContainer={mountPortalContainer}
