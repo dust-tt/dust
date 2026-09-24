@@ -217,38 +217,4 @@ describe("/api/w/[wId]/usage-status", () => {
     expect(body.canRequestUpgrade).toBe(true);
     expect(body.requireReason).toBe(true);
   });
-
-  it("reports the credit spend checkpoint gate to a plain member", async () => {
-    const workspace = await creditPricedWorkspace();
-    await createPrivateApiMockRequest({
-      method: "GET",
-      role: "user",
-      workspace,
-    });
-
-    const enabledResponse = await honoApp.request(
-      usageStatusUrl(workspace.sId)
-    );
-    expect(enabledResponse.status).toBe(200);
-    expect((await enabledResponse.json()).creditSpendCheckpointEnabled).toBe(
-      true
-    );
-
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    await CreditUsageConfigurationResource.makeNew(adminAuth, {
-      defaultDiscountPercent: 0,
-      usageCapCredits: null,
-      creditSpendCheckpointThresholdAwuCredits: null,
-    });
-
-    const disabledResponse = await honoApp.request(
-      usageStatusUrl(workspace.sId)
-    );
-    expect(disabledResponse.status).toBe(200);
-    expect((await disabledResponse.json()).creditSpendCheckpointEnabled).toBe(
-      false
-    );
-  });
 });

@@ -1,13 +1,12 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
-import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
+import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
+import { isManager } from "@app/types/user";
 import { SliderToggle } from "@dust-tt/sparkle";
 import { useController } from "react-hook-form";
 
-export function AgentBuilderCostManagementBlock() {
+export function CostManagementSection() {
   const { owner } = useAgentBuilderContext();
-  const { creditSpendCheckpointEnabled } = useWorkspaceUsageStatus({ owner });
   const { field } = useController<
     AgentBuilderFormData,
     "ignoreCreditSpendThresholdAlert"
@@ -15,13 +14,13 @@ export function AgentBuilderCostManagementBlock() {
     name: "ignoreCreditSpendThresholdAlert",
   });
 
-  // Nothing to bypass when the workspace has the checkpoint turned off.
-  if (!creditSpendCheckpointEnabled) {
+  // Bypassing the spend alert is a cost decision, reserved to people who manage the workspace.
+  if (!isManager(owner)) {
     return null;
   }
 
   return (
-    <AgentBuilderSectionContainer title="Cost Management">
+    <SettingSectionContainer title="Cost Management">
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="text-sm font-medium text-foreground">
@@ -37,6 +36,6 @@ export function AgentBuilderCostManagementBlock() {
           onClick={() => field.onChange(!field.value)}
         />
       </div>
-    </AgentBuilderSectionContainer>
+    </SettingSectionContainer>
   );
 }

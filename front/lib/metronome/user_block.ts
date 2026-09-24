@@ -99,9 +99,6 @@ export type GetWorkspaceUsageStatusResponseBody = {
   hasPendingUpgradeRequest: boolean;
   willAutoUpgrade: boolean;
   requireReason: boolean;
-  // Whether the workspace's credit spend checkpoint gate is on (Usage settings), readable by every
-  // member so per-agent overrides are only offered when there is a checkpoint to bypass.
-  creditSpendCheckpointEnabled: boolean;
 };
 
 export type GetFairUseCreditsResponseBody = {

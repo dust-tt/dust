@@ -1,4 +1,3 @@
-import { getCreditSpendCheckpointEnabled } from "@app/lib/api/assistant/credit_spend_checkpoint";
 import {
   isProgrammaticApiBlocked,
   isUserAwuWarned,
@@ -27,8 +26,6 @@ app.get(
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
     const plan = auth.plan();
-    const creditSpendCheckpointEnabled =
-      await getCreditSpendCheckpointEnabled(auth);
 
     const isCreditPriced = plan && isCreditPricedPlan(plan);
     // Workspaces not on Metronome billing have no usage status to report,
@@ -50,7 +47,6 @@ app.get(
         hasPendingUpgradeRequest: false,
         willAutoUpgrade: false,
         requireReason: false,
-        creditSpendCheckpointEnabled,
       });
     }
 
@@ -99,7 +95,6 @@ app.get(
       hasPendingUpgradeRequest,
       willAutoUpgrade,
       requireReason,
-      creditSpendCheckpointEnabled,
     });
   }
 );

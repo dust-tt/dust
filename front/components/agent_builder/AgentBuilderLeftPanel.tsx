@@ -1,7 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderSpacesBlock } from "@app/components/agent_builder/AgentBuilderSpacesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
-import { AgentBuilderCostManagementBlock } from "@app/components/agent_builder/settings/AgentBuilderCostManagementBlock";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/skills/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
@@ -86,7 +85,6 @@ export function AgentBuilderLeftPanel({
             isAddingSelfAsEditor={isAddingSelfAsEditor}
             onAddSelfAsEditor={onAddSelfAsEditor}
           />
-          <AgentBuilderCostManagementBlock />
         </div>
       </ScrollArea>
       <BarFooter
