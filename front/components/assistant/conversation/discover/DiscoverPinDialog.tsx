@@ -117,17 +117,14 @@ export function DiscoverPinDialog({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="flex flex-col gap-2">
-              <span className="heading-sm text-foreground">Position</span>
-              {group && (
-                <PinPositions
-                  owner={owner}
-                  groupId={group.sId}
-                  position={position}
-                  onPositionChange={setPosition}
-                />
-              )}
-            </div>
+            {group && (
+              <PinPositions
+                owner={owner}
+                groupId={group.sId}
+                position={position}
+                onPositionChange={setPosition}
+              />
+            )}
           </div>
         </DialogContainer>
         <DialogFooter
@@ -164,51 +161,58 @@ function PinPositions({
   position,
   onPositionChange,
 }: PinPositionsProps) {
-  const { groupPins, isGroupPinsLoading } = useGroupDiscoveryPins({
-    workspaceId: owner.sId,
-    groupId,
-  });
+  const { groupPins, isGroupPinsLoading, isGroupPinsRefreshing } =
+    useGroupDiscoveryPins({
+      workspaceId: owner.sId,
+      groupId,
+    });
 
   return (
-    <div
-      role="radiogroup"
-      aria-label="Position in Featured"
-      className="grid grid-cols-3 gap-3"
-    >
-      {PIN_POSITIONS.map((i) => {
-        const current = groupPins.find((p) => p.pin.position === i);
-        return (
-          <button
-            key={i}
-            type="button"
-            role="radio"
-            aria-checked={position === i}
-            aria-label={`Position ${i + 1}`}
-            onClick={() => onPositionChange(i)}
-            className={cn(
-              "flex h-20 flex-col items-center justify-center gap-1 rounded-xl border px-2",
-              "transition-[color,background-color,border-color,scale] duration-150 ease-emphasized",
-              "active:scale-[0.97] motion-reduce:active:scale-100",
-              position === i
-                ? "border-highlight-500 bg-highlight-50 text-highlight-700"
-                : "border-border bg-background text-muted-foreground hover:bg-hover"
-            )}
-          >
-            {isGroupPinsLoading ? (
-              <Spinner size="xs" />
-            ) : current ? (
-              <>
-                <PinnedItemAvatar pinnedItem={current} />
-                <span className="copy-xs w-full truncate">
-                  {current.target.name}
-                </span>
-              </>
-            ) : (
-              <span className="heading-lg">{i + 1}</span>
-            )}
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <span className="heading-sm text-foreground">Position</span>
+        {isGroupPinsRefreshing && <Spinner size="xs" />}
+      </div>
+      <div
+        role="radiogroup"
+        aria-label="Position in Featured"
+        className="grid grid-cols-3 gap-3"
+      >
+        {PIN_POSITIONS.map((i) => {
+          const current = groupPins.find((p) => p.pin.position === i);
+          return (
+            <button
+              key={i}
+              type="button"
+              role="radio"
+              aria-checked={position === i}
+              aria-label={`Position ${i + 1}`}
+              onClick={() => onPositionChange(i)}
+              className={cn(
+                "flex h-20 flex-col items-center justify-center gap-1 rounded-xl border px-2",
+                "transition-[color,background-color,border-color,scale] duration-150 ease-emphasized",
+                "active:scale-[0.97] motion-reduce:active:scale-100",
+                position === i
+                  ? "border-highlight-500 bg-highlight-50 text-highlight-700"
+                  : "border-border bg-background text-muted-foreground hover:bg-hover"
+              )}
+            >
+              {isGroupPinsLoading ? (
+                <Spinner size="xs" />
+              ) : current ? (
+                <>
+                  <PinnedItemAvatar pinnedItem={current} />
+                  <span className="copy-xs w-full truncate">
+                    {current.target.name}
+                  </span>
+                </>
+              ) : (
+                <span className="heading-lg">{i + 1}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

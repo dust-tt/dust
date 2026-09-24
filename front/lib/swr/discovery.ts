@@ -8,6 +8,7 @@ import type {
   GetGroupDiscoveryPinsResponseBody,
 } from "@app/types/api/discovery";
 import type { GroupPinnedItemType } from "@app/types/discovery";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -88,7 +89,7 @@ export function useGroupDiscoveryPins({
 }: UseGroupDiscoveryPinsOptions) {
   const { fetcher } = useFetcher();
   const groupPinsFetcher: Fetcher<GetGroupDiscoveryPinsResponseBody> = fetcher;
-  const { data, isLoading } = useSWRWithDefaults(
+  const { data, isLoading, isValidating } = useSWRWithDefaults(
     groupPinsUrl(workspaceId, groupId),
     groupPinsFetcher
   );
@@ -96,6 +97,7 @@ export function useGroupDiscoveryPins({
   return {
     groupPins: data?.items ?? emptyArray(),
     isGroupPinsLoading: isLoading,
+    isGroupPinsRefreshing: isValidating && !isLoading,
   };
 }
 
@@ -153,6 +155,13 @@ export function usePinDiscoveryItem({ workspaceId }: UseDiscoveryOptions) {
           mutate(groupPinsUrl(workspaceId, groupId)),
         ]);
         return true;
+      } catch (e) {
+        sendNotification({
+          type: "error",
+          title: "Failed to pin to Featured",
+          description: normalizeError(e).message,
+        });
+        return false;
       } finally {
         setIsPinning(false);
       }
