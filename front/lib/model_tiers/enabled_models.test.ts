@@ -13,6 +13,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import {
+  CLAUDE_FABLE_5_1_MODEL_ID,
   CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
@@ -289,21 +290,38 @@ describe("resolveStreamModel", () => {
     expect(resolved.reasoningEffort).toBe("high");
   });
 
-  it("routes the Ultra stream to Fable once its flag is on", async () => {
+  it("routes the Ultra stream to the newest Fable once its flag is on", async () => {
     await FeatureFlagFactory.basic(adminAuth, "claude_fable_5_feature");
 
     const resolved = await resolveStreamForAuth(adminAuth, "auto_ultra");
 
     expect(resolved.fromPool).toBe(true);
-    expect(resolved.model.modelId).toBe(CLAUDE_FABLE_5_MODEL_ID);
+    expect(resolved.model.modelId).toBe(CLAUDE_FABLE_5_1_MODEL_ID);
     expect(resolved.reasoningEffort).toBe("high");
+  });
+
+  it("falls from a degraded Fable 5.1 to Fable 5 before leaving the Ultra tier", async () => {
+    await FeatureFlagFactory.basic(adminAuth, "claude_fable_5_feature");
+
+    const resolved = await resolveStreamForAuth(
+      adminAuth,
+      "auto_ultra",
+      new Set([CLAUDE_FABLE_5_1_MODEL_ID])
+    );
+
+    expect(resolved.fromPool).toBe(true);
+    expect(resolved.model.modelId).toBe(CLAUDE_FABLE_5_MODEL_ID);
   });
 
   it("lands the Ultra stream on its Premium floor when no Ultra model is available", async () => {
     const resolved = await resolveStreamForAuth(
       adminAuth,
       "auto_ultra",
-      new Set([GPT_6_ASTRA_MODEL_ID, CLAUDE_FABLE_5_MODEL_ID])
+      new Set([
+        GPT_6_ASTRA_MODEL_ID,
+        CLAUDE_FABLE_5_MODEL_ID,
+        CLAUDE_FABLE_5_1_MODEL_ID,
+      ])
     );
 
     expect(resolved.fromPool).toBe(true);

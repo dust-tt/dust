@@ -1,4 +1,5 @@
 import {
+  CLAUDE_FABLE_5_1_MODEL_ID,
   CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_OPUS_5_MODEL_ID,
@@ -182,6 +183,13 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
     // The only stream allowed to resolve to an Ultra model. Its Premium floor
     // is what a retry lands on when no Ultra model is available.
     [AUTO_ULTRA_MODEL_ID]: [
+      {
+        providerId: "anthropic",
+        modelId: CLAUDE_FABLE_5_1_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      // Fable 5 sits behind 5.1 rather than being replaced by it: both are
+      // behind the same flag, so it only ever serves a 5.1 degradation.
       {
         providerId: "anthropic",
         modelId: CLAUDE_FABLE_5_MODEL_ID,
