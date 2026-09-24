@@ -1,7 +1,7 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { localTimeOfDayToUtc } from "@app/lib/api/timezone";
-import { Authenticator } from "@app/lib/auth";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -48,25 +48,20 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
     }
     lastWorkspaceModelId = batch[batch.length - 1].workspaceModelId;
 
-    for (const { workspaceId } of batch) {
-      try {
-        const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+    const subscriptionByWorkspaceModelId =
+      await SubscriptionResource.fetchActiveByWorkspacesModelId(
+        batch.map(({ workspaceModelId }) => workspaceModelId)
+      );
 
-        if (auth.subscription()?.status !== "active") {
-          continue;
-        }
-
-        const planCode = auth.plan()?.code;
-        if (planCode && REINFORCEMENT_EXCLUDED_PLAN_CODES.has(planCode)) {
-          continue;
-        }
-
+    for (const { workspaceModelId, workspaceId } of batch) {
+      // Every requested workspace has an entry: those without an active subscription get a
+      // free-no-plan placeholder with status "ended", hence the status check.
+      const subscription = subscriptionByWorkspaceModelId[workspaceModelId];
+      if (
+        subscription.status === "active" &&
+        !REINFORCEMENT_EXCLUDED_PLAN_CODES.has(subscription.getPlan().code)
+      ) {
         reinforcementWorkspaceIds.push(workspaceId);
-      } catch (e) {
-        logger.error(
-          { error: e, workspaceId },
-          "[Reinforcement] Error checking feature flags for workspace."
-        );
       }
     }
   }
