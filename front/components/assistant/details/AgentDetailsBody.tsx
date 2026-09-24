@@ -4,6 +4,7 @@ import { TriggerSelectionPageContent } from "@app/components/agent_builder/trigg
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
 import { AgentDetailsButtonBar } from "@app/components/assistant/details/AgentDetailsButtonBar";
+import { useAgentSuggestionPreview } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { AgentEditorsTab } from "@app/components/assistant/details/tabs/AgentEditorsTab";
 import { AgentInfoTab } from "@app/components/assistant/details/tabs/AgentInfoTab";
 import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentInsightsTab";
@@ -15,6 +16,7 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
+import { useAgentSuggestionsPreview } from "@app/lib/swr/agent_suggestions";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useEmailAgentFooter } from "@app/lib/swr/user";
@@ -146,7 +148,7 @@ export function AgentDetailsBody({
   });
 
   const {
-    agentConfiguration,
+    agentConfiguration: fetchedAgentConfiguration,
     isAgentConfigurationLoading,
     isAgentConfigurationValidating,
     isAgentConfigurationError,
@@ -154,6 +156,16 @@ export function AgentDetailsBody({
     workspaceId: owner.sId,
     agentConfigurationId: agentId,
   });
+
+  const previewSuggestions = useAgentSuggestionPreview();
+  const { preview } = useAgentSuggestionsPreview({
+    agent: fetchedAgentConfiguration,
+    suggestions: previewSuggestions,
+  });
+  const agentConfiguration =
+    fetchedAgentConfiguration && preview
+      ? { ...fetchedAgentConfiguration, ...preview }
+      : fetchedAgentConfiguration;
 
   // Fetch webhook source views when triggers tab is active so they're ready
   // when the user clicks edit on a webhook trigger.

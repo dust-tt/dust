@@ -5,6 +5,8 @@ import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/config
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import { mergeAgentSuggestionChanges } from "@app/lib/editor/merge_agent_suggestion_changes";
 import {
   applyInstructionEditsToHtml,
   convertMarkdownToBlockHtml,
@@ -16,16 +18,12 @@ import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestio
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   CreateSuggestionType,
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
-import {
-  INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
-  parseAgentSuggestionData,
-} from "@app/types/suggestions/agent_suggestion";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 type ApplyAgentSuggestionsError = DustError<"invalid_request_error">;
 
@@ -163,115 +161,6 @@ async function applyDeleteSuggestion(
   }
 
   return new Ok(undefined);
-}
-
-/** The agent fields a batch of accepted suggestions changes, written as one new version. */
-interface AgentFieldEdits {
-  name?: string;
-  model?: ModelSuggestionType;
-  description?: string;
-  scope?: "hidden" | "visible";
-  instructions?: InstructionsSuggestionSchemaType[];
-}
-
-/**
- * What one accepted suggestion asks for. `create` and `archive` are not field edits: they are
- * status changes written outside the version upgrade.
- */
-type AgentChange =
-  | { type: "create"; create: CreateSuggestionType }
-  | { type: "archive" }
-  | { type: "fields"; fields: AgentFieldEdits };
-
-function changeForSuggestion(
-  suggestion: AgentSuggestionResource
-): Result<AgentChange, ApplyAgentSuggestionsError> {
-  const data = parseAgentSuggestionData({
-    kind: suggestion.kind,
-    suggestion: suggestion.suggestion,
-  });
-
-  switch (data.kind) {
-    case "create":
-      return new Ok({ type: "create", create: data.suggestion });
-
-    case "delete":
-      return new Ok({ type: "archive" });
-
-    case "model":
-      return new Ok({ type: "fields", fields: { model: data.suggestion } });
-
-    case "name":
-      return new Ok({ type: "fields", fields: { name: data.suggestion.name } });
-
-    case "description":
-      return new Ok({
-        type: "fields",
-        fields: { description: data.suggestion.description },
-      });
-
-    case "scope":
-      return new Ok({
-        type: "fields",
-        fields: { scope: data.suggestion.scope },
-      });
-
-    case "instructions":
-      return new Ok({
-        type: "fields",
-        fields: { instructions: [data.suggestion] },
-      });
-
-    case "knowledge":
-    case "skills":
-    case "sub_agent":
-    case "tools":
-      return new Err(
-        new DustError(
-          "invalid_request_error",
-          `Suggestions of kind "${data.kind}" cannot be applied server-side yet.`
-        )
-      );
-
-    default:
-      assertNever(data);
-  }
-}
-
-interface AgentBatchChanges {
-  create?: CreateSuggestionType;
-  archive?: true;
-  fields: AgentFieldEdits;
-}
-
-function mergeFieldEdits(
-  merged: AgentFieldEdits,
-  next: AgentFieldEdits
-): AgentFieldEdits {
-  const instructions = [
-    ...(merged.instructions ?? []),
-    ...(next.instructions ?? []),
-  ];
-
-  return {
-    ...merged,
-    ...next,
-    ...(instructions.length > 0 ? { instructions } : {}),
-  };
-}
-
-function mergeAgentChanges(changes: AgentChange[]): AgentBatchChanges {
-  return changes.reduce<AgentBatchChanges>(
-    (merged, next) => ({
-      create: next.type === "create" ? next.create : merged.create,
-      archive: next.type === "archive" ? true : merged.archive,
-      fields:
-        next.type === "fields"
-          ? mergeFieldEdits(merged.fields, next.fields)
-          : merged.fields,
-    }),
-    { fields: {} }
-  );
 }
 
 interface ResolvedInstructions {
@@ -427,18 +316,12 @@ export async function applyAgentSuggestions(
     suggestions: AgentSuggestionResource[];
   }
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
-  const changes: AgentChange[] = [];
-
-  for (const suggestion of suggestions) {
-    const change = changeForSuggestion(suggestion);
-    if (change.isErr()) {
-      return change;
-    }
-
-    changes.push(change.value);
+  const batchChanges = mergeAgentSuggestionChanges(suggestions);
+  if (batchChanges.isErr()) {
+    return batchChanges;
   }
 
-  const { create, archive, fields } = mergeAgentChanges(changes);
+  const { create, archive, fields } = batchChanges.value;
   const hasFieldEdits = Object.keys(fields).length > 0;
 
   if (create) {

@@ -1,4 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { getBrowserMarkdownPipeline } from "@app/lib/editor/browser_markdown_pipeline";
+import { previewAgentSuggestions } from "@app/lib/editor/preview_agent_suggestions";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -12,7 +14,9 @@ import type {
   PatchSuggestionRequestBody,
   PatchSuggestionResponseBody,
 } from "@app/types/api/assistant/agent_suggestion";
-import { useCallback, useState } from "react";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 export function useAgentSuggestions({
@@ -61,6 +65,32 @@ export function useAgentSuggestions({
     isSuggestionsValidating: isValidating,
     mutateSuggestions: mutate,
   };
+}
+
+interface UseAgentSuggestionsPreviewParams {
+  agent: AgentConfigurationType | null;
+  suggestions: AgentSuggestionType[];
+}
+
+export function useAgentSuggestionsPreview({
+  agent,
+  suggestions,
+}: UseAgentSuggestionsPreviewParams) {
+  const preview = useMemo(() => {
+    if (!agent || suggestions.length === 0) {
+      return null;
+    }
+
+    const previewRes = previewAgentSuggestions({
+      agent,
+      suggestions,
+      pipeline: getBrowserMarkdownPipeline(),
+    });
+
+    return previewRes.isOk() ? previewRes.value : null;
+  }, [agent, suggestions]);
+
+  return { preview };
 }
 
 export function usePatchAgentSuggestions({
