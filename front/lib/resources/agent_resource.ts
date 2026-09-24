@@ -1016,7 +1016,7 @@ export class AgentResource
    * `invalidateAgentResourceCaches` helpers that lower-level write and deletion paths can import
    * without forming a cycle back to this resource.
    */
-  private static readonly lookup = defineCachedResourceValue<
+  private static readonly store = defineCachedResourceValue<
     AgentResourceCacheKey,
     AgentResourceSnapshot,
     FullAgentResource
@@ -1040,7 +1040,7 @@ export class AgentResource
     agentIds: readonly string[]
   ): Promise<FullAgentResource[]> {
     const workspaceModelId = auth.getNonNullableWorkspace().id;
-    return this.lookup.fetchMany(
+    return this.store.fetchMany(
       agentIds.map((id) => ({ workspaceModelId, id }))
     );
   }
