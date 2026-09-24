@@ -19,11 +19,17 @@ export const FlushEditablesMessageSchema = z.object({
   type: z.literal("FLUSH_EDITABLES"),
 });
 
+export const SetEditModeMessageSchema = z.object({
+  type: z.literal("SET_EDIT_MODE"),
+  enabled: z.boolean(),
+});
+
 // Union of all supported message types coming from the parent window.
 export const SupportedMessageSchema = z.union([
   ExportPngMessageSchema,
   ExportSvgMessageSchema,
   FlushEditablesMessageSchema,
+  SetEditModeMessageSchema,
 ]);
 
 // Type definitions derived from schemas.

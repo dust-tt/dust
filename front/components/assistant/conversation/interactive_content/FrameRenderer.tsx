@@ -244,13 +244,14 @@ export function FrameRenderer({
   const isV2Author = !isFramePermissionsLoading && isFrameAuthor;
   const canEnterEditMode = Boolean(conversation && isFrameAuthor);
   const isEditSession = usesBatchEdit && isEditMode && canEnterEditMode;
-  // Legacy matches main: always editable. v2: only while the author is in Edit.
+  // Legacy matches main: always editable. v2: keep the iframe editable for authors so
+  // Preview↔Edit can toggle affordances via SET_EDIT_MODE without remounting.
   const isEditable = usesBatchEdit
-    ? isEditSession
+    ? canEnterEditMode
     : renderMode === "legacy" || Boolean(conversation && isFrameAuthor);
-  // Preview↔Edit remounts for v2; legacy keeps a stable instance id like main.
+  // Remount only after Save/discard/reload (contentRevision). Preview↔Edit keeps the same id.
   const vizInstanceId = usesBatchEdit
-    ? `viz-${fileId}-${contentRevision}-${isEditable ? "edit" : "preview"}`
+    ? `viz-${fileId}-${contentRevision}`
     : `viz-${fileId}`;
 
   const handleEditText = useCallback<EditTextFn>(
@@ -588,7 +589,7 @@ export function FrameRenderer({
               (canEnterEditMode ? (
                 <>
                   <MarkdownFilePreviewViewModeSwitch
-                    viewMode={isEditable ? "edit" : "preview"}
+                    viewMode={isEditSession ? "edit" : "preview"}
                     hideLabels={isMobile}
                     disabled={isSavingEdits}
                     onViewModeChange={(mode) => {
@@ -739,6 +740,7 @@ export function FrameRenderer({
                 isInDrawer={true}
                 isEditable={isEditable}
                 stagedEdits={usesBatchEdit && isEditable}
+                editModeActive={isEditSession}
                 onEditText={isEditable ? handleEditText : undefined}
                 ref={iframeRef}
               />

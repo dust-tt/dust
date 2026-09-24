@@ -79,6 +79,7 @@ const TestFrame = ({
         editText: null,
         addEventListener: null,
         stagedEdits: false,
+        editModeActive: false,
       }}
     >
       <Document

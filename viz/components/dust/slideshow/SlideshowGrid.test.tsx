@@ -454,6 +454,7 @@ it("keeps grid controls and duplicate previews out of PDF exports", () => {
         editText: null,
         addEventListener: null,
         stagedEdits: false,
+        editModeActive: false,
       }}
     >
       <Slideshow>
@@ -499,6 +500,7 @@ it("preserves the theme and page breaks in PDF mode", () => {
         editText: null,
         addEventListener: null,
         stagedEdits: false,
+        editModeActive: false,
       }}
     >
       <Slideshow theme={{ "--primary": "rebeccapurple" }}>

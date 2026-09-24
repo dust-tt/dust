@@ -47,7 +47,8 @@ interface EditableFrameProps {
 }
 
 export function EditableFrame({ children }: EditableFrameProps) {
-  const { editText, addEventListener, stagedEdits } = useVizContext();
+  const { editText, addEventListener, stagedEdits, editModeActive } =
+    useVizContext();
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const lastHoverPosRef = useRef<HoverState | null>(null);
   const hoveredSpanRef = useRef<HTMLElement | null>(null);
@@ -55,40 +56,53 @@ export function EditableFrame({ children }: EditableFrameProps) {
   // commits so FLUSH_EDITABLES can wait on in-flight stages.
   const isSavingRef = useRef(false);
   const commitInFlightRef = useRef<Promise<void> | null>(null);
+  // v2 Preview: EditableFrame stays mounted (no remount) but interactions are off.
+  const interactionsEnabled = !stagedEdits || editModeActive;
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const target = (e.target as Element).closest<HTMLElement>(
-      EDITABLE_SELECTOR
-    );
-
-    if (hoveredSpanRef.current && hoveredSpanRef.current !== target) {
-      hoveredSpanRef.current.classList.remove(...HOVER_CLS);
-    }
-
-    if (target && target.contentEditable !== "true") {
-      if (hoveredSpanRef.current !== target) {
-        target.classList.add(...HOVER_CLS);
-        hoveredSpanRef.current = target;
-      }
-
-      const rect = target.getBoundingClientRect();
-      const pos = { top: rect.top, left: rect.left + rect.width / 2 };
-      lastHoverPosRef.current = pos;
-      setHoverState(pos);
-    } else {
-      hoveredSpanRef.current = null;
-      setHoverState(null);
-    }
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
+  const clearHover = useCallback(() => {
     if (hoveredSpanRef.current) {
       hoveredSpanRef.current.classList.remove(...HOVER_CLS);
       hoveredSpanRef.current = null;
     }
-
     setHoverState(null);
   }, []);
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!interactionsEnabled) {
+        clearHover();
+        return;
+      }
+
+      const target = (e.target as Element).closest<HTMLElement>(
+        EDITABLE_SELECTOR
+      );
+
+      if (hoveredSpanRef.current && hoveredSpanRef.current !== target) {
+        hoveredSpanRef.current.classList.remove(...HOVER_CLS);
+      }
+
+      if (target && target.contentEditable !== "true") {
+        if (hoveredSpanRef.current !== target) {
+          target.classList.add(...HOVER_CLS);
+          hoveredSpanRef.current = target;
+        }
+
+        const rect = target.getBoundingClientRect();
+        const pos = { top: rect.top, left: rect.left + rect.width / 2 };
+        lastHoverPosRef.current = pos;
+        setHoverState(pos);
+      } else {
+        hoveredSpanRef.current = null;
+        setHoverState(null);
+      }
+    },
+    [clearHover, interactionsEnabled]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    clearHover();
+  }, [clearHover]);
 
   const beginEditing = useCallback((target: HTMLElement) => {
     if (target.contentEditable === "true") {
@@ -109,7 +123,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
   // opted in, so requiring a second click feels quirky.
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
-      if (stagedEdits) {
+      if (!interactionsEnabled || stagedEdits) {
         return;
       }
       const target = (e.target as Element).closest<HTMLElement>(
@@ -120,12 +134,12 @@ export function EditableFrame({ children }: EditableFrameProps) {
       }
       beginEditing(target);
     },
-    [beginEditing, stagedEdits]
+    [beginEditing, interactionsEnabled, stagedEdits]
   );
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
-      if (!stagedEdits) {
+      if (!interactionsEnabled || !stagedEdits) {
         return;
       }
       const target = (e.target as Element).closest<HTMLElement>(
@@ -136,7 +150,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
       }
       beginEditing(target);
     },
-    [beginEditing, stagedEdits]
+    [beginEditing, interactionsEnabled, stagedEdits]
   );
 
   const commitEditable = useCallback(
@@ -280,6 +294,23 @@ export function EditableFrame({ children }: EditableFrameProps) {
     });
   }, [addEventListener, commitEditable, stagedEdits]);
 
+  // Leaving Edit without remount: drop hover + abort any in-progress contentEditable.
+  useEffect(() => {
+    if (interactionsEnabled) {
+      return;
+    }
+    clearHover();
+    const active = document.querySelector<HTMLElement>(
+      `${EDITABLE_SELECTOR}[contenteditable="true"]`
+    );
+    if (active) {
+      active.textContent = active.dataset.originalText ?? active.textContent;
+      active.contentEditable = "inherit";
+      active.classList.remove(...ACTIVE_CLS);
+      delete active.dataset.originalText;
+    }
+  }, [clearHover, interactionsEnabled]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const target = (e.target as Element).closest<HTMLElement>(
       EDITABLE_SELECTOR
@@ -316,7 +347,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
       >
         {children}
       </div>
-      <Tooltip open={!!hoverState}>
+      <Tooltip open={interactionsEnabled && !!hoverState}>
         <TooltipTrigger asChild>
           <span
             style={

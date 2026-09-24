@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
       frameId?: string;
       isEditable?: boolean;
       stagedEdits?: boolean;
+      editModeActive?: boolean;
       onEditText?: EditTextFn;
       visualization?: { identifier: string };
     }) => null
@@ -220,7 +221,7 @@ describe("FrameRenderer", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps Frame v2 read-only until the author enters edit mode", () => {
+  it("keeps Frame v2 Preview without edit affordances until Edit is selected", () => {
     render(
       <FrameRenderer
         conversation={conversation}
@@ -231,11 +232,14 @@ describe("FrameRenderer", () => {
       />
     );
 
+    // Iframe stays editable-capable so Preview↔Edit does not remount; Edit mode is off.
     expect(mocks.iframe).toHaveBeenCalledWith(
       expect.objectContaining({
         frameId: "frame_1",
-        isEditable: false,
-        onEditText: undefined,
+        isEditable: true,
+        stagedEdits: true,
+        editModeActive: false,
+        onEditText: expect.any(Function),
       })
     );
     expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute(
@@ -263,6 +267,7 @@ describe("FrameRenderer", () => {
         frameId: "frame_1",
         isEditable: true,
         stagedEdits: true,
+        editModeActive: true,
         onEditText: expect.any(Function),
       })
     );
@@ -353,7 +358,7 @@ describe("FrameRenderer", () => {
     );
   });
 
-  it("remounts the iframe when switching between Preview and Edit", () => {
+  it("does not remount the iframe when switching between Preview and Edit", () => {
     render(
       <FrameRenderer
         conversation={conversation}
@@ -364,22 +369,21 @@ describe("FrameRenderer", () => {
       />
     );
 
-    const previewIdentifier =
-      mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier;
-    expect(previewIdentifier).toBe("viz-frame_1-0-preview");
+    const previewCall = mocks.iframe.mock.calls.at(-1)?.[0];
+    expect(previewCall?.visualization?.identifier).toBe("viz-frame_1-0");
+    expect(previewCall?.editModeActive).toBe(false);
 
     fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
 
-    const editIdentifier =
-      mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier;
-    expect(editIdentifier).toBe("viz-frame_1-0-edit");
-    expect(editIdentifier).not.toEqual(previewIdentifier);
+    const editCall = mocks.iframe.mock.calls.at(-1)?.[0];
+    expect(editCall?.visualization?.identifier).toBe("viz-frame_1-0");
+    expect(editCall?.editModeActive).toBe(true);
 
     fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
 
-    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier).toBe(
-      "viz-frame_1-0-preview"
-    );
+    const backCall = mocks.iframe.mock.calls.at(-1)?.[0];
+    expect(backCall?.visualization?.identifier).toBe("viz-frame_1-0");
+    expect(backCall?.editModeActive).toBe(false);
   });
 
   it("stages v2 edits without publishing until Save", async () => {
@@ -451,7 +455,7 @@ describe("FrameRenderer", () => {
     await waitFor(() => {
       expect(
         mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier
-      ).toBe("viz-frame_1-1-preview");
+      ).toBe("viz-frame_1-1");
     });
     expect(mocks.mutateFileContent).toHaveBeenCalled();
     expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute(

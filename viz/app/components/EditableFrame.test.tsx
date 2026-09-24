@@ -17,14 +17,22 @@ function renderEditable(
   {
     addEventListener = null,
     stagedEdits = false,
+    editModeActive = false,
   }: {
     addEventListener?: ReturnType<typeof vi.fn> | null;
     stagedEdits?: boolean;
+    editModeActive?: boolean;
   } = {}
 ) {
   return render(
     <VizContext.Provider
-      value={{ isPdfMode: false, editText, addEventListener, stagedEdits }}
+      value={{
+        isPdfMode: false,
+        editText,
+        addEventListener,
+        stagedEdits,
+        editModeActive,
+      }}
     >
       <EditableFrame>{children}</EditableFrame>
     </VizContext.Provider>
@@ -57,7 +65,7 @@ describe("EditableFrame", () => {
       <span data-editable data-raw-text={encodeURIComponent("Hello")}>
         Hello
       </span>,
-      { stagedEdits: true }
+      { stagedEdits: true, editModeActive: true }
     );
 
     const span = container.querySelector("[data-editable]") as HTMLElement;
@@ -65,6 +73,21 @@ describe("EditableFrame", () => {
 
     expect(span.contentEditable).toBe("true");
     expect(span.dataset.originalText).toBe("Hello");
+  });
+
+  it("ignores clicks while staging is mounted but Edit mode is off (Preview)", () => {
+    const editText = vi.fn();
+    const { container } = renderEditable(
+      editText,
+      <span data-editable data-raw-text={encodeURIComponent("Hello")}>
+        Hello
+      </span>,
+      { stagedEdits: true, editModeActive: false }
+    );
+
+    const span = container.querySelector("[data-editable]") as HTMLElement;
+    fireEvent.click(span);
+    expect(span.contentEditable).not.toBe("true");
   });
 
   it("saves overlapping blurs when staging instead of dropping the second edit", async () => {
@@ -97,7 +120,7 @@ describe("EditableFrame", () => {
           Two
         </span>
       </>,
-      { stagedEdits: true }
+      { stagedEdits: true, editModeActive: true }
     );
 
     const [first, second] = Array.from(
@@ -139,7 +162,7 @@ describe("EditableFrame", () => {
       <span data-editable data-raw-text={encodeURIComponent("Hello")}>
         Hello
       </span>,
-      { addEventListener, stagedEdits: true }
+      { addEventListener, stagedEdits: true, editModeActive: true }
     );
 
     expect(addEventListener).toHaveBeenCalledWith(

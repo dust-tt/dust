@@ -210,6 +210,7 @@ it("offers fullscreen for a single slide and excludes the controls from PDF expo
         editText: null,
         addEventListener: null,
         stagedEdits: false,
+        editModeActive: false,
       }}
     >
       <Slideshow className="pdf-deck">
