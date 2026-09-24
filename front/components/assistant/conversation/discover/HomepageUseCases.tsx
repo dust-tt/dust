@@ -36,30 +36,19 @@ export function HomepageUseCases({
   const { useCases, isUseCasesLoading } = useHomepageUseCases({ workspaceId });
 
   const [page, setPage] = useState<HomepageUseCaseType[]>([]);
+  const stillOffered = new Set(useCases.map((useCase) => useCase.id));
+
+  if (page.length > 0 && !page.every(({ id }) => stillOffered.has(id))) {
+    setPage(sampleSize(useCases, VISIBLE_COUNT));
+  } else if (page.length === 0 && useCases.length > 0) {
+    setPage(sampleSize(useCases, VISIBLE_COUNT));
+  }
 
   useEffect(() => {
-    const stillOffered = new Set(useCases.map((useCase) => useCase.id));
-
-    if (useCases.length === 0) {
-      if (page.length > 0) {
-        setPage([]);
-      }
-      return;
-    }
-
-    if (
-      page.length > 0 &&
-      page.every((useCase) => stillOffered.has(useCase.id))
-    ) {
-      return;
-    }
-
-    const next = sampleSize(useCases, VISIBLE_COUNT);
-    next.forEach((useCase) => {
-      trackHomepageUseCaseView({ useCaseId: useCase.id });
+    page.forEach(({ id }) => {
+      trackHomepageUseCaseView({ useCaseId: id });
     });
-    setPage(next);
-  }, [page, useCases]);
+  }, [page]);
 
   const [isTyping, setIsTyping] = useState(false);
 
