@@ -1,6 +1,7 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -74,6 +75,34 @@ type BatchCacheEntry<Input> = {
   otherKey: string | null;
 };
 
+const RESOURCE_CACHE_READ_METRIC = "resource_cache.read";
+const RESOURCE_CACHE_WRITE_METRIC = "resource_cache.write";
+
+// Every result is reported on every batch, zeros included, so a cache serving nothing shows as
+// hit 0 rather than a missing series.
+function recordCacheReads(
+  cacheId: string,
+  counts: { hit: number; miss: number; error: number }
+) {
+  for (const [result, count] of Object.entries(counts)) {
+    statsDMetrics.increment(RESOURCE_CACHE_READ_METRIC, count, [
+      `cache_id:${cacheId}`,
+      `result:${result}`,
+    ]);
+  }
+}
+
+function recordCacheWrite(
+  cacheId: string,
+  result: "ok" | "error",
+  count: number
+) {
+  statsDMetrics.increment(RESOURCE_CACHE_WRITE_METRIC, count, [
+    `cache_id:${cacheId}`,
+    `result:${result}`,
+  ]);
+}
+
 function warnCacheFailure(cacheId: string, err: unknown) {
   logger.warn(
     { cacheId, err: normalizeError(err) },
@@ -144,7 +173,9 @@ async function writeBatchCacheValues<T>(
   }
   try {
     await redis.mSet([...writes]);
+    recordCacheWrite(cacheId, "ok", writes.size);
   } catch (err) {
+    recordCacheWrite(cacheId, "error", writes.size);
     warnCacheFailure(cacheId, err);
   }
 }
@@ -192,6 +223,7 @@ export function cacheManyWithRedis<T, Input>(
       redis = await getRedisCacheClient({ origin: "cache_with_redis" });
     } catch (err) {
       warnCacheFailure(cacheId, err);
+      recordCacheReads(cacheId, { hit: 0, miss: 0, error: inputs.length });
       return load(inputs);
     }
 
@@ -202,10 +234,16 @@ export function cacheManyWithRedis<T, Input>(
     );
     if (valuesRes.isErr()) {
       warnCacheFailure(cacheId, valuesRes.error);
+      recordCacheReads(cacheId, { hit: 0, miss: 0, error: inputs.length });
       return load(inputs);
     }
     const values = valuesRes.value;
     const misses = entries.filter(({ readKey }) => !values.has(readKey));
+    recordCacheReads(cacheId, {
+      hit: entries.length - misses.length,
+      miss: misses.length,
+      error: 0,
+    });
 
     // The loader stays outside Redis error handling: database failures must propagate.
     const loaded =
