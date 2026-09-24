@@ -484,6 +484,7 @@ describe("ensureConversationSandboxReady", () => {
     expect(result.isOk()).toBe(true);
     expect(mockEnsureFrameSandboxActive).toHaveBeenCalledWith(auth, frame, {
       requireRunning: false,
+      wakeOnly: false,
     });
     expect(mockForFrameSandboxProvisioning).toHaveBeenCalledWith(auth, frame, {
       sandboxOnlyMounts: [

@@ -45,6 +45,7 @@ vi.mock("@app/lib/lock", () => ({
   executeWithLock: mockExecuteWithLock,
 }));
 
+import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -1375,6 +1376,23 @@ describe("SandboxResource.ensureActive", () => {
     expect(persisted?.lastRuntimeRefreshAt).toBeNull();
   });
 
+  async function createFrameInPod() {
+    const workspace = authenticator.getNonNullableWorkspace();
+    const pod = await SpaceFactory.project(workspace);
+    return FileFactory.create(authenticator, null, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+      mountFilePath: `${getPodFilesBasePath({
+        workspaceId: workspace.sId,
+        podId: pod.sId,
+      })}Frame/${FRAME_MANIFEST_FILE}`,
+    });
+  }
+
   // requireRunning is what lets a caller running inside a request use a sandbox without ever
   // waiting on one being made ready. It runs entirely off a lock-free read: it performs no
   // lifecycle transition, and queueing concurrent invocations of a busy owner behind the
@@ -1382,23 +1400,6 @@ describe("SandboxResource.ensureActive", () => {
   // reports itself as running right up until it is destroyed and recreated, so the kill marker
   // is part of the check.
   describe("with requireRunning", () => {
-    async function createFrameInPod() {
-      const workspace = authenticator.getNonNullableWorkspace();
-      const pod = await SpaceFactory.project(workspace);
-      return FileFactory.create(authenticator, null, {
-        contentType: frameV2ContentType,
-        fileName: "manifest.json",
-        fileSize: 1,
-        status: "created",
-        useCase: "project_context",
-        useCaseMetadata: { spaceId: pod.sId },
-        mountFilePath: `${getPodFilesBasePath({
-          workspaceId: workspace.sId,
-          podId: pod.sId,
-        })}Frame/${FRAME_MANIFEST_FILE}`,
-      });
-    }
-
     it("refuses a running sandbox that has a kill requested", async () => {
       const frame = await createFrameInPod();
       await SandboxFactory.createForFrame(authenticator, frame, {
@@ -1498,6 +1499,132 @@ describe("SandboxResource.ensureActive", () => {
 
       expect(result.isErr()).toBe(true);
       expect(mockExecuteWithLock).not.toHaveBeenCalled();
+    });
+  });
+
+  // wakeOnly is the pre-warm's mode: it may wake a sleeping sandbox, but creating one would mark it
+  // running before its mounts and state are set up, so creation is left to a full ensure.
+  describe("with wakeOnly", () => {
+    it("wakes a sleeping sandbox", async () => {
+      const frame = await createFrameInPod();
+      await SandboxFactory.createForFrame(authenticator, frame, {
+        status: "sleeping",
+      });
+
+      const result = await FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        { wakeOnly: true }
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        return;
+      }
+      expect(result.value.wokeFromSleep).toBe(true);
+      expect(mockProviderWake).toHaveBeenCalled();
+      expect(result.value.sandbox.status).toBe("running");
+    });
+
+    it("uses a running sandbox without taking the lifecycle lock", async () => {
+      const frame = await createFrameInPod();
+      const running = await SandboxFactory.createForFrame(
+        authenticator,
+        frame,
+        { status: "running" }
+      );
+
+      mockExecuteWithLock.mockClear();
+      const result = await FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        { wakeOnly: true }
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        return;
+      }
+      expect(result.value.sandbox.sId).toBe(running.sId);
+      expect(mockExecuteWithLock).not.toHaveBeenCalled();
+    });
+
+    it("refuses to create a sandbox when the owner has none", async () => {
+      const frame = await createFrameInPod();
+
+      const result = await FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        { wakeOnly: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        return;
+      }
+      expect(isSandboxNotRunningError(result.error)).toBe(true);
+      expect(mockProviderCreate).not.toHaveBeenCalled();
+      expect(
+        await FrameSandboxAdapter.fetchSandbox(authenticator, frame)
+      ).toBeNull();
+    });
+
+    it("refuses to recreate a deleted sandbox", async () => {
+      const frame = await createFrameInPod();
+      await SandboxFactory.createForFrame(authenticator, frame, {
+        status: "deleted",
+      });
+
+      const result = await FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        { wakeOnly: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      expect(mockProviderCreate).not.toHaveBeenCalled();
+    });
+
+    it("refuses to destroy and recreate a kill-requested sandbox", async () => {
+      const frame = await createFrameInPod();
+      await SandboxFactory.createForFrame(authenticator, frame, {
+        status: "running",
+        killRequestedAt: new Date(),
+      });
+
+      const result = await FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        { wakeOnly: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      expect(mockProviderDestroy).not.toHaveBeenCalled();
+      expect(mockProviderCreate).not.toHaveBeenCalled();
+    });
+
+    it("refuses to recreate a sandbox that fails to wake", async () => {
+      const frame = await createFrameInPod();
+      await SandboxFactory.createForFrame(authenticator, frame, {
+        status: "sleeping",
+      });
+      mockProviderWake.mockResolvedValueOnce(
+        new Err(new SandboxNotFoundError("gone"))
+      );
+
+      const result = await FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        { wakeOnly: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      expect(mockProviderCreate).not.toHaveBeenCalled();
+      const persisted = await FrameSandboxAdapter.fetchSandbox(
+        authenticator,
+        frame
+      );
+      expect(persisted?.status).toBe("sleeping");
     });
   });
 

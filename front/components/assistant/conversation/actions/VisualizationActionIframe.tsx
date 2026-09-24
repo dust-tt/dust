@@ -3,6 +3,7 @@ import { SandboxFunctionToolApprovalCard } from "@app/components/actions/blocked
 import { useVisualizationRetry } from "@app/hooks/conversations";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { usePrewarmFrameSandbox } from "@app/hooks/usePrewarmFrameSandbox";
 import type {
   SandboxFunctionMCPApproveExecutionEvent,
   SandboxFunctionToolPersonalAuthRequiredEvent,
@@ -934,6 +935,12 @@ export const VisualizationActionIframe = forwardRef<
       scopedUserIdentity
     );
   }, [canInvokeFunctions, scopedUserIdentity, workspaceId]);
+
+  usePrewarmFrameSandbox({
+    workspaceId,
+    frameId: props.frameId,
+    disabled: !runtimeAccess.canInvokeFunctions,
+  });
 
   const resolveUserIdentity = useCallback(
     () =>

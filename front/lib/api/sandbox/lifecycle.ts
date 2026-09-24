@@ -351,13 +351,19 @@ async function ensureConversationSandboxReadyRun(
 export async function ensureFrameSandboxReady(
   auth: Authenticator,
   frame: FileResource,
-  { requireRunning = false }: { requireRunning?: boolean } = {}
+  {
+    requireRunning = false,
+    wakeOnly = false,
+  }: { requireRunning?: boolean; wakeOnly?: boolean } = {}
 ): Promise<
   Result<EnsureSandboxReadyWithScopeResult<FrameSandboxScope>, Error>
 > {
   return ensureOwnerSandboxReady(auth, {
     ensureActive: () =>
-      FrameSandboxAdapter.ensureSandboxActive(auth, frame, { requireRunning }),
+      FrameSandboxAdapter.ensureSandboxActive(auth, frame, {
+        requireRunning,
+        wakeOnly,
+      }),
     deriveConfig: (scope) => ({
       getFileSystem: () =>
         DustFileSystem.forFrameSandboxProvisioning(auth, frame, {

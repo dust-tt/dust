@@ -266,7 +266,10 @@ export class FrameSandboxAdapter {
   static async ensureSandboxActive(
     auth: Authenticator,
     frame: FrameSandboxScopeOwner,
-    { requireRunning = false }: { requireRunning?: boolean } = {}
+    {
+      requireRunning = false,
+      wakeOnly = false,
+    }: { requireRunning?: boolean; wakeOnly?: boolean } = {}
   ): Promise<Result<EnsureSandboxResult<FrameSandboxScope>, Error>> {
     return SandboxResource.ensureActive(
       auth,
@@ -282,6 +285,7 @@ export class FrameSandboxAdapter {
       {
         beforeSleep: this.sqliteStatePreSleepCheck(auth, frame),
         requireRunning,
+        wakeOnly,
       }
     );
   }
