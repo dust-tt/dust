@@ -1227,6 +1227,41 @@ export function useMCPServerViewsFromSpaces(
 }
 
 /**
+ * Server views of every space the user is a member of. The backend resolves the spaces itself, so
+ * callers don't need to fetch spaces first.
+ */
+export function useMCPServerViewsFromMemberSpaces(
+  owner: LightWorkspaceType,
+  options?: SWRConfiguration & {
+    disabled?: boolean;
+    includeRestrictedToSkills?: boolean;
+  }
+) {
+  const { fetcher } = useFetcher();
+  const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
+  const { includeRestrictedToSkills = false, ...swrOptions } = options ?? {};
+
+  const queryParams = new URLSearchParams({ availabilities: "manual,auto" });
+  if (includeRestrictedToSkills) {
+    queryParams.set("includeRestrictedToSkills", "true");
+  }
+
+  const url = `/api/w/${owner.sId}/mcp/views?${queryParams.toString()}`;
+  const { data, error, mutate } = useSWRWithDefaults(
+    url,
+    configFetcher,
+    swrOptions
+  );
+
+  return {
+    serverViews: data?.serverViews ?? emptyArray(),
+    isLoading: !error && !data && !swrOptions.disabled,
+    isError: error,
+    mutateServerViews: mutate,
+  };
+}
+
+/**
  * JIT-attachable server views only (tools requiring configuration are filtered out
  * server-side), in a light serialization without tool input schemas nor authorization.
  * This is the cheap variant for always-mounted surfaces (conversation capabilities

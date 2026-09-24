@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/mcp_oauth_prerequisites";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -20,7 +21,7 @@ type MCPViewsRequestAvailabilityType = z.infer<
 >;
 
 const GetMCPViewsRequestSchema = z.object({
-  spaceIds: z.array(z.string()),
+  spaceIds: z.array(z.string()).optional(),
   availabilities: z.array(MCPViewsRequestAvailabilitySchema),
 });
 
@@ -40,7 +41,8 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
   const spaceIds = ctx.req.query("spaceIds");
   const availabilities = ctx.req.query("availabilities");
 
-  if (!spaceIds || !availabilities) {
+  // A missing `spaceIds` defaults to all member spaces below; an empty one is invalid.
+  if (spaceIds === "" || !availabilities) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
@@ -51,7 +53,7 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
   }
 
   const queryValidation = GetMCPViewsRequestSchema.safeParse({
-    spaceIds: spaceIds.split(","),
+    spaceIds: spaceIds?.split(","),
     availabilities: availabilities.split(","),
   });
   if (!queryValidation.success) {
@@ -68,20 +70,33 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
   const includeRestrictedToSkills =
     ctx.req.query("includeRestrictedToSkills") === "true";
 
-  const views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
-    auth,
-    query.spaceIds,
-    {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ],
-      isRestrictedToSkills: includeRestrictedToSkills ? undefined : false,
-    }
-  );
+  const listOptions = {
+    includeHeavyAttributes: [
+      "authorization",
+      "cachedTools",
+      "customHeaders",
+      "lastError",
+      "sharedSecret",
+    ] as const,
+    isRestrictedToSkills: includeRestrictedToSkills ? undefined : false,
+  };
+
+  // Without `spaceIds`, default to all the spaces the user is a member of.
+  let views: MCPServerViewResource[];
+  if (query.spaceIds) {
+    views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
+      auth,
+      query.spaceIds,
+      listOptions
+    );
+  } else {
+    const memberSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+    views = await MCPServerViewResource.listBySpacesEnsuringAutoViews(
+      auth,
+      memberSpaces,
+      listOptions
+    );
+  }
 
   const flattenedServerViews = views
     .map((v) => v.toJSON())
