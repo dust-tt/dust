@@ -91,6 +91,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       cursor: "previous-cursor",
       sortBy: undefined,
       sortOrder: undefined,
+      permissionFiltering: undefined,
       filters: noFilters,
     });
     expect(await response.json()).toEqual({
@@ -138,6 +139,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       cursor: undefined,
       sortBy: "name",
       sortOrder: "desc",
+      permissionFiltering: undefined,
       filters,
     });
   });
@@ -146,6 +148,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     { limit: 0 },
     { limit: 101 },
     { cursor: [{}] },
+    { permissionFiltering: "redact_unreadable" },
     { editedByMe: false },
     { sortBy: "unknown" },
     { sortOrder: "unknown" },
@@ -160,6 +163,37 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
 
     expect(response.status).toBe(400);
     expect(searchAgents).not.toHaveBeenCalled();
+  });
+
+  it("passes unrestricted filtering through for admins", async () => {
+    const { workspace } = await setup("admin");
+    searchAgents.mockResolvedValue(
+      new Ok({ agents: [], hasMore: false, nextCursor: null })
+    );
+
+    const response = await searchRequest(workspace.sId, {
+      permissionFiltering: "unrestricted",
+    });
+
+    expect(response.status).toBe(200);
+    expect(searchAgents).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ permissionFiltering: "unrestricted" })
+    );
+  });
+
+  it("forbids unrestricted search for non-admins", async () => {
+    const { workspace } = await setup();
+    searchAgents.mockResolvedValue(new Err("unrestricted_requires_admin"));
+
+    const response = await searchRequest(workspace.sId, {
+      permissionFiltering: "unrestricted",
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "app_auth_error" },
+    });
   });
 
   it("returns a bad request when search rejects the cursor", async () => {

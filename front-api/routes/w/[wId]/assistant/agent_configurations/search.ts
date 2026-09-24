@@ -24,6 +24,7 @@ app.post(
       query,
       limit,
       cursor,
+      permissionFiltering,
       status,
       scope,
       tagIds,
@@ -39,6 +40,7 @@ app.post(
       cursor,
       sortBy,
       sortOrder,
+      permissionFiltering,
       filters: {
         status,
         scope,
@@ -50,6 +52,15 @@ app.post(
     });
 
     if (result.isErr()) {
+      if (result.error === "unrestricted_requires_admin") {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "Only admins can search all agents of the workspace.",
+          },
+        });
+      }
       if (result.error === "invalid_cursor") {
         return apiError(ctx, {
           status_code: 400,
