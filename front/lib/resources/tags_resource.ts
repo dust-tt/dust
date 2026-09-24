@@ -44,9 +44,25 @@ export class TagResource extends BaseResource<TagModel> {
     auth: Authenticator,
     blob: CreationAttributes<TagModel>
   ) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Recreating a tag whose name was previously soft-deleted restores that row (undelete) rather
+    // than inserting a duplicate.
+    const existing = await TagModel.findOne({
+      where: {
+        workspaceId,
+        name: blob.name,
+      },
+      includeDeleted: true,
+    });
+    if (existing?.deletedAt) {
+      await existing.update({ deletedAt: null, kind: blob.kind });
+      return new this(TagModel, existing.get());
+    }
+
     const tag = await TagModel.create({
       ...blob,
-      workspaceId: auth.getNonNullableWorkspace().id,
+      workspaceId,
     });
 
     return new this(TagModel, tag.get());
@@ -261,19 +277,16 @@ export class TagResource extends BaseResource<TagModel> {
     await this.update({ name, kind });
   }
 
+  /**
+   * @cc [owner:tdraier,label:backend;architecture] tag-delete-is-soft-delete
+   * Deleting a tag only soft-deletes it (see `SoftDeletableWorkspaceAwareModel`): its row is kept so
+   * historical `tag_agents` links stay FK-valid and the name can be restored on recreation.
+   */
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
-      await TagAgentModel.destroy({
-        where: {
-          tagId: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-        transaction,
-      });
-
       await this.model.destroy({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -286,6 +299,22 @@ export class TagResource extends BaseResource<TagModel> {
     } catch (err) {
       return new Err(normalizeError(err));
     }
+  }
+
+  // Hard-deletes every tag of the workspace (and its `tag_agents` links) for workspace scrub/deletion,
+  // so no soft-deleted row is left behind (see `SoftDeletableWorkspaceAwareModel`).
+  static async deleteAllForWorkspace(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    await TagAgentModel.destroy({ where: { workspaceId }, transaction });
+    await TagModel.destroy({
+      where: { workspaceId },
+      hardDelete: true,
+      transaction,
+    });
   }
 
   get sId(): string {
