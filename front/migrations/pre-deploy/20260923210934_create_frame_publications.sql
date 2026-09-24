@@ -16,14 +16,11 @@ CREATE TABLE "public"."frame_publications" (
 	"createdAt" timestamp with time zone NOT NULL,
 	"updatedAt" timestamp with time zone NOT NULL,
 	"fileId" bigint NOT NULL,
-	"publishedAt" timestamp with time zone NOT NULL,
 	"workspaceId" bigint NOT NULL,
 	"id" bigint DEFAULT nextval('frame_publications_id_seq'::regclass) NOT NULL,
 	"publishedByUserId" bigint,
 	"publicationId" character varying(255) COLLATE "pg_catalog"."default" NOT NULL,
-	"publishedByAgentConfigurationId" character varying(255) COLLATE "pg_catalog"."default" DEFAULT NULL::character varying,
-	"description" text COLLATE "pg_catalog"."default" NOT NULL,
-	"uiBundleSha256" character varying(64) COLLATE "pg_catalog"."default" NOT NULL
+	"publishedByAgentConfigurationId" character varying(255) COLLATE "pg_catalog"."default" DEFAULT NULL::character varying
 );
 
 SET SESSION statement_timeout = 3000;

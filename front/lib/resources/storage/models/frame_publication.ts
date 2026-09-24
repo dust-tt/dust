@@ -3,19 +3,16 @@ import type {
   CreationOptional,
   ForeignKey,
 } from "@app/lib/resources/storage/data_types";
-import {
-  DANGEROUSLY_UNBOUNDED_TEXT,
-  DataTypes,
-} from "@app/lib/resources/storage/data_types";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 /**
- * One row per immutable Frames v2 publication. The publication's content lives in GCS under
- * `publications/<publicationId>/`, committed by its `publication.json`; this row mirrors the
- * descriptor fields worth querying. Which publication a Frame serves is still recorded on the
- * Frame (`useCaseMetadata.activePublicationId`).
+ * One row per immutable Frames v2 publication; `createdAt` is its publication time. The
+ * publication's content lives in GCS under `publications/<publicationId>/`, committed by its
+ * `publication.json`. Which publication a Frame serves is still recorded on the Frame
+ * (`useCaseMetadata.activePublicationId`).
  */
 export class FramePublicationModel extends WorkspaceAwareModel<FramePublicationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -23,11 +20,8 @@ export class FramePublicationModel extends WorkspaceAwareModel<FramePublicationM
 
   declare fileId: ForeignKey<FileModel["id"]>;
   declare publicationId: string;
-  declare publishedAt: Date;
   declare publishedByUserId: ForeignKey<UserModel["id"]> | null;
   declare publishedByAgentConfigurationId: string | null;
-  declare description: string;
-  declare uiBundleSha256: string;
 }
 
 FramePublicationModel.init(
@@ -50,22 +44,10 @@ FramePublicationModel.init(
       type: DataTypes.STRING(255),
       allowNull: false,
     },
-    publishedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
     publishedByAgentConfigurationId: {
       type: DataTypes.STRING(255),
       allowNull: true,
       defaultValue: null,
-    },
-    description: {
-      type: DANGEROUSLY_UNBOUNDED_TEXT,
-      allowNull: false,
-    },
-    uiBundleSha256: {
-      type: DataTypes.STRING(64),
-      allowNull: false,
     },
   },
   {

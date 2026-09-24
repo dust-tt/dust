@@ -44,13 +44,7 @@ async function addPublicationRow(
   frame: FileResource,
   publicationId: string
 ) {
-  await FramePublicationResource.makeNew(auth, {
-    description: "Track tasks.",
-    frame,
-    publicationId,
-    publishedAt: new Date(),
-    uiBundleSha256: "0".repeat(64),
-  });
+  await FramePublicationResource.makeNew(auth, { frame, publicationId });
 }
 
 async function createFrameWithFunction(

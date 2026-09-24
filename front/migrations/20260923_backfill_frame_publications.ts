@@ -188,13 +188,11 @@ makeScript(
               workspaceId: workspace.id,
               fileId: frame.id,
               publicationId,
-              publishedAt: new Date(descriptor.publishedAt),
+              createdAt: new Date(descriptor.publishedAt),
               publishedByUserId: descriptor.publisherId
                 ? (publisherModelIdsById.get(descriptor.publisherId) ?? null)
                 : null,
               publishedByAgentConfigurationId: null,
-              description: descriptor.manifest.description,
-              uiBundleSha256: descriptor.ui.bundleSha256,
             })),
             { ignoreDuplicates: true }
           );

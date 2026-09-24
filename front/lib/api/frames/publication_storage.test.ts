@@ -1164,8 +1164,8 @@ describe("frame_publications rows", () => {
     });
   }
 
-  it("records a row mirroring the stored descriptor", async () => {
-    const { auth, frame, workspaceId } = await setupFrame();
+  it("records a row for the stored publication and its publisher", async () => {
+    const { auth, frame } = await setupFrame();
 
     const stored = await storeFramePublication(auth, {
       frame,
@@ -1178,24 +1178,13 @@ describe("frame_publications rows", () => {
     if (stored.isErr()) {
       return;
     }
-    const { publicationId } = stored.value;
-    const descriptor = getStoredDescriptor(
-      getFramePublicationDescriptorPath({
-        workspaceId,
-        frameId: frame.sId,
-        publicationId,
-      })
-    );
 
     const rows = await listPublicationRows(frame);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
-      publicationId,
-      publishedAt: new Date(descriptor.publishedAt),
+      publicationId: stored.value.publicationId,
       publishedByUserId: auth.getNonNullableUser().id,
       publishedByAgentConfigurationId: null,
-      description: manifest.description,
-      uiBundleSha256: descriptor.ui.bundleSha256,
     });
   });
 

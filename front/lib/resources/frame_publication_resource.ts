@@ -42,19 +42,13 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
   static async makeNew(
     auth: Authenticator,
     {
-      description,
       frame,
       publicationId,
-      publishedAt,
       publishedByAgentConfigurationId,
-      uiBundleSha256,
     }: {
-      description: string;
       frame: FileResource;
       publicationId: string;
-      publishedAt: Date;
       publishedByAgentConfigurationId?: string;
-      uiBundleSha256: string;
     }
   ): Promise<FramePublicationResource> {
     this.assertFrameOfWorkspace(auth, frame);
@@ -63,11 +57,8 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
       workspaceId: auth.getNonNullableWorkspace().id,
       fileId: frame.id,
       publicationId,
-      publishedAt,
       publishedByUserId: auth.user()?.id ?? null,
       publishedByAgentConfigurationId: publishedByAgentConfigurationId ?? null,
-      description,
-      uiBundleSha256,
     });
 
     return new this(this.model, row.get());

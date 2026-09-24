@@ -316,12 +316,9 @@ export async function storeFramePublication(
   const descriptor = descriptorResult.data;
 
   await FramePublicationResource.makeNew(auth, {
-    description: descriptor.manifest.description,
     frame,
     publicationId: identity.publicationId,
-    publishedAt: new Date(descriptor.publishedAt),
     publishedByAgentConfigurationId,
-    uiBundleSha256: descriptor.ui.bundleSha256,
   });
 
   const publicationFiles: Array<{
