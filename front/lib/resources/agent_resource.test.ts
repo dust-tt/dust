@@ -1174,6 +1174,62 @@ describe("AgentResource", () => {
     });
   });
 
+  describe("batchCountFavorites", () => {
+    it("counts each agent's favorites, with zero for agents nobody favorites", async () => {
+      const { authenticator, workspace } = testContext;
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+      const [popular, unfavorited, ignored] = await Promise.all(
+        ["Popular", "Unfavorited", "Ignored"].map(async (name) => {
+          const agent = await AgentConfigurationFactory.createTestAgent(
+            authenticator,
+            { name, scope: "visible" }
+          );
+          const resource = await AgentResource.fetchById(
+            authenticator,
+            agent.sId
+          );
+          assert(resource);
+          return resource;
+        })
+      );
+      for (const [auth, agent, favorite] of [
+        [authenticator, popular, true],
+        [otherAuth, popular, true],
+        [authenticator, unfavorited, true],
+        [authenticator, unfavorited, false],
+      ] as const) {
+        expect((await agent.setUserFavorite(auth, favorite)).isOk()).toBe(true);
+      }
+
+      const counts = await AgentResource.batchCountFavorites(authenticator, [
+        popular,
+        unfavorited,
+        ignored,
+      ]);
+
+      expect(counts).toEqual(
+        new Map([
+          [popular.sId, 2],
+          [unfavorited.sId, 0],
+          [ignored.sId, 0],
+        ])
+      );
+    });
+
+    it("returns an empty map without agents", async () => {
+      expect(
+        await AgentResource.batchCountFavorites(testContext.authenticator, [])
+      ).toEqual(new Map());
+    });
+  });
+
   describe("bulkUpdate (model)", () => {
     it("saves a new version with the new model, keeping the agent's tools and author", async () => {
       const { authenticator, globalSpace } = testContext;
