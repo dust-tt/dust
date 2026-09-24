@@ -45,7 +45,7 @@ describe("useAppKeyboardShortcuts", () => {
     });
   });
 
-  it("toggles dark mode on Cmd/Ctrl+Shift+U", () => {
+  it("toggles dark mode on Cmd/Ctrl+Shift+L", () => {
     render(
       <ThemeProvider>
         <DesktopNavigationProvider>
@@ -55,11 +55,11 @@ describe("useAppKeyboardShortcuts", () => {
     );
     expect(screen.getByTestId("theme").textContent).toBe("system:false");
 
-    fire("U");
+    fire("L");
     expect(screen.getByTestId("theme").textContent).toBe("dark:true");
     expect(document.documentElement.classList.contains("dark")).toBe(true);
 
-    fire("u");
+    fire("l");
     expect(screen.getByTestId("theme").textContent).toBe("light:false");
     expect(document.documentElement.classList.contains("dark")).toBe(false);
   });

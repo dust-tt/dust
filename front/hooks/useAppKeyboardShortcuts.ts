@@ -24,10 +24,12 @@ export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
             event.preventDefault();
             toggleNavigationBar();
             break;
-          case "u":
+          case "l":
             // Toggle between light and dark. When the theme follows the system, switch to the
-            // opposite of what is currently displayed. Not "l": macOS binds Shift+Cmd+L to the
-            // "Search with Google" service and swallows the key before the page sees it.
+            // opposite of what is currently displayed. On macOS this is Ctrl+Shift+L: the OS
+            // owns Shift+Cmd+L as the system-wide "Search with Google" service and the page
+            // never sees it. Not "u": the composer's LinkExtension binds Mod-Shift-u to
+            // "Insert Link".
             event.preventDefault();
             setTheme(isDark ? "light" : "dark");
             break;

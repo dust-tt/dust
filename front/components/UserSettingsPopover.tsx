@@ -396,7 +396,7 @@ function CustomizationSection() {
     currentTheme ?? "system"
   );
   // Re-sync the draft when the theme changes outside this form (e.g. the
-  // Cmd/Ctrl+Shift+U shortcut), so the dropdown reflects the active theme.
+  // Ctrl+Shift+L shortcut), so the dropdown reflects the active theme.
   const [prevCurrentTheme, setPrevCurrentTheme] = useState(currentTheme);
   if (currentTheme !== prevCurrentTheme) {
     setPrevCurrentTheme(currentTheme);
