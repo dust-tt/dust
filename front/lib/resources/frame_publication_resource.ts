@@ -53,7 +53,7 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
       frame: FileResource;
       publicationId: string;
       publishedAt: Date;
-      publishedByAgentConfigurationId: string | null;
+      publishedByAgentConfigurationId?: string;
       uiBundleSha256: string;
     }
   ): Promise<FramePublicationResource> {
@@ -65,7 +65,7 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
       publicationId,
       publishedAt,
       publishedByUserId: auth.user()?.id ?? null,
-      publishedByAgentConfigurationId,
+      publishedByAgentConfigurationId: publishedByAgentConfigurationId ?? null,
       description,
       uiBundleSha256,
     });

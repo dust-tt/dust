@@ -49,7 +49,6 @@ async function addPublicationRow(
     frame,
     publicationId,
     publishedAt: new Date(),
-    publishedByAgentConfigurationId: null,
     uiBundleSha256: "0".repeat(64),
   });
 }

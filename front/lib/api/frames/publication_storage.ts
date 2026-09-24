@@ -320,7 +320,7 @@ export async function storeFramePublication(
     frame,
     publicationId: identity.publicationId,
     publishedAt: new Date(descriptor.publishedAt),
-    publishedByAgentConfigurationId: publishedByAgentConfigurationId ?? null,
+    publishedByAgentConfigurationId,
     uiBundleSha256: descriptor.ui.bundleSha256,
   });
 

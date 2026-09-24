@@ -40,9 +40,10 @@ type PublicationOutcome =
  * waiting always terminates.
  */
 /**
- * Delete the superseded publications of one Frame: their function rows, their
- * `frame_publications` row and their whole GCS prefix. Publications are enumerated from storage rather than from `sandbox_functions`, because
- * a publication that declares no function leaves no row behind to find it by.
+ * Delete the superseded publications of one Frame: their function rows, their `frame_publications`
+ * row and their whole GCS prefix. Publications are enumerated from storage rather than from
+ * `sandbox_functions`, because a publication that declares no function leaves no row behind to
+ * find it by.
  *
  * The age check reads `publishedAt` from the publication's own descriptor, which also keeps the
  * window between `storeFramePublication` and `activateFramePublication` safe: a publication
