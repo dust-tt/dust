@@ -10,6 +10,11 @@ import {
   ItemAuthor,
   SkillCatalogAvatar,
 } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
+import type { DiscoverySuggestionSection } from "@app/components/assistant/conversation/discover/discoveryTracking";
+import {
+  trackDiscoverySuggestionClick,
+  trackDiscoverySuggestionView,
+} from "@app/components/assistant/conversation/discover/discoveryTracking";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useDiscoveryFeatured,
@@ -29,7 +34,7 @@ import {
   cn,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const FEATURED_SLOT_COUNT = 3;
 const SECTION_ITEM_COUNT = 4;
@@ -105,14 +110,18 @@ export function DiscoverHome({
     workspaceId: owner.sId,
   });
 
-  const agentsById = new Map(
-    agentConfigurations
-      .filter((a) => a.status === "active")
-      .map((a) => [a.sId, a])
+  const resolve = useCallback(
+    (items: DiscoveryRankedItemType[]) => {
+      const agentsById = new Map(
+        agentConfigurations
+          .filter((a) => a.status === "active")
+          .map((a) => [a.sId, a])
+      );
+      const skillsById = new Map(skillsWithRelations.map((s) => [s.sId, s]));
+      return resolveCatalogItems(items, agentsById, skillsById);
+    },
+    [agentConfigurations, skillsWithRelations]
   );
-  const skillsById = new Map(skillsWithRelations.map((s) => [s.sId, s]));
-  const resolve = (items: DiscoveryRankedItemType[]) =>
-    resolveCatalogItems(items, agentsById, skillsById);
 
   const isCatalogLoading =
     (isAgentsLoading && agentConfigurations.length === 0) ||
@@ -120,8 +129,14 @@ export function DiscoverHome({
   const isCatalogRefreshing = isAgentsLoading && !isCatalogLoading;
 
   const featured = resolve(featuredItems);
-  const forYou = resolve(forYouItems).slice(0, SECTION_ITEM_COUNT);
-  const trending = resolve(trendingItems).slice(0, SECTION_ITEM_COUNT);
+  const forYou = useMemo(
+    () => resolve(forYouItems).slice(0, SECTION_ITEM_COUNT),
+    [forYouItems, resolve]
+  );
+  const trending = useMemo(
+    () => resolve(trendingItems).slice(0, SECTION_ITEM_COUNT),
+    [resolve, trendingItems]
+  );
 
   const onUse = (item: CatalogItem) =>
     item.kind === "agent" ? onAgentClick(item.agent) : onSkillClick(item.skill);
@@ -136,6 +151,7 @@ export function DiscoverHome({
       />
       <DiscoverSection
         title="Agent & Skill for you"
+        section="for_you"
         items={forYou}
         isLoading={isForYouLoading || isCatalogLoading}
         isRefreshing={isCatalogRefreshing}
@@ -146,6 +162,7 @@ export function DiscoverHome({
       />
       <DiscoverSection
         title="Trending in the workspace"
+        section="trending"
         items={trending}
         isLoading={isTrendingLoading || isCatalogLoading}
         isRefreshing={isCatalogRefreshing}
@@ -285,6 +302,7 @@ function FeaturedCarousel({
 
 interface DiscoverSectionProps {
   title: string;
+  section: DiscoverySuggestionSection;
   items: CatalogItem[];
   isLoading: boolean;
   isRefreshing: boolean;
@@ -296,6 +314,7 @@ interface DiscoverSectionProps {
 
 function DiscoverSection({
   title,
+  section,
   items,
   isLoading,
   isRefreshing,
@@ -304,6 +323,20 @@ function DiscoverSection({
   onDetails,
   onFindMore,
 }: DiscoverSectionProps) {
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    items.forEach((item) => {
+      trackDiscoverySuggestionView({
+        section,
+        itemKind: item.kind,
+        itemId: getItemId(item),
+      });
+    });
+  }, [isLoading, items, section]);
+
   return (
     <section className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -329,7 +362,14 @@ function DiscoverSection({
             <CatalogRow
               key={`${item.kind}-${getItemId(item)}`}
               item={item}
-              onUse={() => onUse(item)}
+              onUse={() => {
+                trackDiscoverySuggestionClick({
+                  section,
+                  itemKind: item.kind,
+                  itemId: getItemId(item),
+                });
+                onUse(item);
+              }}
               onPin={onPin && (() => onPin(item))}
               onDetails={() => onDetails(item)}
             />

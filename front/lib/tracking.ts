@@ -54,6 +54,7 @@ export const TRACKING_AREAS = {
   DUST_WRAPPED: "dust_wrapped",
   MENTIONS: "mentions",
   SKILLS: "skills",
+  DISCOVER: "discover",
   SIDEKICK: "sidekick",
   EXTENSION: "extension",
   PODS: "pods",
