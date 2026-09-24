@@ -570,6 +570,55 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     ).toBeNull();
   });
 
+  it("rejects updating an existing skill the caller cannot write", async () => {
+    const { workspace } = await createPublicApiMockRequest();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+    await GroupPermissionResource.setForEverybody(adminAuth, {
+      grantType: "create",
+      resourceType: "skill",
+    });
+    const owner = await UserFactory.basic();
+    const importer = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, owner, { role: "user" });
+    await MembershipFactory.associate(workspace, importer, { role: "user" });
+    const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      owner.sId,
+      workspace.sId
+    );
+    const importerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      importer.sId,
+      workspace.sId
+    );
+    await SkillFactory.create(ownerAuth, {
+      name: "Owned Skill",
+      instructions: "Original instructions.",
+      availability: "workspace_users",
+    });
+
+    const result = await importSkillsFromFiles(importerAuth, {
+      uploadedFiles: [
+        await makeSkillZipFile({
+          name: "Owned Skill",
+          instructions: "Should never be written.",
+        }),
+      ],
+      source: "api",
+      onConflict: "override",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "You don't have permission to update the following skills: Owned Skill."
+      );
+    }
+    const skill = await SkillResource.fetchByName(ownerAuth, "Owned Skill");
+    expect(skill?.instructions).toBe("Original instructions.");
+  });
+
   it("rejects the import for a key without the create/skill capability", async () => {
     const { auth, workspace } = await createPublicApiMockRequest({
       role: "user",
