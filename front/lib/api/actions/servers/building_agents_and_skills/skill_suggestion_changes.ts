@@ -233,11 +233,60 @@ export function checkSkillSuggestionKindAuthorized(
   return new Ok(undefined);
 }
 
+async function pruneSupersededSkillSuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  created: SkillSuggestionResource
+): Promise<void> {
+  const { kind } = created;
+  switch (kind) {
+    case "edit":
+      if (isEditSkillSuggestion(created)) {
+        await pruneConflictingSkillEditSuggestions(auth, skill, created);
+      }
+      return;
+    case "user_facing_description":
+      if (isUserFacingDescriptionSkillSuggestion(created)) {
+        await pruneConflictingSkillUserFacingDescriptionSuggestions(
+          auth,
+          skill,
+          [created]
+        );
+      }
+      return;
+    case "name":
+      if (isNameSkillSuggestion(created)) {
+        await pruneConflictingSkillNameSuggestions(auth, skill, [created]);
+      }
+      return;
+    case "availability":
+      if (isAvailabilitySkillSuggestion(created)) {
+        await pruneConflictingSkillAvailabilitySuggestions(auth, skill, [
+          created,
+        ]);
+      }
+      return;
+    case "editors":
+      if (isEditorsSkillSuggestion(created)) {
+        await pruneConflictingSkillEditorsSuggestions(auth, skill, [created]);
+      }
+      return;
+    case "delete":
+      await pruneConflictingSkillDeletionSuggestions(auth, skill, created);
+      return;
+    case "create":
+      // A creation targets its own placeholder skill: nothing else can conflict with it.
+      return;
+    default:
+      assertNever(kind);
+  }
+}
+
 /**
- * Records one skill suggestion and marks the pending suggestions it supersedes `outdated`, with
- * the same pruning each single-change tool applies for its kind.
+ * Records skill suggestions in a single insert and marks the pending suggestions they supersede
+ * `outdated`, with the same pruning each single-change tool applies for its kind.
  */
-export async function recordSkillSuggestion(
+export async function recordSkillSuggestions(
   auth: Authenticator,
   skill: SkillResource,
   {
@@ -247,6 +296,42 @@ export async function recordSkillSuggestion(
     conversation,
     batch,
   }: {
+    data: SkillSuggestionData[];
+    analysis: string | null;
+    title: string | null;
+    conversation: ConversationType;
+    batch: BatchSuggestionResource | null;
+  }
+): Promise<SkillSuggestionResource[]> {
+  const created = await SkillSuggestionResource.createSuggestionsForSkill(
+    auth,
+    skill,
+    data.map((d) => ({
+      ...d,
+      analysis,
+      title,
+      state: "pending" as const,
+      source: "conversational" as const,
+      sourceConversationIds: [conversation.id],
+      batchId: batch?.id ?? null,
+    }))
+  );
+
+  // One pruning pass per recorded kind: each reads the skill's pending suggestions of its kind.
+  for (const suggestion of created) {
+    await pruneSupersededSkillSuggestions(auth, skill, suggestion);
+  }
+
+  return created;
+}
+
+export async function recordSkillSuggestion(
+  auth: Authenticator,
+  skill: SkillResource,
+  {
+    data,
+    ...rest
+  }: {
     data: SkillSuggestionData;
     analysis: string | null;
     title: string | null;
@@ -254,61 +339,10 @@ export async function recordSkillSuggestion(
     batch: BatchSuggestionResource | null;
   }
 ): Promise<SkillSuggestionResource> {
-  const created = await SkillSuggestionResource.createSuggestionForSkill(
-    auth,
-    skill,
-    {
-      ...data,
-      analysis,
-      title,
-      state: "pending",
-      source: "conversational",
-      sourceConversationIds: [conversation.id],
-      batchId: batch?.id ?? null,
-    }
-  );
-
-  switch (data.kind) {
-    case "edit":
-      if (isEditSkillSuggestion(created)) {
-        await pruneConflictingSkillEditSuggestions(auth, skill, created);
-      }
-      break;
-    case "user_facing_description":
-      if (isUserFacingDescriptionSkillSuggestion(created)) {
-        await pruneConflictingSkillUserFacingDescriptionSuggestions(
-          auth,
-          skill,
-          [created]
-        );
-      }
-      break;
-    case "name":
-      if (isNameSkillSuggestion(created)) {
-        await pruneConflictingSkillNameSuggestions(auth, skill, [created]);
-      }
-      break;
-    case "availability":
-      if (isAvailabilitySkillSuggestion(created)) {
-        await pruneConflictingSkillAvailabilitySuggestions(auth, skill, [
-          created,
-        ]);
-      }
-      break;
-    case "editors":
-      if (isEditorsSkillSuggestion(created)) {
-        await pruneConflictingSkillEditorsSuggestions(auth, skill, [created]);
-      }
-      break;
-    case "delete":
-      await pruneConflictingSkillDeletionSuggestions(auth, skill, created);
-      break;
-    case "create":
-      // A creation targets its own placeholder skill: nothing else can conflict with it.
-      break;
-    default:
-      assertNever(data);
-  }
+  const [created] = await recordSkillSuggestions(auth, skill, {
+    data: [data],
+    ...rest,
+  });
 
   return created;
 }

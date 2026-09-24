@@ -25,6 +25,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
   AgentSuggestionData,
+  AgentSuggestionKind,
   CreateSuggestionType,
   DeleteSuggestionType,
   DescriptionSuggestionType,
@@ -381,10 +382,60 @@ export type SingletonAgentSuggestionData = Extract<
 
 /**
  * @cc [owner:fabiencelier,label:product] single-pending-per-singleton-kind
- * Recording a suggestion of a singleton kind MUST mark every other `pending` suggestion of the
- * same kind on the same agent `outdated` once the new one is inserted. Concurrent calls are not
- * serialized: they can leave several pending suggestions of that kind on the agent.
+ * Recording suggestions of singleton kinds MUST mark every other `pending` suggestion of the same
+ * kinds on the same agent `outdated`, and never the recorded ones. Concurrent calls are not
+ * serialized: they can leave several pending suggestions of a kind on the agent.
  */
+export async function recordSingletonAgentSuggestions(
+  auth: Authenticator,
+  agent: LightAgentConfigurationType,
+  {
+    data,
+    analysis,
+    conversation,
+    batch,
+  }: {
+    data: SingletonAgentSuggestionData[];
+    analysis: string | null;
+    conversation: ConversationType;
+    batch: BatchSuggestionResource | null;
+  }
+): Promise<AgentSuggestionResource[]> {
+  if (data.length === 0) {
+    return [];
+  }
+
+  // The listing may or may not see the rows inserted concurrently: they are excluded by id below.
+  const [suggestions, pending] = await Promise.all([
+    AgentSuggestionResource.createSuggestionsForAgent(
+      auth,
+      agent,
+      data.map((d) => ({
+        ...d,
+        analysis,
+        state: "pending" as const,
+        conversationId: conversation.id,
+        source: "conversational" as const,
+        batchId: batch?.id ?? null,
+      }))
+    ),
+    AgentSuggestionResource.listByAgentConfigurationId(auth, agent.sId, {
+      states: ["pending"],
+    }),
+  ]);
+
+  const recordedKinds = new Set<AgentSuggestionKind>(data.map((d) => d.kind));
+  const recordedIds = new Set(suggestions.map((s) => s.id));
+  // TODO(conversational-building): prune conflicting suggestions across batches.
+  await AgentSuggestionResource.bulkUpdateState(
+    auth,
+    pending.filter((s) => recordedKinds.has(s.kind) && !recordedIds.has(s.id)),
+    "outdated"
+  );
+
+  return suggestions;
+}
+
 export async function recordSingletonAgentSuggestion(
   auth: Authenticator,
   agent: LightAgentConfigurationType,
@@ -400,30 +451,12 @@ export async function recordSingletonAgentSuggestion(
     batch: BatchSuggestionResource | null;
   }
 ): Promise<AgentSuggestionResource> {
-  const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
-    auth,
-    agent,
-    {
-      ...data,
-      analysis,
-      state: "pending",
-      conversationId: conversation.id,
-      source: "conversational",
-      batchId: batch?.id ?? null,
-    }
-  );
-
-  // TODO(conversational-building): prune conflicting suggestions across batches.
-  const pending = await AgentSuggestionResource.listByAgentConfigurationId(
-    auth,
-    agent.sId,
-    { states: ["pending"], kind: data.kind }
-  );
-  await AgentSuggestionResource.bulkUpdateState(
-    auth,
-    pending.filter((s) => s.id !== suggestion.id),
-    "outdated"
-  );
+  const [suggestion] = await recordSingletonAgentSuggestions(auth, agent, {
+    data: [data],
+    analysis,
+    conversation,
+    batch,
+  });
 
   return suggestion;
 }
