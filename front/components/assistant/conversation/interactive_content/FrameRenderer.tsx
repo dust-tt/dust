@@ -269,23 +269,33 @@ export function FrameRenderer({
   const handleEditText = useCallback<EditTextFn>(
     async (params) => {
       if (!usesBatchEdit) {
+        // Remount only after the whole burst settles, with a single revalidate. Per-edit
+        // mutate+remount races (and remounts mid-burst) drop rapid successive edits — main
+        // never remounted, so optimistic DOM stuck; we still remount for #10579 but once.
         inFlightEditsRef.current += 1;
         try {
           const result = await editFrameText(params);
           if (result.success) {
-            try {
-              await mutateFileContent();
-              pendingRemountRef.current = true;
-            } catch {
-              // Mutation already succeeded; keep the inline edit rather than failing the blur.
-            }
+            pendingRemountRef.current = true;
           }
           return result;
         } finally {
           inFlightEditsRef.current -= 1;
           if (inFlightEditsRef.current === 0 && pendingRemountRef.current) {
             pendingRemountRef.current = false;
-            setContentRevision((revision) => revision + 1);
+            void (async () => {
+              try {
+                await mutateFileContent();
+              } catch {
+                // Mutation already succeeded server-side; remount anyway.
+              }
+              if (inFlightEditsRef.current === 0) {
+                setContentRevision((revision) => revision + 1);
+              } else {
+                // A new edit started during revalidate; remount after that burst.
+                pendingRemountRef.current = true;
+              }
+            })();
           }
         }
       }
