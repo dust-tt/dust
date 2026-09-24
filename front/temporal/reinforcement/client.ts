@@ -54,6 +54,8 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
       );
 
     for (const { workspaceModelId, workspaceId } of batch) {
+      // Every requested workspace has an entry: those without an active subscription get a
+      // free-no-plan placeholder with status "ended", hence the status check.
       const subscription = subscriptionByWorkspaceModelId[workspaceModelId];
       if (
         subscription.status === "active" &&
