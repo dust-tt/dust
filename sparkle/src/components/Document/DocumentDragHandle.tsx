@@ -32,7 +32,7 @@ export const DocumentDragHandle = ({
   return (
     <DragHandle
       editor={editor}
-      className="print:hidden"
+      className="pr-2 print:hidden"
       onNodeChange={({ node, pos }) => {
         blockPosition.current = node ? pos : null;
       }}

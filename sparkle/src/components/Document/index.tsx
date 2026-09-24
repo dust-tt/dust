@@ -231,7 +231,7 @@ export const Document = ({
         <div
           ref={contentRef}
           className={cn(
-            "relative mx-auto max-w-[50rem] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
+            "relative mx-auto max-w-[50rem] px-8 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
             editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
           )}
         >
