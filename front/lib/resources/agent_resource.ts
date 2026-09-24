@@ -49,6 +49,7 @@ import {
   invalidateAgentResourceCaches,
 } from "@app/lib/resources/agent_resource_cache";
 import { launchAgentSearchIndexation } from "@app/lib/resources/agent_resource_indexation";
+import { createAgentSkillLinks } from "@app/lib/resources/agent_skills";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -3209,13 +3210,11 @@ export class AgentResource
             throw actionRes.error;
           }
         }
-        if (skills.length > 0) {
-          await SkillResource.addManyToAgent(
-            auth,
-            { agentResource: savedResource, skills },
-            { transaction: t }
-          );
-        }
+        await createAgentSkillLinks(auth, {
+          agentConfigurationModelId: savedResource.agentConfigurationModelId,
+          skills,
+          transaction: t,
+        });
 
         return agentConfigurationInstance;
       };

@@ -6,6 +6,7 @@ import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guard
 import { _getAnalystGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/analyst";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { createAgentSkillLinks } from "@app/lib/resources/agent_skills";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SKILL_COMPANY_DATA_SERVER_NAME } from "@app/lib/resources/skill/code_defined/shared";
@@ -70,8 +71,8 @@ describe("resolveSkillMCPServers", () => {
       agentConfiguration.sId
     );
     assert(agentResource !== null);
-    await SkillResource.addManyToAgent(authenticator, {
-      agentResource,
+    await createAgentSkillLinks(authenticator, {
+      agentConfigurationModelId: agentResource.agentConfigurationModelId,
       skills: [discoverKnowledge],
     });
 
@@ -253,8 +254,8 @@ describe("resolveSkillMCPServers", () => {
       agentConfiguration.sId
     );
     assert(agentResource !== null);
-    await SkillResource.addManyToAgent(authenticator, {
-      agentResource,
+    await createAgentSkillLinks(authenticator, {
+      agentConfigurationModelId: agentResource.agentConfigurationModelId,
       skills: [discoverKnowledge, goDeep],
     });
     await goDeep.enableForAgent(authenticator, {

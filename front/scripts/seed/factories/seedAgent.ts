@@ -1,4 +1,5 @@
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { createAgentSkillLinks } from "@app/lib/resources/agent_skills";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -132,7 +133,10 @@ export async function seedAgent(
 
     // Link skills to the agent
     for (const skill of skills) {
-      await skill.addToAgent(auth, agentConfiguration);
+      await createAgentSkillLinks(auth, {
+        agentConfigurationModelId: agentConfiguration.id,
+        skills: [skill],
+      });
       logger.info(
         { skillId: skill.sId, agentId: agentConfiguration.sId },
         "Skill linked to agent"

@@ -2,13 +2,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { launchAgentSearchIndexation } from "@app/lib/resources/agent_resource_indexation";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ModelId } from "@app/types/shared/model_id";
 import uniq from "lodash/uniq";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-// Leaf module (imports only agent models and the agent indexation leaf, never `AgentResource`) so
-// `SkillResource` — which `AgentResource` depends on — can import it without forming a cycle.
+// Leaf module (imports only agent models and the agent indexation leaf, never `AgentResource`, and
+// `SkillResource` as a type only) so `SkillResource` — which `AgentResource` depends on — can import
+// it without forming a cycle.
 
 async function listAgentIdsUsingCustomSkill(
   auth: Authenticator,
@@ -95,4 +97,36 @@ export async function destroyAgentSkillLinksForCustomSkill(
   });
 
   await launchAgentSearchIndexation(owner.sId, agentIds, transaction);
+}
+
+/**
+ * @cc [owner:tdraier,label:backend;architecture] agent-skill-links-created-by-agent-domain
+ * Runtime code MUST create `AgentSkillModel` rows only through this function, which links the given
+ * skills to one agent configuration version. It performs no agent refresh: its caller, the agent
+ * save, owns the cache invalidation and search reindex of the saved agent.
+ */
+export async function createAgentSkillLinks(
+  auth: Authenticator,
+  {
+    agentConfigurationModelId,
+    skills,
+    transaction,
+  }: {
+    agentConfigurationModelId: ModelId;
+    skills: SkillResource[];
+    transaction?: Transaction;
+  }
+): Promise<void> {
+  if (skills.length === 0) {
+    return;
+  }
+
+  await AgentSkillModel.bulkCreate(
+    skills.map((skill) => ({
+      ...skill.skillReference,
+      workspaceId: auth.getNonNullableWorkspace().id,
+      agentConfigurationId: agentConfigurationModelId,
+    })),
+    { transaction }
+  );
 }

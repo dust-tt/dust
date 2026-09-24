@@ -6,6 +6,7 @@ import {
 import { makeFileAttachment } from "@app/lib/api/assistant/conversation/attachments";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
+import { createAgentSkillLinks } from "@app/lib/resources/agent_skills";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -405,7 +406,10 @@ describe("getJITServers", () => {
       const skill = await SkillFactory.create(auth, {
         name: "Conversation Enabled Agent Skill",
       });
-      await skill.addToAgent(auth, agentConfig);
+      await createAgentSkillLinks(auth, {
+        agentConfigurationModelId: agentConfig.id,
+        skills: [skill],
+      });
       const res = await skill.upsertToConversation(auth, {
         conversationId: conversation.id,
         enabled: true,
@@ -701,7 +705,10 @@ describe("getJITServers", () => {
         globalSkillId: "discover_tools",
         agentConfigurationId: agentConfig.id,
       });
-      await agentSkill.addToAgent(auth, agentConfig);
+      await createAgentSkillLinks(auth, {
+        agentConfigurationModelId: agentConfig.id,
+        skills: [agentSkill],
+      });
       await enabledOnlySkill.enableForAgent(auth, {
         agentConfiguration: agentConfig,
         conversation: projectConversation,
