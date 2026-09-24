@@ -1,6 +1,6 @@
 import { editClientExecutableFile } from "@app/lib/api/files/client_executable";
-import { editFrameV2TextAtSource } from "@app/lib/api/frames/publish_from_source";
-import { editFrameTextAtSource } from "@app/lib/api/viz/edit_frame_text";
+import { editFrameV2TextsAtSource } from "@app/lib/api/frames/publish_from_source";
+import { editFrameTextsAtSource } from "@app/lib/api/viz/edit_frame_text";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -14,14 +14,38 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-const EditTextRequestBodySchema = z.object({
-  conversationId: z.string().optional(),
+const EditItemSchema = z.object({
   newText: z.string(),
   oldText: z.string().min(1, "oldText must be a non-empty string"),
-  // When set ("<relPath>:<line>:<col>"), edit the Frame's source by location and rebuild the
-  // bundle, instead of the legacy context-string match against the rendered code.
+  // When set ("<relPath>:<line>:<col>"), edit the Frame's source by location.
   source: z.string().optional(),
+  targetFileId: z.string().optional(),
 });
+
+/**
+ * Additive batch support: callers may send either a single edit (legacy fields) or `edits[]`.
+ * Both remain valid; `edits` is preferred when flushing multiple staged live edits so the
+ * server can apply them and publish once.
+ */
+const EditTextRequestBodySchema = z
+  .object({
+    conversationId: z.string().optional(),
+    newText: z.string().optional(),
+    oldText: z.string().min(1, "oldText must be a non-empty string").optional(),
+    source: z.string().optional(),
+    edits: z.array(EditItemSchema).min(1).optional(),
+  })
+  .superRefine((body, ctx) => {
+    if (body.edits && body.edits.length > 0) {
+      return;
+    }
+    if (body.oldText === undefined || body.newText === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide either edits[] or oldText/newText.",
+      });
+    }
+  });
 
 const ParamsSchema = z.object({
   fileId: z.string(),
@@ -29,6 +53,21 @@ const ParamsSchema = z.object({
 
 // Mounted at /api/w/:wId/files/:fileId/edit-text.
 const app = workspaceApp();
+
+function normalizeEdits(
+  body: z.infer<typeof EditTextRequestBodySchema>
+): Array<z.infer<typeof EditItemSchema>> {
+  if (body.edits && body.edits.length > 0) {
+    return body.edits;
+  }
+  return [
+    {
+      oldText: body.oldText!,
+      newText: body.newText!,
+      source: body.source,
+    },
+  ];
+}
 
 /** @ignoreswagger */
 app.post(
@@ -38,7 +77,9 @@ app.post(
   async (ctx) => {
     const auth = ctx.get("auth");
     const { fileId } = ctx.req.valid("param");
-    const { conversationId, oldText, newText, source } = ctx.req.valid("json");
+    const body = ctx.req.valid("json");
+    const { conversationId } = body;
+    const edits = normalizeEdits(body);
 
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {
@@ -49,7 +90,8 @@ app.post(
     }
 
     if (file.isFrameV2) {
-      if (!conversationId || !source) {
+      const missingSource = edits.find((edit) => !edit.source);
+      if (!conversationId || missingSource) {
         return apiError(ctx, {
           status_code: 400,
           api_error: {
@@ -71,12 +113,14 @@ app.post(
         });
       }
 
-      const editResult = await editFrameV2TextAtSource(auth, {
+      const editResult = await editFrameV2TextsAtSource(auth, {
         conversation: conversation.toJSON(),
         frame: file,
-        source,
-        oldText,
-        newText,
+        edits: edits.map((edit) => ({
+          source: edit.source!,
+          oldText: edit.oldText,
+          newText: edit.newText,
+        })),
       });
       if (editResult.isErr()) {
         const status = frameSourceErrorStatus(editResult.error);
@@ -101,6 +145,17 @@ app.post(
         api_error: {
           type: "invalid_request_error",
           message: "Only Frame files support inline text editing.",
+        },
+      });
+    }
+
+    // Batch `edits[]` is Frames v2 only. Legacy Frames keep one-edit-per-request publish-on-blur.
+    if (body.edits && body.edits.length > 0) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Batch text edits are only supported for Frames v2.",
         },
       });
     }
@@ -137,14 +192,18 @@ app.post(
       });
     }
 
-    // Location-based edit (published frames): route the edit to the source file by location and
-    // rebuild the bundle.
-    if (source) {
-      const editResult = await editFrameTextAtSource(auth, {
+    // Batch rejected above: remaining legacy/published-v1 path is one edit per request.
+    const [edit] = edits;
+    if (edit.source) {
+      const editResult = await editFrameTextsAtSource(auth, {
         file,
-        source,
-        oldText,
-        newText,
+        edits: [
+          {
+            source: edit.source,
+            oldText: edit.oldText,
+            newText: edit.newText,
+          },
+        ],
       });
       if (editResult.isErr()) {
         return apiError(ctx, {
@@ -160,9 +219,9 @@ app.post(
     }
 
     const editResult = await editClientExecutableFile(auth, {
-      fileId,
-      oldString: oldText,
-      newString: newText,
+      fileId: edit.targetFileId ?? fileId,
+      oldString: edit.oldText,
+      newString: edit.newText,
     });
 
     if (editResult.isErr()) {

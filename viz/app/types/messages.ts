@@ -15,10 +15,15 @@ export const ExportSvgMessageSchema = z.object({
   type: z.literal("EXPORT_SVG"),
 });
 
+export const FlushEditablesMessageSchema = z.object({
+  type: z.literal("FLUSH_EDITABLES"),
+});
+
 // Union of all supported message types coming from the parent window.
 export const SupportedMessageSchema = z.union([
   ExportPngMessageSchema,
   ExportSvgMessageSchema,
+  FlushEditablesMessageSchema,
 ]);
 
 // Type definitions derived from schemas.

@@ -7,6 +7,7 @@ import { ExportContentDropdown } from "@app/components/assistant/conversation/in
 import { FrameBetaChip } from "@app/components/assistant/conversation/interactive_content/frame/FrameBetaChip";
 import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { ConfirmContext } from "@app/components/Confirm";
+import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
 import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
@@ -22,16 +23,22 @@ import {
   useFileMetadata,
   useShareInteractiveContentFile,
 } from "@app/lib/swr/files";
-import { useEditFrameText, useFramePermissions } from "@app/lib/swr/frames";
+import {
+  useBatchEditFrameText,
+  useEditFrameText,
+  useFramePermissions,
+} from "@app/lib/swr/frames";
 import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { EditTextFn } from "@app/types/assistant/visualization";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  Check,
   CheckCircle,
   CodeBlock,
   Eye,
@@ -164,6 +171,39 @@ export function FrameRenderer({
   });
 
   const [showCode, setShowCode] = useState(false);
+  // Inline text editing is opt-in: authors must enter edit mode explicitly so previewing does
+  // not surface hover affordances on every text node. Reset when switching Frames.
+  const [editModeState, setEditModeState] = useState({
+    fileId,
+    enabled: false,
+  });
+  // Bumped after a successful live edit (or explicit reload) so the viz iframe remounts with the
+  // refreshed bundle. Without this, react-runner keeps the old module and any Frame re-render
+  // overwrites the optimistic DOM textContent patch — edits look saved then snap back (#10579).
+  const [contentRevision, setContentRevision] = useState(0);
+  // Frames v2 only: staged location edits accumulate until Save (one publish). Legacy frames still
+  // save per blur. Discarding Edit clears the queue without writing.
+  const [pendingEdits, setPendingEdits] = useState<Parameters<EditTextFn>[0][]>(
+    []
+  );
+  // Source of truth for flush→Save; updated only from event handlers (not during render).
+  const pendingEditsRef = useRef<Parameters<EditTextFn>[0][]>([]);
+  const [isSavingEdits, setIsSavingEdits] = useState(false);
+  // Legacy concurrent blurs: defer remount until in-flight publishes settle.
+  const inFlightEditsRef = useRef(0);
+  const pendingRemountRef = useRef(false);
+  if (editModeState.fileId !== fileId) {
+    setEditModeState({ fileId, enabled: false });
+    setContentRevision(0);
+    setPendingEdits([]);
+    pendingEditsRef.current = [];
+    setIsSavingEdits(false);
+    inFlightEditsRef.current = 0;
+    pendingRemountRef.current = false;
+  }
+  const isEditMode = editModeState.enabled;
+  const hasPendingEdits = pendingEdits.length > 0;
+  const usesBatchEdit = renderMode === "v2";
 
   // A legacy Frame renders its own source, so `fileContent` is the code. A Frames v2 package
   // renders a built bundle, so its sources are fetched separately, and only once shown.
@@ -204,25 +244,187 @@ export function FrameRenderer({
     fileId,
     conversationId: conversation?.sId,
   });
-  const isEditable =
-    renderMode === "legacy" || Boolean(conversation && isFrameAuthor);
+  const batchEditFrameText = useBatchEditFrameText({
+    owner,
+    fileId,
+    conversationId: conversation?.sId,
+  });
+  // Legacy Frames have no separate author flag: anyone who can open them in the conversation
+  // drawer could previously edit. Frame v2 uses write access to the source (`isFrameAuthor`).
+  const isAuthor =
+    renderMode === "legacy" || (!isFramePermissionsLoading && isFrameAuthor);
+  // Inline editing needs a conversation (v2 edit-text requires conversationId + source).
+  const canEnterEditMode =
+    renderMode === "legacy"
+      ? Boolean(conversation)
+      : Boolean(conversation && isFrameAuthor);
+  // Keep the iframe on the edit remount key for the whole Edit session so flipping
+  // isSavingEdits does not reload the viz mid-publish.
+  const isEditSession = isEditMode && canEnterEditMode;
+  const isEditable = isEditSession;
+  // Include edit mode so Preview↔Edit remounts and resets contentHeight (async-network-loading-state).
+  const vizInstanceId = `viz-${fileId}-${contentRevision}-${isEditable ? "edit" : "preview"}`;
 
-  const handleEditText = useCallback(
-    async (params: Parameters<typeof editFrameText>[0]) => {
-      const result = await editFrameText(params);
-
-      if (result.success) {
+  // Legacy: publish on every blur. v2: stage location edits until Save (one publish).
+  const handleEditText = useCallback<EditTextFn>(
+    async (params) => {
+      if (!usesBatchEdit) {
+        // Remount only after the whole burst settles, with a single revalidate. Per-edit
+        // mutate+remount races (and remounts mid-burst) drop rapid successive edits — main
+        // never remounted, so optimistic DOM stuck; we still remount for #10579 but once.
+        inFlightEditsRef.current += 1;
         try {
-          await mutateFileContent();
-        } catch {
-          // The mutation already succeeded. Keep the inline edit and let the next reload fetch
-          // the active publication rather than reporting a false save failure to the iframe.
+          const result = await editFrameText(params);
+          if (result.success) {
+            pendingRemountRef.current = true;
+          }
+          return result;
+        } finally {
+          inFlightEditsRef.current -= 1;
+          if (inFlightEditsRef.current === 0 && pendingRemountRef.current) {
+            pendingRemountRef.current = false;
+            void (async () => {
+              try {
+                await mutateFileContent();
+              } catch {
+                // Mutation already succeeded server-side; remount anyway.
+              }
+              if (inFlightEditsRef.current === 0) {
+                setContentRevision((revision) => revision + 1);
+              } else {
+                // A new edit started during revalidate; remount after that burst.
+                pendingRemountRef.current = true;
+              }
+            })();
+          }
         }
       }
 
-      return result;
+      // v2 batch: only location-based edits. Context-string edits are too brittle to stage.
+      if (!params.source) {
+        return {
+          success: false,
+          error:
+            "This text can't be batch-edited; reload the Frame and try again.",
+        };
+      }
+
+      // Ignore further staging once Save has started (flush may still stage once).
+      // UI overlay also blocks interaction; this is a second line of defense.
+      const key = params.source;
+      const prev = pendingEditsRef.current;
+      const existingIndex = prev.findIndex((edit) => edit.source === key);
+      const next =
+        existingIndex >= 0
+          ? prev.map((edit, index) =>
+              index === existingIndex
+                ? { ...edit, newText: params.newText }
+                : edit
+            )
+          : [...prev, params];
+      pendingEditsRef.current = next;
+      setPendingEdits(next);
+      return { success: true };
     },
-    [editFrameText, mutateFileContent]
+    [editFrameText, mutateFileContent, usesBatchEdit]
+  );
+
+  const flushInProgressEditable = useCallback(async () => {
+    const contentWindow = iframeRef.current?.contentWindow;
+    if (!contentWindow) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      const timeout = window.setTimeout(() => {
+        window.removeEventListener("message", onMessage);
+        resolve();
+      }, 2000);
+
+      function onMessage(event: MessageEvent) {
+        if (event.data?.type === "FLUSH_EDITABLES_DONE") {
+          window.clearTimeout(timeout);
+          window.removeEventListener("message", onMessage);
+          resolve();
+        }
+      }
+
+      window.addEventListener("message", onMessage);
+      contentWindow.postMessage({ type: "FLUSH_EDITABLES" }, "*");
+    });
+  }, []);
+
+  const handleSaveEdits = useCallback(async () => {
+    if (!usesBatchEdit || isSavingEdits) {
+      return;
+    }
+
+    setIsSavingEdits(true);
+    try {
+      await flushInProgressEditable();
+      const editsToSave = pendingEditsRef.current.filter((edit) => edit.source);
+      if (editsToSave.length === 0) {
+        return;
+      }
+
+      const result = await batchEditFrameText(editsToSave);
+      if (!result.success) {
+        // Failure toast is emitted by useBatchEditFrameText (network-operations-in-swr-hooks).
+        return;
+      }
+
+      pendingEditsRef.current = [];
+      setPendingEdits([]);
+      try {
+        await mutateFileContent();
+      } catch {
+        // Mutation succeeded server-side; remount anyway so the next load picks up content.
+      }
+      // Leave Edit so Preview remounts on the published content (no leftover optimistic DOM).
+      setEditModeState({ fileId, enabled: false });
+      setContentRevision((revision) => revision + 1);
+    } finally {
+      setIsSavingEdits(false);
+    }
+  }, [
+    batchEditFrameText,
+    fileId,
+    flushInProgressEditable,
+    isSavingEdits,
+    mutateFileContent,
+    usesBatchEdit,
+  ]);
+
+  const handleViewModeChange = useCallback(
+    async (mode: "preview" | "edit") => {
+      if (mode === "edit") {
+        setEditModeState({ fileId, enabled: true });
+        return;
+      }
+
+      if (!usesBatchEdit || !hasPendingEdits) {
+        setEditModeState({ fileId, enabled: false });
+        return;
+      }
+
+      const discard = await confirm({
+        title: "Discard unsaved edits?",
+        message: "You have unsaved text edits. Leaving Edit will discard them.",
+        validateLabel: "Discard",
+        validateVariant: "warning",
+        cancelLabel: "Cancel",
+      });
+      if (!discard) {
+        return;
+      }
+
+      pendingEditsRef.current = [];
+      setPendingEdits([]);
+      setEditModeState({ fileId, enabled: false });
+      // Remount so optimistic DOM text is wiped and Preview shows the last published content.
+      setContentRevision((revision) => revision + 1);
+    },
+    [confirm, fileId, hasPendingEdits, usesBatchEdit]
   );
 
   const restoreLayout = useCallback(() => {
@@ -257,8 +459,12 @@ export function FrameRenderer({
 
   const reloadFile = async () => {
     setIsLoading(true);
-    await mutateFileContent(`/api/w/${owner.sId}/files/${fileId}?action=view`);
-    setIsLoading(false);
+    try {
+      await mutateFileContent();
+      setContentRevision((revision) => revision + 1);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const onRevert = () => {
@@ -403,7 +609,59 @@ export function FrameRenderer({
             />
             {hasFrameFunctions && <FrameBetaChip />}
           </div>
-          <div className="flex items-center">
+          <div className="flex min-w-0 items-center gap-1">
+            {isAuthor &&
+              (canEnterEditMode ? (
+                <>
+                  <MarkdownFilePreviewViewModeSwitch
+                    viewMode={isEditable ? "edit" : "preview"}
+                    hideLabels={isMobile}
+                    disabled={isSavingEdits}
+                    onViewModeChange={(mode) => {
+                      void handleViewModeChange(mode);
+                    }}
+                  />
+                  {usesBatchEdit && isEditSession && (
+                    <Button
+                      // Keep an icon so the control stays visible when the label is
+                      // hidden on narrow headers (same pattern as Preview|Edit).
+                      label={isMobile ? undefined : "Save"}
+                      icon={Check}
+                      size="xs"
+                      variant="ghost"
+                      isLoading={isSavingEdits}
+                      disabled={!hasPendingEdits || isSavingEdits}
+                      onClick={() => {
+                        void handleSaveEdits();
+                      }}
+                      aria-label="Save"
+                      tooltip={
+                        isSavingEdits
+                          ? "Publishing your changes..."
+                          : hasPendingEdits
+                            ? "Save text edits"
+                            : "No unsaved edits"
+                      }
+                    />
+                  )}
+                </>
+              ) : (
+                <Tooltip
+                  label="Text editing isn't available for this Frame right now."
+                  side="bottom"
+                  tooltipTriggerAsChild
+                  trigger={
+                    <span className="inline-flex shrink-0">
+                      <MarkdownFilePreviewViewModeSwitch
+                        viewMode="preview"
+                        hideLabels={isMobile}
+                        disabled
+                        onViewModeChange={() => undefined}
+                      />
+                    </span>
+                  }
+                />
+              ))}
             <ExportContentDropdown
               iframeRef={iframeRef}
               owner={owner}
@@ -486,28 +744,37 @@ export function FrameRenderer({
           />
         ) : (
           <div className="h-full">
-            <AuthenticatedVisualizationActionIframe
-              agentConfigurationId={
-                fileMetadata?.useCaseMetadata
-                  .lastEditedByAgentConfigurationId ?? ""
-              }
-              workspaceId={owner.sId}
-              vizUrl={vizUrl}
-              visualization={{
-                code: fileContent ?? "",
-                complete: true,
-                identifier: `viz-${fileId}`,
-              }}
-              key={`viz-${fileId}-${framePath ?? packageRoot ?? ""}`}
-              conversationId={conversation?.sId ?? null}
-              spaceId={frameSpaceId ?? undefined}
-              framePackageRoot={framePackageRoot}
-              frameId={renderMode === "v2" ? fileId : undefined}
-              isInDrawer={true}
-              isEditable={isEditable}
-              onEditText={isEditable ? handleEditText : undefined}
-              ref={iframeRef}
-            />
+            <div className="relative h-full">
+              <AuthenticatedVisualizationActionIframe
+                agentConfigurationId={
+                  fileMetadata?.useCaseMetadata
+                    .lastEditedByAgentConfigurationId ?? ""
+                }
+                workspaceId={owner.sId}
+                vizUrl={vizUrl}
+                visualization={{
+                  code: fileContent ?? "",
+                  complete: true,
+                  identifier: vizInstanceId,
+                }}
+                key={`${vizInstanceId}-${framePath ?? packageRoot ?? ""}`}
+                conversationId={conversation?.sId ?? null}
+                spaceId={frameSpaceId ?? undefined}
+                framePackageRoot={framePackageRoot}
+                frameId={renderMode === "v2" ? fileId : undefined}
+                isInDrawer={true}
+                isEditable={isEditable}
+                onEditText={isEditable ? handleEditText : undefined}
+                ref={iframeRef}
+              />
+              {isSavingEdits && (
+                <div
+                  className="absolute inset-0 z-10 cursor-wait"
+                  aria-busy="true"
+                  aria-label="Publishing your changes..."
+                />
+              )}
+            </div>
             {conversation && (
               <PreviewActionButtons
                 owner={owner}
@@ -585,6 +852,7 @@ function PreviewActionButtons({
   reloadFile,
 }: PreviewActionButtonsProps) {
   const clientType = useClientType();
+
   return (
     <div className="fixed bottom-5 right-5 flex flex-col gap-1 rounded-lg bg-background p-1 shadow-md">
       {clientType !== "extension" && (

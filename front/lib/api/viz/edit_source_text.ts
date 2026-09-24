@@ -62,8 +62,8 @@ export function parseSourceLocation(value: string): SourceLocation | null {
  * - Several matches (the same text appears more than once): pick the one whose element's tag is
  *   nearest the clicked `(line, col)`. This keeps the duplicate-text immunity the location
  *   approach was built for, and tolerates small drift (a few columns/lines) since the true target
- *   is still the closest. Heavily drifted duplicates on the same line remain the one weak spot,
- *   and re-rendering the iframe after an edit (to refresh tags) would close it entirely.
+ *   is still the closest. Heavily drifted duplicates on the same line remain the one weak spot;
+ *   remounting the iframe after a successful save refreshes the tags for the next edit.
  *
  * Implemented as a single string splice over AST positions, so the rest of the source bytes are
  * preserved exactly (no reformatting). Leading/trailing whitespace of the matched node is
