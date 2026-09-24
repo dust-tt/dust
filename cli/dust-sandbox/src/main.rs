@@ -61,7 +61,7 @@ enum Commands {
         /// --key value pairs.
         #[arg(long)]
         args_json: Option<String>,
-        /// Server name (omit to list all servers)
+        /// Server name as listed by `dsbx tools`, or a view id (omit to list all servers)
         server_name: Option<String>,
         /// Tool name to execute
         tool_name: Option<String>,

@@ -99,14 +99,22 @@ pub struct SandboxServerViewsResponse {
 pub struct MCPServerView {
     #[serde(rename = "sId")]
     pub s_id: String,
+    /// Admin-set view name, which tells apart instances of one server (e.g. `gmail1` and
+    /// `gmail2`, both `server.name` "gmail"). Null when the view shows the server's own name.
+    pub name: Option<String>,
     pub server: MCPServer,
+}
+
+impl MCPServerView {
+    /// The name this view is listed and called by: its own name, else the server's.
+    pub fn display_name(&self) -> &str {
+        self.name.as_deref().unwrap_or(&self.server.name)
+    }
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MCPServer {
-    #[serde(rename = "sId")]
-    pub s_id: String,
     pub name: String,
     pub tools: Vec<MCPTool>,
 }
