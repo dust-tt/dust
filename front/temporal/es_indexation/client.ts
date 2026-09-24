@@ -33,9 +33,11 @@ import {
   indexUserSearchWorkflow,
   refreshSearchUsageWorkflow,
   refreshWorkspaceSearchUsageWorkflow,
+  reindexCodeDefinedSearchWorkflow,
 } from "./workflows";
 
 const SEARCH_USAGE_SCHEDULE_ID = "search-usage-daily";
+const CODE_DEFINED_SEARCH_SCHEDULE_ID = "search-code-defined-hourly";
 
 export async function launchIndexUserSearchWorkflow({
   userId,
@@ -261,6 +263,31 @@ export async function launchSearchUsageSchedule(): Promise<
       },
       spec: { calendars: [{ hour: 3, minute: 0 }], timezone: "UTC" },
       policies: { overlap: ScheduleOverlapPolicy.BUFFER_ONE },
+    });
+  } catch (error) {
+    if (!(error instanceof ScheduleAlreadyRunning)) {
+      return new Err(normalizeError(error));
+    }
+  }
+  return new Ok(undefined);
+}
+
+export async function launchCodeDefinedSearchSchedule(): Promise<
+  Result<undefined, Error>
+> {
+  const client = await getTemporalClientForFrontNamespace();
+  try {
+    await client.schedule.create({
+      scheduleId: CODE_DEFINED_SEARCH_SCHEDULE_ID,
+      action: {
+        type: "startWorkflow",
+        workflowType: reindexCodeDefinedSearchWorkflow,
+        args: [],
+        taskQueue: QUEUE_NAME,
+      },
+      spec: { cronExpressions: ["0 * * * *"], timezone: "UTC" },
+      policies: { overlap: ScheduleOverlapPolicy.SKIP },
+      state: { triggerImmediately: true },
     });
   } catch (error) {
     if (!(error instanceof ScheduleAlreadyRunning)) {

@@ -6,6 +6,7 @@ import {
   indexAgentDocument,
   updateAgentSearchActiveUsers,
 } from "@app/lib/agent_search";
+import { reindexGlobalAgents } from "@app/lib/agent_search/index_global";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -22,6 +23,7 @@ import {
   indexSkillDocument,
   updateSkillSearchActiveUsers,
 } from "@app/lib/skill_search";
+import { reindexCodeDefinedSkills } from "@app/lib/skill_search/index_code_defined";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -262,6 +264,22 @@ export async function deleteWorkspaceAgentSearchActivity({
   if (deleteResult.isErr()) {
     throw deleteResult.error;
   }
+}
+
+export async function reindexCodeDefinedSkillsActivity(): Promise<void> {
+  const result = await reindexCodeDefinedSkills();
+  if (result.isErr()) {
+    throw result.error;
+  }
+  logger.info(result.value, "Code-defined skill search index updated");
+}
+
+export async function reindexGlobalAgentsActivity(): Promise<void> {
+  const result = await reindexGlobalAgents();
+  if (result.isErr()) {
+    throw result.error;
+  }
+  logger.info(result.value, "Global agent search index updated");
 }
 
 export async function listWorkspaceIdsActivity(): Promise<string[]> {
