@@ -78,6 +78,7 @@ interface DiscoverHomeProps {
   owner: WorkspaceType;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
   onSkillClick: (skill: DiscoverSkill) => void;
+  onPin?: (item: CatalogItem) => void;
   onDetails: (item: CatalogItem) => void;
   onFindMore: () => void;
 }
@@ -86,6 +87,7 @@ export function DiscoverHome({
   owner,
   onAgentClick,
   onSkillClick,
+  onPin,
   onDetails,
   onFindMore,
 }: DiscoverHomeProps) {
@@ -138,6 +140,7 @@ export function DiscoverHome({
         isLoading={isForYouLoading || isCatalogLoading}
         isRefreshing={isCatalogRefreshing}
         onUse={onUse}
+        onPin={onPin}
         onDetails={onDetails}
         onFindMore={onFindMore}
       />
@@ -147,6 +150,7 @@ export function DiscoverHome({
         isLoading={isTrendingLoading || isCatalogLoading}
         isRefreshing={isCatalogRefreshing}
         onUse={onUse}
+        onPin={onPin}
         onDetails={onDetails}
         onFindMore={onFindMore}
       />
@@ -285,6 +289,7 @@ interface DiscoverSectionProps {
   isLoading: boolean;
   isRefreshing: boolean;
   onUse: (item: CatalogItem) => void;
+  onPin?: (item: CatalogItem) => void;
   onDetails: (item: CatalogItem) => void;
   onFindMore: () => void;
 }
@@ -295,6 +300,7 @@ function DiscoverSection({
   isLoading,
   isRefreshing,
   onUse,
+  onPin,
   onDetails,
   onFindMore,
 }: DiscoverSectionProps) {
@@ -324,6 +330,7 @@ function DiscoverSection({
               key={`${item.kind}-${getItemId(item)}`}
               item={item}
               onUse={() => onUse(item)}
+              onPin={onPin && (() => onPin(item))}
               onDetails={() => onDetails(item)}
             />
           ))}

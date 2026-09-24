@@ -15,11 +15,13 @@ import {
   Avatar,
   Button,
   Chip,
+  cn,
   EmptyCTA,
   Icon,
   MessageCircle01,
   NavigationList,
   NavigationListItem,
+  Pin02,
   Spinner,
   Users01,
 } from "@dust-tt/sparkle";
@@ -136,6 +138,7 @@ interface DiscoverCatalogProps {
   onClearSearch: () => void;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
   onSkillClick: (skill: DiscoverSkill) => void;
+  onPin?: (item: CatalogItem) => void;
   onDetails: (item: CatalogItem) => void;
   onFiltersChange: () => void;
 }
@@ -146,6 +149,7 @@ export function DiscoverCatalog({
   onClearSearch,
   onAgentClick,
   onSkillClick,
+  onPin,
   onDetails,
   onFiltersChange,
 }: DiscoverCatalogProps) {
@@ -318,6 +322,7 @@ export function DiscoverCatalog({
                   ? onAgentClick(item.agent)
                   : onSkillClick(item.skill)
               }
+              onPin={onPin && (() => onPin(item))}
               onDetails={() => onDetails(item)}
             />
           ))
@@ -330,15 +335,17 @@ export function DiscoverCatalog({
 interface CatalogRowProps {
   item: CatalogItem;
   onUse: () => void;
+  onPin?: () => void;
   onDetails: () => void;
 }
 
-export function CatalogRow({ item, onUse, onDetails }: CatalogRowProps) {
+export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
+  const name = getItemName(item);
   return (
-    <div className="flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
+    <div className="group flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
       <button
         type="button"
-        aria-label={`Show ${getItemName(item)} details`}
+        aria-label={`Show ${name} details`}
         onClick={onDetails}
         className="shrink-0 rounded-2xl transition duration-200 ease-out hover:brightness-110 active:brightness-90"
       >
@@ -351,7 +358,7 @@ export function CatalogRow({ item, onUse, onDetails }: CatalogRowProps) {
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="heading-base notranslate text-foreground">
-            {getItemName(item)}
+            {name}
           </span>
           {item.kind === "agent" && (
             <Chip
@@ -382,13 +389,29 @@ export function CatalogRow({ item, onUse, onDetails }: CatalogRowProps) {
           {getItemDescription(item)}
         </p>
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        label={item.kind === "agent" ? "Chat" : "Use"}
-        onClick={onUse}
-        className="shrink-0"
-      />
+      <div className="flex shrink-0 items-center gap-1">
+        {onPin && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={Pin02}
+            tooltip="Pin to Featured"
+            aria-label={`Pin ${name} to Featured`}
+            onClick={onPin}
+            className={cn(
+              "transition-opacity duration-150 motion-reduce:transition-none",
+              "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+              "focus-visible:opacity-100 group-hover:opacity-100"
+            )}
+          />
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          label={item.kind === "agent" ? "Chat" : "Use"}
+          onClick={onUse}
+        />
+      </div>
     </div>
   );
 }
