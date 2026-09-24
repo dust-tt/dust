@@ -71,6 +71,7 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
 });
 
 import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -112,6 +113,50 @@ describe("GroupResource", () => {
     systemGroup = testSetup.systemGroup;
     // Clear cache after setup since Authenticator creation may populate it
     inMemoryCache.clear();
+  });
+
+  it("grants group management on assigned groups without rename or provisioned membership access", async () => {
+    const delegate = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, delegate, { role: "user" });
+    const manual = await GroupResource.makeNew({
+      name: "Manual team",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+    const provisioned = await GroupResource.makeNew({
+      name: "Directory team",
+      workspaceId: workspace.id,
+      kind: "provisioned",
+      workOSGroupId: "directory-team",
+    });
+    const other = await GroupResource.makeNew({
+      name: "Other team",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+
+    for (const group of [manual, provisioned]) {
+      const result = await GroupPermissionResource.grantToUser(authenticator, {
+        user: delegate.toJSON(),
+        grantType: "group_manager",
+        resourceType: "group",
+        resourceId: group.id,
+      });
+      expect(result.isOk()).toBe(true);
+    }
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      delegate.sId,
+      workspace.sId
+    );
+    expect(auth.can("write", manual)).toBe(true);
+    expect(auth.can("admin", manual)).toBe(false);
+    expect(auth.can("read_usage", manual)).toBe(true);
+    expect(auth.can("set_usage_limits", manual)).toBe(true);
+    expect(auth.can("write", provisioned)).toBe(false);
+    expect(auth.can("set_usage_limits", provisioned)).toBe(true);
+    expect(auth.can("set_usage_limits", other)).toBe(false);
+    expect((await manual.updateName(auth, "Renamed")).isErr()).toBe(true);
   });
 
   describe("getActiveMembershipsForGroups", () => {

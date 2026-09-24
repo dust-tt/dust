@@ -1,4 +1,10 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  group_management: {
+    description:
+      "Delegate group membership and usage management to group managers",
+    stage: "dust_only",
+    owner: "philipperolet",
+  },
   skills_search: {
     description: "Enable Elasticsearch-backed skill search",
     stage: "dust_only",

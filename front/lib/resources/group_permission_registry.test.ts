@@ -36,6 +36,22 @@ describe("assertValidGrant", () => {
       ).not.toThrow();
     });
 
+    it("group manager on one group", () => {
+      expect(() =>
+        assertValidGrant({
+          grantType: "group_manager",
+          resourceType: "group",
+          resourceId: 7,
+        })
+      ).not.toThrow();
+      expect(ROLE_REGISTRY.group.group_manager?.verbs).toEqual([
+        "read",
+        "write",
+        "read_usage",
+        "set_usage_limits",
+      ]);
+    });
+
     it.each([
       { grantType: "reader", resourceType: "space" },
       { grantType: "editor", resourceType: "agent" },

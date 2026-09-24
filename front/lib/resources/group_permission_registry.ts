@@ -126,6 +126,12 @@ export const ROLE_REGISTRY: Record<
   trigger: {
     use_workspace_pool: { verbs: ["use_workspace_pool"], levels: ["type"] },
   },
+  group: {
+    group_manager: {
+      verbs: ["read", "write", "read_usage", "set_usage_limits"],
+      levels: ["instance"],
+    },
+  },
 };
 
 interface GrantSpec {
@@ -239,7 +245,7 @@ export function allWorkspacePermissions(): WorkspacePermissions {
 
 // The held verb set for a (resourceType, resourceId) is stored as a bitmask integer rather than a
 // `Set<GrantVerb>`, to keep the per-request footprint small — one primitive per entry instead of a
-// heap Set. There are <10 verbs, so a single bit each fits comfortably in an int.
+// heap Set. The verbs fit comfortably in a single integer.
 const VERB_BIT = new Map<GrantVerb, number>(
   GRANT_VERBS.map((verb, index): [GrantVerb, number] => [verb, 1 << index])
 );
