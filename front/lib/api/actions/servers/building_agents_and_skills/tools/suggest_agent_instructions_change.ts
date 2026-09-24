@@ -3,6 +3,8 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentInstructionsChangeArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import type { CreatedInstructionSuggestion } from "@app/lib/api/assistant/agent_instructions_suggestions";
@@ -13,6 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 export interface SuggestAgentInstructionsChangeResult {
   agentConfigurationId: string;
@@ -21,7 +24,8 @@ export interface SuggestAgentInstructionsChangeResult {
 
 export async function suggestAgentInstructionsChange(
   auth: Authenticator,
-  { agentId, instructionEdit, analysis }: SuggestAgentInstructionsChangeArgs
+  { agentId, instructionEdit, analysis }: SuggestAgentInstructionsChangeArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<SuggestAgentInstructionsChangeResult, MCPError>> {
   if (!auth.user()) {
     return new Err(
@@ -82,7 +86,7 @@ export async function suggestAgentInstructionsChange(
     agentConfiguration: agent,
     edits: [{ ...instructionEdit, analysis }],
     source: "conversational",
-    conversation: null,
+    conversation: runContext.conversation,
   });
   if (result.isErr()) {
     return new Err(new MCPError(result.error));
@@ -96,9 +100,11 @@ export async function suggestAgentInstructionsChange(
 
 export async function suggestAgentInstructionsChangeHandler(
   args: SuggestAgentInstructionsChangeArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestAgentInstructionsChange(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestAgentInstructionsChange(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

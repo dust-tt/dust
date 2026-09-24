@@ -24,6 +24,7 @@ export function useAgentSuggestions({
   disabled,
   kind,
   state,
+  conversationId,
   limit,
   workspaceId,
 }: {
@@ -31,6 +32,7 @@ export function useAgentSuggestions({
   disabled?: boolean;
   kind?: GetSuggestionsQuery["kind"];
   state?: GetSuggestionsQuery["states"];
+  conversationId?: string;
   limit?: number;
   workspaceId: string;
 }) {
@@ -43,6 +45,9 @@ export function useAgentSuggestions({
   }
   if (kind) {
     urlParams.append("kind", kind);
+  }
+  if (conversationId) {
+    urlParams.append("conversationId", conversationId);
   }
   if (limit !== undefined) {
     urlParams.append("limit", limit.toString());

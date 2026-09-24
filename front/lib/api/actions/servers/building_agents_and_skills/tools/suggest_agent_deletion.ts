@@ -3,6 +3,8 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentDeletionArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -14,6 +16,7 @@ import {
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 function getAgentDeletionSuggestionLockName(agentSId: string): string {
   return `agent-suggestion:delete:${agentSId}`;
@@ -30,7 +33,8 @@ function getAgentDeletionSuggestionLockName(agentSId: string): string {
  */
 export async function suggestAgentDeletion(
   auth: Authenticator,
-  { agentId, analysis }: SuggestAgentDeletionArgs
+  { agentId, analysis }: SuggestAgentDeletionArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   if (!auth.user()) {
     return new Err(
@@ -81,7 +85,7 @@ export async function suggestAgentDeletion(
           suggestion: { name: agent.name },
           analysis: analysis ?? null,
           state: "pending",
-          conversationId: null,
+          conversationId: runContext.conversation.id,
           source: "conversational",
         }
       );
@@ -102,9 +106,11 @@ export async function suggestAgentDeletion(
 
 export async function suggestAgentDeletionHandler(
   args: SuggestAgentDeletionArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestAgentDeletion(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestAgentDeletion(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

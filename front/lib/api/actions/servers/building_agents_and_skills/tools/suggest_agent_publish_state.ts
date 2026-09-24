@@ -3,6 +3,8 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentPublishStateArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -16,6 +18,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 function getAgentPublishStateSuggestionLockName(agentId: string): string {
   return `agent-suggestion:scope:${agentId}`;
@@ -66,7 +69,8 @@ async function validateAgentPublishStateChange(
 
 export async function suggestAgentPublishState(
   auth: Authenticator,
-  { agentId, scope, analysis }: SuggestAgentPublishStateArgs
+  { agentId, scope, analysis }: SuggestAgentPublishStateArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   const agent = await getAgentConfiguration(auth, {
     agentId,
@@ -104,7 +108,7 @@ export async function suggestAgentPublishState(
           suggestion: { scope: validation.value.scope },
           analysis: analysis ?? null,
           state: "pending",
-          conversationId: null,
+          conversationId: runContext.conversation.id,
           source: "conversational",
         }
       );
@@ -127,9 +131,11 @@ export async function suggestAgentPublishState(
 
 export async function suggestAgentPublishStateHandler(
   args: SuggestAgentPublishStateArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestAgentPublishState(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestAgentPublishState(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

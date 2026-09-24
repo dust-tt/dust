@@ -3,6 +3,8 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentDescriptionArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -16,6 +18,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 function getAgentDescriptionSuggestionLockName(agentId: string): string {
   return `agent-suggestion:description:${agentId}`;
@@ -74,7 +77,8 @@ async function validateAgentDescriptionChange(
 
 export async function suggestAgentDescription(
   auth: Authenticator,
-  { agentId, description, analysis }: SuggestAgentDescriptionArgs
+  { agentId, description, analysis }: SuggestAgentDescriptionArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   const agent = await getAgentConfiguration(auth, {
     agentId,
@@ -114,7 +118,7 @@ export async function suggestAgentDescription(
           suggestion: { description: validation.value.description },
           analysis: analysis ?? null,
           state: "pending",
-          conversationId: null,
+          conversationId: runContext.conversation.id,
           source: "conversational",
         }
       );
@@ -137,9 +141,11 @@ export async function suggestAgentDescription(
 
 export async function suggestAgentDescriptionHandler(
   args: SuggestAgentDescriptionArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestAgentDescription(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestAgentDescription(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

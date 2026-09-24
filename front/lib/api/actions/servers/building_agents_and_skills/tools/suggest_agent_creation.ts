@@ -3,6 +3,8 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentCreationArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -11,6 +13,7 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 /**
  * @cc [owner:avervaet,label:product] no-direct-mutation
@@ -22,7 +25,8 @@ import { Err, Ok } from "@app/types/shared/result";
  */
 export async function suggestAgentCreation(
   auth: Authenticator,
-  { name, description, instructions, analysis }: SuggestAgentCreationArgs
+  { name, description, instructions, analysis }: SuggestAgentCreationArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   const user = auth.user();
   if (!user) {
@@ -60,7 +64,7 @@ export async function suggestAgentCreation(
       suggestion: { name, description, instructions },
       analysis: analysis ?? null,
       state: "pending",
-      conversationId: null,
+      conversationId: runContext.conversation.id,
       source: "conversational",
     }
   );
@@ -69,9 +73,11 @@ export async function suggestAgentCreation(
 
 export async function suggestAgentCreationHandler(
   args: SuggestAgentCreationArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestAgentCreation(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestAgentCreation(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

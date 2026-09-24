@@ -13,9 +13,13 @@ import { useMemo } from "react";
 
 interface ConversationAgentPanelProps {
   owner: LightWorkspaceType;
+  conversationId: string;
 }
 
-export function ConversationAgentPanel({ owner }: ConversationAgentPanelProps) {
+export function ConversationAgentPanel({
+  owner,
+  conversationId,
+}: ConversationAgentPanelProps) {
   const { closePanel, data } = useConversationSidePanelContext();
   const { entityId, suggestionIds } = parseSuggestionPreviewData(data);
   const agentId = entityId || null;
@@ -24,6 +28,7 @@ export function ConversationAgentPanel({ owner }: ConversationAgentPanelProps) {
   const { suggestions, isSuggestionsLoading } = useAgentSuggestions({
     agentConfigurationId: agentId,
     workspaceId: owner.sId,
+    conversationId,
     disabled: !suggestionIds,
   });
   const previewSuggestions = useMemo(() => {

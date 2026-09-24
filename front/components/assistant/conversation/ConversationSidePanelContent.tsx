@@ -73,7 +73,12 @@ export default function ConversationSidePanelContent({
       return <ConversationToolPanel owner={owner} />;
 
     case AGENT_SIDE_PANEL_TYPE:
-      return <ConversationAgentPanel owner={owner} />;
+      return (
+        <ConversationAgentPanel
+          owner={owner}
+          conversationId={conversation.sId}
+        />
+      );
 
     default:
       return null;

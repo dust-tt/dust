@@ -3,6 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
@@ -58,7 +59,7 @@ export async function createAgentInstructionSuggestions(
     agentConfiguration: AgentConfigurationType;
     edits: InstructionSuggestionEditInput[];
     source: AgentSuggestionSource;
-    conversation: ConversationResource | null;
+    conversation: ConversationResource | ConversationWithoutContentType | null;
   }
 ): Promise<Result<CreatedInstructionSuggestion[], string>> {
   // Reject batches where multiple edits target the same block.

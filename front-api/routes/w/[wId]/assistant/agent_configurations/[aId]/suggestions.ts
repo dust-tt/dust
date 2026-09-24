@@ -1,6 +1,7 @@
 import { applyAgentSuggestions } from "@app/lib/api/assistant/apply_agent_suggestions";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
   GetSuggestionsResponseBody,
   PatchSuggestionResponseBody,
@@ -22,6 +23,7 @@ const stringOrArrayToArray = z.preprocess(
 const GetSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray.optional(),
   kind: z.enum(["instructions", "tools", "skills", "model"]).optional(),
+  conversationId: z.string().optional(),
   limit: z.string().optional(),
 });
 
@@ -65,7 +67,7 @@ app.get(
       });
     }
 
-    const { states, kind, limit } = ctx.req.valid("query");
+    const { states, kind, conversationId, limit } = ctx.req.valid("query");
 
     const parsedLimit = limit ? parseInt(limit, 10) : undefined;
     if (parsedLimit !== undefined && isNaN(parsedLimit)) {
@@ -78,10 +80,25 @@ app.get(
       });
     }
 
+    // Resolved through `ConversationResource` so the filter only ever matches a conversation the
+    // caller can access; an unknown or inaccessible one yields no suggestions.
+    let conversationModelId: number | undefined;
+    if (conversationId) {
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        conversationId
+      );
+      if (!conversation) {
+        return ctx.json({ suggestions: [] });
+      }
+      conversationModelId = conversation.id;
+    }
+
     const suggestions =
       await AgentSuggestionResource.listByAgentConfigurationId(auth, aId, {
         states,
         kind,
+        conversationModelId,
         limit: parsedLimit,
       });
 
