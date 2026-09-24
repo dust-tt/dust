@@ -4,6 +4,7 @@ import {
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { SkillSuggestionPreviewProvider } from "@app/components/assistant/details/SuggestionPreviewContext";
+import { SuggestionPreviewHeader } from "@app/components/assistant/details/SuggestionPreviewHeader";
 import {
   SkillDetailsContent,
   SkillDetailsHeader,
@@ -16,8 +17,8 @@ import {
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { useUser } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Spinner } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { cn, Spinner } from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 
 interface ConversationSkillPanelProps {
   owner: LightWorkspaceType;
@@ -41,6 +42,9 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
       (s) => s.state === "pending" && ids.includes(s.sId)
     );
   }, [suggestions, suggestionIds]);
+  const [hiddenPreviewData, setHiddenPreviewData] = useState<string>();
+  const isApplied = hiddenPreviewData !== data;
+  const hasPreview = previewSuggestions.length > 0;
 
   // Fetching by id (rather than resolving from a list) is what lets non-editors
   // and unpublished skills render here at all.
@@ -55,13 +59,29 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
     skill,
     suggestions: previewSuggestions,
   });
-  const previewedSkill = skill && preview ? { ...skill, ...preview } : skill;
+  const previewedSkill =
+    isApplied && skill && preview ? { ...skill, ...preview } : skill;
 
   return (
-    <div className="flex h-panel flex-col bg-panel-background">
-      <ConversationSidePanelHeader onClose={closePanel}>
-        <span className="text-sm font-medium text-foreground">Skill</span>
-      </ConversationSidePanelHeader>
+    <div
+      className={cn(
+        "flex h-panel flex-col bg-panel-background",
+        hasPreview &&
+          isApplied &&
+          "rounded-r-xl outline-4 -outline-offset-4 outline-highlight-100"
+      )}
+    >
+      {hasPreview ? (
+        <SuggestionPreviewHeader
+          isApplied={isApplied}
+          onToggle={() => setHiddenPreviewData(isApplied ? data : undefined)}
+          onClose={closePanel}
+        />
+      ) : (
+        <ConversationSidePanelHeader onClose={closePanel}>
+          <span className="text-sm font-medium text-foreground">Skill</span>
+        </ConversationSidePanelHeader>
+      )}
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
         {isSkillError ? (
           <SkillLoadError onRetry={mutateSkill} />
@@ -70,7 +90,10 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
             <Spinner size="lg" />
           </div>
         ) : (
-          <SkillSuggestionPreviewProvider suggestions={previewSuggestions}>
+          <SkillSuggestionPreviewProvider
+            suggestions={previewSuggestions}
+            isApplied={isApplied}
+          >
             <SkillDetailsHeader
               skill={previewedSkill}
               owner={owner}
