@@ -3,6 +3,8 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatSkillSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestSkillEditorsArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
@@ -13,6 +15,7 @@ import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_res
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isEditorsSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
+import assert from "assert";
 
 export async function suggestSkillEditors(
   auth: Authenticator,
@@ -22,7 +25,8 @@ export async function suggestSkillEditors(
     removeUserIds = [],
     analysis,
     title,
-  }: SuggestSkillEditorsArgs
+  }: SuggestSkillEditorsArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<SkillSuggestionResource, MCPError>> {
   if (!auth.user()) {
     return new Err(
@@ -70,7 +74,7 @@ export async function suggestSkillEditors(
       title: title ?? null,
       state: "pending",
       source: "conversational",
-      sourceConversationIds: null,
+      sourceConversationIds: [runContext.conversation.id],
     }
   );
 
@@ -83,9 +87,11 @@ export async function suggestSkillEditors(
 
 export async function suggestSkillEditorsHandler(
   args: SuggestSkillEditorsArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestSkillEditors(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestSkillEditors(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

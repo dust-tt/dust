@@ -26,6 +26,7 @@ interface InlineActivityStepsProps {
   pendingToolCalls: PendingToolCall[];
   onOpenDetails?: (messageId: string, actionId?: string) => void;
   owner: WorkspaceType;
+  conversationId: string;
   isLastMessage: boolean;
 }
 
@@ -66,6 +67,7 @@ export function InlineActivitySteps({
   pendingToolCalls,
   onOpenDetails,
   owner,
+  conversationId,
 }: InlineActivityStepsProps) {
   const isAgentMessageWithActions =
     isLightAgentMessageWithActionsType(agentMessage);
@@ -135,6 +137,7 @@ export function InlineActivitySteps({
             <AgentMessageMarkdown
               content={agentMessage.content}
               owner={owner}
+              conversationId={conversationId}
               streamingState="streaming"
               isLastMessage={false}
             />
@@ -212,6 +215,7 @@ export function InlineActivitySteps({
         <AgentMessageMarkdown
           content={agentMessage.content}
           owner={owner}
+          conversationId={conversationId}
           streamingState="streaming"
           isLastMessage={false}
         />
@@ -233,6 +237,7 @@ export function InlineActivitySteps({
         <AgentMessageMarkdown
           content={content}
           owner={owner}
+          conversationId={conversationId}
           isLastMessage={false}
         />
       )}

@@ -20,6 +20,7 @@ export const GetSkillSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray(StateSchema).optional(),
   sources: stringOrArrayToArray(SourceSchema).optional(),
   kind: z.enum(SKILL_SUGGESTION_KINDS).optional(),
+  conversationId: z.string().optional(),
   limit: z.string().optional(),
 });
 

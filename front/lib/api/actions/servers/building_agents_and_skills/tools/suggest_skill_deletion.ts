@@ -3,6 +3,8 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import type { SuggestSkillDeletionArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,10 +14,12 @@ import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_res
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 export async function suggestSkillDeletion(
   auth: Authenticator,
-  { skillId, analysis }: SuggestSkillDeletionArgs
+  { skillId, analysis }: SuggestSkillDeletionArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<SkillSuggestionResource, MCPError>> {
   if (!auth.user()) {
     return new Err(
@@ -51,7 +55,7 @@ export async function suggestSkillDeletion(
       title: null,
       state: "pending",
       source: "conversational",
-      sourceConversationIds: null,
+      sourceConversationIds: [runContext.conversation.id],
     }
   );
 
@@ -62,9 +66,11 @@ export async function suggestSkillDeletion(
 
 export async function suggestSkillDeletionHandler(
   args: SuggestSkillDeletionArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestSkillDeletion(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestSkillDeletion(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

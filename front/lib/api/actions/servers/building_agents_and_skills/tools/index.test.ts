@@ -37,6 +37,7 @@ import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory"
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
+import type { ModelId } from "@app/types/shared/model_id";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { SKILL_SUGGESTION_KINDS } from "@app/types/suggestions/skill_suggestion";
 import type { WorkspaceType } from "@app/types/user";
@@ -71,13 +72,19 @@ function getTool(name: string) {
   return tool;
 }
 
-// The tool never reads runContext, so a partial extra cast to ToolHandlerExtra is sufficient
-// (mirroring skill_authoring).
-function makeExtra(auth: Authenticator) {
+// The skill tools only read `runContext.conversation`, to record the conversation a suggestion was
+// made in, so a partial extra cast to ToolHandlerExtra is sufficient (mirroring skill_authoring).
+// `sourceConversationIds` has no foreign key, so a synthetic conversation id is enough here.
+const TEST_CONVERSATION_MODEL_ID = 424242;
+
+function makeExtra(
+  auth: Authenticator,
+  conversationModelId: ModelId = TEST_CONVERSATION_MODEL_ID
+) {
   const extra: Pick<
     ToolHandlerExtra,
     "auth" | "requestId" | "sendNotification" | "sendRequest" | "signal"
-  > = {
+  > & { runContext: unknown } = {
     auth,
     requestId: "test-request",
     sendNotification: async () => {},
@@ -87,6 +94,10 @@ function makeExtra(auth: Authenticator) {
       );
     },
     signal: new AbortController().signal,
+    runContext: {
+      contextType: "agent_loop",
+      conversation: { id: conversationModelId },
+    },
   };
 
   return extra as ToolHandlerExtra;
@@ -328,7 +339,9 @@ describe("building_agents_and_skills tools", () => {
       expect(suggestion?.analysis).toBe(
         "Root cause and follow-ups were missing."
       );
-      expect(suggestion?.sourceConversationIds).toBeNull();
+      expect(suggestion?.sourceConversationIds).toEqual([
+        TEST_CONVERSATION_MODEL_ID,
+      ]);
       expect(suggestion?.toJSON()).toMatchObject({
         suggestion: {
           instructionEdits: [
@@ -340,6 +353,47 @@ describe("building_agents_and_skills tools", () => {
       // The skill itself is left untouched.
       const reloaded = await SkillResource.fetchById(authenticator, skill.sId);
       expect(reloaded?.instructions).toBe("Collect impact and timeline.");
+    });
+
+    it("records the conversation it ran in, so suggestions can be scoped to it", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Scoped Suggestions",
+        instructionsHtml: null,
+      });
+
+      const suggest = (conversationModelId: ModelId) =>
+        getTool(SUGGEST_SKILL_UPDATE_TOOL_NAME).handler(
+          {
+            skillId: skill.sId,
+            agentFacingDescriptionEdit: {
+              content: `Edit from conversation ${conversationModelId}.`,
+            },
+          },
+          makeExtra(authenticator, conversationModelId)
+        );
+
+      const firstResult = await suggest(111);
+      const secondResult = await suggest(222);
+      if (firstResult.isErr() || secondResult.isErr()) {
+        throw new Error("Expected both suggestions to be created.");
+      }
+      if (
+        firstResult.value[0]?.type !== "text" ||
+        secondResult.value[0]?.type !== "text"
+      ) {
+        throw new Error("Expected text output.");
+      }
+      const firstId = extractSuggestionId(firstResult.value[0].text);
+      const secondId = extractSuggestionId(secondResult.value[0].text);
+
+      const scoped = await SkillSuggestionResource.listBySkillConfigurationId(
+        authenticator,
+        skill.sId,
+        { sources: ["conversational"], sourceConversationModelId: 222 }
+      );
+      expect(scoped.map((s) => s.sId)).toEqual([secondId]);
+      expect(scoped.map((s) => s.sId)).not.toContain(firstId);
     });
 
     it("accepts a description-only suggestion", async () => {

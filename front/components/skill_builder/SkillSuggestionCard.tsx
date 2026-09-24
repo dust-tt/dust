@@ -392,11 +392,13 @@ export function SkillSuggestionCard({
         workspaceId={workspaceId}
       />
 
-      <ConversationFooter
-        visibleSourceConversationIds={suggestion.visibleSourceConversationIds}
-        sourceConversationsCount={suggestion.sourceConversationsCount}
-        workspaceId={workspaceId}
-      />
+      {suggestion.source !== "conversational" && (
+        <ConversationFooter
+          visibleSourceConversationIds={suggestion.visibleSourceConversationIds}
+          sourceConversationsCount={suggestion.sourceConversationsCount}
+          workspaceId={workspaceId}
+        />
+      )}
     </>
   );
 

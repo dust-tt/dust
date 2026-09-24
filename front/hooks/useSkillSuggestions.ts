@@ -37,6 +37,7 @@ interface UseSkillSuggestionsParams {
   kind?: GetSkillSuggestionsQuery["kind"];
   states?: GetSkillSuggestionsQuery["states"];
   sources: ReviewableSkillSuggestionSource[];
+  conversationId?: string | null;
   limit?: number;
   workspaceId: string;
 }
@@ -47,6 +48,7 @@ export function useSkillSuggestions({
   kind,
   states,
   sources,
+  conversationId,
   limit,
   workspaceId,
 }: UseSkillSuggestionsParams) {
@@ -60,6 +62,9 @@ export function useSkillSuggestions({
   sources.forEach((s) => urlParams.append("sources", s));
   if (kind) {
     urlParams.append("kind", kind);
+  }
+  if (conversationId) {
+    urlParams.append("conversationId", conversationId);
   }
   if (limit !== undefined) {
     urlParams.append("limit", limit.toString());

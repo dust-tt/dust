@@ -3,6 +3,8 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatSkillSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestSkillAvailabilityArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
@@ -13,6 +15,7 @@ import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_res
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isAvailabilitySkillSuggestion } from "@app/types/suggestions/skill_suggestion";
+import assert from "assert";
 
 /**
  * @cc [owner:achilleburah,label:security] requires-skill-write
@@ -21,7 +24,8 @@ import { isAvailabilitySkillSuggestion } from "@app/types/suggestions/skill_sugg
  */
 export async function suggestSkillAvailability(
   auth: Authenticator,
-  { skillId, availability, analysis, title }: SuggestSkillAvailabilityArgs
+  { skillId, availability, analysis, title }: SuggestSkillAvailabilityArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<SkillSuggestionResource, MCPError>> {
   if (!auth.user()) {
     return new Err(
@@ -65,7 +69,7 @@ export async function suggestSkillAvailability(
       title: title ?? null,
       state: "pending",
       source: "conversational",
-      sourceConversationIds: null,
+      sourceConversationIds: [runContext.conversation.id],
     }
   );
 
@@ -78,9 +82,11 @@ export async function suggestSkillAvailability(
 
 export async function suggestSkillAvailabilityHandler(
   args: SuggestSkillAvailabilityArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestSkillAvailability(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestSkillAvailability(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

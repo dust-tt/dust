@@ -7,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type {
   GetSkillSuggestionsResponseBody,
@@ -56,6 +57,7 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
     states: ctx.req.queries("states"),
     sources: ctx.req.queries("sources"),
     kind: ctx.req.query("kind"),
+    conversationId: ctx.req.query("conversationId"),
     limit: ctx.req.query("limit"),
   };
   const queryValidation = GetSkillSuggestionsQuerySchema.safeParse(queryInput);
@@ -69,7 +71,7 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
     });
   }
 
-  const { states, sources, kind, limit } = queryValidation.data;
+  const { states, sources, kind, conversationId, limit } = queryValidation.data;
 
   const parsedLimit = limit ? parseInt(limit, 10) : undefined;
   if (parsedLimit !== undefined && isNaN(parsedLimit)) {
@@ -91,6 +93,18 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
     return ctx.json({ suggestions: [] });
   }
 
+  let sourceConversationModelId: number | undefined;
+  if (conversationId) {
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversation) {
+      return ctx.json({ suggestions: [] });
+    }
+    sourceConversationModelId = conversation.id;
+  }
+
   const suggestions = await SkillSuggestionResource.listBySkillConfigurationId(
     auth,
     skill.sId,
@@ -98,6 +112,7 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
       states,
       sources: effectiveSources,
       kinds: kind ? [kind] : undefined,
+      sourceConversationModelId,
       limit: parsedLimit,
     }
   );

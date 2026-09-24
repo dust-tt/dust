@@ -85,6 +85,7 @@ describe("InlineActivitySteps", () => {
       completedSteps: [],
       pendingToolCalls: [],
       owner: mockOwner,
+      conversationId: "conv-1",
       isLastMessage: true,
     };
 
@@ -138,6 +139,7 @@ describe("InlineActivitySteps", () => {
         ]}
         pendingToolCalls={[]}
         owner={mockOwner}
+        conversationId="conv-1"
         isLastMessage
       />
     );
@@ -164,6 +166,7 @@ describe("InlineActivitySteps", () => {
         ]}
         pendingToolCalls={[]}
         owner={mockOwner}
+        conversationId="conv-1"
         isLastMessage
       />
     );

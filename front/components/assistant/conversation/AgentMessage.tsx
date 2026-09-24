@@ -1564,6 +1564,7 @@ function AgentMessageContent({
           pendingToolCalls={agentMessage.streaming.pendingToolCalls}
           onOpenDetails={onOpenDetails}
           owner={owner}
+          conversationId={conversationId}
           isLastMessage={isLastMessage}
         />
         {blockedActionElement}
@@ -1584,6 +1585,7 @@ function AgentMessageContent({
               <AgentMessageMarkdown
                 content={sanitizeVisualizationContent(agentMessage.content)}
                 owner={owner}
+                conversationId={conversationId}
                 streamingState={
                   agentMessage.status === "cancelled" ? "cancelled" : "none"
                 }

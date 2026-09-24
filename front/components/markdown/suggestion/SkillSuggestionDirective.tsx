@@ -85,12 +85,14 @@ interface ConversationSkillSuggestionProps {
   owner: LightWorkspaceType;
   skillId: string;
   suggestionId: string;
+  conversationId: string;
 }
 
 function ConversationSkillSuggestion({
   owner,
   skillId,
   suggestionId,
+  conversationId,
 }: ConversationSkillSuggestionProps) {
   const [pendingAction, setPendingAction] = useState<
     "accept" | "decline" | null
@@ -102,6 +104,7 @@ function ConversationSkillSuggestion({
       skillId,
       workspaceId: owner.sId,
       sources: ["conversational"],
+      conversationId,
     });
 
   const { skill, isSkillLoading, mutateSkillRegardlessOfQueryParams } =
@@ -212,16 +215,20 @@ interface SkillSuggestionPluginProps {
   skillId?: string;
 }
 
-export function getSkillSuggestionPlugin(owner: LightWorkspaceType) {
+export function getSkillSuggestionPlugin(
+  owner: LightWorkspaceType,
+  conversationId?: string
+) {
   const SkillSuggestionPlugin = ({
     suggestionId,
     skillId,
   }: SkillSuggestionPluginProps) =>
-    suggestionId && skillId ? (
+    suggestionId && skillId && conversationId ? (
       <ConversationSkillSuggestion
         owner={owner}
         skillId={skillId}
         suggestionId={suggestionId}
+        conversationId={conversationId}
       />
     ) : null;
 
