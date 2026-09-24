@@ -18,7 +18,7 @@ describe("notifyPublishedFrameSidePanel", () => {
     vi.mocked(publishConversationRelatedEvent).mockResolvedValue(undefined);
   });
 
-  it("emits an interactive_content_file tool_notification on the parent action", async () => {
+  it("emits a soft-open interactive_content_file tool_notification", async () => {
     const context = await createSandboxTokenTestContext();
     const { action } = await AgentMCPActionFactory.create(context.auth, {
       workspace: context.workspace,
@@ -75,9 +75,8 @@ describe("notifyPublishedFrameSidePanel", () => {
                 fileId: frame.sId,
                 mimeType: frameV2ContentType,
                 title: expect.any(String),
-                // Must be the publish revision so the panel remounts — not a
-                // stale File.updatedAtMs from before the publication landed.
                 updatedAt: "pub-from-publish",
+                autoOpen: false,
               },
             },
           },
@@ -112,7 +111,7 @@ describe("notifyPublishedFrameSidePanel", () => {
     expect(publishConversationRelatedEvent).not.toHaveBeenCalled();
   });
 
-  it("does not throw when event publication fails", async () => {
+  it("propagates event publication failures to the caller", async () => {
     const context = await createSandboxTokenTestContext();
     const { action } = await AgentMCPActionFactory.create(context.auth, {
       workspace: context.workspace,
@@ -144,6 +143,6 @@ describe("notifyPublishedFrameSidePanel", () => {
         frameId: frame.sId,
         messageId: context.agentMessage.sId,
       })
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow("redis down");
   });
 });

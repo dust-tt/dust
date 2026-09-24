@@ -1,7 +1,4 @@
-import {
-  buildInteractiveContentFileNotification,
-  interactiveContentRevision,
-} from "@app/lib/api/actions/servers/interactive_content/helpers";
+import { buildInteractiveContentFileNotification } from "@app/lib/api/actions/servers/interactive_content/helpers";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { frameV2ContentType } from "@app/types/files";
 import { describe, expect, it } from "vitest";
@@ -27,53 +24,58 @@ function fakeFrame(
   } as FileResource;
 }
 
-describe("interactiveContentRevision", () => {
-  it("prefers the active publication id over File.updatedAtMs", () => {
-    const frame = fakeFrame({ activePublicationId: "pub-abc" });
-
-    expect(interactiveContentRevision(frame)).toBe("pub-abc");
-    expect(interactiveContentRevision(frame, "forced")).toBe("forced");
-  });
-
-  it("falls back to updatedAtMs when no active publication exists", () => {
-    const frame = fakeFrame({ updatedAtMs: 42 });
-
-    expect(interactiveContentRevision(frame)).toBe("42");
-  });
-});
-
 describe("buildInteractiveContentFileNotification", () => {
-  it("writes the content revision into updatedAt for panel cache busting", () => {
-    const frame = fakeFrame({
+  it("prefers contentRevision, then activePublicationId, then updatedAtMs", () => {
+    const withPub = fakeFrame({
       activePublicationId: "pub-abc",
       sId: "fil_frame",
     });
+    const withoutPub = fakeFrame({ updatedAtMs: 42 });
 
-    const notification = buildInteractiveContentFileNotification(
-      "token-1",
-      frame,
-      "Opening Frame...",
-      { contentRevision: "1710000000000" }
-    );
-
-    expect(notification.params._meta?.data.output).toMatchObject({
+    expect(
+      buildInteractiveContentFileNotification(
+        "token-1",
+        withPub,
+        "Opening Frame...",
+        { contentRevision: "1710000000000" }
+      ).params._meta?.data.output
+    ).toMatchObject({
       type: "interactive_content_file",
       fileId: "fil_frame",
       updatedAt: "1710000000000",
     });
+
+    expect(
+      buildInteractiveContentFileNotification("token-1", withPub, "Published")
+        .params._meta?.data.output
+    ).toMatchObject({ updatedAt: "pub-abc" });
+
+    expect(
+      buildInteractiveContentFileNotification(
+        "token-1",
+        withoutPub,
+        "Published"
+      ).params._meta?.data.output
+    ).toMatchObject({ updatedAt: "42" });
   });
 
-  it("defaults updatedAt to the active publication id", () => {
-    const frame = fakeFrame({ activePublicationId: "pub-abc" });
+  it("omits autoOpen unless explicitly false", () => {
+    const frame = fakeFrame();
 
-    const notification = buildInteractiveContentFileNotification(
-      "token-1",
-      frame,
-      "Published Frame"
-    );
+    expect(
+      buildInteractiveContentFileNotification("t", frame, "Opening Frame...")
+        .params._meta?.data.output
+    ).not.toHaveProperty("autoOpen");
 
-    expect(notification.params._meta?.data.output).toMatchObject({
-      updatedAt: "pub-abc",
-    });
+    expect(
+      buildInteractiveContentFileNotification(
+        "t",
+        frame,
+        "Publishing Frame...",
+        {
+          autoOpen: false,
+        }
+      ).params._meta?.data.output
+    ).toMatchObject({ autoOpen: false });
   });
 });

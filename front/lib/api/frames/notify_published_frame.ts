@@ -7,14 +7,15 @@ import logger from "@app/logger/logger";
 import { isFrameContentType } from "@app/types/files";
 
 /**
- * Opens the conversation Frame side panel after a sandbox publish, the same way legacy
- * `publish_interactive_content_file` and `conversation_side_panel.open_frame` do: emit an
- * `interactive_content_file` tool_notification on the parent sandbox action. Best-effort —
- * publish already succeeded; a missing action/frame or Redis failure must not fail the
- * HTTP response.
+ * Emits the same `interactive_content_file` tool_notification shape as
+ * `processToolNotification` in mcp_execution.ts, so the conversation client can
+ * open/refresh the Frame panel after a sandbox `/publish`.
  *
- * `contentRevision` must change on every publish so the panel remounts (it keys refresh on
- * `fileId@updatedAt`). Prefer the new v2 `publicationId`; fall back to a fresh timestamp.
+ * Best-effort: callers should `void … .catch(…)` so publish HTTP success is
+ * unaffected. Missing frame/action is a quiet skip (expected races), not an error.
+ *
+ * `contentRevision` should be the new v2 `publicationId` so the panel remounts.
+ * `autoOpen: false` so we refresh an open Frame panel without stealing the file explorer.
  */
 export async function notifyPublishedFrameSidePanel(
   auth: Authenticator,
@@ -34,68 +35,50 @@ export async function notifyPublishedFrameSidePanel(
     contentRevision?: string;
   }
 ): Promise<void> {
-  try {
-    const [frame, action] = await Promise.all([
-      FileResource.fetchById(auth, frameId),
-      AgentMCPActionResource.fetchById(auth, actionId),
-    ]);
+  const [frame, action] = await Promise.all([
+    FileResource.fetchById(auth, frameId),
+    AgentMCPActionResource.fetchById(auth, actionId),
+  ]);
 
-    if (!frame || !isFrameContentType(frame.contentType)) {
-      logger.warn(
-        { frameId, conversationId, messageId },
-        "Skipping Frame publish side-panel notification: Frame not found."
-      );
-      return;
-    }
-
-    if (!action) {
-      logger.warn(
-        { actionId, conversationId, messageId, frameId },
-        "Skipping Frame publish side-panel notification: parent action not found."
-      );
-      return;
-    }
-
-    // Match MCP tool notifications: progressToken is the numeric action id.
-    const notification = buildInteractiveContentFileNotification(
-      action.id,
-      frame,
-      "Publishing Frame...",
-      {
-        contentRevision:
-          contentRevision ??
-          frame.useCaseMetadata?.activePublicationId ??
-          Date.now().toString(),
-      }
-    );
-
-    await publishConversationRelatedEvent({
-      conversationId,
-      step: action.stepContent.step,
-      event: {
-        type: "tool_notification",
-        created: Date.now(),
-        configurationId,
-        conversationId,
-        messageId,
-        action: {
-          ...action.toJSON(),
-          output: null,
-          generatedFiles: [],
-        },
-        notification: notification.params,
-      },
-    });
-  } catch (error) {
+  if (!frame || !isFrameContentType(frame.contentType)) {
     logger.warn(
-      {
-        err: error,
-        actionId,
-        conversationId,
-        messageId,
-        frameId,
-      },
-      "Failed to emit Frame publish side-panel notification."
+      { frameId, conversationId, messageId },
+      "Skipping Frame publish side-panel notification: Frame not found."
     );
+    return;
   }
+
+  if (!action) {
+    logger.warn(
+      { actionId, conversationId, messageId, frameId },
+      "Skipping Frame publish side-panel notification: parent action not found."
+    );
+    return;
+  }
+
+  // Same event shape as processToolNotification (agent_loop branch).
+  const notification = buildInteractiveContentFileNotification(
+    action.id,
+    frame,
+    "Publishing Frame...",
+    { contentRevision, autoOpen: false }
+  );
+
+  await publishConversationRelatedEvent({
+    conversationId,
+    step: action.stepContent.step,
+    event: {
+      type: "tool_notification",
+      created: Date.now(),
+      configurationId,
+      conversationId,
+      messageId,
+      action: {
+        ...action.toJSON(),
+        output: null,
+        generatedFiles: [],
+      },
+      notification: notification.params,
+    },
+  });
 }

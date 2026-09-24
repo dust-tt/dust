@@ -497,14 +497,11 @@ export function FrameRenderer({
               visualization={{
                 code: fileContent ?? "",
                 complete: true,
-                // Keep identifier stable across panel revisions. Putting
-                // contentHash here made Next.js /content?identifier=… thrash on
-                // every open_frame/publish (unique URLs + remounts → CPU spike).
-                // Remount via `key` is enough for viz to re-fetch code over RPC.
+                // Stable across revisions — contentHash belongs in `key` only.
+                // Putting it in identifier forced Next.js to recompile /content
+                // for every open_frame/publish.
                 identifier: `viz-${fileId}`,
               }}
-              // contentHash must be in the key: without it, open_frame / publish
-              // updates leave the old iframe mounted with stale RPC-fetched code.
               key={
                 contentHash
                   ? `viz-${contentHash}`

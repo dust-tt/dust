@@ -3,37 +3,24 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import { getFileDisplayName } from "@app/types/files";
 
 /**
- * Cache-bust token for the interactive-content side panel.
- *
- * The panel keys refresh on `fileId@updatedAt`. Prefer the active Frames v2
- * publication id (changes on every publish) over `FileResource.updatedAtMs`,
- * which may not move when only sandbox sources change.
- */
-export function interactiveContentRevision(
-  fileResource: FileResource,
-  override?: string
-): string {
-  if (override !== undefined) {
-    return override;
-  }
-
-  return (
-    fileResource.useCaseMetadata?.activePublicationId ??
-    fileResource.updatedAtMs.toString()
-  );
-}
-
-/**
  * Builds a progress notification for interactive content file operations.
  *
- * Pass `contentRevision` when the caller needs a forced panel refresh even if
- * the File row's updatedAt / active publication did not change (e.g. open_frame).
+ * Panel refresh keys on `fileId@updatedAt`. Prefer (in order):
+ * - `contentRevision` when the caller must force a remount (e.g. open_frame)
+ * - active Frames v2 publication id
+ * - File.updatedAtMs
+ *
+ * Pass `autoOpen: false` for background publishes that should refresh an already
+ * open Frame panel but not steal focus from another panel (e.g. file explorer).
  */
 export function buildInteractiveContentFileNotification(
   progressToken: string | number,
   fileResource: FileResource,
   label: string,
-  { contentRevision }: { contentRevision?: string } = {}
+  {
+    contentRevision,
+    autoOpen,
+  }: { contentRevision?: string; autoOpen?: boolean } = {}
 ): MCPProgressNotificationType {
   return {
     method: "notifications/progress",
@@ -49,10 +36,11 @@ export function buildInteractiveContentFileNotification(
             fileId: fileResource.sId,
             mimeType: fileResource.contentType,
             title: getFileDisplayName(fileResource),
-            updatedAt: interactiveContentRevision(
-              fileResource,
-              contentRevision
-            ),
+            updatedAt:
+              contentRevision ??
+              fileResource.useCaseMetadata?.activePublicationId ??
+              fileResource.updatedAtMs.toString(),
+            ...(autoOpen === false ? { autoOpen: false } : {}),
           },
         },
       },
