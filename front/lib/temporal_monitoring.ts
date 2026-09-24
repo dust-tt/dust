@@ -63,7 +63,6 @@ export class ActivityInboundLogInterceptor
     const queryTrackerStore = { concurrent: 0, peak: 0 };
 
     try {
-      this.logger.info("Activity started.");
       return await runWithTemporalActivityContext(
         this.context.info.activityType,
         () =>
