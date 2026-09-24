@@ -1,7 +1,7 @@
 import { updateAgentConfigurationsModel } from "@app/lib/api/assistant/configuration/model_update";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { BatchUpdateAgentModelResponseBody } from "@app/types/api/assistant/configuration";
-import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import { ReasoningEffortSchema } from "@app/types/assistant/models/reasoning";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -13,7 +13,7 @@ const BatchUpdateAgentModelRequestBodySchema = z.object({
   modelId: z.string(),
   // Both default to what picking that model in the agent builder would do: the model's own
   // default reasoning effort, and the agent's existing response format.
-  reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
+  reasoningEffort: ReasoningEffortSchema.optional(),
   responseFormat: z.string().optional(),
 });
 
