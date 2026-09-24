@@ -181,9 +181,7 @@ function StepThroughDemo() {
   if (!isReviewing) {
     return (
       // The recap card is part of the pile, on top of the pending proposals.
-      <ActionCardStack
-        cardCount={pendingIndexes.length + 1}
-      >
+      <ActionCardStack cardCount={pendingIndexes.length + 1}>
         <RecapCard
           pendingCount={pendingIndexes.length}
           onReview={() => setIsReviewing(true)}
@@ -196,9 +194,7 @@ function StepThroughDemo() {
 
   const [current] = pendingIndexes;
   return (
-    <ActionCardStack
-      cardCount={pendingIndexes.length}
-    >
+    <ActionCardStack cardCount={pendingIndexes.length}>
       <ActionCardBlock
         cardVariant="secondary"
         {...PROPOSALS[current]}

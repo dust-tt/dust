@@ -15,7 +15,6 @@ export interface ActionCardStackProps {
   className?: string;
 }
 
-
 /**
  * Pile of action cards rendered inside an agent message when several
  * proposals are grouped together. Only the front card is interactive; the
