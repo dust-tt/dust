@@ -1,11 +1,13 @@
 import type { CatalogItem } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
 import { DiscoverCatalog } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
 import { DiscoverHome } from "@app/components/assistant/conversation/discover/DiscoverHome";
+import { DiscoverPinDialog } from "@app/components/assistant/conversation/discover/DiscoverPinDialog";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   SearchInput,
   Tabs,
@@ -35,6 +37,8 @@ export const DiscoverContainer = forwardRef<
 ) {
   const [tab, setTab] = useState<DiscoverTab>("Discover");
   const [search, setSearch] = useState("");
+  const [pinTarget, setPinTarget] = useState<CatalogItem | null>(null);
+  const onPin = isAdmin(owner) ? setPinTarget : undefined;
   const [detailsTarget, setDetailsTarget] = useState<CatalogItem | null>(null);
 
   return (
@@ -76,6 +80,7 @@ export const DiscoverContainer = forwardRef<
             owner={owner}
             onAgentClick={onAgentConfigurationClick}
             onSkillClick={onSkillClick}
+            onPin={onPin}
             onDetails={setDetailsTarget}
             onFindMore={() => setTab("Agents & Skills")}
           />
@@ -87,6 +92,7 @@ export const DiscoverContainer = forwardRef<
             onClearSearch={() => setSearch("")}
             onAgentClick={onAgentConfigurationClick}
             onSkillClick={onSkillClick}
+            onPin={onPin}
             onDetails={setDetailsTarget}
             onFiltersChange={onFiltersChange}
           />
@@ -108,6 +114,13 @@ export const DiscoverContainer = forwardRef<
         }
         onClose={() => setDetailsTarget(null)}
       />
+      {pinTarget && (
+        <DiscoverPinDialog
+          owner={owner}
+          item={pinTarget}
+          onClose={() => setPinTarget(null)}
+        />
+      )}
     </div>
   );
 });
