@@ -16,6 +16,7 @@ import type {
   ModelStreamResolutionsType,
 } from "@app/types/api/assistant/models";
 import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
@@ -160,12 +161,15 @@ describe("modelPickerUtils premium gating", () => {
 
   describe("getEffortStops", () => {
     it("locks premium efforts with reason 'premium' when gated (mixed model)", () => {
-      // Sonnet 5: low=cost_efficient, medium=balanced, high=premium.
+      // Sonnet 5: none/low=cost_efficient, medium=balanced, high and up=premium.
       const stops = getEffortStops(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, GATED);
       expect(unavailabilityReasonByEffort(stops)).toEqual({
+        none: null,
         low: null,
         medium: null,
         high: "premium",
+        xhigh: "premium",
+        maximal: "premium",
       });
     });
 
@@ -175,6 +179,8 @@ describe("modelPickerUtils premium gating", () => {
         low: "premium",
         medium: "premium",
         high: "premium",
+        xhigh: "premium",
+        maximal: "premium",
       });
     });
 
@@ -201,6 +207,29 @@ describe("modelPickerUtils premium gating", () => {
     it("has no stops for a model without reasoning", () => {
       expect(getEffortStops(MISTRAL_SMALL_MODEL_CONFIG, UNGATED)).toEqual([]);
     });
+
+    it("only offers the efforts the model supports", () => {
+      const stops = getEffortStops(
+        {
+          ...MISTRAL_SMALL_MODEL_CONFIG,
+          modelId: "my-custom-model-from-eap" as ModelIdType,
+          supportedReasoningEfforts: {
+            none: true,
+            minimal: false,
+            low: false,
+            medium: false,
+            high: true,
+            xhigh: false,
+            maximal: false,
+          },
+        },
+        UNGATED
+      );
+      expect(unavailabilityReasonByEffort(stops)).toEqual({
+        none: null,
+        high: null,
+      });
+    });
   });
 
   describe("getEffortStopTooltip", () => {
@@ -211,12 +240,6 @@ describe("modelPickerUtils premium gating", () => {
           unavailabilityReason: null,
         })
       ).toBeNull();
-      expect(
-        getEffortStopTooltip({
-          effort: "high",
-          unavailabilityReason: "unsupported",
-        })
-      ).toBe("This model doesn't support High reasoning.");
       expect(
         getEffortStopTooltip({
           effort: "high",
@@ -349,6 +372,12 @@ describe("modelPickerUtils premium gating", () => {
   });
 
   describe("getInitialEffort", () => {
+    it("starts a model on its default none effort", () => {
+      expect(
+        getInitialEffort(CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG, UNGATED)
+      ).toBe("none");
+    });
+
     it("never returns a premium effort when gated (mixed models)", () => {
       expect(
         getTierForModel(

@@ -110,7 +110,7 @@ export function ModelPickerModelRow({
         onSelect={(e) => e.preventDefault()}
       />
       {isSelected &&
-        effortStops.length > 0 &&
+        effortStops.length > 1 &&
         effort !== null &&
         onChangeEffort && (
           <ReasoningEffortSlider
