@@ -1014,6 +1014,25 @@ const MODEL_ONLY_GLOBAL_AGENTS_SID: readonly GLOBAL_AGENTS_SID[] = [
   GLOBAL_AGENTS_SID.GEMINI_PRO,
 ];
 
+/**
+ * @cc [owner:sfriquet,label:product] default-global-agent-ids
+ * Lists the global agents fetched when no sIds are requested, before any workspace or caller
+ * filtering: every `GLOBAL_AGENTS_SID` except retired, sidekick, reinforcement and model-only
+ * agents. The result MUST NOT depend on any workspace, plan, flag or caller state.
+ */
+export function listDefaultGlobalAgentIds(): GLOBAL_AGENTS_SID[] {
+  return (
+    Object.values(GLOBAL_AGENTS_SID)
+      .filter((sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId))
+      // We only want to fetch sidekick global agents if explicitly requested.
+      .filter((sId) => sId !== GLOBAL_AGENTS_SID.SIDEKICK)
+      // The reinforcement agent is never called directly, it is only used as a
+      // placeholder when building reinforcement conversations.
+      .filter((sId) => sId !== GLOBAL_AGENTS_SID.REINFORCEMENT)
+      .filter((sId) => !MODEL_ONLY_GLOBAL_AGENTS_SID.includes(sId))
+  );
+}
+
 function getCustomModelIndexForGlobalAgent(sId: string): number | null {
   if (!isGlobalAgentId(sId)) {
     return null;
@@ -1062,15 +1081,7 @@ export async function getGlobalAgents(
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
   // user agents).
-  let agentsIdsToFetch =
-    agentIds ??
-    Object.values(GLOBAL_AGENTS_SID)
-      .filter((sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId))
-      // We only want to fetch sidekick global agents if explicitly requested.
-      .filter((sId) => sId !== GLOBAL_AGENTS_SID.SIDEKICK)
-      // The reinforcement agent is never called directly, it is only used as a
-      // placeholder when building reinforcement conversations.
-      .filter((sId) => sId !== GLOBAL_AGENTS_SID.REINFORCEMENT);
+  let agentsIdsToFetch: string[] = agentIds ?? listDefaultGlobalAgentIds();
 
   const flags = await getFeatureFlags(auth);
 
@@ -1086,12 +1097,6 @@ export async function getGlobalAgents(
     );
   }
 
-  if (agentIds === undefined) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) =>
-        !isGlobalAgentId(sId) || !MODEL_ONLY_GLOBAL_AGENTS_SID.includes(sId)
-    );
-  }
   const DUST_INTERNAL_AGENTS: readonly GLOBAL_AGENTS_SID[] = [
     GLOBAL_AGENTS_SID.DUST_HIGH,
     GLOBAL_AGENTS_SID.DUST_OMITTED,
