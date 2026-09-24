@@ -3,7 +3,10 @@ import { AttachmentChipDirectiveBlock } from "@app/components/markdown/Attachmen
 import { createTextDirective } from "@app/components/markdown/directives";
 import { MentionDisplay } from "@app/components/mentions/MentionDisplay";
 import { getSkillIcon } from "@app/lib/skill";
-import { SKILL_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
+import {
+  AGENT_SIDE_PANEL_TYPE,
+  SKILL_SIDE_PANEL_TYPE,
+} from "@app/types/conversation_side_panel";
 import type { WorkspaceType } from "@app/types/user";
 
 /**
@@ -28,20 +31,30 @@ interface BuildSkillDirectiveBlockProps {
   skillName: string;
 }
 
-export function BuildSkillDirectiveBlock({
-  skillId,
-  icon,
-  skillName,
-}: BuildSkillDirectiveBlockProps) {
-  const { togglePanel } = useConversationSidePanelContext();
+export function getBuildSkillDirectivePlugin(previewBatchId?: string) {
+  const BuildSkillDirectiveBlock = ({
+    skillId,
+    icon,
+    skillName,
+  }: BuildSkillDirectiveBlockProps) => {
+    const { togglePanel } = useConversationSidePanelContext();
 
-  return (
-    <AttachmentChipDirectiveBlock
-      label={skillName}
-      icon={getSkillIcon(icon ?? null)}
-      onClick={() => togglePanel({ type: SKILL_SIDE_PANEL_TYPE, skillId })}
-    />
-  );
+    return (
+      <AttachmentChipDirectiveBlock
+        label={skillName}
+        icon={getSkillIcon(icon ?? null)}
+        onClick={() =>
+          togglePanel({
+            type: SKILL_SIDE_PANEL_TYPE,
+            skillId,
+            previewBatchId,
+          })
+        }
+      />
+    );
+  };
+
+  return BuildSkillDirectiveBlock;
 }
 
 interface BuildAgentDirectiveBlockProps {
@@ -49,24 +62,40 @@ interface BuildAgentDirectiveBlockProps {
   agentName: string;
 }
 
-export function getBuildAgentDirectivePlugin(owner: WorkspaceType) {
+export function getBuildAgentDirectivePlugin(
+  owner: WorkspaceType,
+  previewBatchId?: string
+) {
   const BuildAgentDirectiveBlock = ({
     agentId,
     agentName,
-  }: BuildAgentDirectiveBlockProps) => (
-    <MentionDisplay
-      mention={{
-        id: agentId,
-        label: agentName,
-        type: "agent",
-        pictureUrl: "",
-        description: "",
-      }}
-      interactive
-      owner={owner}
-      showTooltip={false}
-    />
-  );
+  }: BuildAgentDirectiveBlockProps) => {
+    const { togglePanel } = useConversationSidePanelContext();
+
+    return (
+      <span
+        onClick={() =>
+          togglePanel({
+            type: AGENT_SIDE_PANEL_TYPE,
+            agentId,
+            previewBatchId,
+          })
+        }
+      >
+        <MentionDisplay
+          mention={{
+            id: agentId,
+            label: agentName,
+            type: "agent",
+            pictureUrl: "",
+            description: "",
+          }}
+          owner={owner}
+          showTooltip={false}
+        />
+      </span>
+    );
+  };
 
   return BuildAgentDirectiveBlock;
 }
