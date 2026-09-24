@@ -217,7 +217,7 @@ interface PinnedItemAvatarProps {
 
 function PinnedItemAvatar({ pinnedItem }: PinnedItemAvatarProps) {
   if (pinnedItem.type === "agent") {
-    return <Avatar size="sm" visual={pinnedItem.target.pictureUrl} />;
+    return <Avatar size="xs" visual={pinnedItem.target.pictureUrl} />;
   }
   return <PinnedSkillAvatar icon={pinnedItem.target.icon} />;
 }
@@ -228,5 +228,5 @@ interface PinnedSkillAvatarProps {
 
 function PinnedSkillAvatar({ icon }: PinnedSkillAvatarProps) {
   const SkillAvatar = useMemo(() => getSkillAvatarIcon(icon), [icon]);
-  return <SkillAvatar size="sm" />;
+  return <SkillAvatar size="xs" />;
 }
