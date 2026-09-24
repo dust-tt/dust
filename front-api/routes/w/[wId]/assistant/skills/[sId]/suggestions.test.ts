@@ -1842,10 +1842,11 @@ describe("PATCH with applyToSkill (availability)", () => {
     expect((await skill.listVersions(auth)).length).toBe(versionsBefore);
   });
 
-  it("returns 400 when the approving editor lacks the publish capability", async () => {
+  it("returns 403 when the approving editor lacks the publish capability", async () => {
     const { workspace, auth, skill } = await setupWithFlag("user");
+    // Recording an availability suggestion also requires `publish`: a workspace admin records it.
     const suggestion = await availabilitySuggestion(
-      auth,
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
       skill,
       "workspace_users"
     );
@@ -1856,10 +1857,7 @@ describe("PATCH with applyToSkill (availability)", () => {
       applyToSkill: true,
     });
 
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toContain(
-      "change this skill's availability"
-    );
+    expect(response.status).toBe(403);
 
     const reloaded = await SkillSuggestionResource.fetchById(
       auth,

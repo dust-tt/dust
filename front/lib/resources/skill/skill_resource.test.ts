@@ -32,6 +32,7 @@ import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { getTestStreamEndpoint } from "@app/tests/utils/models";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -1601,6 +1602,60 @@ describe("SkillResource", () => {
           "users_and_agents"
         )
       ).rejects.toThrow("User is not authorized to update skill availability");
+    });
+
+    it("rejects a publisher who does not administrate every skill", async () => {
+      const publisher = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, publisher, {
+        role: "user",
+      });
+      await grantWorkspacePermission(testContext.workspace, publisher, {
+        grantType: "publish",
+        resourceType: "skill",
+      });
+      const publisherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        publisher.sId,
+        testContext.workspace.sId
+      );
+
+      // The publisher edits the first skill only: the second is someone else's.
+      const ownSkill = await SkillFactory.create(publisherAuth, {
+        name: "Own Skill",
+        availability: "editors",
+      });
+      const otherSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Other Skill",
+        availability: "editors",
+      });
+      await publisherAuth.refresh();
+
+      await expect(
+        SkillResource.updateAvailabilities(
+          publisherAuth,
+          [ownSkill, otherSkill],
+          "workspace_users"
+        )
+      ).rejects.toThrow(
+        "User is not authorized to update the availability of these skills"
+      );
+
+      // Nothing was changed, not even the skill the publisher administrates.
+      const unchanged = await SkillResource.fetchById(
+        testContext.authenticator,
+        ownSkill.sId
+      );
+      expect(unchanged?.availability).toBe("editors");
+
+      await SkillResource.updateAvailabilities(
+        publisherAuth,
+        [ownSkill],
+        "workspace_users"
+      );
+      const updated = await SkillResource.fetchById(
+        testContext.authenticator,
+        ownSkill.sId
+      );
+      expect(updated?.availability).toBe("workspace_users");
     });
 
     it("requires the publish permission to change availability through updateSkill", async () => {
