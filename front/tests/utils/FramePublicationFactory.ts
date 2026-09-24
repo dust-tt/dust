@@ -2,10 +2,9 @@ import { storeFramePublication } from "@app/lib/api/frames/publication_storage";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { FramePublicationModel } from "@app/lib/resources/storage/models/frame_publication";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { FrameManifestSchema } from "@app/types/api/frame_manifest";
-import { getFramePublicationDescriptorPath } from "@app/types/api/frame_storage";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -29,9 +28,9 @@ const testPublicationManifest = FrameManifestSchema.parse({
 
 /**
  * Store a one-function publication of `frame` the way publishing does (against the global
- * `fileStorageMock`), then move its recorded `publishedAt` back by `publishedDaysAgo`: storing
- * always stamps now, and retention reads the age from the descriptor. Returns the publication id;
- * the caller activates it if it should be the frame's active one.
+ * `fileStorageMock`), then move its `frame_publications` row's `createdAt` back by
+ * `publishedDaysAgo`: storing always stamps now, and retention reads the age from that row.
+ * Returns the publication id; the caller activates it if it should be the frame's active one.
  *
  * Lives apart from `FrameFunctionFactory` on purpose: this is the one Frame fixture that pulls the
  * real publish pipeline — and with it `@app/lib/api/viz/authorized_file_access` — into a suite's
@@ -77,22 +76,15 @@ export async function storeTestFramePublication(
   }
   const { publicationId } = stored.value;
 
-  const descriptorPath = getFramePublicationDescriptorPath({
-    workspaceId: auth.getNonNullableWorkspace().sId,
-    frameId: frame.sId,
-    publicationId,
-  });
-  const descriptor = JSON.parse(
-    fileStorageMock.getObject(descriptorPath) ?? "{}"
-  );
-  fileStorageMock.setObject(
-    descriptorPath,
-    JSON.stringify({
-      ...descriptor,
-      publishedAt: new Date(
-        Date.now() - publishedDaysAgo * ONE_DAY_MS
-      ).toISOString(),
-    })
+  await FramePublicationModel.update(
+    { createdAt: new Date(Date.now() - publishedDaysAgo * ONE_DAY_MS) },
+    {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        fileId: frame.id,
+        publicationId,
+      },
+    }
   );
 
   if (withFunctionRows) {

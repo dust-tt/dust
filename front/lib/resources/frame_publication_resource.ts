@@ -55,6 +55,22 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
     return new this(this.model, row.get());
   }
 
+  static async listForFrame(
+    auth: Authenticator,
+    frame: FileResource
+  ): Promise<FramePublicationResource[]> {
+    this.assertFrameOfWorkspace(auth, frame);
+
+    const rows = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        fileId: frame.id,
+      },
+    });
+
+    return rows.map((row) => new this(this.model, row.get()));
+  }
+
   static async deleteForFramePublications(
     auth: Authenticator,
     { frame, publicationIds }: { frame: FileResource; publicationIds: string[] }
@@ -91,7 +107,7 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
   }
 
   /**
-   * A publication row describes objects in GCS: it goes with its Frame, or with its GCS prefix
+   * A publication row describes objects in GCS: it goes with its Frame, or after its GCS prefix
    * through `deleteForFramePublications`, never on its own.
    */
   async delete(
