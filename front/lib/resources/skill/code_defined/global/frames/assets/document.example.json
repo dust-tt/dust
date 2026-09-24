@@ -1,5 +1,6 @@
 {
   "type": "doc",
+  "attrs": { "comments": [] },
   "content": [
     {
       "type": "heading",
