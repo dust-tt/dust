@@ -15,6 +15,8 @@ import { indexUserDocument } from "@app/lib/user_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import uniq from "lodash/uniq";
 
@@ -224,6 +226,7 @@ export async function recreateAgentSearchIndex({
   const configurationModelIds = agents.map(
     (agent) => agent.agentConfigurationModelId
   );
+  const configurationModelIdSet = new Set(configurationModelIds);
 
   const [
     editorsByAgentId,
@@ -231,6 +234,8 @@ export async function recreateAgentSearchIndex({
     actionsByConfigurationId,
     feedbackCounts,
     lastEditors,
+    agentSkills,
+    favoriteCountByAgentId,
   ] = await Promise.all([
     AgentResource.batchListEditors(auth, agents),
     TagResource.listForAgents(auth, configurationModelIds),
@@ -242,10 +247,25 @@ export async function recreateAgentSearchIndex({
     UserResource.fetchByModelIds(
       uniq(removeNulls(agents.map((agent) => agent.versionAuthorId)))
     ),
+    SkillResource.listByAgentConfigurations(
+      auth,
+      [...activeConfigurations, ...archivedConfigurations].filter(
+        (configuration) => configurationModelIdSet.has(configuration.id)
+      ),
+      { permissionFiltering: "redact_unreadable" }
+    ),
+    AgentResource.batchCountFavorites(auth, agents),
   ]);
   const lastEditorByModelId = new Map(
     lastEditors.map((user) => [user.id, user])
   );
+  const skillIdsByConfigurationModelId = new Map<ModelId, string[]>();
+  for (const { agentConfiguration, skill } of agentSkills) {
+    const skillIds =
+      skillIdsByConfigurationModelId.get(agentConfiguration.id) ?? [];
+    skillIds.push(skill.sId);
+    skillIdsByConfigurationModelId.set(agentConfiguration.id, skillIds);
+  }
   const feedbackByAgentId = new Map<
     string,
     { positive: number; negative: number }
@@ -259,10 +279,15 @@ export async function recreateAgentSearchIndex({
       positive: 0,
       negative: 0,
     };
-    if (thumbDirection === "up") {
-      feedback.positive += count;
-    } else {
-      feedback.negative += count;
+    switch (thumbDirection) {
+      case "up":
+        feedback.positive += count;
+        break;
+      case "down":
+        feedback.negative += count;
+        break;
+      default:
+        assertNever(thumbDirection);
     }
     feedbackByAgentId.set(agentConfigurationId, feedback);
   }
@@ -271,10 +296,6 @@ export async function recreateAgentSearchIndex({
   const results = await concurrentExecutor(
     agents,
     async (agent) => {
-      const [skills, favoriteCount] = await Promise.all([
-        agent.listSkills(auth, { permissionFiltering: "redact_unreadable" }),
-        agent.countFavorites(auth),
-      ]);
       const feedback = feedbackByAgentId.get(agent.sId) ?? {
         positive: 0,
         negative: 0,
@@ -282,7 +303,7 @@ export async function recreateAgentSearchIndex({
       const document = agent.toSearchDocument(workspace, {
         activeUsersCount: null,
         editors: editorsByAgentId.get(agent.sId) ?? [],
-        favoriteCount,
+        favoriteCount: favoriteCountByAgentId.get(agent.sId) ?? 0,
         feedbackNegativeCount: feedback.negative,
         feedbackPositiveCount: feedback.positive,
         lastEditedByUser:
@@ -294,7 +315,9 @@ export async function recreateAgentSearchIndex({
         )
           .filter(isServerSideMCPServerConfiguration)
           .map((action) => action.mcpServerViewId),
-        skillIds: skills.map((skill) => skill.sId),
+        skillIds:
+          skillIdsByConfigurationModelId.get(agent.agentConfigurationModelId) ??
+          [],
         tagIds: (
           tagsByConfigurationId[agent.agentConfigurationModelId] ?? []
         ).map((tag) => tag.sId),

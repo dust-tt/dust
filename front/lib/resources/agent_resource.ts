@@ -94,7 +94,7 @@ import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
@@ -1168,6 +1168,34 @@ export class AgentResource
         favorite: true,
       },
     });
+  }
+
+  static async batchCountFavorites(
+    auth: Authenticator,
+    agents: AgentResource[]
+  ): Promise<Map<string, number>> {
+    const favoriteCountByAgentId = new Map<string, number>(
+      agents.map((agent) => [agent.sId, 0])
+    );
+    if (agents.length === 0) {
+      return favoriteCountByAgentId;
+    }
+
+    const rows = await AgentUserRelationModel.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfiguration: agents.map((agent) => agent.sId),
+        favorite: true,
+      },
+      group: ["agentConfiguration"],
+    });
+    for (const { agentConfiguration, count } of rows) {
+      if (isString(agentConfiguration)) {
+        favoriteCountByAgentId.set(agentConfiguration, count);
+      }
+    }
+
+    return favoriteCountByAgentId;
   }
 
   // Applies the same partial change to a batch of agents by running each through `updateConfiguration`,

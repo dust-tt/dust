@@ -99,6 +99,21 @@ describe("recreateAgentSearchIndex", () => {
     const visibleAgent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Visible agent",
     });
+    const restrictedSkill = await SkillFactory.create(auth, {
+      requestedSpaceIds: [(await SpaceFactory.regular(workspace)).id],
+    });
+    await SkillFactory.linkToAgent(auth, {
+      skillId: restrictedSkill.id,
+      agentConfigurationId: visibleAgent.id,
+    });
+    expect(
+      (
+        await (await AgentResource.fetchById(
+          auth,
+          visibleAgent.sId
+        ))!.setUserFavorite(auth, true)
+      ).isOk()
+    ).toBe(true);
     const hiddenAgent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Hidden agent",
       scope: "hidden",
@@ -126,7 +141,8 @@ describe("recreateAgentSearchIndex", () => {
         scope: "visible",
         status: "active",
         editor_ids: [user.sId],
-        favorite_count: 0,
+        skill_ids: [restrictedSkill.sId],
+        favorite_count: 1,
         active_users_count: null,
       })
     );
@@ -136,6 +152,8 @@ describe("recreateAgentSearchIndex", () => {
         name: "Hidden agent",
         scope: "hidden",
         status: "active",
+        skill_ids: [],
+        favorite_count: 0,
       })
     );
     expect(indexAgentDocument).toHaveBeenCalledWith(

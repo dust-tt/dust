@@ -1704,7 +1704,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async listByAgentConfigurations<T extends LightAgentConfigurationType>(
     auth: Authenticator,
     agentConfigurations: T[],
-    fetchOptions?: SkillHydrationOptions
+    fetchOptions?: SkillHydrationOptions & {
+      permissionFiltering?: SkillPermissionFilteringMode;
+    }
   ): Promise<{ agentConfiguration: T; skill: SkillResource }[]> {
     assert(
       agentConfigurations.every((c) => !isGlobalAgentId(c.sId)),
