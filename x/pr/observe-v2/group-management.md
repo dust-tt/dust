@@ -39,6 +39,35 @@ For example, Alice can manage Support while remaining an ordinary workspace memb
 existing colleague to the manual Support group and adjust a Support member's allowance. She cannot
 edit Sales or change limits for someone who belongs only to Sales.
 
+### Confirm appointments outside the group
+
+When saving a new manager for a manual group, show a confirmation if the person is not already an
+active member of that group. List the group's configured workspace roles, governance permissions,
+and seats in familiar language, such as “Workspace admin”, “Access billing features”, and “Publish
+agents”. For example:
+
+> **Appoint Alex as a group manager?**
+>
+> Alex is not a member of Finance. As a group manager, they can add themselves or others and give
+> them the access this group grants, including:
+>
+> - Access billing features
+> - Publish agents
+>
+> Appoint Alex only if you trust them to receive and grant this access. Removing their manager role
+> later will not undo access they have already granted.
+>
+> **Cancel** · **Appoint manager**
+
+Show only permissions actually configured for the group, and also mention access to resources shared
+with it. If no extra roles, governance permissions, or seats are configured, say so and keep the
+membership/access explanation. When several new managers need confirmation, list them in one modal.
+Cancel saves nothing; confirmation submits the pending changes.
+
+Existing group members skip this modal. The manager picker still explains that managing membership
+means deciding who receives the group's access. Provisioned groups skip this membership warning:
+their managers cannot edit membership or add themselves through Dust.
+
 ### Open the People page to group managers
 
 Group managers get access to the existing **People** page, with a restricted view:
@@ -134,7 +163,9 @@ have workspace access; otherwise call `auth.getResourceIdsWithVerb("group", verb
 `{ kind: "all" }` or `{ kind: "ids", resourceIds }`, not a boolean. An empty ID list grants no access.
 Resolve type-wide grants to eligible groups and apply each group's actual permission checks.
 
-The browser currently receives only workspace-level capabilities. Extend the existing
+The server's `Authenticator` already resolves grants and answers `can` and `getResourceIdsWithVerb`.
+The browser's `useAuth()` exposes serialized data rather than that server object, and currently
+receives only workspace-level capabilities. Extend the existing
 [auth-context response](../../../front/types/api/auth_context.ts) with the derived group-management scope,
 using public group IDs. Include each group's allowed actions in the existing group response. Both
 pages and navigation reuse this information, without a dedicated usage-access endpoint. Server
@@ -207,6 +238,12 @@ Replace the admin-only read-only state in group dialogs with the actual membersh
 Explain in the manager picker and membership editor that membership carries the group's access,
 roles, and seats.
 
+Before submitting manager additions, compare them with current active group membership and show the
+confirmation described above. Treat someone removed in the same edit as a non-member too; adding them
+in the unsaved form does not make them an existing member. Use the existing group and Governance data
+and permission labels for the summary. The modal is an explanation, not an authorization check:
+assignment writes remain admin-only and the server validates every submitted field.
+
 Pass explicit edit permissions to the personal-limit modal. Each group field needs its own check:
 authority over a member does not grant authority over every group that member belongs to. Server
 checks remain decisive if the page becomes stale.
@@ -222,8 +259,15 @@ and the server-verified group authorizing a delegated change, alongside the acto
 the existing group membership and request-resolution audit events, recording the authorizing group
 for delegated actions.
 
-Use a workspace feature flag for rollout, checked on the server as well as in the UI. When disabled,
-delegated access is unavailable while existing workspace-manager/admin access continues to work.
+Use a workspace feature flag at the API and UI entry points. Keep permission definitions, generic
+`Authenticator` methods, and grant storage free of flag conditions. APIs accept new manager
+assignments and delegated access only when enabled; when disabled, existing workspace-role checks
+still apply, including for callers who already have stored delegation grants.
+
+Shared services always check authority. Preserve current role restrictions for MCP tools and bulk
+workers, including the tools' admin-group protection and a fresh workspace-manager check when a bulk
+job executes. These callers must not gain access through the new delegation while bypassing the API
+rollout checks. Opening those entry points to group managers is outside this work.
 
 Focused tests cover allowed and denied reads/writes across two groups, an overlapping member,
 assignment or membership removal, filtered counts, and existing workspace-manager/admin access. Also
@@ -231,7 +275,9 @@ cover adding someone outside the current group, delegated changes in groups gran
 billing/security access, or seats, and self-addition. Reject provisioned membership edits and
 admin-group edits by workspace managers without a delegation. Verify that role sync cannot change
 admin roles through an unrelated group, and that requests respect membership changes and prior
-resolution. Enable the feature gradually as these flows are validated.
+resolution. Check the confirmation for non-members, its cancellation, and the existing-member and
+provisioned-group cases. Check disabled-flag behavior with stored grants and the existing tool/worker
+restrictions. Enable the feature gradually as these flows are validated.
 
 ## Annex
 
@@ -257,12 +303,27 @@ choice: the same delegation applies to ordinary groups and groups granting works
 billing/security access, or paid seats. It gives admins one consistent way to delegate who receives
 that access, without separate approval for each membership change.
 
-This is broad authority. A manager of an admin-granting group can add themselves and become a
-workspace admin; a manager of a seat-granting group can cause subscription costs. Membership removals
-can also withdraw critical access. Delegate only to people trusted to grant and receive everything
-the group grants. The assignment UI makes this consequence clear. If the group's grants expand
-later, its managers' authority expands with them. This role does not suit someone trusted only to
-handle usage requests or maintain a roster while privileged access stays centrally controlled.
+The tradeoff is broad authority, with five consequences:
+
+- **Self-promotion or a compromised account.** A manager of an admin-granting group can add themselves
+  and become a workspace admin. Trust the delegate and their account as much as someone receiving
+  those privileges directly; confirmation and audit logs cannot replace that trust.
+- **Separation of duties.** Someone trusted to maintain a roster or handle usage requests may not be
+  trusted to grant billing/security access. Keep organizational groups separate from groups granting
+  sensitive permissions when those decisions need different owners.
+- **Authority can grow later.** Adding privileges to a group also expands what its existing managers
+  can distribute. Review its managers whenever its grants expand; the appointment-time warning does
+  not cover future changes.
+- **Costs and access disruption.** Adding members can allocate paid seats; removing members can
+  withdraw critical access or demote admins. Delegate these groups only to people trusted with those
+  purchasing and access decisions, and retain a way for admins to recover access.
+- **Revocation is not an undo button.** Removing the manager assignment leaves previous membership
+  changes and any further access grants intact. Revoking all access requires checking those effects
+  separately, including independently acquired workspace roles.
+
+The confirmation makes appointing a non-member explicit. Existing members skip it
+because they already receive the group's privileges, but managing membership additionally lets them
+grant those privileges to others. The persistent explanation in the picker still applies to them.
 
 **Personal limits have shared ownership.** If someone belongs to Support and Sales, either team's
 group manager can edit the same personal limit, including a limit previously set by an admin. The
