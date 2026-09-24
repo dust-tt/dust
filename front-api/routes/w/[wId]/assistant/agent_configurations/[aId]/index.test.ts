@@ -258,7 +258,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - ignoreCreditSp
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     // Simulates a manager having turned the bypass on for this agent.
     await AgentConfigurationModel.update(
-      { ignoreCreditSpendThresholdAlert: true },
+      { creditSpendCheckpointThresholdAwuCredits: null },
       { where: { sId: agent.sId, workspaceId: workspace.id } }
     );
 

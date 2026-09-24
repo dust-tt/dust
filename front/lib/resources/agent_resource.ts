@@ -1546,7 +1546,7 @@ export class AgentResource
       authorId: this.versionAuthorId ?? auth.getNonNullableUser().id,
       reinforcement: this.reinforcement,
       ignoreCreditSpendThresholdAlert:
-        this.content.ignoreCreditSpendThresholdAlert,
+        this.content.creditSpendCheckpointThresholdAwuCredits === null,
       actions,
       skills,
     };
@@ -2507,7 +2507,8 @@ export class AgentResource
       reinforcement: this.reinforcement,
       lastReinforcementAnalysisAt:
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
-      ignoreCreditSpendThresholdAlert: content.ignoreCreditSpendThresholdAlert,
+      ignoreCreditSpendThresholdAlert:
+        content.creditSpendCheckpointThresholdAwuCredits === null,
       canRead: this._verbs.has("read"),
       // Regular API keys hold `write` from the admin role but may only edit an active version
       // (see the `regular-key-agent-editability` contract on `enrichAgentConfigurations`).

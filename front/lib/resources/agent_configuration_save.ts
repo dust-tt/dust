@@ -5,6 +5,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
@@ -155,7 +156,7 @@ export async function resolveExistingAgentAndVersion(
         "workspaceId",
         "createdAt",
         "reinforcement",
-        "ignoreCreditSpendThresholdAlert",
+        "creditSpendCheckpointThresholdAwuCredits",
       ],
       order: [["version", "DESC"]],
       transaction: t,
@@ -282,10 +283,16 @@ export async function writeAgentConfigurationRow({
     requestedSpaceIds,
     responseFormat: model.responseFormat,
     reinforcement: reinforcement ?? existingAgent?.reinforcement ?? "auto",
-    ignoreCreditSpendThresholdAlert:
-      ignoreCreditSpendThresholdAlert ??
-      existingAgent?.ignoreCreditSpendThresholdAlert ??
-      false,
+    // The column mirrors the workspace-level setting: NULL means the checkpoint is off for the
+    // agent. An omitted bypass keeps the previous version's value.
+    creditSpendCheckpointThresholdAwuCredits:
+      ignoreCreditSpendThresholdAlert === undefined
+        ? existingAgent
+          ? existingAgent.creditSpendCheckpointThresholdAwuCredits
+          : CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS
+        : ignoreCreditSpendThresholdAlert
+          ? null
+          : CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
   };
 
   if (existingAgent && existingAgent.status === "pending") {
