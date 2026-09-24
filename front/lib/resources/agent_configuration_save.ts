@@ -219,6 +219,19 @@ export async function resolveExistingAgentAndVersion(
   return { existingAgent, version };
 }
 
+function resolveCreditSpendCheckpointThreshold(
+  ignoreCreditSpendThresholdAlert: boolean | undefined,
+  existingAgent: AgentConfigurationModel | null
+): number | null {
+  if (ignoreCreditSpendThresholdAlert === true) {
+    return null;
+  }
+  if (ignoreCreditSpendThresholdAlert === undefined && existingAgent) {
+    return existingAgent.creditSpendCheckpointThresholdAwuCredits;
+  }
+  return CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
+}
+
 // Writes the configuration row for the version being saved: an in-place update for a pending agent
 // (preserving its id and FK relationships), a fresh row otherwise. Runs inside the save transaction.
 export async function writeAgentConfigurationRow({
@@ -284,13 +297,10 @@ export async function writeAgentConfigurationRow({
     responseFormat: model.responseFormat,
     reinforcement: reinforcement ?? existingAgent?.reinforcement ?? "auto",
     creditSpendCheckpointThresholdAwuCredits:
-      ignoreCreditSpendThresholdAlert === undefined
-        ? existingAgent
-          ? existingAgent.creditSpendCheckpointThresholdAwuCredits
-          : CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS
-        : ignoreCreditSpendThresholdAlert
-          ? null
-          : CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+      resolveCreditSpendCheckpointThreshold(
+        ignoreCreditSpendThresholdAlert,
+        existingAgent
+      ),
   };
 
   if (existingAgent && existingAgent.status === "pending") {
