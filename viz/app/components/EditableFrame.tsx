@@ -11,6 +11,15 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const EDITABLE_SELECTOR = "[data-editable]";
+const FORM_CONTROL_SELECTOR = "button, input, select, textarea";
+const LINK_SELECTOR = "a[href]";
+
+/** Set on controls we disabled for Edit mode (restore by clearing disabled). */
+const ATTR_WE_DISABLED = "data-frame-edit-disabled";
+/** Set on controls that were already disabled (leave disabled; only clear the marker). */
+const ATTR_WAS_DISABLED = "data-frame-edit-was-disabled";
+/** Stores the original href on anchors while Edit mode strips navigation. */
+const ATTR_SAVED_HREF = "data-frame-edit-href";
 
 // Module-level so Tailwind's content scanner includes these classes in the build.
 const HOVER_CLS = [
@@ -35,6 +44,17 @@ const FAILED_CLS = [
   "outline-red-500/70",
 ];
 
+// Keep [data-editable] clickable inside disabled buttons (browsers otherwise eat the click).
+const EDIT_MODE_ROOT_CLS = "frame-edit-mode";
+const EDIT_MODE_POINTER_CLS = [
+  // Controls we gated: ignore hits on the chrome; children with data-editable opt back in.
+  "[&_[data-frame-edit-disabled]]:pointer-events-none",
+  "[&_[data-frame-edit-was-disabled]]:pointer-events-none",
+  "[&_a[data-frame-edit-href]]:pointer-events-none",
+  "[&_[data-editable]]:pointer-events-auto",
+  "[&_[data-editable]]:cursor-text",
+];
+
 const FLASH_DURATION_MS = 800;
 
 interface HoverState {
@@ -46,9 +66,60 @@ interface EditableFrameProps {
   children: ReactNode;
 }
 
+function disableInteractiveControls(root: HTMLElement) {
+  root.querySelectorAll(FORM_CONTROL_SELECTOR).forEach((node) => {
+    const el = node as HTMLInputElement;
+    if (
+      el.hasAttribute(ATTR_WE_DISABLED) ||
+      el.hasAttribute(ATTR_WAS_DISABLED)
+    ) {
+      return;
+    }
+    if (el.disabled) {
+      el.setAttribute(ATTR_WAS_DISABLED, "");
+      return;
+    }
+    el.disabled = true;
+    el.setAttribute(ATTR_WE_DISABLED, "");
+  });
+
+  root.querySelectorAll(LINK_SELECTOR).forEach((node) => {
+    const el = node as HTMLAnchorElement;
+    if (el.hasAttribute(ATTR_SAVED_HREF)) {
+      return;
+    }
+    el.setAttribute(ATTR_SAVED_HREF, el.getAttribute("href") ?? "");
+    el.removeAttribute("href");
+    el.setAttribute("aria-disabled", "true");
+    el.tabIndex = -1;
+  });
+}
+
+function restoreInteractiveControls(root: HTMLElement) {
+  root.querySelectorAll(`[${ATTR_WE_DISABLED}]`).forEach((node) => {
+    const el = node as HTMLInputElement;
+    el.disabled = false;
+    el.removeAttribute(ATTR_WE_DISABLED);
+  });
+  root.querySelectorAll(`[${ATTR_WAS_DISABLED}]`).forEach((node) => {
+    node.removeAttribute(ATTR_WAS_DISABLED);
+  });
+  root.querySelectorAll(`a[${ATTR_SAVED_HREF}]`).forEach((node) => {
+    const el = node as HTMLAnchorElement;
+    const href = el.getAttribute(ATTR_SAVED_HREF);
+    el.removeAttribute(ATTR_SAVED_HREF);
+    if (href !== null) {
+      el.setAttribute("href", href);
+    }
+    el.removeAttribute("aria-disabled");
+    el.removeAttribute("tabindex");
+  });
+}
+
 export function EditableFrame({ children }: EditableFrameProps) {
   const { editText, addEventListener, stagedEdits, editModeActive } =
     useVizContext();
+  const rootRef = useRef<HTMLDivElement>(null);
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const lastHoverPosRef = useRef<HoverState | null>(null);
   const hoveredSpanRef = useRef<HTMLElement | null>(null);
@@ -137,63 +208,45 @@ export function EditableFrame({ children }: EditableFrameProps) {
     [beginEditing, interactionsEnabled, stagedEdits]
   );
 
-  // Edit mode: swallow activation of buttons/links/inputs in capture so a click on a
-  // button label edits the text instead of firing the control (e.g. navigation).
-  const suppressInteractiveCapture = useCallback(
-    (e: React.SyntheticEvent) => {
-      if (!interactionsEnabled || !stagedEdits) {
-        return;
-      }
-      const target = e.target as Element | null;
-      if (target?.closest?.(`${EDITABLE_SELECTOR}[contenteditable="true"]`)) {
-        // Let the active contentEditable receive typing / selection normally.
-        return;
-      }
-      e.preventDefault();
-      e.stopPropagation();
-    },
-    [interactionsEnabled, stagedEdits]
-  );
-
   const handleClickCapture = useCallback(
     (e: React.MouseEvent) => {
       if (!interactionsEnabled || !stagedEdits) {
         return;
       }
-      const target = e.target as Element | null;
-      if (target?.closest?.(`${EDITABLE_SELECTOR}[contenteditable="true"]`)) {
+      const target = (e.target as Element).closest<HTMLElement>(
+        EDITABLE_SELECTOR
+      );
+      if (!target || target.contentEditable === "true") {
         return;
       }
+      // Capture before button bubble handlers; disabled alone is not enough because React
+      // can still fire onClick when the event originates on a pointer-events:auto child.
       e.preventDefault();
       e.stopPropagation();
-
-      const editable = target?.closest?.(
-        EDITABLE_SELECTOR
-      ) as HTMLElement | null;
-      if (editable) {
-        beginEditing(editable);
-      }
+      beginEditing(target);
     },
     [beginEditing, interactionsEnabled, stagedEdits]
   );
 
-  const handleKeyDownCapture = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!interactionsEnabled || !stagedEdits) {
-        return;
-      }
-      const target = e.target as Element | null;
-      if (target?.closest?.(`${EDITABLE_SELECTOR}[contenteditable="true"]`)) {
-        return;
-      }
-      // Block Space/Enter activating focused buttons/links while choosing text to edit.
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    },
-    [interactionsEnabled, stagedEdits]
-  );
+  // Edit mode: disable form controls (tracking prior disabled) and disarm links so Preview
+  // behavior returns cleanly. pointer-events CSS keeps [data-editable] clickable inside.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || !stagedEdits || !editModeActive) {
+      return;
+    }
+
+    disableInteractiveControls(root);
+    const observer = new MutationObserver(() => {
+      disableInteractiveControls(root);
+    });
+    observer.observe(root, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+      restoreInteractiveControls(root);
+    };
+  }, [editModeActive, stagedEdits]);
 
   const commitEditable = useCallback(
     async (target: HTMLElement) => {
@@ -376,14 +429,17 @@ export function EditableFrame({ children }: EditableFrameProps) {
   }, []);
 
   const anchorPos = hoverState ?? lastHoverPosRef.current;
+  const editModeClassName =
+    stagedEdits && editModeActive
+      ? [EDIT_MODE_ROOT_CLS, ...EDIT_MODE_POINTER_CLS].join(" ")
+      : undefined;
 
   return (
     <>
       <div
+        ref={rootRef}
+        className={editModeClassName}
         onClickCapture={handleClickCapture}
-        onPointerDownCapture={suppressInteractiveCapture}
-        onKeyDownCapture={handleKeyDownCapture}
-        onSubmitCapture={suppressInteractiveCapture}
         onDoubleClick={handleDoubleClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}

@@ -88,11 +88,76 @@ describe("EditableFrame", () => {
       { stagedEdits: true, editModeActive: true }
     );
 
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.hasAttribute("data-frame-edit-disabled")).toBe(true);
+
     const span = container.querySelector("[data-editable]") as HTMLElement;
     fireEvent.click(span);
 
     expect(span.contentEditable).toBe("true");
     expect(onButtonClick).not.toHaveBeenCalled();
+  });
+
+  it("restores prior disabled state when leaving Edit mode", () => {
+    const editText = vi.fn();
+    const { container, rerender } = render(
+      <VizContext.Provider
+        value={{
+          isPdfMode: false,
+          editText,
+          addEventListener: null,
+          stagedEdits: true,
+          editModeActive: true,
+        }}
+      >
+        <EditableFrame>
+          <button type="button" disabled>
+            Already off
+          </button>
+          <button type="button">On</button>
+        </EditableFrame>
+      </VizContext.Provider>
+    );
+
+    const [wasDisabled, wasEnabled] = Array.from(
+      container.querySelectorAll("button")
+    );
+    expect(wasDisabled.disabled).toBe(true);
+    expect(wasDisabled.hasAttribute("data-frame-edit-was-disabled")).toBe(true);
+    expect(wasEnabled.disabled).toBe(true);
+    expect(wasEnabled.hasAttribute("data-frame-edit-disabled")).toBe(true);
+
+    rerender(
+      <VizContext.Provider
+        value={{
+          isPdfMode: false,
+          editText,
+          addEventListener: null,
+          stagedEdits: true,
+          editModeActive: false,
+        }}
+      >
+        <EditableFrame>
+          <button type="button" disabled>
+            Already off
+          </button>
+          <button type="button">On</button>
+        </EditableFrame>
+      </VizContext.Provider>
+    );
+
+    const [restoredDisabled, restoredEnabled] = Array.from(
+      container.querySelectorAll("button")
+    );
+    expect(restoredDisabled.disabled).toBe(true);
+    expect(restoredDisabled.hasAttribute("data-frame-edit-was-disabled")).toBe(
+      false
+    );
+    expect(restoredEnabled.disabled).toBe(false);
+    expect(restoredEnabled.hasAttribute("data-frame-edit-disabled")).toBe(
+      false
+    );
   });
 
   it("still fires button handlers in Preview while staging is mounted", () => {
@@ -108,7 +173,9 @@ describe("EditableFrame", () => {
       { stagedEdits: true, editModeActive: false }
     );
 
-    fireEvent.click(container.querySelector("button") as HTMLButtonElement);
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
     expect(onButtonClick).toHaveBeenCalledTimes(1);
   });
 
