@@ -1,5 +1,8 @@
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { buildDiscoverToolsInstructions } from "@app/lib/resources/skill/code_defined/system/discover_tools";
+import {
+  buildDiscoverToolsInstructions,
+  discoverToolsSkill,
+} from "@app/lib/resources/skill/code_defined/system/discover_tools";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -137,6 +140,19 @@ describe("buildDiscoverToolsInstructions", () => {
       expect(result).toContain("**Test tool**");
       expect(result).toContain(`(toolsetId: \`${toolset.sId}\`)`);
       expect(result).toContain("A test description");
+    });
+
+    it("should list toolsets fetched without remote server heavy attributes", async () => {
+      const toolset = await createToolset("Light Tool", "A light description");
+
+      const result = await discoverToolsSkill.fetchInstructions(
+        testContext.authenticator,
+        { spaceIds: [toolset.space.sId] }
+      );
+
+      expect(result).toContain("**Light tool**");
+      expect(result).toContain(`(toolsetId: \`${toolset.sId}\`)`);
+      expect(result).toContain("A light description");
     });
 
     it("should include available_toolsets XML tags", async () => {
