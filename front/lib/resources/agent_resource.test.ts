@@ -1,4 +1,5 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
+import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -1022,7 +1023,7 @@ describe("AgentResource", () => {
       );
       assert(resource);
 
-      const document = resource.toSearchDocument(testContext.workspace, {
+      const document = resource.toSearchDocument(testContext.authenticator, {
         activeUsersCount: null,
         editors: [testContext.user, testContext.user],
         favoriteCount: 4,
@@ -1073,7 +1074,7 @@ describe("AgentResource", () => {
       );
       assert(resource);
 
-      const document = resource.toSearchDocument(testContext.workspace, {
+      const document = resource.toSearchDocument(testContext.authenticator, {
         activeUsersCount: null,
         editors: [],
         favoriteCount: 0,
@@ -1092,26 +1093,51 @@ describe("AgentResource", () => {
       });
     });
 
-    it("refuses to serialize a global agent", async () => {
+    it("serializes a global agent without workspace-specific metadata", async () => {
       const resource = await AgentResource.fetchById(
         testContext.authenticator,
         GLOBAL_AGENTS_SID.HELPER
       );
       assert(resource);
 
-      expect(() =>
-        resource.toSearchDocument(testContext.workspace, {
-          activeUsersCount: null,
-          editors: [],
-          favoriteCount: 0,
-          feedbackNegativeCount: 0,
-          feedbackPositiveCount: 0,
-          lastEditedByUser: null,
-          mcpServerViewIds: [],
-          skillIds: [],
-          tagIds: [],
-        })
-      ).toThrow("Search documents require a custom agent in the workspace.");
+      const document = resource.toSearchDocument(testContext.authenticator, {
+        activeUsersCount: 4,
+        editors: [testContext.user],
+        favoriteCount: 2,
+        feedbackNegativeCount: 1,
+        feedbackPositiveCount: 9,
+        lastEditedByUser: testContext.user,
+        mcpServerViewIds: ["view-a"],
+        skillIds: ["skill-b", "skill-a"],
+        tagIds: ["tag-a"],
+      });
+
+      expect(document).toEqual({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: GLOBAL_AGENTS_SID.HELPER,
+        status: "active",
+        scope: "global",
+        model: {
+          provider_id: resource.modelConfiguration.providerId,
+          model_id: resource.modelConfiguration.modelId,
+          reasoning_effort: expect.any(String),
+        },
+        name: resource.name,
+        description: resource.description,
+        picture_url: resource.pictureUrl,
+        last_edited_by_user_id: null,
+        editor_ids: [],
+        requested_space_ids: [],
+        created_at: null,
+        updated_at: null,
+        skill_ids: ["skill-a", "skill-b"],
+        mcp_server_view_ids: [],
+        tag_ids: [],
+        feedback_positive_count: 0,
+        feedback_negative_count: 0,
+        active_users_count: null,
+        favorite_count: 0,
+      });
     });
   });
 

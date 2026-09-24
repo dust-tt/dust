@@ -215,7 +215,7 @@ export async function indexAgentSearchActivity({
     ? await UserResource.fetchByModelId(agent.versionAuthorId)
     : null;
 
-  const document = agent.toSearchDocument(auth.getNonNullableWorkspace(), {
+  const document = agent.toSearchDocument(auth, {
     activeUsersCount: null,
     editors: editors ?? [],
     favoriteCount,
