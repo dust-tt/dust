@@ -22,6 +22,7 @@ export { default as BarFull } from "./BarFull";
 export { default as BarHalf } from "./BarHalf";
 export { default as BarLineChart } from "./BarLineChart";
 export { default as BarLow } from "./BarLow";
+export { default as BarUltra } from "./BarUltra";
 export { default as Beaker02 } from "./Beaker02";
 export { default as Beer } from "./Beer";
 export { default as Bell01 } from "./Bell01";
