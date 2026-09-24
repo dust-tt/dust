@@ -48,6 +48,7 @@ export { default as Check } from "./Check";
 export { default as CheckCircle } from "./CheckCircle";
 export { default as CheckDone01 } from "./CheckDone01";
 export { default as CheckDouble } from "./CheckDouble";
+export { default as CheckVerified01 } from "./CheckVerified01";
 export { default as ChevronDown } from "./ChevronDown";
 export { default as ChevronLeft } from "./ChevronLeft";
 export { default as ChevronRight } from "./ChevronRight";
