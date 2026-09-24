@@ -27,7 +27,7 @@ import { useMemo, useState } from "react";
 
 type DiscoverSkill = GetSkillsWithRelationsResponseBody["skills"][number];
 
-type CatalogItem =
+export type CatalogItem =
   | { kind: "agent"; agent: LightAgentConfigurationType }
   | { kind: "skill"; skill: DiscoverSkill };
 
@@ -121,6 +121,7 @@ interface DiscoverCatalogProps {
   onClearSearch: () => void;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
   onSkillClick: (skill: DiscoverSkill) => void;
+  onDetails: (item: CatalogItem) => void;
   onFiltersChange: () => void;
 }
 
@@ -130,6 +131,7 @@ export function DiscoverCatalog({
   onClearSearch,
   onAgentClick,
   onSkillClick,
+  onDetails,
   onFiltersChange,
 }: DiscoverCatalogProps) {
   const [filters, setFilters] = useState<CatalogFilters>(DEFAULT_FILTERS);
@@ -301,6 +303,7 @@ export function DiscoverCatalog({
                   ? onAgentClick(item.agent)
                   : onSkillClick(item.skill)
               }
+              onDetails={() => onDetails(item)}
             />
           ))
         )}
@@ -312,18 +315,26 @@ export function DiscoverCatalog({
 interface CatalogRowProps {
   item: CatalogItem;
   onUse: () => void;
+  onDetails: () => void;
 }
 
-function CatalogRow({ item, onUse }: CatalogRowProps) {
+function CatalogRow({ item, onUse, onDetails }: CatalogRowProps) {
   const authors = getItemAuthors(item);
 
   return (
     <div className="flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
-      {item.kind === "agent" ? (
-        <Avatar size="lg" visual={item.agent.pictureUrl} className="shrink-0" />
-      ) : (
-        <SkillCatalogAvatar skill={item.skill} />
-      )}
+      <button
+        type="button"
+        aria-label={`Show ${getItemName(item)} details`}
+        onClick={onDetails}
+        className="shrink-0 rounded-2xl transition duration-200 ease-out hover:brightness-110 active:brightness-90"
+      >
+        {item.kind === "agent" ? (
+          <Avatar size="lg" visual={item.agent.pictureUrl} />
+        ) : (
+          <SkillCatalogAvatar skill={item.skill} />
+        )}
+      </button>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="heading-base notranslate text-foreground">

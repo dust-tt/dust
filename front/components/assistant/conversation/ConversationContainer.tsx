@@ -507,6 +507,7 @@ export function ConversationContainerVirtuoso({
                 setPendingSkill(skill);
               }}
               owner={owner}
+              user={user}
             />
           ) : (
             isAgentsSectionVisible && (
