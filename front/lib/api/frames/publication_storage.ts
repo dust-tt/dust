@@ -260,14 +260,12 @@ export async function storeFramePublication(
     manifest,
     sourceFiles,
     uiBundleCode,
-    publishedByAgentConfigurationId,
   }: {
     frame: FileResource;
     functionArtifacts: FramePublicationFunctionArtifact[];
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
     uiBundleCode: string;
-    publishedByAgentConfigurationId?: string;
   }
 ): Promise<Result<{ publicationId: string }, FramePublicationError>> {
   const frameIdentity = getFrameIdentity(auth, frame);
@@ -318,7 +316,6 @@ export async function storeFramePublication(
   await FramePublicationResource.makeNew(auth, {
     frame,
     publicationId: identity.publicationId,
-    publishedByAgentConfigurationId,
   });
 
   const publicationFiles: Array<{
@@ -745,7 +742,6 @@ export async function publishFramePublication(
       manifest,
       sourceFiles,
       uiBundleCode,
-      publishedByAgentConfigurationId,
     });
     if (storedPublication.isErr()) {
       return storedPublication;

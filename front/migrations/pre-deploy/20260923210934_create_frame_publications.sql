@@ -19,8 +19,7 @@ CREATE TABLE "public"."frame_publications" (
 	"workspaceId" bigint NOT NULL,
 	"id" bigint DEFAULT nextval('frame_publications_id_seq'::regclass) NOT NULL,
 	"publishedByUserId" bigint,
-	"publicationId" character varying(255) COLLATE "pg_catalog"."default" NOT NULL,
-	"publishedByAgentConfigurationId" character varying(255) COLLATE "pg_catalog"."default" DEFAULT NULL::character varying
+	"publicationId" character varying(255) COLLATE "pg_catalog"."default" NOT NULL
 );
 
 SET SESSION statement_timeout = 3000;

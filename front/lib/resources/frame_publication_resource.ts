@@ -41,15 +41,7 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
    */
   static async makeNew(
     auth: Authenticator,
-    {
-      frame,
-      publicationId,
-      publishedByAgentConfigurationId,
-    }: {
-      frame: FileResource;
-      publicationId: string;
-      publishedByAgentConfigurationId?: string;
-    }
+    { frame, publicationId }: { frame: FileResource; publicationId: string }
   ): Promise<FramePublicationResource> {
     this.assertFrameOfWorkspace(auth, frame);
 
@@ -58,7 +50,6 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
       fileId: frame.id,
       publicationId,
       publishedByUserId: auth.user()?.id ?? null,
-      publishedByAgentConfigurationId: publishedByAgentConfigurationId ?? null,
     });
 
     return new this(this.model, row.get());

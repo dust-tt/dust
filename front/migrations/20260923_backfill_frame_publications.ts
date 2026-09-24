@@ -181,8 +181,7 @@ makeScript(
 
       if (execute) {
         for (const batch of chunk(toInsert, INSERT_BATCH_SIZE)) {
-          // A publication stored concurrently already has its row: ignoring the duplicate keeps
-          // the row its publisher wrote, which also knows the publishing agent.
+          // A publication stored concurrently already has its row: ignore the duplicate.
           await FramePublicationModel.bulkCreate(
             batch.map(({ frame, publicationId, descriptor }) => ({
               workspaceId: workspace.id,
@@ -192,7 +191,6 @@ makeScript(
               publishedByUserId: descriptor.publisherId
                 ? (publisherModelIdsById.get(descriptor.publisherId) ?? null)
                 : null,
-              publishedByAgentConfigurationId: null,
             })),
             { ignoreDuplicates: true }
           );

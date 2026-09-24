@@ -1184,7 +1184,6 @@ describe("frame_publications rows", () => {
     expect(rows[0]).toMatchObject({
       publicationId: stored.value.publicationId,
       publishedByUserId: auth.getNonNullableUser().id,
-      publishedByAgentConfigurationId: null,
     });
   });
 
@@ -1204,24 +1203,5 @@ describe("frame_publications rows", () => {
 
     expect(await listPublicationRows(frame)).toHaveLength(1);
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
-  });
-
-  it("records the publishing agent on publish", async () => {
-    const { auth, frame } = await setupFrame();
-
-    const published = await publishFramePublication(auth, {
-      frame,
-      functionArtifacts: [],
-      manifest,
-      sourceFiles,
-      uiBundleCode,
-      publishedByAgentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-    });
-    expect(published.isOk()).toBe(true);
-
-    const rows = await listPublicationRows(frame);
-    expect(rows.map((row) => row.publishedByAgentConfigurationId)).toEqual([
-      GLOBAL_AGENTS_SID.DUST,
-    ]);
   });
 });

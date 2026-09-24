@@ -21,7 +21,6 @@ export class FramePublicationModel extends WorkspaceAwareModel<FramePublicationM
   declare fileId: ForeignKey<FileModel["id"]>;
   declare publicationId: string;
   declare publishedByUserId: ForeignKey<UserModel["id"]> | null;
-  declare publishedByAgentConfigurationId: string | null;
 }
 
 FramePublicationModel.init(
@@ -43,11 +42,6 @@ FramePublicationModel.init(
     publicationId: {
       type: DataTypes.STRING(255),
       allowNull: false,
-    },
-    publishedByAgentConfigurationId: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-      defaultValue: null,
     },
   },
   {
