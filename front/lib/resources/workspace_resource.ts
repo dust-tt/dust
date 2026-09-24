@@ -306,7 +306,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     wId: string,
     transaction?: Transaction
   ): Promise<WorkspaceResource | null> {
-    return WorkspaceResource.store.fetchCached(wId, transaction);
+    return WorkspaceResource.store.fetch(wId, transaction);
   }
 
   static async fetchByName(name: string): Promise<WorkspaceResource | null> {
@@ -327,14 +327,11 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     });
   }
 
-  static async fetchByIds(wIds: string[]): Promise<WorkspaceResource[]> {
-    return this.store.baseFetch({
-      where: {
-        sId: {
-          [Op.in]: wIds,
-        },
-      },
-    });
+  static async fetchByIds(
+    wIds: string[],
+    transaction?: Transaction
+  ): Promise<WorkspaceResource[]> {
+    return this.store.fetchMany(wIds, transaction);
   }
 
   static async fetchModelIdsByIds(wIds: string[]): Promise<ModelId[]> {

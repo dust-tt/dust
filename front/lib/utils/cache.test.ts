@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockRedisClient = vi.hoisted(() => ({
   get: vi.fn(),
+  mGet: vi.fn(),
+  mSet: vi.fn(),
   set: vi.fn(),
   del: vi.fn(),
 }));
@@ -13,6 +15,7 @@ const mockDistributedUnlock = vi.hoisted(() => vi.fn());
 vi.mock("@app/logger/logger", () => ({
   default: {
     error: vi.fn(),
+    warn: vi.fn(),
   },
 }));
 
@@ -33,11 +36,122 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
 
 import {
   batchInvalidateCacheWithRedis,
+  cacheManyWithRedis,
   cacheWithRedis,
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
   warmCacheWithRedis,
 } from "@app/lib/utils/cache";
+
+describe("cacheManyWithRedis", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRedisClient.mGet.mockReset();
+    mockRedisClient.mSet.mockReset();
+  });
+
+  it("loads only misses together and writes separate entries without caching nulls", async () => {
+    mockRedisClient.mGet.mockResolvedValueOnce([
+      JSON.stringify({ id: "a" }),
+      null,
+      null,
+    ]);
+    const load = vi.fn(async (ids: readonly string[]) =>
+      ids.map((id) => (id === "missing" ? null : { id }))
+    );
+    const fetch = cacheManyWithRedis(load, (id) => id, { cacheId: "batch" });
+
+    await expect(fetch(["a", "b", "missing"])).resolves.toEqual([
+      { id: "a" },
+      { id: "b" },
+      null,
+    ]);
+    expect(mockRedisClient.mGet).toHaveBeenCalledExactlyOnceWith([
+      "cacheWithRedis-batch-a",
+      "cacheWithRedis-batch-b",
+      "cacheWithRedis-batch-missing",
+    ]);
+    expect(load).toHaveBeenCalledExactlyOnceWith(["b", "missing"]);
+    expect(mockRedisClient.mSet).toHaveBeenCalledExactlyOnceWith([
+      ["cacheWithRedis-batch-b", JSON.stringify({ id: "b" })],
+    ]);
+  });
+
+  it("loads the whole batch once when Redis reads fail", async () => {
+    mockRedisClient.mGet.mockRejectedValue(new Error("Redis unavailable"));
+    const load = vi.fn(async (ids: readonly string[]) =>
+      ids.map((id) => ({ id }))
+    );
+    const fetch = cacheManyWithRedis(load, (id) => id, { cacheId: "batch" });
+
+    await expect(fetch([])).resolves.toEqual([]);
+    expect(mockRedisClient.mGet).not.toHaveBeenCalled();
+    await expect(fetch(["b", "a"])).resolves.toEqual([
+      { id: "b" },
+      { id: "a" },
+    ]);
+    expect(load).toHaveBeenCalledExactlyOnceWith(["b", "a"]);
+  });
+
+  it("returns loaded values without querying again when Redis writes fail", async () => {
+    mockRedisClient.mGet.mockResolvedValue([null, null]);
+    mockRedisClient.mSet.mockRejectedValue(
+      new Error("Redis write unavailable")
+    );
+    const load = vi.fn(async (ids: readonly string[]) =>
+      ids.map((id) => ({ id }))
+    );
+    const fetch = cacheManyWithRedis(load, (id) => id, { cacheId: "batch" });
+
+    await expect(fetch(["a", "b"])).resolves.toEqual([
+      { id: "a" },
+      { id: "b" },
+    ]);
+    expect(load).toHaveBeenCalledOnce();
+  });
+
+  it("propagates loader failures without retry", async () => {
+    mockRedisClient.mGet.mockResolvedValue([null]);
+    const failure = new Error("Database unavailable");
+    const load = vi
+      .fn<(ids: readonly string[]) => Promise<({ id: string } | null)[]>>()
+      .mockRejectedValueOnce(failure)
+      .mockResolvedValueOnce([{ id: "a" }]);
+    const fetch = cacheManyWithRedis(load, (id) => id, { cacheId: "batch" });
+
+    await expect(fetch(["a"])).rejects.toBe(failure);
+    expect(load).toHaveBeenCalledOnce();
+    await expect(fetch(["a"])).resolves.toEqual([{ id: "a" }]);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("loads overlapping batches independently", async () => {
+    const entries = new Map<string, string>();
+    mockRedisClient.mGet.mockImplementation(async (keys: string[]) =>
+      keys.map((key) => entries.get(key) ?? null)
+    );
+    mockRedisClient.mSet.mockImplementation(
+      async (values: [string, string][]) => {
+        for (const [key, value] of values) {
+          entries.set(key, value);
+        }
+      }
+    );
+    const load = vi.fn(async (ids: readonly string[]) =>
+      ids.map((id) => ({ id }))
+    );
+    const fetch = cacheManyWithRedis(load, (id) => id, { cacheId: "batch" });
+
+    const results = await Promise.all([fetch(["a", "b"]), fetch(["b", "a"])]);
+    expect(results).toEqual([
+      [{ id: "a" }, { id: "b" }],
+      [{ id: "b" }, { id: "a" }],
+    ]);
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(load).toHaveBeenNthCalledWith(1, ["a", "b"]);
+    expect(load).toHaveBeenNthCalledWith(2, ["b", "a"]);
+  });
+});
 
 describe("invalidateCacheAfterCommit", () => {
   beforeEach(() => {
