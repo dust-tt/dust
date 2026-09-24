@@ -25,7 +25,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-type DiscoverSkill = GetSkillsWithRelationsResponseBody["skills"][number];
+export type DiscoverSkill =
+  GetSkillsWithRelationsResponseBody["skills"][number];
 
 export type CatalogItem =
   | { kind: "agent"; agent: LightAgentConfigurationType }
@@ -60,15 +61,15 @@ const CATALOG_KINDS: { id: CatalogKind; label: string }[] = [
   { id: "skill", label: "Skills" },
 ];
 
-function getItemId(item: CatalogItem): string {
+export function getItemId(item: CatalogItem): string {
   return item.kind === "agent" ? item.agent.sId : item.skill.sId;
 }
 
-function getItemName(item: CatalogItem): string {
+export function getItemName(item: CatalogItem): string {
   return item.kind === "agent" ? item.agent.name : item.skill.name;
 }
 
-function getItemDescription(item: CatalogItem): string {
+export function getItemDescription(item: CatalogItem): string {
   return item.kind === "agent"
     ? item.agent.description
     : item.skill.userFacingDescription;
@@ -91,7 +92,7 @@ function getItemUsageCount(item: CatalogItem): number {
     : (item.skill.usage ?? 0);
 }
 
-function getItemAuthors(item: CatalogItem): readonly string[] {
+export function getItemAuthors(item: CatalogItem): readonly string[] {
   return item.kind === "agent"
     ? (item.agent.lastAuthors ?? [])
     : (item.skill.relations.editors ?? []).map((e) => e.fullName);
@@ -105,6 +106,20 @@ function isFavorite(item: CatalogItem): boolean {
 
 function isMine(item: CatalogItem): boolean {
   return item.kind === "agent" ? item.agent.canEdit : item.skill.canWrite;
+}
+
+interface ItemAuthorProps {
+  item: CatalogItem;
+}
+
+export function ItemAuthor({ item }: ItemAuthorProps) {
+  const authors = getItemAuthors(item);
+  if (authors.length === 0) {
+    return null;
+  }
+  return (
+    <span className="truncate text-foreground">{formatAuthors(authors)}</span>
+  );
 }
 
 function formatAuthors(authors: readonly string[]): string {
@@ -318,9 +333,7 @@ interface CatalogRowProps {
   onDetails: () => void;
 }
 
-function CatalogRow({ item, onUse, onDetails }: CatalogRowProps) {
-  const authors = getItemAuthors(item);
-
+export function CatalogRow({ item, onUse, onDetails }: CatalogRowProps) {
   return (
     <div className="flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
       <button
@@ -349,11 +362,7 @@ function CatalogRow({ item, onUse, onDetails }: CatalogRowProps) {
           )}
         </div>
         <div className="flex h-5 items-center gap-4 copy-sm">
-          {authors.length > 0 && (
-            <span className="truncate text-foreground">
-              {formatAuthors(authors)}
-            </span>
-          )}
+          <ItemAuthor item={item} />
           <span className="flex items-center gap-1 text-muted-foreground">
             <Icon visual={MessageCircle01} size="xs" />
             {getItemUsageCount(item).toLocaleString()}
@@ -386,9 +395,13 @@ function CatalogRow({ item, onUse, onDetails }: CatalogRowProps) {
 
 interface SkillCatalogAvatarProps {
   skill: DiscoverSkill;
+  size?: "md" | "lg";
 }
 
-function SkillCatalogAvatar({ skill }: SkillCatalogAvatarProps) {
+export function SkillCatalogAvatar({
+  skill,
+  size = "lg",
+}: SkillCatalogAvatarProps) {
   const SkillAvatar = useMemo(() => getSkillAvatarIcon(skill), [skill]);
-  return <SkillAvatar size="lg" className="shrink-0" />;
+  return <SkillAvatar size={size} className="shrink-0" />;
 }

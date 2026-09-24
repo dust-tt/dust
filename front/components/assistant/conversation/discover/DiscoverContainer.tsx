@@ -1,12 +1,12 @@
 import type { CatalogItem } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
 import { DiscoverCatalog } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
+import { DiscoverHome } from "@app/components/assistant/conversation/discover/DiscoverHome";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
-  Button,
   SearchInput,
   Tabs,
   TabsContent,
@@ -17,13 +17,6 @@ import { forwardRef, useState } from "react";
 
 const DISCOVER_TABS = ["Discover", "Agents & Skills"] as const;
 type DiscoverTab = (typeof DISCOVER_TABS)[number];
-
-const FEATURED_SLOT_COUNT = 3;
-
-const DISCOVER_SECTIONS = [
-  "Agent & Skill for you",
-  "Trending in the workspace",
-] as const;
 
 interface DiscoverContainerProps {
   onAgentConfigurationClick: (agent: LightAgentConfigurationType) => void;
@@ -79,31 +72,13 @@ export const DiscoverContainer = forwardRef<
           </TabsList>
         </div>
         <TabsContent value="Discover" className="flex flex-col gap-12">
-          <section className="flex flex-col gap-3">
-            <h2 className="heading-lg text-foreground">Featured</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {Array.from({ length: FEATURED_SLOT_COUNT }, (_, slot) => (
-                <div
-                  key={slot}
-                  aria-hidden
-                  className="h-56 rounded-2xl border border-dashed border-border-dark bg-muted-background"
-                />
-              ))}
-            </div>
-          </section>
-          {DISCOVER_SECTIONS.map((title) => (
-            <section key={title} className="flex min-w-0 flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="heading-lg text-foreground">{title}</h2>
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  label="Find more"
-                  onClick={() => setTab("Agents & Skills")}
-                />
-              </div>
-            </section>
-          ))}
+          <DiscoverHome
+            owner={owner}
+            onAgentClick={onAgentConfigurationClick}
+            onSkillClick={onSkillClick}
+            onDetails={setDetailsTarget}
+            onFindMore={() => setTab("Agents & Skills")}
+          />
         </TabsContent>
         <TabsContent value="Agents & Skills">
           <DiscoverCatalog
