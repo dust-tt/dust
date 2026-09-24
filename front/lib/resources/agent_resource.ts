@@ -103,7 +103,12 @@ import { isAdmin } from "@app/types/user";
 import assert from "assert";
 import isEqual from "lodash/isEqual";
 import uniq from "lodash/uniq";
-import type { Attributes, Transaction } from "sequelize";
+import type {
+  Attributes,
+  Includeable,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { Op, UniqueConstraintError, ValidationError } from "sequelize";
 
 // A draft belongs to its current author until it is published. This is ownership, not an editor
@@ -714,6 +719,212 @@ export class AgentResource
   ): Promise<AgentResource | null> {
     const [resource] = await this.fetchByIds(auth, [agentId]);
     return resource ?? null;
+  }
+
+  // -- List resolvers: resolve matching agent ids, then hydrate through `fetchByIds` --
+
+  /**
+   * @cc [owner:tdraier,label:backend] agent-list-through-fetch-by-ids
+   * The `listBy*`/`fetchByName` resolvers MUST NOT build resources themselves: they run a
+   * lightweight id-only query for the matching agents, then hydrate through the shared
+   * access-controlled resolver `fetchByIds`, so current-version resolution and access control stay
+   * centralized (see `fetch-current-version`). Predicates on head fields (`name`, `status`, `scope`)
+   * read the denormalized `agents` row directly; predicates on a version's rows (skills/tools/tags)
+   * match the agent's CURRENT version only, joined via `agent.currentVersion`. The id queries against
+   * `agents` never yield global agents; ids sourced elsewhere (e.g. favorites) may include globals,
+   * which `fetchByIds` resolves through its global path.
+   */
+  private static async listCurrentVersionAgentIds(
+    auth: Authenticator,
+    {
+      agentWhere,
+      configurationWhere,
+      configurationInclude,
+    }: {
+      agentWhere?: WhereOptions<AgentModel>;
+      configurationWhere?: WhereOptions<AgentConfigurationModel>;
+      configurationInclude?: Includeable[];
+    } = {}
+  ): Promise<string[]> {
+    // Only join the configuration when a predicate targets the current version; head-field lists stay
+    // on the `agents` row alone.
+    const matchesCurrentVersion =
+      configurationWhere !== undefined || configurationInclude !== undefined;
+
+    const agents = await AgentModel.findAll({
+      attributes: ["sId"],
+      where: {
+        ...agentWhere,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: matchesCurrentVersion
+        ? [
+            {
+              model: AgentConfigurationModel,
+              required: true,
+              // Resolve the single current row via `agent.currentVersion` (mirrors `loadResource`).
+              where: {
+                version: { [Op.col]: "agent.currentVersion" },
+                ...configurationWhere,
+              },
+              attributes: [],
+              include: configurationInclude,
+            },
+          ]
+        : undefined,
+    });
+
+    // A `hasMany` join (skills/tools/tags) can repeat an agent row per matching link; dedupe.
+    return [...new Set(agents.map((agent) => agent.sId))];
+  }
+
+  // The single active agent whose current version bears this exact name (active names are unique per
+  // workspace), or null when none matches or the caller cannot fetch it.
+  static async fetchByName(
+    auth: Authenticator,
+    name: string
+  ): Promise<AgentResource | null> {
+    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+      agentWhere: { name, status: "active" },
+    });
+    const [resource] = await this.fetchByIds(auth, agentIds);
+    return resource ?? null;
+  }
+
+  // Every active agent of the authed workspace, filtered to what the caller can fetch.
+  static async listByWorkspace(auth: Authenticator): Promise<AgentResource[]> {
+    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+      agentWhere: { status: "active" },
+    });
+    return this.fetchByIds(auth, agentIds);
+  }
+
+  // Agents the current user has favorited. Favorites are keyed by agent `sId` (stable across
+  // versions) and may include global agents, which `fetchByIds` resolves through its global path.
+  static async listFavoritesForCurrentUser(
+    auth: Authenticator
+  ): Promise<AgentResource[]> {
+    const user = auth.user();
+    if (!user) {
+      return [];
+    }
+
+    const relations = await AgentUserRelationModel.findAll({
+      attributes: ["agentConfiguration"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user.id,
+        favorite: true,
+      },
+    });
+
+    return this.fetchByIds(
+      auth,
+      relations.map((relation) => relation.agentConfiguration)
+    );
+  }
+
+  // Agents `authorModelId` authored any version of (matches the legacy "created by me" view; the
+  // current version's author may differ). The author lives on the configuration, not the denormalized
+  // agent row, so this one predicate cannot read `AgentModel` alone.
+  static async listByAuthor(
+    auth: Authenticator,
+    { authorModelId }: { authorModelId: ModelId }
+  ): Promise<AgentResource[]> {
+    const configurations = await AgentConfigurationModel.findAll({
+      attributes: ["sId"],
+      group: ["sId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        authorId: authorModelId,
+      },
+    });
+
+    return this.fetchByIds(
+      auth,
+      configurations.map((configuration) => configuration.sId)
+    );
+  }
+
+  // Agents whose current version references one of the given skills (custom and/or code-defined).
+  static async listBySkills(
+    auth: Authenticator,
+    {
+      customSkillModelIds = [],
+      globalSkillIds = [],
+    }: { customSkillModelIds?: ModelId[]; globalSkillIds?: string[] }
+  ): Promise<AgentResource[]> {
+    if (customSkillModelIds.length === 0 && globalSkillIds.length === 0) {
+      return [];
+    }
+
+    const skillMatchers = [
+      ...(customSkillModelIds.length > 0
+        ? [{ customSkillId: customSkillModelIds }]
+        : []),
+      ...(globalSkillIds.length > 0 ? [{ globalSkillId: globalSkillIds }] : []),
+    ];
+    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+      configurationInclude: [
+        {
+          model: AgentSkillModel,
+          as: "skillAgentLinks",
+          required: true,
+          where: { [Op.or]: skillMatchers },
+          attributes: [],
+        },
+      ],
+    });
+
+    return this.fetchByIds(auth, agentIds);
+  }
+
+  // Agents whose current version references one of the given MCP server views.
+  static async listByMCPServerViewIds(
+    auth: Authenticator,
+    mcpServerViewModelIds: ModelId[]
+  ): Promise<AgentResource[]> {
+    if (mcpServerViewModelIds.length === 0) {
+      return [];
+    }
+
+    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+      configurationInclude: [
+        {
+          model: AgentMCPServerConfigurationModel,
+          as: "mcpServerConfigurations",
+          required: true,
+          where: { mcpServerViewId: mcpServerViewModelIds },
+          attributes: [],
+        },
+      ],
+    });
+
+    return this.fetchByIds(auth, agentIds);
+  }
+
+  // Agents whose current version carries one of the given tags.
+  static async listByTag(
+    auth: Authenticator,
+    tagModelIds: ModelId[]
+  ): Promise<AgentResource[]> {
+    if (tagModelIds.length === 0) {
+      return [];
+    }
+
+    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+      configurationInclude: [
+        {
+          model: TagAgentModel,
+          as: "agentTagLinks",
+          required: true,
+          where: { tagId: tagModelIds },
+          attributes: [],
+        },
+      ],
+    });
+
+    return this.fetchByIds(auth, agentIds);
   }
 
   // Caller-independent query: the current `full` resource of each identified agent — the row whose

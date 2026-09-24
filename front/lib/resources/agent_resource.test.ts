@@ -1878,4 +1878,172 @@ describe("AgentResource", () => {
       expect(after.description).toBe(before.description);
     });
   });
+
+  describe("list resolvers", () => {
+    it("fetchByName resolves the active agent by exact name, else null", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Findable Agent" }
+      );
+
+      const found = await AgentResource.fetchByName(
+        testContext.authenticator,
+        "Findable Agent"
+      );
+      expect(found?.sId).toBe(agent.sId);
+
+      expect(
+        await AgentResource.fetchByName(
+          testContext.authenticator,
+          "No Such Agent"
+        )
+      ).toBeNull();
+    });
+
+    it("listByWorkspace returns the workspace's active agents", async () => {
+      const first = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "WS One" }
+      );
+      const second = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "WS Two" }
+      );
+
+      const sIds = (
+        await AgentResource.listByWorkspace(testContext.authenticator)
+      ).map((resource) => resource.sId);
+
+      expect(sIds).toEqual(expect.arrayContaining([first.sId, second.sId]));
+    });
+
+    it("listByAuthor returns agents the user authored, not others'", async () => {
+      const mine = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Mine" }
+      );
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        testContext.workspace.sId
+      );
+      const theirs = await AgentConfigurationFactory.createTestAgent(
+        otherAuth,
+        {
+          name: "Theirs",
+        }
+      );
+
+      const sIds = (
+        await AgentResource.listByAuthor(testContext.authenticator, {
+          authorModelId: testContext.user.id,
+        })
+      ).map((resource) => resource.sId);
+
+      expect(sIds).toContain(mine.sId);
+      expect(sIds).not.toContain(theirs.sId);
+    });
+
+    it("listByTag returns agents whose current version carries the tag", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Tagged" }
+      );
+      const tag = await TagFactory.create(testContext.workspace, {
+        name: "topic",
+      });
+      await TagFactory.addToAgent(testContext.authenticator, tag, agent);
+
+      const sIds = (
+        await AgentResource.listByTag(testContext.authenticator, [tag.id])
+      ).map((resource) => resource.sId);
+
+      expect(sIds).toEqual([agent.sId]);
+    });
+
+    it("listBySkills returns agents whose current version links the skill", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Skilled" }
+      );
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Linked Skill",
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agent.id,
+      });
+
+      const sIds = (
+        await AgentResource.listBySkills(testContext.authenticator, {
+          customSkillModelIds: [skill.id],
+        })
+      ).map((resource) => resource.sId);
+
+      expect(sIds).toEqual([agent.sId]);
+    });
+
+    it("listByMCPServerViewIds returns agents whose current version uses the view", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Tooled" }
+      );
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const view = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        testContext.globalSpace
+      );
+      await AgentMCPServerConfigurationFactory.create(
+        testContext.authenticator,
+        testContext.globalSpace,
+        { agent, mcpServerView: view }
+      );
+
+      const sIds = (
+        await AgentResource.listByMCPServerViewIds(testContext.authenticator, [
+          view.id,
+        ])
+      ).map((resource) => resource.sId);
+
+      expect(sIds).toEqual([agent.sId]);
+    });
+
+    it("listFavoritesForCurrentUser returns only the user's favorited agents", async () => {
+      const favorite = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Fav" }
+      );
+      const other = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "NotFav" }
+      );
+      const favoriteResource = await AgentResource.fetchById(
+        testContext.authenticator,
+        favorite.sId
+      );
+      assert(favoriteResource);
+      expect(
+        (
+          await favoriteResource.setUserFavorite(
+            testContext.authenticator,
+            true
+          )
+        ).isOk()
+      ).toBe(true);
+
+      const sIds = (
+        await AgentResource.listFavoritesForCurrentUser(
+          testContext.authenticator
+        )
+      ).map((resource) => resource.sId);
+
+      expect(sIds).toContain(favorite.sId);
+      expect(sIds).not.toContain(other.sId);
+    });
+  });
 });
