@@ -1,3 +1,7 @@
+import {
+  trackHomepageUseCaseClick,
+  trackHomepageUseCaseView,
+} from "@app/components/assistant/conversation/discover/discoveryTracking";
 import { TYPING_MAX_DURATION_MS } from "@app/components/editor/input_bar/useCustomEditor";
 import {
   getIcon,
@@ -47,6 +51,12 @@ export function HomepageUseCases({
     });
   }, [useCases]);
 
+  useEffect(() => {
+    page.forEach((useCase) => {
+      trackHomepageUseCaseView({ useCaseId: useCase.id });
+    });
+  }, [page]);
+
   const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
@@ -92,6 +102,7 @@ export function HomepageUseCases({
             key={useCase.id}
             isDisabled={isTyping}
             onPick={() => {
+              trackHomepageUseCaseClick({ useCaseId: useCase.id });
               setIsTyping(true);
               onPick(useCase);
             }}
