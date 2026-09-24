@@ -7,7 +7,10 @@
  */
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { ConversationalSuggestionReviewCard } from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
+import {
+  ConversationalSuggestionReviewCard,
+  shouldUseConversationalReviewCard,
+} from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
 import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
   useSkillSuggestionActions,
@@ -143,10 +146,7 @@ function ConversationSkillSuggestion({
 
   const pendingAction = getPendingAction(suggestion);
 
-  if (
-    suggestion.source === "conversational" &&
-    suggestion.state === "pending"
-  ) {
+  if (shouldUseConversationalReviewCard(suggestion)) {
     return (
       <ConversationalSuggestionReviewCard
         target={{

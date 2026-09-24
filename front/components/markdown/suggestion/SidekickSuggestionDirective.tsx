@@ -9,7 +9,10 @@
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { AgentSuggestionActionCard } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
-import { ConversationalSuggestionReviewCard } from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
+import {
+  ConversationalSuggestionReviewCard,
+  shouldUseConversationalReviewCard,
+} from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
 import {
   SidekickSuggestionCard,
   SuggestionCardSkeleton,
@@ -225,10 +228,7 @@ function ConversationAgentSuggestion({
 
   const pendingAction = getPendingAction(suggestion);
 
-  if (
-    suggestion.source === "conversational" &&
-    suggestion.state === "pending"
-  ) {
+  if (shouldUseConversationalReviewCard(suggestion)) {
     return (
       <ConversationalSuggestionReviewCard
         target={{

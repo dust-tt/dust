@@ -70,6 +70,22 @@ function renderCardContent(target: ConversationalSuggestionTarget) {
 }
 
 /**
+ * @cc [owner:avervaet,label:product] conversational-and-pending
+ * Returns true if and only if `suggestion.source` is `conversational` and `suggestion.state` is
+ * `pending`.
+ */
+export function shouldUseConversationalReviewCard(
+  suggestion: Pick<
+    AgentActionCardSuggestionType | SkillSuggestionType,
+    "source" | "state"
+  >
+): boolean {
+  return (
+    suggestion.source === "conversational" && suggestion.state === "pending"
+  );
+}
+
+/**
  * @cc [owner:avervaet,label:product] pending-suggestion-only
  * `target.suggestion` MUST be pending: the card has no reviewed state and would render an
  * accepted, rejected or outdated suggestion as still awaiting review.
