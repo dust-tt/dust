@@ -110,6 +110,9 @@ export const GROK_4_5_MODEL_CONFIG: ModelConfigurationType = {
     maximal: false,
   },
   defaultReasoningEffort: "high",
+  // Grok 4.5 cannot turn reasoning off (xAI rejects `reasoning_effort: none`),
+  // so light reasoning must run natively at `low` instead of thinking off.
+  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
