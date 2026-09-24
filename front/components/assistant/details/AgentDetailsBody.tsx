@@ -345,7 +345,7 @@ export function AgentDetailsBody({
           <SheetHeader
             className={cn(
               "flex flex-col gap-5 text-sm text-foreground",
-              isInSidePanel && "bg-panel-background"
+              isInSidePanel && "bg-transparent"
             )}
             hideButton={isInSidePanel}
           >
