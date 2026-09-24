@@ -363,7 +363,8 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   static async bulkUpdateState(
     auth: Authenticator,
     suggestions: AgentSuggestionResource[],
-    state: AgentSuggestionState
+    state: AgentSuggestionState,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     if (suggestions.length === 0) {
       return;
@@ -383,6 +384,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
           workspaceId: auth.getNonNullableWorkspace().id,
           id: { [Op.in]: suggestions.map((s) => s.id) },
         },
+        transaction,
       }
     );
   }
@@ -416,8 +418,32 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       state: this.state,
       source: this.source,
       conversationId: this._conversationId,
+      batchId: this.batchId
+        ? makeSId("batch_suggestion", {
+            id: this.batchId,
+            workspaceId: this.workspaceId,
+          })
+        : null,
       ...suggestionData,
     };
+  }
+
+  /**
+   * Lists the suggestions belonging to the given batches (by batch model id), restricted to the
+   * agents the caller can edit.
+   */
+  static async listByBatchModelIds(
+    auth: Authenticator,
+    batchModelIds: ModelId[]
+  ): Promise<AgentSuggestionResource[]> {
+    if (batchModelIds.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: { batchId: batchModelIds },
+      order: [["id", "ASC"]],
+    });
   }
 
   /**

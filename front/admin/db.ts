@@ -41,7 +41,6 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
@@ -50,6 +49,7 @@ import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_requ
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
+import { BatchSuggestionModel } from "@app/lib/models/batch_suggestion";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
@@ -275,6 +275,7 @@ export function loadAllModels() {
     SkillUserFavoriteModel,
     SkillMCPServerConfigurationModel,
     SkillFileAttachmentModel,
+    BatchSuggestionModel,
     SkillSuggestionModel,
     SelfImprovingSkillsUsageModel,
     WorkspaceVerificationAttemptModel,

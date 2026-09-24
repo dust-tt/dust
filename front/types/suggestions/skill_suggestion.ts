@@ -386,6 +386,7 @@ const BaseSkillSuggestionSchema = z.object({
   visibleSourceConversationIds: z.array(z.string()),
   notificationConversationId: z.string().nullable(),
   updatedBy: SkillSuggestionUpdatedBySchema.nullable(),
+  batchId: z.string().nullable(),
 });
 
 export const SkillSuggestionSchema = BaseSkillSuggestionSchema.and(

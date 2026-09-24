@@ -26,6 +26,7 @@ import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
+  Transaction,
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
@@ -314,6 +315,24 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   }
 
   /**
+   * Lists the suggestions belonging to the given batches (by batch model id), restricted to the
+   * skills the caller can administrate. Batch members are listed whatever their source.
+   */
+  static async listByBatchModelIds(
+    auth: Authenticator,
+    batchModelIds: ModelId[]
+  ): Promise<SkillSuggestionResource[]> {
+    if (batchModelIds.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: { batchId: batchModelIds },
+      order: [["id", "ASC"]],
+    });
+  }
+
+  /**
    * Lists suggestions across the workspace, optionally filtered by state and source.
    */
   static async listByWorkspace(
@@ -402,7 +421,8 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   static async bulkUpdateState(
     auth: Authenticator,
     suggestions: SkillSuggestionResource[],
-    state: SkillSuggestionState
+    state: SkillSuggestionState,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     if (suggestions.length === 0) {
       return;
@@ -424,6 +444,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
         workspaceId: auth.getNonNullableWorkspace().id,
         id: { [Op.in]: suggestions.map((s) => s.id) },
       },
+      transaction,
     });
   }
 
@@ -544,6 +565,12 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       visibleSourceConversationIds: this.visibleConversationIds,
       notificationConversationId: this.notificationConversationId,
       updatedBy: this.updatedBy,
+      batchId: this.batchId
+        ? makeSId("batch_suggestion", {
+            id: this.batchId,
+            workspaceId: this.workspaceId,
+          })
+        : null,
       ...suggestionData,
     };
   }

@@ -1,9 +1,11 @@
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
+import { BatchSuggestionModel } from "@app/lib/models/batch_suggestion";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
   DANGEROUSLY_UNBOUNDED_TEXT,
   DataTypes,
+  Op,
 } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -27,6 +29,7 @@ export class AgentSuggestionModel extends WorkspaceAwareModel<AgentSuggestionMod
   declare state: AgentSuggestionState;
   declare source: CreationOptional<AgentSuggestionSource>;
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
+  declare batchId: ForeignKey<BatchSuggestionModel["id"]> | null;
 
   declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
   declare conversation: NonAttribute<ConversationModel | null>;
@@ -86,6 +89,12 @@ AgentSuggestionModel.init(
       comment:
         "FK to the conversation that triggered this suggestion (only set for synthetic suggestions)",
     },
+    batchId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      comment:
+        "FK to the batch this suggestion belongs to, reviewed together with the other members.",
+    },
   },
   {
     modelName: "agent_suggestion",
@@ -109,6 +118,12 @@ AgentSuggestionModel.init(
         concurrently: true,
         name: "agent_suggestions_conversation_id",
       },
+      {
+        fields: ["workspaceId", "batchId"],
+        concurrently: true,
+        name: "agent_suggestions_workspace_batch_id",
+        where: { batchId: { [Op.ne]: null } },
+      },
     ],
   }
 );
@@ -129,4 +144,15 @@ AgentSuggestionModel.belongsTo(ConversationModel, {
   foreignKey: { name: "conversationId", allowNull: true },
   onDelete: "RESTRICT",
   as: "conversation",
+});
+
+// Association with BatchSuggestionModel (nullable — only set for batched suggestions).
+AgentSuggestionModel.belongsTo(BatchSuggestionModel, {
+  foreignKey: { name: "batchId", allowNull: true },
+  onDelete: "RESTRICT",
+  as: "batch",
+});
+BatchSuggestionModel.hasMany(AgentSuggestionModel, {
+  foreignKey: { name: "batchId", allowNull: true },
+  onDelete: "RESTRICT",
 });
