@@ -40,7 +40,7 @@ describe("resolveDimensionDisplayNames", () => {
     expect(names.get(model.modelId)).toBe(model.displayName);
   });
 
-  it("names reasoning efforts from their display labels", async () => {
+  it("names reasoning efforts from their display labels, legacy light as Low", async () => {
     const names = await resolveDimensionDisplayNames(auth, "reasoning_effort", [
       "light",
       "xhigh",
@@ -49,7 +49,7 @@ describe("resolveDimensionDisplayNames", () => {
     ]);
 
     expect([...names.values()]).toEqual([
-      "Light",
+      "Low",
       "XHigh",
       "Max",
       "Unknown_effort",
