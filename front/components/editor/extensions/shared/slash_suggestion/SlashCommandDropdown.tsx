@@ -180,11 +180,16 @@ function getPointerHighlightProps(
     return {};
   }
 
-  // Radix focuses the row on mouse pointer move and the menu container on mouse pointer leave. The
-  // menu is modal, so once anything inside it is focused the editor can never take focus back.
-  // Preventing default skips both Radix handlers. Touch moves come from scrolling the list, so
-  // they leave the highlight alone.
+  // Radix focuses the row on mouse pointer move and the menu container on mouse pointer leave, and
+  // the browser focuses the row itself on mouse down since it is focusable. The menu is modal, so
+  // once anything inside it is focused the editor can never take focus back. Preventing default
+  // skips both Radix handlers and the native focus; the click still fires, so rows that navigate
+  // (or their "Add" button) leave the caret in the editor and typing keeps working. Touch moves
+  // come from scrolling the list, so they leave the highlight alone.
   return {
+    onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+    },
     onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
       event.preventDefault();
       if (event.pointerType !== "touch") {
