@@ -102,6 +102,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -165,9 +166,8 @@ describe("Authenticator.fromJSON", () => {
     const editorGroup = await pod.fetchManualEditorGroup(auth);
     expect(editorGroup).not.toBeNull();
 
-    // Pod admin access is conferred by membership in the pod's editor group. A stale auth
-    // serialized before the pod existed lacks it; a refreshed one reloads the membership and
-    // resolves the grant.
+    // Pod admin comes from editor-group membership: the stale auth (serialized pre-pod) lacks it, a
+    // refreshed one reloads it.
     const staleAuth = await Authenticator.fromJSON(staleAuthJson);
     expect(staleAuth.can("admin", pod)).toBe(false);
 
@@ -176,5 +176,58 @@ describe("Authenticator.fromJSON", () => {
     const refreshedPod = await SpaceResource.fetchById(freshAuth, pod.sId);
     expect(refreshedPod).not.toBeNull();
     expect(freshAuth.can("admin", refreshedPod!)).toBe(true);
+  });
+
+  it("re-derives an API key's group scope from the key on refresh, without persisting it", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+
+    // A restricted space and an API key scoped to its member group: the key can read the space
+    // only through that group.
+    const space = await SpaceFactory.regular(workspace);
+    const [group] = await space.fetchRegularAutoGroups(adminAuth);
+    expect(group).toBeDefined();
+    const key = await KeyFactory.regular(group!);
+
+    const auth = await Authenticator.fromKey(key, workspace.sId);
+    expect(auth.can("read", space)).toBe(true);
+
+    // A plain key persists no group scope — it re-derives from the key on refresh.
+    const authJson = auth.toJSON();
+    expect(authJson.groupIds).toBeNull();
+
+    const refreshed = await Authenticator.fromJsonWithRefrehedGroups(authJson);
+    const refetched = await SpaceResource.fetchById(refreshed, space.sId);
+    expect(refetched).not.toBeNull();
+    // Would be false if refresh didn't recompute the key's groups (empty permissions).
+    expect(refreshed.can("read", refetched!)).toBe(true);
+  });
+
+  it("keeps a user-less poke super-user's workspace-wide groups across refresh", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+    const space = await SpaceFactory.regular(workspace);
+
+    // Cloudflare poke operator with no Dust user: reads every space via all workspace groups.
+    const auth = await Authenticator.fromDustSuperUser({
+      wId: workspace.sId,
+      pokePrincipal: { email: "poke@dust.tt", name: "Poke" },
+    });
+    expect(auth.user()).toBeNull();
+    expect(auth.can("read", space)).toBe(true);
+
+    const refreshed = await Authenticator.fromJsonWithRefrehedGroups(
+      auth.toJSON()
+    );
+    const refetched = await SpaceResource.fetchById(refreshed, space.sId);
+    expect(refetched).not.toBeNull();
+    // Would be false if refresh dropped the persisted all-groups scope to [].
+    expect(refreshed.can("read", refetched!)).toBe(true);
   });
 });
