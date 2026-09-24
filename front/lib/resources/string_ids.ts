@@ -68,6 +68,9 @@ export const RESOURCES_PREFIX = {
   // Skill suggestions.
   skill_suggestion: "ssu",
 
+  // Batches of agent and skill suggestions.
+  batch_suggestion: "bsu",
+
   // Workspace verification.
   workspace_verification_attempt: "wva",
 

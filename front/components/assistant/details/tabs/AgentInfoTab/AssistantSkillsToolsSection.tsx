@@ -1,3 +1,5 @@
+import { EditedSectionBar } from "@app/components/assistant/details/DetailsSectionHeading";
+import { useEditedAgentSections } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
@@ -82,6 +84,7 @@ export function AssistantSkillsToolsSection({
   owner,
   isDustAgent,
 }: AssistantToolsSectionProps) {
+  const editedSections = useEditedAgentSections();
   const { mcpServers, isMCPServersLoading: isToolsLoading } = useMCPServers({
     owner,
   });
@@ -123,7 +126,8 @@ export function AssistantSkillsToolsSection({
   return (
     <div className="flex flex-col gap-5">
       {hasSkills && (
-        <div className="flex flex-col gap-5">
+        <div className="relative flex flex-col gap-5">
+          {editedSections.has("skills") && <EditedSectionBar />}
           <div className="heading-lg text-foreground">Skills</div>
           <div className="grid grid-cols-2 gap-2">
             {isSkillsLoading ? (
@@ -149,7 +153,8 @@ export function AssistantSkillsToolsSection({
       )}
 
       {hasTools && (
-        <div className="flex flex-col gap-5">
+        <div className="relative flex flex-col gap-5">
+          {editedSections.has("tools") && <EditedSectionBar />}
           <div className="heading-lg text-foreground">Tools</div>
           <div className="grid grid-cols-2 gap-2">
             {isToolsLoading || isToolsetsLoading ? (

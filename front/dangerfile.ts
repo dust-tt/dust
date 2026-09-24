@@ -498,10 +498,29 @@ async function checkDiffFiles() {
   if (codeDefinedSkillsChanged) {
     warn(
       "Code-defined skills or their search projection changed. If this adds/removes a skill " +
-        "or changes its ID, name, user-facing description, icon or kind, reindex the catalog " +
-        "after deploy in each region. From `front/`, run " +
-        "`npx tsx scripts/reindex_code_defined_skills.ts --execute`. " +
+        "or changes its ID, name, user-facing description, icon or kind, the hourly " +
+        "`search-code-defined-hourly` schedule reindexes the catalog after deploy. For an " +
+        "immediate update, from `front/`, run " +
+        "`npx tsx scripts/reindex_code_defined_skills.ts --execute` in each region. " +
         "Instruction-only changes do not require reindexing."
+    );
+  }
+
+  const globalAgentsSearchChanged = diffFiles.some(
+    (path) =>
+      path ===
+        "front/lib/api/assistant/global_agents/global_agent_metadata.ts" ||
+      path === "front/lib/api/assistant/global_agents/global_agents.ts" ||
+      path === "front/lib/agent_search/index_global.ts" ||
+      path === "front/scripts/reindex_global_agents.ts"
+  );
+  if (globalAgentsSearchChanged) {
+    warn(
+      "Global agents or their search projection changed. If this adds/removes a default " +
+        "global agent or changes its ID, name, description or picture, the hourly " +
+        "`search-code-defined-hourly` schedule reindexes the catalog after deploy. For an " +
+        "immediate update, from `front/`, run " +
+        "`npx tsx scripts/reindex_global_agents.ts --execute` in each region."
     );
   }
 

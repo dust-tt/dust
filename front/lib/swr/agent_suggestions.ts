@@ -16,7 +16,7 @@ import type {
 } from "@app/types/api/assistant/agent_suggestion";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 export function useAgentSuggestions({
@@ -24,6 +24,8 @@ export function useAgentSuggestions({
   disabled,
   kind,
   state,
+  sources,
+  conversationId,
   limit,
   workspaceId,
 }: {
@@ -31,6 +33,8 @@ export function useAgentSuggestions({
   disabled?: boolean;
   kind?: GetSuggestionsQuery["kind"];
   state?: GetSuggestionsQuery["states"];
+  sources?: GetSuggestionsQuery["sources"];
+  conversationId?: string;
   limit?: number;
   workspaceId: string;
 }) {
@@ -43,6 +47,12 @@ export function useAgentSuggestions({
   }
   if (kind) {
     urlParams.append("kind", kind);
+  }
+  if (sources) {
+    sources.forEach((s) => urlParams.append("sources", s));
+  }
+  if (conversationId) {
+    urlParams.append("conversationId", conversationId);
   }
   if (limit !== undefined) {
     urlParams.append("limit", limit.toString());
@@ -106,7 +116,7 @@ export function usePatchAgentSuggestions({
     async (
       suggestionIds: string[],
       state: PatchSuggestionRequestBody["state"],
-      { applyToAgent }: { applyToAgent?: boolean } = {}
+      { apply }: { apply?: boolean } = {}
     ): Promise<PatchSuggestionResponseBody | null> => {
       if (!agentConfigurationId || suggestionIds.length === 0) {
         return null;
@@ -123,7 +133,7 @@ export function usePatchAgentSuggestions({
             body: JSON.stringify({
               suggestionIds,
               state,
-              applyToAgent,
+              applyToAgent: apply,
             } satisfies PatchSuggestionRequestBody),
           }
         );
@@ -152,91 +162,4 @@ export function usePatchAgentSuggestions({
   );
 
   return { patchSuggestions };
-}
-
-type SuggestionReviewAction = "accept" | "reject";
-
-export function useAgentSuggestionActions({
-  agentConfigurationId,
-  workspaceId,
-  mutateSuggestions,
-}: {
-  agentConfigurationId: string | null;
-  workspaceId: string;
-  mutateSuggestions: ReturnType<
-    typeof useAgentSuggestions
-  >["mutateSuggestions"];
-}) {
-  const { patchSuggestions } = usePatchAgentSuggestions({
-    agentConfigurationId,
-    workspaceId,
-  });
-  const [pendingActions, setPendingActions] = useState<
-    Record<string, SuggestionReviewAction>
-  >({});
-
-  const getPendingAction = useCallback(
-    (suggestion: { sId: string }): SuggestionReviewAction | null =>
-      pendingActions[suggestion.sId] ?? null,
-    [pendingActions]
-  );
-
-  const setSuggestionState = useCallback(
-    async (
-      suggestion: { sId: string },
-      action: SuggestionReviewAction,
-      options?: { applyToAgent?: boolean }
-    ): Promise<boolean> => {
-      setPendingActions((current) => ({
-        ...current,
-        [suggestion.sId]: action,
-      }));
-
-      const result = await patchSuggestions(
-        [suggestion.sId],
-        action === "accept" ? "approved" : "rejected",
-        options
-      );
-
-      setPendingActions((current) => {
-        const { [suggestion.sId]: _removed, ...rest } = current;
-        return rest;
-      });
-
-      if (!result || result.suggestions.length === 0) {
-        return false;
-      }
-
-      const reviewedById = new Map(result.suggestions.map((s) => [s.sId, s]));
-      void mutateSuggestions(
-        (current) => ({
-          suggestions: (current?.suggestions ?? []).map(
-            (s) => reviewedById.get(s.sId) ?? s
-          ),
-        }),
-        { revalidate: false }
-      );
-
-      return true;
-    },
-    [patchSuggestions, mutateSuggestions]
-  );
-
-  // `create`/`delete` are only ever applied server-side on accept, and only when `applyToAgent`
-  // is set: the route otherwise just records the review without touching the agent.
-  const acceptSuggestion = useCallback(
-    (suggestion: { sId: string }) =>
-      setSuggestionState(suggestion, "accept", { applyToAgent: true }),
-    [setSuggestionState]
-  );
-  const rejectSuggestion = useCallback(
-    (suggestion: { sId: string }) => setSuggestionState(suggestion, "reject"),
-    [setSuggestionState]
-  );
-
-  return {
-    getPendingAction,
-    acceptSuggestion,
-    rejectSuggestion,
-  };
 }

@@ -194,6 +194,8 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       reinforcement: agent.reinforcement,
       lastReinforcementAnalysisAt:
         agent.lastReinforcementAnalysisAt?.toISOString() ?? null,
+      ignoreCreditSpendThresholdAlert:
+        agent.creditSpendCheckpointThresholdAwuCredits === null,
       canRead,
       canEdit,
     };

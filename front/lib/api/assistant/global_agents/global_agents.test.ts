@@ -1,4 +1,8 @@
-import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  getGlobalAgents,
+  isRetiredGlobalAgent,
+  listDefaultGlobalAgentIds,
+} from "@app/lib/api/assistant/global_agents/global_agents";
 import { Authenticator } from "@app/lib/auth";
 import { setUserMaxAllowedTier } from "@app/lib/model_tiers/allowed_tiers";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -85,6 +89,20 @@ async function createAuthenticatorWithFlags(
 
   return authenticator;
 }
+
+describe("listDefaultGlobalAgentIds", () => {
+  it("excludes retired, sidekick, reinforcement and model-only agents", () => {
+    const agentIds = listDefaultGlobalAgentIds();
+
+    expect(agentIds).toContain(GLOBAL_AGENTS_SID.DUST);
+    expect(agentIds).toContain(GLOBAL_AGENTS_SID.DEEP_DIVE);
+    expect(agentIds.filter(isRetiredGlobalAgent)).toEqual([]);
+    expect(agentIds).not.toContain(GLOBAL_AGENTS_SID.SIDEKICK);
+    expect(agentIds).not.toContain(GLOBAL_AGENTS_SID.REINFORCEMENT);
+    expect(agentIds).not.toContain(GLOBAL_AGENTS_SID.GPT5);
+    expect(agentIds).not.toContain(GLOBAL_AGENTS_SID.CLAUDE_5_SONNET);
+  });
+});
 
 describe("getGlobalAgents custom model agents", () => {
   it("makes the Dust Support skill available", async () => {

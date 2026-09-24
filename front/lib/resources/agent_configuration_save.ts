@@ -5,6 +5,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
@@ -155,6 +156,7 @@ export async function resolveExistingAgentAndVersion(
         "workspaceId",
         "createdAt",
         "reinforcement",
+        "creditSpendCheckpointThresholdAwuCredits",
       ],
       order: [["version", "DESC"]],
       transaction: t,
@@ -217,6 +219,19 @@ export async function resolveExistingAgentAndVersion(
   return { existingAgent, version };
 }
 
+function resolveCreditSpendCheckpointThreshold(
+  ignoreCreditSpendThresholdAlert: boolean | undefined,
+  existingAgent: AgentConfigurationModel | null
+): number | null {
+  if (ignoreCreditSpendThresholdAlert === true) {
+    return null;
+  }
+  if (ignoreCreditSpendThresholdAlert === undefined && existingAgent) {
+    return existingAgent.creditSpendCheckpointThresholdAwuCredits;
+  }
+  return CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
+}
+
 // Writes the configuration row for the version being saved: an in-place update for a pending agent
 // (preserving its id and FK relationships), a fresh row otherwise. Runs inside the save transaction.
 export async function writeAgentConfigurationRow({
@@ -236,6 +251,7 @@ export async function writeAgentConfigurationRow({
   templateModelId,
   requestedSpaceIds,
   reinforcement,
+  ignoreCreditSpendThresholdAlert,
   owner,
   transaction: t,
 }: {
@@ -255,6 +271,7 @@ export async function writeAgentConfigurationRow({
   templateModelId: ModelId | undefined;
   requestedSpaceIds: ModelId[];
   reinforcement: AgentReinforcementMode | undefined;
+  ignoreCreditSpendThresholdAlert: boolean | undefined;
   owner: LightWorkspaceType;
   transaction: Transaction;
 }): Promise<AgentConfigurationModel> {
@@ -279,6 +296,11 @@ export async function writeAgentConfigurationRow({
     requestedSpaceIds,
     responseFormat: model.responseFormat,
     reinforcement: reinforcement ?? existingAgent?.reinforcement ?? "auto",
+    creditSpendCheckpointThresholdAwuCredits:
+      resolveCreditSpendCheckpointThreshold(
+        ignoreCreditSpendThresholdAlert,
+        existingAgent
+      ),
   };
 
   if (existingAgent && existingAgent.status === "pending") {

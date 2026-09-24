@@ -564,10 +564,16 @@ async function loadUserOverrideTierGrants({
   return expandExplicitTierNames([...tierNames]);
 }
 
-async function listUserModelTierOverrideGroupModelIds(
+// Agent-driven runs bypass this via getAgentAllowedTierNamesOverride.
+/**
+ * @cc [owner:Fraggle,label:security;product] models-tier-group-override-follows-principal-groups
+ * Group `models_tier` overrides resolve from the caller's principal groups (a user's membership or
+ * an API key's groups). Auths with no principal (sandbox, internal/system) get no group override.
+ */
+async function listModelTierOverrideGroupModelIds(
   auth: Authenticator
 ): Promise<ModelId[]> {
-  const groupModelIds = auth.groupModelIds();
+  const groupModelIds = await auth.listPrincipalGroupModelIds();
   if (groupModelIds.length === 0) {
     return [];
   }
@@ -639,7 +645,7 @@ export async function resolveAllowedTierNames(auth: Authenticator) {
             user,
           })
         : Promise.resolve([]),
-      listUserModelTierOverrideGroupModelIds(auth),
+      listModelTierOverrideGroupModelIds(auth),
     ]);
 
   const groupOverrideTierGrantsByGroupId =

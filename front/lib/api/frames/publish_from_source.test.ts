@@ -8,6 +8,7 @@ import {
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -238,6 +239,215 @@ describe("publishFrameFromSource", () => {
     });
     expect(fileStorageMock.readStreamCalls).toHaveLength(0);
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+});
+
+type LegacyFrameReplacementScope = "conversation" | "pod";
+
+async function setupLegacyFrameReplacement({
+  scope,
+  replacementUiSource = uiSource,
+}: {
+  scope: LegacyFrameReplacementScope;
+  replacementUiSource?: string;
+}) {
+  const {
+    authenticator: auth,
+    user,
+    workspace,
+  } = await createResourceTest({ role: "admin" });
+  const pod =
+    scope === "pod" ? await SpaceFactory.project(workspace, user.id) : null;
+  const podAuth = pod
+    ? await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId)
+    : auth;
+  assert(podAuth, "Pod authenticator not found");
+  const conversation = await ConversationFactory.create(podAuth, {
+    agentConfigurationId: "test-agent",
+    messagesCreatedAt: [],
+    spaceId: pod?.id,
+  });
+
+  const scopedRoot = pod
+    ? `pod-${pod.sId}`
+    : `conversation-${conversation.sId}`;
+  const gcsRoot = pod
+    ? getPodFilesBasePath({ workspaceId: workspace.sId, podId: pod.sId })
+    : getConversationFilesBasePath({
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
+      });
+  const legacyPath = `${scopedRoot}/dashboards/Sales.tsx`;
+  const manifestPath = `${scopedRoot}/dashboards/Sales/${FRAME_MANIFEST_FILE}`;
+  const gcsSourceDirectoryPath = `${gcsRoot}dashboards/Sales`;
+
+  const legacyFrame = await FileFactory.create(podAuth, null, {
+    contentType: frameContentType,
+    fileName: "Sales.tsx",
+    fileSize: Buffer.byteLength(uiSource),
+    status: "created",
+    useCase: pod ? "project_context" : "conversation",
+    useCaseMetadata: pod
+      ? { spaceId: pod.sId }
+      : { conversationId: conversation.sId },
+    mountFilePath: `${gcsRoot}dashboards/Sales.tsx`,
+  });
+  await legacyFrame.ensureShareableFrame(podAuth);
+  const legacyGcsPath = `${gcsRoot}dashboards/Sales.tsx`;
+  fileStorageMock.setObject(legacyGcsPath, uiSource);
+
+  const sourceByPath = new Map([
+    [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
+    [`${gcsSourceDirectoryPath}/index.tsx`, replacementUiSource],
+    [`${gcsSourceDirectoryPath}/theme.ts`, "export const theme = {};"],
+  ]);
+  fileStorageMock.setFilesByPrefix((prefix) =>
+    prefix === `${gcsSourceDirectoryPath}/`
+      ? [...sourceByPath.entries()].map(([name, content]) => ({
+          name,
+          metadata: {
+            contentType: name.endsWith(".json")
+              ? frameV2ContentType
+              : "text/typescript",
+            size: String(Buffer.byteLength(content)),
+          },
+        }))
+      : null
+  );
+  fileStorageMock.setFileContent(
+    (filePath) => sourceByPath.get(filePath) ?? null
+  );
+
+  return {
+    auth: podAuth,
+    conversation,
+    legacyFrame,
+    legacyGcsPath,
+    legacyPath,
+    manifestPath,
+    pod,
+  };
+}
+
+describe("publishFrameFromSource replacing a legacy Frame", () => {
+  it("keeps the legacy Frame's id and share link", async () => {
+    const { auth, conversation, legacyFrame, legacyPath, manifestPath } =
+      await setupLegacyFrameReplacement({ scope: "conversation" });
+    const legacyShare = await legacyFrame.getShareInfo();
+    assert(legacyShare, "Legacy Frame is not shared");
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: legacyPath,
+    });
+
+    assert(result.isOk(), "Replacement publish failed");
+    expect(result.value).toMatchObject({
+      kind: "v2",
+      frameId: legacyFrame.sId,
+      sourcePath: manifestPath,
+    });
+    const frame = await FileResource.fetchById(auth, legacyFrame.sId);
+    assert(frame, "Frame not found");
+    expect(frame.isFrameV2).toBe(true);
+    expect(frame.toScopedPath(auth)).toBe(manifestPath);
+    expect(frame.useCaseMetadata?.activePublicationId).toBe(
+      result.value.kind === "v2" ? result.value.publicationId : undefined
+    );
+    const share = await frame.getShareInfo();
+    expect(share?.shareUrl).toBe(legacyShare.shareUrl);
+  });
+
+  it("deletes the legacy entry file once the replacement is active", async () => {
+    const { auth, conversation, legacyGcsPath, legacyPath, manifestPath } =
+      await setupLegacyFrameReplacement({ scope: "conversation" });
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: legacyPath,
+    });
+
+    assert(result.isOk(), "Replacement publish failed");
+    expect(fileStorageMock.getObject(legacyGcsPath)).toBeUndefined();
+  });
+
+  it("leaves the legacy Frame untouched when the replacement fails to build", async () => {
+    const {
+      auth,
+      conversation,
+      legacyFrame,
+      legacyGcsPath,
+      legacyPath,
+      manifestPath,
+    } = await setupLegacyFrameReplacement({
+      scope: "conversation",
+      replacementUiSource: "export default function App() { return <p>",
+    });
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: legacyPath,
+    });
+
+    expect(result.isErr()).toBe(true);
+    const frame = await FileResource.fetchById(auth, legacyFrame.sId);
+    assert(frame, "Frame not found");
+    expect(frame.isInteractiveContent).toBe(true);
+    expect(frame.toScopedPath(auth)).toBe(legacyPath);
+    expect(fileStorageMock.getObject(legacyGcsPath)).toBe(uiSource);
+  });
+
+  it("moves the Pod pin and tab to the replacement", async () => {
+    const { auth, conversation, legacyPath, manifestPath, pod } =
+      await setupLegacyFrameReplacement({ scope: "pod" });
+    assert(pod, "Pod not found");
+    await ProjectMetadataResource.makeNew(auth, pod, {
+      pinnedFramePath: legacyPath,
+      frameTabs: [
+        { path: legacyPath, title: "Sales", icon: "ActionDocumentIcon" },
+      ],
+      tabsOrder: ["conversations", legacyPath, "files", "tasks"],
+    });
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: legacyPath,
+    });
+
+    assert(result.isOk(), "Replacement publish failed");
+    const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+    assert(metadata, "Pod metadata not found");
+    expect(metadata.pinnedFramePath).toBe(manifestPath);
+    expect(metadata.frameTabs.map((tab) => tab.path)).toEqual([manifestPath]);
+    expect(metadata.tabsOrder).toContain(manifestPath);
+  });
+
+  it("refuses to replace a file that is not a legacy Frame", async () => {
+    const { auth, conversation, legacyFrame, manifestPath } =
+      await setupLegacyFrameReplacement({ scope: "conversation" });
+    const notAFramePath = manifestPath.replace(
+      "Sales/manifest.json",
+      "notes.md"
+    );
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: notAFramePath,
+    });
+
+    expect(result.isErr()).toBe(true);
+    const frame = await FileResource.fetchById(auth, legacyFrame.sId);
+    expect(frame?.isInteractiveContent).toBe(true);
   });
 });
 

@@ -1,8 +1,5 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
@@ -187,29 +184,32 @@ Never explicitly say "I remember" or "based on our previous conversation" - just
  * @cc [owner:aubin-tchoi,label:product] exclude-skills-only-toolsets
  * The available toolsets context MUST NOT include MCP server views restricted to skills.
  */
+/**
+ * @cc [owner:tdraier,label:performance] toolsets-context-no-heavy-attributes
+ * MUST NOT read remote MCP server heavy attributes (no `toJSON`, `getServerTools`,
+ * `getAuthorization`), so views fetched without `includeHeavyAttributes` are valid input.
+ */
 export function buildToolsetsContext(
   availableToolsets: MCPServerViewResource[]
 ): string {
   const toolsetsList = availableToolsets
     .filter((toolset) => !toolset.isRestrictedToSkills)
-    .sort((a, b) => {
-      const aView = a.toJSON();
-      const bView = b.toJSON();
-      const nameCompare = getMcpServerViewDisplayName(aView).localeCompare(
-        getMcpServerViewDisplayName(bView)
-      );
-      if (nameCompare !== 0) {
-        return nameCompare;
-      }
-      return aView.sId.localeCompare(bView.sId);
-    })
-    .map((toolset) => {
-      const mcpServerView = toolset.toJSON();
-      const sId = mcpServerView.sId;
-      const displayName = getMcpServerViewDisplayName(mcpServerView);
-      const description = getMcpServerViewDescription(mcpServerView);
-      return `- **${displayName}** (toolsetId: \`${sId}\`): ${description}`;
-    })
+    .map((toolset) => ({
+      sId: toolset.sId,
+      displayName: toolset.getDisplayName(),
+      description: getMcpServerViewDescription({
+        description: toolset.description,
+        server: toolset.getServerDisplayMetadata(),
+      }),
+    }))
+    .sort(
+      (a, b) =>
+        a.displayName.localeCompare(b.displayName) || a.sId.localeCompare(b.sId)
+    )
+    .map(
+      ({ sId, displayName, description }) =>
+        `- **${displayName}** (toolsetId: \`${sId}\`): ${description}`
+    )
     .join("\n");
 
   return `

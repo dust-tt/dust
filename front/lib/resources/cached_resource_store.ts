@@ -13,8 +13,12 @@ import type {
   CacheOperations,
 } from "@app/lib/utils/cache_operations";
 import { defineCacheOperations } from "@app/lib/utils/cache_operations";
+import logger from "@app/logger/logger";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
+import differenceWith from "lodash/differenceWith";
+import isEqualWith from "lodash/isEqualWith";
 import type {
   Attributes,
   CreationAttributes,
@@ -39,14 +43,23 @@ type CacheKeyMigrationDefinition<Input> = {
   copyToOtherKey: "after_load" | "after_read";
 };
 
+// Rollout mode of a cached lookup, for staging a new cache into production:
+// - "live" (default): read through Redis, falling back to the database on a cache failure, and honor
+//   invalidation.
+// - "dryRun": reads load from the database (round-tripping the snapshot so serialization is still
+//   exercised) and `invalidate` no-ops, so the cache is wired end to end but touches no Redis.
+// - "compare": reads warm the cache (read-through write) AND always reload from the database, logging
+//   when the two snapshots diverge; the database result stays authoritative and is what callers
+//   receive. Invalidation behaves as in "live". For measuring a cache's correctness before trusting
+//   it.
+export type CachedResourceMode = "live" | "dryRun" | "compare";
+
 export type CachedResourceLookupDefinition<Input, Snapshot, Resource> = {
   id: string;
   version: number;
   key: (input: Input) => string;
   migration?: CacheKeyMigrationDefinition<Input>;
-  // When set, `fetch` loads from the database (round-tripping the snapshot) and `invalidate` no-ops,
-  // so the cache is wired but touches no Redis. For staged rollout of a new cache.
-  dryRun?: boolean;
+  mode?: CachedResourceMode;
   // One result per input in the same order, including nulls for missing resources.
   loadManyFromDatabase: (
     inputs: readonly Input[],
@@ -114,11 +127,48 @@ type OperableCachedResourceList<Input, Resource> = CachedResourceList<
   }) => CacheOperations;
 };
 
+// Plain-object narrowing for the comparison helpers (arrays and null are not records). Kept as a
+// typed predicate because lodash's `isPlainObject` is typed `(value) => boolean`, so it would not
+// narrow `unknown` to a record.
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// Deep equality that ignores array element order, so id lists returned in a different order by two
+// queries compare equal. Arrays are compared as sets via `differenceWith`; everything else falls
+// back to lodash's default deep comparison.
+function equalIgnoringArrayOrder(a: unknown, b: unknown): boolean {
+  return isEqualWith(a, b, (x, y) =>
+    Array.isArray(x) && Array.isArray(y)
+      ? x.length === y.length &&
+        differenceWith(x, y, equalIgnoringArrayOrder).length === 0
+      : undefined
+  );
+}
+
+// Top-level keys whose values differ between two snapshots, comparing array elements order-
+// insensitively. Used by "compare" mode to log which fields drift without dumping the (potentially
+// large) snapshot values. Snapshots that are not both records (null, or a non-object shape) are
+// compared as whole values and reported as a single `<presence>` divergence.
+function snapshotDivergingKeys(
+  cached: unknown,
+  fromDatabase: unknown
+): string[] {
+  if (!isRecord(cached) || !isRecord(fromDatabase)) {
+    return equalIgnoringArrayOrder(cached, fromDatabase) ? [] : ["<presence>"];
+  }
+  const keys = new Set([...Object.keys(cached), ...Object.keys(fromDatabase)]);
+  return [...keys].filter(
+    (key) => !equalIgnoringArrayOrder(cached[key], fromDatabase[key])
+  );
+}
+
 /**
  * @cc [owner:flvndvd,label:backend;performance] resource-cache-batch-order
  * fetchMany MUST return each found key once, in first-occurrence input order. Single and batch
- * fetches MUST use the same entries and loader. Transaction reads MUST bypass Redis, and dry-run
- * reads MUST round-trip snapshots without Redis. Empty inputs MUST perform no I/O.
+ * fetches MUST use the same entries and loader. Transaction reads MUST bypass Redis, dry-run reads
+ * MUST round-trip snapshots without Redis, and compare reads MUST return the authoritative database
+ * row while warming the cache. Empty inputs MUST perform no I/O.
  */
 /**
  * Low-level batched lookup with hand-written snapshots. Internal to this module: resources
@@ -131,7 +181,7 @@ function defineCachedResourceLookup<Input, Snapshot, Resource>({
   version,
   key,
   migration,
-  dryRun = false,
+  mode = "live",
   loadManyFromDatabase,
   toSnapshot,
   fromSnapshot,
@@ -202,6 +252,61 @@ function defineCachedResourceLookup<Input, Snapshot, Resource>({
     }
   );
 
+  // "compare" mode: warm the cache and always return the authoritative database row, logging any
+  // divergence. A call-scoped loader records which inputs the cache missed (and their fresh
+  // snapshots) so those are read from the database only once; only cache hits are reloaded to
+  // compare against. Returns one snapshot per input, in `uniqueInputs` order.
+  const compareSnapshots = async (
+    uniqueInputs: readonly Input[]
+  ): Promise<(JsonSerializable<Snapshot> | null)[]> => {
+    const freshByKey = new Map<string, JsonSerializable<Snapshot> | null>();
+    const missedKeys = new Set<string>();
+    const warm = cacheManyWithRedis<Snapshot, Input>(
+      async (missedInputs) => {
+        const loaded = await loadSnapshotsFromDatabase(missedInputs);
+        missedInputs.forEach((input, index) => {
+          const inputKey = key(input);
+          missedKeys.add(inputKey);
+          freshByKey.set(inputKey, loaded[index]);
+        });
+        return loaded;
+      },
+      versionedKey,
+      { cacheId: id, migration: migrationOptions }
+    );
+    const cachedSnapshots = await warm(uniqueInputs);
+
+    // Cache hits were not loaded by the warmer; reload them once to compare.
+    const hitInputs = uniqueInputs.filter(
+      (input) => !missedKeys.has(key(input))
+    );
+    if (hitInputs.length > 0) {
+      const freshForHits = await loadSnapshotsFromDatabase(hitInputs);
+      hitInputs.forEach((input, index) => {
+        freshByKey.set(key(input), freshForHits[index]);
+      });
+    }
+
+    return uniqueInputs.map((input, index) => {
+      const inputKey = key(input);
+      const fresh = freshByKey.get(inputKey) ?? null;
+      if (!missedKeys.has(inputKey)) {
+        const divergingKeys = snapshotDivergingKeys(
+          cachedSnapshots[index] ?? null,
+          fresh
+        );
+        if (divergingKeys.length > 0) {
+          logger.warn(
+            { cacheId: id, key: versionedKey(input), divergingKeys },
+            "Resource cache snapshot diverged from the database"
+          );
+        }
+      }
+      // The database row stays authoritative for both hits and misses.
+      return fresh;
+    });
+  };
+
   const fetchMany = async (
     inputs: readonly Input[],
     transaction?: Transaction
@@ -215,9 +320,20 @@ function defineCachedResourceLookup<Input, Snapshot, Resource>({
     if (transaction) {
       return removeNulls(await loadManyFromDatabase(uniqueInputs, transaction));
     }
-    const snapshots = dryRun
-      ? await loadSnapshotsFromDatabase(uniqueInputs)
-      : await fetchSnapshots(uniqueInputs);
+    let snapshots: (JsonSerializable<Snapshot> | null)[];
+    switch (mode) {
+      case "dryRun":
+        snapshots = await loadSnapshotsFromDatabase(uniqueInputs);
+        break;
+      case "compare":
+        snapshots = await compareSnapshots(uniqueInputs);
+        break;
+      case "live":
+        snapshots = await fetchSnapshots(uniqueInputs);
+        break;
+      default:
+        assertNever(mode);
+    }
     return concurrentExecutor(
       removeNulls(snapshots),
       async (snapshot) => fromSnapshot(snapshot),
@@ -232,7 +348,7 @@ function defineCachedResourceLookup<Input, Snapshot, Resource>({
     },
     fetchMany,
     invalidate: async (input, transaction) => {
-      if (dryRun) {
+      if (mode === "dryRun") {
         return;
       }
       if (transaction) {
@@ -244,7 +360,7 @@ function defineCachedResourceLookup<Input, Snapshot, Resource>({
       await invalidateSnapshot(input);
     },
     invalidateMany: async (inputs, transaction) => {
-      if (dryRun) {
+      if (mode === "dryRun") {
         return;
       }
       const argsList = inputs.map((input): [Input] => [input]);

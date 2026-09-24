@@ -3,16 +3,18 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
+import { validateAgentInstructionsChange } from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentInstructionsChangeArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import type { CreatedInstructionSuggestion } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
-import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 export interface SuggestAgentInstructionsChangeResult {
   agentConfigurationId: string;
@@ -21,7 +23,8 @@ export interface SuggestAgentInstructionsChangeResult {
 
 export async function suggestAgentInstructionsChange(
   auth: Authenticator,
-  { agentId, instructionEdit, analysis }: SuggestAgentInstructionsChangeArgs
+  { agentId, instructionEdit, analysis }: SuggestAgentInstructionsChangeArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<SuggestAgentInstructionsChangeResult, MCPError>> {
   if (!auth.user()) {
     return new Err(
@@ -39,50 +42,18 @@ export async function suggestAgentInstructionsChange(
     return new Err(new MCPError("Agent not found."));
   }
 
-  if (!agent.canEdit && !auth.isAdmin()) {
-    return new Err(
-      new MCPError(
-        "Only editors can suggest changing a workspace agent's instructions."
-      )
-    );
-  }
-
-  if (agent.status !== "active") {
-    return new Err(
-      new MCPError("Only active agents can have their instructions changed.")
-    );
-  }
-
-  if (!agent.instructionsHtml) {
-    return new Err(
-      new MCPError(
-        "This agent has no block-structured instructions, so instruction edits cannot be " +
-          "targeted."
-      )
-    );
-  }
-
-  const pending = await AgentSuggestionResource.listByAgentConfigurationId(
-    auth,
-    agent.sId,
-    { states: ["pending"], kind: "instructions" }
-  );
-  const limitCheck = canAddPendingSuggestions({
-    kind: "instructions",
-    newPendingCount: 1,
-    currentPendingCount: pending.length,
-    resolutionHint:
-      "Reject or accept some of the existing pending suggestions before adding new ones.",
-  });
-  if (!limitCheck.allowed) {
-    return new Err(new MCPError(limitCheck.errorMessage));
+  const validation = await validateAgentInstructionsChange(auth, agent, [
+    { ...instructionEdit, analysis },
+  ]);
+  if (validation.isErr()) {
+    return validation;
   }
 
   const result = await createAgentInstructionSuggestions(auth, {
     agentConfiguration: agent,
-    edits: [{ ...instructionEdit, analysis }],
+    edits: validation.value,
     source: "conversational",
-    conversation: null,
+    conversation: runContext.conversation,
   });
   if (result.isErr()) {
     return new Err(new MCPError(result.error));
@@ -96,9 +67,11 @@ export async function suggestAgentInstructionsChange(
 
 export async function suggestAgentInstructionsChangeHandler(
   args: SuggestAgentInstructionsChangeArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestAgentInstructionsChange(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestAgentInstructionsChange(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

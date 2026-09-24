@@ -1,6 +1,7 @@
 use anyhow::{bail, Context};
 
 use super::offload::{resolve_offloaded_content, OffloadResolutionError, ResolveOptions};
+use super::view_reference::single_view;
 use crate::api::{parse_content_block, CallToolResult, ContentBlock, DustApiClient, DustApiError};
 
 const MAX_FILE_ARG_SIZE_BYTES: u64 = 100 * 1024 * 1024;
@@ -62,11 +63,7 @@ async fn run_exec(
     }
 
     let views = client.list_tools(Some(server_name), false).await?;
-
-    let view = match views.first() {
-        Some(v) => v,
-        None => bail!("server '{server_name}' not found"),
-    };
+    let view = single_view(&views, server_name)?;
 
     // Validate the tool exists on this server.
     let tool = match view.server.tools.iter().find(|t| t.name == tool_name) {

@@ -191,7 +191,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
 describe("Authenticator.fromJSON", () => {
   it("resolves the grants of a payload serialized before permissions existed", async () => {
     const workspace = await WorkspaceFactory.basic();
-    await GroupFactory.defaults(workspace);
+    const { globalGroup } = await GroupFactory.defaults(workspace);
 
     const admin = await UserFactory.basic();
     await MembershipFactory.associate(workspace, admin, { role: "admin" });
@@ -215,9 +215,15 @@ describe("Authenticator.fromJSON", () => {
       workspace.sId
     );
 
-    // In-flight Temporal workflows carry payloads serialized before the permissions field existed.
-    const { permissions, ...legacyAuthType } = auth.toJSON();
+    // A pre-permissions payload also predates nullable groupIds: it serialized the full group set,
+    // so reconstruct that shape for the back-compat path to resolve grants from.
+    const { permissions, groupIds: _groupIds, ...rest } = auth.toJSON();
     expect(permissions).toBeDefined();
+
+    const legacyAuthType = {
+      ...rest,
+      groupIds: [globalGroup.sId, group.sId],
+    };
 
     const restored = await Authenticator.fromJSON(legacyAuthType);
 

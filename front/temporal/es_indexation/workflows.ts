@@ -17,6 +17,8 @@ const {
   indexAgentSearchActivity,
   indexSkillSearchActivity,
   indexUserSearchActivity,
+  reindexCodeDefinedSkillsActivity,
+  reindexGlobalAgentsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -128,6 +130,16 @@ export async function deleteWorkspaceAgentSearchWorkflow({
   workspaceId: string;
 }): Promise<void> {
   await deleteWorkspaceAgentSearchActivity({ workspaceId });
+}
+
+/**
+ * @cc [owner:sfriquet,label:product] code-defined-search-coverage
+ * Every run MUST reindex both code-defined skills and default global agents. Any reindexing
+ * failure MUST be thrown so Temporal retries.
+ */
+export async function reindexCodeDefinedSearchWorkflow(): Promise<void> {
+  await reindexCodeDefinedSkillsActivity();
+  await reindexGlobalAgentsActivity();
 }
 
 const { listWorkspaceIdsActivity, refreshWorkspaceSearchUsageActivity } =

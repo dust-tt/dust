@@ -7,14 +7,15 @@ import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatSkillSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestSkillNameArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
-import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
+import {
+  recordSkillSuggestion,
+  validateSkillNameSuggestion,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/skill_suggestion_changes";
 import { fetchCustomSkillById } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
-import { pruneConflictingSkillNameSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
-import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { isNameSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import assert from "assert";
 
 export async function suggestSkillName(
@@ -38,37 +39,22 @@ export async function suggestSkillName(
   if (skillResult.isErr()) {
     return new Err(new MCPError(skillResult.error.message));
   }
-
   const skill = skillResult.value;
 
-  const validation = await validateSkillNameChange(auth, skill, { name });
+  const validation = await validateSkillNameSuggestion(auth, skill, { name });
   if (validation.isErr()) {
-    return new Err(new MCPError(validation.error.message));
+    return validation;
   }
 
-  if (validation.value.name === skill.name) {
-    return new Err(new MCPError(`The skill is already named "${skill.name}".`));
-  }
-
-  const created = await SkillSuggestionResource.createSuggestionForSkill(
-    auth,
-    skill,
-    {
-      kind: "name",
-      suggestion: { name: validation.value.name },
+  return new Ok(
+    await recordSkillSuggestion(auth, skill, {
+      data: { kind: "name", suggestion: validation.value },
       analysis: analysis ?? null,
       title: title ?? null,
-      state: "pending",
-      source: "conversational",
-      sourceConversationIds: [runContext.conversation.id],
-    }
+      conversation: runContext.conversation,
+      batch: null,
+    })
   );
-
-  if (isNameSkillSuggestion(created)) {
-    await pruneConflictingSkillNameSuggestions(auth, skill, [created]);
-  }
-
-  return new Ok(created);
 }
 
 export async function suggestSkillNameHandler(

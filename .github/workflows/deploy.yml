@@ -197,18 +197,6 @@ jobs:
           contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
 
-      - name: Notify Failure
-        if: failure()
-        uses: ./.github/actions/slack-notify
-        with:
-          step: "failure"
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
-          component: ${{ inputs.component }}
-          image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.cells }}
-          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
-
   build:
     permissions:
       contents: read
@@ -255,18 +243,6 @@ jobs:
           contentful_space_id: ${{ secrets.CONTENTFUL_SPACE_ID }}
           contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
-
-      - name: Notify Failure
-        if: failure()
-        uses: ./.github/actions/slack-notify
-        with:
-          step: "failure"
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
-          component: ${{ inputs.component }}
-          image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.cells }}
-          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
   deploy:
     needs:
@@ -359,18 +335,6 @@ jobs:
               client_payload: payload,
             });
 
-      - name: Notify Failure
-        if: failure()
-        uses: ./.github/actions/slack-notify
-        with:
-          step: "failure"
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
-          component: ${{ inputs.component }}
-          image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.cells }}
-          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
-
   # Upload SPA version to CF Workers (not yet promoted to production).
   # Starts in parallel with Docker build to save time.
   deploy-app:
@@ -394,3 +358,32 @@ jobs:
       region: "us"
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
     secrets: inherit
+
+  notify-failure:
+    needs:
+      [
+        verify-sandbox-images,
+        check-branch,
+        prepare,
+        notify-start,
+        create-matrix,
+        build-once,
+        build,
+        deploy,
+      ]
+    if: ${{ failure() && needs.notify-start.outputs.thread_ts }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/actions/slack-notify
+
+      - uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ inputs.cells }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"

@@ -230,7 +230,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   static async listPinnedForAuth(
     auth: Authenticator
   ): Promise<ResolvedDiscoveryItem[]> {
-    const groupModelIds = auth.groupModelIds();
+    const groupModelIds = await auth.listPrincipalGroupModelIds();
     const [items, globalGroupModelId] = await Promise.all([
       this.baseFetch(auth, { groupModelIds }),
       auth.getGlobalGroupModelId(),
@@ -276,7 +276,10 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       transaction?: Transaction;
     }
   ): Promise<ResolvedDiscoveryItem[]> {
-    if (!auth.isAdmin() && !auth.groupModelIds().includes(groupModelId)) {
+    if (
+      !auth.isAdmin() &&
+      !(await auth.listPrincipalGroupModelIds()).includes(groupModelId)
+    ) {
       return [];
     }
 

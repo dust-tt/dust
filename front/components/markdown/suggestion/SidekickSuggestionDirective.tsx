@@ -17,9 +17,10 @@ import {
   SidekickSuggestionCard,
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/SidekickSuggestionCard";
+import { useSuggestionActions } from "@app/hooks/useSuggestionActions";
 import {
-  useAgentSuggestionActions,
   useAgentSuggestions,
+  usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { AGENT_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
@@ -188,6 +189,7 @@ interface ConversationAgentSuggestionProps {
   agentId: string;
   kind: ConversationAgentSuggestionKind;
   suggestionId: string;
+  conversationId: string;
 }
 
 function ConversationAgentSuggestion({
@@ -195,6 +197,7 @@ function ConversationAgentSuggestion({
   agentId,
   kind,
   suggestionId,
+  conversationId,
 }: ConversationAgentSuggestionProps) {
   const { openPanel } = useConversationSidePanelContext();
 
@@ -202,14 +205,16 @@ function ConversationAgentSuggestion({
     useAgentSuggestions({
       agentConfigurationId: agentId,
       workspaceId: owner.sId,
+      sources: ["conversational"],
+      conversationId,
     });
 
+  const { patchSuggestions } = usePatchAgentSuggestions({
+    agentConfigurationId: agentId,
+    workspaceId: owner.sId,
+  });
   const { getPendingAction, acceptSuggestion, rejectSuggestion } =
-    useAgentSuggestionActions({
-      agentConfigurationId: agentId,
-      workspaceId: owner.sId,
-      mutateSuggestions,
-    });
+    useSuggestionActions({ patchSuggestions, mutateSuggestions });
 
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -269,7 +274,8 @@ interface ConversationAgentSuggestionPluginProps {
 }
 
 export function getConversationAgentSuggestionPlugin(
-  owner: LightWorkspaceType
+  owner: LightWorkspaceType,
+  conversationId?: string
 ) {
   const ConversationAgentSuggestionPlugin = ({
     suggestionId,
@@ -279,12 +285,14 @@ export function getConversationAgentSuggestionPlugin(
     suggestionId &&
     kind &&
     isConversationAgentSuggestionKind(kind) &&
-    agentId ? (
+    agentId &&
+    conversationId ? (
       <ConversationAgentSuggestion
         owner={owner}
         agentId={agentId}
         kind={kind}
         suggestionId={suggestionId}
+        conversationId={conversationId}
       />
     ) : null;
 

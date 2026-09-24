@@ -43,6 +43,7 @@ const agentSettingsSchema = z.object({
     })
   ),
   tags: z.array(tagSchema),
+  ignoreCreditSpendThresholdAlert: z.boolean().default(false),
 });
 
 const cronScheduleConfigSchema = z.object({

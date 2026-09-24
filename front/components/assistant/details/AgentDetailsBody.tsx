@@ -4,7 +4,11 @@ import { TriggerSelectionPageContent } from "@app/components/agent_builder/trigg
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
 import { AgentDetailsButtonBar } from "@app/components/assistant/details/AgentDetailsButtonBar";
-import { useAgentSuggestionPreview } from "@app/components/assistant/details/SuggestionPreviewContext";
+import { EditedDot } from "@app/components/assistant/details/DetailsSectionHeading";
+import {
+  useAgentSuggestionPreview,
+  useEditedAgentSections,
+} from "@app/components/assistant/details/SuggestionPreviewContext";
 import { AgentEditorsTab } from "@app/components/assistant/details/tabs/AgentEditorsTab";
 import { AgentInfoTab } from "@app/components/assistant/details/tabs/AgentInfoTab";
 import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentInsightsTab";
@@ -234,6 +238,8 @@ export function AgentDetailsBody({
   const showInsightsTabs =
     agentId != null && (agentConfiguration?.canEdit || isManager(owner));
 
+  const editedSections = useEditedAgentSections();
+
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
     const editedDate =
@@ -257,22 +263,28 @@ export function AgentDetailsBody({
               size="xl"
             />
             {agentConfiguration?.status === "active" && (
-              <Chip
-                size="mini"
-                color={SCOPE_INFO[agentConfiguration.scope].color}
-                icon={SCOPE_INFO[agentConfiguration.scope].icon ?? undefined}
-                label={SCOPE_INFO[agentConfiguration.scope].label}
-                className="absolute -bottom-3 shadow-sm"
-              />
+              <div className="absolute -bottom-3 flex items-center gap-1">
+                <Chip
+                  size="mini"
+                  color={SCOPE_INFO[agentConfiguration.scope].color}
+                  icon={SCOPE_INFO[agentConfiguration.scope].icon ?? undefined}
+                  label={SCOPE_INFO[agentConfiguration.scope].label}
+                  className="shadow-sm"
+                />
+                {editedSections.has("scope") && <EditedDot />}
+              </div>
             )}
           </div>
         </div>
 
         {/* Title and edit info */}
         <div className="flex flex-col items-center gap-1">
-          <h2 className="text-xl font-semibold text-foreground notranslate">
-            {agentConfiguration?.name ?? ""}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-foreground notranslate">
+              {agentConfiguration?.name ?? ""}
+            </h2>
+            {editedSections.has("name") && <EditedDot />}
+          </div>
           {editedDate && (
             <p className="text-sm text-muted-foreground">
               Last edited: {editedDate}
@@ -345,7 +357,7 @@ export function AgentDetailsBody({
           <SheetHeader
             className={cn(
               "flex flex-col gap-5 text-sm text-foreground",
-              isInSidePanel && "bg-panel-background"
+              isInSidePanel && "bg-transparent"
             )}
             hideButton={isInSidePanel}
           >

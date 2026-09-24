@@ -260,6 +260,7 @@ export async function createOrUpgradeAgentConfiguration({
     tags: assistant.tags,
     editors,
     authorId: resolvedAuthorId,
+    ignoreCreditSpendThresholdAlert: assistant.ignoreCreditSpendThresholdAlert,
     actions: actionConfigs,
     skills: skillsToAdd,
   };

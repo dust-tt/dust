@@ -5,6 +5,8 @@ import { createSlashSuggestionExtension } from "@app/components/editor/extension
 import {
   clearSlashSubMenuStack,
   createSlashMenuNavigationStorage,
+  getActiveSlashSubMenuFrame,
+  getSlashSubMenuQueryPlaceholder,
   handleSlashSubMenuCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import {
@@ -89,7 +91,9 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     storage.hasBeenFocused &&
     (editor.isFocused || isActive) &&
     storage.dismissedTriggerStart !== range.from &&
-    isAllowedSlashQuery(state, range),
+    // Inside a sub-menu the text after "/" is its query, so a leading space is allowed.
+    (getActiveSlashSubMenuFrame(storage) !== null ||
+      isAllowedSlashQuery(state, range)),
   // Inserts a "/" at the cursor to open the dropdown, even if the editor was
   // never focused or the dropdown was dismissed at this position.
   addCommands: ({ storage, editor }) => ({
@@ -151,5 +155,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   onDropdownExit: ({ storage }) => {
     clearSlashSubMenuStack(storage);
   },
+  getQueryPlaceholder: ({ storage }) =>
+    getSlashSubMenuQueryPlaceholder(storage),
   preventEscapeDefault: true,
 });

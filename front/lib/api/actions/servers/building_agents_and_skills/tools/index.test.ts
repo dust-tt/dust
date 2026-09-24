@@ -17,18 +17,22 @@ import {
   SUGGEST_SKILL_NAME_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
   SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
+  SUGGEST_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
@@ -60,6 +64,7 @@ const AGENT_NAME_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=name agentId=(\S+)\}$/;
 const AGENT_SCOPE_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=scope agentId=(\S+)\}$/;
+const BATCH_SUGGESTION_DIRECTIVE_REGEX = /^:batch_edit\[\]\{sId=(\S+)\}$/;
 const AGENT_INSTRUCTIONS_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=instructions agentId=(\S+)\}$/;
 
@@ -77,9 +82,24 @@ function getTool(name: string) {
 // `sourceConversationIds` has no foreign key, so a synthetic conversation id is enough here.
 const TEST_CONVERSATION_MODEL_ID = 424242;
 
+// Agent suggestions instead hold a real `conversationId` foreign key, so their tools need an
+// actual conversation row to point at.
+async function createTestConversationModelId(
+  auth: Authenticator
+): Promise<ModelId> {
+  const conversation = await createConversation(auth, {
+    title: "Test Conversation",
+    visibility: "unlisted",
+    spaceId: null,
+  });
+
+  return conversation.id;
+}
+
 function makeExtra(
   auth: Authenticator,
-  conversationModelId: ModelId = TEST_CONVERSATION_MODEL_ID
+  conversationModelId: ModelId = TEST_CONVERSATION_MODEL_ID,
+  conversationId?: string
 ) {
   const extra: Pick<
     ToolHandlerExtra,
@@ -96,7 +116,7 @@ function makeExtra(
     signal: new AbortController().signal,
     runContext: {
       contextType: "agent_loop",
-      conversation: { id: conversationModelId },
+      conversation: { id: conversationModelId, sId: conversationId },
     },
   };
 
@@ -850,12 +870,15 @@ describe("building_agents_and_skills tools", () => {
 
       const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
         {
-          name: "Incident Helper",
+          name: "IncidentHelper",
           description: "Helps triage incidents.",
           instructions: "Collect impact and timeline.",
           analysis: "Incident response had no dedicated helper.",
         },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
 
       expect(result.isOk()).toBe(true);
@@ -883,7 +906,7 @@ describe("building_agents_and_skills tools", () => {
       expect(suggestion?._agentConfigurationId).toBe(agentId);
       expect(suggestion?.toJSON()).toMatchObject({
         suggestion: {
-          name: "Incident Helper",
+          name: "IncidentHelper",
           description: "Helps triage incidents.",
           instructions: "Collect impact and timeline.",
         },
@@ -975,7 +998,10 @@ describe("building_agents_and_skills tools", () => {
 
       const first = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
         { agentId: agent.sId, analysis: "Unused for months." },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
       expect(first.isOk()).toBe(true);
       if (first.isErr()) {
@@ -1009,7 +1035,10 @@ describe("building_agents_and_skills tools", () => {
 
       const second = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
         { agentId: agent.sId },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
       expect(second.isOk()).toBe(true);
 
@@ -1089,7 +1118,7 @@ describe("building_agents_and_skills tools", () => {
     ) =>
       getTool(SUGGEST_AGENT_DESCRIPTION_TOOL_NAME).handler(
         args,
-        makeExtra(auth)
+        makeExtra(auth, await createTestConversationModelId(auth))
       );
 
     it("records a pending suggestion with the description, without changing the agent", async () => {
@@ -1231,7 +1260,10 @@ describe("building_agents_and_skills tools", () => {
           reasoningEffort: "high",
           analysis: "Better for complex tasks.",
         },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
       expect(first.isOk()).toBe(true);
       if (first.isErr()) {
@@ -1260,7 +1292,10 @@ describe("building_agents_and_skills tools", () => {
         SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME
       ).handler(
         { agentId: agent.sId, modelId: "claude-sonnet-4-6" },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
       expect(second.isOk()).toBe(true);
 
@@ -1379,7 +1414,11 @@ describe("building_agents_and_skills tools", () => {
     const suggestName = async (
       auth: Authenticator,
       args: { agentId: string; name: string; analysis?: string }
-    ) => getTool(SUGGEST_AGENT_NAME_TOOL_NAME).handler(args, makeExtra(auth));
+    ) =>
+      getTool(SUGGEST_AGENT_NAME_TOOL_NAME).handler(
+        args,
+        makeExtra(auth, await createTestConversationModelId(auth))
+      );
 
     it("records a pending suggestion with the name, without renaming", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
@@ -1553,7 +1592,7 @@ describe("building_agents_and_skills tools", () => {
     ) =>
       getTool(SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME).handler(
         args,
-        makeExtra(auth)
+        makeExtra(auth, await createTestConversationModelId(auth))
       );
 
     it("records a pending suggestion with the publish state, without changing the agent", async () => {
@@ -1588,6 +1627,8 @@ describe("building_agents_and_skills tools", () => {
       );
       expect(suggestion?.state).toBe("pending");
       expect(suggestion?.source).toBe("conversational");
+      // Which conversation is asserted by the scoping test below.
+      expect(suggestion?.conversationId).not.toBeNull();
       expect(suggestion?.toJSON()).toMatchObject({
         kind: "scope",
         suggestion: { scope: "visible" },
@@ -1600,6 +1641,45 @@ describe("building_agents_and_skills tools", () => {
         variant: "light",
       });
       expect(untouched?.scope).toBe("hidden");
+    });
+
+    it("records the conversation it ran in, so suggestions can be scoped to it", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "hidden" }
+      );
+
+      const suggestIn = async (conversationModelId: ModelId) => {
+        const result = await getTool(
+          SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME
+        ).handler(
+          { agentId: agent.sId, scope: "visible" },
+          makeExtra(authenticator, conversationModelId)
+        );
+        if (result.isErr() || result.value[0]?.type !== "text") {
+          throw new Error("Expected the suggestion to be created.");
+        }
+        return extractAgentScopeSuggestionDirective(result.value[0].text)
+          .suggestionId;
+      };
+
+      const firstConversationModelId =
+        await createTestConversationModelId(authenticator);
+      const secondConversationModelId =
+        await createTestConversationModelId(authenticator);
+
+      // The second call outdates the first, but both keep the conversation they were made in.
+      const firstId = await suggestIn(firstConversationModelId);
+      const secondId = await suggestIn(secondConversationModelId);
+
+      const scoped = await AgentSuggestionResource.listByAgentConfigurationId(
+        authenticator,
+        agent.sId,
+        { conversationModelId: secondConversationModelId }
+      );
+      expect(scoped.map((s) => s.sId)).toEqual([secondId]);
+      expect(scoped.map((s) => s.sId)).not.toContain(firstId);
     });
 
     it("outdates every other pending publish state suggestion, leaving other kinds alone", async () => {
@@ -1820,7 +1900,10 @@ describe("building_agents_and_skills tools", () => {
           },
           analysis: "Makes the assistant more concise.",
         },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
       expect(first.isOk()).toBe(true);
       if (first.isErr()) {
@@ -1863,7 +1946,10 @@ describe("building_agents_and_skills tools", () => {
             content: "<p>You are a friendly assistant.</p>",
           },
         },
-        makeExtra(authenticator)
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
       );
       expect(second.isOk()).toBe(true);
 
@@ -2518,6 +2604,266 @@ describe("building_agents_and_skills tools", () => {
         makeExtra(authenticator)
       );
       expectMcpError(result, "active skills");
+    });
+  });
+
+  describe(SUGGEST_TOOL_NAME, () => {
+    // The batch references its source conversation, so `suggest` needs a real one.
+    const runSuggest = async (
+      auth: Authenticator,
+      args: Record<string, unknown>
+    ) => {
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: "dust",
+        messagesCreatedAt: [],
+      });
+      return getTool(SUGGEST_TOOL_NAME).handler(
+        args,
+        makeExtra(auth, conversation.id, conversation.sId)
+      );
+    };
+
+    const extractBatchId = (
+      result: Awaited<ReturnType<typeof runSuggest>>
+    ): string => {
+      if (result.isErr()) {
+        throw result.error;
+      }
+      const output = result.value[0];
+      if (output?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const match = BATCH_SUGGESTION_DIRECTIVE_REGEX.exec(output.text);
+      if (!match) {
+        throw new Error(`Unexpected tool output: ${output.text}`);
+      }
+      return match[1];
+    };
+
+    it("records every change as pending suggestions of one batch, without applying them", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "OldHelper" }
+      );
+      const skill = await seedSkill(authenticator, { name: "Old Skill" });
+
+      const result = await runSuggest(authenticator, {
+        title: "Rename helper and skill",
+        analysis: "Both names follow the new convention.",
+        suggestions: [
+          {
+            kind: "edit_agent",
+            agentId: agent.sId,
+            name: "NewHelper",
+            description: "Helps with incidents.",
+          },
+          { kind: "edit_skill", skillId: skill.sId, name: "New Skill" },
+        ],
+      });
+      const batchId = extractBatchId(result);
+
+      const batch = await BatchSuggestionResource.fetchById(
+        authenticator,
+        batchId
+      );
+      expect(batch?.toJSON()).toMatchObject({
+        title: "Rename helper and skill",
+        analysis: "Both names follow the new convention.",
+        state: "pending",
+      });
+      expect(
+        batch?.agentSuggestions.map((s) => s.toJSON()).map((s) => s.kind)
+      ).toEqual(["name", "description"]);
+      expect(batch?.skillSuggestions.map((s) => s.toJSON())).toMatchObject([
+        { kind: "name", suggestion: { name: "New Skill" } },
+      ]);
+      for (const suggestion of [
+        ...(batch?.agentSuggestions ?? []),
+        ...(batch?.skillSuggestions ?? []),
+      ]) {
+        expect(suggestion.state).toBe("pending");
+        expect(suggestion.source).toBe("conversational");
+      }
+
+      const untouched = await getAgentConfiguration(authenticator, {
+        agentId: agent.sId,
+        variant: "light",
+      });
+      expect(untouched?.name).toBe("OldHelper");
+    });
+
+    it("records nothing when one of the changes is invalid", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "OldHelper" }
+      );
+      const skill = await seedSkill(authenticator, { name: "Same Name" });
+
+      const result = await runSuggest(authenticator, {
+        title: "Rename",
+        analysis: "Rename both.",
+        suggestions: [
+          { kind: "edit_agent", agentId: agent.sId, name: "NewHelper" },
+          { kind: "edit_skill", skillId: skill.sId, name: "Same Name" },
+        ],
+      });
+
+      expectMcpError(result, "already named");
+      const pending = await AgentSuggestionResource.listByAgentConfigurationId(
+        authenticator,
+        agent.sId,
+        { states: ["pending"] }
+      );
+      expect(pending).toHaveLength(0);
+    });
+
+    it("refuses two suggestions targeting the same agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const result = await runSuggest(authenticator, {
+        title: "Twice",
+        analysis: "Twice.",
+        suggestions: [
+          { kind: "edit_agent", agentId: agent.sId, name: "NewHelper" },
+          { kind: "delete_agent", agentId: agent.sId },
+        ],
+      });
+
+      expectMcpError(result, "targeted by several suggestions");
+    });
+
+    it("refuses a global agent before recording anything", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const result = await runSuggest(authenticator, {
+        title: "Delete helper",
+        analysis: "Unused.",
+        suggestions: [{ kind: "delete_agent", agentId: "helper" }],
+      });
+
+      expectMcpError(result, "global agent");
+    });
+
+    it("refuses instruction edits targeting a block that does not exist", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { instructionsHtml: '<p data-block-id="blk00001">Be nice.</p>' }
+      );
+      const skill = await seedSkill(authenticator, {
+        name: "Block Skill",
+        instructionsHtml: '<p data-block-id="blk00002">Triage.</p>',
+      });
+      const edit = {
+        targetBlockId: "missing1",
+        content: "<p>Replaced.</p>",
+        type: "replace",
+      };
+
+      expectMcpError(
+        await runSuggest(authenticator, {
+          title: "Edit agent",
+          analysis: "Edit.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              instructionEdits: [edit],
+            },
+          ],
+        }),
+        "do not exist in the agent's instructions"
+      );
+      expectMcpError(
+        await runSuggest(authenticator, {
+          title: "Edit skill",
+          analysis: "Edit.",
+          suggestions: [
+            {
+              kind: "edit_skill",
+              skillId: skill.sId,
+              instructionEdits: [edit],
+            },
+          ],
+        }),
+        "do not exist in the skill's instructions"
+      );
+    });
+
+    it("refuses creating an agent with the name of an existing agent", async () => {
+      const { authenticator } = await createAgentAuthorTestContext();
+      await AgentConfigurationFactory.createTestAgent(authenticator, {
+        name: "TakenName",
+      });
+
+      const result = await runSuggest(authenticator, {
+        title: "New agent",
+        analysis: "New agent.",
+        suggestions: [
+          {
+            kind: "create_agent",
+            name: "TakenName",
+            description: "Does things.",
+            instructions: "<p>Do things.</p>",
+          },
+        ],
+      });
+
+      expectMcpError(result, "already exists");
+    });
+
+    it("refuses agent instruction edits targeting a block and its child", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          instructionsHtml:
+            '<ul data-block-id="parent01"><li data-block-id="child001"><p>Item.</p></li></ul>',
+        }
+      );
+
+      const result = await runSuggest(authenticator, {
+        title: "Edit agent",
+        analysis: "Edit.",
+        suggestions: [
+          {
+            kind: "edit_agent",
+            agentId: agent.sId,
+            instructionEdits: [
+              {
+                targetBlockId: "parent01",
+                content: "<ul><li><p>New.</p></li></ul>",
+                type: "replace",
+              },
+              {
+                targetBlockId: "child001",
+                content: "<li><p>Other.</p></li>",
+                type: "replace",
+              },
+            ],
+          },
+        ],
+      });
+
+      expectMcpError(result, "overlap");
+    });
+
+    it("refuses an edit that changes nothing", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const result = await runSuggest(authenticator, {
+        title: "Nothing",
+        analysis: "Nothing.",
+        suggestions: [{ kind: "edit_agent", agentId: agent.sId }],
+      });
+
+      expectMcpError(result, "does not change anything");
     });
   });
 

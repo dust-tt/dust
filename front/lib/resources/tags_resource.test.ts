@@ -144,6 +144,23 @@ describe("TagResource", () => {
       );
       expect(currentTags).toEqual([]);
     });
+
+    it("excludes a deleted tag from the batch agent listing", async () => {
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const kept = await TagFactory.create(workspace, { name: "kept" });
+      const deleted = await TagFactory.create(workspace, { name: "deleted" });
+      await TagFactory.addToAgent(authenticator, kept, agent);
+      await TagFactory.addToAgent(authenticator, deleted, agent);
+
+      const result = await deleted.delete(authenticator);
+      expect(result.isOk()).toBe(true);
+
+      const tagsPerAgent = await TagResource.listForAgents(authenticator, [
+        agent.id,
+      ]);
+      expect(tagsPerAgent[agent.id].map((t) => t.sId)).toEqual([kept.sId]);
+    });
   });
 
   describe("deleteAllForWorkspace", () => {

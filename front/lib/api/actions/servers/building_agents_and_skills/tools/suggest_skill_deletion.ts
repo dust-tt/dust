@@ -5,12 +5,15 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
+import { formatSkillSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestSkillDeletionArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
-import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
+import {
+  recordSkillSuggestion,
+  validateSkillDeletionSuggestion,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/skill_suggestion_changes";
 import type { Authenticator } from "@app/lib/auth";
-import { pruneConflictingSkillDeletionSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -40,28 +43,20 @@ export async function suggestSkillDeletion(
     return new Err(new MCPError("Skill not found."));
   }
 
-  const validation = validateSkillDeletion(auth, skill);
+  const validation = validateSkillDeletionSuggestion(auth, skill);
   if (validation.isErr()) {
-    return new Err(new MCPError(validation.error.message));
+    return validation;
   }
 
-  const created = await SkillSuggestionResource.createSuggestionForSkill(
-    auth,
-    skill,
-    {
-      kind: "delete",
-      suggestion: {},
+  return new Ok(
+    await recordSkillSuggestion(auth, skill, {
+      data: { kind: "delete", suggestion: validation.value },
       analysis: analysis ?? null,
       title: null,
-      state: "pending",
-      source: "conversational",
-      sourceConversationIds: [runContext.conversation.id],
-    }
+      conversation: runContext.conversation,
+      batch: null,
+    })
   );
-
-  await pruneConflictingSkillDeletionSuggestions(auth, skill, created);
-
-  return new Ok(created);
 }
 
 export async function suggestSkillDeletionHandler(
@@ -80,9 +75,7 @@ export async function suggestSkillDeletionHandler(
   return new Ok([
     {
       type: "text" as const,
-      text:
-        `:skill_suggestion[]{sId=${created.sId} kind=${created.kind} ` +
-        `skillId=${created.skillConfigurationSId}}`,
+      text: formatSkillSuggestionDirective(created),
     },
   ]);
 }

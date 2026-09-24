@@ -92,7 +92,10 @@ export const AgentMessageMarkdown = ({
       build_skill: BuildSkillDirectiveBlock,
       build_agent: getBuildAgentDirectivePlugin(owner),
       skill_suggestion: getSkillSuggestionPlugin(owner, conversationId),
-      agent_suggestion: getConversationAgentSuggestionPlugin(owner),
+      agent_suggestion: getConversationAgentSuggestionPlugin(
+        owner,
+        conversationId
+      ),
       ...additionalMarkdownComponents,
     }),
     [owner, conversationId, additionalMarkdownComponents]

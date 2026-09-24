@@ -1,3 +1,5 @@
+import { EditedDot } from "@app/components/assistant/details/DetailsSectionHeading";
+import { useEditedSkillSections } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
@@ -102,6 +104,7 @@ export function SkillDetailsContent({
   user,
 }: SkillDetailsContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
+  const editedSections = useEditedSkillSections();
 
   // The editors tab is shown to everyone (non-editors get a read-only list,
   // SkillEditorsTab hides the remove column for them), except for global
@@ -123,6 +126,9 @@ export function SkillDetailsContent({
             value="editors"
             label="Editors"
             icon={Users01}
+            iconRight={
+              editedSections.has("editors") ? <EditedDot /> : undefined
+            }
             onClick={() => setSelectedTab("editors")}
           />
         </TabsList>
@@ -162,6 +168,7 @@ export function SkillDetailsHeader({
   onFavoriteChange,
 }: SkillDetailsHeaderProps) {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const editedSections = useEditedSkillSections();
   const { editedByUser } = skill.relations;
   const editedDate =
     skill.updatedAt &&
@@ -181,19 +188,27 @@ export function SkillDetailsHeader({
           {/* eslint-disable-next-line react-hooks/static-components */}
           <SkillAvatar name="Skill avatar" size="xl" />
           {skill.status === "active" && (
-            <Chip
-              size="mini"
-              color={availabilityDisplay.color}
-              label={availabilityDisplay.label}
-              className="absolute -bottom-3 shadow-sm"
-            />
+            <div className="absolute -bottom-3 flex items-center gap-1">
+              <Chip
+                size="mini"
+                color={availabilityDisplay.color}
+                label={availabilityDisplay.label}
+                className="shadow-sm"
+              />
+              {editedSections.has("availability") && <EditedDot />}
+            </div>
           )}
         </div>
       </div>
 
       {/* Title and edit info */}
       <div className="flex flex-col items-center gap-1">
-        <h2 className="text-xl font-semibold text-foreground">{skill.name}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-foreground">
+            {skill.name}
+          </h2>
+          {editedSections.has("name") && <EditedDot />}
+        </div>
 
         {editedDate && (
           <p className="text-sm text-muted-foreground">

@@ -61,7 +61,7 @@ enum Commands {
         /// --key value pairs.
         #[arg(long)]
         args_json: Option<String>,
-        /// Server name (omit to list all servers)
+        /// Server name as listed by `dsbx tools`, or a view id (omit to list all servers)
         server_name: Option<String>,
         /// Tool name to execute
         tool_name: Option<String>,
@@ -204,8 +204,8 @@ async fn run() -> anyhow::Result<()> {
             commands::frame::FrameCommand::ShareLink { directory } => {
                 commands::cmd_frame_share_link(&directory).await?
             }
-            commands::frame::FrameCommand::Publish { source } => {
-                commands::cmd_frame_publish(&source).await?
+            commands::frame::FrameCommand::Publish { source, replaces } => {
+                commands::cmd_frame_publish(&source, replaces.as_deref()).await?
             }
         },
         Commands::Filesystem { command } => commands::run_filesystem(command)?,
@@ -767,11 +767,37 @@ mod tests {
         .expect("parse");
         match cli.command {
             Commands::Frame {
-                command: commands::frame::FrameCommand::Publish { source },
+                command: commands::frame::FrameCommand::Publish { source, replaces },
             } => {
                 assert_eq!(
                     source,
                     std::path::PathBuf::from("/files/pod-vlt_123/Status/manifest.json")
+                );
+                assert_eq!(replaces, None);
+            }
+            Commands::Frame { .. } => panic!("expected publish"),
+            _ => panic!("expected frame"),
+        }
+    }
+
+    #[test]
+    fn frame_publish_parses_the_legacy_frame_it_replaces() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "publish",
+            "/files/pod-vlt_123/Status/manifest.json",
+            "--replaces",
+            "/files/pod-vlt_123/Status.tsx",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Frame {
+                command: commands::frame::FrameCommand::Publish { replaces, .. },
+            } => {
+                assert_eq!(
+                    replaces,
+                    Some(std::path::PathBuf::from("/files/pod-vlt_123/Status.tsx"))
                 );
             }
             Commands::Frame { .. } => panic!("expected publish"),

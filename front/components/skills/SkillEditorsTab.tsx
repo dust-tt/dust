@@ -1,3 +1,8 @@
+import { EditedSectionBar } from "@app/components/assistant/details/DetailsSectionHeading";
+import {
+  useEditedSkillSections,
+  useIsSkillSuggestionPreview,
+} from "@app/components/assistant/details/SuggestionPreviewContext";
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
@@ -36,6 +41,10 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
     skillId: skill.sId,
   });
 
+  const isPreview = useIsSkillSuggestionPreview();
+  const editedSections = useEditedSkillSections();
+
+  const canManageEditors = skill.canAdministrate && !isPreview;
   const formValues = useMemo<EditorsFormData>(() => ({ editors }), [editors]);
   const form = useForm<EditorsFormData>({
     defaultValues: { editors: [] },
@@ -54,7 +63,7 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
     selectedEditors.some((editor) => !persistedEditorIds.has(editor.sId));
 
   const onRemoveMember = (user: SearchMemberWithWorkspaceType) => {
-    if (!skill.canAdministrate || form.formState.isSubmitting) {
+    if (!canManageEditors || form.formState.isSubmitting) {
       return;
     }
 
@@ -94,10 +103,11 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
   });
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="relative flex flex-col gap-4">
+      {editedSections.has("editors") && <EditedSectionBar />}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Editors</h3>
-        {skill.canAdministrate && (
+        {canManageEditors && (
           <AddEditorDropdown
             owner={owner}
             editors={selectedEditors}
@@ -131,11 +141,11 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
           totalMembersCount: selectedEditors.length,
           mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
         }}
-        showColumns={skill.canAdministrate ? ["name", "remove"] : ["name"]}
+        showColumns={canManageEditors ? ["name", "remove"] : ["name"]}
         onRemoveMemberClick={onRemoveMember}
         onRowClick={function noRefCheck() {}}
       />
-      {skill.canAdministrate && (
+      {canManageEditors && (
         <div className="flex justify-end gap-2">
           <Button
             variant="outline"

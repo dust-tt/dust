@@ -260,7 +260,7 @@ export const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillAvailabilitySuggestionDataSchema,
 ]);
 
-type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
+export type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
 
 export function parseSkillSuggestionData(data: unknown): SkillSuggestionData {
   return SkillSuggestionDataSchema.parse(data);
@@ -386,6 +386,7 @@ const BaseSkillSuggestionSchema = z.object({
   visibleSourceConversationIds: z.array(z.string()),
   notificationConversationId: z.string().nullable(),
   updatedBy: SkillSuggestionUpdatedBySchema.nullable(),
+  batchId: z.string().nullable(),
 });
 
 export const SkillSuggestionSchema = BaseSkillSuggestionSchema.and(

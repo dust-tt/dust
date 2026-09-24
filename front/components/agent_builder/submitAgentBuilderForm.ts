@@ -450,6 +450,8 @@ export async function submitAgentBuilderForm({
       pictureUrl: pictureUrlToUse,
       status: isDraft ? "draft" : "active",
       scope: isDraft ? "hidden" : formData.agentSettings.scope,
+      ignoreCreditSpendThresholdAlert:
+        formData.agentSettings.ignoreCreditSpendThresholdAlert,
       model: {
         modelId: formData.generationSettings.modelSettings.modelId,
         providerId: formData.generationSettings.modelSettings.providerId,

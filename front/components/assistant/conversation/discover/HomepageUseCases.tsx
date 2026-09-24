@@ -1,3 +1,7 @@
+import {
+  trackHomepageUseCaseClick,
+  trackHomepageUseCaseView,
+} from "@app/components/assistant/conversation/discover/discoveryTracking";
 import { TYPING_MAX_DURATION_MS } from "@app/components/editor/input_bar/useCustomEditor";
 import {
   getIcon,
@@ -32,20 +36,21 @@ export function HomepageUseCases({
   const { useCases, isUseCasesLoading } = useHomepageUseCases({ workspaceId });
 
   const [page, setPage] = useState<HomepageUseCaseType[]>([]);
+  const stillOffered = new Set(useCases.map((useCase) => useCase.id));
+  const needsInitialSample = page.length === 0 && useCases.length > 0;
+  const containsUnavailableUseCase = page.some(
+    ({ id }) => !stillOffered.has(id)
+  );
+
+  if (needsInitialSample || containsUnavailableUseCase) {
+    setPage(sampleSize(useCases, VISIBLE_COUNT));
+  }
 
   useEffect(() => {
-    setPage((current) => {
-      const stillOffered = new Set(useCases.map((useCase) => useCase.id));
-      if (
-        current.length > 0 &&
-        current.every((useCase) => stillOffered.has(useCase.id))
-      ) {
-        return current;
-      }
-
-      return sampleSize(useCases, VISIBLE_COUNT);
+    page.forEach(({ id }) => {
+      trackHomepageUseCaseView({ useCaseId: id });
     });
-  }, [useCases]);
+  }, [page]);
 
   const [isTyping, setIsTyping] = useState(false);
 
@@ -92,6 +97,7 @@ export function HomepageUseCases({
             key={useCase.id}
             isDisabled={isTyping}
             onPick={() => {
+              trackHomepageUseCaseClick({ useCaseId: useCase.id });
               setIsTyping(true);
               onPick(useCase);
             }}

@@ -13,9 +13,10 @@ import {
 } from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
 import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
-  useSkillSuggestionActions,
+  usePatchSkillSuggestions,
   useSkillSuggestions,
 } from "@app/hooks/useSkillSuggestions";
+import { useSuggestionActions } from "@app/hooks/useSuggestionActions";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { SKILL_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
@@ -113,12 +114,12 @@ function ConversationSkillSuggestion({
       skillId,
     });
 
+  const { patchSuggestions } = usePatchSkillSuggestions({
+    skillId,
+    workspaceId: owner.sId,
+  });
   const { getPendingAction, acceptSuggestion, rejectSuggestion } =
-    useSkillSuggestionActions({
-      skillId,
-      workspaceId: owner.sId,
-      mutateSuggestions,
-    });
+    useSuggestionActions({ patchSuggestions, mutateSuggestions });
 
   const getSkillInstructionsHtml = useCallback(
     () => skill?.instructionsHtml ?? "",

@@ -24,3 +24,7 @@ export function formatSkillSuggestionDirective(
     `skillId=${suggestion.skillConfigurationSId}}`
   );
 }
+
+export function formatBatchSuggestionDirective(batch: { sId: string }): string {
+  return `:batch_edit[]{sId=${batch.sId}}`;
+}

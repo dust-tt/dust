@@ -1,9 +1,14 @@
+import type { CatalogItem } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
 import { DiscoverCatalog } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
+import { DiscoverHome } from "@app/components/assistant/conversation/discover/DiscoverHome";
+import { DiscoverPinDialog } from "@app/components/assistant/conversation/discover/DiscoverPinDialog";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { WorkspaceType } from "@app/types/user";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
-  Button,
   SearchInput,
   Tabs,
   TabsContent,
@@ -15,29 +20,26 @@ import { forwardRef, useState } from "react";
 const DISCOVER_TABS = ["Discover", "Agents & Skills"] as const;
 type DiscoverTab = (typeof DISCOVER_TABS)[number];
 
-const FEATURED_SLOT_COUNT = 3;
-
-const DISCOVER_SECTIONS = [
-  "Agent & Skill for you",
-  "Trending in the workspace",
-] as const;
-
 interface DiscoverContainerProps {
   onAgentConfigurationClick: (agent: LightAgentConfigurationType) => void;
   onSkillClick: (skill: PendingSkill) => void;
   onFiltersChange: () => void;
   owner: WorkspaceType;
+  user: UserType;
 }
 
 export const DiscoverContainer = forwardRef<
   HTMLDivElement,
   DiscoverContainerProps
 >(function DiscoverContainer(
-  { onAgentConfigurationClick, onSkillClick, onFiltersChange, owner },
+  { onAgentConfigurationClick, onSkillClick, onFiltersChange, owner, user },
   ref
 ) {
   const [tab, setTab] = useState<DiscoverTab>("Discover");
   const [search, setSearch] = useState("");
+  const [pinTarget, setPinTarget] = useState<CatalogItem | null>(null);
+  const onPin = isAdmin(owner) ? setPinTarget : undefined;
+  const [detailsTarget, setDetailsTarget] = useState<CatalogItem | null>(null);
 
   return (
     <div
@@ -74,31 +76,14 @@ export const DiscoverContainer = forwardRef<
           </TabsList>
         </div>
         <TabsContent value="Discover" className="flex flex-col gap-12">
-          <section className="flex flex-col gap-3">
-            <h2 className="heading-lg text-foreground">Featured</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {Array.from({ length: FEATURED_SLOT_COUNT }, (_, slot) => (
-                <div
-                  key={slot}
-                  aria-hidden
-                  className="h-56 rounded-2xl border border-dashed border-border-dark bg-muted-background"
-                />
-              ))}
-            </div>
-          </section>
-          {DISCOVER_SECTIONS.map((title) => (
-            <section key={title} className="flex min-w-0 flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="heading-lg text-foreground">{title}</h2>
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  label="Find more"
-                  onClick={() => setTab("Agents & Skills")}
-                />
-              </div>
-            </section>
-          ))}
+          <DiscoverHome
+            owner={owner}
+            onAgentClick={onAgentConfigurationClick}
+            onSkillClick={onSkillClick}
+            onPin={onPin}
+            onDetails={setDetailsTarget}
+            onFindMore={() => setTab("Agents & Skills")}
+          />
         </TabsContent>
         <TabsContent value="Agents & Skills">
           <DiscoverCatalog
@@ -107,10 +92,35 @@ export const DiscoverContainer = forwardRef<
             onClearSearch={() => setSearch("")}
             onAgentClick={onAgentConfigurationClick}
             onSkillClick={onSkillClick}
+            onPin={onPin}
+            onDetails={setDetailsTarget}
             onFiltersChange={onFiltersChange}
           />
         </TabsContent>
       </Tabs>
+      <AgentDetailsSheet
+        owner={owner}
+        user={user}
+        agentId={
+          detailsTarget?.kind === "agent" ? detailsTarget.agent.sId : null
+        }
+        onClose={() => setDetailsTarget(null)}
+      />
+      <SkillDetailsSheet
+        owner={owner}
+        user={user}
+        skillId={
+          detailsTarget?.kind === "skill" ? detailsTarget.skill.sId : null
+        }
+        onClose={() => setDetailsTarget(null)}
+      />
+      {pinTarget && (
+        <DiscoverPinDialog
+          owner={owner}
+          item={pinTarget}
+          onClose={() => setPinTarget(null)}
+        />
+      )}
     </div>
   );
 });

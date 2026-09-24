@@ -3,70 +3,25 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
+import {
+  recordSingletonAgentSuggestion,
+  validateAgentPublishStateChange,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentPublishStateArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
-import {
-  executeWithLockResult,
-  isLockAcquisitionTimeoutError,
-} from "@app/lib/lock";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-
-function getAgentPublishStateSuggestionLockName(agentId: string): string {
-  return `agent-suggestion:scope:${agentId}`;
-}
-
-async function validateAgentPublishStateChange(
-  agent: LightAgentConfigurationType,
-  { scope }: { scope: "hidden" | "visible" }
-): Promise<
-  Result<
-    {
-      scope: "hidden" | "visible";
-    },
-    DustError<"unauthorized" | "invalid_request_error">
-  >
-> {
-  if (!agent.canEdit) {
-    return new Err(
-      new DustError(
-        "unauthorized",
-        "Only editors of this agent can change its publish state."
-      )
-    );
-  }
-
-  if (agent.status !== "active") {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        "Only active agents can have their publish state changed."
-      )
-    );
-  }
-
-  if (scope === agent.scope) {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        scope === "visible"
-          ? "The agent is already published."
-          : "The agent is already unpublished."
-      )
-    );
-  }
-
-  return new Ok({ scope });
-}
+import assert from "assert";
 
 export async function suggestAgentPublishState(
   auth: Authenticator,
-  { agentId, scope, analysis }: SuggestAgentPublishStateArgs
+  { agentId, scope, analysis }: SuggestAgentPublishStateArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   const agent = await getAgentConfiguration(auth, {
     agentId,
@@ -76,60 +31,28 @@ export async function suggestAgentPublishState(
     return new Err(new MCPError("Agent not found."));
   }
 
-  const validation = await validateAgentPublishStateChange(agent, { scope });
+  const validation = validateAgentPublishStateChange(agent, { scope });
   if (validation.isErr()) {
     return new Err(new MCPError(validation.error.message));
   }
 
-  const result = await executeWithLockResult(
-    getAgentPublishStateSuggestionLockName(agent.sId),
-    async (): Promise<Result<AgentSuggestionResource, MCPError>> => {
-      const conflicting =
-        await AgentSuggestionResource.listByAgentConfigurationId(
-          auth,
-          agent.sId,
-          { states: ["pending"], kind: "scope" }
-        );
-      await AgentSuggestionResource.bulkUpdateState(
-        auth,
-        conflicting,
-        "outdated"
-      );
-
-      const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
-        auth,
-        agent,
-        {
-          kind: "scope",
-          suggestion: { scope: validation.value.scope },
-          analysis: analysis ?? null,
-          state: "pending",
-          conversationId: null,
-          source: "conversational",
-        }
-      );
-      return new Ok(suggestion);
-    }
+  return new Ok(
+    await recordSingletonAgentSuggestion(auth, agent, {
+      data: { kind: "scope", suggestion: validation.value },
+      analysis: analysis ?? null,
+      conversation: runContext.conversation,
+      batch: null,
+    })
   );
-
-  if (result.isErr()) {
-    return isLockAcquisitionTimeoutError(result.error)
-      ? new Err(
-          new MCPError(
-            "Another publish state suggestion is being recorded, retry."
-          )
-        )
-      : new Err(result.error);
-  }
-
-  return result;
 }
 
 export async function suggestAgentPublishStateHandler(
   args: SuggestAgentPublishStateArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestAgentPublishState(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestAgentPublishState(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

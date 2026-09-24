@@ -15,6 +15,7 @@ import {
 import {
   getDisplayNameForDataSource,
   isFolder,
+  isPodFilesDataSource,
   isWebsite,
 } from "@app/lib/data_sources";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
@@ -136,7 +137,8 @@ const KnowledgeNodeItem = ({
         label={item.title}
         icon={
           isWebsite(item.dataSourceView.dataSource) ||
-          isFolder(item.dataSourceView.dataSource) ? (
+          isFolder(item.dataSourceView.dataSource) ||
+          isPodFilesDataSource(item.dataSourceView.dataSource) ? (
             <Icon
               visual={getVisualForDataSourceViewContentNode(item)}
               size="md"

@@ -3,6 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { FramePublicationModel } from "@app/lib/resources/storage/models/frame_publication";
 import { createTestFrameFile } from "@app/tests/utils/FrameFunctionFactory";
 import { storeTestFramePublication } from "@app/tests/utils/FramePublicationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -66,6 +67,15 @@ async function functionRowCount(
   return rows.length;
 }
 
+async function publicationRowIds(frame: FileResource): Promise<string[]> {
+  const rows = await FramePublicationModel.findAll({
+    attributes: ["publicationId"],
+    where: { workspaceId: frame.workspaceId, fileId: frame.id },
+  });
+
+  return rows.map(({ publicationId }) => publicationId);
+}
+
 function hasUiBundle(
   workspaceId: string,
   frame: FileResource,
@@ -109,6 +119,33 @@ describe("purgeStaleFramePublications", () => {
     expect(await functionRowCount(auth, frame, active)).toBe(1);
     expect(hasUiBundle(workspaceId, frame, stale)).toBe(false);
     expect(hasUiBundle(workspaceId, frame, active)).toBe(true);
+    expect(await publicationRowIds(frame)).toEqual([active]);
+  });
+
+  it("deletes every stale publication of the Frame in one sweep", async () => {
+    const { active, auth, frame, listPublications, workspaceId } =
+      await setupFrame();
+    const stale = [
+      await storeTestFramePublication(auth, frame, { publishedDaysAgo: 30 }),
+      await storeTestFramePublication(auth, frame, { publishedDaysAgo: 20 }),
+    ];
+    listPublications(stale);
+
+    const result = await purgeStaleFramePublications(auth, {
+      frame,
+      retentionMs: RETENTION_MS,
+    });
+
+    expect(result).toEqual({
+      deletedFunctionCount: 2,
+      deletedPublicationCount: 2,
+      unreadablePublicationCount: 0,
+    });
+    for (const publicationId of stale) {
+      expect(await functionRowCount(auth, frame, publicationId)).toBe(0);
+      expect(hasUiBundle(workspaceId, frame, publicationId)).toBe(false);
+    }
+    expect(await publicationRowIds(frame)).toEqual([active]);
   });
 
   it("keeps a superseded publication published inside the retention window", async () => {

@@ -26,6 +26,7 @@ import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
+  Transaction,
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
@@ -117,11 +118,14 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     auth: Authenticator,
     options?: ResourceFindOptions<SkillSuggestionModel> & {
       dangerouslyBypassConversationsVisibilityCheck?: boolean;
+      // Throw instead of silently dropping the suggestions the caller cannot access.
+      throwOnInaccessible?: boolean;
     }
   ) {
     const {
       where,
       dangerouslyBypassConversationsVisibilityCheck,
+      throwOnInaccessible,
       ...otherOptions
     } = options ?? {};
     const owner = auth.getNonNullableWorkspace();
@@ -173,6 +177,11 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
             workspaceId: owner.id,
           })
         ) {
+          if (throwOnInaccessible) {
+            throw new Error(
+              "User does not have permission to access every requested skill suggestion"
+            );
+          }
           return null;
         }
         const user = suggestion.updatedByUser;
@@ -314,6 +323,25 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   }
 
   /**
+   * Lists the suggestions belonging to the given batches (by batch model id), whatever their
+   * source. Throws if the caller cannot administrate the skill of any of them.
+   */
+  static async listByBatchModelIds(
+    auth: Authenticator,
+    batchModelIds: ModelId[]
+  ): Promise<SkillSuggestionResource[]> {
+    if (batchModelIds.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: { batchId: batchModelIds },
+      order: [["id", "ASC"]],
+      throwOnInaccessible: true,
+    });
+  }
+
+  /**
    * Lists suggestions across the workspace, optionally filtered by state and source.
    */
   static async listByWorkspace(
@@ -402,7 +430,8 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   static async bulkUpdateState(
     auth: Authenticator,
     suggestions: SkillSuggestionResource[],
-    state: SkillSuggestionState
+    state: SkillSuggestionState,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     if (suggestions.length === 0) {
       return;
@@ -424,6 +453,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
         workspaceId: auth.getNonNullableWorkspace().id,
         id: { [Op.in]: suggestions.map((s) => s.id) },
       },
+      transaction,
     });
   }
 
@@ -544,6 +574,12 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       visibleSourceConversationIds: this.visibleConversationIds,
       notificationConversationId: this.notificationConversationId,
       updatedBy: this.updatedBy,
+      batchId: this.batchId
+        ? makeSId("batch_suggestion", {
+            id: this.batchId,
+            workspaceId: this.workspaceId,
+          })
+        : null,
       ...suggestionData,
     };
   }

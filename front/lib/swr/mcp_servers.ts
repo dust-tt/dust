@@ -20,6 +20,7 @@ import type {
   MCPServerViewNameConflict,
   MCPServerViewType,
   SyncMCPServerResponseBody,
+  UpdateMCPToolsSettingsBodyType,
 } from "@app/lib/api/mcp";
 import type {
   GetMCPServerViewResponseBody,
@@ -35,7 +36,12 @@ import type {
   PostConnectionResponseBody,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import type { GetMCPServerViewsResponseBody } from "@app/lib/resources/mcp_server_view_resource";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  emptyArray,
+  getErrorFromResponse,
+  useFetcher,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
@@ -48,6 +54,7 @@ import type {
 import { isSupportedOAuthCredential } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -630,6 +637,54 @@ export function useUpdateMCPServerView(
   };
 
   return { updateServerView };
+}
+
+export function useUpdateMCPToolsSettings({
+  owner,
+  serverId,
+}: {
+  owner: LightWorkspaceType;
+  serverId: string;
+}) {
+  const sendNotification = useSendNotification(true);
+
+  const updateMCPToolsSettings = async (
+    tools: UpdateMCPToolsSettingsBodyType["tools"]
+  ): Promise<Result<void, Error>> => {
+    try {
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/mcp/${serverId}/tools`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tools }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorResponse = await getErrorFromResponse(response);
+        const error = new Error(errorResponse.message);
+        sendNotification({
+          type: "error",
+          title: "Failed to save changes",
+          description: error.message,
+        });
+        return new Err(error);
+      }
+
+      return new Ok(undefined);
+    } catch (caughtError) {
+      const error = normalizeError(caughtError);
+      sendNotification({
+        type: "error",
+        title: "Failed to save changes",
+        description: error.message,
+      });
+      return new Err(error);
+    }
+  };
+
+  return { updateMCPToolsSettings };
 }
 
 export function useMCPServerConnections({

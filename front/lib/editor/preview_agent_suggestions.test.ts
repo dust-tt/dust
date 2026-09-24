@@ -15,6 +15,7 @@ const BASE_SUGGESTION: Omit<AgentSuggestionType, "kind" | "suggestion"> = {
   state: "pending",
   source: "conversational",
   conversationId: null,
+  batchId: null,
 };
 
 const [CURRENT_MODEL, SUGGESTED_MODEL] = SUPPORTED_MODEL_CONFIGS;

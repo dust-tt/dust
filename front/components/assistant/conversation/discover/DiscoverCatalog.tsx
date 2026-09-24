@@ -1,4 +1,4 @@
-import { getSkillAvatarIcon } from "@app/lib/skill";
+import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import {
@@ -14,20 +14,24 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
+  CheckVerified01,
   Chip,
+  cn,
   EmptyCTA,
   Icon,
   MessageCircle01,
   NavigationList,
   NavigationListItem,
+  Pin02,
   Spinner,
   Users01,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-type DiscoverSkill = GetSkillsWithRelationsResponseBody["skills"][number];
+export type DiscoverSkill =
+  GetSkillsWithRelationsResponseBody["skills"][number];
 
-type CatalogItem =
+export type CatalogItem =
   | { kind: "agent"; agent: LightAgentConfigurationType }
   | { kind: "skill"; skill: DiscoverSkill };
 
@@ -60,15 +64,15 @@ const CATALOG_KINDS: { id: CatalogKind; label: string }[] = [
   { id: "skill", label: "Skills" },
 ];
 
-function getItemId(item: CatalogItem): string {
+export function getItemId(item: CatalogItem): string {
   return item.kind === "agent" ? item.agent.sId : item.skill.sId;
 }
 
-function getItemName(item: CatalogItem): string {
+export function getItemName(item: CatalogItem): string {
   return item.kind === "agent" ? item.agent.name : item.skill.name;
 }
 
-function getItemDescription(item: CatalogItem): string {
+export function getItemDescription(item: CatalogItem): string {
   return item.kind === "agent"
     ? item.agent.description
     : item.skill.userFacingDescription;
@@ -91,7 +95,7 @@ function getItemUsageCount(item: CatalogItem): number {
     : (item.skill.usage ?? 0);
 }
 
-function getItemAuthors(item: CatalogItem): readonly string[] {
+export function getItemAuthors(item: CatalogItem): readonly string[] {
   return item.kind === "agent"
     ? (item.agent.lastAuthors ?? [])
     : (item.skill.relations.editors ?? []).map((e) => e.fullName);
@@ -105,6 +109,34 @@ function isFavorite(item: CatalogItem): boolean {
 
 function isMine(item: CatalogItem): boolean {
   return item.kind === "agent" ? item.agent.canEdit : item.skill.canWrite;
+}
+
+function isDustProvided(item: CatalogItem): boolean {
+  return item.kind === "agent"
+    ? item.agent.scope === "global"
+    : isDustProvidedSkill(item.skill);
+}
+
+interface ItemAuthorProps {
+  item: CatalogItem;
+}
+
+export function ItemAuthor({ item }: ItemAuthorProps) {
+  if (isDustProvided(item)) {
+    return (
+      <span className="flex shrink-0 items-center gap-1 text-highlight">
+        <Icon visual={CheckVerified01} size="xs" />
+        Dust
+      </span>
+    );
+  }
+  const authors = getItemAuthors(item);
+  if (authors.length === 0) {
+    return null;
+  }
+  return (
+    <span className="truncate text-foreground">{formatAuthors(authors)}</span>
+  );
 }
 
 function formatAuthors(authors: readonly string[]): string {
@@ -121,6 +153,8 @@ interface DiscoverCatalogProps {
   onClearSearch: () => void;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
   onSkillClick: (skill: DiscoverSkill) => void;
+  onPin?: (item: CatalogItem) => void;
+  onDetails: (item: CatalogItem) => void;
   onFiltersChange: () => void;
 }
 
@@ -130,6 +164,8 @@ export function DiscoverCatalog({
   onClearSearch,
   onAgentClick,
   onSkillClick,
+  onPin,
+  onDetails,
   onFiltersChange,
 }: DiscoverCatalogProps) {
   const [filters, setFilters] = useState<CatalogFilters>(DEFAULT_FILTERS);
@@ -301,6 +337,8 @@ export function DiscoverCatalog({
                   ? onAgentClick(item.agent)
                   : onSkillClick(item.skill)
               }
+              onPin={onPin && (() => onPin(item))}
+              onDetails={() => onDetails(item)}
             />
           ))
         )}
@@ -312,37 +350,43 @@ export function DiscoverCatalog({
 interface CatalogRowProps {
   item: CatalogItem;
   onUse: () => void;
+  onPin?: () => void;
+  onDetails: () => void;
 }
 
-function CatalogRow({ item, onUse }: CatalogRowProps) {
-  const authors = getItemAuthors(item);
-
+export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
+  const name = getItemName(item);
   return (
-    <div className="flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
-      {item.kind === "agent" ? (
-        <Avatar size="lg" visual={item.agent.pictureUrl} className="shrink-0" />
-      ) : (
-        <SkillCatalogAvatar skill={item.skill} />
-      )}
+    <div className="group flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
+      <button
+        type="button"
+        aria-label={`Show ${name} details`}
+        onClick={onDetails}
+        className="shrink-0 rounded-2xl transition duration-200 ease-out hover:brightness-110 active:brightness-90"
+      >
+        {item.kind === "agent" ? (
+          <Avatar size="lg" visual={item.agent.pictureUrl} />
+        ) : (
+          <SkillCatalogAvatar skill={item.skill} />
+        )}
+      </button>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="heading-base notranslate text-foreground">
-            {getItemName(item)}
+            {name}
           </span>
-          {item.kind === "agent" && (
-            <Chip
-              size="xs"
-              label={`@${item.agent.name}`}
-              className="font-mono"
-            />
-          )}
+          <Chip
+            size="xs"
+            label={
+              item.kind === "agent"
+                ? `@${item.agent.name}`
+                : `/${item.skill.name}`
+            }
+            className="font-mono"
+          />
         </div>
         <div className="flex h-5 items-center gap-4 copy-sm">
-          {authors.length > 0 && (
-            <span className="truncate text-foreground">
-              {formatAuthors(authors)}
-            </span>
-          )}
+          <ItemAuthor item={item} />
           <span className="flex items-center gap-1 text-muted-foreground">
             <Icon visual={MessageCircle01} size="xs" />
             {getItemUsageCount(item).toLocaleString()}
@@ -362,22 +406,42 @@ function CatalogRow({ item, onUse }: CatalogRowProps) {
           {getItemDescription(item)}
         </p>
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        label={item.kind === "agent" ? "Chat" : "Use"}
-        onClick={onUse}
-        className="shrink-0"
-      />
+      <div className="flex shrink-0 items-center gap-1">
+        {onPin && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={Pin02}
+            tooltip="Pin to Featured"
+            aria-label={`Pin ${name} to Featured`}
+            onClick={onPin}
+            className={cn(
+              "transition-opacity duration-150 motion-reduce:transition-none",
+              "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+              "focus-visible:opacity-100 group-hover:opacity-100"
+            )}
+          />
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          label={item.kind === "agent" ? "Chat" : "Use"}
+          onClick={onUse}
+        />
+      </div>
     </div>
   );
 }
 
 interface SkillCatalogAvatarProps {
   skill: DiscoverSkill;
+  size?: "md" | "lg";
 }
 
-function SkillCatalogAvatar({ skill }: SkillCatalogAvatarProps) {
+export function SkillCatalogAvatar({
+  skill,
+  size = "lg",
+}: SkillCatalogAvatarProps) {
   const SkillAvatar = useMemo(() => getSkillAvatarIcon(skill), [skill]);
-  return <SkillAvatar size="lg" className="shrink-0" />;
+  return <SkillAvatar size={size} className="shrink-0" />;
 }

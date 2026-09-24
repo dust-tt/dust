@@ -1,8 +1,10 @@
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
@@ -30,37 +32,13 @@ function countTopLevelBlocks(html: string): number {
 }
 
 /**
- * @cc [owner:avervaet,label:mcp] caller-checks-pending-limit
- * `createAgentInstructionSuggestions` does NOT enforce a cap on how many `instructions`
- * suggestions accumulate for an agent: every caller MUST check the pending count with
- * `canAddPendingSuggestions` (see its own contract) before calling.
+ * Checks a set of edits that are proposed together, without touching the database: at most one
+ * edit per block, no root rewrite mixed with block edits, and a single top-level element per
+ * block edit.
  */
-/**
- * @cc [owner:avervaet,label:product] no-mixed-root-and-block-suggestions
- * A batch MUST NOT mix a `instructions-root` edit with edits targeting other blocks: both would
- * be created as `pending`, but accepting the root rewrite makes the other suggestions
- * inapplicable, so the batch is rejected instead of creating suggestions that pruning cannot
- * reconcile after the fact.
- */
-/**
- * Validates, creates and prunes `instructions` suggestions. Shared by every surface that lets a
- * model propose block-targeted edits to an agent's instructions (sidekick and conversational
- * building) so they behave identically.
- */
-export async function createAgentInstructionSuggestions(
-  auth: Authenticator,
-  {
-    agentConfiguration,
-    edits,
-    source,
-    conversation,
-  }: {
-    agentConfiguration: AgentConfigurationType;
-    edits: InstructionSuggestionEditInput[];
-    source: AgentSuggestionSource;
-    conversation: ConversationResource | null;
-  }
-): Promise<Result<CreatedInstructionSuggestion[], string>> {
+export function validateInstructionEdits(
+  edits: InstructionsSuggestionSchemaType[]
+): Result<undefined, string> {
   // Reject batches where multiple edits target the same block.
   const targetBlockIds = edits.map((edit) => edit.targetBlockId);
   const uniqueTargetBlockIds = new Set(targetBlockIds);
@@ -100,6 +78,48 @@ export async function createAgentInstructionSuggestions(
     }
   }
 
+  return new Ok(undefined);
+}
+
+/**
+ * @cc [owner:avervaet,label:mcp] caller-checks-pending-limit
+ * `createAgentInstructionSuggestions` does NOT enforce a cap on how many `instructions`
+ * suggestions accumulate for an agent: every caller MUST check the pending count with
+ * `canAddPendingSuggestions` (see its own contract) before calling.
+ */
+/**
+ * @cc [owner:avervaet,label:product] no-mixed-root-and-block-suggestions
+ * A batch MUST NOT mix a `instructions-root` edit with edits targeting other blocks: both would
+ * be created as `pending`, but accepting the root rewrite makes the other suggestions
+ * inapplicable, so the batch is rejected instead of creating suggestions that pruning cannot
+ * reconcile after the fact.
+ */
+/**
+ * Validates, creates and prunes `instructions` suggestions. Shared by every surface that lets a
+ * model propose block-targeted edits to an agent's instructions (sidekick and conversational
+ * building) so they behave identically.
+ */
+export async function createAgentInstructionSuggestions(
+  auth: Authenticator,
+  {
+    agentConfiguration,
+    edits,
+    source,
+    conversation,
+    batch = null,
+  }: {
+    agentConfiguration: AgentConfigurationType;
+    edits: InstructionSuggestionEditInput[];
+    source: AgentSuggestionSource;
+    conversation: ConversationResource | ConversationWithoutContentType | null;
+    batch?: BatchSuggestionResource | null;
+  }
+): Promise<Result<CreatedInstructionSuggestion[], string>> {
+  const validation = validateInstructionEdits(edits);
+  if (validation.isErr()) {
+    return validation;
+  }
+
   const suggestions = await AgentSuggestionResource.createSuggestionsForAgent(
     auth,
     agentConfiguration,
@@ -110,6 +130,7 @@ export async function createAgentInstructionSuggestions(
       state: "pending" as const,
       source,
       conversationId: conversation?.id ?? null,
+      batchId: batch?.id ?? null,
     }))
   );
 
