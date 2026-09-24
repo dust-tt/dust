@@ -49,7 +49,6 @@ import {
   invalidateAgentResourceCaches,
 } from "@app/lib/resources/agent_resource_cache";
 import { launchAgentSearchIndexation } from "@app/lib/resources/agent_resource_indexation";
-import { createAgentSkillLinks } from "@app/lib/resources/agent_skills";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -1400,6 +1399,38 @@ export class AgentResource
     await AgentResource.launchSearchIndexation(auth, [this.sId]);
 
     return new Ok(undefined);
+  }
+
+  /**
+   * @cc [owner:tdraier,label:backend;architecture] agent-skill-links-created-by-agent-save
+   * Runtime code MUST create `AgentSkillModel` rows only through this helper, called by the agent
+   * save to link the given skills to the configuration version it writes. It performs no agent
+   * refresh: the save owns the cache invalidation and search reindex of the saved agent.
+   */
+  private static async createSkillLinks(
+    auth: Authenticator,
+    {
+      agentConfigurationModelId,
+      skills,
+      transaction,
+    }: {
+      agentConfigurationModelId: ModelId;
+      skills: SkillResource[];
+      transaction: Transaction;
+    }
+  ): Promise<void> {
+    if (skills.length === 0) {
+      return;
+    }
+
+    await AgentSkillModel.bulkCreate(
+      skills.map((skill) => ({
+        ...skill.skillReference,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfigurationId: agentConfigurationModelId,
+      })),
+      { transaction }
+    );
   }
 
   // Delegates to the standalone launcher shared with the write paths that cannot import this
@@ -3210,7 +3241,7 @@ export class AgentResource
             throw actionRes.error;
           }
         }
-        await createAgentSkillLinks(auth, {
+        await AgentResource.createSkillLinks(auth, {
           agentConfigurationModelId: savedResource.agentConfigurationModelId,
           skills,
           transaction: t,

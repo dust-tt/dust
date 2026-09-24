@@ -6,7 +6,6 @@ import {
   SkillDataSourceConfigurationModel,
 } from "@app/lib/models/skill";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
-import { createAgentSkillLinks } from "@app/lib/resources/agent_skills";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -2906,9 +2905,9 @@ describe("SkillResource", () => {
         authenticator,
         { name: "Pod Agent" }
       );
-      await createAgentSkillLinks(authenticator, {
-        agentConfigurationModelId: agent.id,
-        skills: [skill],
+      await SkillFactory.linkToAgent(authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agent.id,
       });
 
       const conversation = await ConversationFactory.create(authenticator, {
@@ -2946,9 +2945,9 @@ describe("SkillResource", () => {
         authenticator,
         { name: "Pod Agent" }
       );
-      await createAgentSkillLinks(authenticator, {
-        agentConfigurationModelId: agent.id,
-        skills: [agentSkill],
+      await SkillFactory.linkToAgent(authenticator, {
+        skillId: agentSkill.id,
+        agentConfigurationId: agent.id,
       });
 
       const conversation = await ConversationFactory.create(authenticator, {
