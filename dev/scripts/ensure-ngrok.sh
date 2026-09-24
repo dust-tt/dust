@@ -273,6 +273,12 @@ ensure_distinct_tunnels_or_restart() {
 ensure_distinct_tunnels_or_restart
 
 if ! ngrok_agent_up; then
+  # A second cloud session can kick the first off the account. If a stale
+  # process is holding the port / session without a healthy API, stop it first.
+  if pgrep -x ngrok >/dev/null 2>&1; then
+    log "ngrok process present but agent API down; stopping before restart"
+    stop_ngrok_agent
+  fi
   if ! start_ngrok_agent; then
     rm -f "${SBX_DEV_FRONT_URL_FILE}" "${SBX_DEV_VIZ_URL_FILE}"
     exit 0
