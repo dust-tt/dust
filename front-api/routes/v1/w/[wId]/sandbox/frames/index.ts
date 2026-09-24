@@ -1,4 +1,5 @@
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
+import { notifyPublishedFrameSidePanel } from "@app/lib/api/frames/notify_published_frame";
 import { publishFrameFromSource } from "@app/lib/api/frames/publish_from_source";
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -94,6 +95,16 @@ app.post(
         },
       });
     }
+
+    // Open the Frame panel the same way legacy MCP publish did: progress notification on the
+    // parent sandbox action. Best-effort; does not affect the publish response.
+    await notifyPublishedFrameSidePanel(auth, {
+      actionId: claims.actionId,
+      configurationId: claims.aId,
+      conversationId: claims.cId,
+      frameId: publication.value.frameId,
+      messageId: claims.mId,
+    });
 
     switch (publication.value.kind) {
       case "legacy":
