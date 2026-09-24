@@ -10,12 +10,12 @@ import {
   ItemAuthor,
   SkillCatalogAvatar,
 } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useDiscoveryFeatured,
   useDiscoveryForYou,
   useDiscoveryTrending,
-} from "@app/hooks/useDiscovery";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+} from "@app/lib/swr/discovery";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import type { DiscoveryRankedItemType } from "@app/types/api/discovery";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -115,6 +115,7 @@ export function DiscoverHome({
   const isCatalogLoading =
     (isAgentsLoading && agentConfigurations.length === 0) ||
     isSkillsWithRelationsLoading;
+  const isCatalogRefreshing = isAgentsLoading && !isCatalogLoading;
 
   const featured = resolve(featuredItems);
   const forYou = resolve(forYouItems).slice(0, SECTION_ITEM_COUNT);
@@ -128,12 +129,14 @@ export function DiscoverHome({
       <FeaturedCarousel
         items={featured}
         isLoading={isFeaturedLoading || isCatalogLoading}
+        isRefreshing={isCatalogRefreshing}
         onUse={onUse}
       />
       <DiscoverSection
         title="Agent & Skill for you"
         items={forYou}
         isLoading={isForYouLoading || isCatalogLoading}
+        isRefreshing={isCatalogRefreshing}
         onUse={onUse}
         onDetails={onDetails}
         onFindMore={onFindMore}
@@ -142,6 +145,7 @@ export function DiscoverHome({
         title="Trending in the workspace"
         items={trending}
         isLoading={isTrendingLoading || isCatalogLoading}
+        isRefreshing={isCatalogRefreshing}
         onUse={onUse}
         onDetails={onDetails}
         onFindMore={onFindMore}
@@ -150,13 +154,33 @@ export function DiscoverHome({
   );
 }
 
+interface SectionTitleProps {
+  title: string;
+  isRefreshing: boolean;
+}
+
+function SectionTitle({ title, isRefreshing }: SectionTitleProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <h2 className="heading-lg text-foreground">{title}</h2>
+      {isRefreshing && <Spinner size="xs" />}
+    </div>
+  );
+}
+
 interface FeaturedCarouselProps {
   items: CatalogItem[];
   isLoading: boolean;
+  isRefreshing: boolean;
   onUse: (item: CatalogItem) => void;
 }
 
-function FeaturedCarousel({ items, isLoading, onUse }: FeaturedCarouselProps) {
+function FeaturedCarousel({
+  items,
+  isLoading,
+  isRefreshing,
+  onUse,
+}: FeaturedCarouselProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canScroll, setCanScroll] = useState({ left: false, right: false });
 
@@ -197,7 +221,7 @@ function FeaturedCarousel({ items, isLoading, onUse }: FeaturedCarouselProps) {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="heading-lg text-foreground">Featured</h2>
+        <SectionTitle title="Featured" isRefreshing={isRefreshing} />
         {(canScroll.left || canScroll.right) && (
           <div className="flex items-center gap-1">
             <Button
@@ -259,6 +283,7 @@ interface DiscoverSectionProps {
   title: string;
   items: CatalogItem[];
   isLoading: boolean;
+  isRefreshing: boolean;
   onUse: (item: CatalogItem) => void;
   onDetails: (item: CatalogItem) => void;
   onFindMore: () => void;
@@ -268,6 +293,7 @@ function DiscoverSection({
   title,
   items,
   isLoading,
+  isRefreshing,
   onUse,
   onDetails,
   onFindMore,
@@ -275,7 +301,7 @@ function DiscoverSection({
   return (
     <section className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="heading-lg text-foreground">{title}</h2>
+        <SectionTitle title={title} isRefreshing={isRefreshing} />
         <Button
           variant="ghost"
           size="xs"
