@@ -368,7 +368,7 @@ export function useAgentMessageStream({
       if (isStreamTerminated.current) {
         return null;
       }
-      return `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events/poll?lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`;
+      return `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events/poll?lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`;
     },
     [conversationId, sId, owner.sId]
   );
