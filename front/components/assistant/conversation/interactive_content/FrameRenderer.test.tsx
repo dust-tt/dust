@@ -15,7 +15,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   editFrameText: vi.fn(),
-  iframe: vi.fn((_props: { onEditText?: EditTextFn }) => null),
+  iframe: vi.fn(
+    (_props: {
+      onEditText?: EditTextFn;
+      visualization?: { identifier: string };
+    }) => null
+  ),
   hasFrameFunctions: false,
   isFrameAuthor: true,
   mutateFileContent: vi.fn(),
@@ -97,6 +102,7 @@ vi.mock("@app/lib/swr/files", () => ({
   useFileContent: () => ({
     fileContent: "export default function Frame() {}",
     error: null,
+    isFileContentLoading: false,
     mutateFileContent: mocks.mutateFileContent,
   }),
   useFileContentByUrl: () => ({
@@ -298,6 +304,43 @@ describe("FrameRenderer", () => {
       "_blank",
       "noopener,noreferrer"
     );
+  });
+
+  it("remounts the viz iframe when contentHash changes", () => {
+    const { rerender } = render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        contentHash="frame_1@42"
+        renderMode="v2"
+      />
+    );
+
+    // Identifier stays stable (avoids Next.js /content URL thrash); remount is
+    // driven by React key which includes contentHash.
+    expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization?.identifier).toBe(
+      "viz-frame_1"
+    );
+    const firstProps = mocks.iframe.mock.calls.at(-1)?.[0];
+
+    rerender(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        contentHash="frame_1@99"
+        renderMode="v2"
+      />
+    );
+
+    expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization?.identifier).toBe(
+      "viz-frame_1"
+    );
+    // New mount after contentHash change (new props object from remount).
+    expect(mocks.iframe.mock.calls.at(-1)?.[0]).not.toBe(firstProps);
   });
 
   it("keeps a successful edit successful when the content refresh fails", async () => {

@@ -6,12 +6,13 @@ import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { closePanel, openPanel, surface } = vi.hoisted(() => {
+const { closePanel, openPanel, surface, panelState } = vi.hoisted(() => {
   const surface: { clientType: ClientType; isMobile: boolean } = {
     clientType: "web",
     isMobile: false,
   };
-  return { closePanel: vi.fn(), openPanel: vi.fn(), surface };
+  const panelState: { currentPanel: string | null } = { currentPanel: null };
+  return { closePanel: vi.fn(), openPanel: vi.fn(), surface, panelState };
 });
 
 vi.mock(
@@ -19,7 +20,7 @@ vi.mock(
   () => ({
     useConversationSidePanelContext: () => ({
       closePanel,
-      currentPanel: null,
+      currentPanel: panelState.currentPanel,
       openPanel,
     }),
   })
@@ -70,6 +71,7 @@ describe("useAutoOpenSidePanel", () => {
     openPanel.mockClear();
     surface.clientType = "web";
     surface.isMobile = false;
+    panelState.currentPanel = null;
   });
 
   it("opens the files panel for a generated file on the desktop web app", async () => {
@@ -147,5 +149,122 @@ describe("useAutoOpenSidePanel", () => {
     );
 
     expect(result.current.interactiveFiles).toEqual([frame]);
+  });
+
+  it("opens a Frame from progress when the panel is closed", async () => {
+    const agentMessage = makeInitialMessageStreamState({
+      ...mockAgentMessage({ content: "Publishing..." }),
+      sId: "agent-message-1",
+    });
+    agentMessage.streaming.actionProgress.set(1, {
+      action: {} as never,
+      progress: {
+        progress: 1,
+        total: 1,
+        progressToken: 1,
+        _meta: {
+          data: {
+            label: "Publishing Frame...",
+            output: {
+              type: "interactive_content_file",
+              fileId: "fil_frame",
+              mimeType: frameV2ContentType,
+              title: "Hello",
+              updatedAt: "pub-1",
+              autoOpen: false,
+            },
+          },
+        },
+      },
+    });
+
+    renderHook(() =>
+      useAutoOpenSidePanel({ agentMessage, isLastMessage: true })
+    );
+
+    await waitFor(() => {
+      expect(openPanel).toHaveBeenCalledWith({
+        type: "interactive_content",
+        fileId: "fil_frame",
+        timestamp: "pub-1",
+      });
+    });
+  });
+
+  it("does not steal the file explorer for soft-open publish notifications", async () => {
+    panelState.currentPanel = "files";
+    const agentMessage = makeInitialMessageStreamState({
+      ...mockAgentMessage({ content: "Publishing..." }),
+      sId: "agent-message-1",
+    });
+    agentMessage.streaming.actionProgress.set(1, {
+      action: {} as never,
+      progress: {
+        progress: 1,
+        total: 1,
+        progressToken: 1,
+        _meta: {
+          data: {
+            label: "Publishing Frame...",
+            output: {
+              type: "interactive_content_file",
+              fileId: "fil_frame",
+              mimeType: frameV2ContentType,
+              title: "Hello",
+              updatedAt: "pub-1",
+              autoOpen: false,
+            },
+          },
+        },
+      },
+    });
+
+    renderHook(() =>
+      useAutoOpenSidePanel({ agentMessage, isLastMessage: true })
+    );
+
+    await waitFor(() => {
+      expect(openPanel).not.toHaveBeenCalled();
+    });
+  });
+
+  it("still opens Frame over the file explorer for explicit open_frame", async () => {
+    panelState.currentPanel = "files";
+    const agentMessage = makeInitialMessageStreamState({
+      ...mockAgentMessage({ content: "Opening..." }),
+      sId: "agent-message-1",
+    });
+    agentMessage.streaming.actionProgress.set(1, {
+      action: {} as never,
+      progress: {
+        progress: 1,
+        total: 1,
+        progressToken: 1,
+        _meta: {
+          data: {
+            label: "Opening Frame...",
+            output: {
+              type: "interactive_content_file",
+              fileId: "fil_frame",
+              mimeType: frameV2ContentType,
+              title: "Hello",
+              updatedAt: "1710000000000",
+            },
+          },
+        },
+      },
+    });
+
+    renderHook(() =>
+      useAutoOpenSidePanel({ agentMessage, isLastMessage: true })
+    );
+
+    await waitFor(() => {
+      expect(openPanel).toHaveBeenCalledWith({
+        type: "interactive_content",
+        fileId: "fil_frame",
+        timestamp: "1710000000000",
+      });
+    });
   });
 });

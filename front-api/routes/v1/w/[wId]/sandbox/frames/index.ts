@@ -1,8 +1,10 @@
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
+import { notifyPublishedFrameSidePanel } from "@app/lib/api/frames/notify_published_frame";
 import { publishFrameFromSource } from "@app/lib/api/frames/publish_from_source";
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { frameSourceErrorStatus } from "@front-api/lib/api/frame_source_errors";
 import { sandboxApp } from "@front-api/middlewares/ctx";
@@ -94,6 +96,31 @@ app.post(
         },
       });
     }
+
+    // Soft-open the Frame panel (refresh if already open; don't steal file explorer).
+    // Best-effort — publish response must not wait on Redis / missing parent action.
+    void notifyPublishedFrameSidePanel(auth, {
+      actionId: claims.actionId,
+      configurationId: claims.aId,
+      conversationId: claims.cId,
+      frameId: publication.value.frameId,
+      messageId: claims.mId,
+      contentRevision:
+        publication.value.kind === "v2"
+          ? publication.value.publicationId
+          : undefined,
+    }).catch((err) => {
+      logger.warn(
+        {
+          err,
+          actionId: claims.actionId,
+          conversationId: claims.cId,
+          messageId: claims.mId,
+          frameId: publication.value.frameId,
+        },
+        "Failed to emit Frame publish side-panel notification."
+      );
+    });
 
     switch (publication.value.kind) {
       case "legacy":

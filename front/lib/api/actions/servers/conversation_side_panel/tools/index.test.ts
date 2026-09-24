@@ -1,3 +1,5 @@
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { OPEN_FRAME_TOOL_NAME } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/conversation_side_panel/tools";
 import {
@@ -71,11 +73,23 @@ describe("conversation_side_panel.open_frame", () => {
                 mimeType: frameV2ContentType,
                 title: "hello-frame",
                 type: "interactive_content_file",
+                // open_frame always sends a fresh revision (Date.now), not the
+                // File row's updatedAt — otherwise a stale panel keeps showing.
+                updatedAt: expect.stringMatching(/^\d+$/),
               }),
             }),
           }),
         }),
       })
     );
+    const [notification] = sendNotification.mock.calls[0] as unknown as [
+      MCPProgressNotificationType,
+    ];
+    const output = notification.params._meta?.data.output;
+    assert(
+      isInteractiveContentFileContentOutput(output),
+      "interactive_content_file output expected"
+    );
+    expect(output.updatedAt).not.toBe(frame.updatedAtMs.toString());
   });
 });

@@ -175,6 +175,16 @@ export function useAutoOpenSidePanel({
     if (interactiveFilesFromProgress.length > 0) {
       const [firstFile] = interactiveFilesFromProgress;
       if (firstFile?.fileId) {
+        // Soft notifications (sandbox publish) refresh an open Frame panel but
+        // must not steal focus from another panel such as the file explorer.
+        // Explicit open_frame / create / edit omit autoOpen and always open.
+        if (
+          firstFile.autoOpen === false &&
+          currentPanel != null &&
+          currentPanel !== "interactive_content"
+        ) {
+          return;
+        }
         lastOpenedFileIdRef.current = firstFile.fileId;
         openPanel({
           type: "interactive_content",
