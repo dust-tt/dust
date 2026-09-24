@@ -37,10 +37,12 @@ export function HomepageUseCases({
 
   const [page, setPage] = useState<HomepageUseCaseType[]>([]);
   const stillOffered = new Set(useCases.map((useCase) => useCase.id));
+  const needsInitialSample = page.length === 0 && useCases.length > 0;
+  const containsUnavailableUseCase = page.some(
+    ({ id }) => !stillOffered.has(id)
+  );
 
-  if (page.length > 0 && !page.every(({ id }) => stillOffered.has(id))) {
-    setPage(sampleSize(useCases, VISIBLE_COUNT));
-  } else if (page.length === 0 && useCases.length > 0) {
+  if (needsInitialSample || containsUnavailableUseCase) {
     setPage(sampleSize(useCases, VISIBLE_COUNT));
   }
 
