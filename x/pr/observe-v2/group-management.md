@@ -1,4 +1,6 @@
-# Scoped Usage manager
+# Group managers
+
+Part of the [Observe & Understand Credits v2](https://app.notion.com/p/dust-tt/Observe-Understand-Credits-v2-3dc28599d94180f3b417ca4579ad3992) initiative.
 
 ## Goal
 
@@ -7,7 +9,7 @@ each time. Today, this requires the workspace manager or admin role, which gives
 whole workspace.
 
 We will let administrators delegate usage management for selected teams. A team is an existing manual
-or provisioned group. The pilot changes who can manage existing limits; spending rules stay the same.
+or provisioned group. This work changes who can manage existing limits; spending rules stay the same.
 
 ## What
 
@@ -48,11 +50,12 @@ holds continue to apply.
 
 ### Keep the meaning of limits unchanged
 
-A group allowance applies to each member; it is not a shared budget. A personal override takes
+This work does not change the existing product behaviours reminded below:
+
+- A group allowance applies to each member; it is not a shared budget. A personal override takes
 precedence over group allowances. Without an override, the highest configured group allowance wins,
 then the workspace default if no group allowance applies.
-
-Personal edits remain ongoing and apply across the workspace. The editor states: **“This personal
+- Personal edits remain ongoing and apply across the workspace. The editor states: **“This personal
 limit applies across the workspace.”** Raising a limit allows more consumption; it does not purchase
 or reserve credits.
 
@@ -62,8 +65,8 @@ or reserve credits.
 
 Extend the [permission vocabulary](../../../front/types/group_permissions.ts) and
 [role registry](../../../front/lib/resources/group_permission_registry.ts) with a `group` resource type
-and a `usage_manager` role. The proposed verbs are `read_usage`, `set_member_limit`, and
-`set_group_limit`. Append new verbs to preserve the existing serialized permission bit positions.
+and a `usage_manager` role. The proposed verbs are `read_usage` and `set_usage_limits`. 
+Append new verbs to preserve the existing serialized permission bit positions.
 
 The pilot creates grants on specific group IDs. Named individuals use the existing
 `GroupPermissionResource.grantToUsers` and `revokeFromUsers` helpers: an internal automatic group
@@ -89,13 +92,15 @@ describe the added verbs and preserve the existing membership rules.
 Add an admin-only GET/PUT endpoint at `/api/w/:wId/groups/:groupId/usage-managers`. It reads or replaces
 the named delegates for one eligible group. Validate active workspace membership and apply additions
 and removals transactionally through the grant resource.
+[[PATCH or no PATCH?]]
 
 Add a small `/api/w/:wId/credits/usage-access` response describing whether the caller has workspace
 access, access to named groups, or no usage-management access. Navigation and the Usage page use it
 to choose the view. It is a UI description, not a substitute for authorization on subsequent requests.
+[[do we need that? I thought auth could resolve it via its permissions directly? via auth.getResourceIdsWithVerb('group', 'set_limits') || auth.isManager()]]
 
 Use [Authenticator](../../../front/lib/auth.ts) to resolve group grants. Handle workspace manager/admin
-access explicitly: grant enumeration does not include access derived from workspace roles. A
+access explicitly: grant enumeration does not include access derived from workspace roles.
 type-wide grant must resolve to all eligible groups rather than an empty group list.
 
 ### 3. Authorize reads and writes in shared services
@@ -124,6 +129,8 @@ continue to exclude the seat allowance, which existing code adds when computing 
 
 Bulk endpoints remain workspace-manager/admin-only in the pilot. Their workers also pass through
 the shared mutation checks, using current authority when they execute.
+
+[[is it here that we add access controls e.g. in setUserSpendLimit? would we need something like auth.canForUser(verb, user)?]]
 
 ### 4. Adapt the existing UI
 
