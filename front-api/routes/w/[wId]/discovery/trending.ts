@@ -3,6 +3,7 @@ import type { GetDiscoveryTrendingResponseBody } from "@app/types/api/discovery"
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
+// Mounted at /api/w/:wId/discovery/trending.
 const app = workspaceApp();
 
 /** @ignoreswagger */

@@ -3,6 +3,7 @@ import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import type { GetDiscoveryTrendingResponseBody } from "@app/types/api/discovery";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +15,7 @@ vi.mock(import("@app/lib/api/discovery"), async (importOriginal) => ({
 
 const mockedListTrending = vi.mocked(listDiscoveryTrendingItems);
 
-describe("GET /api/w/[wId]/assistant/discovery/trending", () => {
+describe("GET /api/w/:wId/discovery/trending", () => {
   beforeEach(async () => {
     mockedListTrending.mockReset();
     const { getWorkOSSessionWithSetCookies } = await import(
@@ -28,7 +29,7 @@ describe("GET /api/w/[wId]/assistant/discovery/trending", () => {
 
   it("rejects unauthenticated requests", async () => {
     const response = await honoApp.request(
-      "/api/w/w_unauthenticated/assistant/discovery/trending"
+      "/api/w/w_unauthenticated/discovery/trending"
     );
 
     expect(response.status).toBe(401);
@@ -38,7 +39,7 @@ describe("GET /api/w/[wId]/assistant/discovery/trending", () => {
     const { workspace } = await createPrivateApiMockRequest();
 
     const response = await honoApp.request(
-      `/api/w/${workspace.sId}/assistant/discovery/trending`
+      `/api/w/${workspace.sId}/discovery/trending`
     );
 
     expect(response.status).toBe(403);
@@ -51,18 +52,27 @@ describe("GET /api/w/[wId]/assistant/discovery/trending", () => {
       workspace.sId
     );
     await FeatureFlagFactory.basic(adminAuth, "discovery_homepage");
-    mockedListTrending.mockResolvedValue(
-      new Ok([{ kind: "agent", itemId: "agent-1" }])
-    );
+    const body: GetDiscoveryTrendingResponseBody = {
+      items: [
+        {
+          type: "agent",
+          target: {
+            sId: "agent-1",
+            name: "Agent",
+            description: "An agent",
+            pictureUrl: "https://example.com/agent.png",
+          },
+        },
+      ],
+    };
+    mockedListTrending.mockResolvedValue(new Ok(body.items));
 
     const response = await honoApp.request(
-      `/api/w/${workspace.sId}/assistant/discovery/trending`
+      `/api/w/${workspace.sId}/discovery/trending`
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      items: [{ kind: "agent", itemId: "agent-1" }],
-    });
+    expect(await response.json()).toEqual(body);
   });
 
   it("returns an internal error when trending candidates cannot be loaded", async () => {
@@ -78,7 +88,7 @@ describe("GET /api/w/[wId]/assistant/discovery/trending", () => {
     );
 
     const response = await honoApp.request(
-      `/api/w/${workspace.sId}/assistant/discovery/trending`
+      `/api/w/${workspace.sId}/discovery/trending`
     );
 
     expect(response.status).toBe(500);

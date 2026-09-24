@@ -53,13 +53,20 @@ export type DeleteGroupDiscoveryPinResponseBody = {
   success: true;
 };
 
-export type DiscoveryItemKind = "agent" | "skill";
+export type DiscoveryRankedItemType =
+  | {
+      type: "agent";
+      target: DiscoveryAgentType;
+    }
+  | {
+      type: "skill";
+      target: DiscoverySkillType;
+    };
 
-export interface DiscoveryTrendingItemType {
-  kind: DiscoveryItemKind;
-  itemId: string;
-}
+export type GetDiscoveryForYouResponseBody = {
+  items: DiscoveryRankedItemType[] | null;
+};
 
-export interface GetDiscoveryTrendingResponseBody {
-  items: DiscoveryTrendingItemType[] | null;
-}
+export type GetDiscoveryTrendingResponseBody = {
+  items: DiscoveryRankedItemType[] | null;
+};

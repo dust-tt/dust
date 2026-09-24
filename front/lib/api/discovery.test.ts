@@ -1,4 +1,8 @@
-import { listDiscoveryTrendingItems } from "@app/lib/api/discovery";
+import {
+  listDiscoveryForYouItems,
+  listDiscoveryTrendingItems,
+} from "@app/lib/api/discovery";
+import { fetchDiscoveryForYouCandidates } from "@app/lib/search_usage/for_you";
 import { fetchDiscoveryTrendingCandidates } from "@app/lib/search_usage/trending";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -11,11 +15,30 @@ vi.mock(import("@app/lib/search_usage/trending"), async (importOriginal) => ({
   fetchDiscoveryTrendingCandidates: vi.fn(),
 }));
 
-const mockedFetchTrending = vi.mocked(fetchDiscoveryTrendingCandidates);
+vi.mock(import("@app/lib/search_usage/for_you"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  fetchDiscoveryForYouCandidates: vi.fn(),
+}));
 
-describe("listDiscoveryTrendingItems", () => {
+const mockedFetchTrending = vi.mocked(fetchDiscoveryTrendingCandidates);
+const mockedFetchForYou = vi.mocked(fetchDiscoveryForYouCandidates);
+
+function forYouCandidate(resourceType: "agent" | "skill", resourceId: string) {
+  return {
+    resourceType,
+    resourceId,
+    score: 1,
+    reasonGroupId: "group-1",
+    users: 3,
+    groupActiveUsers: 5,
+    viewerConversations: 0,
+  };
+}
+
+describe("discovery ranked sections", () => {
   beforeEach(() => {
     mockedFetchTrending.mockReset();
+    mockedFetchForYou.mockReset();
   });
 
   it("omits unresolved candidates and interleaves the ranked pools", async () => {
@@ -70,16 +93,92 @@ describe("listDiscoveryTrendingItems", () => {
       throw result.error;
     }
     expect(result.value).toEqual([
-      { kind: "agent", itemId: visibleAgent.sId },
-      { kind: "skill", itemId: visibleSkill.sId },
+      {
+        type: "agent",
+        target: {
+          sId: visibleAgent.sId,
+          name: visibleAgent.name,
+          description: visibleAgent.description,
+          pictureUrl: visibleAgent.pictureUrl,
+        },
+      },
+      { type: "skill", target: visibleSkill.toDiscoveryJSON() },
     ]);
   });
 
-  it("preserves a pending cache fill", async () => {
+  it("keeps the for-you score order across kinds and omits unresolved candidates", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    const visibleAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Visible for-you agent",
+    });
+    const visibleSkill = await SkillFactory.create(auth, {
+      name: "Visible for-you skill",
+    });
+
+    mockedFetchForYou.mockResolvedValue(
+      new Ok([
+        forYouCandidate("skill", visibleSkill.sId),
+        forYouCandidate("agent", "missing-agent"),
+        forYouCandidate("agent", visibleAgent.sId),
+        forYouCandidate("skill", "missing-skill"),
+      ])
+    );
+
+    const result = await listDiscoveryForYouItems(auth);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual([
+      { type: "skill", target: visibleSkill.toDiscoveryJSON() },
+      {
+        type: "agent",
+        target: {
+          sId: visibleAgent.sId,
+          name: visibleAgent.name,
+          description: visibleAgent.description,
+          pictureUrl: visibleAgent.pictureUrl,
+        },
+      },
+    ]);
+  });
+
+  it("omits unpublished agents even when the viewer can read them", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    const hiddenAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Unpublished agent",
+      scope: "hidden",
+    });
+
+    mockedFetchForYou.mockResolvedValue(
+      new Ok([forYouCandidate("agent", hiddenAgent.sId)])
+    );
+
+    const result = await listDiscoveryForYouItems(auth);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual([]);
+  });
+
+  it("preserves a pending trending cache fill", async () => {
     const { auth } = await createPrivateApiMockRequest();
     mockedFetchTrending.mockResolvedValue(new Ok(null));
 
     const result = await listDiscoveryTrendingItems(auth);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toBeNull();
+  });
+
+  it("preserves a pending For You cache fill", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    mockedFetchForYou.mockResolvedValue(new Ok(null));
+
+    const result = await listDiscoveryForYouItems(auth);
 
     if (result.isErr()) {
       throw result.error;

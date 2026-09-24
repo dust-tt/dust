@@ -817,7 +817,7 @@ function rankCandidates(
  * combining smoothed group adoption, bounded confidence shrinkage, a bounded smaller-group boost,
  * and continuous viewer novelty. A candidate with no active group users or no resource users MUST
  * be omitted. A timed-out, shard-failed, or malformed response MUST return an error. Callers MUST
- * recheck favorites, pins, permissions, availability, and agent-skill relationships before display.
+ * recheck permissions and availability before display.
  * A concurrent cache miss MAY return `Ok(null)`.
  */
 export async function fetchDiscoveryForYouCandidates(
