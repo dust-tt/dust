@@ -31,6 +31,7 @@ interface MentionDropdownProps {
   mention: RichMention;
   owner: WorkspaceType;
   children: React.ReactNode;
+  onSeeAgentDetails?: () => void;
 }
 
 /**
@@ -42,7 +43,7 @@ interface MentionDropdownProps {
 export const MentionDropdown = React.forwardRef<
   HTMLDivElement,
   MentionDropdownProps
->(({ mention, owner, children }, ref) => {
+>(({ mention, owner, children, onSeeAgentDetails }, ref) => {
   const router = useAppRouter();
   const clientType = useClientType();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
@@ -60,6 +61,10 @@ export const MentionDropdown = React.forwardRef<
     };
 
     const handleAgentSeeDetails = () => {
+      if (onSeeAgentDetails) {
+        onSeeAgentDetails();
+        return;
+      }
       onOpenChangeAgentModal(true);
       setQueryParam(router, "agentDetails", mention.id);
     };

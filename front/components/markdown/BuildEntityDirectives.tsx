@@ -2,8 +2,13 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { AttachmentChipDirectiveBlock } from "@app/components/markdown/AttachmentChipDirective";
 import { createTextDirective } from "@app/components/markdown/directives";
 import { MentionDisplay } from "@app/components/mentions/MentionDisplay";
+import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import { getSkillIcon } from "@app/lib/skill";
-import { SKILL_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
+import { useAgentSuggestions } from "@app/lib/swr/agent_suggestions";
+import {
+  AGENT_SIDE_PANEL_TYPE,
+  SKILL_SIDE_PANEL_TYPE,
+} from "@app/types/conversation_side_panel";
 import type { WorkspaceType } from "@app/types/user";
 
 /**
@@ -28,20 +33,39 @@ interface BuildSkillDirectiveBlockProps {
   skillName: string;
 }
 
-export function BuildSkillDirectiveBlock({
-  skillId,
-  icon,
-  skillName,
-}: BuildSkillDirectiveBlockProps) {
-  const { togglePanel } = useConversationSidePanelContext();
+export function getBuildSkillDirectivePlugin(
+  owner: WorkspaceType,
+  conversationId?: string
+) {
+  const BuildSkillDirectiveBlock = ({
+    skillId,
+    icon,
+    skillName,
+  }: BuildSkillDirectiveBlockProps) => {
+    const { togglePanel } = useConversationSidePanelContext();
+    const { suggestions } = useSkillSuggestions({
+      skillId,
+      workspaceId: owner.sId,
+      sources: ["conversational"],
+      conversationId,
+    });
 
-  return (
-    <AttachmentChipDirectiveBlock
-      label={skillName}
-      icon={getSkillIcon(icon ?? null)}
-      onClick={() => togglePanel({ type: SKILL_SIDE_PANEL_TYPE, skillId })}
-    />
-  );
+    return (
+      <AttachmentChipDirectiveBlock
+        label={skillName}
+        icon={getSkillIcon(icon ?? null)}
+        onClick={() =>
+          togglePanel({
+            type: SKILL_SIDE_PANEL_TYPE,
+            skillId,
+            previewSuggestionIds: suggestions.map((s) => s.sId),
+          })
+        }
+      />
+    );
+  };
+
+  return BuildSkillDirectiveBlock;
 }
 
 interface BuildAgentDirectiveBlockProps {
@@ -53,20 +77,37 @@ export function getBuildAgentDirectivePlugin(owner: WorkspaceType) {
   const BuildAgentDirectiveBlock = ({
     agentId,
     agentName,
-  }: BuildAgentDirectiveBlockProps) => (
-    <MentionDisplay
-      mention={{
-        id: agentId,
-        label: agentName,
-        type: "agent",
-        pictureUrl: "",
-        description: "",
-      }}
-      interactive
-      owner={owner}
-      showTooltip={false}
-    />
-  );
+  }: BuildAgentDirectiveBlockProps) => {
+    const { togglePanel } = useConversationSidePanelContext();
+    const { suggestions } = useAgentSuggestions({
+      agentConfigurationId: agentId,
+      workspaceId: owner.sId,
+    });
+
+    return (
+      <span
+        onClick={() =>
+          togglePanel({
+            type: AGENT_SIDE_PANEL_TYPE,
+            agentId,
+            previewSuggestionIds: suggestions.map((s) => s.sId),
+          })
+        }
+      >
+        <MentionDisplay
+          mention={{
+            id: agentId,
+            label: agentName,
+            type: "agent",
+            pictureUrl: "",
+            description: "",
+          }}
+          owner={owner}
+          showTooltip={false}
+        />
+      </span>
+    );
+  };
 
   return BuildAgentDirectiveBlock;
 }
