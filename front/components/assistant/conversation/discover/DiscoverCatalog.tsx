@@ -14,11 +14,12 @@ import {
   toHydratedAgentCatalogItem,
   toHydratedSkillCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
-import { useCatalogSearch } from "@app/components/assistant/conversation/discover/useCatalogSearch";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useCatalogSearch } from "@app/lib/swr/catalog_search";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { useTagsUsage } from "@app/lib/swr/tags";
 import {
@@ -173,7 +174,8 @@ function HydratedCatalog({
       ? activeAgents
           .filter(
             (agent) =>
-              agent.userFavorite &&
+              (query.view !== "favorites" || agent.userFavorite) &&
+              (query.view !== "mine" || agent.canEdit) &&
               (query.tagId === null ||
                 agent.tags.some((tag) => tag.sId === query.tagId)) &&
               (!query.searchTerm ||
@@ -183,13 +185,15 @@ function HydratedCatalog({
             item: toHydratedAgentCatalogItem(agent),
             searchString: getAgentSearchString(agent),
             sortName: agent.name.toLowerCase(),
+            usage: agent.usage?.messageCount ?? 0,
           }))
       : [];
     const skills = query.showSkills
       ? skillsWithRelations
           .filter(
             (skill) =>
-              !!skill.isFavorite &&
+              (query.view !== "favorites" || !!skill.isFavorite) &&
+              (query.view !== "mine" || skill.canWrite) &&
               (!query.searchTerm ||
                 subFilter(query.searchTerm, skillSearchString(skill)))
           )
@@ -197,6 +201,7 @@ function HydratedCatalog({
             item: toHydratedSkillCatalogItem(skill),
             searchString: skillSearchString(skill),
             sortName: skill.name.toLowerCase(),
+            usage: skill.usage ?? 0,
           }))
       : [];
     return [...agents, ...skills]
@@ -208,7 +213,9 @@ function HydratedCatalog({
                 a.searchString,
                 b.searchString
               )
-            : 0) || a.sortName.localeCompare(b.sortName)
+            : 0) ||
+          (query.view === "popular" ? b.usage - a.usage : 0) ||
+          a.sortName.localeCompare(b.sortName)
       )
       .map(({ item }) => item);
   }, [activeAgents, query, skillsWithRelations]);
@@ -232,6 +239,10 @@ function HydratedCatalog({
   );
 }
 
+interface SearchCatalogProps extends CatalogSourceProps {
+  isDebouncing: boolean;
+}
+
 function SearchCatalog({
   owner,
   query,
@@ -240,9 +251,9 @@ function SearchCatalog({
   onClearFilters,
   isDebouncing,
   ...actions
-}: CatalogSourceProps & { isDebouncing: boolean }) {
+}: SearchCatalogProps) {
   const search = useCatalogSearch({ owner, query });
-  const { tags: tagsWithUsage } = useTagsUsage({ owner });
+  const { tags: tagsWithUsage, isTagsLoading } = useTagsUsage({ owner });
   const tags = useMemo(
     () => tagsWithUsage.filter((tag) => tag.usage > 0).sort(tagsSorter),
     [tagsWithUsage]
@@ -256,7 +267,12 @@ function SearchCatalog({
     >
       <CatalogResults
         items={search.items}
-        isLoading={isDebouncing || search.isLoading || search.isLoadingMore}
+        isLoading={
+          isDebouncing ||
+          isTagsLoading ||
+          search.isLoading ||
+          search.isLoadingMore
+        }
         hasError={search.hasError}
         hasNextPage={search.hasMore}
         onLoadMore={search.loadMore}
@@ -290,7 +306,13 @@ export function DiscoverCatalog({
     setSearchTerm(searchTerm);
   }, [searchTerm, setSearchTerm]);
 
-  const useSearch = filters.view !== "favorites";
+  const { hasFeature } = useFeatureFlags();
+  // Search endpoints 403 without their flags. Favorites stay hydrated because
+  // search results have no favorite flag.
+  const useSearch =
+    hasFeature("agents_search") &&
+    hasFeature("skills_search") &&
+    filters.view !== "favorites";
   const effectiveSearchTerm = useSearch ? debouncedSearchTerm : searchTerm;
   const query = useMemo(
     () => buildCatalogQuery(filters, effectiveSearchTerm),
@@ -454,27 +476,29 @@ function CatalogResults({
         <div className="flex justify-center py-6">
           <Spinner />
         </div>
-      ) : hasError ? (
-        <EmptyCTA
-          title="Unable to load agents and skills"
-          message="Try again in a moment."
-          action={null}
-        />
       ) : items.length === 0 ? (
-        <EmptyCTA
-          title="No agents or skills found"
-          message="Try another search or different filters."
-          action={
-            canClearFilters && (
-              <Button
-                variant="outline"
-                size="sm"
-                label="Clear filters"
-                onClick={onClearFilters}
-              />
-            )
-          }
-        />
+        hasError ? (
+          <EmptyCTA
+            title="Unable to load agents and skills"
+            message="Try again in a moment."
+            action={null}
+          />
+        ) : (
+          <EmptyCTA
+            title="No agents or skills found"
+            message="Try another search or different filters."
+            action={
+              canClearFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label="Clear filters"
+                  onClick={onClearFilters}
+                />
+              )
+            }
+          />
+        )
       ) : (
         <>
           {items.map((item) => (
@@ -490,6 +514,11 @@ function CatalogResults({
               onDetails={() => onDetails(item)}
             />
           ))}
+          {hasError && (
+            <p className="py-4 text-center copy-sm text-warning-500">
+              Couldn't load more. Try again in a moment.
+            </p>
+          )}
           {hasNextPage && onLoadMore && (
             <div className="flex justify-center pt-6">
               <Button

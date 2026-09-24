@@ -2,7 +2,7 @@ import {
   buildCatalogQuery,
   interleaveCatalogItems,
 } from "@app/components/assistant/conversation/discover/catalog";
-import { getCatalogPageRequest } from "@app/components/assistant/conversation/discover/useCatalogSearch";
+import { getCatalogPageRequest } from "@app/lib/swr/catalog_search";
 import { describe, expect, it } from "vitest";
 
 describe("DiscoverCatalog", () => {
