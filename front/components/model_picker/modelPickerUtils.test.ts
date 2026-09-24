@@ -31,6 +31,7 @@ import {
   AUTO_MODEL_ID,
 } from "@app/types/assistant/models/auto";
 import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { O1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type {
@@ -197,6 +198,10 @@ describe("modelPickerUtils premium gating", () => {
       expect(stops.every((stop) => stop.unavailabilityReason === null)).toBe(
         true
       );
+    });
+
+    it("has no stops for a model without reasoning", () => {
+      expect(getEffortStops(MISTRAL_SMALL_MODEL_CONFIG, UNGATED)).toEqual([]);
     });
   });
 

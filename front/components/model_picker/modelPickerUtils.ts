@@ -451,11 +451,19 @@ function modelSupportsEffortStatically(
   return STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[modelId][effort];
 }
 
-// The single authority for whether a reasoning-effort level is selectable.
+// The single authority for whether a reasoning-effort level is selectable. A
+// static model without reasoning has no slider, hence no stops.
 export function getEffortStops(
   enabledModel: ModelConfigurationType,
   { lockPremiumEfforts = false }: LockPremiumOptions = {}
 ): EffortStop[] {
+  if (
+    isStaticModelId(enabledModel.modelId) &&
+    !isReasoningModel(enabledModel.modelId)
+  ) {
+    return [];
+  }
+
   const allowed = new Set(
     getAvailableReasoningEfforts(enabledModel.supportedReasoningEfforts)
   );
