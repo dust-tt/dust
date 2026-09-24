@@ -52,6 +52,7 @@ import { launchAgentSearchIndexation } from "@app/lib/resources/agent_resource_i
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { CachedResourceMode } from "@app/lib/resources/cached_resource_store";
 import { defineCachedResourceValue } from "@app/lib/resources/cached_resource_store";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -314,8 +315,10 @@ export type AgentResourceSnapshot = {
   content: SerializedAgentResourceContent;
 };
 
-// Ship the cache dark: wired end to end but touching no Redis. Flip to `false` to turn it on.
-const AGENT_RESOURCE_CACHE_DRY_RUN = true;
+// Rollout mode for the agent read cache. Progression: "dryRun" (wired end to end but touching no
+// Redis) -> "compare" (warm the cache and log any divergence from the database, which stays
+// authoritative) -> "live" (serve from the cache).
+const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "compare";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentResource
@@ -1021,7 +1024,7 @@ export class AgentResource
     id: AGENT_RESOURCE_CACHE_ID,
     version: AGENT_RESOURCE_CACHE_VERSION,
     key: agentResourceCacheKey,
-    dryRun: AGENT_RESOURCE_CACHE_DRY_RUN,
+    mode: AGENT_RESOURCE_CACHE_MODE,
     loadManyFromDatabase: (inputs) =>
       AgentResource.loadManyFromDatabase(inputs),
     toSnapshot: (cachedResource) => cachedResource.toSnapshot(),
