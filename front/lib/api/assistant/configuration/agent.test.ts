@@ -600,6 +600,9 @@ describe("stable agent identities", () => {
       }
     );
     expect(replaceResult.isOk()).toBe(true);
+    expect(
+      await DiscoveryItemResource.listPinnedForAuth(authenticator)
+    ).toHaveLength(1);
 
     await hardDeleteAgentVersion(authenticator, secondVersion);
     expect(
@@ -612,6 +615,8 @@ describe("stable agent identities", () => {
         grantGroup.id,
       ])
     ).toHaveLength(1);
+    // The pin row stays until the identity is gone. The previous version was archived when it
+    // was superseded, so the user-facing list omits that inactive target.
     expect(
       await GroupPinnedItemModel.count({
         where: {
@@ -621,6 +626,9 @@ describe("stable agent identities", () => {
         },
       })
     ).toBe(1);
+    expect(
+      await DiscoveryItemResource.listPinnedForAuth(authenticator)
+    ).toEqual([]);
 
     await hardDeleteAgentVersion(authenticator, firstVersion);
     expect(
@@ -642,6 +650,9 @@ describe("stable agent identities", () => {
         },
       })
     ).toBe(0);
+    expect(
+      await DiscoveryItemResource.listPinnedForAuth(authenticator)
+    ).toEqual([]);
   });
 });
 

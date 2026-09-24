@@ -2,19 +2,21 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { GroupPinnedItemType } from "@app/lib/resources/storage/models/group_pinned_items";
-import {
-  GROUP_PINNED_ITEM_TYPES,
-  GroupPinnedItemModel,
-} from "@app/lib/resources/storage/models/group_pinned_items";
+import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { DiscoveryItemType } from "@app/types/api/discovery";
+import type { GroupPinnedItemType } from "@app/types/discovery";
+import { GROUP_PINNED_ITEM_TYPES } from "@app/types/discovery";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -25,6 +27,93 @@ export type PinnedDiscoveryItemInput = {
   itemId: string;
   position: number;
 };
+
+export type ResolvedDiscoveryItem = {
+  type: GroupPinnedItemType;
+  pin: DiscoveryItemResource;
+  target: AgentResource | SkillResource;
+  toJSON: () => DiscoveryItemType;
+};
+
+function discoveryPinJSON(pin: DiscoveryItemResource) {
+  return {
+    groupId: GroupResource.modelIdToSId({
+      id: pin.groupId,
+      workspaceId: pin.workspaceId,
+    }),
+    position: pin.position,
+  };
+}
+
+function isDiscoverableAgent(agent: AgentResource): boolean {
+  return (
+    agent.status === "active" &&
+    (agent.scope === "visible" || agent.scope === "global")
+  );
+}
+
+function hasReadableDiscoveryTarget(
+  auth: Authenticator,
+  item: { type: GroupPinnedItemType; itemId: string },
+  agentsById: Map<string, AgentResource>,
+  skillsById: Map<string, SkillResource>
+): boolean {
+  switch (item.type) {
+    case "agent": {
+      const agent = agentsById.get(item.itemId);
+      return !!agent && auth.can("read", agent);
+    }
+    case "skill": {
+      const skill = skillsById.get(item.itemId);
+      return !!skill && auth.can("read", skill);
+    }
+    default:
+      return assertNever(item.type);
+  }
+}
+
+function resolvedDiscoveryItem(
+  pin: DiscoveryItemResource,
+  agentsById: Map<string, AgentResource>,
+  skillsById: Map<string, SkillResource>
+): ResolvedDiscoveryItem | null {
+  switch (pin.type) {
+    case "agent": {
+      const target = agentsById.get(pin.itemId);
+      if (!target) {
+        return null;
+      }
+      return {
+        type: "agent",
+        pin,
+        target,
+        toJSON: () => ({
+          type: "agent",
+          pin: discoveryPinJSON(pin),
+          target: target.toDiscoveryJSON(),
+        }),
+      };
+    }
+    case "skill": {
+      const target = skillsById.get(pin.itemId);
+      if (!target) {
+        return null;
+      }
+      return {
+        type: "skill",
+        pin,
+        target,
+        toJSON: () => ({
+          type: "skill",
+          pin: discoveryPinJSON(pin),
+          target: target.toDiscoveryJSON(),
+        }),
+      };
+    }
+    default:
+      return assertNever(pin.type);
+  }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DiscoveryItemResource
@@ -68,19 +157,13 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     return rows.map((row) => new this(this.model, row.get()));
   }
 
-  /**
-   * @cc [owner:frankaloia,label:security;product] pinned-discovery-item-access
-   * User-facing pin reads MUST resolve targets through the target Resource with strict caller
-   * permissions and omit missing, inactive, or unreadable targets.
-   */
-  /**
-   * @cc [owner:frankaloia,label:security;product] pinned-discovery-item-admin-target
-   * Admin pin writes MUST resolve an active, readable target through the target Resource's normal
-   * permission checks.
-   */
-  private static async filterAccessibleTargets<
-    T extends Pick<PinnedDiscoveryItemInput, "type" | "itemId">,
-  >(auth: Authenticator, items: T[]): Promise<T[]> {
+  private static async loadTargets(
+    auth: Authenticator,
+    items: Array<{ type: GroupPinnedItemType; itemId: string }>
+  ): Promise<{
+    agentsById: Map<string, AgentResource>;
+    skillsById: Map<string, SkillResource>;
+  }> {
     const agentIds = items
       .filter((item) => item.type === "agent")
       .map((item) => item.itemId);
@@ -92,26 +175,46 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       AgentResource.fetchByIds(auth, agentIds),
       SkillResource.fetchByIds(auth, skillIds, {
         onlyActive: true,
-        permissionFiltering: "strict",
+        permissionFiltering: auth.isAdmin() ? "redact_unreadable" : "strict",
         withFileAttachments: false,
         withInstructions: false,
         withTools: false,
       }),
     ]);
-    const resolvedAgentIds = new Set(
-      agents
-        .filter((agent) => agent.status === "active" && auth.can("read", agent))
-        .map((agent) => agent.sId)
-    );
-    const resolvedSkillIds = new Set(skills.map((skill) => skill.sId));
 
-    return items.filter((item) =>
-      item.type === "agent"
-        ? resolvedAgentIds.has(item.itemId)
-        : resolvedSkillIds.has(item.itemId)
+    return {
+      agentsById: new Map(
+        agents
+          .filter(
+            (agent) =>
+              isDiscoverableAgent(agent) &&
+              (auth.isAdmin() || auth.can("read", agent))
+          )
+          .map((agent) => [agent.sId, agent])
+      ),
+      skillsById: new Map(skills.map((skill) => [skill.sId, skill])),
+    };
+  }
+
+  private static async resolveTargets(
+    auth: Authenticator,
+    items: DiscoveryItemResource[]
+  ): Promise<ResolvedDiscoveryItem[]> {
+    const { agentsById, skillsById } = await this.loadTargets(auth, items);
+    return removeNulls(
+      items.map((pin) => resolvedDiscoveryItem(pin, agentsById, skillsById))
     );
   }
 
+  static toJSON(item: ResolvedDiscoveryItem): DiscoveryItemType {
+    return item.toJSON();
+  }
+
+  /**
+   * @cc [owner:frankaloia,label:security;product] pinned-discovery-item-access
+   * User-facing pin reads MUST resolve targets through the target Resource with strict caller
+   * permissions and omit missing, inactive, hidden, or unreadable targets.
+   */
   /**
    * @cc [owner:frankaloia,label:security;product] pinned-items-auth-groups
    * A caller only sees pins for groups in its authenticated group snapshot. Within each position,
@@ -119,13 +222,15 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
    */
   static async listPinnedForAuth(
     auth: Authenticator
-  ): Promise<DiscoveryItemResource[]> {
+  ): Promise<ResolvedDiscoveryItem[]> {
     const groupModelIds = auth.groupModelIds();
     const [items, globalGroupModelId] = await Promise.all([
       this.baseFetch(auth, { groupModelIds }),
       auth.getGlobalGroupModelId(),
     ]);
-    const rows = await this.filterAccessibleTargets(auth, items);
+    const rows = (await this.resolveTargets(auth, items)).filter((item) =>
+      auth.can("read", item.target)
+    );
     const orderedGroupModelIds = [
       ...(globalGroupModelId !== null &&
       groupModelIds.includes(globalGroupModelId)
@@ -141,17 +246,18 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
 
     return rows.sort(
       (a, b) =>
-        a.position - b.position ||
-        (groupRank.get(a.groupId) ?? Number.MAX_SAFE_INTEGER) -
-          (groupRank.get(b.groupId) ?? Number.MAX_SAFE_INTEGER)
+        a.pin.position - b.pin.position ||
+        (groupRank.get(a.pin.groupId) ?? Number.MAX_SAFE_INTEGER) -
+          (groupRank.get(b.pin.groupId) ?? Number.MAX_SAFE_INTEGER)
     );
   }
 
   /**
    * @cc [owner:frankaloia,label:security] pinned-items-group-read
    * A regular user can list pins for a group only when that group is in its authenticated group
-   * snapshot. Workspace admins can list pins for any group in their workspace. Target visibility
-   * always follows the target Resource's normal permissions.
+   * snapshot, and only for targets they can read. Workspace admins can list pins for any group in
+   * their workspace, including a pin whose target they cannot read, serialized from the light agent
+   * or redacted skill. Missing and inactive targets are omitted for both.
    */
   static async listPinnedForGroup(
     auth: Authenticator,
@@ -162,7 +268,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       groupModelId: ModelId;
       transaction?: Transaction;
     }
-  ): Promise<DiscoveryItemResource[]> {
+  ): Promise<ResolvedDiscoveryItem[]> {
     if (!auth.isAdmin() && !auth.groupModelIds().includes(groupModelId)) {
       return [];
     }
@@ -171,7 +277,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       groupModelIds: [groupModelId],
       transaction,
     });
-    return this.filterAccessibleTargets(auth, items);
+    return this.resolveTargets(auth, items);
   }
 
   static async deleteAllForItem(
@@ -209,6 +315,11 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
    * The same agent or skill is pinned at most once in a group.
    */
   /**
+   * @cc [owner:frankaloia,label:security;product] pinned-discovery-item-admin-target
+   * Admin pin writes MUST resolve an active, readable target through the target Resource's normal
+   * permission checks. An agent pin MUST be visible or global.
+   */
+  /**
    * @cc [owner:frankaloia,label:product] pinned-item-group-kind
    * A pin can be set only on a group that is not `regular_auto`. Implicit groups, such as agent
    * editors and space members, are not discovery audiences.
@@ -226,7 +337,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     }
   ): Promise<
     Result<
-      DiscoveryItemResource,
+      ResolvedDiscoveryItem,
       DustError<"invalid_request_error" | "group_not_found" | "unauthorized">
     >
   > {
@@ -238,17 +349,16 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       return unauthorizedPinMutation();
     }
 
-    const [resolvedItem] = await this.filterAccessibleTargets(auth, [item]);
-    if (!resolvedItem) {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const { agentsById, skillsById } = await this.loadTargets(auth, [item]);
+    if (!hasReadableDiscoveryTarget(auth, item, agentsById, skillsById)) {
       return new Err(
         new DustError(
           "invalid_request_error",
-          "Pinned discovery items must reference an active agent or skill in this workspace."
+          "Pinned discovery items must reference an active visible agent or an active skill in this workspace."
         )
       );
     }
-
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
 
     return withTransaction(async (t) => {
       const group = await GroupModel.findOne({
@@ -294,7 +404,20 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
         },
         { transaction: t }
       );
-      return new Ok(new this(this.model, row.get()));
+      const resolved = resolvedDiscoveryItem(
+        new this(this.model, row.get()),
+        agentsById,
+        skillsById
+      );
+      if (!resolved) {
+        return new Err(
+          new DustError(
+            "invalid_request_error",
+            "Pinned discovery items must reference an active visible agent or an active skill in this workspace."
+          )
+        );
+      }
+      return new Ok(resolved);
     }, transaction);
   }
 

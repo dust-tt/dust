@@ -68,6 +68,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchDeleteAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
+import type { DiscoveryAgentType } from "@app/types/api/discovery";
 import type {
   AgentConfigurationBaseType,
   AgentConfigurationScope,
@@ -2209,6 +2210,15 @@ export class AgentResource
       canEdit:
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
+    };
+  }
+
+  toDiscoveryJSON(): DiscoveryAgentType {
+    return {
+      sId: this.sId,
+      name: this.name,
+      description: this.description,
+      pictureUrl: this.pictureUrl,
     };
   }
 
