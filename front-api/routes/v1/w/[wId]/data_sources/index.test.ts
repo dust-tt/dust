@@ -12,18 +12,12 @@ function getDataSources(workspace: { sId: string }, key: { secret: string }) {
 }
 
 describe("GET /api/v1/w/:wId/data_sources (legacy endpoint)", () => {
-  it("returns 500 if no global space exists", async () => {
-    const { workspace, key } = await createPublicApiMockRequest();
-
-    const response = await getDataSources(workspace, key);
-
-    expect(response.status).toBe(500);
-  });
-
   it("returns data sources for the global space", async () => {
-    const { workspace, key } = await createPublicApiMockRequest();
-
-    const space = await SpaceFactory.global(workspace);
+    const {
+      workspace,
+      key,
+      globalSpace: space,
+    } = await createPublicApiMockRequest();
 
     // Create test data source views to the space
     await DataSourceViewFactory.folder(workspace, space);

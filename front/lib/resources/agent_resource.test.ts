@@ -934,9 +934,6 @@ describe("AgentResource", () => {
       globalGroup,
       key,
     } = await createPublicApiMockRequest({ systemKey: true });
-    await SpaceFactory.defaults(
-      await Authenticator.internalAdminForWorkspace(workspace.sId)
-    );
     const restrictedSpace = await SpaceFactory.regular(workspace);
 
     const author = await UserFactory.basic();

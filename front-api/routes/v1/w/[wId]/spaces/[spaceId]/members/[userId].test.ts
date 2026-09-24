@@ -93,10 +93,10 @@ describe("DELETE /api/v1/w/:wId/spaces/:spaceId/members/:userId", () => {
   });
 
   it("rejects a global space", async () => {
-    const { workspace, key } = await createPublicApiMockRequest({
+    const { workspace, key, globalSpace } = await createPublicApiMockRequest({
       role: "admin",
     });
-    const globalSpace = await SpaceFactory.global(workspace);
+
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
 
