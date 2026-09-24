@@ -197,6 +197,19 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
+  const { reasoningEffort } = assistant.model;
+  if (
+    reasoningEffort &&
+    !modelConfig.supportedReasoningEfforts[reasoningEffort]
+  ) {
+    return new Err(
+      new Error(
+        `Model "${modelConfig.modelId}" does not support the "${reasoningEffort}" ` +
+          "reasoning effort."
+      )
+    );
+  }
+
   const accessError = await getModelTierAccessErrorForAgentConfiguration(auth, {
     agentName: assistant.name,
     model: modelConfig,
