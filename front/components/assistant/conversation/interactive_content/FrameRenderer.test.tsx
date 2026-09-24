@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
     (_props: {
       frameId?: string;
       isEditable?: boolean;
+      stagedEdits?: boolean;
       onEditText?: EditTextFn;
       visualization?: { identifier: string };
     }) => null
@@ -261,6 +262,7 @@ describe("FrameRenderer", () => {
       expect.objectContaining({
         frameId: "frame_1",
         isEditable: true,
+        stagedEdits: true,
         onEditText: expect.any(Function),
       })
     );
@@ -516,7 +518,7 @@ describe("FrameRenderer", () => {
     });
   });
 
-  it("publishes legacy Frame edits immediately without a Save button", async () => {
+  it("publishes legacy Frame edits immediately without Preview|Edit or Save", async () => {
     mocks.editFrameText.mockResolvedValue({ success: true });
     mocks.mutateFileContent.mockResolvedValue(
       "export default function Frame() { return <p>Done</p>; }"
@@ -532,11 +534,18 @@ describe("FrameRenderer", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
-
+    expect(screen.queryByRole("tab", { name: "Edit" })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Save" })
     ).not.toBeInTheDocument();
+
+    expect(mocks.iframe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isEditable: true,
+        stagedEdits: false,
+        onEditText: expect.any(Function),
+      })
+    );
 
     const onEditText = mocks.iframe.mock.calls.at(-1)?.[0].onEditText;
     if (!onEditText) {
@@ -559,86 +568,11 @@ describe("FrameRenderer", () => {
     expect(mocks.batchEditFrameText).not.toHaveBeenCalled();
     await waitFor(() => {
       expect(mocks.mutateFileContent).toHaveBeenCalled();
-      expect(
-        mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier
-      ).toBe("viz-frame_1-1-edit");
     });
-  });
-
-  it("revalidates and remounts once after a burst of legacy edits", async () => {
-    let resolveFirst: (value: { success: true }) => void = () => undefined;
-    let resolveSecond: (value: { success: true }) => void = () => undefined;
-    mocks.editFrameText
-      .mockImplementationOnce(
-        () =>
-          new Promise<{ success: true }>((resolve) => {
-            resolveFirst = resolve;
-          })
-      )
-      .mockImplementationOnce(
-        () =>
-          new Promise<{ success: true }>((resolve) => {
-            resolveSecond = resolve;
-          })
-      );
-    mocks.mutateFileContent.mockResolvedValue(
-      "export default function Frame() { return <p>Both</p>; }"
-    );
-
-    render(
-      <FrameRenderer
-        conversation={conversation}
-        fileId="frame_1"
-        projectId={null}
-        owner={owner}
-        renderMode="legacy"
-      />
-    );
-
-    fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
-    const onEditText = mocks.iframe.mock.calls.at(-1)?.[0].onEditText;
-    if (!onEditText) {
-      throw new Error("Expected legacy Frame to be editable.");
-    }
-
-    let firstDone!: Promise<{ success: boolean; error?: string }>;
-    let secondDone!: Promise<{ success: boolean; error?: string }>;
-    await act(async () => {
-      firstDone = onEditText({
-        newText: "One",
-        oldText: "A",
-        source: "index.tsx:1:1",
-      });
-      secondDone = onEditText({
-        newText: "Two",
-        oldText: "B",
-        source: "index.tsx:2:1",
-      });
-    });
-
-    expect(mocks.mutateFileContent).not.toHaveBeenCalled();
+    // Legacy keeps a stable instance id — no remount after edit (same as main).
     expect(mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier).toBe(
-      "viz-frame_1-0-edit"
+      "viz-frame_1"
     );
-
-    await act(async () => {
-      resolveFirst({ success: true });
-      await firstDone;
-    });
-    // Still in flight: no remount or revalidate yet.
-    expect(mocks.mutateFileContent).not.toHaveBeenCalled();
-
-    await act(async () => {
-      resolveSecond({ success: true });
-      await secondDone;
-    });
-
-    await waitFor(() => {
-      expect(mocks.mutateFileContent).toHaveBeenCalledTimes(1);
-      expect(
-        mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier
-      ).toBe("viz-frame_1-1-edit");
-    });
   });
 
   it("keeps the v2 Save control identifiable when labels are hidden on mobile", async () => {

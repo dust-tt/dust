@@ -14,11 +14,17 @@ afterEach(() => {
 function renderEditable(
   editText: ReturnType<typeof vi.fn>,
   children: ReactNode,
-  addEventListener: ReturnType<typeof vi.fn> | null = null
+  {
+    addEventListener = null,
+    stagedEdits = false,
+  }: {
+    addEventListener?: ReturnType<typeof vi.fn> | null;
+    stagedEdits?: boolean;
+  } = {}
 ) {
   return render(
     <VizContext.Provider
-      value={{ isPdfMode: false, editText, addEventListener }}
+      value={{ isPdfMode: false, editText, addEventListener, stagedEdits }}
     >
       <EditableFrame>{children}</EditableFrame>
     </VizContext.Provider>
@@ -26,7 +32,7 @@ function renderEditable(
 }
 
 describe("EditableFrame", () => {
-  it("enters edit mode on a single click", () => {
+  it("enters edit mode on double-click when not staging (legacy)", () => {
     const editText = vi.fn();
     const { container } = renderEditable(
       editText,
@@ -37,12 +43,31 @@ describe("EditableFrame", () => {
 
     const span = container.querySelector("[data-editable]") as HTMLElement;
     fireEvent.click(span);
+    expect(span.contentEditable).not.toBe("true");
+
+    fireEvent.doubleClick(span);
+    expect(span.contentEditable).toBe("true");
+    expect(span.dataset.originalText).toBe("Hello");
+  });
+
+  it("enters edit mode on a single click when staging (Frames v2 Edit)", () => {
+    const editText = vi.fn();
+    const { container } = renderEditable(
+      editText,
+      <span data-editable data-raw-text={encodeURIComponent("Hello")}>
+        Hello
+      </span>,
+      { stagedEdits: true }
+    );
+
+    const span = container.querySelector("[data-editable]") as HTMLElement;
+    fireEvent.click(span);
 
     expect(span.contentEditable).toBe("true");
     expect(span.dataset.originalText).toBe("Hello");
   });
 
-  it("saves overlapping blurs instead of dropping the second edit", async () => {
+  it("saves overlapping blurs when staging instead of dropping the second edit", async () => {
     let resolveFirst: (value: { success: true }) => void = () => undefined;
     const editText = vi
       .fn()
@@ -71,7 +96,8 @@ describe("EditableFrame", () => {
         >
           Two
         </span>
-      </>
+      </>,
+      { stagedEdits: true }
     );
 
     const [first, second] = Array.from(
@@ -104,7 +130,7 @@ describe("EditableFrame", () => {
     });
   });
 
-  it("registers FLUSH_EDITABLES through the origin-validated listener", () => {
+  it("registers FLUSH_EDITABLES only when staging", () => {
     const editText = vi.fn().mockResolvedValue({ success: true });
     const addEventListener = vi.fn(() => () => undefined);
 
@@ -113,14 +139,27 @@ describe("EditableFrame", () => {
       <span data-editable data-raw-text={encodeURIComponent("Hello")}>
         Hello
       </span>,
-      addEventListener
+      { addEventListener, stagedEdits: true }
     );
 
-    // Must not attach a raw window message listener; parent messages are filtered by origin
-    // in VisualizationWrapper before this handler runs (allowed-visualization-origins).
     expect(addEventListener).toHaveBeenCalledWith(
       "FLUSH_EDITABLES",
       expect.any(Function)
     );
+  });
+
+  it("does not register FLUSH_EDITABLES for legacy immediate edits", () => {
+    const editText = vi.fn().mockResolvedValue({ success: true });
+    const addEventListener = vi.fn(() => () => undefined);
+
+    renderEditable(
+      editText,
+      <span data-editable data-raw-text={encodeURIComponent("Hello")}>
+        Hello
+      </span>,
+      { addEventListener, stagedEdits: false }
+    );
+
+    expect(addEventListener).not.toHaveBeenCalled();
   });
 });

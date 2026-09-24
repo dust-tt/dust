@@ -771,6 +771,8 @@ export interface VisualizationActionIframeProps {
   /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
   frameId?: string;
   isEditable?: boolean;
+  /** Frames v2 Edit session: click-to-edit + staged commits until Save. */
+  stagedEdits?: boolean;
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
   scopedUserIdentity?: ScopedWorkspaceUserIdentity;
@@ -908,6 +910,7 @@ export const VisualizationActionIframe = forwardRef<
     canInvokeFunctions,
     conversationId,
     isEditable = false,
+    stagedEdits = false,
     isInDrawer = false,
     onEditText,
     scopedUserIdentity,
@@ -1083,8 +1086,12 @@ export const VisualizationActionIframe = forwardRef<
       params.set("editable", "true");
     }
 
+    if (stagedEdits) {
+      params.set("stagedEdits", "true");
+    }
+
     return `${props.vizUrl.replace(/\/$/, "")}/content?${params.toString()}`;
-  }, [visualization, isInDrawer, isEditable, props.vizUrl]);
+  }, [visualization, isInDrawer, isEditable, stagedEdits, props.vizUrl]);
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>

@@ -47,10 +47,13 @@ interface EditableFrameProps {
 }
 
 export function EditableFrame({ children }: EditableFrameProps) {
-  const { editText, addEventListener } = useVizContext();
+  const { editText, addEventListener, stagedEdits } = useVizContext();
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const lastHoverPosRef = useRef<HoverState | null>(null);
   const hoveredSpanRef = useRef<HTMLElement | null>(null);
+  // Legacy (immediate publish): drop overlapping blurs like main. Staged v2: allow concurrent
+  // commits so FLUSH_EDITABLES can wait on in-flight stages.
+  const isSavingRef = useRef(false);
   const commitInFlightRef = useRef<Promise<void> | null>(null);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -87,14 +90,8 @@ export function EditableFrame({ children }: EditableFrameProps) {
     setHoverState(null);
   }, []);
 
-  // Single click: the parent already opted into edit mode via Preview|Edit, so requiring
-  // a double-click here is redundant and feels quirky.
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    const target = (e.target as Element).closest<HTMLElement>(
-      EDITABLE_SELECTOR
-    );
-
-    if (!target || target.contentEditable === "true") {
+  const beginEditing = useCallback((target: HTMLElement) => {
+    if (target.contentEditable === "true") {
       return;
     }
 
@@ -107,6 +104,40 @@ export function EditableFrame({ children }: EditableFrameProps) {
     target.contentEditable = "true";
     target.focus();
   }, []);
+
+  // Legacy: double-click (main). v2 staged Edit session: single click — Preview|Edit already
+  // opted in, so requiring a second click feels quirky.
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (stagedEdits) {
+        return;
+      }
+      const target = (e.target as Element).closest<HTMLElement>(
+        EDITABLE_SELECTOR
+      );
+      if (!target) {
+        return;
+      }
+      beginEditing(target);
+    },
+    [beginEditing, stagedEdits]
+  );
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (!stagedEdits) {
+        return;
+      }
+      const target = (e.target as Element).closest<HTMLElement>(
+        EDITABLE_SELECTOR
+      );
+      if (!target) {
+        return;
+      }
+      beginEditing(target);
+    },
+    [beginEditing, stagedEdits]
+  );
 
   const commitEditable = useCallback(
     async (target: HTMLElement) => {
@@ -122,6 +153,10 @@ export function EditableFrame({ children }: EditableFrameProps) {
       delete target.dataset.originalText;
 
       if (newVisibleText === originalVisibleText || !editText) {
+        return;
+      }
+
+      if (!stagedEdits && isSavingRef.current) {
         return;
       }
 
@@ -166,17 +201,34 @@ export function EditableFrame({ children }: EditableFrameProps) {
             };
           })();
 
-      // Parent stages the edit until Save; we still await so FLUSH_EDITABLES can wait for it.
-      const result = await editText(editParams);
-      if (!result.success) {
-        target.textContent = originalVisibleText;
-        flash(FAILED_CLS);
-      } else {
-        // Keep data-raw-text in sync so chained edits on the same span stay correct.
-        target.dataset.rawText = encodeURIComponent(newRawText);
+      if (stagedEdits) {
+        // Parent stages until Save; await so FLUSH_EDITABLES can wait for it.
+        const result = await editText(editParams);
+        if (!result.success) {
+          target.textContent = originalVisibleText;
+          flash(FAILED_CLS);
+        } else {
+          target.dataset.rawText = encodeURIComponent(newRawText);
+        }
+        return;
       }
+
+      isSavingRef.current = true;
+      void editText(editParams)
+        .then((result) => {
+          if (!result.success) {
+            target.textContent = originalVisibleText;
+            flash(FAILED_CLS);
+          } else {
+            // Keep data-raw-text in sync so chained edits on the same span stay correct.
+            target.dataset.rawText = encodeURIComponent(newRawText);
+          }
+        })
+        .finally(() => {
+          isSavingRef.current = false;
+        });
     },
-    [editText]
+    [editText, stagedEdits]
   );
 
   const handleBlur = useCallback(
@@ -189,18 +241,23 @@ export function EditableFrame({ children }: EditableFrameProps) {
         return;
       }
 
-      const commit = commitEditable(target);
-      commitInFlightRef.current = commit.finally(() => {
-        if (commitInFlightRef.current === commit) {
-          commitInFlightRef.current = null;
-        }
-      });
+      if (stagedEdits) {
+        const commit = commitEditable(target);
+        commitInFlightRef.current = commit.finally(() => {
+          if (commitInFlightRef.current === commit) {
+            commitInFlightRef.current = null;
+          }
+        });
+        return;
+      }
+
+      void commitEditable(target);
     },
-    [commitEditable]
+    [commitEditable, stagedEdits]
   );
 
   useEffect(() => {
-    if (!addEventListener) {
+    if (!stagedEdits || !addEventListener) {
       return;
     }
 
@@ -221,7 +278,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
         window.parent.postMessage({ type: "FLUSH_EDITABLES_DONE" }, "*");
       })();
     });
-  }, [addEventListener, commitEditable]);
+  }, [addEventListener, commitEditable, stagedEdits]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const target = (e.target as Element).closest<HTMLElement>(
@@ -251,6 +308,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
     <>
       <div
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onBlur={handleBlur}
@@ -270,7 +328,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
           />
         </TooltipTrigger>
         <TooltipContent side="top" sideOffset={4}>
-          Click to edit
+          {stagedEdits ? "Click to edit" : "Double-click to edit"}
         </TooltipContent>
       </Tooltip>
     </>

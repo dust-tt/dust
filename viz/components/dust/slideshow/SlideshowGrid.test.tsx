@@ -448,7 +448,14 @@ it.each([
 
 it("keeps grid controls and duplicate previews out of PDF exports", () => {
   render(
-    <VizContext.Provider value={{ isPdfMode: true, editText: null }}>
+    <VizContext.Provider
+      value={{
+        isPdfMode: true,
+        editText: null,
+        addEventListener: null,
+        stagedEdits: false,
+      }}
+    >
       <Slideshow>
         <Slide>First</Slide>
         <Slide>Last</Slide>
@@ -486,7 +493,14 @@ it("applies a theme to the existing v2 root without adding a wrapper", () => {
 
 it("preserves the theme and page breaks in PDF mode", () => {
   const { container } = render(
-    <VizContext.Provider value={{ isPdfMode: true, editText: null }}>
+    <VizContext.Provider
+      value={{
+        isPdfMode: true,
+        editText: null,
+        addEventListener: null,
+        stagedEdits: false,
+      }}
+    >
       <Slideshow theme={{ "--primary": "rebeccapurple" }}>
         <Slide>First slide</Slide>
         <Slide>Last slide</Slide>

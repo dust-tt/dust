@@ -73,7 +73,14 @@ const TestFrame = ({
   visuals,
 }: TestFrameProps) => (
   <FrameFunctionHooksProvider dataAPI={dataAPI}>
-    <VizContext.Provider value={{ isPdfMode, editText: null }}>
+    <VizContext.Provider
+      value={{
+        isPdfMode,
+        editText: null,
+        addEventListener: null,
+        stagedEdits: false,
+      }}
+    >
       <Document
         path={path}
         readOnly={readOnly}

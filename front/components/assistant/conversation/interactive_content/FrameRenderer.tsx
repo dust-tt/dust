@@ -171,39 +171,30 @@ export function FrameRenderer({
   });
 
   const [showCode, setShowCode] = useState(false);
-  // Inline text editing is opt-in: authors must enter edit mode explicitly so previewing does
-  // not surface hover affordances on every text node. Reset when switching Frames.
+  // Frames v2 only: Preview|Edit opt-in, staged location edits, and Save. Legacy Frames keep
+  // main's always-on double-click + blur-save path (no toggle, remount, or batch publish).
+  const usesBatchEdit = renderMode === "v2";
   const [editModeState, setEditModeState] = useState({
     fileId,
     enabled: false,
   });
-  // Bumped after a successful live edit (or explicit reload) so the viz iframe remounts with the
-  // refreshed bundle. Without this, react-runner keeps the old module and any Frame re-render
-  // overwrites the optimistic DOM textContent patch — edits look saved then snap back (#10579).
+  // Remount after v2 Save/discard/reload so react-runner picks up the published bundle (#10579).
   const [contentRevision, setContentRevision] = useState(0);
-  // Frames v2 only: staged location edits accumulate until Save (one publish). Legacy frames still
-  // save per blur. Discarding Edit clears the queue without writing.
   const [pendingEdits, setPendingEdits] = useState<Parameters<EditTextFn>[0][]>(
     []
   );
   // Source of truth for flush→Save; updated only from event handlers (not during render).
   const pendingEditsRef = useRef<Parameters<EditTextFn>[0][]>([]);
   const [isSavingEdits, setIsSavingEdits] = useState(false);
-  // Legacy concurrent blurs: defer remount until in-flight publishes settle.
-  const inFlightEditsRef = useRef(0);
-  const pendingRemountRef = useRef(false);
-  if (editModeState.fileId !== fileId) {
+  if (usesBatchEdit && editModeState.fileId !== fileId) {
     setEditModeState({ fileId, enabled: false });
     setContentRevision(0);
     setPendingEdits([]);
     pendingEditsRef.current = [];
     setIsSavingEdits(false);
-    inFlightEditsRef.current = 0;
-    pendingRemountRef.current = false;
   }
   const isEditMode = editModeState.enabled;
   const hasPendingEdits = pendingEdits.length > 0;
-  const usesBatchEdit = renderMode === "v2";
 
   // A legacy Frame renders its own source, so `fileContent` is the code. A Frames v2 package
   // renders a built bundle, so its sources are fetched separately, and only once shown.
@@ -249,55 +240,33 @@ export function FrameRenderer({
     fileId,
     conversationId: conversation?.sId,
   });
-  // Legacy Frames have no separate author flag: anyone who can open them in the conversation
-  // drawer could previously edit. Frame v2 uses write access to the source (`isFrameAuthor`).
-  const isAuthor =
-    renderMode === "legacy" || (!isFramePermissionsLoading && isFrameAuthor);
-  // Inline editing needs a conversation (v2 edit-text requires conversationId + source).
-  const canEnterEditMode =
-    renderMode === "legacy"
-      ? Boolean(conversation)
-      : Boolean(conversation && isFrameAuthor);
-  // Keep the iframe on the edit remount key for the whole Edit session so flipping
-  // isSavingEdits does not reload the viz mid-publish.
-  const isEditSession = isEditMode && canEnterEditMode;
-  const isEditable = isEditSession;
-  // Include edit mode so Preview↔Edit remounts and resets contentHeight (async-network-loading-state).
-  const vizInstanceId = `viz-${fileId}-${contentRevision}-${isEditable ? "edit" : "preview"}`;
+  // Frame v2: write access to the source. Legacy: anyone who can open the drawer can edit.
+  const isV2Author = !isFramePermissionsLoading && isFrameAuthor;
+  const canEnterEditMode = Boolean(conversation && isFrameAuthor);
+  const isEditSession = usesBatchEdit && isEditMode && canEnterEditMode;
+  // Legacy matches main: always editable. v2: only while the author is in Edit.
+  const isEditable = usesBatchEdit
+    ? isEditSession
+    : renderMode === "legacy" || Boolean(conversation && isFrameAuthor);
+  // Preview↔Edit remounts for v2; legacy keeps a stable instance id like main.
+  const vizInstanceId = usesBatchEdit
+    ? `viz-${fileId}-${contentRevision}-${isEditable ? "edit" : "preview"}`
+    : `viz-${fileId}`;
 
-  // Legacy: publish on every blur. v2: stage location edits until Save (one publish).
   const handleEditText = useCallback<EditTextFn>(
     async (params) => {
       if (!usesBatchEdit) {
-        // Remount only after the whole burst settles, with a single revalidate. Per-edit
-        // mutate+remount races (and remounts mid-burst) drop rapid successive edits — main
-        // never remounted, so optimistic DOM stuck; we still remount for #10579 but once.
-        inFlightEditsRef.current += 1;
-        try {
-          const result = await editFrameText(params);
-          if (result.success) {
-            pendingRemountRef.current = true;
-          }
-          return result;
-        } finally {
-          inFlightEditsRef.current -= 1;
-          if (inFlightEditsRef.current === 0 && pendingRemountRef.current) {
-            pendingRemountRef.current = false;
-            void (async () => {
-              try {
-                await mutateFileContent();
-              } catch {
-                // Mutation already succeeded server-side; remount anyway.
-              }
-              if (inFlightEditsRef.current === 0) {
-                setContentRevision((revision) => revision + 1);
-              } else {
-                // A new edit started during revalidate; remount after that burst.
-                pendingRemountRef.current = true;
-              }
-            })();
+        // Legacy: publish on blur, revalidate content, no remount (same as main).
+        const result = await editFrameText(params);
+        if (result.success) {
+          try {
+            await mutateFileContent();
+          } catch {
+            // Mutation already succeeded. Keep the inline edit and let the next reload fetch
+            // the active publication rather than reporting a false save failure to the iframe.
           }
         }
+        return result;
       }
 
       // v2 batch: only location-based edits. Context-string edits are too brittle to stage.
@@ -309,8 +278,6 @@ export function FrameRenderer({
         };
       }
 
-      // Ignore further staging once Save has started (flush may still stage once).
-      // UI overlay also blocks interaction; this is a second line of defense.
       const key = params.source;
       const prev = pendingEditsRef.current;
       const existingIndex = prev.findIndex((edit) => edit.source === key);
@@ -402,7 +369,7 @@ export function FrameRenderer({
         return;
       }
 
-      if (!usesBatchEdit || !hasPendingEdits) {
+      if (!hasPendingEdits) {
         setEditModeState({ fileId, enabled: false });
         return;
       }
@@ -424,7 +391,7 @@ export function FrameRenderer({
       // Remount so optimistic DOM text is wiped and Preview shows the last published content.
       setContentRevision((revision) => revision + 1);
     },
-    [confirm, fileId, hasPendingEdits, usesBatchEdit]
+    [confirm, fileId, hasPendingEdits]
   );
 
   const restoreLayout = useCallback(() => {
@@ -460,8 +427,14 @@ export function FrameRenderer({
   const reloadFile = async () => {
     setIsLoading(true);
     try {
-      await mutateFileContent();
-      setContentRevision((revision) => revision + 1);
+      if (usesBatchEdit) {
+        await mutateFileContent();
+        setContentRevision((revision) => revision + 1);
+      } else {
+        await mutateFileContent(
+          `/api/w/${owner.sId}/files/${fileId}?action=view`
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -610,7 +583,8 @@ export function FrameRenderer({
             {hasFrameFunctions && <FrameBetaChip />}
           </div>
           <div className="flex min-w-0 items-center gap-1">
-            {isAuthor &&
+            {usesBatchEdit &&
+              isV2Author &&
               (canEnterEditMode ? (
                 <>
                   <MarkdownFilePreviewViewModeSwitch
@@ -621,7 +595,7 @@ export function FrameRenderer({
                       void handleViewModeChange(mode);
                     }}
                   />
-                  {usesBatchEdit && isEditSession && (
+                  {isEditSession && (
                     <Button
                       // Keep an icon so the control stays visible when the label is
                       // hidden on narrow headers (same pattern as Preview|Edit).
@@ -764,10 +738,11 @@ export function FrameRenderer({
                 frameId={renderMode === "v2" ? fileId : undefined}
                 isInDrawer={true}
                 isEditable={isEditable}
+                stagedEdits={usesBatchEdit && isEditable}
                 onEditText={isEditable ? handleEditText : undefined}
                 ref={iframeRef}
               />
-              {isSavingEdits && (
+              {usesBatchEdit && isSavingEdits && (
                 <div
                   className="absolute inset-0 z-10 cursor-wait"
                   aria-busy="true"

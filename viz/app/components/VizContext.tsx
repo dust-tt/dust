@@ -11,12 +11,18 @@ interface VizContextValue {
   editText: EditTextFn | null;
   /** Origin-validated parent→viz listener from VisualizationWrapper. */
   addEventListener: VisualizationUIAPI["addEventListener"] | null;
+  /**
+   * When true (Frames v2 Edit session), text activates on click and supports FLUSH_EDITABLES.
+   * When false (legacy), activation is double-click with immediate blur-save like main.
+   */
+  stagedEdits: boolean;
 }
 
 export const VizContext = createContext<VizContextValue>({
   isPdfMode: false,
   editText: null,
   addEventListener: null,
+  stagedEdits: false,
 });
 
 export function useVizContext(): VizContextValue {

@@ -204,7 +204,14 @@ it("offers fullscreen for a single slide and excludes the controls from PDF expo
   );
   expect(screen.getByRole("button", { name: "Enter fullscreen" })).toBeTruthy();
   rerender(
-    <VizContext.Provider value={{ isPdfMode: true, editText: null }}>
+    <VizContext.Provider
+      value={{
+        isPdfMode: true,
+        editText: null,
+        addEventListener: null,
+        stagedEdits: false,
+      }}
+    >
       <Slideshow className="pdf-deck">
         <Slide>First</Slide>
         <Slide>Last</Slide>
