@@ -3718,6 +3718,221 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10039,
+    name: "Gojiberry",
+    description:
+      "Gojiberry tools for signal-based B2B prospecting — search and reveal leads and companies, manage contacts, lists, lead-sourcing agents, and outreach campaigns, and work your LinkedIn inbox.",
+    url: "https://mcp.gojiberry.ai/mcp",
+    icon: "GojiberryLogo",
+    documentationUrl:
+      "https://help.gojiberry.ai/en/articles/14540015-using-the-gojiberry-mcp-server",
+    connectionInstructions:
+      "Gojiberry uses OAuth with dynamic client registration. You will be prompted to paste a Gojiberry API key, which you can create in the Gojiberry app under Settings > API. Revealing leads or companies and enriching emails or phone numbers consume Gojiberry credits.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      get_organization: "never_ask",
+      list_organization_members: "never_ask",
+      list_contacts: "never_ask",
+      get_contact: "never_ask",
+      get_intent_type_counts: "never_ask",
+      list_campaigns: "never_ask",
+      get_campaign: "never_ask",
+      get_campaign_logs: "never_ask",
+      list_email_seats: "never_ask",
+      list_lists: "never_ask",
+      get_list: "never_ask",
+      get_directory_industries: "never_ask",
+      search_leads: "never_ask",
+      search_companies: "never_ask",
+      list_agents: "never_ask",
+      get_agent: "never_ask",
+      get_agent_logs: "never_ask",
+      get_unibox_for_contact: "never_ask",
+      list_unibox_threads: "never_ask",
+      get_unibox_thread_messages: "never_ask",
+
+      create_contact: "low",
+      create_list: "low",
+      reject_contact: "low",
+      unreject_contact: "low",
+      pause_campaign: "low",
+
+      // Spends credits, starts or sends outreach, or overwrites data.
+      impersonate_user: "high",
+      update_contact: "high",
+      enrich_contact_email: "high",
+      enrich_contact_phone: "high",
+      reveal_leads: "high",
+      reveal_companies: "high",
+      add_contacts_to_list: "high",
+      remove_contacts_from_list: "high",
+      create_campaign: "high",
+      update_campaign: "high",
+      activate_campaign: "high",
+      create_agent: "high",
+      update_agent: "high",
+      send_unibox_message: "high",
+    },
+    toolDisplayLabels: {
+      get_organization: {
+        running: "Fetching organization from Gojiberry",
+        done: "Fetched organization from Gojiberry",
+      },
+      list_organization_members: {
+        running: "Listing organization members on Gojiberry",
+        done: "Listed organization members on Gojiberry",
+      },
+      impersonate_user: {
+        running: "Switching Gojiberry user",
+        done: "Switched Gojiberry user",
+      },
+      list_contacts: {
+        running: "Listing contacts on Gojiberry",
+        done: "Listed contacts on Gojiberry",
+      },
+      get_contact: {
+        running: "Fetching contact from Gojiberry",
+        done: "Fetched contact from Gojiberry",
+      },
+      create_contact: {
+        running: "Creating contact on Gojiberry",
+        done: "Created contact on Gojiberry",
+      },
+      update_contact: {
+        running: "Updating contact on Gojiberry",
+        done: "Updated contact on Gojiberry",
+      },
+      reject_contact: {
+        running: "Rejecting contact on Gojiberry",
+        done: "Rejected contact on Gojiberry",
+      },
+      unreject_contact: {
+        running: "Restoring contact on Gojiberry",
+        done: "Restored contact on Gojiberry",
+      },
+      enrich_contact_email: {
+        running: "Enriching contact email on Gojiberry",
+        done: "Started contact email enrichment on Gojiberry",
+      },
+      enrich_contact_phone: {
+        running: "Enriching contact phone on Gojiberry",
+        done: "Started contact phone enrichment on Gojiberry",
+      },
+      get_intent_type_counts: {
+        running: "Counting contacts by intent on Gojiberry",
+        done: "Counted contacts by intent on Gojiberry",
+      },
+      list_campaigns: {
+        running: "Listing campaigns on Gojiberry",
+        done: "Listed campaigns on Gojiberry",
+      },
+      get_campaign: {
+        running: "Fetching campaign from Gojiberry",
+        done: "Fetched campaign from Gojiberry",
+      },
+      create_campaign: {
+        running: "Creating campaign on Gojiberry",
+        done: "Created campaign on Gojiberry",
+      },
+      update_campaign: {
+        running: "Updating campaign on Gojiberry",
+        done: "Updated campaign on Gojiberry",
+      },
+      activate_campaign: {
+        running: "Activating campaign on Gojiberry",
+        done: "Activated campaign on Gojiberry",
+      },
+      pause_campaign: {
+        running: "Pausing campaign on Gojiberry",
+        done: "Paused campaign on Gojiberry",
+      },
+      get_campaign_logs: {
+        running: "Fetching campaign logs from Gojiberry",
+        done: "Fetched campaign logs from Gojiberry",
+      },
+      list_email_seats: {
+        running: "Listing email seats on Gojiberry",
+        done: "Listed email seats on Gojiberry",
+      },
+      list_lists: {
+        running: "Listing lists on Gojiberry",
+        done: "Listed lists on Gojiberry",
+      },
+      get_list: {
+        running: "Fetching list from Gojiberry",
+        done: "Fetched list from Gojiberry",
+      },
+      create_list: {
+        running: "Creating list on Gojiberry",
+        done: "Created list on Gojiberry",
+      },
+      add_contacts_to_list: {
+        running: "Adding contacts to list on Gojiberry",
+        done: "Added contacts to list on Gojiberry",
+      },
+      remove_contacts_from_list: {
+        running: "Removing contacts from list on Gojiberry",
+        done: "Removed contacts from list on Gojiberry",
+      },
+      get_directory_industries: {
+        running: "Fetching directory industries from Gojiberry",
+        done: "Fetched directory industries from Gojiberry",
+      },
+      search_leads: {
+        running: "Searching leads on Gojiberry",
+        done: "Searched leads on Gojiberry",
+      },
+      reveal_leads: {
+        running: "Revealing leads on Gojiberry",
+        done: "Revealed leads on Gojiberry",
+      },
+      search_companies: {
+        running: "Searching companies on Gojiberry",
+        done: "Searched companies on Gojiberry",
+      },
+      reveal_companies: {
+        running: "Revealing companies on Gojiberry",
+        done: "Revealed companies on Gojiberry",
+      },
+      list_agents: {
+        running: "Listing source agents on Gojiberry",
+        done: "Listed source agents on Gojiberry",
+      },
+      get_agent: {
+        running: "Fetching source agent from Gojiberry",
+        done: "Fetched source agent from Gojiberry",
+      },
+      create_agent: {
+        running: "Creating source agent on Gojiberry",
+        done: "Created source agent on Gojiberry",
+      },
+      update_agent: {
+        running: "Updating source agent on Gojiberry",
+        done: "Updated source agent on Gojiberry",
+      },
+      get_agent_logs: {
+        running: "Fetching source agent logs from Gojiberry",
+        done: "Fetched source agent logs from Gojiberry",
+      },
+      get_unibox_for_contact: {
+        running: "Fetching conversations from Gojiberry",
+        done: "Fetched conversations from Gojiberry",
+      },
+      list_unibox_threads: {
+        running: "Listing inbox threads on Gojiberry",
+        done: "Listed inbox threads on Gojiberry",
+      },
+      get_unibox_thread_messages: {
+        running: "Fetching thread messages from Gojiberry",
+        done: "Fetched thread messages from Gojiberry",
+      },
+      send_unibox_message: {
+        running: "Sending message on Gojiberry",
+        done: "Sent message on Gojiberry",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (
