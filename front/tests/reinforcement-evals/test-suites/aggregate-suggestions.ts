@@ -40,6 +40,7 @@ function makeInstructionSuggestion(input: {
     visibleSourceConversationIds: [],
     notificationConversationId: null,
     updatedBy: null,
+    batchId: null,
     kind: "edit",
     suggestion: {
       instructionEdits: input.instructionEdits.map((e) => ({
@@ -71,6 +72,7 @@ function makeAgentFacingDescriptionSuggestion(input: {
     visibleSourceConversationIds: [],
     notificationConversationId: null,
     updatedBy: null,
+    batchId: null,
     kind: "edit",
     suggestion: {
       agentFacingDescriptionEdit: { content: input.content },

@@ -225,6 +225,7 @@ const BaseAgentSuggestionSchema = z.object({
   state: z.enum(AGENT_SUGGESTION_STATES),
   source: z.enum(AGENT_SUGGESTION_SOURCES),
   conversationId: z.string().nullable(),
+  batchId: z.string().nullable(),
 });
 
 export const AgentSuggestionSchema = BaseAgentSuggestionSchema.and(
