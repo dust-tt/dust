@@ -37,11 +37,11 @@ import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_command
 import { runModel } from "@app/temporal/agent_loop/lib/run_model";
 import { getMaxActionsPerStep } from "@app/types/assistant/agent";
 import type {
+  AgentLoopArgs,
   AgentLoopArgsWithTiming,
   AgentLoopRuntimeData,
 } from "@app/types/assistant/agent_run";
 import { isAgentLoopDataSoftDeleteError } from "@app/types/assistant/agent_run";
-import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -278,14 +278,9 @@ async function _runModelAndCreateActionsActivity({
   const creditSpendCheckpointCrossed = await getCreditSpendCheckpointCrossed(
     auth,
     {
-      isRootAgentMessage,
-      userMessageOrigin: runAgentArgs.userMessageOrigin ?? null,
-      agentMessageId: runAgentArgs.agentMessageId,
-      agentMessageModelId: runAgentData.agentMessage.agentMessageId,
+      runAgentArgs,
+      runAgentData,
       totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
-      ignoreCreditSpendThresholdAlert:
-        runAgentData.agentConfiguration.ignoreCreditSpendThresholdAlert ??
-        false,
     }
   );
 
@@ -403,29 +398,28 @@ async function _runModelAndCreateActionsActivity({
  */
 /**
  * @cc [owner:avervaet,label:product] checkpoint-agent-override
- * An agent that ignores the credit spend threshold alert MUST never pause: its first crossing is
- * acknowledged once, like a disabled workspace gate.
+ * An agent that ignores the credit spend threshold alert MUST never pause: an unset or paused
+ * status is acknowledged once, like a disabled workspace gate.
  */
 export async function getCreditSpendCheckpointCrossed(
   auth: Authenticator,
   {
-    isRootAgentMessage,
-    userMessageOrigin,
-    agentMessageId,
-    agentMessageModelId,
+    runAgentArgs,
+    runAgentData,
     totalCostMicroUsd,
-    ignoreCreditSpendThresholdAlert,
   }: {
-    isRootAgentMessage: boolean;
-    userMessageOrigin: UserMessageOrigin | null;
-    agentMessageId: string;
-    agentMessageModelId: ModelId;
+    runAgentArgs: AgentLoopArgs;
+    runAgentData: AgentLoopRuntimeData;
     totalCostMicroUsd: number;
-    ignoreCreditSpendThresholdAlert: boolean;
   }
 ): Promise<boolean> {
+  const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
+  const agentMessageModelId = runAgentData.agentMessage.agentMessageId;
+  const ignoreCreditSpendThresholdAlert =
+    runAgentData.agentConfiguration.ignoreCreditSpendThresholdAlert ?? false;
+
   const isExempt = isExemptFromCreditSpendCheckpoint(auth, {
-    userMessageOrigin,
+    userMessageOrigin: runAgentArgs.userMessageOrigin ?? null,
   });
 
   if (
@@ -439,18 +433,26 @@ export async function getCreditSpendCheckpointCrossed(
   const status =
     await ConversationResource.fetchAgentMessageCreditSpendCheckpointStatus(
       auth,
-      { agentMessageId }
+      { agentMessageId: runAgentArgs.agentMessageId }
     );
 
-  // First step crossing the threshold for this message: the workspace's gate hasn't been
-  // consulted yet. An agent opted out of the pause, or a disabled gate, is persisted as
-  // acknowledged right away so every later step sees a resolved status and never re-reads the
-  // workspace setting.
+  // An agent opted out of the pause resolves any pending status, including one paused before
+  // the opt-out, so the loop never pauses again.
   if (
-    status === null &&
-    (ignoreCreditSpendThresholdAlert ||
-      !(await getCreditSpendCheckpointEnabled(auth)))
+    ignoreCreditSpendThresholdAlert &&
+    (status === null || status === "paused")
   ) {
+    await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
+      auth,
+      { agentMessageModelId, from: status, to: "acknowledged" }
+    );
+    return false;
+  }
+
+  // First step crossing the threshold for this message: the workspace's gate hasn't been
+  // consulted yet. A disabled gate is persisted as acknowledged right away so every later step
+  // sees a resolved status and never re-reads the workspace setting.
+  if (status === null && !(await getCreditSpendCheckpointEnabled(auth))) {
     await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
       auth,
       { agentMessageModelId, from: null, to: "acknowledged" }
