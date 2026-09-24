@@ -224,13 +224,13 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
    */
   /**
    * @cc [owner:frankaloia,label:security;product] pinned-items-auth-groups
-   * A caller only sees pins for groups in its authenticated group snapshot. Within each position,
-   * the workspace-global group's pin comes first.
+   * A caller only sees pins for its principal groups (`Authenticator.listPrincipalGroupModelIds`).
+   * Within each position, the workspace-global group's pin comes first.
    */
   static async listPinnedForAuth(
     auth: Authenticator
   ): Promise<ResolvedDiscoveryItem[]> {
-    const groupModelIds = auth.groupModelIds();
+    const groupModelIds = await auth.listPrincipalGroupModelIds();
     const [items, globalGroupModelId] = await Promise.all([
       this.baseFetch(auth, { groupModelIds }),
       auth.getGlobalGroupModelId(),
@@ -261,10 +261,11 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
 
   /**
    * @cc [owner:frankaloia,label:security] pinned-items-group-read
-   * A regular user can list pins for a group only when that group is in its authenticated group
-   * snapshot, and only for targets they can read. Workspace admins can list pins for any group in
-   * their workspace, including a pin whose target they cannot read, serialized from the light agent
-   * or redacted skill. Missing and inactive targets are omitted for both.
+   * A regular user can list pins for a group only when that group is one of its principal groups
+   * (`Authenticator.listPrincipalGroupModelIds`), and only for targets they can read. Workspace
+   * admins can list pins for any group in their workspace, including a pin whose target they cannot
+   * read, serialized from the light agent or redacted skill. Missing and inactive targets are omitted
+   * for both.
    */
   static async listPinnedForGroup(
     auth: Authenticator,
@@ -276,7 +277,10 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       transaction?: Transaction;
     }
   ): Promise<ResolvedDiscoveryItem[]> {
-    if (!auth.isAdmin() && !auth.groupModelIds().includes(groupModelId)) {
+    if (
+      !auth.isAdmin() &&
+      !(await auth.listPrincipalGroupModelIds()).includes(groupModelId)
+    ) {
       return [];
     }
 
