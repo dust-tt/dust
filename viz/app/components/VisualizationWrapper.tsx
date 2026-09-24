@@ -614,8 +614,8 @@ export function VisualizationWrapper({
   }, [addEventListener, handleScreenshotDownload, handleSVGDownload]);
 
   const vizContextValue = useMemo(
-    () => ({ isPdfMode, editText }),
-    [isPdfMode, editText]
+    () => ({ isPdfMode, editText, addEventListener }),
+    [addEventListener, editText, isPdfMode]
   );
 
   if (errored) {

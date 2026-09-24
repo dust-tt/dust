@@ -186,8 +186,8 @@ export function FrameRenderer({
   const [pendingEdits, setPendingEdits] = useState<Parameters<EditTextFn>[0][]>(
     []
   );
-  const pendingEditsRef = useRef(pendingEdits);
-  pendingEditsRef.current = pendingEdits;
+  // Source of truth for flush→Save; updated only from event handlers (not during render).
+  const pendingEditsRef = useRef<Parameters<EditTextFn>[0][]>([]);
   const [isSavingEdits, setIsSavingEdits] = useState(false);
   // Legacy concurrent blurs: defer remount until in-flight publishes settle.
   const inFlightEditsRef = useRef(0);
@@ -196,6 +196,7 @@ export function FrameRenderer({
     setEditModeState({ fileId, enabled: false });
     setContentRevision(0);
     setPendingEdits([]);
+    pendingEditsRef.current = [];
     setIsSavingEdits(false);
     inFlightEditsRef.current = 0;
     pendingRemountRef.current = false;
@@ -257,7 +258,10 @@ export function FrameRenderer({
     renderMode === "legacy"
       ? Boolean(conversation)
       : Boolean(conversation && isFrameAuthor);
-  const isEditable = isEditMode && canEnterEditMode;
+  // Keep the iframe on the edit remount key for the whole Edit session so flipping
+  // isSavingEdits does not reload the viz mid-publish.
+  const isEditSession = isEditMode && canEnterEditMode;
+  const isEditable = isEditSession;
   // Include edit mode so Preview↔Edit remounts and resets contentHeight (async-network-loading-state).
   const vizInstanceId = `viz-${fileId}-${contentRevision}-${isEditable ? "edit" : "preview"}`;
 
@@ -295,20 +299,21 @@ export function FrameRenderer({
         };
       }
 
-      setPendingEdits((prev) => {
-        const key = params.source!;
-        const existingIndex = prev.findIndex((edit) => edit.source === key);
-        const next =
-          existingIndex >= 0
-            ? prev.map((edit, index) =>
-                index === existingIndex
-                  ? { ...edit, newText: params.newText }
-                  : edit
-              )
-            : [...prev, params];
-        pendingEditsRef.current = next;
-        return next;
-      });
+      // Ignore further staging once Save has started (flush may still stage once).
+      // UI overlay also blocks interaction; this is a second line of defense.
+      const key = params.source;
+      const prev = pendingEditsRef.current;
+      const existingIndex = prev.findIndex((edit) => edit.source === key);
+      const next =
+        existingIndex >= 0
+          ? prev.map((edit, index) =>
+              index === existingIndex
+                ? { ...edit, newText: params.newText }
+                : edit
+            )
+          : [...prev, params];
+      pendingEditsRef.current = next;
+      setPendingEdits(next);
       return { success: true };
     },
     [editFrameText, mutateFileContent, usesBatchEdit]
@@ -354,14 +359,11 @@ export function FrameRenderer({
 
       const result = await batchEditFrameText(editsToSave);
       if (!result.success) {
-        sendNotification({
-          type: "error",
-          title: "Couldn't save edits",
-          description: result.error ?? "Please try again.",
-        });
+        // Failure toast is emitted by useBatchEditFrameText (network-operations-in-swr-hooks).
         return;
       }
 
+      pendingEditsRef.current = [];
       setPendingEdits([]);
       try {
         await mutateFileContent();
@@ -380,7 +382,6 @@ export function FrameRenderer({
     flushInProgressEditable,
     isSavingEdits,
     mutateFileContent,
-    sendNotification,
     usesBatchEdit,
   ]);
 
@@ -407,6 +408,7 @@ export function FrameRenderer({
         return;
       }
 
+      pendingEditsRef.current = [];
       setPendingEdits([]);
       setEditModeState({ fileId, enabled: false });
       // Remount so optimistic DOM text is wiped and Preview shows the last published content.
@@ -609,7 +611,7 @@ export function FrameRenderer({
                       void handleViewModeChange(mode);
                     }}
                   />
-                  {usesBatchEdit && isEditable && (
+                  {usesBatchEdit && isEditSession && (
                     <Button
                       // Keep an icon so the control stays visible when the label is
                       // hidden on narrow headers (same pattern as Preview|Edit).
@@ -624,7 +626,11 @@ export function FrameRenderer({
                       }}
                       aria-label="Save"
                       tooltip={
-                        hasPendingEdits ? "Save text edits" : "No unsaved edits"
+                        isSavingEdits
+                          ? "Publishing your changes..."
+                          : hasPendingEdits
+                            ? "Save text edits"
+                            : "No unsaved edits"
                       }
                     />
                   )}
@@ -728,28 +734,37 @@ export function FrameRenderer({
           />
         ) : (
           <div className="h-full">
-            <AuthenticatedVisualizationActionIframe
-              agentConfigurationId={
-                fileMetadata?.useCaseMetadata
-                  .lastEditedByAgentConfigurationId ?? ""
-              }
-              workspaceId={owner.sId}
-              vizUrl={vizUrl}
-              visualization={{
-                code: fileContent ?? "",
-                complete: true,
-                identifier: vizInstanceId,
-              }}
-              key={`${vizInstanceId}-${framePath ?? packageRoot ?? ""}`}
-              conversationId={conversation?.sId ?? null}
-              spaceId={frameSpaceId ?? undefined}
-              framePackageRoot={framePackageRoot}
-              frameId={renderMode === "v2" ? fileId : undefined}
-              isInDrawer={true}
-              isEditable={isEditable}
-              onEditText={isEditable ? handleEditText : undefined}
-              ref={iframeRef}
-            />
+            <div className="relative h-full">
+              <AuthenticatedVisualizationActionIframe
+                agentConfigurationId={
+                  fileMetadata?.useCaseMetadata
+                    .lastEditedByAgentConfigurationId ?? ""
+                }
+                workspaceId={owner.sId}
+                vizUrl={vizUrl}
+                visualization={{
+                  code: fileContent ?? "",
+                  complete: true,
+                  identifier: vizInstanceId,
+                }}
+                key={`${vizInstanceId}-${framePath ?? packageRoot ?? ""}`}
+                conversationId={conversation?.sId ?? null}
+                spaceId={frameSpaceId ?? undefined}
+                framePackageRoot={framePackageRoot}
+                frameId={renderMode === "v2" ? fileId : undefined}
+                isInDrawer={true}
+                isEditable={isEditable}
+                onEditText={isEditable ? handleEditText : undefined}
+                ref={iframeRef}
+              />
+              {isSavingEdits && (
+                <div
+                  className="absolute inset-0 z-10 cursor-wait"
+                  aria-busy="true"
+                  aria-label="Publishing your changes..."
+                />
+              )}
+            </div>
             {conversation && (
               <PreviewActionButtons
                 owner={owner}

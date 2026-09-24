@@ -13,10 +13,13 @@ afterEach(() => {
 
 function renderEditable(
   editText: ReturnType<typeof vi.fn>,
-  children: ReactNode
+  children: ReactNode,
+  addEventListener: ReturnType<typeof vi.fn> | null = null
 ) {
   return render(
-    <VizContext.Provider value={{ isPdfMode: false, editText }}>
+    <VizContext.Provider
+      value={{ isPdfMode: false, editText, addEventListener }}
+    >
       <EditableFrame>{children}</EditableFrame>
     </VizContext.Provider>
   );
@@ -99,5 +102,25 @@ describe("EditableFrame", () => {
         source: "index.tsx:2:1",
       });
     });
+  });
+
+  it("registers FLUSH_EDITABLES through the origin-validated listener", () => {
+    const editText = vi.fn().mockResolvedValue({ success: true });
+    const addEventListener = vi.fn(() => () => undefined);
+
+    renderEditable(
+      editText,
+      <span data-editable data-raw-text={encodeURIComponent("Hello")}>
+        Hello
+      </span>,
+      addEventListener
+    );
+
+    // Must not attach a raw window message listener; parent messages are filtered by origin
+    // in VisualizationWrapper before this handler runs (allowed-visualization-origins).
+    expect(addEventListener).toHaveBeenCalledWith(
+      "FLUSH_EDITABLES",
+      expect.any(Function)
+    );
   });
 });

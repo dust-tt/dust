@@ -461,6 +461,61 @@ describe("FrameRenderer", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("blocks interaction and shows publishing tooltip while Save is in flight", async () => {
+    let resolveBatch: (value: { success: true }) => void = () => undefined;
+    mocks.batchEditFrameText.mockImplementation(
+      () =>
+        new Promise<{ success: true }>((resolve) => {
+          resolveBatch = resolve;
+        })
+    );
+
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
+
+    const onEditText = mocks.iframe.mock.calls.at(-1)?.[0].onEditText;
+    if (!onEditText) {
+      throw new Error("Expected Frame v2 to be editable.");
+    }
+
+    await act(async () => {
+      await onEditText({
+        newText: "Done",
+        oldText: "Ready",
+        source: "index.tsx:1:42",
+      });
+    });
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    expect(saveButton).toBeDisabled();
+    expect(
+      screen.getByLabelText("Publishing your changes...")
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      resolveBatch({ success: true });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByLabelText("Publishing your changes...")
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("publishes legacy Frame edits immediately without a Save button", async () => {
     mocks.editFrameText.mockResolvedValue({ success: true });
     mocks.mutateFileContent.mockResolvedValue(

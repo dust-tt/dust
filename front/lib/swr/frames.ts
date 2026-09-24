@@ -99,6 +99,8 @@ export function useBatchEditFrameText({
 }): (
   edits: FrameTextEditParams[]
 ) => Promise<{ success: boolean; error?: string }> {
+  const sendNotification = useSendNotification();
+
   return useCallback(
     async (edits) => {
       if (edits.length === 0) {
@@ -118,18 +120,29 @@ export function useBatchEditFrameText({
         );
         if (!response.ok) {
           const errorData = await getErrorFromResponse(response);
+          sendNotification({
+            type: "error",
+            title: "Couldn't save edits",
+            description: errorData.message,
+          });
           return { success: false, error: errorData.message };
         }
 
         return { success: true };
       } catch (error) {
+        const message = normalizeAsInternalDustError(error).message;
+        sendNotification({
+          type: "error",
+          title: "Couldn't save edits",
+          description: message,
+        });
         return {
           success: false,
-          error: normalizeAsInternalDustError(error).message,
+          error: message,
         };
       }
     },
-    [conversationId, fileId, owner.sId]
+    [conversationId, fileId, owner.sId, sendNotification]
   );
 }
 

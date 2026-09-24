@@ -47,7 +47,7 @@ interface EditableFrameProps {
 }
 
 export function EditableFrame({ children }: EditableFrameProps) {
-  const { editText } = useVizContext();
+  const { editText, addEventListener } = useVizContext();
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const lastHoverPosRef = useRef<HoverState | null>(null);
   const hoveredSpanRef = useRef<HTMLElement | null>(null);
@@ -200,11 +200,12 @@ export function EditableFrame({ children }: EditableFrameProps) {
   );
 
   useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (event.data?.type !== "FLUSH_EDITABLES") {
-        return;
-      }
+    if (!addEventListener) {
+      return;
+    }
 
+    // Route through VisualizationWrapper's origin-checked listener (allowed-visualization-origins).
+    return addEventListener("FLUSH_EDITABLES", () => {
       void (async () => {
         const active = document.querySelector<HTMLElement>(
           `${EDITABLE_SELECTOR}[contenteditable="true"]`
@@ -219,11 +220,8 @@ export function EditableFrame({ children }: EditableFrameProps) {
         }
         window.parent.postMessage({ type: "FLUSH_EDITABLES_DONE" }, "*");
       })();
-    };
-
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [commitEditable]);
+    });
+  }, [addEventListener, commitEditable]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const target = (e.target as Element).closest<HTMLElement>(
