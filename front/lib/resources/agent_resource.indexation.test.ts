@@ -1,3 +1,4 @@
+import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import logger from "@app/logger/logger";
@@ -195,6 +196,76 @@ describe("resource-owned agent search indexation", () => {
 
     expect(result.isOk()).toBe(true);
     expect(launchIndexAgentSearchWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("indexes the agents a user merge reassigned or deduplicated", async () => {
+    const {
+      authenticator: auth,
+      user: primaryUser,
+      workspace,
+    } = await createResourceTest({ role: "admin" });
+    const secondaryUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, secondaryUser, {
+      role: "user",
+    });
+    const secondaryAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      secondaryUser.sId,
+      workspace.sId
+    );
+
+    const authoredAgent = await AgentConfigurationFactory.createTestAgent(
+      secondaryAuth,
+      { name: "Authored by the secondary user" }
+    );
+    const sharedFavorite = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      { name: "Favorited by both users" }
+    );
+    const secondaryFavorite = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      { name: "Favorited by the secondary user" }
+    );
+    const fetchAgent = async (agentId: string) => {
+      const resource = await AgentResource.fetchById(auth, agentId);
+      assert(resource !== null);
+      return resource;
+    };
+    for (const [favoriteAuth, agentId] of [
+      [auth, sharedFavorite.sId],
+      [secondaryAuth, sharedFavorite.sId],
+      [secondaryAuth, secondaryFavorite.sId],
+    ] as const) {
+      const resource = await fetchAgent(agentId);
+      expect((await resource.setUserFavorite(favoriteAuth, true)).isOk()).toBe(
+        true
+      );
+    }
+    vi.mocked(launchIndexAgentSearchWorkflow).mockClear();
+
+    const counts = await AgentResource.mergeUsers(auth, {
+      primaryUserModelId: primaryUser.id,
+      secondaryUserModelId: secondaryUser.id,
+    });
+
+    expect(counts).toEqual({
+      agentConfigurationsCount: 1,
+      agentUserRelationsCount: 1,
+    });
+    expect(
+      vi
+        .mocked(launchIndexAgentSearchWorkflow)
+        .mock.calls.map(([{ agentId }]) => agentId)
+        .sort()
+    ).toEqual([authoredAgent.sId, sharedFavorite.sId].sort());
+    expect((await fetchAgent(authoredAgent.sId)).versionAuthorId).toBe(
+      primaryUser.id
+    );
+    expect(
+      await (await fetchAgent(sharedFavorite.sId)).countFavorites(auth)
+    ).toBe(1);
+    expect(
+      await (await fetchAgent(secondaryFavorite.sId)).countFavorites(auth)
+    ).toBe(1);
   });
 
   it("does not enqueue workflows for an empty batch", async () => {

@@ -1454,6 +1454,87 @@ export class AgentResource
     return favoriteCountByAgentId;
   }
 
+  /**
+   * @cc [owner:tdraier,label:backend;performance] agent-user-merge-through-agent-domain
+   * A user identity merge MUST move the secondary user's agent authorship (`authorId` on every
+   * configuration version) and agent-user relations to the primary user through this method, so the
+   * cache invalidation of every reassigned agent and the search reindex of every reassigned agent
+   * and every agent whose duplicate relation was dropped stay owned by the agent domain. When both
+   * users hold a relation to the same agent, the primary's is kept and the secondary's is deleted.
+   * Callers MUST invoke it after migrating the secondary user's group memberships (which carry agent
+   * editor grants), so the reindex sees the final editors. Returns the number of configuration
+   * versions and relations transferred.
+   */
+  static async mergeUsers(
+    auth: Authenticator,
+    {
+      primaryUserModelId,
+      secondaryUserModelId,
+    }: {
+      primaryUserModelId: ModelId;
+      secondaryUserModelId: ModelId;
+    }
+  ): Promise<{
+    agentConfigurationsCount: number;
+    agentUserRelationsCount: number;
+  }> {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+
+    const [agentConfigurationsCount, reassignedConfigurations] =
+      await AgentConfigurationModel.update(
+        { authorId: primaryUserModelId },
+        {
+          where: {
+            authorId: secondaryUserModelId,
+            workspaceId: workspaceModelId,
+          },
+          returning: ["sId"],
+        }
+      );
+    const reassignedAgentIds = reassignedConfigurations.map(
+      (configuration) => configuration.sId
+    );
+    await invalidateAgentResourceCaches(workspaceModelId, reassignedAgentIds);
+
+    const primaryRelations = await AgentUserRelationModel.findAll({
+      attributes: ["agentConfiguration"],
+      where: { userId: primaryUserModelId, workspaceId: workspaceModelId },
+    });
+    const duplicateRelations = await AgentUserRelationModel.findAll({
+      attributes: ["agentConfiguration"],
+      where: {
+        userId: secondaryUserModelId,
+        workspaceId: workspaceModelId,
+        agentConfiguration: primaryRelations.map(
+          (relation) => relation.agentConfiguration
+        ),
+      },
+    });
+    const deduplicatedAgentIds = duplicateRelations.map(
+      (relation) => relation.agentConfiguration
+    );
+    await AgentUserRelationModel.destroy({
+      where: {
+        userId: secondaryUserModelId,
+        workspaceId: workspaceModelId,
+        agentConfiguration: deduplicatedAgentIds,
+      },
+    });
+    const [agentUserRelationsCount] = await AgentUserRelationModel.update(
+      { userId: primaryUserModelId },
+      { where: { userId: secondaryUserModelId, workspaceId: workspaceModelId } }
+    );
+
+    // The indexed `last_edited_by_user_id` follows the version author and `favorite_count` drops
+    // with a deleted duplicate favorite.
+    await AgentResource.launchSearchIndexation(auth, [
+      ...reassignedAgentIds,
+      ...deduplicatedAgentIds,
+    ]);
+
+    return { agentConfigurationsCount, agentUserRelationsCount };
+  }
+
   // Applies the same partial change to a batch of agents by running each through `updateConfiguration`,
   // so every rule holds per agent: per-property permissions, the version-or-in-place routing, the
   // no-op skip, and the scope/editor in-place writes with their audit and trigger side effects.
