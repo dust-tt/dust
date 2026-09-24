@@ -191,6 +191,38 @@ describe("purgeStaleFramePublications", () => {
     expect(await functionRowCount(auth, frame, stale)).toBe(1);
   });
 
+  it("keeps only the stale publications that still have invocations", async () => {
+    const { active, auth, frame, listPublications } = await setupFrame();
+    const withRuns = await storeTestFramePublication(auth, frame, {
+      publishedDaysAgo: 30,
+    });
+    const withoutRuns = await storeTestFramePublication(auth, frame, {
+      publishedDaysAgo: 30,
+    });
+    const [sandboxFunction] =
+      await SandboxFunctionResource.listByFramePublication(auth, {
+        frame,
+        publicationId: withRuns,
+      });
+    await SandboxFunctionInvocationResource.makeNew(auth, {
+      sandboxFunction,
+      input: { message: "hello" },
+    });
+    listPublications([withRuns, withoutRuns]);
+
+    const result = await purgeStaleFramePublications(auth, {
+      frame,
+      retentionMs: RETENTION_MS,
+    });
+
+    expect(result.deletedPublicationCount).toBe(1);
+    expect(await functionRowCount(auth, frame, withRuns)).toBe(1);
+    expect(await functionRowCount(auth, frame, withoutRuns)).toBe(0);
+    expect((await publicationRowIds(frame)).sort()).toEqual(
+      [active, withRuns].sort()
+    );
+  });
+
   it("keeps the active publication however old it is", async () => {
     const { active, auth, frame, listPublications } = await setupFrame({
       activePublishedDaysAgo: 365,

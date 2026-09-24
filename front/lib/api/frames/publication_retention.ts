@@ -3,7 +3,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
-import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -66,12 +65,15 @@ export async function purgeStaleFramePublications(
   );
 
   const storage = getPrivateUploadBucket();
-  const publicationIds = await storage.listSubdirectoryNames({
-    prefix: getFramePublicationsBasePath({
-      workspaceId: owner.sId,
-      frameId: frame.sId,
+  const [publicationIds, publicationIdsWithInvocations] = await Promise.all([
+    storage.listSubdirectoryNames({
+      prefix: getFramePublicationsBasePath({
+        workspaceId: owner.sId,
+        frameId: frame.sId,
+      }),
     }),
-  });
+    SandboxFunctionResource.listFramePublicationIdsWithInvocations(auth, frame),
+  ]);
 
   const activePublicationId = frame.useCaseMetadata?.activePublicationId;
   const cutoffDate = new Date(Date.now() - retentionMs);
@@ -95,14 +97,9 @@ export async function purgeStaleFramePublications(
         return { outcome: "unreadable" };
       }
 
-      // The indexed DB check comes before the GCS descriptor read: a superseded publication whose
-      // runs are still on record is kept on every daily run until its invocations expire.
-      const invocationCount =
-        await SandboxFunctionInvocationResource.countForFramePublication(auth, {
-          frame,
-          publicationId,
-        });
-      if (invocationCount > 0) {
+      // Checked before the GCS descriptor read: a superseded publication whose runs are still on
+      // record is kept on every daily run until its invocations expire.
+      if (publicationIdsWithInvocations.has(publicationId)) {
         return { outcome: "kept" };
       }
 
