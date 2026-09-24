@@ -4,6 +4,7 @@ import {
   deleteAgentDocument,
   deleteWorkspaceAgentDocuments,
   indexAgentDocument,
+  updateAgentSearchActiveUsers,
 } from "@app/lib/agent_search";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
@@ -274,15 +275,24 @@ export async function listWorkspaceIdsActivity(): Promise<string[]> {
     .map((workspace) => workspace.sId);
 }
 
+/**
+ * @cc [owner:sfriquet,label:backend;product] search-usage-refresh-coverage
+ * Sets `active_users_count` on the existing search document of every indexed skill and agent of
+ * the workspace (see `searchable-skill-index-projection` and `searchable-agent-index-projection`),
+ * including those the internal admin cannot read. A skill or agent with no usage in the window
+ * MUST be reset to 0. A skill or agent without a search document MUST be skipped, never created.
+ * Any other usage fetch or update failure MUST be thrown so Temporal retries.
+ */
 export async function refreshWorkspaceSearchUsageActivity({
   workspaceId,
 }: {
   workspaceId: string;
 }): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const evaluatedAtMs = Date.now();
   const activeUsers = await fetchSearchActiveUsers(auth, {
     dimension: "skill",
-    evaluatedAtMs: Date.now(),
+    evaluatedAtMs,
   });
   if (activeUsers.isErr()) {
     throw activeUsers.error;
@@ -302,5 +312,24 @@ export async function refreshWorkspaceSearchUsageActivity({
   });
   if (updated.isErr()) {
     throw updated.error;
+  }
+
+  const agentActiveUsers = await fetchSearchActiveUsers(auth, {
+    dimension: "agent",
+    evaluatedAtMs,
+  });
+  if (agentActiveUsers.isErr()) {
+    throw agentActiveUsers.error;
+  }
+  const agents = await AgentResource.listByWorkspace(auth, {
+    status: ["active", "archived"],
+  });
+  const agentsUpdated = await updateAgentSearchActiveUsers({
+    workspaceId,
+    agentIds: agents.map((agent) => agent.sId),
+    activeUsers: agentActiveUsers.value,
+  });
+  if (agentsUpdated.isErr()) {
+    throw agentsUpdated.error;
   }
 }
