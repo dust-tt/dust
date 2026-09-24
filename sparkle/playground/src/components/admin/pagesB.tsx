@@ -34,6 +34,8 @@ import {
   API_KEYS,
   ATTRIBUTION,
   GROUPS,
+  MEMBERS,
+  type Member,
   PROVIDERS,
   SECRETS,
   TRIGGERS,
@@ -215,8 +217,11 @@ export function AnalyticsPage() {
 
 // ── 7. Models ─────────────────────────────────────────────────────────────────
 
+const tierColor = (tier: string) => (tier === "Frontier" ? "highlight" : tier === "Advanced" ? "info" : "primary") as "highlight" | "info" | "primary";
+
 export function ModelsPage() {
   const [providers, setProviders] = useState(PROVIDERS);
+  const [tierTab, setTierTab] = useState("members");
   const toggle = (id: string) =>
     setProviders((ps) => ps.map((p) => (p.id === id ? { ...p, enabledForAgents: !p.enabledForAgents } : p)));
   const all = providers.every((p) => p.enabledForAgents);
@@ -261,17 +266,58 @@ export function ModelsPage() {
             <SelectRow title="Workspace access" description="Set the highest model tier available to all members of this workspace." options={["Standard", "Advanced", "Frontier"]} defaultValue="Frontier" />
             <ToggleRow title="Published agents" description="Allow all members to run published agents even when the agent's model tier is above their own access." defaultOn />
           </AdminSection>
-          <AdminSection icon={Brain} title="Groups" description="Model tier granted to each group. The highest tier wins when a member belongs to several groups." plain>
-            <SimpleTable
+          <Tabs value={tierTab} onValueChange={setTierTab}>
+            <TabsList>
+              <TabsTrigger value="members" label="Members" />
+              <TabsTrigger value="groups" label="Groups" />
+            </TabsList>
+            <TabsContent value="members" className="pt-4">
+              <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <SearchInput name="tier-members" value="" onChange={() => {}} placeholder="Search members" className="flex-1" />
+                <Button size="sm" variant="outline" isSelect label="All groups" />
+                <Button size="sm" variant="outline" isSelect label="All tiers" />
+              </div>
+              <SimpleTable<Member>
+                rows={MEMBERS}
+                cols={[
+                  { key: "select", header: "", className: "w-10", render: () => <Checkbox /> },
+                  {
+                    key: "name",
+                    header: "Name",
+                    render: (m) => (
+                      <div className="flex items-center gap-2">
+                        <Avatar size="xs" name={m.name} isRounded />
+                        <div className="flex min-w-0 flex-col">
+                          <span className="truncate font-medium">{m.name}</span>
+                          <span className="copy-xs truncate text-muted-foreground">{m.email}</span>
+                        </div>
+                      </div>
+                    ),
+                  },
+                  { key: "groups", header: "Groups", render: (m) => <span className="truncate text-muted-foreground">{m.groups.length ? m.groups.join(", ") : "—"}</span> },
+                  { key: "seat", header: "Seat", className: "w-24", render: (m) => <span>{m.seat}</span> },
+                  { key: "tier", header: "Models tier", className: "w-36", render: (m) => <Status label={m.tier} color={tierColor(m.tier)} /> },
+                  { key: "source", header: "Source", className: "w-36", render: (m) => <span className="copy-xs text-muted-foreground">{m.groups.length ? "Limit from a group" : "Workspace default"}</span> },
+                  { key: "edit", header: "", className: "w-24", align: "right", render: () => <Button size="xs" variant="ghost" label="Change" /> },
+                ]}
+              />
+              <span className="copy-xs px-1 text-muted-foreground">Showing 1-25 of 136 items</span>
+            </div>
+            </TabsContent>
+            <TabsContent value="groups" className="flex flex-col gap-3 pt-4">
+              <SimpleTable
               rows={GROUPS.filter((g) => g.tier !== "—")}
               cols={[
                 { key: "name", header: "Group", render: (g) => <span className="font-medium">{g.name}</span> },
                 { key: "members", header: "Members", className: "w-28", align: "right", render: (g) => <span className="tabular-nums">{g.members}</span> },
-                { key: "tier", header: "Models tier", className: "w-40", render: (g) => <Status label={g.tier} color={g.tier === "Frontier" ? "highlight" : "primary"} /> },
+                { key: "tier", header: "Models tier", className: "w-40", render: (g) => <Status label={g.tier} color={tierColor(g.tier)} /> },
                 { key: "edit", header: "", className: "w-24", align: "right", render: () => <Button size="xs" variant="ghost" label="Change" /> },
               ]}
-            />
-          </AdminSection>
+              />
+              <p className="copy-xs px-1 text-muted-foreground">Model tier granted to each group. The highest tier wins when a member belongs to several groups.</p>
+            </TabsContent>
+          </Tabs>
         </AdminTab>
 
         <AdminTab value="apps" label="App Credentials">

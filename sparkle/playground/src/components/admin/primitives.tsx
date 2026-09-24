@@ -4,7 +4,6 @@ import {
   ButtonsSwitchList,
   Card,
   Chip,
-  Icon,
   Page,
   Plus,
   SliderToggle,
@@ -117,13 +116,14 @@ export function AdminTabs({
 
 /** A titled block on an admin page; the border card holds divided rows or free content. */
 export function AdminSection({
-  icon,
+  icon: _icon,
   title,
   description,
   action,
   children,
   plain,
 }: {
+  /** Accepted for call-site compatibility; section headings render without an icon. */
   icon?: ComponentType<{ className?: string }>;
   title: string;
   description?: string;
@@ -139,10 +139,7 @@ export function AdminSection({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-0.5">
-          <div className="flex items-center gap-2">
-            {icon && <Icon visual={icon} className="text-muted-foreground" />}
-            <Page.H variant="h5">{title}</Page.H>
-          </div>
+          <Page.H variant="h5">{title}</Page.H>
           {description && (
             <Page.P variant="secondary" size="sm">
               {description}

@@ -9,24 +9,25 @@ export type Member = {
   seatUsage: number | null;
   poolUsed: number;
   poolLimit: number;
+  tier: "Standard" | "Advanced" | "Frontier";
 };
 
 export const MEMBERS: Member[] = [
-  { id: "1", name: "Dev Dust", email: "dev@dust.tt", role: "Member", status: "Active (Invited)", groups: [], seat: "Pro", seatUsage: 100, poolUsed: 137208, poolLimit: 300000 },
-  { id: "2", name: "thomas+newtest4 d", email: "thomas+newtest4@dust.tt", role: "Member", status: "Active (Invited)", groups: [], seat: "Pro", seatUsage: 12, poolUsed: 2100, poolLimit: 300000 },
-  { id: "3", name: "Édouard Perso Wautier", email: "edouardwautier@gmail.com", role: "Member", status: "Active (Invited)", groups: [], seat: "Platform", seatUsage: null, poolUsed: 112473, poolLimit: 300000 },
-  { id: "4", name: "Accounts Dust", email: "accounts@dust.tt", role: "Member", status: "Active (Auto-joined)", groups: [], seat: "Pro", seatUsage: 3, poolUsed: 400, poolLimit: 300000 },
-  { id: "5", name: "Nelson Wang", email: "nelson-ext@dust.tt", role: "Member", status: "Active (Auto-joined)", groups: [], seat: "Platform", seatUsage: null, poolUsed: 91204, poolLimit: 300000 },
-  { id: "6", name: "Plamédie Bola", email: "plamedie-ext@dust.tt", role: "Member", status: "Active (Auto-joined)", groups: [], seat: "Platform", seatUsage: null, poolUsed: 84879, poolLimit: 300000 },
-  { id: "7", name: "Sophie Bergeret", email: "sophie-ext@dust.tt", role: "Member", status: "Active (Provisioned)", groups: ["Team"], seat: "Pro", seatUsage: 55, poolUsed: 116130, poolLimit: 300000 },
-  { id: "8", name: "Gaëtan Gachet", email: "gaetan@dust.tt", role: "Member", status: "Active (Auto-joined)", groups: [], seat: "Max", seatUsage: 100, poolUsed: 568400, poolLimit: 1500000 },
-  { id: "9", name: "Ru Chikwenengere", email: "ru.chikwenengere-ext@dust.tt", role: "Member", status: "Active (Auto-joined)", groups: [], seat: "Platform", seatUsage: null, poolUsed: 65742, poolLimit: 300000 },
-  { id: "10", name: "Stanislas Polu", email: "spolu@dust.tt", role: "Admin", status: "Active (Provisioned)", groups: ["Dev", "Team", "Team-France", "Admin-US", "Admin", "Engineering-Mdm"], seat: "Max", seatUsage: 100, poolUsed: 341416, poolLimit: 1500000 },
-  { id: "11", name: "Nhat Phung Blanchard", email: "nhat.pb@dust.tt", role: "Member", status: "Active (Provisioned)", groups: ["Sales", "Team-France", "Team-Gtm"], seat: "Platform", seatUsage: null, poolUsed: 263823, poolLimit: 300000 },
-  { id: "12", name: "Ellen Woodcock", email: "ellen.woodcock@dust.tt", role: "Manager", status: "Active (Provisioned)", groups: ["Team", "Team-Us", "Team-Gtm", "Team-Sf", "Area-Leads"], seat: "Platform", seatUsage: null, poolUsed: 228033, poolLimit: 500000 },
-  { id: "13", name: "Ulysse Levallois", email: "ulysse@dust.tt", role: "Member", status: "Active (Provisioned)", groups: ["Dev", "Team", "Team-France", "Support-Mdm", "Billing-Mdm"], seat: "Platform", seatUsage: null, poolUsed: 104104, poolLimit: 350000 },
-  { id: "14", name: "Flavien David", email: "flavien@dust.tt", role: "Admin", status: "Active (Provisioned)", groups: ["Dev", "Team", "Team-France", "Support", "Engineering-Mdm", "Eng-Tenured"], seat: "Max", seatUsage: 100, poolUsed: 152529, poolLimit: 1500000 },
-  { id: "15", name: "Sheena Badani", email: "sheena-ext@dust.tt", role: "Member", status: "Unregistered (Provisioned)", groups: ["Contractors-Dust-Mdm"], seat: "Pro", seatUsage: 0, poolUsed: 0, poolLimit: 300000 },
+  { id: "1", name: "Dev Dust", email: "dev@dust.tt", role: "Member", status: "Active (Invited)", groups: [], seat: "Pro", seatUsage: 100, poolUsed: 137208, poolLimit: 300000, tier: "Advanced" },
+  { id: "2", name: "thomas+newtest4 d", email: "thomas+newtest4@dust.tt", role: "Member", status: "Active (Invited)", groups: [], seat: "Pro", seatUsage: 12, poolUsed: 2100, poolLimit: 300000, tier: "Advanced" },
+  { id: "3", name: "Édouard Perso Wautier", email: "edouardwautier@gmail.com", role: "Member", status: "Active (Invited)", groups: [], seat: "Platform", seatUsage: null, poolUsed: 112473, poolLimit: 300000, tier: "Standard" },
+  { id: "4", name: "Accounts Dust", email: "accounts@dust.tt", role: "Member", status: "Active (Auto-joined)", groups: [], seat: "Pro", seatUsage: 3, poolUsed: 400, poolLimit: 300000, tier: "Advanced" },
+  { id: "5", name: "Nelson Wang", email: "nelson-ext@dust.tt", role: "Member", status: "Active (Auto-joined)", groups: [], seat: "Platform", seatUsage: null, poolUsed: 91204, poolLimit: 300000, tier: "Standard" },
+  { id: "6", name: "Plamédie Bola", email: "plamedie-ext@dust.tt", role: "Member", status: "Active (Auto-joined)", groups: [], seat: "Platform", seatUsage: null, poolUsed: 84879, poolLimit: 300000, tier: "Standard" },
+  { id: "7", name: "Sophie Bergeret", email: "sophie-ext@dust.tt", role: "Member", status: "Active (Provisioned)", groups: ["Team"], seat: "Pro", seatUsage: 55, poolUsed: 116130, poolLimit: 300000, tier: "Advanced" },
+  { id: "8", name: "Gaëtan Gachet", email: "gaetan@dust.tt", role: "Member", status: "Active (Auto-joined)", groups: [], seat: "Max", seatUsage: 100, poolUsed: 568400, poolLimit: 1500000, tier: "Frontier" },
+  { id: "9", name: "Ru Chikwenengere", email: "ru.chikwenengere-ext@dust.tt", role: "Member", status: "Active (Auto-joined)", groups: [], seat: "Platform", seatUsage: null, poolUsed: 65742, poolLimit: 300000, tier: "Standard" },
+  { id: "10", name: "Stanislas Polu", email: "spolu@dust.tt", role: "Admin", status: "Active (Provisioned)", groups: ["Dev", "Team", "Team-France", "Admin-US", "Admin", "Engineering-Mdm"], seat: "Max", seatUsage: 100, poolUsed: 341416, poolLimit: 1500000, tier: "Frontier" },
+  { id: "11", name: "Nhat Phung Blanchard", email: "nhat.pb@dust.tt", role: "Member", status: "Active (Provisioned)", groups: ["Sales", "Team-France", "Team-Gtm"], seat: "Platform", seatUsage: null, poolUsed: 263823, poolLimit: 300000, tier: "Advanced" },
+  { id: "12", name: "Ellen Woodcock", email: "ellen.woodcock@dust.tt", role: "Manager", status: "Active (Provisioned)", groups: ["Team", "Team-Us", "Team-Gtm", "Team-Sf", "Area-Leads"], seat: "Platform", seatUsage: null, poolUsed: 228033, poolLimit: 500000, tier: "Advanced" },
+  { id: "13", name: "Ulysse Levallois", email: "ulysse@dust.tt", role: "Member", status: "Active (Provisioned)", groups: ["Dev", "Team", "Team-France", "Support-Mdm", "Billing-Mdm"], seat: "Platform", seatUsage: null, poolUsed: 104104, poolLimit: 350000, tier: "Standard" },
+  { id: "14", name: "Flavien David", email: "flavien@dust.tt", role: "Admin", status: "Active (Provisioned)", groups: ["Dev", "Team", "Team-France", "Support", "Engineering-Mdm", "Eng-Tenured"], seat: "Max", seatUsage: 100, poolUsed: 152529, poolLimit: 1500000, tier: "Frontier" },
+  { id: "15", name: "Sheena Badani", email: "sheena-ext@dust.tt", role: "Member", status: "Unregistered (Provisioned)", groups: ["Contractors-Dust-Mdm"], seat: "Pro", seatUsage: 0, poolUsed: 0, poolLimit: 300000, tier: "Advanced" },
 ];
 
 export type Group = {
