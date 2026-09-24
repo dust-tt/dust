@@ -34,6 +34,8 @@ export const GRANT_VERBS = [
   "use",
   "make_discoverable",
   "use_workspace_pool",
+  "read_usage",
+  "set_usage_limits",
 ] as const;
 export type GrantVerb = (typeof GRANT_VERBS)[number];
 
@@ -50,6 +52,7 @@ export const GRANT_TYPES = [
   "use",
   "make_discoverable",
   "use_workspace_pool",
+  "group_manager",
   "*",
 ] as const;
 export type GrantType = (typeof GRANT_TYPES)[number];
@@ -75,6 +78,7 @@ export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "models_tier",
   "dust_app",
   "trigger",
+  "group",
   "*",
 ] as const;
 export type GroupPermissionResourceType =
@@ -159,6 +163,7 @@ export function emptyWorkspacePermissions(): WorkspacePermissions {
     models_tier: [],
     dust_app: [],
     trigger: [],
+    group: [],
   };
 }
 

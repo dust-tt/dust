@@ -101,10 +101,14 @@ export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
  * @cc [owner:philipperolet,label:security;product] group-verbs
  * The verbs a caller holds on a group mean:
  * - `read`: seeing the group and its membership.
- * - `write`: renaming a `regular_manual` group and adding or removing its members.
- * - `admin`: deleting a `regular_manual` group.
- * `global` and `provisioned` groups are read-only. `regular_auto` and `system`
- * groups hold no verbs and MUST only be used by paths with a separate authorization context.
+ * - `write`: adding or removing members of a `regular_manual` group, subject to the
+ *   admin-granting membership guard.
+ * - `admin`: renaming or deleting a `regular_manual` group.
+ * - `read_usage`: viewing usage of active members of this group.
+ * - `set_usage_limits`: editing this group's allowance or an active member's personal limit.
+ * `provisioned` groups can grant usage verbs but never `write` or `admin`.
+ * `global` groups grant only `read`. `regular_auto` and `system` groups hold no verbs and MUST
+ * only be used by paths with a separate authorization context.
  */
 export class GroupResource extends BaseResource<GroupModel> {
   static model: ModelStatic<GroupModel> = GroupModel;
@@ -2451,10 +2455,11 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   /**
    * The ACLs a caller has to satisfy to hold a verb on this group, by kind:
-   * - regular_manual: read, write and admin for admins and managers, read for everyone else.
-   * - global, provisioned: read for every workspace member, and nothing else — their
-   *   membership is not editable in app. Global membership is implicit, and provisioned
-   *   membership comes from directory sync.
+   * - regular_manual: read, write, admin and usage verbs for workspace admins and managers;
+   *   read for everyone else; instance grants add the group manager's verbs.
+   * - provisioned: read and usage verbs for workspace admins and managers; read for everyone
+   *   else; instance grants add only read and usage verbs. Membership belongs to directory sync.
+   * - global: read for every workspace member. Membership is implicit.
    * - regular_auto: nothing. These groups only carry the membership of the resource
    *   they are linked to, so the permission is checked on that resource and never on the
    *   group itself.
@@ -2464,8 +2469,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
    * will NOT have it
    *
-   * @returns The verbs the caller holds on this group. Group access is role-only (no governance
-   * grants), so the set is the caller's role rules for the group's kind.
+   * @returns The verbs the caller holds on this group from workspace role and governance grants.
    */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     let roleGrants: RoleGrant[];
@@ -2473,16 +2477,46 @@ export class GroupResource extends BaseResource<GroupModel> {
       // regular_manual: admins and managers manage the group; everyone can read.
       case "regular_manual":
         roleGrants = [
-          { role: "admin", permissions: ["read", "write", "admin"] },
-          { role: "manager", permissions: ["read", "write", "admin"] },
+          {
+            role: "admin",
+            permissions: [
+              "read",
+              "write",
+              "admin",
+              "read_usage",
+              "set_usage_limits",
+            ],
+          },
+          {
+            role: "manager",
+            permissions: [
+              "read",
+              "write",
+              "admin",
+              "read_usage",
+              "set_usage_limits",
+            ],
+          },
           { role: "user", permissions: ["read"] },
         ];
         break;
       case "global":
-      case "provisioned":
         roleGrants = [
           { role: "admin", permissions: ["read"] },
           { role: "manager", permissions: ["read"] },
+          { role: "user", permissions: ["read"] },
+        ];
+        break;
+      case "provisioned":
+        roleGrants = [
+          {
+            role: "admin",
+            permissions: ["read", "read_usage", "set_usage_limits"],
+          },
+          {
+            role: "manager",
+            permissions: ["read", "read_usage", "set_usage_limits"],
+          },
           { role: "user", permissions: ["read"] },
         ];
         break;
@@ -2496,8 +2530,22 @@ export class GroupResource extends BaseResource<GroupModel> {
         assertNever(this.kind);
     }
 
-    // Group access is role-only (no governance grants).
-    return new Set(verbsFromRoleGrants(auth, roleGrants, this.workspaceId));
+    const verbs = new Set(
+      verbsFromRoleGrants(auth, roleGrants, this.workspaceId)
+    );
+    const isManual = this.isRegularManual();
+    if (isManual || this.isProvisioned()) {
+      for (const verb of auth.getGovernanceGrantVerbs(
+        "group",
+        this.id,
+        this.workspaceId
+      )) {
+        if (isManual || (verb !== "write" && verb !== "admin")) {
+          verbs.add(verb);
+        }
+      }
+    }
+    return verbs;
   }
 
   isSystem(): boolean {
