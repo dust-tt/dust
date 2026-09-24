@@ -614,10 +614,7 @@ export async function postUserMessage(
 
   // Auto-inject @dust for mention-less web/extension messages in single-user conversations.
   // Must run before the plan rate-limit check so the resulting agent message is counted.
-  // Inject into the mentions side-channel only — do not prepend into content. The single-agent
-  // composer already invokes agents via selectedSingleAgent without writing @Agent into the
-  // message body; rewriting content here made the first message inconsistently show a visible
-  // agent name whenever the client raced and sent empty mentions.
+  // Inject into the mentions side-channel only, do not prepend into content.
   // Note: the per-pod default agent is applied client-side via the input bar sticky mention,
   // so the normal pod flow sends an explicit mention and never reaches this backstop.
   if (
