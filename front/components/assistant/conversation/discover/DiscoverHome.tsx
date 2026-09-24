@@ -128,10 +128,7 @@ export function DiscoverHome({
     isSkillsWithRelationsLoading;
   const isCatalogRefreshing = isAgentsLoading && !isCatalogLoading;
 
-  const featured = useMemo(
-    () => resolve(featuredItems),
-    [featuredItems, resolve]
-  );
+  const featured = resolve(featuredItems);
   const forYou = useMemo(
     () => resolve(forYouItems).slice(0, SECTION_ITEM_COUNT),
     [forYouItems, resolve]
