@@ -30,8 +30,10 @@ This assignment lets group managers:
 - Handle usage-limit requests from the group's current members.
 - Add existing workspace members to a managed manual group, or remove them from it.
 
-It does not change the person's workspace role or group membership. Workspace managers and admins
-keep their existing workspace-wide access.
+The assignment itself does not change the person's workspace role or group membership. Managing
+membership includes granting or removing the group's access, workspace roles, and seats, including
+for oneself. The assignment UI states this explicitly. Workspace managers and admins keep their
+existing workspace-wide access.
 
 For example, Alice can manage Support while remaining an ordinary workspace member. She can add an
 existing colleague to the manual Support group and adjust a Support member's allowance. She cannot
@@ -48,9 +50,10 @@ Group managers get access to the existing **People** page, with a restricted vie
 - **Add members:** search existing active workspace members, including people outside the managed
   groups. Results show only the identity information needed to select someone, not their usage.
 
-Workspace invitations, role changes, seat changes, group creation/deletion, and appointing group
-managers keep their existing workspace-level authorization. Group membership can itself grant access
-or seats; the restrictions on those effects are described in the Annex.
+Direct role and seat changes, workspace invitations, group creation/deletion, and appointing group
+managers keep their existing workspace-level authorization. Group managers can change membership of
+any manual group they manage, including groups granting admin/manager roles, billing/security access,
+or paid seats. They cannot directly change what the group grants. The tradeoff is described in the Annex.
 
 ### Reuse the Usage page
 
@@ -148,7 +151,7 @@ for the verb required by the action:
 | Set or clear a personal limit | Workspace manager/admin, or `set_usage_limits` on a group containing that active member. |
 | Set or clear a group allowance | Workspace manager/admin, or `set_usage_limits` on that group. |
 | List, approve, or deny a usage-limit request | Workspace manager/admin, or `set_usage_limits` on a group containing the active requester. |
-| Add/remove a group member | `write` on the target manual group, plus the membership restrictions described below. |
+| Add/remove a group member | `write` on the target manual group; for an admin-granting group, workspace admin authority or an explicit membership delegation on that group. |
 
 Check workspace ownership, current delegation, and active membership on the server. A submitted group
 or user ID is never evidence of authority. Use existing cache invalidation when assignments change;
@@ -175,8 +178,16 @@ update so two managers cannot resolve the same request twice.
 
 For membership mutations, reuse `updateRegularManualGroupMembers` and the existing group/member
 routes. Authorize the target group, not whether a new member already belongs to it. Keep active
-workspace membership, last-member protection, role/seat synchronization, and cache invalidation.
-Add the proposed privileged-group checks from the Annex before either additions or removals.
+workspace membership, last-member protection, self-lockout safeguards, role/seat synchronization, and
+cache invalidation. Allow membership edits regardless of the group's granted roles, permissions, or
+seats, including adding oneself.
+
+Update the admin-group membership guard and the role-sync guard together: an explicit delegation on
+an admin-granting group authorizes the resulting admin promotions and demotions. A workspace manager
+without that delegation keeps the existing restriction. Carry the authorized group context into role
+sync; editing an unrelated group must not authorize changes to someone's admin role. Direct role
+assignment and changes to what a group grants retain their existing checks. Update the corresponding
+security contracts and both membership-edit paths.
 
 Bulk usage endpoints remain workspace-manager/admin-only. Their workers also pass through the shared
 mutation checks, using current authority when they execute.
@@ -192,6 +203,9 @@ group managers, reusing the member/group tables and limit inputs. Do the same in
 [MembersPage](../../../front/components/pages/workspace/MembersPage.tsx) for People. Keep workspace-only
 data hooks and actions in the workspace views so group managers do not fetch hidden sections.
 Use the auth-context scope and group permissions to populate filters, navigation, and edit controls.
+Replace the admin-only read-only state in group dialogs with the actual membership authorization.
+Explain in the manager picker and membership editor that membership carries the group's access,
+roles, and seats.
 
 Pass explicit edit permissions to the personal-limit modal. Each group field needs its own check:
 authority over a member does not grant authority over every group that member belongs to. Server
@@ -213,9 +227,11 @@ delegated access is unavailable while existing workspace-manager/admin access co
 
 Focused tests cover allowed and denied reads/writes across two groups, an overlapping member,
 assignment or membership removal, filtered counts, and existing workspace-manager/admin access. Also
-cover adding someone outside the current group, rejecting provisioned or privileged membership edits,
-and handling requests after membership changes or another manager's resolution. Enable the feature
-gradually as these flows are validated.
+cover adding someone outside the current group, delegated changes in groups granting roles,
+billing/security access, or seats, and self-addition. Reject provisioned membership edits and
+admin-group edits by workspace managers without a delegation. Verify that role sync cannot change
+admin roles through an unrelated group, and that requests respect membership changes and prior
+resolution. Enable the feature gradually as these flows are validated.
 
 ## Annex
 
@@ -233,22 +249,33 @@ gradually as these flows are validated.
 **Membership changes carry the group's existing grants.** Adding someone may give them access to
 spaces and governance capabilities, as well as the group's usage allowance. It also extends the
 group manager's usage authority to that person. Removing them removes group-derived access, but
-grants from other groups still apply.
+grants from other groups still apply. A group merely containing admins does not make new members
+admins: the group must itself grant that role.
 
-**Privileged memberships need a boundary.** Proposed rule for this work: the new role does not allow
-membership edits in groups that grant workspace roles, billing/security capabilities, or seats.
-Those edits require the existing workspace-level authority. Preserve the admin-only rule for groups
-granting the admin role. Confirm this boundary before implementation; otherwise membership delegation
-also delegates those privileges and can change subscription costs.
+**Managing membership means deciding who receives the group's privileges.** This is an explicit
+choice: the same delegation applies to ordinary groups and groups granting workspace roles,
+billing/security access, or paid seats. It gives admins one consistent way to delegate who receives
+that access, without separate approval for each membership change.
+
+This is broad authority. A manager of an admin-granting group can add themselves and become a
+workspace admin; a manager of a seat-granting group can cause subscription costs. Membership removals
+can also withdraw critical access. Delegate only to people trusted to grant and receive everything
+the group grants. The assignment UI makes this consequence clear. If the group's grants expand
+later, its managers' authority expands with them. This role does not suit someone trusted only to
+handle usage requests or maintain a roster while privileged access stays centrally controlled.
 
 **Personal limits have shared ownership.** If someone belongs to Support and Sales, either team's
 group manager can edit the same personal limit, including a limit previously set by an admin. The
 last successful edit applies. There is no additional financial ceiling for group managers beyond
 existing validation. They can also edit their own limit if they belong to a group they manage.
 
-**Revocation stops future actions.** Removing an assignment or removing a member from a managed group
-prevents future delegated edits through that group. It does not undo prior personal-limit changes.
-A member's usage view covers their existing cycle usage, not just consumption since joining the team.
+**Revocation removes delegation, not its consequences.** Removing an assignment or removing a member
+from a managed group removes the corresponding delegated authority. It does not undo prior membership
+or limit changes, or access granted through them. Someone who added themselves to an admin-granting
+group can retain workspace-wide authority after their group-manager assignment is revoked; removing
+that authority requires a separate membership/access change. Existing self-lockout safeguards and
+grants from other groups also affect removal. A member's usage view covers their existing cycle usage,
+not just consumption since joining the team.
 
 **Group changes may not change a member's effective limit.** A personal override or a higher allowance
 from another group can still take precedence. Show the effective limit and its source after saving.

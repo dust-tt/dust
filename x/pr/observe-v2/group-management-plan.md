@@ -3,19 +3,6 @@
 This plan implements the [group manager design](group-management.md): scoped People and Usage pages,
 manual-group membership editing, limit editing, and usage-request handling.
 
-The PRs below are proposed units of work, not existing pull requests. Each can merge after its stated
-dependencies. Line counts are approximate changed lines, including focused tests. Aim for at most
-300 lines per PR; if an existing component needs a larger extraction, split that extraction into a
-behavior-preserving PR before adding the feature.
-
-Every PR must compile and preserve current workspace-manager/admin behavior. Introduce the feature
-flag first and keep it off while the pieces land. Authorization, relevant audit events, and focused
-tests belong with each operation, rather than in a final hardening PR.
-
-Before opening delegated membership writes, settle the design's proposed restriction on groups that
-grant workspace roles, billing/security capabilities, or seats. The Usage and request streams can
-proceed independently of that decision.
-
 | Stream | Outcome | Can start after |
 | --- | --- | --- |
 | 1. Permissions and assignments | Store group managers, resolve their authority, and let admins appoint them. | Now |
@@ -32,6 +19,8 @@ Add the group-scoped role and its verbs to the existing permission system, with 
 defaults to off. Teach groups to combine these grants with existing workspace-role permissions.
 This establishes the meaning of the role without making new user-facing entry points available.
 
+[[do we need the feature flag here? i'd wager we need it only on api calls & UX, can you check that? in that case, in order to make the code simpler we could limit the feature flag ifs to api calls and ux, wdyt?]]
+
 - Reuse `read` and `write`; add `read_usage` and `set_usage_limits` without changing existing verb bits.
 - Provisioned groups never gain editable membership; the role does not grant rename/delete authority.
 
@@ -44,12 +33,14 @@ who is authorized. This depends on PR 1.
 - Handle workspace managers/admins, all-group grants, empty scopes, and overlapping memberships.
 - Check the target member's workspace and current group membership; the caller need not be in that group.
 
-#### PR 3 — Protect membership changes with privileged effects (150–250 lines)
+#### PR 3 — Authorize group-derived workspace role changes (150–250 lines)
 
-Implement the agreed boundary for membership changes that would grant roles, billing/security access,
-or seats. Apply it to both membership-edit paths before enabling them for group managers. Ordinary
-workspace managers/admins retain their existing rules, including the admin-only restriction on
-admin-granting groups. This depends on PRs 1–2 and the product decision above.
+Update the membership guard and role synchronization to honor explicit delegation on an admin-granting
+group. Adding or removing members, including oneself, must apply the group's role using the existing
+synchronization rules. This depends on PRs 1–2.
+
+- Carry the authorized group context into role sync; editing an unrelated group cannot authorize admin-role changes.
+- Workspace managers without that delegation keep their existing restrictions. Preserve self-lockout safeguards and update the security contracts.
 
 #### PR 4 — Clean up assignments when groups disappear (80–180 lines)
 
@@ -78,8 +69,9 @@ endpoint. Server-side checks still authorize every action. This depends on PRs 1
 #### PR 7 — Add the admin manager picker (150–250 lines)
 
 Add the Group managers field to the existing manual and provisioned group dialogs. Show current
-assignments and let workspace admins update them through the API. This depends on PRs 5–6 and stays
-behind the feature flag; it does not open group management to delegates by itself.
+assignments and let workspace admins update them through the API. State that managing manual-group
+membership includes granting its access, roles, and seats, including to oneself. This depends on
+PRs 5–6 and stays behind the feature flag; it does not open group management to delegates by itself.
 
 ## Stream 2: Usage and requests
 
@@ -168,11 +160,12 @@ PR 2.
 
 #### PR 17 — Open authorized membership mutations (180–300 lines)
 
-Allow group managers to add and remove members of eligible manual groups through the existing
-group-edit and member-group APIs. Check `write` on the target group and the privileged-membership
-rules in the shared mutation path. This depends on PRs 2–3.
+Allow group managers to add and remove members through the existing group-edit and member-group APIs,
+including for manual groups granting workspace roles, billing/security access, or seats. Check the
+target group's membership authorization in the shared mutation path. This depends on PRs 2–3.
 
 - Preserve active workspace membership, last-member protection, existing role/seat synchronization, and audit events.
+- Cover self-addition and the resulting roles, permission access, and seat changes; reject edits outside the delegated scope.
 - Provisioned groups remain directory-owned; membership authority does not permit renaming or deleting a group.
 
 ### 3B. Open the People experience
@@ -180,8 +173,9 @@ rules in the shared mutation path. This depends on PRs 2–3.
 #### PR 18 — Make group membership controls permission-aware (150–250 lines)
 
 Adapt the existing group dialogs and member actions to expose only allowed membership edits. Use the
-workspace member picker for additions, and explain read-only provisioned or restricted groups.
-Keep manager assignments admin-only. This depends on PRs 6–7 and 16–17.
+workspace member picker for additions, and explain read-only provisioned groups. Replace the blanket
+admin-group read-only state with membership authorization, and explain that membership carries the
+group's access, roles, and seats. Keep manager assignments admin-only. This depends on PRs 6–7 and 16–17.
 
 #### PR 19 — Open the restricted People page (150–250 lines)
 
@@ -189,8 +183,8 @@ Allow group managers into the People route and navigation entry, showing managed
 members. Reuse the existing lists and the controls from PR 18; refresh affected lists and scope after
 membership changes. This completes the membership-management path and depends on PRs 6 and 16–18.
 
-- Keep workspace invitations, removals, roles, seats, and group creation/deletion under existing permissions.
-- Test a revoked assignment against an already-open page: the server rejects the edit and the view refreshes its access.
+- Keep workspace invitations/removals, direct role/seat changes, changes to group grants, and group creation/deletion under existing permissions.
+- Test revocation on an already-open page: reject edits when delegation was the only authority, refresh access, and retain access independently granted by workspace roles or other groups.
 
 ## Merge order and rollout
 
