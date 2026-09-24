@@ -5,6 +5,11 @@ import { REASONING_EFFORT_LABELS } from "@app/types/assistant/models/reasoning";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { SliderSteps } from "@dust-tt/sparkle";
 
+// The picker is too narrow to label more stops than this: beyond it, only the
+// ends and the selected stop are labelled, and every other stop names itself in
+// its step tooltip.
+const MAX_LABELLED_STOPS = 3;
+
 interface ReasoningEffortSliderProps {
   stops: EffortStop[];
   value: ReasoningEffort;
@@ -40,6 +45,7 @@ export function ReasoningEffortSlider({
   );
   // With a single (or no) selectable level there is nothing to slide.
   const isDisabled = availableStops.length <= 1;
+  const labelsEveryStop = stops.length <= MAX_LABELLED_STOPS;
 
   const selectStop = (stop: EffortStop) => {
     if (
@@ -64,7 +70,11 @@ export function ReasoningEffortSlider({
         lockedSteps={lockedSteps}
         unavailableSteps={unavailableSteps}
         disabled={isDisabled}
-        stepTooltips={stops.map(getEffortStopTooltip)}
+        stepTooltips={stops.map(
+          (stop) =>
+            getEffortStopTooltip(stop) ??
+            (labelsEveryStop ? null : REASONING_EFFORT_LABELS[stop.effort])
+        )}
         onChange={(index) => {
           const next = stops[index];
           if (next) {
@@ -78,6 +88,14 @@ export function ReasoningEffortSlider({
         {stops.map((stop, index) => {
           const isFirst = index === 0;
           const isLast = index === stops.length - 1;
+          if (
+            !labelsEveryStop &&
+            !isFirst &&
+            !isLast &&
+            stop.effort !== value
+          ) {
+            return null;
+          }
           const buttonDisabled =
             stop.unavailabilityReason !== null || isDisabled;
           return (
