@@ -1,4 +1,3 @@
-import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import logger from "@app/logger/logger";
@@ -120,10 +119,10 @@ describe("resource-owned agent search indexation", () => {
     const space = await SpaceFactory.regular(workspace);
     vi.mocked(launchIndexAgentSearchWorkflow).mockClear();
 
-    const result = await updateAgentRequirements(
+    const result = await AgentResource.updateRequestedSpaceIdsInPlace(
       auth,
       {
-        agentModelId: resource.agentConfigurationModelId,
+        agentConfigurationModelId: resource.agentConfigurationModelId,
         newSpaceIds: [space.id],
       },
       {}
