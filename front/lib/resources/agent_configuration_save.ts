@@ -283,8 +283,6 @@ export async function writeAgentConfigurationRow({
     requestedSpaceIds,
     responseFormat: model.responseFormat,
     reinforcement: reinforcement ?? existingAgent?.reinforcement ?? "auto",
-    // The column mirrors the workspace-level setting: NULL means the checkpoint is off for the
-    // agent. An omitted bypass keeps the previous version's value.
     creditSpendCheckpointThresholdAwuCredits:
       ignoreCreditSpendThresholdAlert === undefined
         ? existingAgent
