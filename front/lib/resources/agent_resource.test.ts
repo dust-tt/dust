@@ -1917,6 +1917,39 @@ describe("AgentResource", () => {
       expect(sIds).toEqual(expect.arrayContaining([first.sId, second.sId]));
     });
 
+    it("listByWorkspace filters on the requested statuses, scoped to the workspace", async () => {
+      const { agent: active } = await buildAgentInState({
+        scope: "visible",
+        status: "active",
+        name: "Active agent",
+      });
+      const { agent: archived } = await buildAgentInState({
+        scope: "visible",
+        status: "archived",
+        name: "Archived agent",
+      });
+      await buildAgentInState({
+        scope: "visible",
+        status: "draft",
+        name: "Draft agent",
+      });
+      const other = await createResourceTest({ role: "admin" });
+      await AgentConfigurationFactory.createTestAgent(other.authenticator);
+
+      const activeAgents = await AgentResource.listByWorkspace(
+        testContext.authenticator
+      );
+      const agents = await AgentResource.listByWorkspace(
+        testContext.authenticator,
+        { status: ["active", "archived"] }
+      );
+
+      expect(activeAgents.map((agent) => agent.sId)).toEqual([active.sId]);
+      expect(agents.map((agent) => agent.sId).toSorted()).toEqual(
+        [active.sId, archived.sId].toSorted()
+      );
+    });
+
     it("listByAuthor returns agents the user authored, not others'", async () => {
       const mine = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,

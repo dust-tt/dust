@@ -226,6 +226,13 @@ async function mockViewerGroups(
   return groups;
 }
 
+// The Redis client is shared with resource caches, so only count group pool reads.
+function groupPoolReads() {
+  return redis.mGet.mock.calls.filter(([keys]) =>
+    keys.some((key) => key.startsWith("discovery-for-you-group-pool:"))
+  );
+}
+
 describe("discovery for-you candidates", () => {
   beforeEach(() => {
     search.mockReset();
@@ -501,7 +508,7 @@ describe("discovery for-you candidates", () => {
         hasAggregation(options, "group_pools")
       )
     ).toHaveLength(1);
-    expect(redis.mGet).toHaveBeenCalledTimes(4);
+    expect(groupPoolReads()).toHaveLength(4);
     expect(
       redis.set.mock.calls.filter(([key]) => !key.startsWith("lock:"))
     ).toHaveLength(2);
@@ -531,7 +538,7 @@ describe("discovery for-you candidates", () => {
 
     expect(result).toEqual(new Ok(null));
     expect(search).toHaveBeenCalledTimes(1);
-    expect(redis.mGet).toHaveBeenCalledTimes(1);
+    expect(groupPoolReads()).toHaveLength(1);
   });
 
   it("uses total group adoption without subtracting the viewer", async () => {
@@ -631,7 +638,7 @@ describe("discovery for-you candidates", () => {
 
     expect(result).toEqual(new Ok([]));
     expect(search).not.toHaveBeenCalled();
-    expect(redis.mGet).not.toHaveBeenCalled();
+    expect(groupPoolReads()).toHaveLength(0);
   });
 
   it("treats an invalid cached group pool as a cache miss", async () => {

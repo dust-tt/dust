@@ -799,10 +799,14 @@ export class AgentResource
     return resource ?? null;
   }
 
-  // Every active agent of the authed workspace, filtered to what the caller can fetch.
-  static async listByWorkspace(auth: Authenticator): Promise<AgentResource[]> {
+  // Every agent of the authed workspace whose current status is in `status` (active by default),
+  // filtered to what the caller can fetch.
+  static async listByWorkspace(
+    auth: Authenticator,
+    { status = "active" }: { status?: AgentStatus | AgentStatus[] } = {}
+  ): Promise<AgentResource[]> {
     const agentIds = await this.listCurrentVersionAgentIds(auth, {
-      agentWhere: { status: "active" },
+      agentWhere: { status },
     });
     return this.fetchByIds(auth, agentIds);
   }

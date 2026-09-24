@@ -40,6 +40,7 @@ export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME =
 export const SUGGEST_SKILL_NAME_TOOL_NAME = "suggest_skill_name" as const;
 export const SUGGEST_SKILL_AVAILABILITY_TOOL_NAME =
   "suggest_skill_availability" as const;
+export const SUGGEST_TOOL_NAME = "suggest" as const;
 
 // Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
 // should target the instructions root block instead.
@@ -366,6 +367,207 @@ export type SuggestSkillAvailabilityArgs = z.infer<
   typeof SUGGEST_SKILL_AVAILABILITY_INPUT_SCHEMA
 >;
 
+export const CreateAgentSuggestionSchema = z.object({
+  kind: z.literal("create_agent"),
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("Unique, human-readable agent name (no leading '@')."),
+  description: z
+    .string()
+    .trim()
+    .min(1)
+    .describe(
+      "Short description of what the agent does, shown to users browsing agents."
+    ),
+  instructions: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("The agent's instructions, as HTML."),
+});
+
+export type CreateAgentSuggestion = z.infer<typeof CreateAgentSuggestionSchema>;
+
+export const CreateSkillSuggestionSchema = z.object({
+  kind: z.literal("create_skill"),
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(SKILL_NAME_MAX_LENGTH)
+    .describe(
+      `Unique skill name, at most ${SKILL_NAME_MAX_LENGTH} characters.`
+    ),
+  userFacingDescription: z
+    .string()
+    .min(1)
+    .max(USER_FACING_DESCRIPTION_MAX_LENGTH)
+    .describe(
+      "The short text members read when browsing skills, at most " +
+        `${USER_FACING_DESCRIPTION_MAX_LENGTH} characters.`
+    ),
+  agentFacingDescription: z
+    .string()
+    .min(1)
+    .max(AGENT_FACING_DESCRIPTION_MAX_LENGTH)
+    .describe(
+      "The description agents read to decide when to use the skill, at most " +
+        `${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters.`
+    ),
+  instructions: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("The skill's instructions, as HTML."),
+});
+
+export type CreateSkillSuggestion = z.infer<typeof CreateSkillSuggestionSchema>;
+
+export const EditAgentSuggestionSchema = z.object({
+  kind: z.literal("edit_agent"),
+  agentId: z.string().describe("The id of the agent to edit."),
+  name: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("The new name, without a leading '@'."),
+  description: z.string().min(1).optional().describe("The new description."),
+  instructionEdits: z
+    .array(SkillInstructionEditItemSchema)
+    .max(MAX_INSTRUCTION_EDITS)
+    .optional()
+    .describe(
+      "Block-targeted edits to the agent's instructions. Each item targets one block by its " +
+        `data-block-id (at most ${MAX_INSTRUCTION_EDITS} edits). Use ` +
+        `"${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" as targetBlockId for a full rewrite.`
+    ),
+  modelId: ModelIdSchema.optional().describe(
+    "The id of the new model for the agent."
+  ),
+  reasoningEffort: z
+    .enum(ORDERED_REASONING_EFFORTS)
+    .optional()
+    .describe(
+      "The reasoning effort to use with the model, if the model supports more than one."
+    ),
+  scope: z
+    .enum(["hidden", "visible"])
+    .optional()
+    .describe(
+      "The new publish state: 'visible' to publish the agent (visible to the " +
+        "whole workspace), 'hidden' to unpublish it (visible to editors only)."
+    ),
+});
+
+export type EditAgentSuggestion = z.infer<typeof EditAgentSuggestionSchema>;
+
+export const EditSkillSuggestionSchema = z.object({
+  kind: z.literal("edit_skill"),
+  skillId: z.string().describe("The id of the custom skill to edit."),
+  name: z
+    .string()
+    .min(1)
+    .max(SKILL_NAME_MAX_LENGTH)
+    .optional()
+    .describe(
+      `The new name, at most ${SKILL_NAME_MAX_LENGTH} characters. It must be unique among ` +
+        "the workspace's active skills."
+    ),
+  userFacingDescription: z
+    .string()
+    .min(1)
+    .max(USER_FACING_DESCRIPTION_MAX_LENGTH)
+    .optional()
+    .describe(
+      "The full new user-facing description (replaces the current one), at most " +
+        `${USER_FACING_DESCRIPTION_MAX_LENGTH} characters.`
+    ),
+  agentFacingDescription: z
+    .string()
+    .min(1)
+    .max(AGENT_FACING_DESCRIPTION_MAX_LENGTH)
+    .optional()
+    .describe(
+      "The full new agent-facing description (replaces the current one), at most " +
+        `${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters.`
+    ),
+  instructionEdits: z
+    .array(SkillInstructionEditItemSchema)
+    .max(MAX_INSTRUCTION_EDITS)
+    .optional()
+    .describe(
+      "Block-targeted edits to the skill instructions. Each item targets one block by its " +
+        `data-block-id (at most ${MAX_INSTRUCTION_EDITS} edits). Use ` +
+        `"${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" as targetBlockId for a full rewrite.`
+    ),
+  availability: z
+    .enum(SKILL_AVAILABILITIES)
+    .optional()
+    .describe(
+      "Who the skill will be available to: `editors` (unpublished, editors only), " +
+        "`workspace_users` (every member can find and use it), or `users_and_agents` " +
+        "(members and agents, which may pick it on their own)."
+    ),
+  addEditorUserIds: z
+    .array(z.string())
+    .optional()
+    .describe("Ids of the workspace members to add as editors of the skill."),
+  removeEditorUserIds: z
+    .array(z.string())
+    .optional()
+    .describe("Ids of the current editors to remove from the skill."),
+});
+
+export type EditSkillSuggestion = z.infer<typeof EditSkillSuggestionSchema>;
+
+export const DeleteAgentSuggestionSchema = z.object({
+  kind: z.literal("delete_agent"),
+  agentId: z.string().describe("The id of the agent to delete."),
+});
+
+export type DeleteAgentSuggestion = z.infer<typeof DeleteAgentSuggestionSchema>;
+
+export const DeleteSkillSuggestionSchema = z.object({
+  kind: z.literal("delete_skill"),
+  skillId: z.string().describe("The id of the custom skill to delete."),
+});
+
+export type DeleteSkillSuggestion = z.infer<typeof DeleteSkillSuggestionSchema>;
+
+export const SuggestionSchema = z.discriminatedUnion("kind", [
+  CreateAgentSuggestionSchema,
+  CreateSkillSuggestionSchema,
+  EditAgentSuggestionSchema,
+  EditSkillSuggestionSchema,
+  DeleteAgentSuggestionSchema,
+  DeleteSkillSuggestionSchema,
+]);
+
+export type Suggestion = z.infer<typeof SuggestionSchema>;
+
+export const SUGGEST_DESCRIPTION =
+  "Suggest one or more changes to the agents and skills of this workspace: create, edit, or " +
+  "delete agents and skills. The changes are not applied directly: they are recorded as " +
+  "pending suggestions that editors can review, accept, or reject.";
+
+export const SUGGEST_INPUT_SCHEMA = z.object({
+  title: z
+    .string()
+    .max(25)
+    .describe(
+      "A short, action-oriented user-facing title for these suggestions (at most 25 characters)."
+    ),
+  analysis: z.string().describe("Why these changes are needed."),
+  suggestions: z
+    .array(SuggestionSchema)
+    .min(1)
+    .describe("The changes to suggest, discriminated by `kind`."),
+});
+
+export type SuggestArgs = z.infer<typeof SUGGEST_INPUT_SCHEMA>;
+
 export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
     name: DESCRIBE_SKILL_TOOL_NAME,
@@ -570,6 +772,18 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting skill availability",
       done: "Suggest skill availability",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_TOOL_NAME,
+    description: SUGGEST_DESCRIPTION,
+    schema: SUGGEST_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting changes",
+      done: "Suggest changes",
     },
     toolCostCategory: "basic",
     freeUsage: true,
