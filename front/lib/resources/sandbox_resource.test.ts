@@ -1501,6 +1501,82 @@ describe("SandboxResource.ensureActive", () => {
     });
   });
 
+  describe("when the registered image has moved on", () => {
+    beforeEach(() => {
+      const createConfig = {
+        imageId: { imageName: "test-image", tag: "0.0.1" },
+        envVars: {},
+        network: { egress: "restricted" },
+        resources: { cpu: 1, memoryMB: 512 },
+      };
+      mockGetSandboxImage.mockReturnValue(
+        new Ok({
+          imageId: createConfig.imageId,
+          toCreateConfig: () => createConfig,
+        })
+      );
+    });
+
+    it("recreates a sleeping sandbox on the current image instead of waking it", async () => {
+      const sleeping = await SandboxFactory.create(authenticator, conversation, {
+        status: "sleeping",
+        baseImage: "test-image",
+        version: "0.0.0-old",
+      });
+
+      const result = await ConversationSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        conversation
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(mockProviderWake).not.toHaveBeenCalled();
+      expect(mockProviderDestroy).toHaveBeenCalledWith(sleeping.providerId, {
+        workspaceId: authenticator.getNonNullableWorkspace().sId,
+      });
+      const persisted = await ConversationSandboxAdapter.fetchSandbox(
+        authenticator,
+        conversation
+      );
+      expect(persisted?.version).toBe("0.0.1");
+      expect(persisted?.providerId).toBe("provider-id");
+    });
+
+    it("wakes a sleeping sandbox already on the current image", async () => {
+      await SandboxFactory.create(authenticator, conversation, {
+        status: "sleeping",
+        baseImage: "test-image",
+        version: "0.0.1",
+      });
+
+      const result = await ConversationSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        conversation
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(mockProviderWake).toHaveBeenCalled();
+      expect(mockProviderDestroy).not.toHaveBeenCalled();
+    });
+
+    it("keeps a running sandbox on an outdated image", async () => {
+      await SandboxFactory.create(authenticator, conversation, {
+        status: "running",
+        baseImage: "test-image",
+        version: "0.0.0-old",
+      });
+
+      const result = await ConversationSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        conversation
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(mockProviderDestroy).not.toHaveBeenCalled();
+      expect(mockProviderCreate).not.toHaveBeenCalled();
+    });
+  });
+
   it("destroys and recreates when killRequestedAt is set on the existing row", async () => {
     const stale = await SandboxFactory.create(authenticator, conversation, {
       status: "running",
