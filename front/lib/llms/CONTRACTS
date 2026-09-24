@@ -3,3 +3,10 @@ A model config introduced to replace another must expose the same `supportedReas
 `defaultReasoningEffort` and `configParsers` as the model it replaces, or ship a migration
 rewriting `agent_configurations.reasoningEffort` for the agents it takes over: repointing
 `agent_configurations.modelId` alone must never change the effort an existing agent runs at.
+
+@cc [owner:pmilliotte,label:product] effort-sent-as-selected
+A Dust endpoint must send the provider the reasoning effort it was given: `configParsers` must not
+rewrite `reasoning.effort`. Two exceptions: `disableReasoningWhenForcingTool` turns reasoning off when
+the provider rejects a forced tool call with thinking on, and `dropReasoning` omits the field for
+models whose only supported effort is `none`. An effort the provider does not accept is
+marked unsupported in the model's `supportedReasoningEfforts` instead of being remapped to another.
