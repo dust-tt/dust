@@ -14,9 +14,18 @@ const EDITABLE_SELECTOR = "[data-editable]";
 const FORM_CONTROL_SELECTOR = "button, input, select, textarea";
 const LINK_SELECTOR = "a[href]";
 
-/** Set on controls we disabled for Edit mode (restore by clearing disabled). */
+/**
+ * Controls with no editable label: we set disabled so they cannot activate.
+ * Restore by clearing disabled.
+ */
 const ATTR_WE_DISABLED = "data-frame-edit-disabled";
-/** Set on controls that were already disabled (leave disabled; only clear the marker). */
+/**
+ * Controls that contain an editable label: HTML `disabled` swallows all clicks (including
+ * on the label). We clear disabled (remembering prior state), mark the control, and block
+ * activation via capture + pointer-events instead.
+ */
+const ATTR_LABEL_EDIT = "data-frame-edit-label";
+/** Prior disabled=true on a label-edit control; restore disabled when leaving Edit. */
 const ATTR_WAS_DISABLED = "data-frame-edit-was-disabled";
 /** Stores the original href on anchors while Edit mode strips navigation. */
 const ATTR_SAVED_HREF = "data-frame-edit-href";
@@ -44,12 +53,12 @@ const FAILED_CLS = [
   "outline-red-500/70",
 ];
 
-// Keep [data-editable] clickable inside disabled buttons (browsers otherwise eat the click).
+// Label-edit controls stay enabled (so clicks reach the span) but chrome is non-interactive;
+// [data-editable] opts back into hit-testing.
 const EDIT_MODE_ROOT_CLS = "frame-edit-mode";
 const EDIT_MODE_POINTER_CLS = [
-  // Controls we gated: ignore hits on the chrome; children with data-editable opt back in.
   "[&_[data-frame-edit-disabled]]:pointer-events-none",
-  "[&_[data-frame-edit-was-disabled]]:pointer-events-none",
+  "[&_[data-frame-edit-label]]:pointer-events-none",
   "[&_a[data-frame-edit-href]]:pointer-events-none",
   "[&_[data-editable]]:pointer-events-auto",
   "[&_[data-editable]]:cursor-text",
@@ -66,12 +75,33 @@ interface EditableFrameProps {
   children: ReactNode;
 }
 
-function disableInteractiveControls(root: HTMLElement) {
+function prepareInteractiveControls(root: HTMLElement) {
   root.querySelectorAll(FORM_CONTROL_SELECTOR).forEach((node) => {
     const el = node as HTMLInputElement;
+    const hasEditableLabel = Boolean(el.querySelector(EDITABLE_SELECTOR));
+
+    if (hasEditableLabel) {
+      // Must not stay disabled: disabled buttons do not fire click on descendants.
+      if (el.hasAttribute(ATTR_LABEL_EDIT)) {
+        if (el.disabled) {
+          // React re-applied disabled={...}; clear again while Edit is on.
+          el.disabled = false;
+        }
+        return;
+      }
+      if (el.disabled) {
+        el.setAttribute(ATTR_WAS_DISABLED, "");
+        el.disabled = false;
+      }
+      el.setAttribute(ATTR_LABEL_EDIT, "");
+      el.setAttribute("aria-disabled", "true");
+      return;
+    }
+
     if (
       el.hasAttribute(ATTR_WE_DISABLED) ||
-      el.hasAttribute(ATTR_WAS_DISABLED)
+      el.hasAttribute(ATTR_WAS_DISABLED) ||
+      el.hasAttribute(ATTR_LABEL_EDIT)
     ) {
       return;
     }
@@ -101,6 +131,16 @@ function restoreInteractiveControls(root: HTMLElement) {
     el.disabled = false;
     el.removeAttribute(ATTR_WE_DISABLED);
   });
+  root.querySelectorAll(`[${ATTR_LABEL_EDIT}]`).forEach((node) => {
+    const el = node as HTMLInputElement;
+    el.removeAttribute(ATTR_LABEL_EDIT);
+    el.removeAttribute("aria-disabled");
+    if (el.hasAttribute(ATTR_WAS_DISABLED)) {
+      el.disabled = true;
+      el.removeAttribute(ATTR_WAS_DISABLED);
+    }
+  });
+  // Icon-only / no-label controls that were already disabled: just clear the marker.
   root.querySelectorAll(`[${ATTR_WAS_DISABLED}]`).forEach((node) => {
     node.removeAttribute(ATTR_WAS_DISABLED);
   });
@@ -213,34 +253,56 @@ export function EditableFrame({ children }: EditableFrameProps) {
       if (!interactionsEnabled || !stagedEdits) {
         return;
       }
-      const target = (e.target as Element).closest<HTMLElement>(
-        EDITABLE_SELECTOR
-      );
-      if (!target || target.contentEditable === "true") {
+      const eventTarget = e.target as Element | null;
+      if (
+        eventTarget?.closest?.(`${EDITABLE_SELECTOR}[contenteditable="true"]`)
+      ) {
         return;
       }
-      // Capture before button bubble handlers; disabled alone is not enough because React
-      // can still fire onClick when the event originates on a pointer-events:auto child.
-      e.preventDefault();
-      e.stopPropagation();
-      beginEditing(target);
+
+      const editable = eventTarget?.closest?.(
+        EDITABLE_SELECTOR
+      ) as HTMLElement | null;
+      if (editable) {
+        // Capture before button bubble handlers so onClick does not fire.
+        e.preventDefault();
+        e.stopPropagation();
+        beginEditing(editable);
+        return;
+      }
+
+      // Non-label click on a gated control (padding / icon): swallow activation.
+      if (
+        eventTarget?.closest?.(
+          `[${ATTR_LABEL_EDIT}], [${ATTR_WE_DISABLED}], a[${ATTR_SAVED_HREF}]`
+        )
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     },
     [beginEditing, interactionsEnabled, stagedEdits]
   );
 
-  // Edit mode: disable form controls (tracking prior disabled) and disarm links so Preview
-  // behavior returns cleanly. pointer-events CSS keeps [data-editable] clickable inside.
+  // Edit mode: gate controls without leaving editable labels unclickable. Buttons that already
+  // have disabled={...} from the Frame (e.g. disabled={!title.trim()}) must be temporarily
+  // re-enabled or the browser will not deliver clicks to the label at all.
   useEffect(() => {
     const root = rootRef.current;
     if (!root || !stagedEdits || !editModeActive) {
       return;
     }
 
-    disableInteractiveControls(root);
+    prepareInteractiveControls(root);
     const observer = new MutationObserver(() => {
-      disableInteractiveControls(root);
+      prepareInteractiveControls(root);
     });
-    observer.observe(root, { childList: true, subtree: true });
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["disabled"],
+    });
 
     return () => {
       observer.disconnect();

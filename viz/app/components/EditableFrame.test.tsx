@@ -89,14 +89,94 @@ describe("EditableFrame", () => {
     );
 
     const button = container.querySelector("button") as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    expect(button.hasAttribute("data-frame-edit-disabled")).toBe(true);
+    // Stay enabled so the label can receive clicks; activation is blocked in capture.
+    expect(button.disabled).toBe(false);
+    expect(button.hasAttribute("data-frame-edit-label")).toBe(true);
 
     const span = container.querySelector("[data-editable]") as HTMLElement;
     fireEvent.click(span);
 
     expect(span.contentEditable).toBe("true");
     expect(onButtonClick).not.toHaveBeenCalled();
+  });
+
+  it("temporarily re-enables an already-disabled button so its label is clickable", () => {
+    const editText = vi.fn();
+    const onButtonClick = vi.fn();
+    const { container } = renderEditable(
+      editText,
+      <button type="button" disabled onClick={onButtonClick}>
+        <span data-editable data-raw-text={encodeURIComponent("Add todo")}>
+          Add todo
+        </span>
+      </button>,
+      { stagedEdits: true, editModeActive: true }
+    );
+
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.hasAttribute("data-frame-edit-was-disabled")).toBe(true);
+    expect(button.hasAttribute("data-frame-edit-label")).toBe(true);
+
+    const span = container.querySelector("[data-editable]") as HTMLElement;
+    fireEvent.click(span);
+
+    expect(span.contentEditable).toBe("true");
+    expect(onButtonClick).not.toHaveBeenCalled();
+  });
+
+  it("keeps clearing disabled when React re-applies it during Edit", () => {
+    const editText = vi.fn();
+    const { container, rerender } = render(
+      <VizContext.Provider
+        value={{
+          isPdfMode: false,
+          editText,
+          addEventListener: null,
+          stagedEdits: true,
+          editModeActive: true,
+        }}
+      >
+        <EditableFrame>
+          <button type="button" disabled={!"".trim()}>
+            <span data-editable data-raw-text={encodeURIComponent("Add todo")}>
+              Add todo
+            </span>
+          </button>
+        </EditableFrame>
+      </VizContext.Provider>
+    );
+
+    const button = () => container.querySelector("button") as HTMLButtonElement;
+    expect(button().disabled).toBe(false);
+
+    // Simulate the Frame re-render that sets disabled={!title.trim()} again.
+    rerender(
+      <VizContext.Provider
+        value={{
+          isPdfMode: false,
+          editText,
+          addEventListener: null,
+          stagedEdits: true,
+          editModeActive: true,
+        }}
+      >
+        <EditableFrame>
+          <button type="button" disabled={!"".trim()}>
+            <span data-editable data-raw-text={encodeURIComponent("Add todo")}>
+              Add todo
+            </span>
+          </button>
+        </EditableFrame>
+      </VizContext.Provider>
+    );
+
+    expect(button().disabled).toBe(false);
+    fireEvent.click(container.querySelector("[data-editable]") as HTMLElement);
+    expect(
+      (container.querySelector("[data-editable]") as HTMLElement)
+        .contentEditable
+    ).toBe("true");
   });
 
   it("restores prior disabled state when leaving Edit mode", () => {
@@ -113,20 +193,23 @@ describe("EditableFrame", () => {
       >
         <EditableFrame>
           <button type="button" disabled>
-            Already off
+            <span data-editable data-raw-text={encodeURIComponent("Off")}>
+              Off
+            </span>
           </button>
-          <button type="button">On</button>
+          <button type="button">Icon only</button>
         </EditableFrame>
       </VizContext.Provider>
     );
 
-    const [wasDisabled, wasEnabled] = Array.from(
+    const [labelButton, iconButton] = Array.from(
       container.querySelectorAll("button")
     );
-    expect(wasDisabled.disabled).toBe(true);
-    expect(wasDisabled.hasAttribute("data-frame-edit-was-disabled")).toBe(true);
-    expect(wasEnabled.disabled).toBe(true);
-    expect(wasEnabled.hasAttribute("data-frame-edit-disabled")).toBe(true);
+    expect(labelButton.disabled).toBe(false);
+    expect(labelButton.hasAttribute("data-frame-edit-was-disabled")).toBe(true);
+    expect(labelButton.hasAttribute("data-frame-edit-label")).toBe(true);
+    expect(iconButton.disabled).toBe(true);
+    expect(iconButton.hasAttribute("data-frame-edit-disabled")).toBe(true);
 
     rerender(
       <VizContext.Provider
@@ -140,24 +223,22 @@ describe("EditableFrame", () => {
       >
         <EditableFrame>
           <button type="button" disabled>
-            Already off
+            <span data-editable data-raw-text={encodeURIComponent("Off")}>
+              Off
+            </span>
           </button>
-          <button type="button">On</button>
+          <button type="button">Icon only</button>
         </EditableFrame>
       </VizContext.Provider>
     );
 
-    const [restoredDisabled, restoredEnabled] = Array.from(
+    const [restoredLabel, restoredIcon] = Array.from(
       container.querySelectorAll("button")
     );
-    expect(restoredDisabled.disabled).toBe(true);
-    expect(restoredDisabled.hasAttribute("data-frame-edit-was-disabled")).toBe(
-      false
-    );
-    expect(restoredEnabled.disabled).toBe(false);
-    expect(restoredEnabled.hasAttribute("data-frame-edit-disabled")).toBe(
-      false
-    );
+    expect(restoredLabel.disabled).toBe(true);
+    expect(restoredLabel.hasAttribute("data-frame-edit-label")).toBe(false);
+    expect(restoredIcon.disabled).toBe(false);
+    expect(restoredIcon.hasAttribute("data-frame-edit-disabled")).toBe(false);
   });
 
   it("still fires button handlers in Preview while staging is mounted", () => {
