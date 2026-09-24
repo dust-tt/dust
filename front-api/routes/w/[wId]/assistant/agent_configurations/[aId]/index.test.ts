@@ -207,6 +207,51 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - ignoreCreditSp
     const data = await patchResponse.json();
     expect(data.agentConfiguration.ignoreCreditSpendThresholdAlert).toBe(true);
   });
+
+  it("keeps the stored value when a plain member editor sends another one", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "PATCH",
+    });
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(internalAdminAuth);
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    // Simulates a manager having turned the bypass on for this agent.
+    await AgentConfigurationModel.update(
+      { ignoreCreditSpendThresholdAlert: true },
+      { where: { sId: agent.sId, workspaceId: workspace.id } }
+    );
+
+    const response = await patch(workspace, agent.sId, {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: "Updated instructions",
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+        ignoreCreditSpendThresholdAlert: false,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration.ignoreCreditSpendThresholdAlert).toBe(true);
+  });
 });
 
 describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor admin", () => {

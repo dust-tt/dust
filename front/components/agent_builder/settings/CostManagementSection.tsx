@@ -9,9 +9,9 @@ export function CostManagementSection() {
   const { owner } = useAgentBuilderContext();
   const { field } = useController<
     AgentBuilderFormData,
-    "ignoreCreditSpendThresholdAlert"
+    "agentSettings.ignoreCreditSpendThresholdAlert"
   >({
-    name: "ignoreCreditSpendThresholdAlert",
+    name: "agentSettings.ignoreCreditSpendThresholdAlert",
   });
 
   // Bypassing the spend alert is a cost decision, reserved to people who manage the workspace.

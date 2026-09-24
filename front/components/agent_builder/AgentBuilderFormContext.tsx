@@ -43,6 +43,7 @@ const agentSettingsSchema = z.object({
     })
   ),
   tags: z.array(tagSchema),
+  ignoreCreditSpendThresholdAlert: z.boolean().default(false),
 });
 
 const cronScheduleConfigSchema = z.object({
@@ -144,7 +145,6 @@ export const agentBuilderFormSchema = z.object({
     .number()
     .min(1, "Max steps per run must be at least 1")
     .default(8),
-  ignoreCreditSpendThresholdAlert: z.boolean().default(false),
 });
 
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;

@@ -28,6 +28,8 @@ export function transformAgentConfigurationToFormData(
       slackProvider: null, // Will be populated reactively from supportedDataSourceViews
       slackChannels: [], // Will be populated reactively if needed
       tags: agentConfiguration.tags,
+      ignoreCreditSpendThresholdAlert:
+        agentConfiguration.ignoreCreditSpendThresholdAlert ?? false,
     },
     instructions: agentConfiguration.instructions ?? "",
     instructionsHtml: agentConfiguration.instructionsHtml ?? undefined,
@@ -47,8 +49,6 @@ export function transformAgentConfigurationToFormData(
     triggersToUpdate: [], // Will be populated reactively from the hook
     triggersToDelete: [],
     maxStepsPerRun: agentConfiguration.maxStepsPerRun || 8,
-    ignoreCreditSpendThresholdAlert:
-      agentConfiguration.ignoreCreditSpendThresholdAlert ?? false,
   };
 }
 
@@ -69,6 +69,7 @@ export function getDefaultAgentFormData({
       slackProvider: null,
       slackChannels: [],
       tags: [],
+      ignoreCreditSpendThresholdAlert: false,
     },
     instructions: "",
     generationSettings: {
@@ -87,7 +88,6 @@ export function getDefaultAgentFormData({
     triggersToUpdate: [],
     triggersToDelete: [],
     maxStepsPerRun: 8,
-    ignoreCreditSpendThresholdAlert: false,
   };
 }
 

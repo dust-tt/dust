@@ -3022,7 +3022,14 @@ export class AgentResource
           templateModelId: template?.id,
           requestedSpaceIds,
           reinforcement,
-          ignoreCreditSpendThresholdAlert,
+          /**
+           * @cc [owner:avervaet,label:security;product] credit-spend-alert-bypass-manager-only
+           * Only workspace admins and managers MAY change whether an agent bypasses the credit
+           * spend threshold alert; a save by anyone else MUST keep the previously stored value.
+           */
+          ignoreCreditSpendThresholdAlert: auth.isManager()
+            ? ignoreCreditSpendThresholdAlert
+            : undefined,
           owner,
           transaction: t,
         });
