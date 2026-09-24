@@ -232,7 +232,7 @@ export class TagResource extends BaseResource<TagModel> {
 
     const tagsMap = keyBy(tags, "id");
     return mapValues(groupBy(tagAgents, "agentConfigurationId"), (group) =>
-      group.map((tagAgent) => tagsMap[tagAgent.tagId])
+      removeNulls(group.map((tagAgent) => tagsMap[tagAgent.tagId]))
     );
   }
 
