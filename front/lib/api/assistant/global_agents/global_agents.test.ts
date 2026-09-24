@@ -561,7 +561,7 @@ describe("getGlobalAgents Deep Dive model routing", () => {
     expect(agents).toHaveLength(1);
     expect(agents[0].model).toMatchObject({
       modelId: GEMINI_3_1_PRO_MODEL_ID,
-      reasoningEffort: "low",
+      reasoningEffort: "high",
     });
   });
 });

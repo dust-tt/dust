@@ -226,7 +226,7 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: false,
   },
-  defaultReasoningEffort: "none",
+  defaultReasoningEffort: "low",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsBatchProcessing: true,
   supportsToolSearch: true,
@@ -302,7 +302,7 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: true,
   },
-  defaultReasoningEffort: "medium",
+  defaultReasoningEffort: "high",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
@@ -346,7 +346,7 @@ export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: true,
     maximal: true,
   },
-  defaultReasoningEffort: "medium",
+  defaultReasoningEffort: "high",
   // Opus 4.7 uses a new tokenizer (~555k words/1M tokens vs ~750k for anthropic_base).
   // Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3 adjustment → 1.3 × 1.35 ≈ 1.75.
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT * 1.35,
@@ -392,7 +392,7 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: true,
     maximal: true,
   },
-  defaultReasoningEffort: "medium",
+  defaultReasoningEffort: "high",
   // Opus 4.8 shares Opus 4.7's tokenizer (~555k words/1M tokens vs ~750k for
   // anthropic_base). Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3
   // adjustment → 1.3 × 1.35 ≈ 1.75.
@@ -440,7 +440,7 @@ export const CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: true,
     maximal: true,
   },
-  defaultReasoningEffort: "medium",
+  defaultReasoningEffort: "high",
   // Opus 5 shares the Opus 4.7/4.8 tokenizer (~555k words/1M tokens vs ~750k
   // for anthropic_base). Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3
   // adjustment → 1.3 × 1.35 ≈ 1.75.
@@ -540,7 +540,7 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: true,
     maximal: true,
   },
-  defaultReasoningEffort: "medium",
+  defaultReasoningEffort: "high",
   // Fable 5 shares the Opus 4.7/4.8 tokenizer (~555k words/1M tokens vs ~750k
   // for anthropic_base). Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3
   // adjustment → 1.3 × 1.35 ≈ 1.75.
@@ -649,7 +649,7 @@ export const CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: true,
     maximal: true,
   },
-  defaultReasoningEffort: "medium",
+  defaultReasoningEffort: "high",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: false,
@@ -688,7 +688,7 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: true,
   },
-  defaultReasoningEffort: "medium",
+  defaultReasoningEffort: "high",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,

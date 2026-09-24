@@ -39,7 +39,7 @@ describe("Kimi K3 model configuration", () => {
     expect(payload.service_tier).toBe("priority");
   });
 
-  it("exposes the documented low/high/max efforts and defaults to low", () => {
+  it("exposes the documented low/high/max efforts and defaults to max", () => {
     expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.supportedReasoningEfforts).toEqual({
       none: false,
       minimal: false,
@@ -49,7 +49,9 @@ describe("Kimi K3 model configuration", () => {
       xhigh: false,
       maximal: true,
     });
-    expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.defaultReasoningEffort).toBe("low");
+    expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.defaultReasoningEffort).toBe(
+      "maximal"
+    );
   });
 
   it("forces every Dust request to temperature zero", () => {
