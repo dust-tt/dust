@@ -292,7 +292,6 @@ export async function recreateAgentSearchIndex({
     feedbackByAgentId.set(agentConfigurationId, feedback);
   }
 
-  const workspace = auth.getNonNullableWorkspace();
   const results = await concurrentExecutor(
     agents,
     async (agent) => {
@@ -300,7 +299,7 @@ export async function recreateAgentSearchIndex({
         positive: 0,
         negative: 0,
       };
-      const document = agent.toSearchDocument(workspace, {
+      const document = agent.toSearchDocument(auth, {
         activeUsersCount: null,
         editors: editorsByAgentId.get(agent.sId) ?? [],
         favoriteCount: favoriteCountByAgentId.get(agent.sId) ?? 0,
