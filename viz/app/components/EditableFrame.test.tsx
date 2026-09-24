@@ -75,6 +75,43 @@ describe("EditableFrame", () => {
     expect(span.dataset.originalText).toBe("Hello");
   });
 
+  it("edits a button label on click without firing the button handler", () => {
+    const editText = vi.fn();
+    const onButtonClick = vi.fn();
+    const { container } = renderEditable(
+      editText,
+      <button type="button" onClick={onButtonClick}>
+        <span data-editable data-raw-text={encodeURIComponent("Save")}>
+          Save
+        </span>
+      </button>,
+      { stagedEdits: true, editModeActive: true }
+    );
+
+    const span = container.querySelector("[data-editable]") as HTMLElement;
+    fireEvent.click(span);
+
+    expect(span.contentEditable).toBe("true");
+    expect(onButtonClick).not.toHaveBeenCalled();
+  });
+
+  it("still fires button handlers in Preview while staging is mounted", () => {
+    const editText = vi.fn();
+    const onButtonClick = vi.fn();
+    const { container } = renderEditable(
+      editText,
+      <button type="button" onClick={onButtonClick}>
+        <span data-editable data-raw-text={encodeURIComponent("Save")}>
+          Save
+        </span>
+      </button>,
+      { stagedEdits: true, editModeActive: false }
+    );
+
+    fireEvent.click(container.querySelector("button") as HTMLButtonElement);
+    expect(onButtonClick).toHaveBeenCalledTimes(1);
+  });
+
   it("ignores clicks while staging is mounted but Edit mode is off (Preview)", () => {
     const editText = vi.fn();
     const { container } = renderEditable(

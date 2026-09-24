@@ -137,20 +137,62 @@ export function EditableFrame({ children }: EditableFrameProps) {
     [beginEditing, interactionsEnabled, stagedEdits]
   );
 
-  const handleClick = useCallback(
+  // Edit mode: swallow activation of buttons/links/inputs in capture so a click on a
+  // button label edits the text instead of firing the control (e.g. navigation).
+  const suppressInteractiveCapture = useCallback(
+    (e: React.SyntheticEvent) => {
+      if (!interactionsEnabled || !stagedEdits) {
+        return;
+      }
+      const target = e.target as Element | null;
+      if (target?.closest?.(`${EDITABLE_SELECTOR}[contenteditable="true"]`)) {
+        // Let the active contentEditable receive typing / selection normally.
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    [interactionsEnabled, stagedEdits]
+  );
+
+  const handleClickCapture = useCallback(
     (e: React.MouseEvent) => {
       if (!interactionsEnabled || !stagedEdits) {
         return;
       }
-      const target = (e.target as Element).closest<HTMLElement>(
-        EDITABLE_SELECTOR
-      );
-      if (!target) {
+      const target = e.target as Element | null;
+      if (target?.closest?.(`${EDITABLE_SELECTOR}[contenteditable="true"]`)) {
         return;
       }
-      beginEditing(target);
+      e.preventDefault();
+      e.stopPropagation();
+
+      const editable = target?.closest?.(
+        EDITABLE_SELECTOR
+      ) as HTMLElement | null;
+      if (editable) {
+        beginEditing(editable);
+      }
     },
     [beginEditing, interactionsEnabled, stagedEdits]
+  );
+
+  const handleKeyDownCapture = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!interactionsEnabled || !stagedEdits) {
+        return;
+      }
+      const target = e.target as Element | null;
+      if (target?.closest?.(`${EDITABLE_SELECTOR}[contenteditable="true"]`)) {
+        return;
+      }
+      // Block Space/Enter activating focused buttons/links while choosing text to edit.
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    [interactionsEnabled, stagedEdits]
   );
 
   const commitEditable = useCallback(
@@ -338,7 +380,10 @@ export function EditableFrame({ children }: EditableFrameProps) {
   return (
     <>
       <div
-        onClick={handleClick}
+        onClickCapture={handleClickCapture}
+        onPointerDownCapture={suppressInteractiveCapture}
+        onKeyDownCapture={handleKeyDownCapture}
+        onSubmitCapture={suppressInteractiveCapture}
         onDoubleClick={handleDoubleClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
