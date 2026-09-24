@@ -4,7 +4,7 @@ import {
   MODELS_TIER_NAMES,
 } from "@app/types/assistant/models/model_tiers";
 
-export const DEFAULT_MAX_MODEL_TIER: ModelsTierName = "premium";
+export const DEFAULT_MAX_MODEL_TIER: ModelsTierName = "ultra";
 
 export function getTierIndex(tierName: ModelsTierName): number {
   return MODELS_TIER_NAMES.indexOf(tierName);
@@ -41,6 +41,19 @@ export function isTierWithinMax(
   maxTierName: ModelsTierName
 ): boolean {
   return getTierIndex(tierName) <= getTierIndex(maxTierName);
+}
+
+export function isTierAtLeast(
+  tierName: ModelsTierName,
+  minTierName: ModelsTierName
+): boolean {
+  return getTierIndex(tierName) >= getTierIndex(minTierName);
+}
+
+// The floor of the legacy-plan lock and of the weekly premium allowance. A null
+// tier (an effort the model does not support) is below it.
+export function isPremiumOrAboveTier(tierName: ModelsTierName | null): boolean {
+  return tierName !== null && isTierAtLeast(tierName, "premium");
 }
 
 export function formatMaxTierDescription(

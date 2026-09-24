@@ -370,6 +370,11 @@ async function loadWorkspaceTierGrants(
   return expandTiersUpTo(await getWorkspaceMaxAllowedTierName(auth));
 }
 
+/**
+ * @cc [owner:rfrenoy,label:product] workspace-default-tier-unstored
+ * Setting the workspace max tier to `DEFAULT_MAX_MODEL_TIER` MUST leave no `models_tier` grant on
+ * the global group; any other max tier MUST be stored as exactly one grant on the global group.
+ */
 export async function setWorkspaceMaxAllowedTierName(
   auth: Authenticator,
   maxTierName: ModelsTierName

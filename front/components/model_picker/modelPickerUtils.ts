@@ -2,6 +2,7 @@ import {
   getSupportedModelConfig,
   getSupportedModelConfigs,
 } from "@app/lib/llms/model_configurations";
+import { isPremiumOrAboveTier } from "@app/lib/model_tiers/tier_order";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionsType,
@@ -72,18 +73,21 @@ const PINNED_MODEL_RETRY_ERROR_CATEGORIES = [
   "empty_content",
 ] as const;
 
+// A tier without a picker row maps to the closest row below it.
 const PICKER_TIER_BY_MODELS_TIER: Record<ModelsTierName, ModelTierId> = {
   cost_efficient: "fast",
   balanced: "standard",
   premium: "complex",
+  ultra: "complex",
 };
 
 /**
  * @cc [owner:frankaloia,label:product;error-handling] pinned-model-retry-uses-tier
  * When a model-related failure ran a pinned (non-stream) model, the failure UI MUST offer retry
- * on that model's tier and send that tier as `modelSelection`. After that retry, the conversation's
- * last requested model and the input-bar picker MUST show that tier so subsequent messages use the
- * same stream. Stream-resolved failures and every other retry MUST send no override.
+ * on that model's tier, or on the closest tier below it that has a picker row, and send that tier
+ * as `modelSelection`. After that retry, the conversation's last requested model and the input-bar
+ * picker MUST show that tier so subsequent messages use the same stream. Stream-resolved failures
+ * and every other retry MUST send no override.
  * Stream resolution consults the current degraded set server-side (`retry-model-selection`).
  */
 export function getPinnedModelRetryTier({
@@ -470,7 +474,7 @@ export function getEffortStops(
     }
     if (
       lockPremiumEfforts &&
-      getTierForModel(enabledModel.modelId, effort) === "premium"
+      isPremiumOrAboveTier(getTierForModel(enabledModel.modelId, effort))
     ) {
       return { effort, unavailabilityReason: "premium" };
     }
@@ -506,8 +510,10 @@ function isReasoningModel(modelId: ModelIdType): boolean {
   return SLIDER_EFFORTS.some((effort) => support[effort]);
 }
 
-// Whether a whole model row must be locked
-export function isPremiumModel(
+// Whether a whole model row must be locked, and why: a reasoning model left
+// with no usable slider effort, or, on a legacy plan, a model whose every
+// effort is Premium or above.
+export function isModelLocked(
   enabledModel: ModelConfigurationType,
   { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
 ): boolean {
@@ -531,14 +537,14 @@ export function isPremiumModel(
       (stop) => stop.unavailabilityReason === "premium"
     );
   }
-  return getTierForModel(enabledModel.modelId, "none") === "premium";
+  return isPremiumOrAboveTier(getTierForModel(enabledModel.modelId, "none"));
 }
 
 export function getModelLockReason(
   enabledModel: ModelConfigurationType,
   { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
 ): ModelLockReason | null {
-  if (!isPremiumModel(enabledModel, { lockPremiumEfforts })) {
+  if (!isModelLocked(enabledModel, { lockPremiumEfforts })) {
     return null;
   }
   return lockPremiumEfforts ? "premium" : "model_tier";

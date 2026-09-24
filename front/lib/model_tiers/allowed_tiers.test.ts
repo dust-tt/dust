@@ -34,7 +34,7 @@ describe("allowed model tiers permissions", () => {
   });
 
   it("defaults workspace allowed tiers to all tiers", async () => {
-    expect(await listWorkspaceMaxAllowedTierName(auth)).toBe("premium");
+    expect(await listWorkspaceMaxAllowedTierName(auth)).toBe("ultra");
     expect(await listWorkspaceAllowedTierNames(auth)).toEqual([
       ...MODELS_TIER_NAMES,
     ]);
@@ -135,12 +135,37 @@ describe("allowed model tiers permissions", () => {
       expandTiersUpTo("balanced")
     );
 
-    const resetResult = await setWorkspaceMaxAllowedTierName(auth, "premium");
-    expect(resetResult.isOk()).toBe(true);
+    const premiumResult = await setWorkspaceMaxAllowedTierName(auth, "premium");
+    expect(premiumResult.isOk()).toBe(true);
     expect(await listWorkspaceMaxAllowedTierName(auth)).toBe("premium");
+    expect(await listWorkspaceAllowedTierNames(auth)).toEqual(
+      expandTiersUpTo("premium")
+    );
+
+    const resetResult = await setWorkspaceMaxAllowedTierName(auth, "ultra");
+    expect(resetResult.isOk()).toBe(true);
+    expect(await listWorkspaceMaxAllowedTierName(auth)).toBe("ultra");
     expect(await listWorkspaceAllowedTierNames(auth)).toEqual([
       ...MODELS_TIER_NAMES,
     ]);
+  });
+
+  it("caps a Premium user override below Ultra", async () => {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    await setUserMaxAllowedTier(auth, {
+      userId: user.sId,
+      tierName: "premium",
+    });
+
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const resolved = await resolveAllowedTierNames(userAuth);
+
+    expect(resolved.tiers).toEqual(expandTiersUpTo("premium"));
+    expect(resolved.source).toBe("user");
   });
 
   it("resolves allowed tiers for a user from workspace defaults", async () => {

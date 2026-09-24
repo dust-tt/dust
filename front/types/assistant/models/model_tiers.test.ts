@@ -30,18 +30,18 @@ import { GROK_4_6_MODEL_ID } from "@app/types/assistant/models/xai";
 import { describe, expect, it } from "vitest";
 
 describe("model_tiers", () => {
-  it("keeps Astra premium at every supported reasoning effort", () => {
+  it("keeps Astra ultra at every supported reasoning effort", () => {
     const efforts = getAvailableReasoningEfforts(
       STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[GPT_6_ASTRA_MODEL_ID]
     );
     expect(efforts).toEqual(["light", "medium", "high"]);
     for (const effort of efforts) {
-      expect(getTierForModel(GPT_6_ASTRA_MODEL_ID, effort)).toBe("premium");
+      expect(getTierForModel(GPT_6_ASTRA_MODEL_ID, effort)).toBe("ultra");
     }
   });
 
   it("lists tier definitions without selections", () => {
-    expect(MODELS_TIERS.map((tier) => tier.id)).toEqual([1, 2, 3]);
+    expect(MODELS_TIERS.map((tier) => tier.id)).toEqual([1, 2, 3, 4]);
     expect(MODELS_TIERS.every((tier) => tier.description.length > 0)).toBe(
       true
     );
@@ -80,9 +80,11 @@ describe("model_tiers", () => {
     }
   });
 
-  it("classifies opus/fable as premium", () => {
+  it("classifies opus as premium and fable as ultra", () => {
     expect(getTierForModel(CLAUDE_OPUS_4_8_MODEL_ID, "light")).toBe("premium");
-    expect(getTierForModel(CLAUDE_FABLE_5_MODEL_ID, "high")).toBe("premium");
+    for (const effort of ["light", "medium", "high"] as const) {
+      expect(getTierForModel(CLAUDE_FABLE_5_MODEL_ID, effort)).toBe("ultra");
+    }
   });
 
   it("classifies Grok 4.6 high reasoning as premium", () => {

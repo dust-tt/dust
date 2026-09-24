@@ -25,7 +25,7 @@ import {
   getReasoningEffortLabel,
   getTierFallbackMessage,
   getTierLockReason,
-  isPremiumModel,
+  isModelLocked,
   isSameSelection,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -34,6 +34,7 @@ import { useModelPickerModels } from "@app/components/model_picker/useModelPicke
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useClientType } from "@app/lib/context/clientType";
+import { isPremiumOrAboveTier } from "@app/lib/model_tiers/tier_order";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
@@ -227,7 +228,7 @@ export function ModelPicker({
   };
 
   const onSelectModel = (model: ModelConfigurationType) => {
-    if (isPremiumModel(model, { lockPremiumEfforts })) {
+    if (isModelLocked(model, { lockPremiumEfforts })) {
       return;
     }
     const effort = getInitialEffort(model, { lockPremiumEfforts });
@@ -247,7 +248,7 @@ export function ModelPicker({
     const { model } = shown.display;
     if (
       lockPremiumEfforts &&
-      getTierForModel(model.modelId, effort) === "premium"
+      isPremiumOrAboveTier(getTierForModel(model.modelId, effort))
     ) {
       return;
     }

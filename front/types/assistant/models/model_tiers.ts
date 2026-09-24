@@ -13,6 +13,7 @@ export const MODELS_TIER_NAMES = [
   "cost_efficient",
   "balanced",
   "premium",
+  "ultra",
 ] as const;
 
 export type ModelsTierName = (typeof MODELS_TIER_NAMES)[number];
@@ -21,13 +22,14 @@ export function isModelsTierName(value: unknown): value is ModelsTierName {
   return MODELS_TIER_NAMES.includes(value as ModelsTierName);
 }
 
-// Single source of truth for how tiers are named to users. The same three words
-// name the model-picker streams (`auto_fast`/`auto`/`auto_complex`) and the
+// Single source of truth for how tiers are named to users. The same words name
+// the model-picker streams (`auto_fast`/`auto`/`auto_complex`) and the
 // analytics usage filter, so a tier means the same thing everywhere.
 const MODELS_TIER_DISPLAY_NAMES: Record<ModelsTierName, string> = {
   cost_efficient: "Basic",
   balanced: "Standard",
   premium: "Premium",
+  ultra: "Ultra",
 };
 
 export function getModelsTierDisplayName(tierName: ModelsTierName): string {
@@ -61,6 +63,12 @@ export const MODELS_TIERS: readonly ModelsTierDefinition[] = [
     id: 3,
     name: "premium",
     description: "More capable models for complex or demanding work.",
+  },
+  {
+    id: 4,
+    name: "ultra",
+    description:
+      "Frontier models priced far above Premium, for the most demanding work.",
   },
 ] as const;
 
@@ -148,9 +156,9 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     high: "premium",
   },
   "gpt-6-astra": {
-    light: "premium",
-    medium: "premium",
-    high: "premium",
+    light: "ultra",
+    medium: "ultra",
+    high: "ultra",
   },
   "gpt-6-sol": {
     none: "balanced",
@@ -273,9 +281,9 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     high: "premium",
   },
   "claude-fable-5": {
-    light: "premium",
-    medium: "premium",
-    high: "premium",
+    light: "ultra",
+    medium: "ultra",
+    high: "ultra",
   },
   "claude-fable-5-1": {
     light: "premium",
@@ -542,6 +550,11 @@ export function getTierForSelection(
   return getTierForModel(selection.modelId, selection.reasoningEffort);
 }
 
+/**
+ * @cc [owner:rfrenoy,label:product] custom-models-tiered-premium
+ * A model id absent from `STATIC_MODEL_TIERS` (a custom model generated at build time) MUST be
+ * tiered `premium` at every reasoning effort, never a tier above it.
+ */
 export function getTierForModel(
   modelId: ModelTierSelection["modelId"],
   reasoningEffort: ModelTierSelection["reasoningEffort"]

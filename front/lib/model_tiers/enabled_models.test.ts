@@ -12,6 +12,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import {
+  CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
@@ -25,6 +26,7 @@ import {
   isModelStreamId,
   MODEL_STREAMS,
 } from "@app/types/assistant/models/auto";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { GPT_5_6_LUNA_MODEL_ID } from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -44,7 +46,7 @@ describe("withModelSelectability", () => {
     adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   });
 
-  async function userAuthForTierCap(tierName: "cost_efficient" | "balanced") {
+  async function userAuthForTierCap(tierName: ModelsTierName) {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
     await setUserMaxAllowedTier(adminAuth, {
@@ -110,6 +112,20 @@ describe("withModelSelectability", () => {
       high: false,
     });
     expect(model.defaultReasoningEffort).toBe("medium");
+  });
+
+  it("marks ultra-tier models as not selectable when capped at premium", async () => {
+    const auth = await userAuthForTierCap("premium");
+
+    const [fable, opus] = await withModelSelectability(auth, {
+      models: [
+        CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
+        CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+      ],
+    });
+
+    expect(fable.isSelectable).toBe(false);
+    expect(opus.isSelectable).toBe(true);
   });
 
   it("marks frontier-only models as not selectable when capped at balanced", async () => {
@@ -187,7 +203,7 @@ describe("resolveStreamModel", () => {
     adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   });
 
-  async function userAuthForTierCap(tierName: "cost_efficient" | "balanced") {
+  async function userAuthForTierCap(tierName: ModelsTierName) {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
     await setUserMaxAllowedTier(adminAuth, {

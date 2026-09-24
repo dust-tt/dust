@@ -7,7 +7,7 @@ import {
   getPinnedModelRetryTier,
   getTierLockReason,
   isModelHostedInRegion,
-  isPremiumModel,
+  isModelLocked,
   isTierResolvedModelHostedInRegion,
   PREMIUM_MODEL_LOCKED_TOOLTIP,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -16,6 +16,8 @@ import type {
   ModelStreamResolutionsType,
 } from "@app/types/api/assistant/models";
 import {
+  CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
+  CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
@@ -63,6 +65,20 @@ describe("getPinnedModelRetryTier", () => {
       ).toBe("fast");
     });
   }
+
+  it("offers the Premium row for an ultra-tier pinned model, which has no picker row", () => {
+    expect(
+      getPinnedModelRetryTier({
+        failedModel: {
+          providerId: "anthropic",
+          modelId: CLAUDE_FABLE_5_MODEL_ID,
+          reasoningEffort: "high",
+        },
+        modelResolutionMethod: "user",
+        errorCategory: "provider_internal_error",
+      })
+    ).toBe("complex");
+  });
 
   it("offers the tier for an agent-configured pinned model", () => {
     expect(
@@ -154,6 +170,15 @@ describe("modelPickerUtils premium gating", () => {
       });
     });
 
+    it("locks every effort of an ultra-tier model when gated", () => {
+      const stops = getEffortStops(CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG, GATED);
+      expect(unavailabilityReasonByEffort(stops)).toEqual({
+        light: "premium",
+        medium: "premium",
+        high: "premium",
+      });
+    });
+
     it("locks every premium effort of a mid-tier reasoning model", () => {
       // Gemini 2.5 Pro: light=balanced, medium=premium, high=premium.
       const stops = getEffortStops(GEMINI_2_5_PRO_MODEL_CONFIG, GATED);
@@ -207,29 +232,46 @@ describe("modelPickerUtils premium gating", () => {
     });
   });
 
-  describe("isPremiumModel", () => {
-    it("locks a whole-premium reasoning model when gated", () => {
-      expect(isPremiumModel(CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG, GATED)).toBe(
+  describe("isModelLocked", () => {
+    it("locks a whole-premium or ultra reasoning model on a legacy plan", () => {
+      expect(isModelLocked(CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG, GATED)).toBe(
+        true
+      );
+      expect(isModelLocked(CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG, GATED)).toBe(
         true
       );
     });
 
-    it("locks a whole-premium non-reasoning model (only 'none') when gated", () => {
-      expect(isPremiumModel(O1_MODEL_CONFIG, GATED)).toBe(true);
+    it("locks a whole-premium non-reasoning model (only 'none') on a legacy plan", () => {
+      expect(isModelLocked(O1_MODEL_CONFIG, GATED)).toBe(true);
     });
 
-    it("keeps mixed models selectable when gated", () => {
-      expect(isPremiumModel(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, GATED)).toBe(
+    it("keeps mixed models selectable on a legacy plan", () => {
+      expect(isModelLocked(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, GATED)).toBe(
         false
       );
-      expect(isPremiumModel(GEMINI_2_5_PRO_MODEL_CONFIG, GATED)).toBe(false);
+      expect(isModelLocked(GEMINI_2_5_PRO_MODEL_CONFIG, GATED)).toBe(false);
     });
 
-    it("never locks a model when ungated", () => {
-      expect(
-        isPremiumModel(CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG, UNGATED)
-      ).toBe(false);
-      expect(isPremiumModel(O1_MODEL_CONFIG, UNGATED)).toBe(false);
+    it("never locks a model whose efforts are all selectable", () => {
+      expect(isModelLocked(CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG, UNGATED)).toBe(
+        false
+      );
+      expect(isModelLocked(O1_MODEL_CONFIG, UNGATED)).toBe(false);
+    });
+
+    it("locks a reasoning model with no effort left in the member's cap", () => {
+      const cappedOpus: ModelConfigurationType = {
+        ...CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+        supportedReasoningEfforts: {
+          none: false,
+          light: false,
+          medium: false,
+          high: false,
+        },
+      };
+
+      expect(isModelLocked(cappedOpus, UNGATED)).toBe(true);
     });
   });
 

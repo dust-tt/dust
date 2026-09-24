@@ -31,7 +31,8 @@ const TIER_PRESENTATION: Record<
     costLabel: "lowest cost",
   },
   balanced: { priceClassName: "text-blue-500", costLabel: "medium cost" },
-  premium: { priceClassName: "text-amber-500", costLabel: "highest cost" },
+  premium: { priceClassName: "text-amber-500", costLabel: "high cost" },
+  ultra: { priceClassName: "text-rose-500", costLabel: "highest cost" },
 };
 
 interface InfoSectionProps {

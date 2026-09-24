@@ -46,6 +46,12 @@ const BALANCED_MODEL: ResolvedRequestedModel = {
   reasoningEffort: "medium",
 };
 
+const ULTRA_MODEL: ResolvedRequestedModel = {
+  providerId: "anthropic",
+  modelId: "claude-fable-5",
+  reasoningEffort: "high",
+};
+
 const EXPECTED_KEY = "workspace:42:user:7:premium_model_message_count";
 
 // Minimal stand-in for the Authenticator class exposing only the members the gate reads. A class
@@ -158,6 +164,18 @@ describe("applyPremiumModelFairUse", () => {
     expect(mockRateLimiter).not.toHaveBeenCalled();
   });
 
+  it("counts ultra-tier models toward the premium allowance", async () => {
+    const result = await callGate(makeAuth(), {
+      resolvedModel: ULTRA_MODEL,
+    });
+
+    expect(result.action).toBe("run_as_requested");
+    expect(mockRateLimiter).toHaveBeenCalledTimes(1);
+    expect(mockRateLimiter).toHaveBeenCalledWith(
+      expect.objectContaining({ key: EXPECTED_KEY })
+    );
+  });
+
   it("does not count credit-priced plans", async () => {
     const result = await callGate(makeAuth({ planCode: "CP_PRO" }));
 
@@ -253,6 +271,26 @@ describe("applyPremiumModelFairUse", () => {
         {
           providerId: "anthropic",
           modelId: "claude-opus-5",
+          efforts: ["high"],
+        },
+      ])
+    );
+
+    const result = await callGate(makeAuth());
+
+    expect(result.action).toBe("refuse");
+  });
+
+  it("refuses rather than downgrading to an ultra-tier fallback", async () => {
+    mockGetFeatureFlags.mockResolvedValue([
+      "enforce_premium_model_message_limit",
+    ]);
+    mockRateLimiter.mockResolvedValue(0);
+    mockGetEnabledModels.mockResolvedValue(
+      makeEnabledModels([
+        {
+          providerId: "anthropic",
+          modelId: "claude-fable-5",
           efforts: ["high"],
         },
       ])

@@ -14,6 +14,7 @@ import {
   getEnabledModelsForAuth,
   resolveStreamModel,
 } from "@app/lib/model_tiers/enabled_models";
+import { isPremiumOrAboveTier } from "@app/lib/model_tiers/tier_order";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
@@ -39,8 +40,8 @@ type PremiumModelFairUseDecision =
     }
   | { action: "refuse" };
 
-// Resolves the Standard stream and refuses anything still priced premium: the stream's
-// last-resort fallback is a preferred large model, which can be premium itself.
+// Resolves the Standard stream and refuses anything still priced Premium or above: the
+// stream's last-resort fallback is a preferred large model, which can be premium itself.
 async function resolveDowngradeTarget(
   auth: Authenticator
 ): Promise<ResolvedRequestedModel | null> {
@@ -55,7 +56,7 @@ async function resolveDowngradeTarget(
     );
     const tierName = getTierForModel(model.modelId, reasoningEffort);
 
-    if (tierName && tierName !== "premium") {
+    if (tierName && !isPremiumOrAboveTier(tierName)) {
       return {
         providerId: model.providerId,
         modelId: model.modelId,
@@ -67,6 +68,11 @@ async function resolveDowngradeTarget(
   return null;
 }
 
+/**
+ * @cc [owner:rfrenoy,label:product] premium-allowance-covers-higher-tiers
+ * A message MUST consume the weekly premium allowance iff its resolved model and effort are tiered
+ * `premium` or above, and a fair-use downgrade target MUST be tiered strictly below `premium`.
+ */
 export async function applyPremiumModelFairUse(
   auth: Authenticator,
   {
@@ -97,7 +103,7 @@ export async function applyPremiumModelFairUse(
     resolvedModel.modelId,
     resolvedModel.reasoningEffort
   );
-  if (tierName !== "premium") {
+  if (!isPremiumOrAboveTier(tierName)) {
     return { action: "run_as_requested" };
   }
 
