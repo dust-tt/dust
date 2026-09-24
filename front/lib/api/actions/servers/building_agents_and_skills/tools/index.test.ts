@@ -75,11 +75,11 @@ function getTool(name: string) {
 // The skill tools only read `runContext.conversation`, to record the conversation a suggestion was
 // made in, so a partial extra cast to ToolHandlerExtra is sufficient (mirroring skill_authoring).
 // `sourceConversationIds` has no foreign key, so a synthetic conversation id is enough here.
-const TEST_CONVERSATION_ID = 424242;
+const TEST_CONVERSATION_MODEL_ID = 424242;
 
 function makeExtra(
   auth: Authenticator,
-  conversationId: ModelId = TEST_CONVERSATION_ID
+  conversationModelId: ModelId = TEST_CONVERSATION_MODEL_ID
 ) {
   const extra: Pick<
     ToolHandlerExtra,
@@ -96,7 +96,7 @@ function makeExtra(
     signal: new AbortController().signal,
     runContext: {
       contextType: "agent_loop",
-      conversation: { id: conversationId },
+      conversation: { id: conversationModelId },
     },
   };
 
@@ -339,7 +339,9 @@ describe("building_agents_and_skills tools", () => {
       expect(suggestion?.analysis).toBe(
         "Root cause and follow-ups were missing."
       );
-      expect(suggestion?.sourceConversationIds).toEqual([TEST_CONVERSATION_ID]);
+      expect(suggestion?.sourceConversationIds).toEqual([
+        TEST_CONVERSATION_MODEL_ID,
+      ]);
       expect(suggestion?.toJSON()).toMatchObject({
         suggestion: {
           instructionEdits: [
@@ -360,15 +362,15 @@ describe("building_agents_and_skills tools", () => {
         instructionsHtml: null,
       });
 
-      const suggest = (conversationId: ModelId) =>
+      const suggest = (conversationModelId: ModelId) =>
         getTool(SUGGEST_SKILL_UPDATE_TOOL_NAME).handler(
           {
             skillId: skill.sId,
             agentFacingDescriptionEdit: {
-              content: `Edit from conversation ${conversationId}.`,
+              content: `Edit from conversation ${conversationModelId}.`,
             },
           },
-          makeExtra(authenticator, conversationId)
+          makeExtra(authenticator, conversationModelId)
         );
 
       const firstResult = await suggest(111);
