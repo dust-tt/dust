@@ -1,8 +1,8 @@
-import type { CatalogItem } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
+import type { CatalogItem } from "@app/components/assistant/conversation/discover/catalog";
 import {
   getItemId,
   getItemName,
-} from "@app/components/assistant/conversation/discover/DiscoverCatalog";
+} from "@app/components/assistant/conversation/discover/catalog";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   useGroupDiscoveryPins,
