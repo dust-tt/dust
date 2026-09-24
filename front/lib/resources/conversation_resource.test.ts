@@ -7135,6 +7135,9 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "agent_message_feedback",
   "agent_step_content_tool_execution",
   "agent_suggestion",
+  // batch_suggestion.sourceConversationModelId is ON DELETE SET NULL, so no
+  // explicit cleanup is needed in destroyConversation — the DB clears it.
+  "batch_suggestion",
   "conversation_fork",
   "conversation_mcp_server_view",
   "conversation_participant",
