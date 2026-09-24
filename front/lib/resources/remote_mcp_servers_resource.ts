@@ -47,6 +47,7 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
 import assert from "assert";
+import uniq from "lodash/uniq";
 import type {
   Attributes,
   CreationAttributes,
@@ -354,7 +355,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
   ): Promise<RemoteMCPServerResource[]> {
     return this.baseFetch(auth, {
       where: {
-        id: removeNulls(ids.map(getResourceIdFromSId)),
+        id: uniq(removeNulls(ids.map(getResourceIdFromSId))),
       },
       includeHeavyAttributes,
     });
@@ -415,7 +416,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return this.baseFetch(
       auth,
       {
-        where: { id: { [Op.in]: ids } },
+        where: { id: { [Op.in]: uniq(ids) } },
         includeHeavyAttributes,
       },
       transaction
