@@ -101,14 +101,14 @@ async function planAgentCreation(
   auth: Authenticator,
   { name, description, instructions }: CreateAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
-  const validation = validateAgentCreation(auth);
+  const validation = await validateAgentCreation(auth, { name });
   if (validation.isErr()) {
     return validation;
   }
 
   return new Ok({
     type: "agent_creation",
-    create: { name, description, instructions },
+    create: { name: validation.value.name, description, instructions },
   });
 }
 

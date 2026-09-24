@@ -30,13 +30,13 @@ export async function suggestAgentCreation(
     );
   }
 
-  const validation = validateAgentCreation(auth);
+  const validation = await validateAgentCreation(auth, { name });
   if (validation.isErr()) {
     return validation;
   }
 
   return recordAgentCreationSuggestion(auth, {
-    create: { name, description, instructions },
+    create: { name: validation.value.name, description, instructions },
     analysis: analysis ?? null,
     conversation: runContext.conversation,
     batch: null,

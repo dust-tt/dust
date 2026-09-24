@@ -870,7 +870,7 @@ describe("building_agents_and_skills tools", () => {
 
       const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
         {
-          name: "Incident Helper",
+          name: "IncidentHelper",
           description: "Helps triage incidents.",
           instructions: "Collect impact and timeline.",
           analysis: "Incident response had no dedicated helper.",
@@ -906,7 +906,7 @@ describe("building_agents_and_skills tools", () => {
       expect(suggestion?._agentConfigurationId).toBe(agentId);
       expect(suggestion?.toJSON()).toMatchObject({
         suggestion: {
-          name: "Incident Helper",
+          name: "IncidentHelper",
           description: "Helps triage incidents.",
           instructions: "Collect impact and timeline.",
         },
@@ -2792,6 +2792,64 @@ describe("building_agents_and_skills tools", () => {
         }),
         "do not exist in the skill's instructions"
       );
+    });
+
+    it("refuses creating an agent with the name of an existing agent", async () => {
+      const { authenticator } = await createAgentAuthorTestContext();
+      await AgentConfigurationFactory.createTestAgent(authenticator, {
+        name: "TakenName",
+      });
+
+      const result = await runSuggest(authenticator, {
+        title: "New agent",
+        analysis: "New agent.",
+        suggestions: [
+          {
+            kind: "create_agent",
+            name: "TakenName",
+            description: "Does things.",
+            instructions: "<p>Do things.</p>",
+          },
+        ],
+      });
+
+      expectMcpError(result, "already exists");
+    });
+
+    it("refuses agent instruction edits targeting a block and its child", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          instructionsHtml:
+            '<ul data-block-id="parent01"><li data-block-id="child001"><p>Item.</p></li></ul>',
+        }
+      );
+
+      const result = await runSuggest(authenticator, {
+        title: "Edit agent",
+        analysis: "Edit.",
+        suggestions: [
+          {
+            kind: "edit_agent",
+            agentId: agent.sId,
+            instructionEdits: [
+              {
+                targetBlockId: "parent01",
+                content: "<ul><li><p>New.</p></li></ul>",
+                type: "replace",
+              },
+              {
+                targetBlockId: "child001",
+                content: "<li><p>Other.</p></li>",
+                type: "replace",
+              },
+            ],
+          },
+        ],
+      });
+
+      expectMcpError(result, "overlap");
     });
 
     it("refuses an edit that changes nothing", async () => {

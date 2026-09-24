@@ -8,6 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
+import { hasSuggestionSelfConflict } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
@@ -15,11 +16,11 @@ import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ModelIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
@@ -60,6 +61,31 @@ export async function validateAgentNameChange(
     );
   }
 
+  if (name.trim() === agent.name) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        `The agent is already named "${agent.name}".`
+      )
+    );
+  }
+
+  return validateAgentName(auth, { name });
+}
+
+/**
+ * The rules a new agent name must follow, whether for a rename or a creation: non-empty once
+ * trimmed, no spaces, and not carried by another active agent of the workspace.
+ */
+async function validateAgentName(
+  auth: Authenticator,
+  { name }: { name: string }
+): Promise<
+  Result<
+    NameSuggestionType,
+    DustError<"invalid_request_error" | "name_conflict">
+  >
+> {
   const trimmedName = name.trim();
   if (!trimmedName) {
     return new Err(
@@ -72,15 +98,6 @@ export async function validateAgentNameChange(
       new DustError(
         "invalid_request_error",
         "Agent name cannot contain spaces."
-      )
-    );
-  }
-
-  if (trimmedName === agent.name) {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        `The agent is already named "${agent.name}".`
       )
     );
   }
@@ -319,17 +336,41 @@ export async function validateAgentInstructionsChange(
     return new Err(new MCPError(editsValidation.error));
   }
 
+  if (
+    hasSuggestionSelfConflict(
+      { instructionEdits: edits },
+      agent.instructionsHtml
+    )
+  ) {
+    return new Err(
+      new MCPError(
+        "The suggested instruction edits overlap (a block and one of its descendants are " +
+          "both targeted). Target each region of the instructions only once."
+      )
+    );
+  }
+
   return new Ok(edits);
 }
 
-export function validateAgentCreation(
-  auth: Authenticator
-): Result<undefined, MCPError> {
+/**
+ * Checks the caller may create agents and that the proposed name is valid and free, so the
+ * creation can be applied later (see `validateAgentName`). Returns the trimmed name.
+ */
+export async function validateAgentCreation(
+  auth: Authenticator,
+  { name }: { name: string }
+): Promise<Result<NameSuggestionType, MCPError>> {
   if (!auth.hasWorkspacePermission("create", "agent")) {
     return new Err(new MCPError("Creating agents is restricted."));
   }
 
-  return new Ok(undefined);
+  const nameValidation = await validateAgentName(auth, { name });
+  if (nameValidation.isErr()) {
+    return new Err(new MCPError(nameValidation.error.message));
+  }
+
+  return new Ok(nameValidation.value);
 }
 
 /** Kinds of which a single suggestion may be pending per agent at a time. */
