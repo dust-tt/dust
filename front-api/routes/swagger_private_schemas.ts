@@ -936,7 +936,7 @@
  *               type: number
  *             reasoningEffort:
  *               type: string
- *               enum: [none, light, medium, high]
+ *               enum: [none, minimal, low, medium, high, xhigh, maximal]
  *         maxStepsPerRun:
  *           type: integer
  *         tags:
