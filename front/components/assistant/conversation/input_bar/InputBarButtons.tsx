@@ -132,8 +132,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   const isMobile = useIsMobile();
   const isWidthConstrained = useIsWidthConstrained();
   const { featureFlags } = useFeatureFlags();
-  // The slash dropdown lists everything the "+" menu offers, so the "+" button
-  // opens it instead of a separate menu.
   const shouldPlusOpenSlashCommand =
     featureFlags.includes("knowledge_browser") &&
     actions.includes("capabilities");
