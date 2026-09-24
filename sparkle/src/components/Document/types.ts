@@ -1,7 +1,24 @@
 import type { ReactNode } from "react";
 
 // Shared by Document and its hook to avoid circular type imports.
-export type DocumentSaveResult = { ok: true } | { ok: false; error: string };
+export type DocumentSaveOutcome = { ok: true } | { ok: false; error: string };
+
+export type DocumentSaveResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      /**
+       * Fresh JSON after a revision conflict. The editor may adopt this snapshot and
+       * save comment additions once. adoptAndSave accepts this snapshot as the host's
+       * baseline for this and subsequent saves, even if this write fails. It returns
+       * a terminal outcome. Another conflict is an ordinary failure.
+       */
+      conflict?: {
+        content: string;
+        adoptAndSave: (content: string) => Promise<DocumentSaveOutcome>;
+      };
+    };
 
 export interface DocumentCommentAuthor {
   name: string;

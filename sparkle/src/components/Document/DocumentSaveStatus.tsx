@@ -9,7 +9,7 @@ interface DocumentSaveStatusProps {
   saving: boolean;
   error: string | null;
   autosaveDebounceMs: number;
-  onRetry: () => Promise<void>;
+  onRetry?: () => Promise<void>;
   /** Controls shown after the status, such as the comments toggle. */
   children?: React.ReactNode;
 }
@@ -32,7 +32,11 @@ export const DocumentSaveStatus = ({
       <span
         role="status"
         className="inline-flex items-center gap-1.5"
-        title={`Changes save automatically after ${autosaveDebounceMs / 1_000}s of inactivity`}
+        title={
+          onRetry
+            ? `Changes save automatically after ${autosaveDebounceMs / 1_000}s of inactivity`
+            : undefined
+        }
       >
         <span aria-hidden="true" className="inline-flex items-center">
           {error ? (
@@ -53,7 +57,7 @@ export const DocumentSaveStatus = ({
               ? "Changes pending"
               : "Saved"}
       </span>
-      {error && (
+      {error && onRetry && (
         <button
           type="button"
           onClick={onRetry}

@@ -14,6 +14,8 @@ Markdown instead. A save resolves to `{ ok: true }` only after persistence succe
 the document is read-only. Hosts must apply their authorization to `readOnly`.
 Changes to `readOnly` or the presence of `onSave` update editing permissions while
 preserving the current draft.
+If saving becomes unavailable while edits are pending, the draft and an unsaved warning
+remain visible, with no Retry action until the host restores editing.
 
 Changes save after three idle seconds by default. Set `autosaveDebounceMs` to
 adjust the delay, or use Cmd/Ctrl+S to save immediately. Only one request runs at
@@ -75,8 +77,28 @@ comments panel on that thread, cycling through overlapping comments. The Comment
 button in the header opens the panel with every thread, resolved ones collapsed at the
 end. Selecting a thread scrolls to its text and, for authors, shows the reply field.
 Read-only documents and documents without `commentAuthor` keep comments browsable
-without reply, resolve or delete controls. Comment changes go through the regular
-autosave and undo history.
+without reply, resolve or delete controls. Comment changes use the regular autosave,
+but posted comments, replies, resolution and deletion stay out of text undo history.
+Use the explicit comment actions to manage posted threads; undoing text cannot restore
+an old comments array or erase another person's reply.
+
+## Comment save conflicts
+
+A host can return `{ ok: false, error, conflict: { content, adoptAndSave } }` after a
+revision conflict. `content` is the latest JSON; `adoptAndSave(content)` accepts that
+snapshot as the host's baseline and saves against its revision. Subsequent saves must
+use that baseline even if this write fails. The callback returns a terminal
+`DocumentSaveOutcome` (success or error), without another recovery offer.
+
+The editor retries once when both versions only added comments or replies and the
+document text, formatting, structure and existing anchors are unchanged. It deduplicates
+additions by id. Edited, deleted or resolved threads require explicit conflict recovery.
+Malformed snapshots and changed drafts are left untouched.
+
+Before invoking `adoptAndSave`, the editor adopts the latest snapshot as its baseline and adds
+the other person's comments through a transaction that preserves selection and text
+history. Local additions remain pending until the retry succeeds. Edits made during the
+retry remain unsaved; another conflict or failure pauses autosave and preserves the draft.
 
 File access, version checks, and synchronization with agent edits belong to the
 eventual host integration.
@@ -86,3 +108,6 @@ Stories and interaction tests live in `src/stories/Document.stories.tsx`,
 and `src/stories/DocumentComments.stories.tsx`. They cover formatting, block commands,
 autosave, errors, concurrent edits, read-only content, themes, layout, Markdown
 output, source preservation, visuals and comments.
+
+Document recovery rules are tested in `tests/Document/recoverCommentAdditions.test.ts`
+with `npm run test:unit`. Viz integration tests cover file revisions, permissions and writes.

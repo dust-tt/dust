@@ -3,6 +3,7 @@ import {
   type DocumentComment,
   type DocumentCommentAuthor,
   type DocumentProps,
+  type DocumentSaveOutcome,
   type DocumentSaveResult,
 } from "@sparkle/components/Document";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -132,6 +133,13 @@ const selectFirstParagraph = (editor: HTMLElement) => {
     throw new Error("Expected a document paragraph");
   }
   selectContents(paragraph);
+};
+
+const undoText = async () => {
+  const modifier = /Mac|iP(hone|ad|od)/.test(navigator.platform)
+    ? "Meta"
+    : "Control";
+  await userEvent.keyboard(`{${modifier}>}z{/${modifier}}`);
 };
 
 const findSelectionToolbar = (canvasElement: HTMLElement) =>
@@ -415,6 +423,9 @@ export const ManageThreads: Story = {
 
     // Cmd/Ctrl+S saves from the editor, so leave the panel first.
     await userEvent.click(editor);
+    // Posted replies, resolution and deletion are explicit actions, outside text undo.
+    await undoText();
+    await expect(highlights(editor)).toEqual(["reach"]);
     await userEvent.keyboard("{Control>}s{/Control}");
     await waitFor(() => expect(args.onSave).toHaveBeenCalledTimes(1));
     const saved = lastSavedDocument(args.onSave);
@@ -424,6 +435,76 @@ export const ManageThreads: Story = {
     ]);
     await expect(saved.attrs.comments[0].replies).toHaveLength(2);
     await expect(JSON.stringify(saved)).not.toContain("wording");
+  },
+};
+
+/** @summary Concurrent replies survive conflict recovery and subsequent text undo. */
+export const ConcurrentReplies: Story = {
+  args: {
+    onSave: fn(
+      async (): Promise<DocumentSaveResult> => ({
+        ok: false,
+        error: "Another reviewer saved first.",
+        conflict: {
+          content: commentedDocument([
+            {
+              ...COMMENTS[0],
+              replies: [
+                ...COMMENTS[0].replies,
+                {
+                  id: "remote-reply",
+                  body: "The latest rollout numbers are confirmed.",
+                  author: LIAM,
+                  createdAt: agoIso(0),
+                },
+              ],
+            },
+            ...COMMENTS.slice(1),
+          ]),
+          adoptAndSave: fn(
+            async (): Promise<DocumentSaveOutcome> => ({ ok: true })
+          ),
+        },
+      })
+    ),
+  },
+  play: async ({ canvas, args }) => {
+    const editor = await canvas.findByRole("textbox", {
+      name: "Document content",
+    });
+    await userEvent.click(canvas.getByRole("button", { name: /Comments/ }));
+    const panel = await canvas.findByRole("complementary", {
+      name: "Comments",
+    });
+    const thread = within(panel).getByRole("article", {
+      name: "Comment by Maya Chen",
+    });
+    await userEvent.click(
+      within(thread).getByRole("button", { name: /^Commented text/ })
+    );
+    await userEvent.type(
+      within(thread).getByRole("textbox", { name: "Reply" }),
+      "Ready for the next review.{Enter}"
+    );
+    await userEvent.click(editor);
+    await userEvent.keyboard("{Control>}s{/Control}");
+    await waitFor(() => expect(args.onSave).toHaveBeenCalledTimes(1));
+    await expect(await canvas.findByText("Saved")).toBeVisible();
+    await expect(thread).toHaveTextContent(
+      "The latest rollout numbers are confirmed."
+    );
+    await expect(thread).toHaveTextContent("Ready for the next review.");
+
+    selectFirstParagraph(editor);
+    await userEvent.keyboard(" A later text change.");
+    await expect(editor).toHaveTextContent("A later text change.");
+    await undoText();
+    await expect(editor).not.toHaveTextContent("A later text change.");
+    await undoText();
+    await expect(thread).toHaveTextContent(
+      "The latest rollout numbers are confirmed."
+    );
+    await expect(thread).toHaveTextContent("Ready for the next review.");
   },
 };
 
