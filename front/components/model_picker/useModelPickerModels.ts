@@ -153,10 +153,6 @@ export function useModelPickerModels({
       allModels,
       streamModels,
       streams,
-      // Row locking must see every degradation fallback, even where the
-      // degradation badges are hidden: a tier that fell to its floor because of
-      // an incident is still selectable, not structurally unavailable.
-      fallbackStreamIds: allFallbackStreamIds,
     },
     models,
     allModels,

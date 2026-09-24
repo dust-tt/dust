@@ -154,30 +154,19 @@ export function getDefaultPickModelSlashCommandItemId(
   return defaultItem?.id ?? null;
 }
 
-const EMPTY_FALLBACK_STREAM_IDS: ReadonlySet<string> = new Set();
-
 function buildTierSlashCommandItems({
   lockPremiumEfforts,
   streamModels,
   streams,
-  fallbackStreamIds,
 }: {
   lockPremiumEfforts: boolean;
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
-  fallbackStreamIds: ReadonlySet<string>;
 }): SelectModelSlashCommand[] {
   const items: SelectModelSlashCommand[] = [];
 
   for (const tier of MODEL_TIERS) {
-    if (
-      getTierLockReason(tier.id, {
-        lockPremiumEfforts,
-        streamModels,
-        streams,
-        fallbackStreamIds,
-      })
-    ) {
+    if (getTierLockReason(tier.id, { lockPremiumEfforts, streamModels })) {
       continue;
     }
 
@@ -217,14 +206,12 @@ export function buildPickModelSlashCommandItems({
   models,
   query,
   streams,
-  fallbackStreamIds = EMPTY_FALLBACK_STREAM_IDS,
 }: {
   getModelIcon: (model: EnabledModelConfigurationType) => ComponentType;
   lockPremiumEfforts: boolean;
   models: EnabledModelConfigurationType[];
   query: string;
   streams: ModelStreamResolutionsType | null;
-  fallbackStreamIds?: ReadonlySet<string>;
 }): SelectModelSlashCommand[] {
   const selectableModels = models.filter(
     (model) => !isModelStreamId(model.modelId) && model.isSelectable
@@ -236,7 +223,6 @@ export function buildPickModelSlashCommandItems({
       lockPremiumEfforts,
       streamModels,
       streams,
-      fallbackStreamIds,
     }),
   ];
 

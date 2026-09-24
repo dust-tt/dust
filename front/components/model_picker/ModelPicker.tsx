@@ -215,14 +215,7 @@ export function ModelPicker({
   }
 
   const onSelectTier = (tierId: ModelTierId) => {
-    if (
-      getTierLockReason(tierId, {
-        lockPremiumEfforts,
-        streamModels,
-        streams: modelProps.streams,
-        fallbackStreamIds: modelProps.fallbackStreamIds,
-      })
-    ) {
+    if (getTierLockReason(tierId, { lockPremiumEfforts, streamModels })) {
       return;
     }
     commit(

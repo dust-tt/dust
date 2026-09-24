@@ -8,7 +8,6 @@ import type {
 } from "@app/types/api/assistant/models";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import {
@@ -26,10 +25,7 @@ import {
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_6_ASTRA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
-import type {
-  ModelConfigurationType,
-  ReasoningEffort,
-} from "@app/types/assistant/models/types";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { describe, expect, it } from "vitest";
 
 const Icon = () => null;
@@ -274,50 +270,6 @@ describe("buildPickModelSlashCommandItems", () => {
         .filter((item) => item.data.selection.display.kind === "tier")
         .map((item) => item.label)
     ).toEqual(["Basic", "Standard", "Ultra"]);
-  });
-
-  it("omits a tier whose stream resolves below its own tier, unless degraded", () => {
-    const resolutionFor = (
-      model: ModelConfigurationType,
-      reasoningEffort: ReasoningEffort
-    ): ModelStreamResolutionType => ({
-      providerId: model.providerId,
-      modelId: model.modelId,
-      displayName: model.displayName,
-      reasoningEffort,
-    });
-    // No Ultra model is available: the Ultra stream lands on its Premium floor.
-    const streams = {
-      [AUTO_FAST_MODEL_ID]: resolutionFor(GPT_5_6_LUNA_MODEL_CONFIG, "light"),
-      [AUTO_MODEL_ID]: resolutionFor(GPT_5_6_LUNA_MODEL_CONFIG, "high"),
-      [AUTO_COMPLEX_MODEL_ID]: resolutionFor(
-        CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
-        "high"
-      ),
-      [AUTO_ULTRA_MODEL_ID]: resolutionFor(
-        CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
-        "high"
-      ),
-    };
-    const tierLabels = (fallbackStreamIds?: ReadonlySet<string>) =>
-      buildPickModelSlashCommandItems({
-        getModelIcon: () => Icon,
-        lockPremiumEfforts: false,
-        models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
-        query: "",
-        streams,
-        fallbackStreamIds,
-      })
-        .filter((item) => item.data.selection.display.kind === "tier")
-        .map((item) => item.label);
-
-    expect(tierLabels()).toEqual(["Basic", "Standard", "Premium"]);
-    expect(tierLabels(new Set([AUTO_ULTRA_MODEL_ID]))).toEqual([
-      "Basic",
-      "Standard",
-      "Premium",
-      "Ultra",
-    ]);
   });
 
   it("omits premium efforts and the Premium tier when gated", () => {

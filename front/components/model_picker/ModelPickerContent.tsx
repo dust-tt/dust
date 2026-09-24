@@ -54,7 +54,6 @@ interface ModelPickerContentProps {
   makerGroups: MakerGroup[];
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
-  fallbackStreamIds: ReadonlySet<string>;
   recommendationHint?: string | null;
   isMakersExpanded: boolean;
   onToggleMakers: () => void;
@@ -86,7 +85,6 @@ export function ModelPickerContent({
   makerGroups,
   streamModels,
   streams,
-  fallbackStreamIds,
   recommendationHint: hint,
   isMakersExpanded,
   onToggleMakers,
@@ -147,12 +145,7 @@ export function ModelPickerContent({
         const isSelected = isTierSelected(tier.id, selection);
         const lockReason = ignoreTierRestrictions
           ? null
-          : getTierLockReason(tier.id, {
-              lockPremiumEfforts,
-              streamModels,
-              streams,
-              fallbackStreamIds,
-            });
+          : getTierLockReason(tier.id, { lockPremiumEfforts, streamModels });
         if (lockReason) {
           return (
             <DropdownMenuItem

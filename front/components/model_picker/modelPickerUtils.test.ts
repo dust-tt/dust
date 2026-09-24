@@ -20,7 +20,6 @@ import {
   CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_MODEL_ID,
-  CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
@@ -34,10 +33,7 @@ import {
 } from "@app/types/assistant/models/auto";
 import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
-import {
-  GPT_5_6_LUNA_MODEL_ID,
-  O1_MODEL_CONFIG,
-} from "@app/types/assistant/models/openai";
+import { O1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
   ModelIdType,
@@ -290,47 +286,17 @@ describe("modelPickerUtils premium gating", () => {
       providerId: modelId,
       isSelectable,
     });
-    const NO_STREAMS = {
-      streams: null,
-      fallbackStreamIds: new Set<string>(),
-    };
-    const resolution = (
-      providerId: "openai" | "anthropic",
-      modelId: string,
-      reasoningEffort: "light" | "high"
-    ) => ({ providerId, modelId, displayName: modelId, reasoningEffort });
-    // No Ultra model is available: the Ultra stream lands on its Premium floor.
-    const ULTRA_ON_PREMIUM_FLOOR: ModelStreamResolutionsType = {
-      [AUTO_FAST_MODEL_ID]: resolution(
-        "openai",
-        GPT_5_6_LUNA_MODEL_ID,
-        "light"
-      ),
-      [AUTO_MODEL_ID]: resolution("openai", GPT_5_6_LUNA_MODEL_ID, "high"),
-      [AUTO_COMPLEX_MODEL_ID]: resolution(
-        "anthropic",
-        CLAUDE_OPUS_5_MODEL_ID,
-        "high"
-      ),
-      [AUTO_ULTRA_MODEL_ID]: resolution(
-        "anthropic",
-        CLAUDE_OPUS_5_MODEL_ID,
-        "high"
-      ),
-    };
 
     it("locks a tier whose stream is above the member's cap", () => {
       expect(
         getTierLockReason("complex", {
           ...UNGATED,
-          ...NO_STREAMS,
           streamModels: [streamModel(AUTO_COMPLEX_MODEL_ID, false)],
         })
       ).toBe("model_tier");
       expect(
         getTierLockReason("fast", {
           ...UNGATED,
-          ...NO_STREAMS,
           streamModels: [streamModel(AUTO_FAST_MODEL_ID, true)],
         })
       ).toBeNull();
@@ -340,7 +306,6 @@ describe("modelPickerUtils premium gating", () => {
       expect(
         getTierLockReason("complex", {
           ...GATED,
-          ...NO_STREAMS,
           streamModels: [streamModel(AUTO_COMPLEX_MODEL_ID, true)],
         })
       ).toBe("premium");
@@ -350,43 +315,7 @@ describe("modelPickerUtils premium gating", () => {
       expect(
         getTierLockReason("standard", {
           ...UNGATED,
-          ...NO_STREAMS,
           streamModels: [],
-        })
-      ).toBeNull();
-    });
-
-    it("locks a tier whose stream resolves below its own tier", () => {
-      const streamModels = [
-        streamModel(AUTO_COMPLEX_MODEL_ID, true),
-        streamModel(AUTO_ULTRA_MODEL_ID, true),
-      ];
-
-      expect(
-        getTierLockReason("ultra", {
-          ...UNGATED,
-          streamModels,
-          streams: ULTRA_ON_PREMIUM_FLOOR,
-          fallbackStreamIds: new Set(),
-        })
-      ).toBe("below_tier");
-      expect(
-        getTierLockReason("complex", {
-          ...UNGATED,
-          streamModels,
-          streams: ULTRA_ON_PREMIUM_FLOOR,
-          fallbackStreamIds: new Set(),
-        })
-      ).toBeNull();
-    });
-
-    it("keeps a tier selectable when its below-tier resolution is a degradation fallback", () => {
-      expect(
-        getTierLockReason("ultra", {
-          ...UNGATED,
-          streamModels: [streamModel(AUTO_ULTRA_MODEL_ID, true)],
-          streams: ULTRA_ON_PREMIUM_FLOOR,
-          fallbackStreamIds: new Set([AUTO_ULTRA_MODEL_ID]),
         })
       ).toBeNull();
     });

@@ -49,12 +49,6 @@ const MODEL_TIER_LOCKED_TOOLTIP =
   "Your current model access doesn't include this option. " +
   "Contact your administrator to get access.";
 
-// Shown when a tier row's stream resolves below the tier it is named after,
-// because no model of that tier is available to the workspace.
-const TIER_UNAVAILABLE_TOOLTIP =
-  "No model of this tier is available in your workspace. " +
-  "Contact your administrator to get access.";
-
 export const AUTO_MODELS_DOC_URL =
   "https://docs.dust.tt/docs/user-documentation/agents/model-selection#auto-models";
 
@@ -201,58 +195,19 @@ export function getModelTier(tierId: ModelTierId): ModelTierDefinition {
 
 const PREMIUM_MODEL_TIER_IDS: ModelTierId[] = ["complex", "ultra"];
 
-function isStreamResolvedBelowItsTier(
-  streamId: ModelStreamIdType,
-  streams: ModelStreamResolutionsType | null
-): boolean {
-  const resolution = streams?.[streamId];
-  if (!resolution) {
-    return false;
-  }
-  const resolvedModel = getSupportedModelConfigs().find(
-    (config) =>
-      config.providerId === resolution.providerId &&
-      config.modelId === resolution.modelId
-  );
-  if (!resolvedModel) {
-    return false;
-  }
-  const streamTierName = getTierForModel(streamId, "none");
-  const resolvedTierName = getTierForModel(
-    resolvedModel.modelId,
-    resolution.reasoningEffort
-  );
-  return (
-    streamTierName !== null &&
-    resolvedTierName !== null &&
-    !isTierAtLeast(resolvedTierName, streamTierName)
-  );
-}
-
-// A tier row is locked because the workspace is on a legacy plan without
-// premium access, because the stream's own model tier is above the member's
-// cap — the server refuses such a selection, so the picker must not offer it —
-// or because no model of the tier is available to the workspace.
-/**
- * @cc [owner:rfrenoy,label:product] tier-row-locked-below-resolution
- * A tier row MUST be locked when its stream resolves to a model tiered below the stream's own
- * tier, unless the stream is in `fallbackStreamIds` (a degradation fallback), in which case the
- * row MUST stay selectable.
- */
+// A tier row is locked either because the workspace is on a legacy plan without
+// premium access, or because the stream's own model tier is above the member's
+// cap — the server refuses such a selection, so the picker must not offer it.
 export function getTierLockReason(
   tierId: ModelTierId,
   {
     lockPremiumEfforts,
     streamModels,
-    streams,
-    fallbackStreamIds,
   }: {
     lockPremiumEfforts: boolean;
     streamModels: EnabledModelConfigurationType[];
-    streams: ModelStreamResolutionsType | null;
-    fallbackStreamIds: ReadonlySet<string>;
   }
-): TierLockReason | null {
+): ModelLockReason | null {
   if (lockPremiumEfforts && PREMIUM_MODEL_TIER_IDS.includes(tierId)) {
     return "premium";
   }
@@ -267,13 +222,6 @@ export function getTierLockReason(
   // unlocked — the server refuses an out-of-tier stream at send time anyway.
   if (streamModel && !streamModel.isSelectable) {
     return "model_tier";
-  }
-
-  if (
-    !fallbackStreamIds.has(metaModelId) &&
-    isStreamResolvedBelowItsTier(metaModelId, streams)
-  ) {
-    return "below_tier";
   }
 
   return null;
@@ -385,7 +333,6 @@ export interface ModelPickerSelectionModel {
 }
 
 export type ModelLockReason = "premium" | "model_tier";
-export type TierLockReason = ModelLockReason | "below_tier";
 export type EffortUnavailabilityReason = "unsupported" | ModelLockReason;
 
 // One stop of the reasoning-effort slider. A null reason means it is available.
@@ -609,14 +556,12 @@ export function getModelLockReason(
   return lockPremiumEfforts ? "premium" : "model_tier";
 }
 
-export function getModelLockTooltip(reason: TierLockReason): string {
+export function getModelLockTooltip(reason: ModelLockReason): string {
   switch (reason) {
     case "premium":
       return PREMIUM_MODEL_LOCKED_TOOLTIP;
     case "model_tier":
       return MODEL_TIER_LOCKED_TOOLTIP;
-    case "below_tier":
-      return TIER_UNAVAILABLE_TOOLTIP;
     default:
       assertNeverAndIgnore(reason);
       return "";
