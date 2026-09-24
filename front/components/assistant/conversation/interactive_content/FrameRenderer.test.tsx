@@ -313,9 +313,12 @@ describe("FrameRenderer", () => {
       />
     );
 
+    // Identifier stays stable (avoids Next.js /content URL thrash); remount is
+    // driven by React key which includes contentHash.
     expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier).toBe(
-      "viz-frame_1@42"
+      "viz-frame_1"
     );
+    const firstProps = mocks.iframe.mock.calls.at(-1)?.[0];
 
     rerender(
       <FrameRenderer
@@ -329,8 +332,10 @@ describe("FrameRenderer", () => {
     );
 
     expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier).toBe(
-      "viz-frame_1@99"
+      "viz-frame_1"
     );
+    // New mount after contentHash change (new props object from remount).
+    expect(mocks.iframe.mock.calls.at(-1)?.[0]).not.toBe(firstProps);
   });
 
   it("keeps a successful edit successful when the content refresh fails", async () => {
