@@ -3,11 +3,14 @@ import { getAgentSuggestionLabels } from "@app/components/markdown/suggestion/Ag
 import { AgentSuggestionDetails } from "@app/components/markdown/suggestion/AgentSuggestionDetails";
 import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import { PendingSkillSuggestionDetails } from "@app/components/skill_builder/SkillSuggestionCard";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { Avatar } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 
 type ConversationalSuggestionTarget =
   | {
@@ -18,6 +21,7 @@ type ConversationalSuggestionTarget =
   | {
       type: "skill";
       suggestion: SkillSuggestionType;
+      skill: SkillType;
       getSkillInstructionsHtml: () => string;
       getCurrentAgentFacingDescription: () => string;
       workspaceId: string;
@@ -32,6 +36,15 @@ interface ConversationalSuggestionReviewCardProps {
   isRejecting?: boolean;
   titleAside?: ReactNode;
   secondaryAction?: ReactNode;
+}
+
+interface SkillAvatarVisualProps {
+  skill: SkillType;
+}
+
+function SkillAvatarVisual({ skill }: SkillAvatarVisualProps) {
+  const SkillAvatar = useMemo(() => getSkillAvatarIcon(skill), [skill]);
+  return <SkillAvatar size="sm" />;
 }
 
 function renderCardContent(target: ConversationalSuggestionTarget) {
@@ -56,7 +69,7 @@ function renderCardContent(target: ConversationalSuggestionTarget) {
       return {
         title: target.suggestion.title ?? "Suggestion",
         analysis: target.suggestion.analysis,
-        visual: undefined,
+        visual: <SkillAvatarVisual skill={target.skill} />,
         collapsibleContent: (
           <PendingSkillSuggestionDetails
             suggestion={target.suggestion}

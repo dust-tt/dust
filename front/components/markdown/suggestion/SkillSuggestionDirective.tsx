@@ -153,6 +153,7 @@ function ConversationSkillSuggestion({
         target={{
           type: "skill",
           suggestion,
+          skill,
           getSkillInstructionsHtml,
           getCurrentAgentFacingDescription,
           workspaceId: owner.sId,

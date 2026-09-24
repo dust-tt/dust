@@ -1,4 +1,4 @@
-import { SkillFieldEditSection } from "@app/components/skill_builder/SkillFieldEditSection";
+import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { SkillNameSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { LoadingBlock } from "@dust-tt/sparkle";
@@ -21,7 +21,7 @@ export function SuggestedSkillName({
   }
 
   return (
-    <SkillFieldEditSection
+    <SuggestionFieldEditSection
       label="Name"
       currentValue={skill?.name ?? ""}
       newValue={suggestion.name}

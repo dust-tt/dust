@@ -1,16 +1,16 @@
 import { DiffBlock } from "@dust-tt/sparkle";
 
-interface SkillFieldEditSectionProps {
+interface SuggestionFieldEditSectionProps {
   label: string;
   currentValue: string;
   newValue: string;
 }
 
-export function SkillFieldEditSection({
+export function SuggestionFieldEditSection({
   label,
   currentValue,
   newValue,
-}: SkillFieldEditSectionProps) {
+}: SuggestionFieldEditSectionProps) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">{label}</span>

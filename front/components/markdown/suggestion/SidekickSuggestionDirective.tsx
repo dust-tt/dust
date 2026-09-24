@@ -8,6 +8,7 @@
 
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import {
   AgentSuggestionActionCard,
   getAgentSuggestionLabels,
@@ -220,12 +221,21 @@ function ConversationAgentSuggestion({
   const { getPendingAction, acceptSuggestion, rejectSuggestion } =
     useSuggestionActions({ patchSuggestions, mutateSuggestions });
 
-  const { agentConfiguration, isAgentConfigurationLoading } =
-    useAgentConfiguration({
-      workspaceId: owner.sId,
-      agentConfigurationId: agentId,
-      disabled: DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind),
-    });
+  const {
+    agentConfiguration,
+    isAgentConfigurationLoading,
+    mutateAgentConfiguration,
+  } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentId,
+    disabled: DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind),
+  });
+
+  const handleAccept = async (suggestion: AgentActionCardSuggestionType) => {
+    if (await acceptSuggestion(suggestion)) {
+      void mutateAgentConfiguration();
+    }
+  };
 
   if (isSuggestionsLoading || isAgentConfigurationLoading) {
     return <LoadingBlock className="h-24 w-full" />;
@@ -256,7 +266,7 @@ function ConversationAgentSuggestion({
           suggestion,
           agentConfiguration,
         }}
-        onAccept={() => void acceptSuggestion(suggestion)}
+        onAccept={() => void handleAccept(suggestion)}
         onReject={() => void rejectSuggestion(suggestion)}
         onPreview={() =>
           openPanel({
@@ -276,7 +286,7 @@ function ConversationAgentSuggestion({
       agentSuggestion={suggestion}
       pictureUrl={agentConfiguration?.pictureUrl}
       disabled={pendingAction !== null}
-      onAccept={() => void acceptSuggestion(suggestion)}
+      onAccept={() => void handleAccept(suggestion)}
       onReject={() => void rejectSuggestion(suggestion)}
     />
   );
