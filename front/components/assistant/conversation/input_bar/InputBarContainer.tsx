@@ -63,6 +63,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
+import { useSearchParam } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
@@ -348,6 +349,17 @@ const InputBarContainer = ({
 
   const [startsWithUserMention, setStartsWithUserMention] = useState(false);
   const canSubmitEmpty = !!selectedSingleAgent;
+  // While ?agent= is pending (selection still null after #32283 skips the default) or the
+  // personal default is still loading, submitting would send empty mentions and hit the
+  // server @dust backstop — possibly the wrong agent. Block until selection resolves.
+  // Exception: a leading @user mention intentionally clears the agent.
+  const agentSearchParam = useSearchParam("agent");
+  const isAgentSelectionPending =
+    !conversation &&
+    !isAgentBuilder &&
+    !startsWithUserMention &&
+    (Boolean(isDefaultAgentLoading) ||
+      (Boolean(agentSearchParam) && selectedSingleAgent === null));
 
   const [isBlockTooltipOpen, setIsBlockTooltipOpen] = useState(false);
   const blockTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -640,7 +652,7 @@ const InputBarContainer = ({
   // Wrap onEnterKeyDown so that a blocked Enter attempt triggers the shake animation.
   const onEnterKeyDownWithShake: typeof onEnterKeyDown = useCallback(
     (isEmpty, markdownAndMentions, resetEditorText, setLoading) => {
-      if (isSubmitBlocked) {
+      if (isSubmitBlocked || isAgentSelectionPending) {
         onShake();
         if (blockTooltipTimerRef.current) {
           clearTimeout(blockTooltipTimerRef.current);
@@ -659,7 +671,13 @@ const InputBarContainer = ({
         setLoading
       );
     },
-    [isSubmitBlocked, canSubmitEmpty, onEnterKeyDown, onShake]
+    [
+      isSubmitBlocked,
+      isAgentSelectionPending,
+      canSubmitEmpty,
+      onEnterKeyDown,
+      onShake,
+    ]
   );
 
   onFirstAgentMentionPasteRef.current = (agentId: string) => {
@@ -1559,6 +1577,7 @@ const InputBarContainer = ({
     (isEmpty && !canSubmitEmpty) ||
     isSubmitting ||
     isSubmitBlocked ||
+    isAgentSelectionPending ||
     activeVoiceService.status !== "idle";
 
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;

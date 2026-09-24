@@ -94,7 +94,7 @@ import {
   roundCreditsToMicroCredits,
 } from "@app/lib/credits/units";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { extractFromString, serializeMention } from "@app/lib/mentions/format";
+import { extractFromString } from "@app/lib/mentions/format";
 import { isFreeOrigin } from "@app/lib/metronome/events";
 import { getWorkspaceCreditPoolStatus } from "@app/lib/metronome/user_block";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
@@ -614,6 +614,10 @@ export async function postUserMessage(
 
   // Auto-inject @dust for mention-less web/extension messages in single-user conversations.
   // Must run before the plan rate-limit check so the resulting agent message is counted.
+  // Inject into the mentions side-channel only — do not prepend into content. The single-agent
+  // composer already invokes agents via selectedSingleAgent without writing @Agent into the
+  // message body; rewriting content here made the first message inconsistently show a visible
+  // agent name whenever the client raced and sent empty mentions.
   // Note: the per-pod default agent is applied client-side via the input bar sticky mention,
   // so the normal pod flow sends an explicit mention and never reaches this backstop.
   if (
@@ -634,7 +638,6 @@ export async function postUserMessage(
 
       if (dustAgent && dustAgent.status === "active") {
         mentions.push({ configurationId: dustAgent.sId });
-        content = `${serializeMention({ id: dustAgent.sId, type: "agent", label: dustAgent.name })} ${content}`;
       }
     }
   }
