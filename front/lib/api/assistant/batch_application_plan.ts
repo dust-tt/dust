@@ -1,0 +1,125 @@
+import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
+import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
+import type { SkillSuggestionKind } from "@app/types/suggestions/skill_suggestion";
+
+type SuggestionAction = "create" | "edit" | "delete";
+
+export type BatchApplicationStep =
+  | {
+      type: "skill";
+      action: SuggestionAction;
+      skillId: string;
+      suggestions: SkillSuggestionResource[];
+    }
+  | {
+      type: "agent";
+      action: SuggestionAction;
+      agentId: string;
+      suggestions: AgentSuggestionResource[];
+    };
+
+function getSkillSuggestionAction(kind: SkillSuggestionKind): SuggestionAction {
+  switch (kind) {
+    case "create":
+      return "create";
+    case "delete":
+      return "delete";
+    case "availability":
+    case "edit":
+    case "editors":
+    case "name":
+    case "user_facing_description":
+      return "edit";
+    default:
+      return assertNever(kind);
+  }
+}
+
+function getAgentSuggestionAction(kind: AgentSuggestionKind): SuggestionAction {
+  switch (kind) {
+    case "create":
+      return "create";
+    case "delete":
+      return "delete";
+    case "description":
+    case "instructions":
+    case "knowledge":
+    case "model":
+    case "name":
+    case "scope":
+    case "skills":
+    case "sub_agent":
+    case "tools":
+      return "edit";
+    default:
+      return assertNever(kind);
+  }
+}
+
+/** Groups suggestions by action, then by target, in a single pass that keeps their order. */
+function groupByActionAndTarget<T>(
+  suggestions: T[],
+  getAction: (suggestion: T) => SuggestionAction,
+  getTargetId: (suggestion: T) => string
+): Record<SuggestionAction, Map<string, T[]>> {
+  const suggestionsByAction: Record<SuggestionAction, Map<string, T[]>> = {
+    create: new Map(),
+    edit: new Map(),
+    delete: new Map(),
+  };
+
+  for (const suggestion of suggestions) {
+    const byTarget = suggestionsByAction[getAction(suggestion)];
+    const targetId = getTargetId(suggestion);
+    const group = byTarget.get(targetId);
+    if (group) {
+      group.push(suggestion);
+    } else {
+      byTarget.set(targetId, [suggestion]);
+    }
+  }
+
+  return suggestionsByAction;
+}
+
+export function planBatchApplication(
+  batch: BatchSuggestionResource
+): BatchApplicationStep[] {
+  const skillSuggestionsByAction = groupByActionAndTarget(
+    batch.skillSuggestions,
+    (s) => getSkillSuggestionAction(s.kind),
+    (s) => s.skillConfigurationSId
+  );
+  const agentSuggestionsByAction = groupByActionAndTarget(
+    batch.agentSuggestions,
+    (s) => getAgentSuggestionAction(s.kind),
+    (s) => s._agentConfigurationId
+  );
+
+  const skillSteps = (action: SuggestionAction): BatchApplicationStep[] =>
+    Array.from(skillSuggestionsByAction[action], ([skillId, suggestions]) => ({
+      type: "skill",
+      action,
+      skillId,
+      suggestions,
+    }));
+  const agentSteps = (action: SuggestionAction): BatchApplicationStep[] =>
+    Array.from(agentSuggestionsByAction[action], ([agentId, suggestions]) => ({
+      type: "agent",
+      action,
+      agentId,
+      suggestions,
+    }));
+
+  return [
+    ...skillSteps("create"),
+    ...agentSteps("create"),
+    ...skillSteps("edit"),
+    ...agentSteps("edit"),
+    ...agentSteps("delete"),
+    ...skillSteps("delete"),
+  ];
+}

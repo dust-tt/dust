@@ -154,6 +154,7 @@ export class AgentSuggestionFactory {
       suggestion: CreateSuggestionType;
       analysis: string | null;
       state: AgentSuggestionState;
+      batchId: number | null;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -169,6 +170,7 @@ export class AgentSuggestionFactory {
         analysis: overrides.analysis ?? "Suggested a new agent",
         state: overrides.state ?? "pending",
         conversationId: null,
+        batchId: overrides.batchId ?? null,
       }
     );
   }
@@ -181,6 +183,7 @@ export class AgentSuggestionFactory {
       analysis: string | null;
       state: AgentSuggestionState;
       source: AgentSuggestionSource;
+      batchId: number | null;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -193,6 +196,7 @@ export class AgentSuggestionFactory {
         state: overrides.state ?? "pending",
         conversationId: null,
         source: overrides.source ?? "conversational",
+        batchId: overrides.batchId ?? null,
       }
     );
   }
