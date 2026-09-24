@@ -39,9 +39,11 @@ export const ReasoningEffortSchema = z.preprocess(
   z.enum(ORDERED_REASONING_EFFORTS)
 );
 
-// Display name of a stored effort; values outside the vocabulary are capitalized as is.
+// Display name of a stored effort, including values persisted in message history before the rename
+// of "light" to "low"; values outside the vocabulary are capitalized as is.
 export function getReasoningEffortDisplayName(reasoningEffort: string): string {
-  return isReasoningEffort(reasoningEffort)
-    ? REASONING_EFFORT_LABELS[reasoningEffort]
+  const effort = normalizeLegacyReasoningEffort(reasoningEffort);
+  return isReasoningEffort(effort)
+    ? REASONING_EFFORT_LABELS[effort]
     : capitalize(reasoningEffort);
 }
