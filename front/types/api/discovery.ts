@@ -52,3 +52,21 @@ export type PutGroupDiscoveryPinResponseBody = {
 export type DeleteGroupDiscoveryPinResponseBody = {
   success: true;
 };
+
+export type DiscoveryRankedItemType =
+  | {
+      type: "agent";
+      target: DiscoveryAgentType;
+    }
+  | {
+      type: "skill";
+      target: DiscoverySkillType;
+    };
+
+export type GetDiscoveryForYouResponseBody = {
+  items: DiscoveryRankedItemType[] | null;
+};
+
+export type GetDiscoveryTrendingResponseBody = {
+  items: DiscoveryRankedItemType[] | null;
+};

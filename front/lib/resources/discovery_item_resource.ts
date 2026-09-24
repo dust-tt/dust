@@ -157,7 +157,14 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     return rows.map((row) => new this(this.model, row.get()));
   }
 
-  private static async loadTargets(
+  /**
+   * @cc [label:security;product] discovery-target-loading
+   * Loaded targets MUST omit missing, inactive, and non-discoverable targets (unpublished agents).
+   * For workspace admins, loaded targets MAY include agents or redacted skills the admin cannot
+   * read. Callers MUST check `auth.can("read", target)` before exposing a target to a user, unless
+   * a documented admin exception applies, such as [pinned-items-group-read].
+   */
+  static async loadTargets(
     auth: Authenticator,
     items: Array<{ type: GroupPinnedItemType; itemId: string }>
   ): Promise<{
