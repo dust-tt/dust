@@ -47,7 +47,7 @@ Decide whether the Frame is a throwaway visualization or an application with dur
 writing source. Chat apps, task lists, trackers, forms, CRUD apps, and ${hasDocuments ? "other editable applications" : "anything users can change"}
 default to durable: declare the database plus the read and mutation functions in the
 manifest. Do not store durable application state in memory; use a Frame database.
-${hasDocuments ? "\nDocument saves its narrative text to a JSON file. Durable records inside its custom visuals still need a Frame database.\n" : ""}
+${hasDocuments ? "\nDocument includes selected-text comments and saves its text and discussion in one JSON file. Durable records inside its custom visuals still need a Frame database.\n" : ""}
 
 ## Create a Frame
 
