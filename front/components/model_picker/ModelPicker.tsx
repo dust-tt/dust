@@ -34,7 +34,7 @@ import { useModelPickerModels } from "@app/components/model_picker/useModelPicke
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useClientType } from "@app/lib/context/clientType";
-import { isPremiumOrAboveTier } from "@app/lib/model_tiers/tier_order";
+import { isTierAtLeast } from "@app/lib/model_tiers/tier_order";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
@@ -253,10 +253,8 @@ export function ModelPicker({
       return;
     }
     const { model } = shown.display;
-    if (
-      lockPremiumEfforts &&
-      isPremiumOrAboveTier(getTierForModel(model.modelId, effort))
-    ) {
+    const tierName = getTierForModel(model.modelId, effort);
+    if (lockPremiumEfforts && tierName && isTierAtLeast(tierName, "premium")) {
       return;
     }
     commit(

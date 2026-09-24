@@ -2,10 +2,7 @@ import {
   getSupportedModelConfig,
   getSupportedModelConfigs,
 } from "@app/lib/llms/model_configurations";
-import {
-  isPremiumOrAboveTier,
-  isTierAtLeast,
-} from "@app/lib/model_tiers/tier_order";
+import { isTierAtLeast } from "@app/lib/model_tiers/tier_order";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionsType,
@@ -535,10 +532,8 @@ export function getEffortStops(
           : "unsupported",
       };
     }
-    if (
-      lockPremiumEfforts &&
-      isPremiumOrAboveTier(getTierForModel(enabledModel.modelId, effort))
-    ) {
+    const tierName = getTierForModel(enabledModel.modelId, effort);
+    if (lockPremiumEfforts && tierName && isTierAtLeast(tierName, "premium")) {
       return { effort, unavailabilityReason: "premium" };
     }
     return { effort, unavailabilityReason: null };
@@ -600,7 +595,8 @@ export function isModelLocked(
       (stop) => stop.unavailabilityReason === "premium"
     );
   }
-  return isPremiumOrAboveTier(getTierForModel(enabledModel.modelId, "none"));
+  const tierName = getTierForModel(enabledModel.modelId, "none");
+  return tierName !== null && isTierAtLeast(tierName, "premium");
 }
 
 export function getModelLockReason(

@@ -3,6 +3,7 @@ import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preference
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
 import { resolveAllowedTierNames } from "@app/lib/model_tiers/allowed_tiers";
+import { isTierAtLeast } from "@app/lib/model_tiers/tier_order";
 import type {
   EnabledModelConfigurationType,
   GetEnabledModelsResponseType,
@@ -155,7 +156,8 @@ function isUltraTiered(
   model: ModelConfigurationType,
   reasoningEffort: ReasoningEffort
 ): boolean {
-  return getTierForModel(model.modelId, reasoningEffort) === "ultra";
+  const tierName = getTierForModel(model.modelId, reasoningEffort);
+  return tierName !== null && isTierAtLeast(tierName, "ultra");
 }
 
 export interface StreamResolutionType {
@@ -178,8 +180,8 @@ export interface StreamResolutionWithFallbackType extends StreamResolutionType {
 // overriding the model from the picker -- is left alone and runs as usual.
 /**
  * @cc [owner:rfrenoy,label:product] ultra-models-only-through-ultra-stream
- * A stream other than `auto_ultra` MUST NOT resolve to a model tiered `ultra` at the resolved
- * effort, neither from its candidate pool nor from its last-resort fallback.
+ * A stream other than `auto_ultra` MUST NOT resolve to a model tiered `ultra` or above at the
+ * resolved effort, neither from its candidate pool nor from its last-resort fallback.
  */
 /**
  * @cc [owner:rfrenoy,label:product] stream-resolves-to-concrete-model

@@ -14,7 +14,7 @@ import {
   getEnabledModelsForAuth,
   resolveStreamModel,
 } from "@app/lib/model_tiers/enabled_models";
-import { isPremiumOrAboveTier } from "@app/lib/model_tiers/tier_order";
+import { isTierAtLeast } from "@app/lib/model_tiers/tier_order";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
@@ -56,7 +56,7 @@ async function resolveDowngradeTarget(
     const { model, reasoningEffort } = resolution;
     const tierName = getTierForModel(model.modelId, reasoningEffort);
 
-    if (tierName && !isPremiumOrAboveTier(tierName)) {
+    if (tierName && !isTierAtLeast(tierName, "premium")) {
       return {
         providerId: model.providerId,
         modelId: model.modelId,
@@ -103,7 +103,7 @@ export async function applyPremiumModelFairUse(
     resolvedModel.modelId,
     resolvedModel.reasoningEffort
   );
-  if (!isPremiumOrAboveTier(tierName)) {
+  if (!tierName || !isTierAtLeast(tierName, "premium")) {
     return { action: "run_as_requested" };
   }
 

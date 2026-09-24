@@ -1,7 +1,6 @@
 import {
   expandTiersUpTo,
   getMaxTierName,
-  isPremiumOrAboveTier,
   isTierAtLeast,
   isTierWithinMax,
 } from "@app/lib/model_tiers/tier_order";
@@ -39,12 +38,5 @@ describe("tier_order", () => {
     expect(isTierAtLeast("premium", "premium")).toBe(true);
     expect(isTierAtLeast("ultra", "premium")).toBe(true);
     expect(isTierAtLeast("balanced", "premium")).toBe(false);
-  });
-
-  it("treats Premium and every tier above it as premium, and no tier as below", () => {
-    expect(isPremiumOrAboveTier("premium")).toBe(true);
-    expect(isPremiumOrAboveTier("ultra")).toBe(true);
-    expect(isPremiumOrAboveTier("balanced")).toBe(false);
-    expect(isPremiumOrAboveTier(null)).toBe(false);
   });
 });
