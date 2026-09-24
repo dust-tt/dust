@@ -1,4 +1,3 @@
-import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { SkillFieldEditSection } from "@app/components/skill_builder/SkillFieldEditSection";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
@@ -347,43 +346,20 @@ function SuggestionDetails({
   }
 }
 
-interface SkillSuggestionCardProps {
+interface PendingSkillSuggestionDetailsProps {
   suggestion: SkillSuggestionType;
-  onAccept?: (suggestion: SkillSuggestionType) => void;
-  onDecline?: (suggestion: SkillSuggestionType) => void;
-  onPreview?: () => void;
   getSkillInstructionsHtml: () => string;
   getCurrentAgentFacingDescription: () => string;
-  isSelected?: boolean;
-  onSelect?: () => void;
   workspaceId: string;
-  disabled?: boolean;
-  isAccepting?: boolean;
-  isDeclining?: boolean;
 }
 
-export function SkillSuggestionCard({
+export function PendingSkillSuggestionDetails({
   suggestion,
-  onAccept,
-  onDecline,
-  onPreview,
   getSkillInstructionsHtml,
   getCurrentAgentFacingDescription,
-  isSelected = false,
-  onSelect,
   workspaceId,
-  disabled = false,
-  isAccepting = false,
-  isDeclining = false,
-}: SkillSuggestionCardProps) {
-  const isClickable = !!onSelect;
-  const hasActions = !!onAccept && !!onDecline;
-
-  if (suggestion.state !== "pending") {
-    return <ReviewedSuggestionCard suggestion={suggestion} />;
-  }
-
-  const details = (
+}: PendingSkillSuggestionDetailsProps) {
+  return (
     <>
       <SuggestionDetails
         suggestion={suggestion}
@@ -401,6 +377,41 @@ export function SkillSuggestionCard({
       )}
     </>
   );
+}
+
+interface SkillSuggestionCardProps {
+  suggestion: SkillSuggestionType;
+  onAccept?: (suggestion: SkillSuggestionType) => void;
+  onDecline?: (suggestion: SkillSuggestionType) => void;
+  getSkillInstructionsHtml: () => string;
+  getCurrentAgentFacingDescription: () => string;
+  isSelected?: boolean;
+  onSelect?: () => void;
+  workspaceId: string;
+  disabled?: boolean;
+  isAccepting?: boolean;
+  isDeclining?: boolean;
+}
+
+export function SkillSuggestionCard({
+  suggestion,
+  onAccept,
+  onDecline,
+  getSkillInstructionsHtml,
+  getCurrentAgentFacingDescription,
+  isSelected = false,
+  onSelect,
+  workspaceId,
+  disabled = false,
+  isAccepting = false,
+  isDeclining = false,
+}: SkillSuggestionCardProps) {
+  const isClickable = !!onSelect;
+  const hasActions = !!onAccept && !!onDecline;
+
+  if (suggestion.state !== "pending") {
+    return <ReviewedSuggestionCard suggestion={suggestion} />;
+  }
 
   const wrapperClassName = `rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300" : ""}`;
 
@@ -417,22 +428,6 @@ export function SkillSuggestionCard({
         },
       }
     : {};
-
-  if (suggestion.source === "conversational") {
-    return (
-      <ConversationalSuggestionCard
-        title={suggestion.title ?? "Suggestion"}
-        analysis={suggestion.analysis}
-        onAccept={hasActions ? () => onAccept(suggestion) : undefined}
-        onReject={hasActions ? () => onDecline(suggestion) : undefined}
-        onPreview={onPreview}
-        disabled={disabled}
-        isAccepting={isAccepting}
-        isDeclining={isDeclining}
-        collapsibleContent={details}
-      />
-    );
-  }
 
   return (
     <div className={wrapperClassName} {...wrapperProps}>
@@ -467,7 +462,12 @@ export function SkillSuggestionCard({
           <p className="text-sm text-muted-foreground">{suggestion.analysis}</p>
         )}
 
-        {details}
+        <PendingSkillSuggestionDetails
+          suggestion={suggestion}
+          getSkillInstructionsHtml={getSkillInstructionsHtml}
+          getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
+          workspaceId={workspaceId}
+        />
       </Card>
     </div>
   );
