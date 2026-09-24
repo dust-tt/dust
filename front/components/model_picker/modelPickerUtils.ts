@@ -21,6 +21,7 @@ import {
   STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
 } from "@app/types/assistant/models/model_tiers";
 import { isStaticModelId } from "@app/types/assistant/models/models";
+import { REASONING_EFFORT_LABELS } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
   ModelIdType,
@@ -33,7 +34,6 @@ import type {
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { RegionType } from "@app/types/region";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import capitalize from "lodash/capitalize";
 
 // Shown when a whole-premium model row or a premium reasoning-effort stop is
 // locked because the workspace is on a legacy (non usage-based) plan.
@@ -237,7 +237,7 @@ export function getDefaultTierId(
 export function getReasoningEffortLabel(
   effort: ReasoningEffort
 ): string | null {
-  return effort === "none" ? null : capitalize(effort);
+  return effort === "none" ? null : REASONING_EFFORT_LABELS[effort];
 }
 
 export function formatModelEffortLabel(
@@ -569,7 +569,7 @@ export function getEffortStopTooltip(stop: EffortStop): string | null {
     case "model_tier":
       return MODEL_TIER_LOCKED_TOOLTIP;
     case "unsupported":
-      return `This model doesn't support ${capitalize(stop.effort)} reasoning.`;
+      return `This model doesn't support ${REASONING_EFFORT_LABELS[stop.effort]} reasoning.`;
     case null:
       return null;
     default:

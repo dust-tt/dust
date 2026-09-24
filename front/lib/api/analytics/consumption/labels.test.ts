@@ -40,6 +40,22 @@ describe("resolveDimensionDisplayNames", () => {
     expect(names.get(model.modelId)).toBe(model.displayName);
   });
 
+  it("names reasoning efforts from their display labels", async () => {
+    const names = await resolveDimensionDisplayNames(auth, "reasoning_effort", [
+      "light",
+      "xhigh",
+      "maximal",
+      "unknown_effort",
+    ]);
+
+    expect([...names.values()]).toEqual([
+      "Light",
+      "XHigh",
+      "Max",
+      "Unknown_effort",
+    ]);
+  });
+
   it("names sources from their origin labels", async () => {
     const names = await resolveDimensionDisplayNames(auth, "source", [
       "slack",
