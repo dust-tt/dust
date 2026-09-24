@@ -70,10 +70,11 @@ impl EnrichedOtelLayer {
         let mut event_fields = HashMap::new();
         let mut visitor = FieldCollector::new(&mut event_fields);
         event.record(&mut visitor);
-        let message = event_fields
-            .get("message")
-            .unwrap_or(&"<no message>".to_string())
-            .clone();
+        let message = match event_fields.get("message") {
+            Some(AnyValue::String(s)) => s.to_string(),
+            Some(other) => format!("{:?}", other),
+            None => "<no message>".to_string(),
+        };
 
         // === REUSE: Standard OTEL layer log record creation ===
         let mut log_record = logger.create_log_record();
@@ -94,9 +95,9 @@ impl EnrichedOtelLayer {
         }
 
         // === REUSE: Standard OTEL layer attribute addition ===
-        for (key, value) in event_fields.iter() {
+        for (key, value) in event_fields.into_iter() {
             if key != "message" {
-                log_record.add_attribute(Key::new(key.clone()), AnyValue::from(value.clone()));
+                log_record.add_attribute(Key::new(key), value);
             }
         }
 
@@ -162,25 +163,52 @@ fn extract_span_fields(
     fields
 }
 
-/// Field collector (reused from standard OTEL layer logic)
+/// Field collector (reused from standard OTEL layer logic). Numeric and boolean fields keep
+/// their type so Datadog can use them as measures; a stringified number cannot feed a
+/// log-based metric.
 struct FieldCollector<'a> {
-    fields: &'a mut HashMap<String, String>,
+    fields: &'a mut HashMap<String, AnyValue>,
 }
 
 impl<'a> FieldCollector<'a> {
-    fn new(fields: &'a mut HashMap<String, String>) -> Self {
+    fn new(fields: &'a mut HashMap<String, AnyValue>) -> Self {
         Self { fields }
     }
 }
 
 impl tracing::field::Visit for FieldCollector<'_> {
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
-        self.fields
-            .insert(field.name().to_string(), format!("{:?}", value));
+        self.fields.insert(
+            field.name().to_string(),
+            AnyValue::from(format!("{:?}", value)),
+        );
     }
 
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
         self.fields
-            .insert(field.name().to_string(), value.to_string());
+            .insert(field.name().to_string(), AnyValue::from(value.to_string()));
+    }
+
+    fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
+        self.fields
+            .insert(field.name().to_string(), AnyValue::from(value));
+    }
+
+    fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
+        self.fields
+            .insert(field.name().to_string(), AnyValue::from(value));
+    }
+
+    fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
+        self.fields
+            .insert(field.name().to_string(), AnyValue::from(value));
+    }
+
+    fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
+        let value = match i64::try_from(value) {
+            Ok(signed) => AnyValue::from(signed),
+            Err(_) => AnyValue::from(value.to_string()),
+        };
+        self.fields.insert(field.name().to_string(), value);
     }
 }
