@@ -216,13 +216,14 @@ function ConversationAgentSuggestion({
   const { getPendingAction, acceptSuggestion, rejectSuggestion } =
     useSuggestionActions({ patchSuggestions, mutateSuggestions });
 
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentId,
-    disabled: DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind),
-  });
+  const { agentConfiguration, isAgentConfigurationLoading } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: agentId,
+      disabled: DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind),
+    });
 
-  if (isSuggestionsLoading) {
+  if (isSuggestionsLoading || isAgentConfigurationLoading) {
     return <LoadingBlock className="h-24 w-full" />;
   }
 
@@ -239,7 +240,7 @@ function ConversationAgentSuggestion({
         target={{
           type: "agent",
           suggestion,
-          pictureUrl: agentConfiguration?.pictureUrl,
+          agentConfiguration,
         }}
         onAccept={() => void acceptSuggestion(suggestion)}
         onReject={() => void rejectSuggestion(suggestion)}
