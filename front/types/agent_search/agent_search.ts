@@ -8,6 +8,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { UserType } from "@app/types/user";
 
 export interface AgentSearchDocumentModel {
   provider_id: ModelProviderIdType;
@@ -81,3 +82,11 @@ export interface AgentSearchListItemType {
   activeUsersCount: number | null;
   updatedAt: number | null;
 }
+
+export type SearchAgentsResponseBody = {
+  agents: (AgentSearchListItemType & {
+    editors: Pick<UserType, "sId" | "fullName" | "image">[];
+  })[];
+  hasMore: boolean;
+  nextCursor: string | null;
+};

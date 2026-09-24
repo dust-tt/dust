@@ -10,6 +10,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "aubin-tchoi",
   },
+  agents_search: {
+    description: "Enable Elasticsearch-backed agent search",
+    stage: "dust_only",
+    owner: "tdraier",
+  },
   new_manage_skills_page: {
     description:
       "Enable the search-backed Manage Skills page (requires skills_search)",
