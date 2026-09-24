@@ -73,6 +73,7 @@ import type {
   NonDeltaResponseEvent,
   PassthroughLab,
 } from "@app/lib/model_constructors/types/output/events";
+import type { ReasoningEffort as RouterReasoningEffort } from "@app/lib/model_constructors/types/reasoning_efforts";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { EUROPE, GLOBAL, US } from "@app/lib/model_constructors/types/regions";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
@@ -117,11 +118,16 @@ export function inferenceRegionForEndpointRegion(
 function mapReasoningEffort(
   effort: ReasoningEffort | null,
   useNativeLightReasoning: boolean
-): "none" | "low" | "medium" | "high" | "maximal" {
+): RouterReasoningEffort {
   switch (effort) {
     case null:
     case "none":
       return "none";
+    case "minimal":
+    case "low":
+    case "xhigh":
+    case "maximal":
+      return effort;
     case "light":
       // Models without native light reasoning rely on the chain-of-thought meta
       // prompt instead of native thinking. Enabling native thinking while that

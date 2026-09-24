@@ -57,13 +57,19 @@ export const isModelResolutionMethod = (
 ): value is ModelResolutionMethodType =>
   MODEL_RESOLUTION_METHODS.includes(value as ModelResolutionMethodType);
 
-// z.object (not z.record) so every reasoning effort key is required.
+// z.object (not z.record) so every reasoning effort key is present once parsed. Custom model configs
+// fetched from GCS may only list the legacy `none/light/medium/high` efforts: the others read as
+// unsupported.
 const ReasoningEffortSupportSchema = z.object({
   none: z.boolean(),
+  minimal: z.boolean().default(false),
   light: z.boolean(),
+  low: z.boolean().default(false),
   medium: z.boolean(),
   high: z.boolean(),
-} satisfies Record<ReasoningEffort, z.ZodBoolean>);
+  xhigh: z.boolean().default(false),
+  maximal: z.boolean().default(false),
+} satisfies Record<ReasoningEffort, z.ZodType<boolean, z.ZodTypeDef, unknown>>);
 export type ReasoningEffortSupport = z.infer<
   typeof ReasoningEffortSupportSchema
 >;
