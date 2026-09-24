@@ -11,6 +11,7 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import type {
   AgentSearchDocument,
   AgentSearchFilters,
+  AgentSearchPermissionFiltering,
   AgentSearchSort,
   AgentSearchSortOrder,
 } from "@app/types/agent_search/agent_search";
@@ -53,6 +54,11 @@ async function listSearchableGlobalAgentIds(
  * Return at most limit agents; nextCursor must point to the last consumed hit, not the lookahead.
  */
 /**
+ * @cc [owner:tdraier,label:security] unrestricted-agent-search-requires-admin
+ * Strict permission filtering is the default. Unrestricted filtering MUST fail with
+ * `unrestricted_requires_admin`, without querying, unless the caller is a workspace admin.
+ */
+/**
  * @cc [owner:tdraier,label:security;product] agent-search-pagination
  * Custom and global agents share one ES-ranked stream; cursors advance only past consumed hits.
  * Cursors encode the ES sort tuple as an opaque string and convey no authorization.
@@ -70,6 +76,7 @@ export async function searchAgents(
     ...options
   }: {
     searchTerm: string;
+    permissionFiltering?: AgentSearchPermissionFiltering;
     filters?: AgentSearchFilters;
     limit?: number;
     cursor?: string | null;
@@ -77,6 +84,10 @@ export async function searchAgents(
     sortOrder?: AgentSearchSortOrder;
   }
 ) {
+  if (options.permissionFiltering === "unrestricted" && !auth.isAdmin()) {
+    return new Err("unrestricted_requires_admin" as const);
+  }
+
   let searchAfter: estypes.SortResults | undefined;
   if (cursor !== undefined && cursor !== null) {
     const parsed = safeParseJSON(

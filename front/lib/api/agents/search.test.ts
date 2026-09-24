@@ -129,6 +129,53 @@ describe("searchAgents", () => {
 
   it.each([
     "user",
+    "manager",
+  ] as const)("rejects unrestricted search for a %s without querying", async (role) => {
+    const { authenticator: auth } = await createResourceTest({ role });
+
+    const result = await searchAgents(auth, {
+      searchTerm: "",
+      permissionFiltering: "unrestricted",
+    });
+    assert(result.isErr());
+    expect(result.error).toBe("unrestricted_requires_admin");
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it("lets admins list every workspace agent in unrestricted mode", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const deniedSpace = await SpaceFactory.regular(workspace);
+    await auth.refresh();
+    mockHits([
+      makeDocument({ workspace_id: workspace.sId, agent_id: "visible" }),
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: "hidden",
+        scope: "hidden",
+      }),
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: "denied-space",
+        requested_space_ids: [deniedSpace.sId],
+      }),
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: "archived",
+        status: "archived",
+      }),
+      makeDocument({ workspace_id: "other-workspace", agent_id: "foreign" }),
+    ]);
+
+    expect(
+      await searchAgentIds(auth, { permissionFiltering: "unrestricted" })
+    ).toEqual(["visible", "hidden", "denied-space"]);
+    expect(await searchAgentIds(auth)).toEqual(["visible"]);
+  });
+
+  it.each([
+    "user",
     "admin",
   ] as const)("applies scope, editor, space and workspace access for a %s", async (role) => {
     const {

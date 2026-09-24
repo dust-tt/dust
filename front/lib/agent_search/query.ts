@@ -2,7 +2,10 @@ import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { buildAgentNameAutocompleteQuery } from "@app/lib/agent_search/ranking";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { AgentSearchFilters } from "@app/types/agent_search/agent_search";
+import type {
+  AgentSearchFilters,
+  AgentSearchPermissionFiltering,
+} from "@app/types/agent_search/agent_search";
 import type { estypes } from "@elastic/elasticsearch";
 
 export const MAX_AGENT_SEARCH_RESULTS = 100;
@@ -107,17 +110,20 @@ function buildSelectionFilters(
 /**
  * @cc [owner:tdraier,label:security] workspace-scoped-agent-search
  * Every query is scoped to the caller's workspace and to the explicitly eligible global agent IDs
- * in the reserved global namespace. It defaults to active agents. Custom agents additionally
- * require visibility (see `agent-search-visibility`) and every requested space.
+ * in the reserved global namespace. It defaults to active agents. In strict mode (the default),
+ * custom agents additionally require visibility (see `agent-search-visibility`) and every
+ * requested space; unrestricted mode lifts both. Callers must authorize unrestricted mode upstream.
  */
 export function buildAgentSearchQuery(
   auth: Authenticator,
   {
     searchTerm,
+    permissionFiltering = "strict",
     filters = {},
     globalAgentIds = [],
   }: {
     searchTerm: string;
+    permissionFiltering?: AgentSearchPermissionFiltering;
     filters?: AgentSearchFilters;
     globalAgentIds?: string[];
   }
@@ -134,8 +140,14 @@ export function buildAgentSearchQuery(
           bool: {
             filter: [
               { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
-              buildVisibilityFilter(auth),
-              buildSpaceAccessFilter(getAgentSearchReadableSpaceIds(auth)),
+              ...(permissionFiltering === "strict"
+                ? [
+                    buildVisibilityFilter(auth),
+                    buildSpaceAccessFilter(
+                      getAgentSearchReadableSpaceIds(auth)
+                    ),
+                  ]
+                : []),
             ],
           },
         },

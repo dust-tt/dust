@@ -49,6 +49,13 @@ export interface AgentSearchFilters {
   editedByMe?: true;
 }
 
+export const AGENT_SEARCH_PERMISSION_FILTERINGS = [
+  "strict",
+  "unrestricted",
+] as const;
+export type AgentSearchPermissionFiltering =
+  (typeof AGENT_SEARCH_PERMISSION_FILTERINGS)[number];
+
 export const AGENT_SEARCH_SORTS = [
   "relevance",
   "usage",
