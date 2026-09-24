@@ -1,6 +1,6 @@
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import type { PinnedDiscoveryItemInput } from "@app/lib/resources/discovery_item_resource";
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -15,7 +15,7 @@ import type {
   PutGroupDiscoveryPinResponseBody,
 } from "@app/types/api/discovery";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 
@@ -37,6 +37,9 @@ export async function listGroupDiscoveryPins(
   const groupResult = await GroupResource.fetchById(auth, groupId);
   if (groupResult.isErr()) {
     return groupResult;
+  }
+  if (!(await canManageGroupPins(auth, groupResult.value.id))) {
+    return unauthorizedGroupPins();
   }
 
   const items = await DiscoveryItemResource.listPinnedForGroup(auth, {
@@ -97,6 +100,28 @@ export async function removeGroupDiscoveryPin(
   }
 
   return new Ok({ success: true });
+}
+
+async function canManageGroupPins(
+  auth: Authenticator,
+  groupModelId: number
+): Promise<boolean> {
+  if (auth.isAdmin()) {
+    return true;
+  }
+  if (!auth.isManager()) {
+    return false;
+  }
+  return (await auth.listPrincipalGroupModelIds()).includes(groupModelId);
+}
+
+function unauthorizedGroupPins(): Err<DiscoveryPinError> {
+  return new Err(
+    new DustError(
+      "unauthorized",
+      "Only workspace admins, or managers who belong to the group, can manage pinned discovery items."
+    )
+  );
 }
 
 const DISCOVERY_TRENDING_ITEMS_PER_KIND_LIMIT = 5;
