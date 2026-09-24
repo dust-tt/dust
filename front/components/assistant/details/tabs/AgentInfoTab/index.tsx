@@ -1,4 +1,9 @@
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
+import {
+  DetailsSectionHeading,
+  EditedSectionBar,
+} from "@app/components/assistant/details/DetailsSectionHeading";
+import { useEditedAgentSections } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
 import { AssistantSkillsToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection";
 import { RedactedAgentMessage } from "@app/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage";
@@ -22,6 +27,7 @@ export function AgentInfoTab({
   owner: WorkspaceType;
 }) {
   const { isDark } = useTheme();
+  const editedSections = useEditedAgentSections();
   const isDustAgent =
     agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST ||
     agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE ||
@@ -56,7 +62,8 @@ export function AgentInfoTab({
       )}
 
       {agentConfiguration.description && (
-        <div className="text-sm text-foreground">
+        <div className="relative text-sm text-foreground">
+          {editedSections.has("description") && <EditedSectionBar />}
           <Markdown
             content={agentConfiguration.description}
             forcedTextSize="text-sm"
@@ -73,7 +80,10 @@ export function AgentInfoTab({
 
       {displayInstructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
-          <div className="heading-lg text-foreground">Instructions</div>
+          <DetailsSectionHeading
+            label="Instructions"
+            isEdited={editedSections.has("instructions")}
+          />
           <div
             className={cn(
               "max-h-[400px] overflow-y-auto rounded-lg border border-border bg-muted-background px-3 py-2"
@@ -106,7 +116,8 @@ export function AgentInfoTab({
       )}
 
       {model && (
-        <div className="flex flex-col gap-5">
+        <div className="relative flex flex-col gap-5">
+          {editedSections.has("model") && <EditedSectionBar />}
           <div className="heading-lg text-foreground">Model</div>
           <div className="flex flex-row items-center gap-2">
             <Avatar

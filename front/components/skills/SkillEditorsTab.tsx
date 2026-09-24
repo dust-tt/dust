@@ -1,4 +1,8 @@
-import { useIsSkillSuggestionPreview } from "@app/components/assistant/details/SuggestionPreviewContext";
+import { EditedSectionBar } from "@app/components/assistant/details/DetailsSectionHeading";
+import {
+  useEditedSkillSections,
+  useIsSkillSuggestionPreview,
+} from "@app/components/assistant/details/SuggestionPreviewContext";
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
@@ -38,6 +42,7 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
   });
 
   const isPreview = useIsSkillSuggestionPreview();
+  const editedSections = useEditedSkillSections();
 
   const canManageEditors = skill.canAdministrate && !isPreview;
   const formValues = useMemo<EditorsFormData>(() => ({ editors }), [editors]);
@@ -98,7 +103,8 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
   });
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="relative flex flex-col gap-4">
+      {editedSections.has("editors") && <EditedSectionBar />}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Editors</h3>
         {canManageEditors && (
