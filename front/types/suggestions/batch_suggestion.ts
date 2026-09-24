@@ -1,3 +1,6 @@
+import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+
 export const BATCH_SUGGESTION_STATES = [
   "pending",
   "approved",
@@ -18,4 +21,13 @@ export interface LightBatchSuggestionType {
   sourceConversationId: string | null;
   agentSuggestionIds: string[];
   skillSuggestionIds: string[];
+}
+
+export interface BatchSuggestionType
+  extends Omit<
+    LightBatchSuggestionType,
+    "agentSuggestionIds" | "skillSuggestionIds"
+  > {
+  agentSuggestions: AgentSuggestionType[];
+  skillSuggestions: SkillSuggestionType[];
 }
