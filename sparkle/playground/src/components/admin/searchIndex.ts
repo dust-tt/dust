@@ -264,5 +264,5 @@ export function searchSettings(query: string, pageLabel: (id: string) => string)
     return { entry, score };
   }).filter((x): x is { entry: SettingEntry; score: number } => x !== null);
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, 12).map((x) => x.entry);
+  return scored.slice(0, 20).map((x) => x.entry);
 }

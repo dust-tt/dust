@@ -4,7 +4,6 @@ import {
   Brain,
   Button,
   ChevronDown,
-  ChevronRight,
   Clock,
   CoinsStacked01,
   CreditCard01,
@@ -175,30 +174,36 @@ export function AdminShell() {
           </div>
           <div className="flex-1 overflow-y-auto px-2 pt-3">
             {query.trim() ? (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-4">
                 {results.length === 0 && (
                   <p className="copy-sm px-2 py-3 text-muted-foreground">No setting matches "{query}".</p>
                 )}
-                {results.map((r) => (
-                  <button
-                    key={`${r.page}/${r.tab}/${r.label}`}
-                    type="button"
-                    onClick={() => goTo(r)}
-                    className="flex w-full flex-col items-start gap-0.5 rounded-xl px-2 py-2 text-left hover:bg-muted-background"
-                  >
-                    <span className="heading-sm text-foreground">{r.label}</span>
-                    <span className="copy-xs flex items-center gap-1 text-muted-foreground">
-                      {pageLabel(r.page)}
-                      <ChevronRight className="h-3 w-3" />
-                      {tabLabel(r)}
-                      <ChevronRight className="h-3 w-3" />
-                      {r.section}
-                    </span>
-                  </button>
+                {groupByPage(results).map(({ nav, entries }) => (
+                  <div key={nav.id} className="flex flex-col">
+                    <NavigationListItem
+                      label={nav.label}
+                      icon={nav.icon}
+                      selected={nav.id === current}
+                      onClick={() => {
+                        setCurrent(nav.id);
+                        setQuery("");
+                      }}
+                    />
+                    <div className="flex flex-col">
+                      {entries.map((r) => (
+                        <button
+                          key={`${r.tab}/${r.label}`}
+                          type="button"
+                          onClick={() => goTo(r)}
+                          title={`${tabLabel(r)} › ${r.section}`}
+                          className="copy-sm truncate rounded-lg py-1.5 pl-9 pr-2 text-left text-muted-foreground hover:bg-muted-background hover:text-foreground"
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
-                {results.length > 0 && (
-                  <p className="copy-xs px-2 pt-2 text-muted-foreground">Press Enter to open the first result.</p>
-                )}
               </div>
             ) : (
               <NavigationList>
@@ -237,6 +242,13 @@ export function AdminShell() {
         </main>
       </div>
     </ShowOriginsContext.Provider>
+  );
+}
+
+/** Group search hits under their page, in sidebar order, keeping each group's hits ranked. */
+function groupByPage(entries: SettingEntry[]): { nav: NavItem; entries: SettingEntry[] }[] {
+  return NAV.map((nav) => ({ nav, entries: entries.filter((e) => e.page === nav.id) })).filter(
+    (g) => g.entries.length > 0
   );
 }
 
