@@ -1260,6 +1260,50 @@ export class AgentResource
     return result;
   }
 
+  async listTags(auth: Authenticator): Promise<TagResource[]> {
+    const tagsByConfigurationModelId = await AgentResource.batchListTags(auth, [
+      this,
+    ]);
+    const tags = tagsByConfigurationModelId.get(this.agentConfigurationModelId);
+    assert(tags !== undefined);
+
+    return tags;
+  }
+
+  /**
+   * @cc [owner:tdraier,label:backend] tag-results-by-version
+   * Keyed by `agentConfigurationModelId`: tags attach to a configuration version, not to the agent
+   * across versions. Each input agent has an entry, `[]` when it has no tag. Global agents MUST get
+   * `[]` without a tag lookup: they hold no tag row and share a sentinel configuration id.
+   */
+  static async batchListTags(
+    auth: Authenticator,
+    agents: AgentResource[]
+  ): Promise<Map<ModelId, TagResource[]>> {
+    const result = new Map<ModelId, TagResource[]>(
+      agents.map((agent) => [agent.agentConfigurationModelId, []])
+    );
+    const customConfigurationModelIds = agents
+      .filter((agent) => agent.scope !== "global")
+      .map((agent) => agent.agentConfigurationModelId);
+    if (customConfigurationModelIds.length === 0) {
+      return result;
+    }
+
+    const tagsByConfigurationModelId = await TagResource.listForAgents(
+      auth,
+      customConfigurationModelIds
+    );
+    for (const configurationModelId of customConfigurationModelIds) {
+      result.set(
+        configurationModelId,
+        tagsByConfigurationModelId[configurationModelId] ?? []
+      );
+    }
+
+    return result;
+  }
+
   static async listEditorConfigModelIds(
     auth: Authenticator
   ): Promise<ModelId[]> {
@@ -1630,7 +1674,7 @@ export class AgentResource
     }
 
     const [tags, editors, skills] = await Promise.all([
-      TagResource.listForAgent(auth, this.agentConfigurationModelId),
+      this.listTags(auth),
       this.listEditors(auth),
       // No space filtering: tools and skills are carried over as-is, so re-saving an agent behind a
       // space the caller cannot read keeps them rather than dropping them.

@@ -8,7 +8,7 @@ import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillHydrationOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { TagResource } from "@app/lib/resources/tags_resource";
+import type { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { tagsSorter } from "@app/lib/utils";
 import type {
@@ -19,6 +19,7 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
 import partition from "lodash/partition";
@@ -114,10 +115,6 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     user && variant !== "extra_light"
       ? await getFavoriteStates(auth, { configurationIds })
       : new Map<string, boolean>();
-  const tagsPerAgent =
-    variant !== "extra_light"
-      ? await TagResource.listForAgents(auth, configurationModelIds)
-      : [];
   const spacesForApiKey =
     isRegularApiKey && auth.isAdmin()
       ? await SpaceResource.fetchByModelIds(auth, [
@@ -137,6 +134,10 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   const resourceByConfigurationModelId = new Map(
     resources.map((resource) => [resource.agentConfigurationModelId, resource])
   );
+  const tagsPerAgent =
+    variant !== "extra_light"
+      ? await AgentResource.batchListTags(auth, resources)
+      : new Map<ModelId, TagResource[]>();
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
@@ -146,7 +147,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
         : [];
 
     const model = getModelForAgentConfiguration(agent);
-    const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
+    const tags = tagsPerAgent.get(agent.id) ?? [];
 
     const resource = resourceByConfigurationModelId.get(agent.id);
     assert(
