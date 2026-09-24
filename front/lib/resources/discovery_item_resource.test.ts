@@ -1,7 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
+import type { GroupResource } from "@app/lib/resources/group_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -18,6 +20,7 @@ describe("DiscoveryItemResource", () => {
   let agentAId: string;
   let agentBId: string;
   let groupModelId: number;
+  let globalGroup: GroupResource;
   let globalSpaceModelId: number;
   let skill: SkillResource;
   let skillId: string;
@@ -27,6 +30,7 @@ describe("DiscoveryItemResource", () => {
     const setup = await createResourceTest({ role: "admin" });
     auth = setup.authenticator;
     groupModelId = setup.globalGroup.id;
+    globalGroup = setup.globalGroup;
     globalSpaceModelId = setup.globalSpace.id;
     user = setup.user;
     agentAId = (
@@ -287,7 +291,7 @@ describe("DiscoveryItemResource", () => {
     ).toEqual([]);
   });
 
-  it("shows an admin pins they cannot read and still refuses to set them", async () => {
+  it("rejects a pin the group cannot read and omits a stale one", async () => {
     const privateGroup = await GroupFactory.regularManual(
       auth.getNonNullableWorkspace(),
       "Private skill readers"
@@ -313,17 +317,30 @@ describe("DiscoveryItemResource", () => {
       requestedSpaceIds: [globalSpaceModelId, privateSpace.id],
     });
 
+    const rejectedAgent = await DiscoveryItemResource.setPinnedForGroup(auth, {
+      groupModelId,
+      item: { type: "agent", itemId: restrictedAgent.sId, position: 1 },
+    });
+    const rejectedSkill = await DiscoveryItemResource.setPinnedForGroup(auth, {
+      groupModelId,
+      item: { type: "skill", itemId: privateSkill.sId, position: 2 },
+    });
+    expect(rejectedAgent.isErr() && rejectedAgent.error.code).toBe(
+      "invalid_request_error"
+    );
+    expect(rejectedSkill.isErr() && rejectedSkill.error.code).toBe(
+      "invalid_request_error"
+    );
     await DiscoveryItemResource.setPinnedForGroup(auth, {
       groupModelId,
       item: { type: "agent", itemId: agentAId, position: 0 },
     });
-    await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupModelId,
-      item: { type: "agent", itemId: restrictedAgent.sId, position: 1 },
-    });
-    await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupModelId,
-      item: { type: "skill", itemId: privateSkill.sId, position: 2 },
+    await GroupPinnedItemModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      groupId: groupModelId,
+      type: "agent",
+      itemId: restrictedAgent.sId,
+      position: 1,
     });
 
     const otherAdmin = await UserFactory.basic();
@@ -341,36 +358,11 @@ describe("DiscoveryItemResource", () => {
       otherAdminAuth,
       { groupModelId }
     );
-    expect(adminPins.map(({ pin }) => pin.itemId)).toEqual([
-      agentAId,
-      restrictedAgent.sId,
-      privateSkill.sId,
-    ]);
-    const adminCards = adminPins.map((item) =>
-      DiscoveryItemResource.toJSON(item)
-    );
-    const restrictedCard = adminCards.find(
-      (item) => item.type === "agent" && item.target.sId === restrictedAgent.sId
-    );
-    const privateCard = adminCards.find((item) => item.type === "skill");
-    assert(restrictedCard?.type === "agent");
-    assert(privateCard?.type === "skill");
-    expect(restrictedCard.target).toMatchObject({
-      name: "Restricted agent",
-      description: "Restricted agent description",
-    });
-    expect(privateCard.target).toMatchObject({
-      name: "Private-space skill",
-      description: "Private skill description",
-    });
+    expect(adminPins.map(({ pin }) => pin.itemId)).toEqual([agentAId]);
 
     const featuredForReader =
       await DiscoveryItemResource.listPinnedForAuth(auth);
-    expect(featuredForReader.map(({ pin }) => pin.itemId)).toEqual([
-      agentAId,
-      restrictedAgent.sId,
-      privateSkill.sId,
-    ]);
+    expect(featuredForReader.map(({ pin }) => pin.itemId)).toEqual([agentAId]);
     const featuredForAdmin =
       await DiscoveryItemResource.listPinnedForAuth(otherAdminAuth);
     expect(featuredForAdmin.map(({ pin }) => pin.itemId)).toEqual([agentAId]);
@@ -415,7 +407,58 @@ describe("DiscoveryItemResource", () => {
       (
         await DiscoveryItemResource.listPinnedForGroup(auth, { groupModelId })
       ).map(({ pin }) => pin.itemId)
-    ).toEqual([agentAId, restrictedAgent.sId, privateSkill.sId]);
+    ).toEqual([agentAId]);
+  });
+
+  it("accepts pins using the global group's grants on open spaces", async () => {
+    const audienceGroup = await GroupFactory.regularManual(
+      auth.getNonNullableWorkspace(),
+      "Open-space audience"
+    );
+    const openRegularSpace = await SpaceFactory.regular(
+      auth.getNonNullableWorkspace()
+    );
+    await SpaceFactory.attachGroup(openRegularSpace, globalGroup);
+    const openProjectSpace = await SpaceFactory.project(
+      auth.getNonNullableWorkspace()
+    );
+    await SpaceFactory.attachGroup(
+      openProjectSpace,
+      globalGroup,
+      "project_viewer"
+    );
+
+    const openSpaceAgent = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      {
+        name: "Open-space agent",
+        scope: "visible",
+        requestedSpaceIds: [openRegularSpace.id, openProjectSpace.id],
+      }
+    );
+    const openSpaceSkill = await SkillFactory.create(auth, {
+      name: "Open-space skill",
+      requestedSpaceIds: [openRegularSpace.id, openProjectSpace.id],
+    });
+
+    const agentResult = await DiscoveryItemResource.setPinnedForGroup(auth, {
+      groupModelId: audienceGroup.id,
+      item: { type: "agent", itemId: openSpaceAgent.sId, position: 0 },
+    });
+    const skillResult = await DiscoveryItemResource.setPinnedForGroup(auth, {
+      groupModelId: audienceGroup.id,
+      item: { type: "skill", itemId: openSpaceSkill.sId, position: 1 },
+    });
+
+    expect(agentResult.isOk()).toBe(true);
+    expect(skillResult.isOk()).toBe(true);
+    expect(
+      (
+        await DiscoveryItemResource.listPinnedForGroup(auth, {
+          groupModelId: audienceGroup.id,
+        })
+      ).map(({ pin }) => pin.itemId)
+    ).toEqual([openSpaceAgent.sId, openSpaceSkill.sId]);
   });
 
   it("rejects pins on regular_auto groups", async () => {
@@ -436,27 +479,127 @@ describe("DiscoveryItemResource", () => {
     expect(listed).toEqual([]);
   });
 
-  it("rejects pin mutations from workspace managers", async () => {
+  it("lets a manager edit pins for a group they belong to", async () => {
     const setup = await createResourceTest({ role: "manager" });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      setup.authenticator,
+      { name: "Manager pin" }
+    );
+
+    const outsideGroup = await GroupFactory.regularManual(
+      setup.workspace,
+      "Outside group"
+    );
+    const rejected = await DiscoveryItemResource.setPinnedForGroup(
+      setup.authenticator,
+      {
+        groupModelId: outsideGroup.id,
+        item: { type: "agent", itemId: agent.sId, position: 0 },
+      }
+    );
+    expect(rejected.isErr() && rejected.error.code).toBe("unauthorized");
 
     const result = await DiscoveryItemResource.setPinnedForGroup(
       setup.authenticator,
       {
         groupModelId: setup.globalGroup.id,
-        item: { type: "agent", itemId: "agt_forbidden", position: 0 },
+        item: { type: "agent", itemId: agent.sId, position: 0 },
       }
     );
-    const removeResult = await DiscoveryItemResource.removePinnedForGroup(
+    expect(result.isOk()).toBe(true);
+
+    const listed = await DiscoveryItemResource.listPinnedForGroup(
       setup.authenticator,
+      { groupModelId: setup.globalGroup.id }
+    );
+    expect(listed.map(({ pin }) => pin.itemId)).toEqual([agent.sId]);
+
+    const removed = await DiscoveryItemResource.removePinnedForGroup(
+      setup.authenticator,
+      { groupModelId: setup.globalGroup.id, position: 0 }
+    );
+    expect(removed.isOk()).toBe(true);
+  });
+
+  it("omits a pin the group can no longer read and refuses to set one", async () => {
+    const privateGroup = await GroupFactory.regularManual(
+      auth.getNonNullableWorkspace(),
+      "Private skill readers"
+    );
+    await GroupFactory.withMembers(auth, privateGroup, [user]);
+    const privateSpace = await SpaceFactory.regular(
+      auth.getNonNullableWorkspace()
+    );
+    await SpaceFactory.attachGroup(privateSpace, privateGroup);
+    await auth.refresh();
+    const restrictedAgent = await AgentConfigurationFactory.createTestAgent(
+      auth,
       {
-        groupModelId: setup.globalGroup.id,
-        position: 0,
+        name: "Restricted agent",
+        description: "Restricted agent description",
+        scope: "visible",
+        requestedSpaceIds: [privateSpace.id],
       }
+    );
+    const privateSkill = await SkillFactory.create(auth, {
+      name: "Private-space skill",
+      userFacingDescription: "Private skill description",
+      requestedSpaceIds: [globalSpaceModelId, privateSpace.id],
+    });
+    const rejected = await DiscoveryItemResource.setPinnedForGroup(auth, {
+      groupModelId,
+      item: { type: "agent", itemId: restrictedAgent.sId, position: 0 },
+    });
+    expect(rejected.isErr() && rejected.error.code).toBe(
+      "invalid_request_error"
+    );
+    await GroupPinnedItemModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      groupId: groupModelId,
+      type: "skill",
+      itemId: privateSkill.sId,
+      position: 0,
+    });
+
+    const manager = await UserFactory.basic();
+    await MembershipFactory.associate(auth.getNonNullableWorkspace(), manager, {
+      role: "manager",
+    });
+    const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      manager.sId,
+      auth.getNonNullableWorkspace().sId
     );
 
-    expect(result.isErr() && result.error.code).toBe("unauthorized");
-    expect(removeResult.isErr() && removeResult.error.code).toBe(
-      "unauthorized"
+    const editorPins = await DiscoveryItemResource.listPinnedForGroup(
+      managerAuth,
+      { groupModelId }
+    );
+    expect(editorPins.map(({ pin }) => pin.itemId)).toEqual([]);
+    expect(
+      (await DiscoveryItemResource.listPinnedForAuth(managerAuth)).map(
+        ({ pin }) => pin.itemId
+      )
+    ).toEqual([]);
+
+    const agentWrite = await DiscoveryItemResource.setPinnedForGroup(
+      managerAuth,
+      {
+        groupModelId,
+        item: { type: "agent", itemId: restrictedAgent.sId, position: 0 },
+      }
+    );
+    const skillWrite = await DiscoveryItemResource.setPinnedForGroup(
+      managerAuth,
+      {
+        groupModelId,
+        item: { type: "skill", itemId: privateSkill.sId, position: 1 },
+      }
+    );
+    expect(agentWrite.isErr() && agentWrite.error.code).toBe(
+      "invalid_request_error"
+    );
+    expect(skillWrite.isErr() && skillWrite.error.code).toBe(
+      "invalid_request_error"
     );
   });
 });

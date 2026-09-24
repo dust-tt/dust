@@ -1,4 +1,5 @@
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
@@ -77,16 +78,57 @@ describe("/api/w/:wId/groups/:groupId/discovery/pins", () => {
     expect(await emptyResponse.json()).toEqual({ items: [] });
   });
 
-  it("rejects pin management from non-admin users", async () => {
-    const { workspace, globalGroup } = await createPrivateApiMockRequest({
+  it("lets a manager edit pins for a group they belong to", async () => {
+    const { auth, workspace, globalGroup } = await createPrivateApiMockRequest({
       role: "manager",
     });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Manager pin",
+    });
+
+    const putResponse = await honoApp.request(
+      pinsUrl(workspace.sId, globalGroup.sId, 0),
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "agent", itemId: agent.sId }),
+      }
+    );
+    expect(putResponse.status).toBe(200);
 
     const getResponse = await honoApp.request(
       pinsUrl(workspace.sId, globalGroup.sId)
     );
-    const putResponse = await honoApp.request(
+    expect(getResponse.status).toBe(200);
+
+    const deleteResponse = await honoApp.request(
       pinsUrl(workspace.sId, globalGroup.sId, 0),
+      { method: "DELETE" }
+    );
+    expect(deleteResponse.status).toBe(200);
+  });
+
+  it("rejects pin management from users and from managers outside the group", async () => {
+    const { workspace, globalGroup } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const userResponse = await honoApp.request(
+      pinsUrl(workspace.sId, globalGroup.sId)
+    );
+    expect(userResponse.status).toBe(403);
+
+    const manager = await createPrivateApiMockRequest({
+      role: "manager",
+    });
+    const outsideGroup = await GroupFactory.regularManual(
+      manager.workspace,
+      "Outside group"
+    );
+    const getResponse = await honoApp.request(
+      pinsUrl(manager.workspace.sId, outsideGroup.sId)
+    );
+    const putResponse = await honoApp.request(
+      pinsUrl(manager.workspace.sId, outsideGroup.sId, 0),
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -94,7 +136,7 @@ describe("/api/w/:wId/groups/:groupId/discovery/pins", () => {
       }
     );
     const deleteResponse = await honoApp.request(
-      pinsUrl(workspace.sId, globalGroup.sId, 0),
+      pinsUrl(manager.workspace.sId, outsideGroup.sId, 0),
       { method: "DELETE" }
     );
 

@@ -2376,6 +2376,10 @@ export class AgentResource
     return new Ok(undefined);
   }
 
+  requestedSpaceModelIds(): readonly ModelId[] {
+    return this.requestedSpaceIds;
+  }
+
   // Whether the caller can read every space backing the agent's tools/skills/data. Space read comes
   // from the caller's governance snapshot (`getReadableSpaceModelIds`), so this needs no extra query.
   // A `kind: "all"` result is the type-wide wildcard grant (a full system key) and reads every space;
