@@ -23,6 +23,7 @@ import {
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import type { FramePublicationFunctionDefinition } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -245,6 +246,12 @@ export function buildFramePublicationContracts({
   return new Ok({ databases, functions });
 }
 
+/**
+ * @cc [owner:davidebbo,label:backend] publication-row-before-objects
+ * The publication's `frame_publications` row MUST be committed before any of its objects is
+ * written to GCS, so that no stored publication lacks a row. A failure after the insert leaves a
+ * row whose `publication.json` does not exist: that publication is uncommitted.
+ */
 export async function storeFramePublication(
   auth: Authenticator,
   {
@@ -305,6 +312,11 @@ export async function storeFramePublication(
     );
   }
   const descriptor = descriptorResult.data;
+
+  await FramePublicationResource.makeNew(auth, {
+    frame,
+    publicationId: identity.publicationId,
+  });
 
   const publicationFiles: Array<{
     filePath: string;
