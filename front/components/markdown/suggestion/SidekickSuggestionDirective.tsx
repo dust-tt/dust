@@ -17,9 +17,10 @@ import {
   SidekickSuggestionCard,
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/SidekickSuggestionCard";
+import { useSuggestionActions } from "@app/hooks/useSuggestionActions";
 import {
-  useAgentSuggestionActions,
   useAgentSuggestions,
+  usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { AGENT_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
@@ -208,12 +209,12 @@ function ConversationAgentSuggestion({
       conversationId,
     });
 
+  const { patchSuggestions } = usePatchAgentSuggestions({
+    agentConfigurationId: agentId,
+    workspaceId: owner.sId,
+  });
   const { getPendingAction, acceptSuggestion, rejectSuggestion } =
-    useAgentSuggestionActions({
-      agentConfigurationId: agentId,
-      workspaceId: owner.sId,
-      mutateSuggestions,
-    });
+    useSuggestionActions({ patchSuggestions, mutateSuggestions });
 
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,

@@ -21,7 +21,7 @@ import type {
   ReviewableSkillSuggestionSource,
   SkillSuggestionType,
 } from "@app/types/suggestions/skill_suggestion";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 export function useAreSkillSuggestionsEnabled(): boolean {
@@ -130,7 +130,7 @@ export function usePatchSkillSuggestions({
     async (
       suggestionIds: string[],
       state: PatchSkillSuggestionRequestBody["state"],
-      { applyToSkill }: { applyToSkill?: boolean } = {}
+      { apply }: { apply?: boolean } = {}
     ): Promise<PatchSkillSuggestionResponseBody | null> => {
       if (!skillId || suggestionIds.length === 0) {
         return null;
@@ -147,7 +147,7 @@ export function usePatchSkillSuggestions({
             body: JSON.stringify({
               suggestionIds,
               state,
-              applyToSkill,
+              applyToSkill: apply,
             } satisfies PatchSkillSuggestionRequestBody),
           }
         );
@@ -176,89 +176,4 @@ export function usePatchSkillSuggestions({
   );
 
   return { patchSuggestions };
-}
-
-type SuggestionReviewAction = "accept" | "reject";
-
-export function useSkillSuggestionActions({
-  skillId,
-  workspaceId,
-  mutateSuggestions,
-}: {
-  skillId: string | null;
-  workspaceId: string;
-  mutateSuggestions: ReturnType<
-    typeof useSkillSuggestions
-  >["mutateSuggestions"];
-}) {
-  const { patchSuggestions } = usePatchSkillSuggestions({
-    skillId,
-    workspaceId,
-  });
-  const [pendingActions, setPendingActions] = useState<
-    Record<string, SuggestionReviewAction>
-  >({});
-
-  const getPendingAction = useCallback(
-    (suggestion: { sId: string }): SuggestionReviewAction | null =>
-      pendingActions[suggestion.sId] ?? null,
-    [pendingActions]
-  );
-
-  const setSuggestionState = useCallback(
-    async (
-      suggestion: { sId: string },
-      action: SuggestionReviewAction,
-      options?: { applyToSkill?: boolean }
-    ): Promise<boolean> => {
-      setPendingActions((current) => ({
-        ...current,
-        [suggestion.sId]: action,
-      }));
-
-      const result = await patchSuggestions(
-        [suggestion.sId],
-        action === "accept" ? "approved" : "rejected",
-        options
-      );
-
-      setPendingActions((current) => {
-        const { [suggestion.sId]: _removed, ...rest } = current;
-        return rest;
-      });
-
-      if (!result || result.suggestions.length === 0) {
-        return false;
-      }
-
-      const reviewedById = new Map(result.suggestions.map((s) => [s.sId, s]));
-      void mutateSuggestions(
-        (current) => ({
-          suggestions: (current?.suggestions ?? []).map(
-            (s) => reviewedById.get(s.sId) ?? s
-          ),
-        }),
-        { revalidate: false }
-      );
-
-      return true;
-    },
-    [patchSuggestions, mutateSuggestions]
-  );
-
-  const acceptSuggestion = useCallback(
-    (suggestion: { sId: string }) =>
-      setSuggestionState(suggestion, "accept", { applyToSkill: true }),
-    [setSuggestionState]
-  );
-  const rejectSuggestion = useCallback(
-    (suggestion: { sId: string }) => setSuggestionState(suggestion, "reject"),
-    [setSuggestionState]
-  );
-
-  return {
-    getPendingAction,
-    acceptSuggestion,
-    rejectSuggestion,
-  };
 }
