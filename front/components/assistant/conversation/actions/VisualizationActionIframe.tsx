@@ -786,6 +786,11 @@ export interface VisualizationActionIframeProps {
  * The iframe URL MUST omit Dust's theme so Frames use Viz's default theme.
  * Changes to Dust's theme MUST NOT change the iframe URL or remount the iframe.
  */
+/**
+ * @cc [owner:flvndvd,label:security] frame-host-file-writes
+ * File writes MUST require a v2 Frame and an identity scoped to its workspace, including on
+ * shared views. The canonical file API MUST authorize each write with the current session.
+ */
 export const VisualizationActionIframe = forwardRef<
   HTMLIFrameElement,
   VisualizationActionIframeProps
@@ -948,9 +953,7 @@ export const VisualizationActionIframe = forwardRef<
     spaceId,
     packageRoot: props.framePackageRoot,
     canWrite:
-      !isPublic &&
-      Boolean(props.frameId) &&
-      runtimeAccess.userIdentity.isAuthenticated,
+      Boolean(props.frameId) && runtimeAccess.userIdentity.isWorkspaceMember,
   });
 
   const createSandboxFunctionInvocation = useCallback(

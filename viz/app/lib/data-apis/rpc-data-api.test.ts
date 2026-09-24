@@ -267,7 +267,50 @@ describe("revision-aware file access", () => {
     });
   });
 
-  it("keeps cached public files read-only even with an authenticated RPC channel", async () => {
+  it("reads fresh files and revisions before and after a shared-view write", async () => {
+    const cache = new CacheDataAPI(
+      [
+        {
+          fileId: "./notes.json",
+          data: btoa("Cached content"),
+          mimeType: "application/json",
+        },
+      ],
+      "Published code"
+    );
+    const sendMessage = vi
+      .fn()
+      .mockResolvedValueOnce({
+        fileBlob: new Blob(["Current content"]),
+        revision: "123",
+        canWrite: true,
+      })
+      .mockResolvedValueOnce({ success: true, revision: "124" })
+      .mockResolvedValueOnce({
+        fileBlob: new Blob(["Updated content"]),
+        revision: "124",
+        canWrite: true,
+      });
+    const api = new HybridDataAPI(cache, new RPCDataAPI(sendMessage));
+    const file = await api.fetchFile("./notes.json");
+    expect(await file?.file.text()).toBe("Current content");
+    expect(file).toMatchObject({ revision: "123", canWrite: true });
+
+    const edit = { ...fileEdit, content: "Updated content", revision: "123" };
+    await expect(api.writeFile(edit)).resolves.toEqual({
+      success: true,
+      revision: "124",
+    });
+    expect(sendMessage).toHaveBeenNthCalledWith(2, "writeFile", edit);
+
+    const updated = await api.fetchFile("./notes.json");
+    expect(await updated?.file.text()).toBe("Updated content");
+    expect(updated).toMatchObject({ revision: "124", canWrite: true });
+    await expect(api.fetchCode()).resolves.toBe("Published code");
+    expect(sendMessage).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps the shared snapshot readable when source access is denied", async () => {
     const cache = new CacheDataAPI([
       {
         fileId: "./notes.json",
@@ -275,15 +318,21 @@ describe("revision-aware file access", () => {
         mimeType: "application/json",
       },
     ]);
-    const sendMessage = vi.fn();
+    const denied = {
+      success: false,
+      error: { code: "read_only", message: "You cannot edit this file." },
+    };
+    const sendMessage = vi
+      .fn()
+      .mockResolvedValueOnce({ fileBlob: null })
+      .mockResolvedValueOnce(denied);
     const api = new HybridDataAPI(cache, new RPCDataAPI(sendMessage));
     const file = await api.fetchFile("./notes.json");
     expect(await file?.file.text()).toBe("{}");
     expect(file).toMatchObject({ revision: null, canWrite: false });
-    await expect(api.writeFile(fileEdit)).resolves.toMatchObject({
-      success: false,
-      error: { code: "read_only" },
+    await expect(api.writeFile(fileEdit)).resolves.toEqual(denied);
+    expect(sendMessage).toHaveBeenNthCalledWith(1, "getFile", {
+      fileId: "./notes.json",
     });
-    expect(sendMessage).not.toHaveBeenCalled();
   });
 });
