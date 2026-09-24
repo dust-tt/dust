@@ -49,7 +49,7 @@ describe("buildPickModelSlashCommandItems", () => {
       "Basic",
       "Standard",
       "Premium",
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Low`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
     ]);
@@ -57,7 +57,7 @@ describe("buildPickModelSlashCommandItems", () => {
       items
         .filter((item) => item.data.selection.display.kind === "model")
         .map((item) => item.data.selection.toSend?.reasoningEffort)
-    ).toEqual(["light", "medium", "high"]);
+    ).toEqual(["low", "medium", "high"]);
   });
 
   it("uses a single row for non-reasoning models", () => {
@@ -132,17 +132,17 @@ describe("buildPickModelSlashCommandItems", () => {
       }).map((item) => item.label);
 
     // "gpt6" is a substring of "gpt6astra" and only a subsequence of "gpt5.6luna". Within a
-    // model, efforts keep their light, medium, high order.
+    // model, efforts keep their low, medium, high order.
     expect(labelsFor("gpt6")).toEqual([
-      `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Light`,
+      `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Low`,
       `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Medium`,
       `${GPT_6_ASTRA_MODEL_CONFIG.displayName} High`,
-      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Light`,
+      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Low`,
       `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Medium`,
       `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} High`,
     ]);
     expect(labelsFor("laude")).toEqual([
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Low`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
     ]);
@@ -170,7 +170,7 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(labelsFor("claudehaiku h")).toEqual([haikuHigh]);
     expect(labelsFor("HAIKU High")).toEqual([haikuHigh]);
     expect(labelsFor("gptluna l")).toEqual([
-      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Light`,
+      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Low`,
     ]);
     // A displayed name can be typed as is, hyphen included.
     expect(labelsFor(`${GPT_5_4_MINI_MODEL_CONFIG.displayName} h`)).toEqual([
@@ -281,7 +281,7 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(items.map((item) => item.label)).toEqual([
       "Basic",
       "Standard",
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Low`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
     ]);
   });

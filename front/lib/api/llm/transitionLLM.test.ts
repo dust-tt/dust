@@ -3,6 +3,7 @@ import {
   getPromptCacheKeyForHost,
   inferenceRegionForEndpointRegion,
   reasoningContentToLegacyMetadata,
+  resolveReasoningEffortForModel,
   toBaseMessages,
   withMessageCacheBreakpoints,
   withRetryableErrors,
@@ -20,6 +21,8 @@ import {
 import type { BaseMessage } from "@app/lib/model_constructors/types/input/messages";
 import type { ProviderPassthroughEvent } from "@app/lib/model_constructors/types/output/events";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
+import { CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { GPT_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { describe, expect, it } from "vitest";
 
@@ -59,6 +62,28 @@ describe("inferenceRegionForEndpointRegion", () => {
     expect(inferenceRegionForEndpointRegion(endpointRegion)).toBe(
       expectedInferenceRegion
     );
+  });
+});
+
+describe("resolveReasoningEffortForModel", () => {
+  it("keeps every effort the model supports as is", () => {
+    for (const effort of ["minimal", "low", "medium", "high"] as const) {
+      expect(resolveReasoningEffortForModel(GPT_5_MODEL_CONFIG, effort)).toBe(
+        effort
+      );
+    }
+  });
+
+  it("falls back to the model default for an unsupported effort", () => {
+    expect(resolveReasoningEffortForModel(GPT_5_MODEL_CONFIG, "none")).toBe(
+      GPT_5_MODEL_CONFIG.defaultReasoningEffort
+    );
+  });
+
+  it("reads a missing effort as none", () => {
+    expect(
+      resolveReasoningEffortForModel(CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG, null)
+    ).toBe(CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG.defaultReasoningEffort);
   });
 });
 

@@ -35,7 +35,7 @@ describe("model_tiers", () => {
     const efforts = getAvailableReasoningEfforts(
       STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[GPT_6_ASTRA_MODEL_ID]
     );
-    expect(efforts).toEqual(["light", "medium", "high"]);
+    expect(efforts).toEqual(["low", "medium", "high", "xhigh", "maximal"]);
     for (const effort of efforts) {
       expect(getTierForModel(GPT_6_ASTRA_MODEL_ID, effort)).toBe("ultra");
     }
@@ -82,19 +82,25 @@ describe("model_tiers", () => {
   });
 
   it("classifies opus as premium and every fable as ultra", () => {
-    expect(getTierForModel(CLAUDE_OPUS_4_8_MODEL_ID, "light")).toBe("premium");
+    expect(getTierForModel(CLAUDE_OPUS_4_8_MODEL_ID, "low")).toBe("premium");
     for (const modelId of [
       CLAUDE_FABLE_5_MODEL_ID,
       CLAUDE_FABLE_5_1_MODEL_ID,
     ] as const) {
-      for (const effort of ["light", "medium", "high"] as const) {
+      for (const effort of [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "maximal",
+      ] as const) {
         expect(getTierForModel(modelId, effort)).toBe("ultra");
       }
     }
   });
 
   it("classifies Grok 4.6 high reasoning as premium", () => {
-    expect(getTierForModel(GROK_4_6_MODEL_ID, "light")).toBe("balanced");
+    expect(getTierForModel(GROK_4_6_MODEL_ID, "low")).toBe("balanced");
     expect(getTierForModel(GROK_4_6_MODEL_ID, "medium")).toBe("balanced");
     expect(getTierForModel(GROK_4_6_MODEL_ID, "high")).toBe("premium");
   });
@@ -107,8 +113,8 @@ describe("model_tiers", () => {
     expect(getTierForModel(customModelId, "high")).toBe("premium");
   });
 
-  it("classifies sonnet with light reasoning as cost efficient", () => {
-    expect(getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "light")).toBe(
+  it("classifies sonnet with low reasoning as cost efficient", () => {
+    expect(getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "low")).toBe(
       "cost_efficient"
     );
   });
@@ -123,22 +129,27 @@ describe("model_tiers", () => {
     expect(getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "high")).toBe("premium");
   });
 
-  it("classifies large non-sonnet models with light reasoning as premium", () => {
-    expect(getTierForModel(GPT_5_5_MODEL_ID, "light")).toBe("premium");
+  it("classifies large non-sonnet models with low reasoning as premium", () => {
+    expect(getTierForModel(GPT_5_5_MODEL_ID, "low")).toBe("premium");
   });
 
   it("classifies the long-context Terra model as premium", () => {
-    for (const effort of ["none", "light", "medium", "high"] as const) {
+    for (const effort of [
+      "none",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "maximal",
+    ] as const) {
       expect(getTierForModel(GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID, effort)).toBe(
         "premium"
       );
     }
   });
 
-  it("classifies small models with light reasoning as cost efficient", () => {
-    expect(getTierForModel(GPT_5_NANO_MODEL_ID, "light")).toBe(
-      "cost_efficient"
-    );
+  it("classifies small models with low reasoning as cost efficient", () => {
+    expect(getTierForModel(GPT_5_NANO_MODEL_ID, "low")).toBe("cost_efficient");
   });
 
   it("resolves tiers from a full selection", () => {
@@ -146,7 +157,7 @@ describe("model_tiers", () => {
       getTierForSelection({
         providerId: "anthropic",
         modelId: CLAUDE_SONNET_5_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       })
     ).toBe("cost_efficient");
     expect(

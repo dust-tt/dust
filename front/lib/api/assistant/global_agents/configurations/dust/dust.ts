@@ -552,7 +552,7 @@ export function _getDustEdgeGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_EDGE,
     name: "dust-edge",
     preferredModelConfiguration: CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -564,7 +564,7 @@ export function _getDustAntGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_ANT,
     name: "dust-ant",
     preferredModelConfiguration: CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -611,7 +611,7 @@ export function _getDustAntSonnetEdgeLightGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE_LIGHT,
     name: "dust-ant-sonnet-edge-light",
     preferredModelConfiguration: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -623,7 +623,7 @@ export function _getDustHaikuGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_HAIKU,
     name: "dust-haiku",
     preferredModelConfiguration: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -635,7 +635,7 @@ export function _getDustLightGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_LIGHT,
     name: "dust-light",
     preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -647,7 +647,7 @@ export function _getDustLionelGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_LIONEL,
     name: "dust-lionel",
     preferredModelConfiguration: CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -683,7 +683,7 @@ export function _getDustKimiGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_KIMI,
     name: "dust-kimi",
     preferredModelConfiguration: FIREWORKS_KIMI_K3_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -719,7 +719,7 @@ export function _getDustGlmGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_GLM,
     name: "dust-glm",
     preferredModelConfiguration: FIREWORKS_GLM_5_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -755,7 +755,7 @@ export function _getDustPistacheGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_PISTACHE,
     name: "dust-pistache",
     preferredModelConfiguration: FIREWORKS_GLM_5P3_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -791,7 +791,7 @@ export function _getDustMinimaxGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_MINIMAX,
     name: "dust-minimax",
     preferredModelConfiguration: FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -865,7 +865,7 @@ export function _getDustGoogGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG,
     name: "dust-goog",
     preferredModelConfiguration: GEMINI_3_8_FLASH_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -913,7 +913,7 @@ export function _getDustGoogProGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG_PRO,
     name: "dust-goog-pro",
     preferredModelConfiguration: GEMINI_3_1_PRO_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -949,7 +949,7 @@ export function _getDustOaiGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_OAI,
     name: "dust-oai",
     preferredModelConfiguration: GPT_5_6_SOL_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -985,7 +985,7 @@ export function _getDustOaiLunaGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA,
     name: "dust-oai-luna",
     preferredModelConfiguration: GPT_5_6_LUNA_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -1068,7 +1068,7 @@ export function _getDustQuickGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_QUICK,
     name: "dust-quick",
     preferredModelConfiguration: GEMINI_3_8_FLASH_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -1094,7 +1094,7 @@ export function _getDustNextGlobalAgent(
     name: "dust-next",
     preferredModelConfiguration:
       customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "low",
   });
 }
 
@@ -1145,7 +1145,7 @@ const RETIRED_DUST_GLOBAL_AGENT_CONFIGS = new Map<
 >([
   [
     GLOBAL_AGENTS_SID.DUST_SUNDAE,
-    { name: "dust-sundae", preferredReasoningEffort: "light" },
+    { name: "dust-sundae", preferredReasoningEffort: "low" },
   ],
   [
     GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
@@ -1157,7 +1157,7 @@ const RETIRED_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   ],
   [
     GLOBAL_AGENTS_SID.DUST_CHALOM,
-    { name: "dust-chalom", preferredReasoningEffort: "light" },
+    { name: "dust-chalom", preferredReasoningEffort: "low" },
   ],
   [
     GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
@@ -1169,7 +1169,7 @@ const RETIRED_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   ],
   [
     GLOBAL_AGENTS_SID.DUST_SOUPINOU,
-    { name: "dust-soupinou", preferredReasoningEffort: "light" },
+    { name: "dust-soupinou", preferredReasoningEffort: "low" },
   ],
   [
     GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
@@ -1185,7 +1185,7 @@ const RETIRED_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   ],
   [
     GLOBAL_AGENTS_SID.DUST_CHAWI,
-    { name: "dust-chawi", preferredReasoningEffort: "light" },
+    { name: "dust-chawi", preferredReasoningEffort: "low" },
   ],
   [
     GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
@@ -1238,7 +1238,7 @@ const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
     {
       name: "dust-next",
       customModelIndex: 0,
-      preferredReasoningEffort: "light",
+      preferredReasoningEffort: "low",
     },
   ],
   [

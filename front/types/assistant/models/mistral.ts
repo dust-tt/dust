@@ -30,7 +30,6 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: true,
     minimal: false,
-    light: false,
     low: false,
     medium: false,
     high: false,
@@ -62,7 +61,6 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: true,
     minimal: false,
-    light: false,
     low: false,
     medium: false,
     high: false,
@@ -95,7 +93,6 @@ export const MISTRAL_MEDIUM_3_5_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: true,
     minimal: false,
-    light: false,
     low: false,
     medium: false,
     high: true,
@@ -128,7 +125,6 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: true,
     minimal: false,
-    light: false,
     low: false,
     medium: false,
     high: false,
@@ -161,7 +157,6 @@ export const MISTRAL_CODESTRAL_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: true,
     minimal: false,
-    light: false,
     low: false,
     medium: false,
     high: false,
