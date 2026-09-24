@@ -29,6 +29,7 @@ export function ConversationAgentPanel({
     agentConfigurationId: agentId,
     workspaceId: owner.sId,
     conversationId,
+    sources: ["conversational"],
     disabled: !suggestionIds,
   });
   const previewSuggestions = useMemo(() => {
