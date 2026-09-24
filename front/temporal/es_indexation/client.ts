@@ -261,6 +261,7 @@ export async function launchSearchUsageSchedule(): Promise<
       },
       spec: { calendars: [{ hour: 3, minute: 0 }], timezone: "UTC" },
       policies: { overlap: ScheduleOverlapPolicy.BUFFER_ONE },
+      state: { triggerImmediately: true },
     });
   } catch (error) {
     if (!(error instanceof ScheduleAlreadyRunning)) {
