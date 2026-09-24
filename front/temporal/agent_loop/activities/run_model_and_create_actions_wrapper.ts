@@ -403,12 +403,8 @@ async function _runModelAndCreateActionsActivity({
  */
 /**
  * @cc [owner:avervaet,label:product] checkpoint-agent-override
- * When `ignoreCreditSpendThresholdAlert` is set on the agent and the message's checkpoint status
- * is still unset at the first crossing, the status MUST be transitioned straight to
- * `acknowledged` and this function MUST return `false`: the conversation is never paused for
- * that agent. The transition MUST happen only once per message (guarded by transitioning from
- * `null`), so every later step in the same message sees the already-resolved status and skips
- * the gate lookup, same as an explicit user acknowledgement already does.
+ * An agent that ignores the credit spend threshold alert MUST never pause: its first crossing is
+ * acknowledged once, like a disabled workspace gate.
  */
 export async function getCreditSpendCheckpointCrossed(
   auth: Authenticator,
