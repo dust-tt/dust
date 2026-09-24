@@ -2898,6 +2898,11 @@ export class AgentResource
    * transaction owned by this method, so a failure in any part leaves no partial agent version behind
    * and needs no external rollback.
    */
+  /**
+   * @cc [owner:avervaet,label:security;product] credit-spend-alert-bypass-manager-only
+   * Only workspace admins and managers MAY change whether an agent bypasses the credit spend
+   * threshold alert; a save by anyone else MUST keep the previously stored value.
+   */
   private static async _saveConfiguration(
     auth: Authenticator,
     {
@@ -3022,11 +3027,6 @@ export class AgentResource
           templateModelId: template?.id,
           requestedSpaceIds,
           reinforcement,
-          /**
-           * @cc [owner:avervaet,label:security;product] credit-spend-alert-bypass-manager-only
-           * Only workspace admins and managers MAY change whether an agent bypasses the credit
-           * spend threshold alert; a save by anyone else MUST keep the previously stored value.
-           */
           ignoreCreditSpendThresholdAlert: auth.isManager()
             ? ignoreCreditSpendThresholdAlert
             : undefined,

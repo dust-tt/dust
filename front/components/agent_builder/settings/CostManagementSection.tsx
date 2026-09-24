@@ -1,12 +1,11 @@
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
-import { isManager } from "@app/types/user";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { SliderToggle } from "@dust-tt/sparkle";
 import { useController } from "react-hook-form";
 
 export function CostManagementSection() {
-  const { owner } = useAgentBuilderContext();
+  const { isManager } = useAuth();
   const { field } = useController<
     AgentBuilderFormData,
     "agentSettings.ignoreCreditSpendThresholdAlert"
@@ -15,7 +14,7 @@ export function CostManagementSection() {
   });
 
   // Bypassing the spend alert is a cost decision, reserved to people who manage the workspace.
-  if (!isManager(owner)) {
+  if (!isManager) {
     return null;
   }
 
