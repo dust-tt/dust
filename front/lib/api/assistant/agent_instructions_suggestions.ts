@@ -54,7 +54,7 @@ export async function createAgentInstructionSuggestions(
     agentConfiguration,
     edits,
     source,
-    conversation: conversation,
+    conversation,
   }: {
     agentConfiguration: AgentConfigurationType;
     edits: InstructionSuggestionEditInput[];
@@ -110,7 +110,7 @@ export async function createAgentInstructionSuggestions(
       analysis: analysis ?? null,
       state: "pending" as const,
       source,
-      conversationId: conversation?.id,
+      conversationId: conversation?.id ?? null,
     }))
   );
 
