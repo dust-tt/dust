@@ -137,11 +137,12 @@ export function FrameRenderer({
   );
   const isFullScreen = fullScreenHash === "true";
 
-  const { fileContent, error, mutateFileContent } = useFileContent({
-    fileId,
-    owner,
-    cacheKey: contentHash,
-  });
+  const { fileContent, error, mutateFileContent, isFileContentLoading } =
+    useFileContent({
+      fileId,
+      owner,
+      cacheKey: contentHash,
+    });
 
   const { fileMetadata, mutateFileMetadata } = useFileMetadata({
     fileId,
@@ -471,7 +472,7 @@ export function FrameRenderer({
       </ConversationSidePanelHeader>
 
       <div className="flex-1 overflow-hidden">
-        {isLoading || isFramePathPending ? (
+        {isLoading || isFramePathPending || isFileContentLoading ? (
           <Spinner />
         ) : showCode ? (
           <FrameCodeView
@@ -496,9 +497,19 @@ export function FrameRenderer({
               visualization={{
                 code: fileContent ?? "",
                 complete: true,
-                identifier: `viz-${fileId}`,
+                // Include contentHash so a panel refresh (fileId@revision) is a
+                // new viz identity; the iframe only fetches code on mount.
+                identifier: contentHash
+                  ? `viz-${contentHash}`
+                  : `viz-${fileId}`,
               }}
-              key={`viz-${fileId}-${framePath ?? packageRoot ?? ""}`}
+              // contentHash must be in the key: without it, open_frame / publish
+              // updates leave the old iframe mounted with stale RPC-fetched code.
+              key={
+                contentHash
+                  ? `viz-${contentHash}`
+                  : `viz-${fileId}-${framePath ?? packageRoot ?? ""}`
+              }
               conversationId={conversation?.sId ?? null}
               spaceId={frameSpaceId ?? undefined}
               framePackageRoot={framePackageRoot}

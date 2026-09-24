@@ -109,11 +109,15 @@ const handlers: ToolHandlers<typeof CONVERSATION_SIDE_PANEL_TOOLS_METADATA> = {
     }
 
     if (_meta?.progressToken) {
+      // Always bust the panel cache: open_frame means "show current content",
+      // even when File.updatedAt / activePublicationId did not move (e.g. the
+      // agent edited sandbox sources and opens before/without a metadata touch).
       await sendNotification(
         buildInteractiveContentFileNotification(
           _meta.progressToken,
           fileResource,
-          "Opening Frame..."
+          "Opening Frame...",
+          { contentRevision: Date.now().toString() }
         )
       );
     }

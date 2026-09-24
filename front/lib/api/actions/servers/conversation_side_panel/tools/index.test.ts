@@ -71,11 +71,17 @@ describe("conversation_side_panel.open_frame", () => {
                 mimeType: frameV2ContentType,
                 title: "hello-frame",
                 type: "interactive_content_file",
+                // open_frame always sends a fresh revision (Date.now), not the
+                // File row's updatedAt — otherwise a stale panel keeps showing.
+                updatedAt: expect.stringMatching(/^\d+$/),
               }),
             }),
           }),
         }),
       })
     );
+    const notifiedAt = sendNotification.mock.calls[0][0].params._meta.data
+      .output.updatedAt as string;
+    expect(notifiedAt).not.toBe(frame.updatedAtMs.toString());
   });
 });

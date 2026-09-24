@@ -97,6 +97,7 @@ vi.mock("@app/lib/swr/files", () => ({
   useFileContent: () => ({
     fileContent: "export default function Frame() {}",
     error: null,
+    isFileContentLoading: false,
     mutateFileContent: mocks.mutateFileContent,
   }),
   useFileContentByUrl: () => ({
@@ -297,6 +298,38 @@ describe("FrameRenderer", () => {
       "https://dust.tt/share/frame/share-token",
       "_blank",
       "noopener,noreferrer"
+    );
+  });
+
+  it("remounts the viz iframe when contentHash changes", () => {
+    const { rerender } = render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        contentHash="frame_1@42"
+        renderMode="v2"
+      />
+    );
+
+    expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier).toBe(
+      "viz-frame_1@42"
+    );
+
+    rerender(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        contentHash="frame_1@99"
+        renderMode="v2"
+      />
+    );
+
+    expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier).toBe(
+      "viz-frame_1@99"
     );
   });
 
