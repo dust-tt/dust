@@ -66,7 +66,11 @@ export async function suggestSkillUserFacingDescriptionHandler(
 ): Promise<ToolHandlerResult> {
   assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
 
-  const result = await suggestSkillUserFacingDescription(auth, args, runContext);
+  const result = await suggestSkillUserFacingDescription(
+    auth,
+    args,
+    runContext
+  );
   if (result.isErr()) {
     return result;
   }
