@@ -12,7 +12,6 @@ import type {
   PatchSuggestionRequestBody,
   PatchSuggestionResponseBody,
 } from "@app/types/api/assistant/agent_suggestion";
-import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -125,6 +124,8 @@ export function usePatchAgentSuggestions({
   return { patchSuggestions };
 }
 
+type SuggestionReviewAction = "accept" | "reject";
+
 export function useAgentSuggestionActions({
   agentConfigurationId,
   workspaceId,
@@ -140,28 +141,34 @@ export function useAgentSuggestionActions({
     agentConfigurationId,
     workspaceId,
   });
-  const [pendingIds, setPendingIds] = useState<Record<string, boolean>>({});
+  const [pendingActions, setPendingActions] = useState<
+    Record<string, SuggestionReviewAction>
+  >({});
 
-  const isSuggestionPending = useCallback(
-    (suggestion: { sId: string }) => pendingIds[suggestion.sId] ?? false,
-    [pendingIds]
+  const getPendingAction = useCallback(
+    (suggestion: { sId: string }): SuggestionReviewAction | null =>
+      pendingActions[suggestion.sId] ?? null,
+    [pendingActions]
   );
 
   const setSuggestionState = useCallback(
     async (
       suggestion: { sId: string },
-      nextState: Extract<AgentSuggestionState, "approved" | "rejected">,
+      action: SuggestionReviewAction,
       options?: { applyToAgent?: boolean }
     ): Promise<boolean> => {
-      setPendingIds((current) => ({ ...current, [suggestion.sId]: true }));
+      setPendingActions((current) => ({
+        ...current,
+        [suggestion.sId]: action,
+      }));
 
       const result = await patchSuggestions(
         [suggestion.sId],
-        nextState,
+        action === "accept" ? "approved" : "rejected",
         options
       );
 
-      setPendingIds((current) => {
+      setPendingActions((current) => {
         const { [suggestion.sId]: _removed, ...rest } = current;
         return rest;
       });
@@ -189,16 +196,16 @@ export function useAgentSuggestionActions({
   // is set: the route otherwise just records the review without touching the agent.
   const acceptSuggestion = useCallback(
     (suggestion: { sId: string }) =>
-      setSuggestionState(suggestion, "approved", { applyToAgent: true }),
+      setSuggestionState(suggestion, "accept", { applyToAgent: true }),
     [setSuggestionState]
   );
   const rejectSuggestion = useCallback(
-    (suggestion: { sId: string }) => setSuggestionState(suggestion, "rejected"),
+    (suggestion: { sId: string }) => setSuggestionState(suggestion, "reject"),
     [setSuggestionState]
   );
 
   return {
-    isSuggestionPending,
+    getPendingAction,
     acceptSuggestion,
     rejectSuggestion,
   };

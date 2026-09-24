@@ -9,16 +9,15 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
-  usePatchSkillSuggestions,
+  useSkillSuggestionActions,
   useSkillSuggestions,
 } from "@app/hooks/useSkillSuggestions";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import type { PatchSkillSuggestionResponseBody } from "@app/types/api/assistant/skills/suggestions";
 import { SKILL_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { SKIP, visit } from "unist-util-visit";
 
 function toSuggestionProperties(attributes: Record<string, string>) {
@@ -94,9 +93,6 @@ function ConversationSkillSuggestion({
   suggestionId,
   conversationId,
 }: ConversationSkillSuggestionProps) {
-  const [pendingAction, setPendingAction] = useState<
-    "accept" | "decline" | null
-  >(null);
   const { openPanel } = useConversationSidePanelContext();
 
   const { suggestions, isSuggestionsLoading, mutateSuggestions } =
@@ -113,10 +109,12 @@ function ConversationSkillSuggestion({
       skillId,
     });
 
-  const { patchSuggestions } = usePatchSkillSuggestions({
-    skillId,
-    workspaceId: owner.sId,
-  });
+  const { getPendingAction, acceptSuggestion, rejectSuggestion } =
+    useSkillSuggestionActions({
+      skillId,
+      workspaceId: owner.sId,
+      mutateSuggestions,
+    });
 
   const getSkillInstructionsHtml = useCallback(
     () => skill?.instructionsHtml ?? "",
@@ -127,55 +125,9 @@ function ConversationSkillSuggestion({
     [skill]
   );
 
-  const updateCachedSuggestions = (
-    patched: PatchSkillSuggestionResponseBody | null
-  ) => {
-    const reviewed = patched?.suggestions ?? [];
-    if (reviewed.length === 0) {
-      return;
-    }
-    const reviewedById = new Map(reviewed.map((s) => [s.sId, s]));
-    void mutateSuggestions(
-      (current) => ({
-        suggestions: (current?.suggestions ?? []).map(
-          (s) => reviewedById.get(s.sId) ?? s
-        ),
-      }),
-      { revalidate: false }
-    );
-  };
-
   const handleAccept = async (suggestion: SkillSuggestionType) => {
-    if (pendingAction) {
-      return;
-    }
-    setPendingAction("accept");
-    try {
-      const patched = await patchSuggestions([suggestion.sId], "approved", {
-        applyToSkill: true,
-      });
-      if (!patched) {
-        return;
-      }
-
-      updateCachedSuggestions(patched);
+    if (await acceptSuggestion(suggestion)) {
       mutateSkillRegardlessOfQueryParams();
-    } finally {
-      setPendingAction(null);
-    }
-  };
-
-  const handleDecline = async (suggestion: SkillSuggestionType) => {
-    if (pendingAction) {
-      return;
-    }
-    setPendingAction("decline");
-    try {
-      updateCachedSuggestions(
-        await patchSuggestions([suggestion.sId], "rejected")
-      );
-    } finally {
-      setPendingAction(null);
     }
   };
 
@@ -188,11 +140,13 @@ function ConversationSkillSuggestion({
     return null;
   }
 
+  const pendingAction = getPendingAction(suggestion);
+
   return (
     <SkillSuggestionCard
       suggestion={suggestion}
-      onAccept={handleAccept}
-      onDecline={handleDecline}
+      onAccept={(s) => void handleAccept(s)}
+      onDecline={(s) => void rejectSuggestion(s)}
       onPreview={() =>
         openPanel({
           type: SKILL_SIDE_PANEL_TYPE,
@@ -205,7 +159,7 @@ function ConversationSkillSuggestion({
       workspaceId={owner.sId}
       disabled={pendingAction !== null}
       isAccepting={pendingAction === "accept"}
-      isDeclining={pendingAction === "decline"}
+      isDeclining={pendingAction === "reject"}
     />
   );
 }
