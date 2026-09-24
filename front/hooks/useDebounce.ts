@@ -152,3 +152,22 @@ export function useDebounceWithAbort<T = string>(
 
   return trigger;
 }
+
+// Debounces a value that lives outside the hook (a prop, a derived string) rather than an input.
+export function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    if (Object.is(value, debouncedValue)) {
+      return;
+    }
+
+    const timeout = setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => clearTimeout(timeout);
+  }, [debouncedValue, delayMs, value]);
+
+  return {
+    debouncedValue,
+    isDebouncing: !Object.is(value, debouncedValue),
+  };
+}
