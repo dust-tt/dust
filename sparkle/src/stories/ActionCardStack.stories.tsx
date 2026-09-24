@@ -25,7 +25,6 @@ const meta = {
 **Guidelines**
 - Give the front card \`cardVariant="secondary"\` so it reads lighter than the layers behind it.
 - Count only the cards still to review, so the pile shrinks as the user goes through it.
-- Change **frontCardKey** whenever the front card changes: the previous one fades out, revealing the next.
 - Once nothing is left to review, pass a single resolved summary card with \`cardCount={1}\`.`,
       },
     },
@@ -169,7 +168,7 @@ function StepThroughDemo() {
   if (pendingIndexes.length === 0) {
     const acceptedCount = states.filter((s) => s === "accepted").length;
     return (
-      <ActionCardStack cardCount={1} frontCardKey="summary">
+      <ActionCardStack cardCount={1}>
         <ActionCardBlock
           title={`${states.length} edits`}
           acceptedTitle={`${acceptedCount} accepted, ${states.length - acceptedCount} rejected`}
@@ -184,7 +183,6 @@ function StepThroughDemo() {
       // The recap card is part of the pile, on top of the pending proposals.
       <ActionCardStack
         cardCount={pendingIndexes.length + 1}
-        frontCardKey="recap"
       >
         <RecapCard
           pendingCount={pendingIndexes.length}
@@ -200,7 +198,6 @@ function StepThroughDemo() {
   return (
     <ActionCardStack
       cardCount={pendingIndexes.length}
-      frontCardKey={`proposal-${current}`}
     >
       <ActionCardBlock
         cardVariant="secondary"
