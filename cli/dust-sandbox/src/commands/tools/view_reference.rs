@@ -33,7 +33,7 @@ mod tests {
         serde_json::from_value(serde_json::json!({
             "sId": s_id,
             "name": name,
-            "server": { "sId": format!("ims_{s_id}"), "name": "gmail", "tools": [] },
+            "server": { "name": "gmail", "tools": [] },
         }))
         .expect("valid view")
     }

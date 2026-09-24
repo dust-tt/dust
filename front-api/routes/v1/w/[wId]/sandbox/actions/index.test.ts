@@ -171,44 +171,32 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
     ).toEqual(["search"]);
   });
 
-  describe("?server= reference", () => {
+  it("resolves ?server= by view id, then view name, then server name", async () => {
+    const { auth, token, workspace, globalSpace } =
+      await createSandboxFunctionInvocationTokenTestContext();
+
     // Two instances of one server, as "Add tools" > Gmail twice produces: distinct server ids,
     // both reporting `server.name` "gmail", told apart only by their view names.
-    async function createTwoGmailInstances() {
-      const context = await createSandboxFunctionInvocationTokenTestContext();
-      const { auth, workspace, globalSpace } = context;
-
-      async function createGmailView(viewName: string) {
-        const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
-          name: "gmail",
-          useCase: null,
-        });
-        const view = await MCPServerViewFactory.create(
-          workspace,
-          server.id,
-          globalSpace
-        );
-        const renameResult = await view.updateNameAndDescription(
-          auth,
-          viewName
-        );
-        if (renameResult.isErr()) {
-          throw renameResult.error;
-        }
-        return view;
+    async function createGmailView(viewName: string) {
+      const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
+        name: "gmail",
+        useCase: null,
+      });
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.id,
+        globalSpace
+      );
+      const renameResult = await view.updateNameAndDescription(auth, viewName);
+      if (renameResult.isErr()) {
+        throw renameResult.error;
       }
-
-      const first = await createGmailView("gmail1");
-      const second = await createGmailView("gmail2");
-
-      return { ...context, first, second };
+      return view;
     }
+    const first = await createGmailView("gmail1");
+    const second = await createGmailView("gmail2");
 
-    async function getViewIdsForReference(
-      workspace: { sId: string },
-      token: string,
-      reference: string
-    ): Promise<string[]> {
+    async function viewIdsFor(reference: string): Promise<string[]> {
       const response = await honoApp.request(
         `/api/v1/w/${workspace.sId}/sandbox/actions?server=${encodeURIComponent(reference)}`,
         { headers: { authorization: `Bearer ${token}` } }
@@ -218,37 +206,9 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
       return body.serverViews.map((sv: { sId: string }) => sv.sId).sort();
     }
 
-    it("selects one instance by its view name", async () => {
-      const { token, workspace, second } = await createTwoGmailInstances();
-
-      expect(await getViewIdsForReference(workspace, token, "gmail2")).toEqual([
-        second.sId,
-      ]);
-    });
-
-    it("selects one instance by its view id", async () => {
-      const { token, workspace, first } = await createTwoGmailInstances();
-
-      expect(await getViewIdsForReference(workspace, token, first.sId)).toEqual(
-        [first.sId]
-      );
-    });
-
-    it("returns every instance sharing a server name", async () => {
-      const { token, workspace, first, second } =
-        await createTwoGmailInstances();
-
-      expect(await getViewIdsForReference(workspace, token, "gmail")).toEqual(
-        [first.sId, second.sId].sort()
-      );
-    });
-
-    it("returns nothing for an unknown reference", async () => {
-      const { token, workspace } = await createTwoGmailInstances();
-
-      expect(await getViewIdsForReference(workspace, token, "gmail3")).toEqual(
-        []
-      );
-    });
+    expect(await viewIdsFor(first.sId)).toEqual([first.sId]);
+    expect(await viewIdsFor("gmail2")).toEqual([second.sId]);
+    expect(await viewIdsFor("gmail")).toEqual([first.sId, second.sId].sort());
+    expect(await viewIdsFor("gmail3")).toEqual([]);
   });
 });

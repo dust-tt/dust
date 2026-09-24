@@ -27,11 +27,7 @@ fn server_lines(views: &[MCPServerView]) -> Vec<String> {
     }
 
     let mut sorted: Vec<&MCPServerView> = views.iter().collect();
-    sorted.sort_by(|a, b| {
-        a.display_name()
-            .cmp(b.display_name())
-            .then_with(|| a.s_id.cmp(&b.s_id))
-    });
+    sorted.sort_by(|a, b| a.display_name().cmp(b.display_name()));
 
     sorted
         .into_iter()
@@ -56,7 +52,6 @@ mod tests {
             "sId": s_id,
             "name": name,
             "server": {
-                "sId": format!("ims_{s_id}"),
                 "name": server_name,
                 "tools": [{ "name": "get_messages", "description": "" }],
             },
@@ -79,7 +74,7 @@ mod tests {
 
     #[test]
     fn shows_ids_for_views_sharing_a_name() {
-        let views = vec![view("msv_b", None, "gmail"), view("msv_a", None, "gmail")];
+        let views = vec![view("msv_a", None, "gmail"), view("msv_b", None, "gmail")];
         assert_eq!(
             server_lines(&views),
             vec!["gmail  (1 tools, id: msv_a)", "gmail  (1 tools, id: msv_b)"]
