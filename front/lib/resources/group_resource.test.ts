@@ -85,6 +85,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
+import assert from "assert";
 
 function getCacheKeyForUser(userId: number, workspaceId: number): string {
   // The function name is empty because an anonymous arrow function is passed to cacheWithRedis
@@ -157,6 +158,84 @@ describe("GroupResource", () => {
     expect(auth.can("set_usage_limits", provisioned)).toBe(true);
     expect(auth.can("set_usage_limits", other)).toBe(false);
     expect((await manual.updateName(auth, "Renamed")).isErr()).toBe(true);
+  });
+
+  it.each([
+    "regular_manual",
+    "provisioned",
+  ] as const)("deleting a %s group removes its manager assignment and backing group", async (kind) => {
+    const delegate = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, delegate, { role: "user" });
+    const target = await GroupResource.makeNew({
+      name: "Team to delete",
+      workspaceId: workspace.id,
+      kind,
+      ...(kind === "provisioned" ? { workOSGroupId: "directory-team" } : {}),
+    });
+    const other = await GroupResource.makeNew({
+      name: "Other team",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+    for (const group of [target, other]) {
+      const result = await GroupPermissionResource.grantToUser(authenticator, {
+        user: delegate.toJSON(),
+        grantType: "group_manager",
+        resourceType: "group",
+        resourceId: group.id,
+      });
+      expect(result.isOk()).toBe(true);
+    }
+    const backingGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(
+        authenticator,
+        {
+          grantType: "group_manager",
+          resourceType: "group",
+          resourceId: target.id,
+        }
+      );
+    assert(backingGroup);
+
+    await GroupResource.dangerouslyListUserGroupsForAuth({
+      user: delegate,
+      workspace,
+    });
+    const cacheKey = getCacheKeyForUser(delegate.id, workspace.id);
+    expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+    const parentTransaction =
+      getNamespace("test-namespace")?.get("transaction");
+    const transaction = await frontSequelize.transaction({
+      transaction: parentTransaction,
+    });
+    const deleted = await target.delete(authenticator, { transaction });
+    expect(deleted.isOk()).toBe(true);
+    expect(inMemoryCache.has(cacheKey)).toBe(true);
+    await transaction.commit();
+
+    expect(inMemoryCache.has(cacheKey)).toBe(false);
+    expect(
+      await GroupPermissionModel.count({
+        where: {
+          workspaceId: workspace.id,
+          resourceType: "group",
+          resourceId: target.id,
+        },
+      })
+    ).toBe(0);
+    expect(
+      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
+        target.id,
+        backingGroup.id,
+      ])
+    ).toEqual([]);
+    const delegateAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      delegate.sId,
+      workspace.sId
+    );
+    expect(delegateAuth.can("set_usage_limits", target)).toBe(false);
+    expect(delegateAuth.can("set_usage_limits", other)).toBe(true);
   });
 
   describe("getActiveMembershipsForGroups", () => {
@@ -950,8 +1029,15 @@ describe("GroupResource", () => {
       const cacheKey = getCacheKeyForUser(user.id, workspace.id);
       expect(inMemoryCache.has(cacheKey)).toBe(true);
 
-      await regularGroup.delete(authenticator);
-
+      const parentTransaction =
+        getNamespace("test-namespace")?.get("transaction");
+      const transaction = await frontSequelize.transaction({
+        transaction: parentTransaction,
+      });
+      const deleted = await regularGroup.delete(authenticator, { transaction });
+      expect(deleted.isOk()).toBe(true);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+      await transaction.commit();
       expect(inMemoryCache.has(cacheKey)).toBe(false);
     });
 
@@ -1237,9 +1323,17 @@ describe("GroupResource", () => {
       expect(before.map((g) => g.id)).toContain(regularGroup.id);
       expect(inMemoryCache.has(cacheKey)).toBe(true);
 
-      const deleteResult = await regularGroup.delete(authenticator);
+      const parentTransaction =
+        getNamespace("test-namespace")?.get("transaction");
+      const transaction = await frontSequelize.transaction({
+        transaction: parentTransaction,
+      });
+      const deleteResult = await regularGroup.delete(authenticator, {
+        transaction,
+      });
       expect(deleteResult.isOk()).toBe(true);
-
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+      await transaction.commit();
       expect(inMemoryCache.has(cacheKey)).toBe(false);
 
       const after = await GroupResource.listWorkspaceGroupsFromKey(key);
