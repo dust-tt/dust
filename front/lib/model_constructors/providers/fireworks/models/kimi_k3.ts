@@ -25,9 +25,7 @@ const DEFAULT_REASONING_EFFORT = "maximal";
 // and rejects only `minimal`. We expose the documented set only, since
 // undocumented efforts can change without notice.
 //
-// The default is `max`, as Moonshot documents. Dust's legacy low/medium/high
-// efforts are folded onto K3's low/high/max by the `mapReasoningEffortToLowHighMax`
-// config parser in the llms layer.
+// The default is `max`, as Moonshot documents.
 const configSchema = fireworksConfigSchema.extend({
   reasoning: z
     .object({ effort: z.enum(["low", "high", "maximal"]) })

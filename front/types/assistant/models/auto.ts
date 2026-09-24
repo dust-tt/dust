@@ -44,7 +44,7 @@ export function isModelStreamId(modelId: string): modelId is ModelStreamIdType {
 // One candidate of a stream: a concrete model + the reasoning effort to run it
 // at. Ordered by preference — the router picks the first candidate available to
 // the workspace. Efforts default to each model's own default; they are only
-// overridden when a stream deliberately wants a different effort (e.g. `light`
+// overridden when a stream deliberately wants a different effort (e.g. `low`
 // for the Basic stream, `high` for the Premium stream).
 export interface ModelStreamCandidate {
   providerId: ModelProviderIdType;
@@ -55,7 +55,7 @@ export interface ModelStreamCandidate {
 export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
   {
     // Plain `auto` spans the whole preferred catalog at each model's default
-    // reasoning effort. The last candidate (Sonnet at `light`) is the Basic-tier
+    // reasoning effort. The last candidate (Sonnet at `low`) is the Basic-tier
     // floor so tier-capped users still resolve within the stream.
     [AUTO_MODEL_ID]: [
       {
@@ -76,12 +76,12 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       {
         providerId: "google_ai_studio",
         modelId: GEMINI_3_1_PRO_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
       {
         providerId: "google_ai_studio",
         modelId: GEMINI_3_1_FLASH_LITE_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
       {
         providerId: "mistral",
@@ -106,24 +106,24 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       {
         providerId: "anthropic",
         modelId: CLAUDE_SONNET_4_6_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
     ],
     [AUTO_FAST_MODEL_ID]: [
       {
         providerId: "openai",
         modelId: GPT_5_6_LUNA_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
       {
         providerId: "anthropic",
         modelId: CLAUDE_SONNET_5_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
       {
         providerId: "google_ai_studio",
         modelId: GEMINI_3_8_FLASH_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
       {
         providerId: "google_ai_studio",
@@ -169,7 +169,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       {
         providerId: "anthropic",
         modelId: CLAUDE_SONNET_4_6_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
     ],
   };
@@ -198,7 +198,6 @@ function makeMetaModelConfig(
     supportedReasoningEfforts: {
       none: true,
       minimal: false,
-      light: false,
       low: false,
       medium: false,
       high: false,

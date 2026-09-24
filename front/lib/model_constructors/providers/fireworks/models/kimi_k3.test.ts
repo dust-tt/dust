@@ -39,28 +39,22 @@ describe("Kimi K3 model configuration", () => {
     expect(payload.service_tier).toBe("priority");
   });
 
-  it("exposes no `none` tier and reaches Fireworks natively at `light`", () => {
-    // K3 always thinks, so `none` is not a reachable tier. `light` must map to
-    // Fireworks' `low` rather than dropping reasoning_effort, which is what
-    // `useNativeLightReasoning` switches on (see `mapReasoningEffort`); it also
-    // suppresses the chain-of-thought meta prompt.
+  it("exposes the documented low/high/max efforts and defaults to low", () => {
     expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.supportedReasoningEfforts).toEqual({
       none: false,
       minimal: false,
-      light: true,
-      low: false,
-      medium: true,
+      low: true,
+      medium: false,
       high: true,
       xhigh: false,
-      maximal: false,
+      maximal: true,
     });
-    expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.useNativeLightReasoning).toBe(true);
-    expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.defaultReasoningEffort).toBe("light");
+    expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.defaultReasoningEffort).toBe("low");
   });
 
   it("forces every Dust request to temperature zero", () => {
     const config: InputConfig = {
-      reasoning: { effort: "medium" },
+      reasoning: { effort: "high" },
       temperature: 0.7,
     };
 

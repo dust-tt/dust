@@ -1,7 +1,6 @@
 // @vitest-environment node
 
 import { DustZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
-import { mapReasoningEffortToLowHighMax } from "@app/lib/llms/stream/types/configuration";
 import { ZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
 import { itKeepsLimitsAndPricingConsistent } from "@app/lib/model_constructors/test/model_limits";
 import {
@@ -32,28 +31,18 @@ describe("GLM-5.3 Flash model configuration", () => {
     expect(payload.tool_choice).toBe("auto");
   });
 
-  it("folds Dust's reasoning ladder onto the native efforts", () => {
-    expect(
-      DustZAiGlmFiveDotThreeFlashGlobalFireworksStream.configParsers
-    ).toEqual([mapReasoningEffortToLowHighMax]);
-  });
-
   it("exposes always-on reasoning and automatic tool choice only", () => {
     expect(
       FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG.supportedReasoningEfforts
     ).toEqual({
       none: false,
       minimal: false,
-      light: true,
-      low: false,
-      medium: true,
+      low: true,
+      medium: false,
       high: true,
       xhigh: false,
-      maximal: false,
+      maximal: true,
     });
-    expect(FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG.useNativeLightReasoning).toBe(
-      true
-    );
     expect(
       ZAiGlmFiveDotThreeFlashGlobalFireworksStream.configSchema.safeParse({
         forceTool: "calculator",

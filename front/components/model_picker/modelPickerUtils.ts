@@ -339,7 +339,7 @@ export interface EffortStop {
 // The reasoning-effort slider always presents these three canonical levels so
 // its shape stays consistent across models. "none" is not a level here: it
 // means "no reasoning" and is never a selectable slider position.
-export const SLIDER_EFFORTS: ReasoningEffort[] = ["light", "medium", "high"];
+export const SLIDER_EFFORTS: ReasoningEffort[] = ["low", "medium", "high"];
 
 export function buildTierSelection(tierId: ModelTierId): ModelSelectionType {
   const { metaModelId } = getModelTier(tierId);

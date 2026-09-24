@@ -9,7 +9,6 @@ describe("getDelimitersConfiguration", () => {
       getDelimitersConfiguration({
         endpoint: DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream,
         temperature: 0.7,
-        reasoningEffort: "light",
       })
     ).toEqual(CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION);
   });

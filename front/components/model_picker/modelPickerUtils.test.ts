@@ -47,7 +47,7 @@ describe("getPinnedModelRetryTier", () => {
   const sonnetLight = {
     providerId: "anthropic" as const,
     modelId: CLAUDE_SONNET_5_MODEL_ID,
-    reasoningEffort: "light" as const,
+    reasoningEffort: "low" as const,
   };
 
   for (const errorCategory of [
@@ -142,10 +142,8 @@ const unavailabilityReasonByEffort = (
 describe("modelPickerUtils premium gating", () => {
   describe("getTierForModel", () => {
     it("mirrors the static tier table", () => {
-      expect(getTierForModel(CLAUDE_OPUS_4_8_MODEL_ID, "light")).toBe(
-        "premium"
-      );
-      expect(getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "light")).toBe(
+      expect(getTierForModel(CLAUDE_OPUS_4_8_MODEL_ID, "low")).toBe("premium");
+      expect(getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "low")).toBe(
         "cost_efficient"
       );
       expect(getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "medium")).toBe(
@@ -162,10 +160,10 @@ describe("modelPickerUtils premium gating", () => {
 
   describe("getEffortStops", () => {
     it("locks premium efforts with reason 'premium' when gated (mixed model)", () => {
-      // Sonnet 5: light=cost_efficient, medium=balanced, high=premium.
+      // Sonnet 5: low=cost_efficient, medium=balanced, high=premium.
       const stops = getEffortStops(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, GATED);
       expect(unavailabilityReasonByEffort(stops)).toEqual({
-        light: null,
+        low: null,
         medium: null,
         high: "premium",
       });
@@ -174,17 +172,17 @@ describe("modelPickerUtils premium gating", () => {
     it("locks every effort of an ultra-tier model when gated", () => {
       const stops = getEffortStops(CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG, GATED);
       expect(unavailabilityReasonByEffort(stops)).toEqual({
-        light: "premium",
+        low: "premium",
         medium: "premium",
         high: "premium",
       });
     });
 
     it("locks every premium effort of a mid-tier reasoning model", () => {
-      // Gemini 2.5 Pro: light=balanced, medium=premium, high=premium.
+      // Gemini 2.5 Pro: low=balanced, medium=premium, high=premium.
       const stops = getEffortStops(GEMINI_2_5_PRO_MODEL_CONFIG, GATED);
       expect(unavailabilityReasonByEffort(stops)).toEqual({
-        light: null,
+        low: null,
         medium: "premium",
         high: "premium",
       });
@@ -209,7 +207,7 @@ describe("modelPickerUtils premium gating", () => {
     it("explains why an effort is unselectable", () => {
       expect(
         getEffortStopTooltip({
-          effort: "light",
+          effort: "low",
           unavailabilityReason: null,
         })
       ).toBeNull();
@@ -271,7 +269,6 @@ describe("modelPickerUtils premium gating", () => {
         supportedReasoningEfforts: {
           none: false,
           minimal: false,
-          light: false,
           low: false,
           medium: false,
           high: false,

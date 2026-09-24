@@ -115,7 +115,7 @@ export function getModelConfigForWebSummarization(
   if (luna) {
     return {
       modelConfiguration: luna,
-      reasoningEffort: "light",
+      reasoningEffort: "low",
     };
   }
 

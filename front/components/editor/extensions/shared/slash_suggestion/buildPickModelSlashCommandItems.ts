@@ -27,7 +27,7 @@ import {
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import type { ComponentType } from "react";
 
-// Match the model picker's effort slider: light/medium/high only. `none` is not
+// Match the model picker's effort slider: low/medium/high only. `none` is not
 // a selectable effort row for reasoning models — it only appears as the single
 // row for non-reasoning models that have no slider stops.
 export function getSelectableEffortsForSlashMenu(
@@ -191,13 +191,13 @@ function buildTierSlashCommandItems({
 /**
  * @cc [owner:PopDaph,label:product] query-selects-name-then-effort
  * `query` is split on whitespace and hyphens. When its last word is a prefix of a slider effort
- * (`light`, `medium`, `high`), only model rows at that effort are kept and the other words form
+ * (`low`, `medium`, `high`), only model rows at that effort are kept and the other words form
  * the name query, except for models whose display name contains that effort word ("Mistral
  * Medium 3.5"), which are matched on the whole query when other words precede it; otherwise
  * every word does. A row is kept when the name query, joined, is an
  * in-order subsequence (`subFilter`) of its name (tier name or model display name) without
  * spaces or hyphens. Kept rows are ranked with `compareForFuzzySort`, ties keeping catalog order
- * so a model's efforts stay light, medium, high. Descriptions are never searched; an empty query
+ * so a model's efforts stay low, medium, high. Descriptions are never searched; an empty query
  * keeps every row.
  */
 export function buildPickModelSlashCommandItems({

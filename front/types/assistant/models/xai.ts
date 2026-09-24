@@ -36,7 +36,6 @@ export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: true,
     minimal: false,
-    light: false,
     low: false,
     medium: false,
     high: false,
@@ -68,7 +67,6 @@ export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: true,
     minimal: false,
-    light: false,
     low: false,
     medium: false,
     high: false,
@@ -102,17 +100,13 @@ export const GROK_4_5_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: false,
     minimal: false,
-    light: true,
-    low: false,
+    low: true,
     medium: true,
     high: true,
     xhigh: false,
     maximal: false,
   },
   defaultReasoningEffort: "high",
-  // Grok 4.5 cannot turn reasoning off (xAI rejects `reasoning_effort: none`),
-  // so light reasoning must run natively at `low` instead of thinking off.
-  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -144,15 +138,13 @@ export const GROK_4_6_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: false,
     minimal: false,
-    light: true,
-    low: false,
+    low: true,
     medium: true,
     high: true,
-    xhigh: false,
+    xhigh: true,
     maximal: false,
   },
   defaultReasoningEffort: "high",
-  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   // xAI lists only US clusters (us-east-1 and us-west-2) at launch:
@@ -187,15 +179,13 @@ export const GROK_4_7_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: false,
     minimal: false,
-    light: true,
-    low: false,
+    low: true,
     medium: true,
     high: true,
-    xhigh: false,
+    xhigh: true,
     maximal: false,
   },
   defaultReasoningEffort: "high",
-  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   // xAI lists only US clusters (us-east-1, us-west-2 and us-central-1):
@@ -223,14 +213,13 @@ export const GROK_4_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: true,
     minimal: false,
-    light: true,
     low: false,
     medium: true,
     high: true,
     xhigh: false,
     maximal: false,
   },
-  defaultReasoningEffort: "light",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -256,7 +245,6 @@ export const GROK_4_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: true,
     minimal: false,
-    light: false,
     low: false,
     medium: false,
     high: false,
@@ -288,7 +276,6 @@ export const GROK_4_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: true,
     minimal: false,
-    light: false,
     low: false,
     medium: false,
     high: false,
@@ -320,7 +307,6 @@ export const GROK_4_1_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: true,
     minimal: false,
-    light: false,
     low: false,
     medium: false,
     high: false,
@@ -354,7 +340,6 @@ export const GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType =
     supportedReasoningEfforts: {
       none: true,
       minimal: false,
-      light: false,
       low: false,
       medium: false,
       high: false,
