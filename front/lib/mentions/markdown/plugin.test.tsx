@@ -19,6 +19,13 @@ vi.mock("@app/components/mentions/MentionDisplay", () => ({
   ),
 }));
 
+vi.mock(
+  "@app/components/assistant/conversation/ConversationSidePanelContext",
+  () => ({
+    useConversationSidePanelContext: () => ({ openPanel: vi.fn() }),
+  })
+);
+
 describe("markdown mention plugins", () => {
   beforeEach(() => {
     vi.clearAllMocks();

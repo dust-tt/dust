@@ -83,6 +83,22 @@ function capRecap(text: string): string {
     : `${text.slice(0, MAX_SUGGESTION_RECAP_LENGTH - 1).trimEnd()}…`;
 }
 
+export function extractBatchIds(content: string): Set<string> {
+  const batchIds = new Set<string>();
+  replaceOutsideCode(
+    content,
+    BATCH_DIRECTIVE_REGEX,
+    (match, rawAttributes: string) => {
+      const batchId = parseBatchId(rawAttributes);
+      if (batchId) {
+        batchIds.add(batchId);
+      }
+      return match;
+    }
+  );
+  return batchIds;
+}
+
 /**
  * @cc [owner:avervaet,label:product] pile-two-or-more-suggestions
  * Two or more batch directives carrying distinct batch ids MUST all move, in order and without

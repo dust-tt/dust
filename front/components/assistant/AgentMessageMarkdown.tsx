@@ -1,9 +1,9 @@
 import { actionCardDirective } from "@app/components/markdown/ActionCardDirective";
 import {
-  BuildSkillDirectiveBlock,
   buildAgentDirective,
   buildSkillDirective,
   getBuildAgentDirectivePlugin,
+  getBuildSkillDirectivePlugin,
 } from "@app/components/markdown/BuildEntityDirectives";
 import {
   CiteBlock,
@@ -24,6 +24,7 @@ import {
   batchSuggestionDirective,
   getBatchSuggestionPlugin,
 } from "@app/components/markdown/suggestion/BatchSuggestionDirective";
+import { extractBatchIds } from "@app/components/markdown/suggestion/suggestion_directives";
 import {
   getTaskDirectiveBlock,
   taskDirective,
@@ -73,6 +74,11 @@ export const AgentMessageMarkdown = ({
     return isInstructions ? preprocessInstructionBlocks(content) : content;
   }, [content, isInstructions]);
 
+  const previewBatchId = React.useMemo(() => {
+    const batchIds = extractBatchIds(content);
+    return batchIds.size === 1 ? [...batchIds][0] : undefined;
+  }, [content]);
+
   const markdownComponents: Components = React.useMemo(
     () => ({
       sup: CiteBlock,
@@ -83,12 +89,12 @@ export const AgentMessageMarkdown = ({
       dustimg: getImgPlugin(owner),
       file_preview: getFilePreviewPlugin(),
       instruction_block: InstructionBlock,
-      build_skill: BuildSkillDirectiveBlock,
-      build_agent: getBuildAgentDirectivePlugin(owner),
+      build_skill: getBuildSkillDirectivePlugin(previewBatchId),
+      build_agent: getBuildAgentDirectivePlugin(owner, previewBatchId),
       batch_edit: getBatchSuggestionPlugin(owner),
       ...additionalMarkdownComponents,
     }),
-    [owner, additionalMarkdownComponents]
+    [owner, previewBatchId, additionalMarkdownComponents]
   );
 
   const markdownPlugins = React.useMemo(() => {
