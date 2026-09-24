@@ -83,9 +83,11 @@ export function DiscoverPinDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Pin to Featured</DialogTitle>
+          <DialogTitle>
+            Pin <span className="notranslate">{name}</span> to Featured
+          </DialogTitle>
           <DialogDescription>
-            {name} will show at the top of Discover.
+            It will show at the top of Discover for the audience you pick.
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
