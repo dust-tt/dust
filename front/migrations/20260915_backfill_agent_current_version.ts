@@ -43,9 +43,9 @@ const SELECT_STALE_AGENT_MODEL_IDS_SQL = `
 // `AgentResource.setCurrentConfiguration`) after inserting its new version, so it either commits
 // before the maximum is computed, or waits for this transaction and then overwrites the pointer
 // with its own, higher version. Without the lock the update could snapshot a stale maximum and
-// commit it over a newer pointer. Locking `agents` first is safe here, unlike in
-// `destroyAgentConfigurationRow`: this transaction only reads `agent_configurations`, so it never
-// waits on a row the upgrade holds.
+// commit it over a newer pointer. Locking `agents` first is safe here, unlike a transaction that
+// deletes `agent_configurations` rows before locking `agents`: this transaction only reads
+// `agent_configurations`, so it never waits on a row the upgrade holds.
 const LOCK_AGENTS_SQL = `
   SELECT agent.id
   FROM agents AS agent
