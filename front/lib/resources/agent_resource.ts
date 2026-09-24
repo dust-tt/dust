@@ -1461,45 +1461,50 @@ export class AgentResource
    * cache invalidation of every reassigned agent and the search reindex of every reassigned agent
    * and every agent whose duplicate relation was dropped stay owned by the agent domain. When both
    * users hold a relation to the same agent, the primary's is kept and the secondary's is deleted.
-   * Returns the number of configuration versions and relations transferred.
+   * Callers MUST invoke it after migrating the secondary user's group memberships (which carry agent
+   * editor grants), so the reindex sees the final editors. Returns the number of configuration
+   * versions and relations transferred.
    */
   static async mergeUsers(
     auth: Authenticator,
     {
-      primaryUserId,
-      secondaryUserId,
+      primaryUserModelId,
+      secondaryUserModelId,
     }: {
-      primaryUserId: ModelId;
-      secondaryUserId: ModelId;
+      primaryUserModelId: ModelId;
+      secondaryUserModelId: ModelId;
     }
   ): Promise<{
     agentConfigurationsCount: number;
     agentUserRelationsCount: number;
   }> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
 
     const [agentConfigurationsCount, reassignedConfigurations] =
       await AgentConfigurationModel.update(
-        { authorId: primaryUserId },
+        { authorId: primaryUserModelId },
         {
-          where: { authorId: secondaryUserId, workspaceId },
+          where: {
+            authorId: secondaryUserModelId,
+            workspaceId: workspaceModelId,
+          },
           returning: ["sId"],
         }
       );
     const reassignedAgentIds = reassignedConfigurations.map(
       (configuration) => configuration.sId
     );
-    await invalidateAgentResourceCaches(workspaceId, reassignedAgentIds);
+    await invalidateAgentResourceCaches(workspaceModelId, reassignedAgentIds);
 
     const primaryRelations = await AgentUserRelationModel.findAll({
       attributes: ["agentConfiguration"],
-      where: { userId: primaryUserId, workspaceId },
+      where: { userId: primaryUserModelId, workspaceId: workspaceModelId },
     });
     const duplicateRelations = await AgentUserRelationModel.findAll({
       attributes: ["agentConfiguration"],
       where: {
-        userId: secondaryUserId,
-        workspaceId,
+        userId: secondaryUserModelId,
+        workspaceId: workspaceModelId,
         agentConfiguration: primaryRelations.map(
           (relation) => relation.agentConfiguration
         ),
@@ -1510,14 +1515,14 @@ export class AgentResource
     );
     await AgentUserRelationModel.destroy({
       where: {
-        userId: secondaryUserId,
-        workspaceId,
+        userId: secondaryUserModelId,
+        workspaceId: workspaceModelId,
         agentConfiguration: deduplicatedAgentIds,
       },
     });
     const [agentUserRelationsCount] = await AgentUserRelationModel.update(
-      { userId: primaryUserId },
-      { where: { userId: secondaryUserId, workspaceId } }
+      { userId: primaryUserModelId },
+      { where: { userId: secondaryUserModelId, workspaceId: workspaceModelId } }
     );
 
     // The indexed `last_edited_by_user_id` follows the version author and `favorite_count` drops

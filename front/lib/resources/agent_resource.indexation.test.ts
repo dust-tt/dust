@@ -243,8 +243,8 @@ describe("resource-owned agent search indexation", () => {
     vi.mocked(launchIndexAgentSearchWorkflow).mockClear();
 
     const counts = await AgentResource.mergeUsers(auth, {
-      primaryUserId: primaryUser.id,
-      secondaryUserId: secondaryUser.id,
+      primaryUserModelId: primaryUser.id,
+      secondaryUserModelId: secondaryUser.id,
     });
 
     expect(counts).toEqual({

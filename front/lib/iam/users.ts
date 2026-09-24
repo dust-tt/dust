@@ -314,12 +314,6 @@ export async function mergeUserIdentities({
     );
   }
 
-  const { agentConfigurationsCount, agentUserRelationsCount } =
-    await AgentResource.mergeUsers(auth, {
-      primaryUserId: primaryUser.id,
-      secondaryUserId: secondaryUser.id,
-    });
-
   const userIdValues = {
     userId: primaryUser.id,
   };
@@ -368,6 +362,14 @@ export async function mergeUserIdentities({
       secondaryUser,
     }
   );
+
+  // Runs after the group membership migration, which moves the secondary user's agent editor
+  // grants: the agents it reindexes must see the final editors.
+  const { agentConfigurationsCount, agentUserRelationsCount } =
+    await AgentResource.mergeUsers(auth, {
+      primaryUserModelId: primaryUser.id,
+      secondaryUserModelId: secondaryUser.id,
+    });
 
   // Migrate authorship of keys from the secondary user to the primary user.
   const [keysCount] = await KeyModel.update(userIdValues, userIdOptions);
