@@ -143,7 +143,7 @@ describe("recreateAgentSearchIndex", () => {
         editor_ids: [user.sId],
         skill_ids: [restrictedSkill.sId],
         favorite_count: 1,
-        active_users_count: null,
+        active_users_count: 0,
       })
     );
     expect(indexAgentDocument).toHaveBeenCalledWith(

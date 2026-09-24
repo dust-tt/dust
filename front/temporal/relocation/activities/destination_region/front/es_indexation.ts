@@ -300,7 +300,7 @@ export async function recreateAgentSearchIndex({
         negative: 0,
       };
       const document = agent.toSearchDocument(auth, {
-        activeUsersCount: null,
+        activeUsersCount: 0,
         editors: editorsByAgentId.get(agent.sId) ?? [],
         favoriteCount: favoriteCountByAgentId.get(agent.sId) ?? 0,
         feedbackNegativeCount: feedback.negative,
