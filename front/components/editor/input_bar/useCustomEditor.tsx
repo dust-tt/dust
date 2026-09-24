@@ -15,6 +15,7 @@ import { URLStorageExtension } from "@app/components/editor/extensions/input_bar
 import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { getSlashTriggerText } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { KnowledgeNodeWithView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeWithView";
 import { ToolNodeWithView } from "@app/components/editor/extensions/skill_builder/ToolNodeWithView";
 import { VoicePartialNode } from "@app/components/editor/extensions/VoicePartialExtension";
@@ -250,6 +251,21 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
         );
 
         chainCommands?.run();
+      },
+
+      // Inserts a "/" at the cursor to open the slash suggestion dropdown.
+      openSlashCommand() {
+        if (!editor) {
+          return;
+        }
+        const slashStorage = editor.storage.inputBarSlashSuggestion;
+        slashStorage.hasBeenFocused = true;
+        slashStorage.dismissedTriggerStart = null;
+        editor
+          .chain()
+          .focus()
+          .insertContent(getSlashTriggerText(editor.state))
+          .run();
       },
 
       focusEnd() {
