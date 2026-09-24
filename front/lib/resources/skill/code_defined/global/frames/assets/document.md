@@ -58,7 +58,8 @@ For a shared visual direction, use the Frame's theme and semantic colors in your
 ## Saving and later edits
 
 The editor autosaves after three seconds of inactivity. `autosaveDebounceMs` changes that delay.
-`readOnly` disables editing. Shared public views and PDF exports are read-only automatically.
+`readOnly` disables editing. Anonymous shared views and PDF exports are read-only. Signed-in
+workspace members can edit through a shared link when they have write access to the document file.
 
 Republish after changing the Frame's files. The user can reopen the Frame to load the new version.
 

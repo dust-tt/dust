@@ -28,7 +28,7 @@ export default function RenderVisualization({
   const isPdfMode = pdfMode === "true";
 
   // Use SSR approach for access tokens (publicly accessible).
-  // Editing is not available for public shared frames.
+  // Workspace members can access live files through the authenticated RPC bridge.
   if (accessToken) {
     return (
       <ServerSideVisualizationWrapper
