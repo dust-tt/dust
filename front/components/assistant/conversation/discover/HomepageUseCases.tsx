@@ -38,24 +38,28 @@ export function HomepageUseCases({
   const [page, setPage] = useState<HomepageUseCaseType[]>([]);
 
   useEffect(() => {
-    setPage((current) => {
-      const stillOffered = new Set(useCases.map((useCase) => useCase.id));
-      if (
-        current.length > 0 &&
-        current.every((useCase) => stillOffered.has(useCase.id))
-      ) {
-        return current;
+    const stillOffered = new Set(useCases.map((useCase) => useCase.id));
+
+    if (useCases.length === 0) {
+      if (page.length > 0) {
+        setPage([]);
       }
+      return;
+    }
 
-      return sampleSize(useCases, VISIBLE_COUNT);
-    });
-  }, [useCases]);
+    if (
+      page.length > 0 &&
+      page.every((useCase) => stillOffered.has(useCase.id))
+    ) {
+      return;
+    }
 
-  useEffect(() => {
-    page.forEach((useCase) => {
+    const next = sampleSize(useCases, VISIBLE_COUNT);
+    next.forEach((useCase) => {
       trackHomepageUseCaseView({ useCaseId: useCase.id });
     });
-  }, [page]);
+    setPage(next);
+  }, [page, useCases]);
 
   const [isTyping, setIsTyping] = useState(false);
 
