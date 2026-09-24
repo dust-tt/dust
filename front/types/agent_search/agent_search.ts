@@ -19,7 +19,7 @@ export interface AgentSearchDocument extends ElasticsearchBaseDocument {
   agent_id: string;
   status: AgentConfigurationStatus;
   scope: AgentConfigurationScope;
-  model: AgentSearchDocumentModel;
+  model: AgentSearchDocumentModel | null;
   name: string;
   picture_url: string;
   last_edited_by_user_id: string | null;
