@@ -3,6 +3,7 @@ import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
+// biome-ignore lint/suspicious/noImportCycles: GroupResource loads this module dynamically after initialization.
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
