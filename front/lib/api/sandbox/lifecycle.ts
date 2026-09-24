@@ -130,6 +130,16 @@ async function ensureOwnerSandboxReady<TScope>(
       }
       const image = imageResult.value;
 
+      const ensureEgressOnExec = () =>
+        traceSandboxStartupPhase("egress_on_exec", () =>
+          ensureSandboxEgressOnExec(auth, sandbox, {
+            runtimeOwner,
+            egressPolicyOwnerId,
+            egressPolicyPodId,
+            wokeFromSleep,
+          })
+        );
+
       // Only mount on first creation. e2b preserves the FUSE mount and the
       // root-owned token server across betaPause + connect (verified empirically),
       // so on wake we just need fresh per-mount credentials in /run/dust-gcs.
@@ -167,59 +177,58 @@ async function ensureOwnerSandboxReady<TScope>(
           status = "error";
           return mountResult;
         }
+
+        // Durable SQLite bring-up must run strictly AFTER the mounts (restore reads
+        // through the replica mount) and is awaited: `invoke` awaits
+        // the owner-specific ready helper, which guarantees no function runs
+        // before restore and daemon startup complete. Conversation sandboxes do not own state.
+        if (sandboxOwnerHasPersistentState(runtimeOwner)) {
+          const stateResult = await setupSandboxStateOnColdStart(auth, sandbox);
+          if (stateResult.isErr()) {
+            // status=running was already committed by ensureActive, and this
+            // block only runs when freshlyCreated — a plain Err would make the
+            // NEXT call take the warm path and happily serve a half-initialized
+            // sandbox (unrestored databases, no litestream daemon). Request a
+            // kill instead: ensureActive's kill-requested branch destroys and
+            // recreates on the next access, re-running this setup from scratch.
+            logger.error(
+              { err: stateResult.error, sandboxId: sandbox.sId },
+              "Sandbox SQLite state cold start failed — requesting sandbox kill so the next access recreates it."
+            );
+            await sandbox.requestKill();
+            status = "error";
+            return stateResult;
+          }
+        }
+
+        const ensureEgressResult = await ensureEgressOnExec();
+        if (ensureEgressResult.isErr()) {
+          status = "error";
+          return ensureEgressResult;
+        }
       } else {
-        const refreshResult = await traceSandboxStartupPhase(
-          "gcs_refresh",
-          async () => {
+        // The egress check (a full forwarder restart after a wake) is the same setup the creation
+        // branch above already overlaps with the GCS mount, for the same reasons: it never
+        // touches the GCS broker's firewall, which the refresh re-applies before writing tokens.
+        // So it runs alongside the credential refresh, with egress errors still taking precedence.
+        const [refreshResult, ensureEgressResult] = await Promise.all([
+          traceSandboxStartupPhase("gcs_refresh", async () => {
             const fsResult = await getFileSystem();
             if (fsResult.isErr()) {
               return fsResult;
             }
             return fsResult.value.refreshSandboxMount(sandbox, image);
-          }
-        );
+          }),
+          ensureEgressOnExec(),
+        ]);
+        if (ensureEgressResult.isErr()) {
+          status = "error";
+          return ensureEgressResult;
+        }
         if (refreshResult.isErr()) {
           status = "error";
           return refreshResult;
         }
-      }
-
-      // Durable SQLite bring-up must run strictly AFTER the mounts (restore reads
-      // through the replica mount) and is awaited: `invoke` awaits
-      // the owner-specific ready helper, which guarantees no function runs
-      // before restore and daemon startup complete. Conversation sandboxes do not own state.
-      if (freshlyCreated && sandboxOwnerHasPersistentState(runtimeOwner)) {
-        const stateResult = await setupSandboxStateOnColdStart(auth, sandbox);
-        if (stateResult.isErr()) {
-          // status=running was already committed by ensureActive, and this
-          // block only runs when freshlyCreated — a plain Err would make the
-          // NEXT call take the warm path and happily serve a half-initialized
-          // sandbox (unrestored databases, no litestream daemon). Request a
-          // kill instead: ensureActive's kill-requested branch destroys and
-          // recreates on the next access, re-running this setup from scratch.
-          logger.error(
-            { err: stateResult.error, sandboxId: sandbox.sId },
-            "Sandbox SQLite state cold start failed — requesting sandbox kill so the next access recreates it."
-          );
-          await sandbox.requestKill();
-          status = "error";
-          return stateResult;
-        }
-      }
-
-      const ensureEgressResult = await traceSandboxStartupPhase(
-        "egress_on_exec",
-        () =>
-          ensureSandboxEgressOnExec(auth, sandbox, {
-            runtimeOwner,
-            egressPolicyOwnerId,
-            egressPolicyPodId,
-            wokeFromSleep,
-          })
-      );
-      if (ensureEgressResult.isErr()) {
-        status = "error";
-        return ensureEgressResult;
       }
 
       await sandbox.updateLastRuntimeRefreshAt(new Date());
