@@ -81,6 +81,7 @@ export { default as DotsHorizontal } from "./DotsHorizontal";
 export { default as DoubleQuotes } from "./DoubleQuotes";
 export { default as Download01 } from "./Download01";
 export { default as DownloadCloud02 } from "./DownloadCloud02";
+export { default as DragDrop } from "./DragDrop";
 export { default as Edit04 } from "./Edit04";
 export { default as Eye } from "./Eye";
 export { default as EyeOff } from "./EyeOff";

@@ -1,6 +1,6 @@
 import { Icon } from "@sparkle/components/Icon";
 import { Tooltip } from "@sparkle/components/Tooltip";
-import { Menu01 } from "@sparkle/icons/v2-stroke";
+import { DragDrop } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import type { Editor } from "@tiptap/core";
 import { DragHandle } from "@tiptap/extension-drag-handle-react";
@@ -52,7 +52,7 @@ export const DocumentDragHandle = ({
             )}
           >
             <span aria-hidden="true">
-              <Icon visual={Menu01} size="xs" />
+              <Icon visual={DragDrop} size="xs" />
             </span>
           </button>
         }
