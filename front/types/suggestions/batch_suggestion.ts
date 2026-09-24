@@ -9,7 +9,7 @@ export type BatchSuggestionState = (typeof BATCH_SUGGESTION_STATES)[number];
 
 /** Light batch suggestion type with only the ids of sub-suggestion. */
 export interface LightBatchSuggestionType {
-  sId: string;
+  id: string;
   createdAt: number;
   updatedAt: number;
   title: string | null;

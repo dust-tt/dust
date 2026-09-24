@@ -69,7 +69,7 @@ describe("BatchSuggestionResource", () => {
     ]);
 
     expect(fetched!.toJSON()).toEqual({
-      sId: batch.sId,
+      id: batch.sId,
       createdAt: batch.createdAt.getTime(),
       updatedAt: batch.updatedAt.getTime(),
       title: "Extract triage skill",

@@ -1,10 +1,6 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  DANGEROUSLY_UNBOUNDED_TEXT,
-  DataTypes,
-  Op,
-} from "@app/lib/resources/storage/data_types";
+import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { BatchSuggestionState } from "@app/types/suggestions/batch_suggestion";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
@@ -40,7 +36,7 @@ BatchSuggestionModel.init(
       allowNull: true,
     },
     analysis: {
-      type: DANGEROUSLY_UNBOUNDED_TEXT,
+      type: DataTypes.STRING,
       allowNull: true,
     },
     state: {

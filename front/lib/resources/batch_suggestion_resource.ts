@@ -277,7 +277,7 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
 
   toJSON(): LightBatchSuggestionType {
     return {
-      sId: this.sId,
+      id: this.sId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       title: this.title,

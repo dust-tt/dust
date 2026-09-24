@@ -7,7 +7,7 @@ CREATE TABLE "public"."batch_suggestions" (
     "createdAt" timestamp with time zone NOT NULL,
     "updatedAt" timestamp with time zone NOT NULL,
     "title" character varying(255) COLLATE "pg_catalog"."default",
-    "analysis" text COLLATE "pg_catalog"."default",
+    "analysis" character varying(255) COLLATE "pg_catalog"."default",
     "state" character varying(255) COLLATE "pg_catalog"."default" DEFAULT 'pending'::character varying NOT NULL,
     "workspaceId" bigint NOT NULL,
     "id" bigserial PRIMARY KEY,
