@@ -265,9 +265,13 @@ describe("modelPickerUtils premium gating", () => {
         ...CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
         supportedReasoningEfforts: {
           none: false,
+          minimal: false,
           light: false,
+          low: false,
           medium: false,
           high: false,
+          xhigh: false,
+          maximal: false,
         },
       };
 

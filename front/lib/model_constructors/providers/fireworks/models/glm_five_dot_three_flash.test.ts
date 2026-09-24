@@ -43,9 +43,13 @@ describe("GLM-5.3 Flash model configuration", () => {
       FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG.supportedReasoningEfforts
     ).toEqual({
       none: false,
+      minimal: false,
       light: true,
+      low: false,
       medium: true,
       high: true,
+      xhigh: false,
+      maximal: false,
     });
     expect(FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG.useNativeLightReasoning).toBe(
       true

@@ -46,9 +46,13 @@ describe("Kimi K3 model configuration", () => {
     // suppresses the chain-of-thought meta prompt.
     expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.supportedReasoningEfforts).toEqual({
       none: false,
+      minimal: false,
       light: true,
+      low: false,
       medium: true,
       high: true,
+      xhigh: false,
+      maximal: false,
     });
     expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.useNativeLightReasoning).toBe(true);
     expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.defaultReasoningEffort).toBe("light");
