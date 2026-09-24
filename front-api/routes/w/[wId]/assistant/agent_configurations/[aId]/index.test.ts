@@ -208,6 +208,43 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - ignoreCreditSp
     expect(data.agentConfiguration.ignoreCreditSpendThresholdAlert).toBe(true);
   });
 
+  it("lets an admin turn it on for an existing agent with no other change", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await patch(workspace, agent.sId, {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: agent.instructions,
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+        ignoreCreditSpendThresholdAlert: true,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration.ignoreCreditSpendThresholdAlert).toBe(true);
+  });
+
   it("keeps the stored value when a plain member editor sends another one", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({
       role: "user",

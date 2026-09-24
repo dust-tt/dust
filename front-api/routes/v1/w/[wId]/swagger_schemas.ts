@@ -252,6 +252,10 @@
  *           nullable: true
  *           description: ID of the template used for this configuration
  *           example: "b4e2f1a9c7"
+ *         ignoreCreditSpendThresholdAlert:
+ *           type: boolean
+ *           description: Whether the agent keeps running past the workspace credit spend threshold alert
+ *           example: false
  *     AgentSkill:
  *       type: object
  *       description: A skill attached to an agent configuration.

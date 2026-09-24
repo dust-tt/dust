@@ -961,6 +961,9 @@
  *           type: array
  *           items:
  *             type: string
+ *         ignoreCreditSpendThresholdAlert:
+ *           type: boolean
+ *           description: Whether the agent keeps running past the workspace credit spend threshold alert
  *         canRead:
  *           type: boolean
  *         canEdit:

@@ -261,6 +261,7 @@ const AGENT_CONFIGURATION_KEYS = [
   "templateId",
   "requestedSpaceIds",
   "reinforcement",
+  "ignoreCreditSpendThresholdAlert",
   "tags",
   "actions",
   "skills",
@@ -1544,6 +1545,8 @@ export class AgentResource
       // Preserve the version's author rather than re-attributing it to the caller.
       authorId: this.versionAuthorId ?? auth.getNonNullableUser().id,
       reinforcement: this.reinforcement,
+      ignoreCreditSpendThresholdAlert:
+        this.content.ignoreCreditSpendThresholdAlert,
       actions,
       skills,
     };
@@ -2578,8 +2581,9 @@ export class AgentResource
    * @cc [owner:tdraier,label:security;product] agent-edit-in-place
    * Saving an existing agent MUST route each changed property by kind and gate it on its own
    * permission: a definition field other than the model and tags (name, description, instructions,
-   * picture, status, template, requested spaces, reinforcement, tools or skills) creates a new
-   * version and MUST require `write`; the `model` creates a new version but MUST require `write` OR
+   * picture, status, template, requested spaces, reinforcement, credit spend alert bypass, tools or
+   * skills) creates a new version and MUST require `write`; the `model` creates a new version but
+   * MUST require `write` OR
    * `admin`, and `tags` a new version requiring `write` OR workspace-admin (see
    * `model-change-requires-edit`/`tags-change-requires-edit`); `scope` is
    * applied in place (no new version) and MUST satisfy
