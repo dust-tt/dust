@@ -7973,77 +7973,6 @@
         }
       }
     },
-    "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events/poll": {
-      "get": {
-        "summary": "Poll message events",
-        "deprecated": true,
-        "description": "Deprecated on 2026-09-24; use the equivalent endpoint under /api/sse. Wait up to 25 seconds for events after the supplied Redis stream event ID. Returns an empty array when a non-terminal message has no newer events, or a serialized end-of-stream event when the message has ended with no newer events. A closed channel may return before the timeout.",
-        "tags": [
-          "Private Events"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "wId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "cId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "mId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "lastEventId",
-            "required": false,
-            "description": "Redis stream ID of the last received message event. Omit or pass an empty value to start from the available history.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Message events retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrivateAgentMessageEventsPollResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The requested message is not an agent message"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Conversation or message not found"
-          }
-        }
-      }
-    },
     "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/feedbacks": {
       "post": {
         "summary": "Submit message feedback",
@@ -13981,23 +13910,6 @@
               }
             },
             "description": "A structured error describing why the invocation failed."
-          }
-        }
-      },
-      "PrivateAgentMessageEventsPollResponse": {
-        "type": "object",
-        "required": [
-          "events"
-        ],
-        "properties": {
-          "events": {
-            "type": "array",
-            "description": "Empty when a non-terminal message has no newer events. If the message has ended with no newer events, contains one serialized end-of-stream event.",
-            "items": {
-              "type": "string",
-              "description": "JSON-encoded event with eventId and data fields, in the same format as an unnamed SSE data frame.",
-              "example": "{\"eventId\":\"end-of-stream\",\"data\":{\"type\":\"end-of-stream\"}}"
-            }
           }
         }
       },

@@ -1,8 +1,6 @@
 import { redirectToSse } from "@front-api/lib/api/sse/redirect";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 
-import poll from "./poll";
-
 const app = workspaceApp();
 
 /**
@@ -55,6 +53,5 @@ const app = workspaceApp();
  */
 
 app.get("/", redirectToSse);
-app.route("/poll", poll);
 
 export default app;

@@ -1756,17 +1756,6 @@
  *             status:
  *               type: integer
  *           description: A structured error describing why the invocation failed.
- *     PrivateAgentMessageEventsPollResponse:
- *       type: object
- *       required: [events]
- *       properties:
- *         events:
- *           type: array
- *           description: Empty when a non-terminal message has no newer events. If the message has ended with no newer events, contains one serialized end-of-stream event.
- *           items:
- *             type: string
- *             description: JSON-encoded event with eventId and data fields, in the same format as an unnamed SSE data frame.
- *             example: '{"eventId":"end-of-stream","data":{"type":"end-of-stream"}}'
  *     PrivateAgentMessageStreamEnvelope:
  *       type: object
  *       description: JSON payload of an agent-message SSE data frame. The `:connect` comment and plain-text done sentinel use different formats.
