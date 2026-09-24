@@ -35,4 +35,12 @@ describe.each(Object.values(DUST_STREAM_ENDPOINTS))("$id", (endpoint) => {
 
     expect(supportedReasoningEfforts[defaultReasoningEffort]).toBe(true);
   });
+
+  it("defaults to the effort the provider documents as its default", () => {
+    const providerDefault = endpoint.configSchema.parse({}).reasoning?.effort;
+
+    expect(endpoint.modelConfig.defaultReasoningEffort).toBe(
+      providerDefault ?? "none"
+    );
+  });
 });

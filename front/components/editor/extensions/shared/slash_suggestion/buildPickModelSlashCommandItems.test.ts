@@ -401,7 +401,7 @@ describe("getDefaultPickModelSlashCommandItemId", () => {
       })
     ).toBeNull();
     expect(
-      getDefaultPickModelSlashCommandItemId(itemsFor("claude h"), {
+      getDefaultPickModelSlashCommandItemId(itemsFor("claude me"), {
         lockPremiumEfforts: false,
       })
     ).toBeNull();

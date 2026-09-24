@@ -138,7 +138,7 @@ export const FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG: ModelConfigurationType 
       xhigh: false,
       maximal: true,
     },
-    defaultReasoningEffort: "low",
+    defaultReasoningEffort: "high",
     // Native thinking at `light`, so no chain-of-thought meta prompt.
     supportsResponseFormat: true,
     tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -370,7 +370,7 @@ export const FIREWORKS_KIMI_K3_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: true,
   },
-  defaultReasoningEffort: "low",
+  defaultReasoningEffort: "maximal",
   // Native thinking at `light`, so no chain-of-thought meta prompt.
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -481,7 +481,7 @@ export const FIREWORKS_GLM_5P3_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: true,
   },
-  defaultReasoningEffort: "high",
+  defaultReasoningEffort: "maximal",
   // Native thinking at `light`, so no chain-of-thought meta prompt.
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -524,7 +524,7 @@ export const FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: true,
   },
-  defaultReasoningEffort: "low",
+  defaultReasoningEffort: "maximal",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {

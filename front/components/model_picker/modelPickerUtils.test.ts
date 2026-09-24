@@ -16,7 +16,6 @@ import type {
   ModelStreamResolutionsType,
 } from "@app/types/api/assistant/models";
 import {
-  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
@@ -34,7 +33,10 @@ import {
 import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
-import { O1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import {
+  GPT_5_4_MINI_MODEL_CONFIG,
+  O1_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
   ModelIdType,
@@ -373,9 +375,7 @@ describe("modelPickerUtils premium gating", () => {
 
   describe("getInitialEffort", () => {
     it("starts a model on its default none effort", () => {
-      expect(
-        getInitialEffort(CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG, UNGATED)
-      ).toBe("none");
+      expect(getInitialEffort(GPT_5_4_MINI_MODEL_CONFIG, UNGATED)).toBe("none");
     });
 
     it("never returns a premium effort when gated (mixed models)", () => {

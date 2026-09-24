@@ -76,7 +76,7 @@ export const GEMINI_3_1_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: false,
   },
-  defaultReasoningEffort: "low",
+  defaultReasoningEffort: "minimal",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
   regionalAvailability: {
@@ -112,7 +112,7 @@ export const GEMINI_3_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: false,
   },
-  defaultReasoningEffort: "low",
+  defaultReasoningEffort: "minimal",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
   regionalAvailability: {
@@ -278,7 +278,7 @@ export const GEMINI_3_1_PRO_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: false,
   },
-  defaultReasoningEffort: "low",
+  defaultReasoningEffort: "high",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
   regionalAvailability: {
@@ -343,7 +343,7 @@ export const GEMINI_3_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: false,
   },
-  defaultReasoningEffort: "low",
+  defaultReasoningEffort: "high",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
   regionalAvailability: {
@@ -379,7 +379,7 @@ export const GEMINI_3_6_FLASH_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: false,
   },
-  defaultReasoningEffort: "low",
+  defaultReasoningEffort: "high",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
   regionalAvailability: {
@@ -420,7 +420,7 @@ export const GEMINI_3_7_FLASH_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: false,
   },
-  defaultReasoningEffort: "low",
+  defaultReasoningEffort: "medium",
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
   regionalAvailability: {
