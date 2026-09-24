@@ -194,8 +194,13 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
     state: BatchSuggestionState,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    if (this.workspaceId !== workspaceId) {
+      throw new Error("Can't update a batch suggestion of another workspace.");
+    }
+
     await withTransaction(async (t) => {
-      await this.update({ state }, t);
+      await this.update({ state }, t, { workspaceId });
       await AgentSuggestionResource.bulkUpdateState(
         auth,
         this.agentSuggestions,
