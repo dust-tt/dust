@@ -15,7 +15,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   editFrameText: vi.fn(),
-  iframe: vi.fn((_props: { onEditText?: EditTextFn }) => null),
+  iframe: vi.fn(
+    (_props: {
+      onEditText?: EditTextFn;
+      visualization?: { identifier: string };
+    }) => null
+  ),
   hasFrameFunctions: false,
   isFrameAuthor: true,
   mutateFileContent: vi.fn(),
@@ -315,7 +320,7 @@ describe("FrameRenderer", () => {
 
     // Identifier stays stable (avoids Next.js /content URL thrash); remount is
     // driven by React key which includes contentHash.
-    expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier).toBe(
+    expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization?.identifier).toBe(
       "viz-frame_1"
     );
     const firstProps = mocks.iframe.mock.calls.at(-1)?.[0];
@@ -331,7 +336,7 @@ describe("FrameRenderer", () => {
       />
     );
 
-    expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier).toBe(
+    expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization?.identifier).toBe(
       "viz-frame_1"
     );
     // New mount after contentHash change (new props object from remount).
