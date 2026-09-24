@@ -1,11 +1,15 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
-import { setTimeoutAsync } from "@app/lib/utils/async_utils";
+import {
+  concurrentExecutor,
+  setTimeoutAsync,
+} from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
+import chunk from "lodash/chunk";
 import type { Transaction } from "sequelize";
 
 const SPIN_WAIT_INTERVAL_MS = 100;
@@ -67,6 +71,10 @@ function getCacheKey<T, Args extends unknown[]>(
 
 type RedisCacheClient = Awaited<ReturnType<typeof getRedisCacheClient>>;
 
+// node-redis spreads MGET/MSET arguments, so large batches overflow the stack.
+export const REDIS_BATCH_COMMAND_CHUNK_SIZE = 500;
+const REDIS_BATCH_COMMAND_CONCURRENCY = 8;
+
 type BatchCacheEntry<Input> = {
   input: Input;
   readKey: string;
@@ -92,9 +100,14 @@ async function readBatchCacheValues<T>(
     return new Ok(values);
   }
 
-  let serializedValues;
+  let serializedValues: (string | null)[];
   try {
-    serializedValues = await redis.mGet(keys);
+    const chunkedValues = await concurrentExecutor(
+      chunk(keys, REDIS_BATCH_COMMAND_CHUNK_SIZE),
+      (keysChunk) => redis.mGet(keysChunk),
+      { concurrency: REDIS_BATCH_COMMAND_CONCURRENCY }
+    );
+    serializedValues = chunkedValues.flat();
   } catch (err) {
     return new Err(normalizeError(err));
   }
@@ -143,7 +156,11 @@ async function writeBatchCacheValues<T>(
     return;
   }
   try {
-    await redis.mSet([...writes]);
+    await concurrentExecutor(
+      chunk([...writes], REDIS_BATCH_COMMAND_CHUNK_SIZE),
+      (writesChunk) => redis.mSet(writesChunk),
+      { concurrency: REDIS_BATCH_COMMAND_CONCURRENCY }
+    );
   } catch (err) {
     warnCacheFailure(cacheId, err);
   }
@@ -154,7 +171,8 @@ async function writeBatchCacheValues<T>(
  * Each call MUST load its misses together, at most once, without waiting for other cache fills.
  * The loader MUST return one value per input in input order, using null for missing values. Nulls
  * MUST NOT be cached. Redis failures MUST NOT fail a successful load or cause it to run again;
- * loader errors MUST propagate.
+ * loader errors MUST propagate. Redis reads and writes MUST be issued in chunks of at most
+ * `REDIS_BATCH_COMMAND_CHUNK_SIZE` keys.
  */
 export function cacheManyWithRedis<T, Input>(
   load: (inputs: readonly Input[]) => Promise<(JsonSerializable<T> | null)[]>,
