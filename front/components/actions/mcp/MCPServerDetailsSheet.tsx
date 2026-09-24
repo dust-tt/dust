@@ -1,6 +1,11 @@
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
-import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
+import { MCPServerDetailsAvailability } from "@app/components/actions/mcp/MCPServerDetailsAvailability";
+import { MCPServerDetailsGeneral } from "@app/components/actions/mcp/MCPServerDetailsGeneral";
+import {
+  MCPServerDetailsTools,
+  MCPServerDetailsToolsBulkBar,
+  useToolsAndStakesController,
+} from "@app/components/actions/mcp/MCPServerDetailsTools";
 import { ConfirmContext } from "@app/components/Confirm";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import {
@@ -14,8 +19,6 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  InfoCircle,
-  Lock01,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -31,8 +34,7 @@ import {
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const DETAILS_TABS = ["info", "sharing"] as const;
+const DETAILS_TABS = ["general", "tools", "availability"] as const;
 type TabType = (typeof DETAILS_TABS)[number];
 
 interface MCPServerDetailsSheetProps {
@@ -62,7 +64,7 @@ export function MCPServerDetailsSheet({
   sensitivityLabelsController,
   confirmSkillsRestrictionChange,
 }: MCPServerDetailsSheetProps) {
-  const [selectedTab, setSelectedTab] = useState<TabType>("info");
+  const [selectedTab, setSelectedTab] = useState<TabType>("general");
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -70,18 +72,14 @@ export function MCPServerDetailsSheet({
   const { deleteServer, isDeleting } = useDeleteMCPServer(owner);
 
   const form = useFormContext<MCPServerFormValues>();
+  const toolsController = useToolsAndStakesController(mcpServerView);
 
   useEffect(() => {
-    // Only reset to info tab when modal transitions from closed to open.
     if (isOpen && !prevIsOpen) {
-      setSelectedTab("info");
+      setSelectedTab("general");
     }
     setPrevIsOpen(isOpen);
   }, [isOpen, prevIsOpen]);
-
-  const changeTab = async (next: TabType) => {
-    setSelectedTab(next);
-  };
 
   const header = useMemo(() => {
     if (!mcpServerView) {
@@ -131,6 +129,37 @@ export function MCPServerDetailsSheet({
     onClose();
   };
 
+  const handleRemove = async () => {
+    if (!mcpServerView) {
+      return;
+    }
+    const server = mcpServerView.server;
+    const confirmed = await confirm({
+      title: "Confirm Removal",
+      message: (
+        <div>
+          Are you sure you want to remove {""}
+          <span className="font-semibold">
+            {getMcpServerViewDisplayName(mcpServerView)}
+          </span>
+          ?
+          <div className="mt-2 font-semibold">
+            This action cannot be undone.
+          </div>
+        </div>
+      ),
+      validateLabel: "Remove",
+      validateVariant: "warning",
+    });
+    if (!confirmed) {
+      return;
+    }
+    const deleted = await deleteServer(server);
+    if (deleted) {
+      onClose();
+    }
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => void handleOpenChange(open)}>
       <SheetContent size="lg">
@@ -140,7 +169,7 @@ export function MCPServerDetailsSheet({
         <SheetContainer>
           {readOnly ? (
             mcpServerView && (
-              <MCPServerDetailsInfo
+              <MCPServerDetailsGeneral
                 mcpServerView={mcpServerView}
                 owner={owner}
                 readOnly
@@ -149,13 +178,12 @@ export function MCPServerDetailsSheet({
           ) : (
             <Tabs
               value={selectedTab}
-              onValueChange={(v) => void changeTab(v as TabType)}
+              onValueChange={(v) => setSelectedTab(v as TabType)}
             >
               <TabsList>
-                <TabsTrigger value="info" label="Info" icon={InfoCircle} />
-                {mcpServerView?.server.availability === "manual" && (
-                  <TabsTrigger value="sharing" label="Sharing" icon={Lock01} />
-                )}
+                <TabsTrigger value="general" label="General" />
+                <TabsTrigger value="tools" label="Tools & Stakes" />
+                <TabsTrigger value="availability" label="Availability" />
                 {mcpServerView?.server.availability === "manual" && (
                   <>
                     <div className="grow" />
@@ -164,71 +192,54 @@ export function MCPServerDetailsSheet({
                         icon={Trash01}
                         variant="warning"
                         label={isDeleting ? "Removing..." : "Remove"}
-                        size="xs"
+                        size="sm"
                         disabled={isDeleting}
-                        onClick={async () => {
-                          if (!mcpServerView) {
-                            return;
-                          }
-                          const server = mcpServerView.server;
-                          const confirmed = await confirm({
-                            title: "Confirm Removal",
-                            message: (
-                              <div>
-                                Are you sure you want to remove {""}
-                                <span className="font-semibold">
-                                  {getMcpServerViewDisplayName(mcpServerView)}
-                                </span>
-                                ?
-                                <div className="mt-2 font-semibold">
-                                  This action cannot be undone.
-                                </div>
-                              </div>
-                            ),
-                            validateLabel: "Remove",
-                            validateVariant: "warning",
-                          });
-                          if (!confirmed) {
-                            return;
-                          }
-                          const deleted = await deleteServer(server);
-                          if (deleted) {
-                            onClose();
-                          }
-                        }}
+                        onClick={() => void handleRemove()}
                       />
                     </div>
                   </>
                 )}
               </TabsList>
               <div className="mt-4">
-                <TabsContent value="info">
+                <TabsContent value="general">
                   {mcpServerView && (
                     <div className="flex flex-col gap-4">
-                      <MCPServerDetailsInfo
+                      <MCPServerDetailsGeneral
                         mcpServerView={mcpServerView}
                         owner={owner}
                         sensitivityLabelsController={
                           sensitivityLabelsController
                         }
-                        confirmSkillsRestrictionChange={
-                          confirmSkillsRestrictionChange
-                        }
                       />
                     </div>
                   )}
                 </TabsContent>
-                <TabsContent value="sharing">
-                  <MCPServerDetailsSharing
-                    mcpServer={mcpServerView?.server}
-                    owner={owner}
+                <TabsContent value="tools">
+                  {mcpServerView && (
+                    <MCPServerDetailsTools
+                      mcpServerView={mcpServerView}
+                      controller={toolsController}
+                    />
+                  )}
+                </TabsContent>
+                <TabsContent value="availability">
+                  <MCPServerDetailsAvailability
+                    mcpServerView={mcpServerView}
                     spaces={spaces}
+                    confirmSkillsRestrictionChange={
+                      confirmSkillsRestrictionChange
+                    }
                   />
                 </TabsContent>
               </div>
             </Tabs>
           )}
         </SheetContainer>
+        {!readOnly && selectedTab === "tools" && (
+          <div className="px-5">
+            <MCPServerDetailsToolsBulkBar controller={toolsController} />
+          </div>
+        )}
         {!readOnly && (
           <div className="mt-2">
             <div className="flex flex-row gap-2 border-t border-border px-3 py-3">

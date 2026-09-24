@@ -18,6 +18,7 @@ import type {
   PatchMCPServerBodySchema,
   PostRequestActionsAccessBodySchema,
   UpdateMCPToolSettingsBodySchema,
+  UpdateMCPToolsSettingsBodySchema,
 } from "@app/lib/api/mcp_schemas";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type {
@@ -289,4 +290,8 @@ export type PatchMCPServerToolsPermissionsResponseBody = {
 
 export type UpdateMCPToolSettingsBodyType = z.infer<
   typeof UpdateMCPToolSettingsBodySchema
+>;
+
+export type UpdateMCPToolsSettingsBodyType = z.infer<
+  typeof UpdateMCPToolsSettingsBodySchema
 >;

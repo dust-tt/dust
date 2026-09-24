@@ -20,6 +20,7 @@ import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
+  Separator,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
@@ -137,55 +138,47 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         </div>
       </div>
 
-      {!mcpServer.authorization && (
-        <Collapsible>
-          <CollapsibleTrigger>
-            <div className="heading-lg">Advanced Settings</div>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
+      <Separator />
+
+      <Collapsible>
+        <CollapsibleTrigger>
+          <div className="heading-lg">Advanced</div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="flex flex-col gap-5 pt-3">
+            {!mcpServer.authorization && (
+              <div className="space-y-2">
+                <div className="heading-base">Bearer Token</div>
+                <Input
+                  {...form.register("sharedSecret")}
+                  isError={!!form.formState.errors.sharedSecret}
+                  message={form.formState.errors.sharedSecret?.message}
+                  placeholder="Paste the Bearer Token here"
+                />
+                <p className="text-xs text-primary-500">
+                  This will be sent alongside the request made to your server as
+                  a Bearer token in the headers.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Input
-                {...form.register("sharedSecret")}
-                label="Bearer Token (Authorization)"
-                isError={!!form.formState.errors.sharedSecret}
-                message={form.formState.errors.sharedSecret?.message}
-                placeholder="Paste the Bearer Token here"
-              />
-              <p className="text-xs text-primary-500">
-                This will be sent alongside the request made to your server as a
-                Bearer token in the headers.
-              </p>
+              <div className="heading-base">
+                Networking & Headers ({(headerFields ?? []).length})
+              </div>
+              <MCPServerHeaders />
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
 
-      <Collapsible>
-        <CollapsibleTrigger>
-          <div className="heading-lg">
-            Networking & Headers ({(headerFields ?? []).length})
-          </div>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="space-y-2">
-            <MCPServerHeaders />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      <Collapsible>
-        <CollapsibleTrigger>
-          <div className="heading-lg">
-            Meta Fields ({(metaFields ?? []).length})
-          </div>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="space-y-2">
-            <p className="text-xs text-primary-500">
-              Key-value pairs sent as <code className="font-mono">_meta</code>{" "}
-              on every tool call to this server.
-            </p>
-            <MCPServerMetaFields />
+            <div className="space-y-2">
+              <div className="heading-base">
+                Meta Fields ({(metaFields ?? []).length})
+              </div>
+              <p className="text-xs text-primary-500">
+                Key-value pairs sent as <code className="font-mono">_meta</code>{" "}
+                on every tool call to this server.
+              </p>
+              <MCPServerMetaFields />
+            </div>
           </div>
         </CollapsibleContent>
       </Collapsible>

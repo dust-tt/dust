@@ -75,6 +75,7 @@ export const AUDIT_ACTIONS = [
   "dust_mcp_server.settings_updated",
   "mcp_connection.created",
   "mcp_connection.deleted",
+  "mcp_server.tool_settings_updated",
   // Skill import GitHub connection.
   "skill_import_github_connection.created",
   "skill_import_github_connection.deleted",

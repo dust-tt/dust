@@ -1,0 +1,8 @@
+{
+  "action": "mcp_server.tool_settings_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "server_id": "string",
+    "tool_count": "string"
+  }
+}
