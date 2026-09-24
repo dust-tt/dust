@@ -6,6 +6,7 @@ import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
 import { isAuthorizedForSkillSuggestionKind } from "@app/lib/api/skills/suggestion_authorization";
 import { checkSkillWritable } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
+import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
 import {
   hasSuggestionSelfConflict,
   pruneConflictingSkillAvailabilitySuggestions,
@@ -15,11 +16,12 @@ import {
   pruneConflictingSkillNameSuggestions,
   pruneConflictingSkillUserFacingDescriptionSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
+import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -77,6 +79,20 @@ export function validateSkillEditSuggestion(
           "targeted. Suggest an `agentFacingDescriptionEdit` instead."
       )
     );
+  }
+
+  if (hasInstructionEdits && skill.instructionsHtml) {
+    const unknownBlockIds = findUnknownTargetBlockIds(
+      skill.instructionsHtml,
+      (instructionEdits ?? []).map((edit) => edit.targetBlockId)
+    );
+    if (unknownBlockIds.length > 0) {
+      return new Err(
+        new MCPError(
+          `These blocks do not exist in the skill's instructions: ${unknownBlockIds.join(", ")}.`
+        )
+      );
+    }
   }
 
   const suggestion = { instructionEdits, agentFacingDescriptionEdit };
@@ -228,14 +244,14 @@ export async function recordSkillSuggestion(
     data,
     analysis,
     title,
-    sourceConversationModelId,
-    batchModelId,
+    conversation,
+    batch,
   }: {
     data: SkillSuggestionData;
     analysis: string | null;
     title: string | null;
-    sourceConversationModelId: ModelId;
-    batchModelId: ModelId | null;
+    conversation: ConversationType;
+    batch: BatchSuggestionResource | null;
   }
 ): Promise<SkillSuggestionResource> {
   const created = await SkillSuggestionResource.createSuggestionForSkill(
@@ -247,8 +263,8 @@ export async function recordSkillSuggestion(
       title,
       state: "pending",
       source: "conversational",
-      sourceConversationIds: [sourceConversationModelId],
-      batchId: batchModelId,
+      sourceConversationIds: [conversation.id],
+      batchId: batch?.id ?? null,
     }
   );
 

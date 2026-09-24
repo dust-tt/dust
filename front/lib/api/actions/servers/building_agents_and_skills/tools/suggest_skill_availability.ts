@@ -58,8 +58,8 @@ export async function suggestSkillAvailability(
       data: { kind: "availability", suggestion: validation.value },
       analysis: analysis ?? null,
       title: title ?? null,
-      sourceConversationModelId: runContext.conversation.id,
-      batchModelId: null,
+      conversation: runContext.conversation,
+      batch: null,
     })
   );
 }

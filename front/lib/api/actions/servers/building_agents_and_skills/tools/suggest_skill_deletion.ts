@@ -53,8 +53,8 @@ export async function suggestSkillDeletion(
       data: { kind: "delete", suggestion: validation.value },
       analysis: analysis ?? null,
       title: null,
-      sourceConversationModelId: runContext.conversation.id,
-      batchModelId: null,
+      conversation: runContext.conversation,
+      batch: null,
     })
   );
 }

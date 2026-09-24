@@ -47,6 +47,7 @@ import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -82,6 +83,15 @@ async function fetchAgentForSuggestion(
   });
   if (!agent || (!agent.canRead && !auth.isAdmin())) {
     return new Err(new MCPError(`Agent "${agentId}" not found.`));
+  }
+
+  // Global agents have no configuration row for a suggestion to reference.
+  if (isGlobalAgentId(agent.sId)) {
+    return new Err(
+      new MCPError(
+        `Agent "${agentId}" is a global agent: it cannot be changed.`
+      )
+    );
   }
 
   return new Ok(agent);
@@ -422,7 +432,8 @@ async function recordPlannedChange(
       const res = await recordAgentCreationSuggestion(auth, {
         create: change.create,
         analysis: null,
-        batchModelId: batch.id,
+        conversation,
+        batch,
       });
       return res.isErr() ? res : new Ok(undefined);
     }
@@ -432,7 +443,8 @@ async function recordPlannedChange(
         await recordSingletonAgentSuggestion(auth, change.agent, {
           data,
           analysis: null,
-          batchModelId: batch.id,
+          conversation,
+          batch,
         });
       }
 
@@ -441,8 +453,8 @@ async function recordPlannedChange(
           agentConfiguration: change.instructions.agent,
           edits: change.instructions.edits,
           source: "conversational",
-          conversation: null,
-          batchModelId: batch.id,
+          conversation,
+          batch,
         });
         if (res.isErr()) {
           return new Err(new MCPError(res.error));
@@ -457,8 +469,8 @@ async function recordPlannedChange(
           data,
           analysis: null,
           title: null,
-          sourceConversationModelId: conversation.id,
-          batchModelId: batch.id,
+          conversation,
+          batch,
         });
       }
       return new Ok(undefined);

@@ -60,7 +60,7 @@ export async function suggestAgentModelChange(
       data: { kind: "model", suggestion: validation.value },
       analysis: analysis ?? null,
       conversation: runContext.conversation,
-      batchModelId: null,
+      batch: null,
     })
   );
 }

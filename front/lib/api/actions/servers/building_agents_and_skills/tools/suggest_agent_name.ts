@@ -41,7 +41,7 @@ export async function suggestAgentName(
       data: { kind: "name", suggestion: validation.value },
       analysis: analysis ?? null,
       conversation: runContext.conversation,
-      batchModelId: null,
+      batch: null,
     })
   );
 }

@@ -54,8 +54,8 @@ export async function suggestSkillUserFacingDescription(
       data: { kind: "user_facing_description", suggestion: validation.value },
       analysis: analysis ?? null,
       title: title ?? null,
-      sourceConversationModelId: runContext.conversation.id,
-      batchModelId: null,
+      conversation: runContext.conversation,
+      batch: null,
     })
   );
 }

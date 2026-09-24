@@ -1,10 +1,10 @@
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
@@ -106,13 +106,13 @@ export async function createAgentInstructionSuggestions(
     edits,
     source,
     conversation,
-    batchModelId = null,
+    batch = null,
   }: {
     agentConfiguration: AgentConfigurationType;
     edits: InstructionSuggestionEditInput[];
     source: AgentSuggestionSource;
     conversation: ConversationResource | ConversationWithoutContentType | null;
-    batchModelId?: ModelId | null;
+    batch?: BatchSuggestionResource | null;
   }
 ): Promise<Result<CreatedInstructionSuggestion[], string>> {
   const validation = validateInstructionEdits(edits);
@@ -130,7 +130,7 @@ export async function createAgentInstructionSuggestions(
       state: "pending" as const,
       source,
       conversationId: conversation?.id ?? null,
-      batchId: batchModelId,
+      batchId: batch?.id ?? null,
     }))
   );
 

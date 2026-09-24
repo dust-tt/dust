@@ -62,8 +62,8 @@ export async function suggestSkillEditors(
       data: { kind: "editors", suggestion: validation.value },
       analysis: analysis ?? null,
       title: title ?? null,
-      sourceConversationModelId: runContext.conversation.id,
-      batchModelId: null,
+      conversation: runContext.conversation,
+      batch: null,
     })
   );
 }

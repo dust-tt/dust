@@ -56,7 +56,7 @@ export async function suggestAgentDeletion(
       data: { kind: "delete", suggestion: validation.value },
       analysis: analysis ?? null,
       conversation: runContext.conversation,
-      batchModelId: null,
+      batch: null,
     })
   );
 }

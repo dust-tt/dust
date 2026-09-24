@@ -39,7 +39,7 @@ export async function suggestAgentCreation(
     create: { name, description, instructions },
     analysis: analysis ?? null,
     conversation: runContext.conversation,
-    batchModelId: null,
+    batch: null,
   });
 }
 

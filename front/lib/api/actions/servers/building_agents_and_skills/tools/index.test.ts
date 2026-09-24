@@ -2736,6 +2736,64 @@ describe("building_agents_and_skills tools", () => {
       expectMcpError(result, "targeted by several suggestions");
     });
 
+    it("refuses a global agent before recording anything", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const result = await runSuggest(authenticator, {
+        title: "Delete helper",
+        analysis: "Unused.",
+        suggestions: [{ kind: "delete_agent", agentId: "helper" }],
+      });
+
+      expectMcpError(result, "global agent");
+    });
+
+    it("refuses instruction edits targeting a block that does not exist", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { instructionsHtml: '<p data-block-id="blk00001">Be nice.</p>' }
+      );
+      const skill = await seedSkill(authenticator, {
+        name: "Block Skill",
+        instructionsHtml: '<p data-block-id="blk00002">Triage.</p>',
+      });
+      const edit = {
+        targetBlockId: "missing1",
+        content: "<p>Replaced.</p>",
+        type: "replace",
+      };
+
+      expectMcpError(
+        await runSuggest(authenticator, {
+          title: "Edit agent",
+          analysis: "Edit.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              instructionEdits: [edit],
+            },
+          ],
+        }),
+        "do not exist in the agent's instructions"
+      );
+      expectMcpError(
+        await runSuggest(authenticator, {
+          title: "Edit skill",
+          analysis: "Edit.",
+          suggestions: [
+            {
+              kind: "edit_skill",
+              skillId: skill.sId,
+              instructionEdits: [edit],
+            },
+          ],
+        }),
+        "do not exist in the skill's instructions"
+      );
+    });
+
     it("refuses an edit that changes nothing", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       const agent =

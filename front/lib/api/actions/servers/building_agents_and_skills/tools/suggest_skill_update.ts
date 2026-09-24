@@ -56,8 +56,8 @@ export async function suggestSkillUpdate(
       data: { kind: "edit", suggestion: validation.value },
       analysis: analysis ?? null,
       title: title ?? null,
-      sourceConversationModelId: runContext.conversation.id,
-      batchModelId: null,
+      conversation: runContext.conversation,
+      batch: null,
     })
   );
 }

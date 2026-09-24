@@ -51,8 +51,8 @@ export async function suggestSkillName(
       data: { kind: "name", suggestion: validation.value },
       analysis: analysis ?? null,
       title: title ?? null,
-      sourceConversationModelId: runContext.conversation.id,
-      batchModelId: null,
+      conversation: runContext.conversation,
+      batch: null,
     })
   );
 }

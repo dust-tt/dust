@@ -5,10 +5,12 @@ import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestio
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
 import type { Authenticator } from "@app/lib/auth";
+import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -18,7 +20,6 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
@@ -285,6 +286,18 @@ export async function validateAgentInstructionsChange(
     );
   }
 
+  const unknownBlockIds = findUnknownTargetBlockIds(
+    agent.instructionsHtml,
+    edits.map((edit) => edit.targetBlockId)
+  );
+  if (unknownBlockIds.length > 0) {
+    return new Err(
+      new MCPError(
+        `These blocks do not exist in the agent's instructions: ${unknownBlockIds.join(", ")}.`
+      )
+    );
+  }
+
   const pending = await AgentSuggestionResource.listByAgentConfigurationId(
     auth,
     agent.sId,
@@ -338,12 +351,12 @@ export async function recordSingletonAgentSuggestion(
     data,
     analysis,
     conversation,
-    batchModelId,
+    batch,
   }: {
     data: SingletonAgentSuggestionData;
     analysis: string | null;
     conversation: ConversationType;
-    batchModelId: ModelId | null;
+    batch: BatchSuggestionResource | null;
   }
 ): Promise<AgentSuggestionResource> {
   const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
@@ -355,7 +368,7 @@ export async function recordSingletonAgentSuggestion(
       state: "pending",
       conversationId: conversation.id,
       source: "conversational",
-      batchId: batchModelId,
+      batchId: batch?.id ?? null,
     }
   );
 
@@ -388,12 +401,12 @@ export async function recordAgentCreationSuggestion(
     create,
     analysis,
     conversation,
-    batchModelId,
+    batch,
   }: {
     create: CreateSuggestionType;
     analysis: string | null;
     conversation: ConversationType;
-    batchModelId: ModelId | null;
+    batch: BatchSuggestionResource | null;
   }
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   const pendingResult = await AgentResource.createPending(auth);
@@ -421,7 +434,7 @@ export async function recordAgentCreationSuggestion(
       state: "pending",
       conversationId: conversation.id,
       source: "conversational",
-      batchId: batchModelId,
+      batchId: batch?.id ?? null,
     }
   );
   return new Ok(suggestion);

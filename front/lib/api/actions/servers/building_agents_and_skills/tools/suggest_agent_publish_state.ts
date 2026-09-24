@@ -41,7 +41,7 @@ export async function suggestAgentPublishState(
       data: { kind: "scope", suggestion: validation.value },
       analysis: analysis ?? null,
       conversation: runContext.conversation,
-      batchModelId: null,
+      batch: null,
     })
   );
 }
