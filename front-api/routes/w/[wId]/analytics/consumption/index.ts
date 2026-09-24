@@ -1,4 +1,4 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import {
   ensureIsManager,
   ensureIsUser,
@@ -88,12 +88,9 @@ export function createAgentConsumptionRoutes() {
         },
       });
     }
-    const agent = await getAgentConfiguration(auth, {
-      agentId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentId);
 
-    if (!agent || (!agent.canRead && !auth.isAdmin())) {
+    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -103,7 +100,7 @@ export function createAgentConsumptionRoutes() {
       });
     }
 
-    if (!agent.canEdit && !auth.isManager()) {
+    if (!auth.can("write", agent) && !auth.isManager()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
