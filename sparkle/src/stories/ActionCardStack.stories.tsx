@@ -265,6 +265,18 @@ export const StepThroughReview: Story = {
       </div>
     );
   },
+};
+
+/**
+ * Interaction test for the step-through flow, kept out of the sidebar so the
+ * visible story does not play itself on load.
+ *
+ * @summary Automated walk through the step-through review.
+ */
+export const StepThroughReviewTest: Story = {
+  tags: ["!dev", "!manifest"],
+  args: StepThroughReview.args,
+  render: () => <StepThroughDemo />,
   play: async ({ canvas }) => {
     await expect(
       canvas.getByText("3 edits ready for your review")

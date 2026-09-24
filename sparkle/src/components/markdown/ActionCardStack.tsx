@@ -1,5 +1,4 @@
 import { cn } from "@sparkle/lib/utils";
-import { AnimatePresence, usePresence } from "framer-motion";
 import React from "react";
 
 // Ordered from the layer right behind the front card to the farthest one.
@@ -13,41 +12,9 @@ export interface ActionCardStackProps {
   cardCount: number;
   /** The front card, typically an `ActionCardBlock` with `cardVariant="secondary"` so it reads lighter than the layers. */
   children: React.ReactNode;
-  /** Identifies the front card; changing it fades the previous front card out, revealing the new one. */
-  frontCardKey?: string;
   className?: string;
 }
 
-const FrontCard = React.forwardRef<
-  HTMLDivElement,
-  { children: React.ReactNode }
->(function FrontCard({ children }, ref) {
-  const [isPresent, safeToRemove] = usePresence();
-
-  // The fade is a CSS animation holding its end state: an exit animated by the motion library
-  // flashes the card back to full opacity for a frame right before it unmounts.
-  const handleAnimationEnd = (event: React.AnimationEvent) => {
-    if (!isPresent && event.target === event.currentTarget) {
-      safeToRemove();
-    }
-  };
-
-  return (
-    <div
-      ref={ref}
-      // A leaving card lingers during its fade; keep it out of reach of assistive tech.
-      aria-hidden={!isPresent}
-      className={cn(
-        "relative rounded-2xl shadow",
-        !isPresent &&
-          "pointer-events-none z-10 animate-out fade-out duration-300 ease-out fill-mode-forwards"
-      )}
-      onAnimationEnd={handleAnimationEnd}
-    >
-      {children}
-    </div>
-  );
-});
 
 /**
  * Pile of action cards rendered inside an agent message when several
@@ -59,7 +26,6 @@ const FrontCard = React.forwardRef<
 export function ActionCardStack({
   cardCount,
   children,
-  frontCardKey,
   className,
 }: ActionCardStackProps) {
   const layers = LAYER_CLASSES.slice(0, Math.max(cardCount - 1, 0));
@@ -81,9 +47,7 @@ export function ActionCardStack({
           )}
         />
       ))}
-      <AnimatePresence initial={false} mode="popLayout">
-        <FrontCard key={frontCardKey}>{children}</FrontCard>
-      </AnimatePresence>
+      {children}
     </div>
   );
 }
