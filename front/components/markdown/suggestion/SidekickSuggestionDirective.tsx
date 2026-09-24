@@ -223,22 +223,20 @@ function ConversationAgentSuggestion({
   }
 
   return (
-    <div data-suggestion-s-id={suggestionId}>
-      <AgentSuggestionActionCard
-        agentSuggestion={suggestion}
-        pictureUrl={agentConfiguration?.pictureUrl}
-        disabled={getPendingAction(suggestion) !== null}
-        onAccept={() => void acceptSuggestion(suggestion)}
-        onReject={() => void rejectSuggestion(suggestion)}
-        onPreview={() =>
-          openPanel({
-            type: AGENT_SIDE_PANEL_TYPE,
-            agentId,
-            previewSuggestionIds: [suggestion.sId],
-          })
-        }
-      />
-    </div>
+    <AgentSuggestionActionCard
+      agentSuggestion={suggestion}
+      pictureUrl={agentConfiguration?.pictureUrl}
+      disabled={getPendingAction(suggestion) !== null}
+      onAccept={() => void acceptSuggestion(suggestion)}
+      onReject={() => void rejectSuggestion(suggestion)}
+      onPreview={() =>
+        openPanel({
+          type: AGENT_SIDE_PANEL_TYPE,
+          agentId,
+          previewSuggestionIds: [suggestion.sId],
+        })
+      }
+    />
   );
 }
 
