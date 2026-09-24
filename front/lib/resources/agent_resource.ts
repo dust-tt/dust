@@ -39,6 +39,7 @@ import {
   validateAgentSaveInputs,
   writeAgentConfigurationRow,
 } from "@app/lib/resources/agent_configuration_save";
+import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_requested_spaces";
 import type { AgentResourceCacheKey } from "@app/lib/resources/agent_resource_cache";
 import {
   AGENT_RESOURCE_CACHE_ID,
@@ -1664,6 +1665,19 @@ export class AgentResource
 
       return updatedCount > 0;
     }, transaction);
+  }
+
+  // Front door for the requested-spaces cascade. The write, cache invalidation and reindex live in
+  // the leaf `agent_requested_spaces` module (see `requested-spaces-cascade-through-agent-domain`),
+  // which callers below `AgentResource` in the module graph (e.g. `SkillResource`) import directly —
+  // they cannot value-import this class without forming a cycle (`agent_resource` already depends on
+  // `skill_resource`). Callers that can import the class should prefer this method.
+  static async updateRequestedSpaceIdsInPlace(
+    auth: Authenticator,
+    args: { agentConfigurationModelId: ModelId; newSpaceIds: ModelId[] },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<boolean, Error>> {
+    return updateAgentRequestedSpaceIdsInPlace(auth, args, { transaction });
   }
 
   /**

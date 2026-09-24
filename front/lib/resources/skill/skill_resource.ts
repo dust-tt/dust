@@ -1,7 +1,6 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
@@ -30,6 +29,7 @@ import {
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
+import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_requested_spaces";
 import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -2744,10 +2744,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           .concat(newRequestedSpaceIds)
       );
 
-      await updateAgentRequirements(
+      await updateAgentRequestedSpaceIdsInPlace(
         auth,
         {
-          agentModelId: agent.id,
+          agentConfigurationModelId: agent.id,
           newSpaceIds,
         },
         { transaction }
