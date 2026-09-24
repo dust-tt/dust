@@ -1,0 +1,207 @@
+# Group management implementation plan
+
+This plan implements the [group manager design](group-management.md): scoped People and Usage pages,
+manual-group membership editing, limit editing, and usage-request handling.
+
+The PRs below are proposed units of work, not existing pull requests. Each can merge after its stated
+dependencies. Line counts are approximate changed lines, including focused tests. Aim for at most
+300 lines per PR; if an existing component needs a larger extraction, split that extraction into a
+behavior-preserving PR before adding the feature.
+
+Every PR must compile and preserve current workspace-manager/admin behavior. Introduce the feature
+flag first and keep it off while the pieces land. Authorization, relevant audit events, and focused
+tests belong with each operation, rather than in a final hardening PR.
+
+Before opening delegated membership writes, settle the design's proposed restriction on groups that
+grant workspace roles, billing/security capabilities, or seats. The Usage and request streams can
+proceed independently of that decision.
+
+| Stream | Outcome | Can start after |
+| --- | --- | --- |
+| 1. Permissions and assignments | Store group managers, resolve their authority, and let admins appoint them. | Now |
+| 2. Usage and requests | Let group managers see usage, edit limits, and handle requests. | PR 2; the UI also needs PR 6. |
+| 3. People and membership | Let group managers see their groups and add/remove members. | PR 2; writes also need PR 3. |
+
+## Stream 1: Permissions and assignments
+
+### 1A. Represent and enforce authority
+
+#### PR 1 — Define the group manager role (150–250 lines)
+
+Add the group-scoped role and its verbs to the existing permission system, with a feature flag that
+defaults to off. Teach groups to combine these grants with existing workspace-role permissions.
+This establishes the meaning of the role without making new user-facing entry points available.
+
+- Reuse `read` and `write`; add `read_usage` and `set_usage_limits` without changing existing verb bits.
+- Provisioned groups never gain editable membership; the role does not grant rename/delete authority.
+
+#### PR 2 — Resolve scope for a requested verb (150–250 lines)
+
+Provide the shared way to determine which groups and active members a caller may act on for a given
+verb. Later reads and writes use the same rules, so a table filter and an edit cannot disagree about
+who is authorized. This depends on PR 1.
+
+- Handle workspace managers/admins, all-group grants, empty scopes, and overlapping memberships.
+- Check the target member's workspace and current group membership; the caller need not be in that group.
+
+#### PR 3 — Protect membership changes with privileged effects (150–250 lines)
+
+Implement the agreed boundary for membership changes that would grant roles, billing/security access,
+or seats. Apply it to both membership-edit paths before enabling them for group managers. Ordinary
+workspace managers/admins retain their existing rules, including the admin-only restriction on
+admin-granting groups. This depends on PRs 1–2 and the product decision above.
+
+#### PR 4 — Clean up assignments when groups disappear (80–180 lines)
+
+Delete grants targeting a removed group and the internal groups used to hold its manager assignments.
+Invalidate the relevant permission caches so deleted groups cannot leave usable delegation behind.
+Cover both manual deletion and provisioned-group removal. This depends on PR 1.
+
+### 1B. Let admins assign managers
+
+#### PR 5 — Add manager assignments to the group API (200–300 lines)
+
+Extend the existing group GET/PATCH API with the manager list. Admins can replace that list without
+changing membership, including for provisioned groups. Validate every supplied field before changing
+anything, apply grant additions/removals together, and audit assignment changes. This depends on
+PRs 1 and 4.
+
+- An omitted `managerIds` leaves assignments unchanged; an empty list removes them all.
+- A caller allowed to edit members still cannot change managers or other restricted fields.
+
+#### PR 6 — Expose group authority to the browser (120–220 lines)
+
+Extend the existing auth response with the caller's group-management scope, and group responses with
+their allowed actions. Navigation and both pages can use this information without a separate access
+endpoint. Server-side checks still authorize every action. This depends on PRs 1–2.
+
+#### PR 7 — Add the admin manager picker (150–250 lines)
+
+Add the Group managers field to the existing manual and provisioned group dialogs. Show current
+assignments and let workspace admins update them through the API. This depends on PRs 5–6 and stays
+behind the feature flag; it does not open group management to delegates by itself.
+
+## Stream 2: Usage and requests
+
+### 2A. Read usage and edit limits
+
+#### PR 8 — Scope usage reads to managed members (180–300 lines)
+
+Let group managers fetch usage for authorized members through the existing usage APIs. Apply that
+scope before search, sorting, pagination, and counts, including lookups used by the limit editor.
+Clearing a filter cannot broaden access. This depends on PR 2.
+
+- Overlapping managed groups produce one row per member.
+- Test an empty scope and a request for an out-of-scope member, not just the normal filtered view.
+
+#### PR 9 — Authorize personal-limit edits (150–250 lines)
+
+Allow a group manager to set or clear a current member's personal limit using `set_usage_limits`.
+Enforce the check in the shared mutation service as well as the HTTP path, and include the authorizing
+group and previous/new settings in the audit event. Existing limit behavior stays the same.
+This depends on PR 2.
+
+- Background callers also use current authority; bulk usage endpoints remain workspace-manager/admin-only.
+- A member leaving the managed group between loading and saving must make the save fail.
+
+#### PR 10 — Authorize group-allowance edits (100–200 lines)
+
+Allow `set_usage_limits` on a group to authorize changing that group's per-member allowance. Keep
+existing value validation and credit-state reconciliation, and record the change in the audit log.
+Authority over one member does not allow editing all their groups. This depends on PR 2.
+
+#### PR 11 — Make usage tables and editors respect allowed actions (180–300 lines)
+
+Adapt the existing tables and limit editor to accept the authorized groups and editable fields.
+Keep inherited settings explanatory and read-only where appropriate, and retain the note that a
+personal limit applies across the workspace. Existing workspace-wide views keep their current
+behavior. This depends on PR 6.
+
+#### PR 12 — Open the restricted Usage page (180–300 lines)
+
+Allow group managers into the existing Usage route and navigation entry. Render the Members and
+Groups views with an “All groups you manage” filter, using the existing tables and controls.
+This delivers a complete usage-management path and depends on PRs 6 and 8–11.
+
+- Mount workspace-only data hooks in the workspace view, so hidden sections are not fetched.
+- Keep purchases, workspace settings, seat changes, and bulk usage actions under their existing permissions.
+
+### 2B. Handle usage-limit requests
+
+#### PR 13 — List requests within the manager's scope (120–220 lines)
+
+Allow group managers to see pending requests from members for whom they hold `set_usage_limits`.
+Filter in the resource/query path, including counts and any group filter. A request appears once even
+if several managed groups contain its requester. This depends on PR 2.
+
+#### PR 14 — Authorize request resolution (150–250 lines)
+
+Allow the same verb to approve or deny a request, checking current authority over its requester in
+both the service and resource paths. Keep the existing resolution audit event and record which group
+authorized the action. This depends on PR 2; it can merge separately from request-list access.
+
+- Resolve only pending requests, using a conditional update so concurrent managers cannot both resolve one.
+- Saving a limit and recording approval remain separate operations, each with its own authorization.
+
+#### PR 15 — Add requests to the restricted Usage view (150–250 lines)
+
+Show the existing request list to group managers, with denial and approval through the limit editor.
+Save the limit before marking the request approved. If recording approval fails, explain that the
+limit was saved and refresh the request status. This depends on PRs 9 and 12–14.
+
+- Hide the seat-upgrade action unless the caller independently has its existing permission.
+- Request creation and email recipients remain unchanged; this PR adds in-page handling only.
+
+## Stream 3: People and membership
+
+### 3A. Read and edit managed groups
+
+#### PR 16 — Scope People data and support adding members (180–300 lines)
+
+Provide the managed-group and member data needed by People, with scoped lists and counts. The add
+picker can search active members across the workspace, because the person being added is not yet in
+the group. That search returns only the identity information needed to select them. This depends on
+PR 2.
+
+- Apply restrictions to People management reads without narrowing the general group directory used elsewhere.
+- Finding someone in the add picker grants no access to their usage or other administration data.
+
+#### PR 17 — Open authorized membership mutations (180–300 lines)
+
+Allow group managers to add and remove members of eligible manual groups through the existing
+group-edit and member-group APIs. Check `write` on the target group and the privileged-membership
+rules in the shared mutation path. This depends on PRs 2–3.
+
+- Preserve active workspace membership, last-member protection, existing role/seat synchronization, and audit events.
+- Provisioned groups remain directory-owned; membership authority does not permit renaming or deleting a group.
+
+### 3B. Open the People experience
+
+#### PR 18 — Make group membership controls permission-aware (150–250 lines)
+
+Adapt the existing group dialogs and member actions to expose only allowed membership edits. Use the
+workspace member picker for additions, and explain read-only provisioned or restricted groups.
+Keep manager assignments admin-only. This depends on PRs 6–7 and 16–17.
+
+#### PR 19 — Open the restricted People page (150–250 lines)
+
+Allow group managers into the People route and navigation entry, showing managed groups and their
+members. Reuse the existing lists and the controls from PR 18; refresh affected lists and scope after
+membership changes. This completes the membership-management path and depends on PRs 6 and 16–18.
+
+- Keep workspace invitations, removals, roles, seats, and group creation/deletion under existing permissions.
+- Test a revoked assignment against an already-open page: the server rejects the edit and the view refreshes its access.
+
+## Merge order and rollout
+
+Land PRs 1–2 first. The remaining foundation work, Usage backend work, and People read work can then
+proceed alongside each other, following the dependencies above. The assignment UI, Usage page, and
+People page become available through separate mergeable PRs; they do not need one large final merge.
+
+Keep the feature flag off for customers until assignments, revocation, both pages, and request
+handling are complete. Before enabling it for a workspace, exercise one manager with two groups,
+one overlapping member, a member removal, and a request resolved by another manager. Most regression
+coverage should already have landed with the corresponding PRs.
+
+Feature-flag enablement is an operational step, not a reason to create an otherwise empty PR. Any
+implementation fixes found during validation should remain small PRs in the relevant stream.

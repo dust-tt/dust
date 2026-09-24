@@ -2,6 +2,8 @@
 
 Part of the [Observe & Understand Credits v2](https://app.notion.com/p/dust-tt/Observe-Understand-Credits-v2-3dc28599d94180f3b417ca4579ad3992) initiative.
 
+Implementation breakdown: [work streams and PRs](group-management-plan.md).
+
 ## Goal
 
 Team leads need to manage their teams' membership and credit allowances without asking a workspace
@@ -20,11 +22,12 @@ In the existing group management UI, workspace admins select people in a new **G
 setting. A group can have several group managers, and a person can manage several groups. They must
 be active workspace members, but do not need to belong to the groups they manage.
 
-This assignment grants four capabilities:
+This assignment lets group managers:
 
 - View usage and limits for the group's current members.
 - Edit those members' personal limits.
 - Edit the group's existing per-member allowance.
+- Handle usage-limit requests from the group's current members.
 - Add existing workspace members to a managed manual group, or remove them from it.
 
 It does not change the person's workspace role or group membership. Workspace managers and admins
@@ -59,11 +62,18 @@ restricted view, with a short explanation such as “You manage usage for Suppor
 | Members tab | Members of managed groups, with consumption, effective limit, its source, and an edit action. Members appearing in several groups appear only once. |
 | Group filter | “All groups you manage” and each managed group. Clearing a filter never reveals the rest of the workspace. |
 | Groups tab | Managed groups and their editable per-member allowances. |
+| Requests list | Requests from managed members, with actions to edit the limit and approve, or deny. Request counts and filters use the same scope. |
 | Personal-limit editor | Editable personal limit and managed groups' allowances. Other inherited settings are read-only explanations. |
 | Other sections | Workspace settings, purchases, seat changes, and workspace-wide reporting are unavailable through this role. |
 
 Only authorized administration entries appear in navigation. Other permissions a person already
 holds continue to apply.
+
+Handling requests uses the same `set_usage_limits` permission as editing limits. A group manager
+approves through the existing limit editor: save the limit, then mark the request approved. Denial
+only changes the request status. The seat-upgrade action keeps its existing authorization.
+When a requester belongs to several managed groups, their request appears once; any authorized
+manager can resolve it. Request email notifications keep their current recipients.
 
 ### Keep the meaning of limits unchanged
 
@@ -83,7 +93,8 @@ This work preserves the existing behavior:
 Extend the [permission vocabulary](../../../front/types/group_permissions.ts) and
 [role registry](../../../front/lib/resources/group_permission_registry.ts) with a `group` resource type
 and a `group_manager` role. It bundles existing `read` and `write` permissions with two new verbs:
-`read_usage` and `set_usage_limits`. The latter covers both personal limits and group allowances.
+`read_usage` and `set_usage_limits`. The latter covers personal limits, group allowances, and handling
+usage-limit requests.
 Append new verbs to preserve the existing serialized permission bit positions.
 
 This work creates grants on specific group IDs. Named individuals use the existing
@@ -128,13 +139,15 @@ authorization remains decisive on every request.
 
 ### 3. Authorize reads and writes in shared services
 
-Centralize the following checks so routes and background callers use the same rules:
+Centralize the following checks so routes and background callers use the same rules. Each check asks
+for the verb required by the action:
 
 | Operation | Required authority |
 | --- | --- |
 | Read a member's usage | Workspace manager/admin, or `read_usage` on a group containing that active member. |
 | Set or clear a personal limit | Workspace manager/admin, or `set_usage_limits` on a group containing that active member. |
 | Set or clear a group allowance | Workspace manager/admin, or `set_usage_limits` on that group. |
+| List, approve, or deny a usage-limit request | Workspace manager/admin, or `set_usage_limits` on a group containing the active requester. |
 | Add/remove a group member | `write` on the target manual group, plus the membership restrictions described below. |
 
 Check workspace ownership, current delegation, and active membership on the server. A submitted group
@@ -153,10 +166,12 @@ write authorization inside [setUserSpendLimit](../../../front/lib/api/users/spen
 validation, plan eligibility, persistence, and credit-state reconciliation. Stored pool allowances
 continue to exclude the seat allowance, which existing code adds when computing the effective limit.
 
-Use a focused helper such as `canManageUserUsage(auth, user)` for personal-limit mutations. It checks
-active workspace membership and whether any of the user's groups authorizes the caller. A generic
-`auth.canForUser` is unnecessary: authority over a group's members applies to this operation, not
-automatically to every action on a user. Group checks stay `auth.can(verb, group)`.
+Apply the same scope to [upgrade requests](../../../front/lib/api/credits/upgrade_requests.ts), including
+the resource-level guards that currently require a workspace manager. Filter requests and counts on
+the server, and recheck current authority before resolving a request by ID. Saving a limit and
+resolving a request remain separate operations, both authorized. If the second fails, show that the
+limit was saved and refresh the request's status. Resolve only pending requests, with a conditional
+update so two managers cannot resolve the same request twice.
 
 For membership mutations, reuse `updateRegularManualGroupMembers` and the existing group/member
 routes. Authorize the target group, not whether a new member already belongs to it. Keep active
@@ -182,26 +197,32 @@ Pass explicit edit permissions to the personal-limit modal. Each group field nee
 authority over a member does not grant authority over every group that member belongs to. Server
 checks remain decisive if the page becomes stale.
 
+Reuse the existing request list, denial action, and limit-editor approval flow. Do not expose seat
+upgrades through the new role, and do not fetch workspace-wide requests before filtering them in the
+browser.
+
 ### 5. Audit, verify, and release
 
 Audit assignment changes. Extend existing limit-change events to record the previous/new setting
 and the server-verified group authorizing a delegated change, alongside the actor and target. Reuse
-the existing group membership audit events for additions and removals.
+the existing group membership and request-resolution audit events, recording the authorizing group
+for delegated actions.
 
 Use a workspace feature flag for rollout, checked on the server as well as in the UI. When disabled,
 delegated access is unavailable while existing workspace-manager/admin access continues to work.
 
 Focused tests cover allowed and denied reads/writes across two groups, an overlapping member,
 assignment or membership removal, filtered counts, and existing workspace-manager/admin access. Also
-cover adding someone outside the current group and rejecting provisioned or privileged membership
-edits. Enable the feature gradually as these flows are validated.
+cover adding someone outside the current group, rejecting provisioned or privileged membership edits,
+and handling requests after membership changes or another manager's resolution. Enable the feature
+gradually as these flows are validated.
 
 ## Annex
 
 ### Out of scope
 
 - Shared team budgets, reserved credits, new spending ceilings, or new expiry behavior.
-- Bulk actions and upgrade-request routing for delegates.
+- Bulk usage actions and changes to request email/notification routing.
 - Purchasing credits, directly changing seats or workspace roles, inviting/removing workspace
   members, renaming/deleting groups, or appointing other group managers through the new role.
 - Creator/publisher delegation, custom roles, and selecting groups as delegates in the assignment UI.
