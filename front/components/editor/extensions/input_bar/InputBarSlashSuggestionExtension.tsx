@@ -29,6 +29,7 @@ interface InputBarSlashSuggestionExtensionOptions {
   enabledRef: RefObject<boolean>;
   includeAttachKnowledgeRef: RefObject<boolean>;
   includePickModelRef: RefObject<boolean>;
+  includeSelectSpacesRef: RefObject<boolean>;
   onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
   onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
   onModelSelectRef: RefObject<((selection: Selection) => void) | undefined>;
@@ -62,6 +63,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     enabledRef: { current: false },
     includeAttachKnowledgeRef: { current: false },
     includePickModelRef: { current: false },
+    includeSelectSpacesRef: { current: false },
     onModelSelectRef: { current: undefined },
     onNodeSelectRef: { current: undefined },
     onSelectRef: { current: undefined },
@@ -102,6 +104,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     conversationIdRef: options.conversationIdRef,
     includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
     includePickModelRef: options.includePickModelRef,
+    includeSelectSpacesRef: options.includeSelectSpacesRef,
     onDetailsRef: options.onDetailsRef,
     onModelSelectRef: options.onModelSelectRef,
     onNodeSelectRef: options.onNodeSelectRef,

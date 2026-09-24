@@ -5,6 +5,7 @@ export type InputBarSlashCommandId =
   | "attach-knowledge"
   | "compact"
   | "pick-model"
+  | "select-spaces"
   | "upload-file";
 
 /** Run commands backed by `INPUT_BAR_SLASH_COMMANDS` (icon, label, handler via `onSelectRef`). */
@@ -19,6 +20,7 @@ export const INPUT_BAR_SLASH_COMMAND_ORDER: InputBarSlashCommandId[] = [
   "upload-file",
   "pick-model",
   "compact",
+  "select-spaces",
 ];
 
 // Static command offered by the input bar `/` dropdown, as opposed to workspace capabilities

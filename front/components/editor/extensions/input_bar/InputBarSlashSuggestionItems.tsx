@@ -4,6 +4,7 @@ import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/sha
 import {
   createAttachKnowledgeSlashCommand,
   createPickModelSlashCommand,
+  createSelectSpacesSlashCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
 import type {
   InputBarSlashCommand,
@@ -13,6 +14,7 @@ import { INPUT_BAR_SLASH_COMMAND_ORDER } from "./InputBarSlashSuggestionTypes";
 
 const ATTACH_KNOWLEDGE_SLASH_COMMAND = createAttachKnowledgeSlashCommand();
 const PICK_MODEL_SLASH_COMMAND = createPickModelSlashCommand();
+const SELECT_SPACES_SLASH_COMMAND = createSelectSpacesSlashCommand();
 
 function getInputBarRunCommandSlashCommandItem(
   command: InputBarSlashCommand
@@ -45,11 +47,13 @@ function getInputBarSlashCommandById({
   commands,
   includeAttachKnowledge,
   includePickModel,
+  includeSelectSpaces,
 }: {
   commandId: InputBarSlashCommandId;
   commands: InputBarSlashCommand[];
   includeAttachKnowledge: boolean;
   includePickModel: boolean;
+  includeSelectSpaces: boolean;
 }): SlashCommand | null {
   const runCommand = commands.find((command) => command.id === commandId);
   if (runCommand) {
@@ -64,6 +68,10 @@ function getInputBarSlashCommandById({
     return includePickModel ? PICK_MODEL_SLASH_COMMAND : null;
   }
 
+  if (commandId === "select-spaces") {
+    return includeSelectSpaces ? SELECT_SPACES_SLASH_COMMAND : null;
+  }
+
   return null;
 }
 
@@ -71,10 +79,12 @@ export function getInputBarSlashCommandItems({
   commands,
   includeAttachKnowledge,
   includePickModel,
+  includeSelectSpaces,
 }: {
   commands: InputBarSlashCommand[];
   includeAttachKnowledge: boolean;
   includePickModel: boolean;
+  includeSelectSpaces: boolean;
 }): SlashCommand[] {
   return INPUT_BAR_SLASH_COMMAND_ORDER.flatMap((commandId) => {
     const item = getInputBarSlashCommandById({
@@ -82,6 +92,7 @@ export function getInputBarSlashCommandItems({
       commands,
       includeAttachKnowledge,
       includePickModel,
+      includeSelectSpaces,
     });
 
     return item ? [item] : [];

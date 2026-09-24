@@ -72,6 +72,7 @@ describe("buildInputBarSlashCommandItems", () => {
       commands: [],
       includeAttachKnowledge: false,
       includePickModel: false,
+      includeSelectSpaces: false,
       query: "",
     });
 
@@ -83,6 +84,7 @@ describe("buildInputBarSlashCommandItems", () => {
       commands: ALL_COMMANDS,
       includeAttachKnowledge: true,
       includePickModel: true,
+      includeSelectSpaces: true,
       query: "",
     });
 
@@ -91,7 +93,20 @@ describe("buildInputBarSlashCommandItems", () => {
       "upload-file",
       "pick-model",
       "compact",
+      "select-spaces",
     ]);
+  });
+
+  it("excludes select spaces when includeSelectSpaces is false", () => {
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: false,
+        includePickModel: false,
+        includeSelectSpaces: false,
+        query: "spaces",
+      })
+    ).toEqual([]);
   });
 
   it("excludes attach knowledge when includeAttachKnowledge is false", () => {
@@ -100,6 +115,7 @@ describe("buildInputBarSlashCommandItems", () => {
         commands: ALL_COMMANDS,
         includeAttachKnowledge: false,
         includePickModel: false,
+        includeSelectSpaces: false,
         query: "",
       }).map(getInputBarSlashCommandItemId)
     ).toEqual(["upload-file", "compact"]);
@@ -109,6 +125,7 @@ describe("buildInputBarSlashCommandItems", () => {
         commands: ALL_COMMANDS,
         includeAttachKnowledge: false,
         includePickModel: false,
+        includeSelectSpaces: false,
         query: "knowledge",
       })
     ).toEqual([]);
@@ -120,6 +137,7 @@ describe("buildInputBarSlashCommandItems", () => {
         commands: ALL_COMMANDS,
         includeAttachKnowledge: false,
         includePickModel: false,
+        includeSelectSpaces: false,
         query: "model",
       })
     ).toEqual([]);
@@ -130,6 +148,7 @@ describe("buildInputBarSlashCommandItems", () => {
       commands: ALL_COMMANDS,
       includeAttachKnowledge: true,
       includePickModel: true,
+      includeSelectSpaces: false,
       query: "compact",
     });
 
@@ -140,6 +159,7 @@ describe("buildInputBarSlashCommandItems", () => {
         commands: INPUT_BAR_SLASH_COMMANDS,
         includeAttachKnowledge: true,
         includePickModel: false,
+        includeSelectSpaces: false,
         query: "upload",
       }).map(getInputBarSlashCommandItemId)
     ).toEqual(["upload-file"]);
@@ -149,6 +169,7 @@ describe("buildInputBarSlashCommandItems", () => {
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
         includePickModel: false,
+        includeSelectSpaces: false,
         query: "knowledge",
       }).map((item) => item.action)
     ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
@@ -158,6 +179,7 @@ describe("buildInputBarSlashCommandItems", () => {
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
         includePickModel: false,
+        includeSelectSpaces: false,
         query: "reference",
       }).map((item) => item.action)
     ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
@@ -167,6 +189,7 @@ describe("buildInputBarSlashCommandItems", () => {
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
         includePickModel: false,
+        includeSelectSpaces: false,
         query: "company",
       }).map((item) => item.action)
     ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
@@ -176,6 +199,7 @@ describe("buildInputBarSlashCommandItems", () => {
         commands: ALL_COMMANDS,
         includeAttachKnowledge: false,
         includePickModel: true,
+        includeSelectSpaces: false,
         query: "model",
       }).map((item) => item.action)
     ).toEqual([PICK_MODEL_SLASH_COMMAND_ACTION]);
@@ -185,6 +209,7 @@ describe("buildInputBarSlashCommandItems", () => {
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
         includePickModel: true,
+        includeSelectSpaces: false,
         query: "zzz",
       })
     ).toEqual([]);
@@ -196,7 +221,25 @@ describe("resolveSlashSubMenuFromQuery", () => {
     commands: ALL_COMMANDS,
     includeAttachKnowledge: true,
     includePickModel: true,
+    includeSelectSpaces: false,
     query: "",
+  });
+  const commandItemsWithSpaces = buildInputBarSlashCommandItems({
+    commands: ALL_COMMANDS,
+    includeAttachKnowledge: true,
+    includePickModel: true,
+    includeSelectSpaces: true,
+    query: "",
+  });
+
+  it("does not treat select spaces as a sub-menu", () => {
+    // Select spaces opens the spaces picker via onSelectRef, not a slash sub-menu.
+    expect(
+      resolveSlashSubMenuFromQuery({
+        commandItems: commandItemsWithSpaces,
+        query: "spaces mark",
+      })
+    ).toBeNull();
   });
 
   it("enters the first matching sub-menu command with the remainder as query", () => {

@@ -42,6 +42,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     conversationIdRef?: RefObject<string | null>;
     includeAttachKnowledgeRef: RefObject<boolean>;
     includePickModelRef: RefObject<boolean>;
+    includeSelectSpacesRef: RefObject<boolean>;
     onClose: () => void;
     onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
     onModelSelectRef: RefObject<((selection: Selection) => void) | undefined>;
@@ -61,6 +62,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       editor,
       includeAttachKnowledgeRef,
       includePickModelRef,
+      includeSelectSpacesRef,
       onClose,
       onDetailsRef,
       onModelSelectRef,
@@ -116,8 +118,14 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           commands: slashCommandsRef.current ?? [],
           includeAttachKnowledge: includeAttachKnowledgeRef.current ?? false,
           includePickModel: includePickModelRef.current ?? false,
+          includeSelectSpaces: includeSelectSpacesRef.current ?? false,
         }),
-      [includeAttachKnowledgeRef, includePickModelRef, slashCommandsRef]
+      [
+        includeAttachKnowledgeRef,
+        includePickModelRef,
+        includeSelectSpacesRef,
+        slashCommandsRef,
+      ]
     );
 
     // "/model fab" opens the model sub-menu with "fab" as its query without pushing a frame.
