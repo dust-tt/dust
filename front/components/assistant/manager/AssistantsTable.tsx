@@ -28,6 +28,7 @@ import type {
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getTieredReasoningEffort } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
+import { REASONING_EFFORT_LABELS } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
   ReasoningEffort,
@@ -54,7 +55,6 @@ import {
   Trash01,
 } from "@dust-tt/sparkle";
 import type { CellContext, HeaderContext } from "@tanstack/react-table";
-import capitalize from "lodash/capitalize";
 import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -361,7 +361,7 @@ const getTableColumns = ({
           : null;
         const tooltipLabel =
           reasoningEffort && reasoningEffort !== "none"
-            ? `${modelName} ${capitalize(reasoningEffort)}`
+            ? `${modelName} ${REASONING_EFFORT_LABELS[reasoningEffort]}`
             : modelName;
 
         // Streams are named after their tier: the chip alone carries the info.

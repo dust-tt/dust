@@ -16,11 +16,11 @@ import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
+import { getReasoningEffortDisplayName } from "@app/types/assistant/models/reasoning";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
-import capitalize from "lodash/capitalize";
 
 /**
  * Resolve display names / labels (and pictureUrl where applicable)
@@ -255,7 +255,7 @@ export async function resolveDimensionLabels(
 
     case "reasoning_effort":
       return labelsFromNames(
-        new Map(keys.map((key) => [key, capitalize(key)]))
+        new Map(keys.map((key) => [key, getReasoningEffortDisplayName(key)]))
       );
 
     default:
