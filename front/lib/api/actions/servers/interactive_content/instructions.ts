@@ -318,7 +318,7 @@ ${FILES_EDIT_TOOL}({
 // Then publish the Frame so the fixes reach the rendered version.`;
 
 const buildInstructions = (variant: InstructionsVariant) =>
-  `${interactiveContentProseBeforeAuthoring(variant)}\n${buildInteractiveContentAuthoringProseV2({ hasDocuments: false })}\n${INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING}`;
+  `${interactiveContentProseBeforeAuthoring(variant)}\n${buildInteractiveContentAuthoringProseV2()}\n${INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING}`;
 
 // Legacy conversations (no conversation file system): the Frame's source is not reachable by
 // path, so the model updates Frames through the retrieve and file-id edit tools. Legacy Pod
