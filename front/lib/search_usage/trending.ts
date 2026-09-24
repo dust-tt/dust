@@ -365,26 +365,24 @@ const fetchCachedDiscoveryTrendingCandidates = cacheWithRedisResult(
   }
 );
 
-export function compareDiscoveryTrendingCandidates(
-  left: DiscoveryTrendingCandidate,
-  right: DiscoveryTrendingCandidate
-): number {
-  const leftIsPreferred = left.currentUsers >= PREFERRED_CURRENT_USERS;
-  const rightIsPreferred = right.currentUsers >= PREFERRED_CURRENT_USERS;
-
-  return (
-    Number(rightIsPreferred) - Number(leftIsPreferred) ||
-    right.userGrowth - left.userGrowth ||
-    right.currentUsers - left.currentUsers ||
-    left.resourceType.localeCompare(right.resourceType) ||
-    left.resourceId.localeCompare(right.resourceId)
-  );
-}
-
 function rankCandidatePool(
   candidates: DiscoveryTrendingCandidate[]
 ): DiscoveryTrendingCandidate[] {
-  return candidates.sort(compareDiscoveryTrendingCandidates);
+  const ranked = candidates.sort(
+    (left, right) =>
+      right.userGrowth - left.userGrowth ||
+      right.currentUsers - left.currentUsers ||
+      left.resourceId.localeCompare(right.resourceId)
+  );
+
+  return [
+    ...ranked.filter(
+      ({ currentUsers }) => currentUsers >= PREFERRED_CURRENT_USERS
+    ),
+    ...ranked.filter(
+      ({ currentUsers }) => currentUsers < PREFERRED_CURRENT_USERS
+    ),
+  ];
 }
 
 /**

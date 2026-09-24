@@ -6,10 +6,7 @@ import type { PinnedDiscoveryItemInput } from "@app/lib/resources/discovery_item
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import {
-  compareDiscoveryTrendingCandidates,
-  fetchDiscoveryTrendingCandidates,
-} from "@app/lib/search_usage/trending";
+import { fetchDiscoveryTrendingCandidates } from "@app/lib/search_usage/trending";
 import type {
   DeleteGroupDiscoveryPinResponseBody,
   DiscoveryTrendingItemType,
@@ -100,12 +97,8 @@ export async function removeGroupDiscoveryPin(
   return new Ok({ success: true });
 }
 
-const DISCOVERY_TRENDING_ITEM_LIMIT = 5;
+const DISCOVERY_TRENDING_ITEMS_PER_KIND_LIMIT = 5;
 
-/**
- * Resolves cached workspace-wide candidates against the current viewer before exposing IDs.
- * This keeps inaccessible, archived, or unavailable resources out of the API response.
- */
 export async function listDiscoveryTrendingItems(
   auth: Authenticator
 ): Promise<Result<DiscoveryTrendingItemType[] | null, ElasticsearchError>> {
@@ -143,18 +136,32 @@ export async function listDiscoveryTrendingItems(
   );
   const readableSkillIds = new Set(skills.map((skill) => skill.sId));
 
-  const items = [...agentCandidates, ...skillCandidates]
-    .filter(({ resourceType, resourceId }) =>
-      resourceType === "agent"
-        ? readableAgentIds.has(resourceId)
-        : readableSkillIds.has(resourceId)
-    )
-    .sort(compareDiscoveryTrendingCandidates)
-    .slice(0, DISCOVERY_TRENDING_ITEM_LIMIT)
-    .map(({ resourceType, resourceId }) => ({
-      kind: resourceType,
-      itemId: resourceId,
-    }));
+  const visibleAgentCandidates = agentCandidates.filter(({ resourceId }) =>
+    readableAgentIds.has(resourceId)
+  );
+  const visibleSkillCandidates = skillCandidates.filter(({ resourceId }) =>
+    readableSkillIds.has(resourceId)
+  );
+  const items: DiscoveryTrendingItemType[] = [];
+
+  for (
+    let index = 0;
+    index < DISCOVERY_TRENDING_ITEMS_PER_KIND_LIMIT;
+    index++
+  ) {
+    const agent = visibleAgentCandidates[index];
+    const skill = visibleSkillCandidates[index];
+    if (!agent && !skill) {
+      break;
+    }
+
+    if (agent) {
+      items.push({ kind: "agent", itemId: agent.resourceId });
+    }
+    if (skill) {
+      items.push({ kind: "skill", itemId: skill.resourceId });
+    }
+  }
 
   return new Ok(items);
 }

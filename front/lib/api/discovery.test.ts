@@ -1,5 +1,6 @@
 import { listDiscoveryTrendingItems } from "@app/lib/api/discovery";
 import { fetchDiscoveryTrendingCandidates } from "@app/lib/search_usage/trending";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { Ok } from "@app/types/shared/result";
@@ -17,8 +18,11 @@ describe("listDiscoveryTrendingItems", () => {
     mockedFetchTrending.mockReset();
   });
 
-  it("omits unresolved candidates before combining and limiting them", async () => {
+  it("omits unresolved candidates and interleaves the ranked pools", async () => {
     const { auth } = await createPrivateApiMockRequest();
+    const visibleAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Visible trending agent",
+    });
     const visibleSkill = await SkillFactory.create(auth, {
       name: "Visible trending skill",
     });
@@ -26,6 +30,13 @@ describe("listDiscoveryTrendingItems", () => {
     mockedFetchTrending.mockResolvedValue(
       new Ok({
         agents: [
+          {
+            resourceType: "agent",
+            resourceId: visibleAgent.sId,
+            currentUsers: 8,
+            previousUsers: 3,
+            userGrowth: 5,
+          },
           {
             resourceType: "agent",
             resourceId: "missing-agent",
@@ -58,7 +69,10 @@ describe("listDiscoveryTrendingItems", () => {
     if (result.isErr()) {
       throw result.error;
     }
-    expect(result.value).toEqual([{ kind: "skill", itemId: visibleSkill.sId }]);
+    expect(result.value).toEqual([
+      { kind: "agent", itemId: visibleAgent.sId },
+      { kind: "skill", itemId: visibleSkill.sId },
+    ]);
   });
 
   it("preserves a pending cache fill", async () => {
