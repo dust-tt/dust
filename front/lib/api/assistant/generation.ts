@@ -29,7 +29,6 @@ import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
 import type {
   ConversationWithoutContentType,
   UserMessageType,
@@ -148,13 +147,6 @@ function constructToolsSection({
   toolsSection += "\n## TOOL USE DIRECTIVES\n\n";
   if (hasAvailableActions && modelConfig.toolUseMetaPrompt) {
     toolsSection += `${modelConfig.toolUseMetaPrompt}\n`;
-  }
-  if (
-    hasAvailableActions &&
-    modelInfo.reasoningEffort === "light" &&
-    !modelConfig.useNativeLightReasoning
-  ) {
-    toolsSection += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
   }
 
   toolsSection +=

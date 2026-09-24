@@ -284,26 +284,14 @@ const DEEPSEEK_MODELS: ModelIdType[] = [DEEPSEEK_CHAT_MODEL_ID];
 
 export function getDelimitersConfiguration({
   endpoint,
-  reasoningEffort,
 }: StreamModelInfo): DelimitersConfiguration {
   if (DEEPSEEK_MODELS.includes(endpoint.modelConfig.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
   }
 
-  if (
-    (reasoningEffort ?? endpoint.modelConfig.defaultReasoningEffort) !== "light"
-  ) {
-    return {
-      delimiters: [],
-      incompleteDelimiterPatterns: [],
-    };
-  }
-
-  return {
-    delimiters: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.delimiters,
-    incompleteDelimiterPatterns:
-      CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.incompleteDelimiterPatterns,
-  };
+  // Always parse chain-of-thought tags, like `getCoTDelimitersConfiguration` does on reload: past
+  // chain-of-thought turns replayed in the history can lead a model to keep emitting them.
+  return CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
 }
 
 // For UI purpose we want to extract CoT possibly generated with previous reasoning configuration
