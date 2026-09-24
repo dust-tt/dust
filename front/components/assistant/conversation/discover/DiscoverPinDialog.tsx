@@ -3,15 +3,18 @@ import {
   getItemId,
   getItemName,
 } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   useGroupDiscoveryPins,
   usePinDiscoveryItem,
 } from "@app/lib/swr/discovery";
 import { useGroups } from "@app/lib/swr/groups";
+import type { DiscoveryItemType } from "@app/types/api/discovery";
 import type { GroupType } from "@app/types/groups";
 import { USER_VISIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  Avatar,
   Button,
   cn,
   Dialog,
@@ -28,7 +31,7 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const PIN_POSITIONS = [0, 1, 2];
 
@@ -178,9 +181,10 @@ function PinPositions({
             type="button"
             role="radio"
             aria-checked={position === i}
+            aria-label={`Position ${i + 1}`}
             onClick={() => onPositionChange(i)}
             className={cn(
-              "flex h-16 flex-col items-center justify-center rounded-xl border px-2",
+              "flex h-20 flex-col items-center justify-center gap-1 rounded-xl border px-2",
               "transition-[color,background-color,border-color,scale] duration-150 ease-emphasized",
               "active:scale-[0.97] motion-reduce:active:scale-100",
               position === i
@@ -188,16 +192,41 @@ function PinPositions({
                 : "border-border bg-background text-muted-foreground hover:bg-hover"
             )}
           >
-            <span className="heading-lg">{i + 1}</span>
-            {isGroupPinsLoading && <Spinner size="xs" />}
-            {current && (
-              <span className="copy-xs w-full truncate">
-                {current.target.name}
-              </span>
+            {isGroupPinsLoading ? (
+              <Spinner size="xs" />
+            ) : current ? (
+              <>
+                <PinnedItemAvatar pinnedItem={current} />
+                <span className="copy-xs w-full truncate">
+                  {current.target.name}
+                </span>
+              </>
+            ) : (
+              <span className="heading-lg">{i + 1}</span>
             )}
           </button>
         );
       })}
     </div>
   );
+}
+
+interface PinnedItemAvatarProps {
+  pinnedItem: DiscoveryItemType;
+}
+
+function PinnedItemAvatar({ pinnedItem }: PinnedItemAvatarProps) {
+  if (pinnedItem.type === "agent") {
+    return <Avatar size="sm" visual={pinnedItem.target.pictureUrl} />;
+  }
+  return <PinnedSkillAvatar icon={pinnedItem.target.icon} />;
+}
+
+interface PinnedSkillAvatarProps {
+  icon: string | null;
+}
+
+function PinnedSkillAvatar({ icon }: PinnedSkillAvatarProps) {
+  const SkillAvatar = useMemo(() => getSkillAvatarIcon(icon), [icon]);
+  return <SkillAvatar size="sm" />;
 }
