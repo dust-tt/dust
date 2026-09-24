@@ -1,5 +1,5 @@
-// Contract types and schemas for the suggestion batches endpoint
-// (`/api/w/:wId/assistant/suggestion_batches`).
+// Contract types and schemas for the suggestion batches endpoints
+// (`/api/w/:wId/assistant/suggestion_batches` and `.../suggestion_batches/:bId`).
 import { isString } from "@app/types/shared/utils/general";
 import type { BatchSuggestionType } from "@app/types/suggestions/batch_suggestion";
 import { z } from "zod";
@@ -16,4 +16,12 @@ export const GetSuggestionBatchesQuerySchema = z.object({
 
 export type GetSuggestionBatchesResponseBody = {
   batches: BatchSuggestionType[];
+};
+
+export const PatchSuggestionBatchRequestBodySchema = z.object({
+  state: z.enum(["approved", "rejected"]),
+});
+
+export type PatchSuggestionBatchResponseBody = {
+  batch: BatchSuggestionType;
 };
