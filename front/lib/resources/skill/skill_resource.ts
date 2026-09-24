@@ -3387,7 +3387,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           );
 
           await onCustomSkillStatusChanged(auth, {
-            customSkillId: this.id,
+            customSkillModelId: this.id,
             transaction,
           });
 
@@ -3452,7 +3452,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           );
 
           await onCustomSkillStatusChanged(auth, {
-            customSkillId: this.id,
+            customSkillModelId: this.id,
             transaction,
           });
 
@@ -3632,6 +3632,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { previousRequestedSpaceIds },
         { transaction }
       );
+
+      if (statusChanged) {
+        await onCustomSkillStatusChanged(auth, {
+          customSkillModelId: this.id,
+          transaction,
+        });
+      }
       return referencingSkillIds;
     });
 
@@ -4256,7 +4263,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           );
 
         await destroyAgentSkillLinksForCustomSkill(auth, {
-          customSkillId: this.id,
+          customSkillModelId: this.id,
           transaction,
         });
 

@@ -19,7 +19,7 @@ vi.mock(
 );
 
 describe("agent skill cascade", () => {
-  it("reindexes the agents using a skill when it is archived, restored and deleted", async () => {
+  it("reindexes the agents using a skill when its status changes or it is deleted", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -38,6 +38,20 @@ describe("agent skill cascade", () => {
     const mutations = [
       () => skill.archive(auth),
       () => skill.restore(auth),
+      () =>
+        skill.updateSkill(auth, {
+          name: skill.name,
+          agentFacingDescription: skill.agentFacingDescription,
+          userFacingDescription: skill.userFacingDescription,
+          instructions: skill.instructions,
+          instructionsHtml: skill.instructionsHtml,
+          icon: skill.icon,
+          mcpServerViews: [],
+          attachedKnowledge: [],
+          manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
+          requestedSpaceIds: skill.requestedSpaceIds,
+          status: "archived",
+        }),
       () => skill.delete(auth),
     ];
     for (const mutate of mutations) {

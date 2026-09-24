@@ -13,15 +13,15 @@ import { Op } from "sequelize";
 async function listAgentIdsUsingCustomSkill(
   auth: Authenticator,
   {
-    customSkillId,
+    customSkillModelId,
     transaction,
-  }: { customSkillId: ModelId; transaction?: Transaction }
+  }: { customSkillModelId: ModelId; transaction?: Transaction }
 ): Promise<string[]> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
+  const workspaceModelId = auth.getNonNullableWorkspace().id;
 
   const agentSkills = await AgentSkillModel.findAll({
     attributes: ["agentConfigurationId"],
-    where: { workspaceId, customSkillId },
+    where: { workspaceId: workspaceModelId, customSkillId: customSkillModelId },
     transaction,
   });
   if (agentSkills.length === 0) {
@@ -31,7 +31,7 @@ async function listAgentIdsUsingCustomSkill(
   const agentConfigurations = await AgentConfigurationModel.findAll({
     attributes: ["sId"],
     where: {
-      workspaceId,
+      workspaceId: workspaceModelId,
       id: {
         [Op.in]: uniq(agentSkills.map((s) => s.agentConfigurationId)),
       },
@@ -44,24 +44,26 @@ async function listAgentIdsUsingCustomSkill(
 
 /**
  * @cc [owner:tdraier,label:backend;performance] agent-skill-cascade-through-agent-domain
- * A custom skill lifecycle change that alters the skills an agent exposes (the skill archived,
- * restored or deleted) MUST be signalled through this module, which owns every agent-side effect of
- * it: the agent-skill link removal on deletion and the refresh of the derived state (today the
- * search index) of every agent linked to the skill, on any configuration version. Callers MUST NOT
- * destroy a skill's `AgentSkillModel` rows directly nor refresh the agents themselves (the workspace
- * scrub, which drops every row of the workspace, is exempt). Link removal applies in place, with no
- * new agent version, and is NOT gated on the agent's `write`/`admin` verbs. Under a transaction,
+ * A custom skill lifecycle change that alters the skills an agent exposes (a status change such as
+ * archive or restore, or the skill's deletion) MUST be signalled through this module, which owns
+ * every agent-side effect of it: the agent-skill link removal on deletion and the refresh of the
+ * derived state (today the search index) of every agent linked to the skill, on any configuration
+ * version. Callers MUST NOT destroy a skill's `AgentSkillModel` rows directly nor refresh the agents
+ * themselves for that change (the workspace scrub, which drops every row of the workspace, is
+ * exempt); other agent-domain writes the change triggers, such as
+ * `updateAgentRequestedSpaceIdsInPlace`, keep their own effects. Link removal applies in place, with
+ * no new agent version, and is NOT gated on the agent's `write`/`admin` verbs. Under a transaction,
  * the refresh runs after commit.
  */
 export async function onCustomSkillStatusChanged(
   auth: Authenticator,
   {
-    customSkillId,
+    customSkillModelId,
     transaction,
-  }: { customSkillId: ModelId; transaction?: Transaction }
+  }: { customSkillModelId: ModelId; transaction?: Transaction }
 ): Promise<void> {
   const agentIds = await listAgentIdsUsingCustomSkill(auth, {
-    customSkillId,
+    customSkillModelId,
     transaction,
   });
 
@@ -76,19 +78,19 @@ export async function onCustomSkillStatusChanged(
 export async function destroyAgentSkillLinksForCustomSkill(
   auth: Authenticator,
   {
-    customSkillId,
+    customSkillModelId,
     transaction,
-  }: { customSkillId: ModelId; transaction?: Transaction }
+  }: { customSkillModelId: ModelId; transaction?: Transaction }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
   const agentIds = await listAgentIdsUsingCustomSkill(auth, {
-    customSkillId,
+    customSkillModelId,
     transaction,
   });
 
   await AgentSkillModel.destroy({
-    where: { workspaceId: owner.id, customSkillId },
+    where: { workspaceId: owner.id, customSkillId: customSkillModelId },
     transaction,
   });
 
