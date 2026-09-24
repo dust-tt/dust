@@ -386,8 +386,10 @@ whole path durable only when every call must be live or the interaction itself i
   shell out to \`dsbx\`, \`execFile\`, or \`child_process\` to run \`dsbx tools\` from a function.
 
 Discover the exact server name, tool name, and argument shapes from the Computer with
-\`dsbx tools --help\` (and trial calls with \`--json\` if needed). Then implement the durable
-function with the typed client:
+\`dsbx tools --help\` (and trial calls with \`--json\` if needed). Pass the server exactly as
+\`dsbx tools\` lists it: a workspace can hold several instances of one server under their own
+names (e.g. \`gmail1\` and \`gmail2\`), and a line that shows an \`id:\` must be called by that id.
+Then implement the durable function with the typed client:
 
 \`\`\`ts
 import { tools } from "@dust/pod";

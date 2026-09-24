@@ -349,13 +349,15 @@ export const tools = {
   /**
    * Call a workspace tool and wait for its result.
    *
-   * @param server the tool server name, as listed by `dsbx tools` (e.g.
-   *   "slack_personal").
+   * @param server the tool server, as listed by `dsbx tools` (e.g. "gmail2"
+   *   for the second of two Gmail instances), or its view id. Resolved against
+   *   view ids, then view names, then server names.
    * @param tool the tool name on that server.
    * @param args the tool arguments as a plain JSON object, passed to the
    *   server verbatim — no stringification, no scalar coercion.
-   * @throws ToolCallError on transport failures. A tool that ran and reported
-   *   an error resolves normally with `isError: true`.
+   * @throws ToolCallError on transport failures, and when `server` matches no
+   *   server or several (instances of one server sharing a name). A tool that
+   *   ran and reported an error resolves normally with `isError: true`.
    */
   async call(
     server: string,

@@ -170,4 +170,45 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
       body.serverViews.map((sv: { server: { name: string } }) => sv.server.name)
     ).toEqual(["search"]);
   });
+
+  it("resolves ?server= by view id, then view name, then server name", async () => {
+    const { auth, token, workspace, globalSpace } =
+      await createSandboxFunctionInvocationTokenTestContext();
+
+    // Two instances of one server, as "Add tools" > Gmail twice produces: distinct server ids,
+    // both reporting `server.name` "gmail", told apart only by their view names.
+    async function createGmailView(viewName: string) {
+      const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
+        name: "gmail",
+        useCase: null,
+      });
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.id,
+        globalSpace
+      );
+      const renameResult = await view.updateNameAndDescription(auth, viewName);
+      if (renameResult.isErr()) {
+        throw renameResult.error;
+      }
+      return view;
+    }
+    const first = await createGmailView("gmail1");
+    const second = await createGmailView("gmail2");
+
+    async function viewIdsFor(reference: string): Promise<string[]> {
+      const response = await honoApp.request(
+        `/api/v1/w/${workspace.sId}/sandbox/actions?server=${encodeURIComponent(reference)}`,
+        { headers: { authorization: `Bearer ${token}` } }
+      );
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      return body.serverViews.map((sv: { sId: string }) => sv.sId).sort();
+    }
+
+    expect(await viewIdsFor(first.sId)).toEqual([first.sId]);
+    expect(await viewIdsFor("gmail2")).toEqual([second.sId]);
+    expect(await viewIdsFor("gmail")).toEqual([first.sId, second.sId].sort());
+    expect(await viewIdsFor("gmail3")).toEqual([]);
+  });
 });

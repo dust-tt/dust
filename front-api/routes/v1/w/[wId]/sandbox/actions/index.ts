@@ -9,6 +9,7 @@ import {
   isSandboxExecTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
 } from "@app/lib/api/sandbox/access_tokens";
+import { selectServerViewsByReference } from "@app/lib/api/sandbox/server_view_reference";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { sandboxApp } from "@front-api/middlewares/ctx";
@@ -40,7 +41,7 @@ const SANDBOX_HIDDEN_SERVER_NAMES: string[] = [
   FILES_SERVER_NAME,
 ];
 
-// Response shaping shared by both token kinds: `?server=` name filtering and `?light=true`
+// Response shaping shared by both token kinds: `?server=` reference resolution and `?light=true`
 // inputSchema stripping.
 function filterServerViews(
   views: MCPServerViewType[],
@@ -51,7 +52,7 @@ function filterServerViews(
   );
 
   if (server !== undefined) {
-    serverViews = serverViews.filter((sv) => sv.server.name === server);
+    serverViews = selectServerViewsByReference(serverViews, server);
   }
 
   // Strip tool inputSchemas in light mode.
