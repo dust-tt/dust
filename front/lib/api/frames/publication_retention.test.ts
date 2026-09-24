@@ -122,6 +122,32 @@ describe("purgeStaleFramePublications", () => {
     expect(await publicationRowIds(frame)).toEqual([active]);
   });
 
+  it("deletes every stale publication of the Frame in one sweep", async () => {
+    const { active, auth, frame, listPublications, workspaceId } =
+      await setupFrame();
+    const stale = [
+      await storeTestFramePublication(auth, frame, { publishedDaysAgo: 30 }),
+      await storeTestFramePublication(auth, frame, { publishedDaysAgo: 20 }),
+    ];
+    listPublications(stale);
+
+    const result = await purgeStaleFramePublications(auth, {
+      frame,
+      retentionMs: RETENTION_MS,
+    });
+
+    expect(result).toEqual({
+      deletedFunctionCount: 2,
+      deletedPublicationCount: 2,
+      unreadablePublicationCount: 0,
+    });
+    for (const publicationId of stale) {
+      expect(await functionRowCount(auth, frame, publicationId)).toBe(0);
+      expect(hasUiBundle(workspaceId, frame, publicationId)).toBe(false);
+    }
+    expect(await publicationRowIds(frame)).toEqual([active]);
+  });
+
   it("keeps a superseded publication published inside the retention window", async () => {
     const { auth, frame, listPublications } = await setupFrame({
       activePublishedDaysAgo: 0,

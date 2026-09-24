@@ -9,6 +9,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
+import type { FramePublicationDescriptor } from "@app/types/api/frame_publication";
 import {
   getFramePublicationsBasePath,
   isSafeFrameStorageSegment,
@@ -16,12 +17,15 @@ import {
 import { frameV2ContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
+import chunk from "lodash/chunk";
 
 /**
  * Backfill one `frame_publications` row per committed publication already in GCS, for every
  * Frames v2 file. Publications stored since the table shipped already have their row; this covers
  * the older ones. A publication whose `publication.json` cannot be read gets no row: it is either
  * uncommitted or unreadable, and publication retention already reports those.
+ *
+ * Database work is batched per workspace; only the GCS reads run per Frame.
  *
  * Idempotent (existing rows are skipped). Dry-run by default; pass `--execute` to insert.
  *
@@ -30,6 +34,13 @@ import { removeNulls } from "@app/types/shared/utils/general";
  */
 
 const DEFAULT_CONCURRENCY = 4;
+const INSERT_BATCH_SIZE = 500;
+
+type PublicationToInsert = {
+  frame: FileResource;
+  publicationId: string;
+  descriptor: FramePublicationDescriptor;
+};
 
 makeScript(
   {
@@ -50,15 +61,18 @@ makeScript(
       raw: true,
     });
 
-    const fileIdsByWorkspaceId = new Map<ModelId, ModelId[]>();
+    const fileModelIdsByWorkspaceModelId = new Map<ModelId, ModelId[]>();
     for (const { id, workspaceId } of frameRows) {
-      const fileIds = fileIdsByWorkspaceId.get(workspaceId) ?? [];
-      fileIds.push(id);
-      fileIdsByWorkspaceId.set(workspaceId, fileIds);
+      const fileModelIds =
+        fileModelIdsByWorkspaceModelId.get(workspaceId) ?? [];
+      fileModelIds.push(id);
+      fileModelIdsByWorkspaceModelId.set(workspaceId, fileModelIds);
     }
 
     const workspaces = (
-      await WorkspaceResource.fetchByModelIds([...fileIdsByWorkspaceId.keys()])
+      await WorkspaceResource.fetchByModelIds([
+        ...fileModelIdsByWorkspaceModelId.keys(),
+      ])
     ).map((workspace) => renderLightWorkspaceType({ workspace }));
 
     logger.info(
@@ -74,40 +88,40 @@ makeScript(
 
     for (const workspace of workspaces) {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-      const frames = await FileResource.fetchByModelIdsWithAuth(
-        auth,
-        fileIdsByWorkspaceId.get(workspace.id) ?? []
+      const fileModelIds =
+        fileModelIdsByWorkspaceModelId.get(workspace.id) ?? [];
+      const [frames, existingRows] = await Promise.all([
+        FileResource.fetchByModelIdsWithAuth(auth, fileModelIds),
+        FramePublicationModel.findAll({
+          attributes: ["fileId", "publicationId"],
+          where: { workspaceId: workspace.id, fileId: fileModelIds },
+          raw: true,
+        }),
+      ]);
+      const existingKeys = new Set(
+        existingRows.map(
+          ({ fileId, publicationId }) => `${fileId}/${publicationId}`
+        )
       );
 
-      let inserted = 0;
       let alreadyPresent = 0;
       let unreadable = 0;
 
-      await concurrentExecutor(
+      const perFrame = await concurrentExecutor(
         frames,
-        async (frame) => {
-          const [publicationIds, existingRows] = await Promise.all([
-            bucket.listSubdirectoryNames({
-              prefix: getFramePublicationsBasePath({
-                workspaceId: workspace.sId,
-                frameId: frame.sId,
-              }),
+        async (frame): Promise<PublicationToInsert[]> => {
+          const publicationIds = await bucket.listSubdirectoryNames({
+            prefix: getFramePublicationsBasePath({
+              workspaceId: workspace.sId,
+              frameId: frame.sId,
             }),
-            FramePublicationModel.findAll({
-              attributes: ["publicationId"],
-              where: { workspaceId: workspace.id, fileId: frame.id },
-              raw: true,
-            }),
-          ]);
-          const existingPublicationIds = new Set(
-            existingRows.map(({ publicationId }) => publicationId)
-          );
+          });
 
-          const descriptors = removeNulls(
+          return removeNulls(
             await concurrentExecutor(
               publicationIds,
               async (publicationId) => {
-                if (existingPublicationIds.has(publicationId)) {
+                if (existingKeys.has(`${frame.id}/${publicationId}`)) {
                   alreadyPresent++;
                   return null;
                 }
@@ -139,45 +153,38 @@ makeScript(
                   return null;
                 }
 
-                return { publicationId, descriptor: descriptor.value };
+                return { frame, publicationId, descriptor: descriptor.value };
               },
               { concurrency }
             )
           );
-          if (descriptors.length === 0) {
-            return;
-          }
+        },
+        { concurrency }
+      );
+      const toInsert = perFrame.flat();
 
-          const publishers = await UserResource.fetchByIds(
-            removeNulls(
-              descriptors.map(({ descriptor }) => descriptor.publisherId)
-            )
-          );
-          const publisherModelIdsById = new Map(
-            publishers.map((user) => [user.sId, user.id])
-          );
+      const publishers = await UserResource.fetchByIds(
+        removeNulls(toInsert.map(({ descriptor }) => descriptor.publisherId))
+      );
+      const publisherModelIdsById = new Map(
+        publishers.map((user) => [user.sId, user.id])
+      );
 
-          logger.info(
-            {
-              workspaceId: workspace.sId,
-              frameId: frame.sId,
-              publicationIds: descriptors.map(
-                ({ publicationId }) => publicationId
-              ),
-            },
-            execute
-              ? "[backfill_frame_publications] Inserting rows"
-              : "[backfill_frame_publications] Would insert rows (dry-run)"
-          );
-          inserted += descriptors.length;
-          if (!execute) {
-            return;
-          }
+      for (const { frame, publicationId } of toInsert) {
+        logger.info(
+          { workspaceId: workspace.sId, frameId: frame.sId, publicationId },
+          execute
+            ? "[backfill_frame_publications] Inserting row"
+            : "[backfill_frame_publications] Would insert row (dry-run)"
+        );
+      }
 
+      if (execute) {
+        for (const batch of chunk(toInsert, INSERT_BATCH_SIZE)) {
           // A publication stored concurrently already has its row: ignoring the duplicate keeps
           // the row its publisher wrote, which also knows the publishing agent.
           await FramePublicationModel.bulkCreate(
-            descriptors.map(({ publicationId, descriptor }) => ({
+            batch.map(({ frame, publicationId, descriptor }) => ({
               workspaceId: workspace.id,
               fileId: frame.id,
               publicationId,
@@ -191,15 +198,14 @@ makeScript(
             })),
             { ignoreDuplicates: true }
           );
-        },
-        { concurrency }
-      );
+        }
+      }
 
       logger.info(
         {
           workspaceId: workspace.sId,
           frameCount: frames.length,
-          inserted,
+          inserted: toInsert.length,
           alreadyPresent,
           unreadable,
           execute,

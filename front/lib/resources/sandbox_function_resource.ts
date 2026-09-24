@@ -539,9 +539,9 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
    * this safe: the publication is not the frame's active one, it is past the retention window,
    * and none of its functions has an invocation left (they FK these rows with `RESTRICT`).
    */
-  static async deleteAllForFramePublication(
+  static async deleteAllForFramePublications(
     auth: Authenticator,
-    { frame, publicationId }: { frame: FileResource; publicationId: string }
+    { frame, publicationIds }: { frame: FileResource; publicationIds: string[] }
   ): Promise<number> {
     assert(frame.isFrameV2, "Frame functions require a Frames v2 file.");
 
@@ -549,7 +549,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         fileId: frame.id,
-        publicationId,
+        publicationId: publicationIds,
       },
     });
   }
@@ -723,7 +723,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   /**
    * A Frame function row belongs to its Frame's publication history, not to itself: the Frame file
    * owns the whole set and deletes it through `deleteFrameFunctionModelIds`, and retention drops a
-   * superseded publication's set through `deleteAllForFramePublication`. Deleting one on its own
+   * superseded publication's set through `deleteAllForFramePublications`. Deleting one on its own
    * would leave a publication serving a function that no longer exists.
    */
   async delete(): Promise<Result<undefined, Error>> {
