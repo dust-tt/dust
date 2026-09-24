@@ -98,12 +98,18 @@ app.post(
 
     // Open the Frame panel the same way legacy MCP publish did: progress notification on the
     // parent sandbox action. Best-effort; does not affect the publish response.
+    // Pass publicationId (v2) so the panel contentHash changes even when File.updatedAt
+    // would not be enough to remount the viz iframe.
     await notifyPublishedFrameSidePanel(auth, {
       actionId: claims.actionId,
       configurationId: claims.aId,
       conversationId: claims.cId,
       frameId: publication.value.frameId,
       messageId: claims.mId,
+      contentRevision:
+        publication.value.kind === "v2"
+          ? publication.value.publicationId
+          : undefined,
     });
 
     switch (publication.value.kind) {

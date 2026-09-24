@@ -12,6 +12,9 @@ import { isFrameContentType } from "@app/types/files";
  * `interactive_content_file` tool_notification on the parent sandbox action. Best-effort —
  * publish already succeeded; a missing action/frame or Redis failure must not fail the
  * HTTP response.
+ *
+ * `contentRevision` must change on every publish so the panel remounts (it keys refresh on
+ * `fileId@updatedAt`). Prefer the new v2 `publicationId`; fall back to a fresh timestamp.
  */
 export async function notifyPublishedFrameSidePanel(
   auth: Authenticator,
@@ -21,12 +24,14 @@ export async function notifyPublishedFrameSidePanel(
     conversationId,
     frameId,
     messageId,
+    contentRevision,
   }: {
     actionId: string;
     configurationId: string;
     conversationId: string;
     frameId: string;
     messageId: string;
+    contentRevision?: string;
   }
 ): Promise<void> {
   try {
@@ -51,10 +56,17 @@ export async function notifyPublishedFrameSidePanel(
       return;
     }
 
+    // Match MCP tool notifications: progressToken is the numeric action id.
     const notification = buildInteractiveContentFileNotification(
-      action.sId,
+      action.id,
       frame,
-      "Publishing Frame..."
+      "Publishing Frame...",
+      {
+        contentRevision:
+          contentRevision ??
+          frame.useCaseMetadata?.activePublicationId ??
+          Date.now().toString(),
+      }
     );
 
     await publishConversationRelatedEvent({

@@ -217,6 +217,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
         conversationId: context.conversation.sId,
         messageId: context.agentMessage.sId,
         configurationId: context.agentConfig.sId,
+        contentRevision: published.publicationId,
       })
     );
   });

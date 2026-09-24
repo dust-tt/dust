@@ -49,6 +49,7 @@ describe("notifyPublishedFrameSidePanel", () => {
       conversationId: context.conversation.sId,
       frameId: frame.sId,
       messageId: context.agentMessage.sId,
+      contentRevision: "pub-from-publish",
     });
 
     expect(publishConversationRelatedEvent).toHaveBeenCalledTimes(1);
@@ -65,6 +66,7 @@ describe("notifyPublishedFrameSidePanel", () => {
           id: action.id,
         }),
         notification: expect.objectContaining({
+          progressToken: action.id,
           _meta: {
             data: {
               label: "Publishing Frame...",
@@ -73,7 +75,9 @@ describe("notifyPublishedFrameSidePanel", () => {
                 fileId: frame.sId,
                 mimeType: frameV2ContentType,
                 title: expect.any(String),
-                updatedAt: frame.updatedAtMs.toString(),
+                // Must be the publish revision so the panel remounts — not a
+                // stale File.updatedAtMs from before the publication landed.
+                updatedAt: "pub-from-publish",
               },
             },
           },
