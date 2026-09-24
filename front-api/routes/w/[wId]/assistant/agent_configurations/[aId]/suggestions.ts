@@ -7,6 +7,7 @@ import type {
   PatchSuggestionResponseBody,
 } from "@app/types/api/assistant/agent_suggestion";
 import { PatchSuggestionRequestBodySchema } from "@app/types/api/assistant/agent_suggestion";
+import { isString } from "@app/types/shared/utils/general";
 import { AGENT_SUGGESTION_SOURCES } from "@app/types/suggestions/agent_suggestion";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -17,7 +18,7 @@ import { z } from "zod";
 const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
 
 const stringOrArrayToArray = <T extends z.ZodTypeAny>(schema: T) =>
-  z.preprocess((v) => (typeof v === "string" ? [v] : v), z.array(schema));
+  z.preprocess((v) => (isString(v) ? [v] : v), z.array(schema));
 
 const GetSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray(StateSchema).optional(),

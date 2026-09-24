@@ -1,3 +1,4 @@
+import { isString } from "@app/types/shared/utils/general";
 import {
   AGENT_SUGGESTION_SOURCES,
   AgentSuggestionSchema,
@@ -25,7 +26,7 @@ const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
 
 // Next.js serializes single query param values as string, multiple as array.
 const stringOrArrayToArray = <T extends z.ZodTypeAny>(schema: T) =>
-  z.preprocess((v) => (typeof v === "string" ? [v] : v), z.array(schema));
+  z.preprocess((v) => (isString(v) ? [v] : v), z.array(schema));
 
 export const GetSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray(StateSchema).optional(),
