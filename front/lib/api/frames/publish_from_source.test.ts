@@ -293,6 +293,8 @@ async function setupLegacyFrameReplacement({
     mountFilePath: `${gcsRoot}dashboards/Sales.tsx`,
   });
   await legacyFrame.ensureShareableFrame(podAuth);
+  const legacyGcsPath = `${gcsRoot}dashboards/Sales.tsx`;
+  fileStorageMock.setObject(legacyGcsPath, uiSource);
 
   const sourceByPath = new Map([
     [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
@@ -320,6 +322,7 @@ async function setupLegacyFrameReplacement({
     auth: podAuth,
     conversation,
     legacyFrame,
+    legacyGcsPath,
     legacyPath,
     manifestPath,
     pod,
@@ -357,12 +360,33 @@ describe("publishFrameFromSource replacing a legacy Frame", () => {
     expect(share?.shareUrl).toBe(legacyShare.shareUrl);
   });
 
+  it("deletes the legacy entry file once the replacement is active", async () => {
+    const { auth, conversation, legacyGcsPath, legacyPath, manifestPath } =
+      await setupLegacyFrameReplacement({ scope: "conversation" });
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: legacyPath,
+    });
+
+    assert(result.isOk(), "Replacement publish failed");
+    expect(fileStorageMock.getObject(legacyGcsPath)).toBeUndefined();
+  });
+
   it("leaves the legacy Frame untouched when the replacement fails to build", async () => {
-    const { auth, conversation, legacyFrame, legacyPath, manifestPath } =
-      await setupLegacyFrameReplacement({
-        scope: "conversation",
-        replacementUiSource: "export default function App() { return <p>",
-      });
+    const {
+      auth,
+      conversation,
+      legacyFrame,
+      legacyGcsPath,
+      legacyPath,
+      manifestPath,
+    } = await setupLegacyFrameReplacement({
+      scope: "conversation",
+      replacementUiSource: "export default function App() { return <p>",
+    });
 
     const result = await publishFrameFromSource(auth, {
       conversation,
@@ -376,6 +400,7 @@ describe("publishFrameFromSource replacing a legacy Frame", () => {
     assert(frame, "Frame not found");
     expect(frame.isInteractiveContent).toBe(true);
     expect(frame.toScopedPath(auth)).toBe(legacyPath);
+    expect(fileStorageMock.getObject(legacyGcsPath)).toBe(uiSource);
   });
 
   it("moves the Pod pin and tab to the replacement", async () => {

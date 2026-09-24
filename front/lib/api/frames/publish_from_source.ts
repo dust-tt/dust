@@ -381,7 +381,8 @@ async function resolveLegacyFrameReplacement(
  * @cc [owner:pierremilliotte,label:product;backend] legacy-frame-replacement-is-atomic
  * Replacing a legacy Frame MUST leave it untouched unless the v2 replacement builds, passes its
  * publication contracts, and activates. A build or contract failure MUST NOT convert the legacy
- * FileResource; a failure after conversion MUST restore it.
+ * FileResource; a failure after conversion MUST restore it. The legacy entry file MUST only be
+ * deleted once the replacement is active.
  */
 async function replaceLegacyFrameFromSource(
   auth: Authenticator,
@@ -497,6 +498,24 @@ async function replaceLegacyFrameFromSource(
       oldFramePath: target.legacyEntryPath,
       newManifestPath: target.manifestPath,
     });
+  }
+
+  // The Frame is already live on its manifest: a leftover entry is stray source, not a reason to
+  // fail the publish.
+  const legacyEntryDeletion = await target.dustFs.delete(
+    target.legacyEntryPath,
+    { ignoreNotFound: true }
+  );
+  if (legacyEntryDeletion.isErr()) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        frameId: target.legacyFrameId,
+        legacyEntryPath: target.legacyEntryPath,
+        error: legacyEntryDeletion.error,
+      },
+      "Failed to delete the legacy Frame entry after its v2 replacement"
+    );
   }
 
   return new Ok({

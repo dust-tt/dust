@@ -629,8 +629,8 @@ its Frame ID, its share link and recipients, its conversation cards and, in a Po
    reports that a separate Frame already exists at the manifest path, stop: do not publish the
    folder without \`--replaces\`. Tell the user that folder is already its own Frame and ask
    whether to delete it from the Dust UI, then retry, or keep both Frames.
-7. Once the publish succeeded, delete the legacy entry file: it is now plain source with no Frame
-   behind it. Delete a legacy local import only once no remaining legacy Frame imports it:
+7. A successful publish deletes the legacy entry file for you. Delete a legacy local import only
+   once no remaining legacy Frame imports it:
    \`grep\` the other legacy \`.tsx\` files of the folder before each \`rm\`. Migrating the last
    of them removes the shared file.
 8. Open the Frame with \`conversation_side_panel.open_frame\` on its manifest path.
