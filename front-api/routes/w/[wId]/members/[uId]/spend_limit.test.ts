@@ -1,3 +1,4 @@
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -9,7 +10,14 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => {
+  const actual = await vi.importActual<typeof workosAudit>(
+    "@app/lib/api/audit/workos_audit"
+  );
+  return { ...actual, emitAuditLogEvent: vi.fn() };
+});
 
 const TEST_METRONOME_CUSTOMER_ID = "cust_test_xxx";
 
@@ -277,6 +285,62 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
   });
 
   describe("PUT", () => {
+    it("lets a group manager edit only current group members", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const member = await UserFactory.basic();
+      const outsider = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+      await MembershipFactory.associate(workspace, outsider, { role: "user" });
+      const { user: delegate } = await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "user",
+        workspace,
+      });
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const group = await GroupResource.makeNew(
+        { name: "Support", kind: "regular_manual", workspaceId: workspace.id },
+        { memberIds: [member.id] }
+      );
+      const grant = await GroupPermissionResource.grantToUser(adminAuth, {
+        user: delegate.toJSON(),
+        grantType: "group_manager",
+        resourceType: "group",
+        resourceId: group.id,
+      });
+      expect(grant.isOk()).toBe(true);
+      const putLimit = (userId: string) =>
+        honoApp.request(spendLimitUrl(workspace.sId, userId), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "limited", awuCredits: 1500 }),
+        });
+
+      expect((await putLimit(member.sId)).status).toBe(403);
+      await FeatureFlagFactory.basic(adminAuth, "group_management");
+      expect((await putLimit(outsider.sId)).status).toBe(403);
+      expect((await putLimit(member.sId)).status).toBe(200);
+      expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "member.spend_limit_updated",
+          metadata: {
+            kind: "limited",
+            awu_credits: "1500",
+            previous_kind: "unlimited",
+            previous_awu_credits: "unlimited",
+            authorizing_group_id: group.sId,
+          },
+        })
+      );
+
+      const removed = await group.dangerouslyRemoveMembers(adminAuth, {
+        users: [member.toJSON()],
+      });
+      expect(removed.isOk()).toBe(true);
+      expect((await putLimit(member.sId)).status).toBe(403);
+    });
+
     it("clears the override for unlimited", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const targetUser = await UserFactory.basic();
