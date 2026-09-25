@@ -4,7 +4,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   AgentSuggestionType,
-  CreateSuggestionType,
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
@@ -18,19 +17,14 @@ export interface AgentFieldEdits {
   instructions?: InstructionsSuggestionSchemaType[];
 }
 
-type AgentChange =
-  | { type: "create"; create: CreateSuggestionType }
-  | { type: "archive" }
-  | { type: "fields"; fields: AgentFieldEdits };
-
 type AgentSuggestionChangeInput = Pick<
   AgentSuggestionType,
   "kind" | "suggestion"
 >;
 
-function changeForSuggestion(
+function fieldEditsForSuggestion(
   suggestion: AgentSuggestionChangeInput
-): Result<AgentChange, DustError<"invalid_request_error">> {
+): Result<AgentFieldEdits, DustError<"invalid_request_error">> {
   const parsed = AgentSuggestionDataSchema.safeParse({
     kind: suggestion.kind,
     suggestion: suggestion.suggestion,
@@ -43,35 +37,25 @@ function changeForSuggestion(
 
   const data = parsed.data;
   switch (data.kind) {
+    // Creating and deleting an agent edit none of its fields.
     case "create":
-      return new Ok({ type: "create", create: data.suggestion });
-
     case "delete":
-      return new Ok({ type: "archive" });
+      return new Ok({});
 
     case "model":
-      return new Ok({ type: "fields", fields: { model: data.suggestion } });
+      return new Ok({ model: data.suggestion });
 
     case "name":
-      return new Ok({ type: "fields", fields: { name: data.suggestion.name } });
+      return new Ok({ name: data.suggestion.name });
 
     case "description":
-      return new Ok({
-        type: "fields",
-        fields: { description: data.suggestion.description },
-      });
+      return new Ok({ description: data.suggestion.description });
 
     case "scope":
-      return new Ok({
-        type: "fields",
-        fields: { scope: data.suggestion.scope },
-      });
+      return new Ok({ scope: data.suggestion.scope });
 
     case "instructions":
-      return new Ok({
-        type: "fields",
-        fields: { instructions: [data.suggestion] },
-      });
+      return new Ok({ instructions: [data.suggestion] });
 
     case "knowledge":
     case "skills":
@@ -92,12 +76,6 @@ function changeForSuggestion(
   }
 }
 
-export interface AgentBatchChanges {
-  create?: CreateSuggestionType;
-  archive?: true;
-  fields: AgentFieldEdits;
-}
-
 function mergeFieldEdits(
   merged: AgentFieldEdits,
   next: AgentFieldEdits
@@ -114,33 +92,19 @@ function mergeFieldEdits(
   };
 }
 
-function mergeAgentChanges(changes: AgentChange[]): AgentBatchChanges {
-  return changes.reduce<AgentBatchChanges>(
-    (merged, next) => ({
-      create: next.type === "create" ? next.create : merged.create,
-      archive: next.type === "archive" ? true : merged.archive,
-      fields:
-        next.type === "fields"
-          ? mergeFieldEdits(merged.fields, next.fields)
-          : merged.fields,
-    }),
-    { fields: {} }
-  );
-}
-
-export function mergeAgentSuggestionChanges(
+export function mergeAgentFieldEdits(
   suggestions: AgentSuggestionChangeInput[]
-): Result<AgentBatchChanges, DustError<"invalid_request_error">> {
-  const changes: AgentChange[] = [];
+): Result<AgentFieldEdits, DustError<"invalid_request_error">> {
+  let merged: AgentFieldEdits = {};
 
   for (const suggestion of suggestions) {
-    const change = changeForSuggestion(suggestion);
-    if (change.isErr()) {
-      return change;
+    const edits = fieldEditsForSuggestion(suggestion);
+    if (edits.isErr()) {
+      return edits;
     }
 
-    changes.push(change.value);
+    merged = mergeFieldEdits(merged, edits.value);
   }
 
-  return new Ok(mergeAgentChanges(changes));
+  return new Ok(merged);
 }

@@ -4,6 +4,7 @@ import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewType } from "@app/types/data_source_view";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
 export const AGENT_SUGGESTION_KINDS = [
@@ -21,6 +22,31 @@ export const AGENT_SUGGESTION_KINDS = [
 ] as const;
 
 export type AgentSuggestionKind = (typeof AGENT_SUGGESTION_KINDS)[number];
+
+export type SuggestionAction = "create" | "edit" | "delete";
+
+export function getAgentSuggestionAction(
+  kind: AgentSuggestionKind
+): SuggestionAction {
+  switch (kind) {
+    case "create":
+      return "create";
+    case "delete":
+      return "delete";
+    case "description":
+    case "instructions":
+    case "knowledge":
+    case "model":
+    case "name":
+    case "scope":
+    case "skills":
+    case "sub_agent":
+    case "tools":
+      return "edit";
+    default:
+      return assertNever(kind);
+  }
+}
 
 export const AGENT_SUGGESTION_STATES = [
   "pending",

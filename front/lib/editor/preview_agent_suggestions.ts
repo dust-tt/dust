@@ -1,4 +1,4 @@
-import { mergeAgentSuggestionChanges } from "@app/lib/editor/merge_agent_suggestion_changes";
+import { mergeAgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
 import type { MarkdownPipeline } from "@app/lib/editor/skill_instructions_html";
 import { applyInstructionEditsToHtml } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
@@ -95,13 +95,12 @@ export function previewAgentSuggestions({
   PreviewedAgentFields,
   DustError<"invalid_request_error">
 > {
-  const changes = mergeAgentSuggestionChanges(suggestions);
-  if (changes.isErr()) {
-    return changes;
+  const edits = mergeAgentFieldEdits(suggestions);
+  if (edits.isErr()) {
+    return edits;
   }
 
-  const { name, description, scope, instructions, model } =
-    changes.value.fields;
+  const { name, description, scope, instructions, model } = edits.value;
 
   const instructionsRes = previewInstructions(
     agent,

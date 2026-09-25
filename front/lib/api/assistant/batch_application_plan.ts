@@ -1,11 +1,9 @@
 import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
-import type { SkillSuggestionKind } from "@app/types/suggestions/skill_suggestion";
-
-type SuggestionAction = "create" | "edit" | "delete";
+import type { SuggestionAction } from "@app/types/suggestions/agent_suggestion";
+import { getAgentSuggestionAction } from "@app/types/suggestions/agent_suggestion";
+import { getSkillSuggestionAction } from "@app/types/suggestions/skill_suggestion";
 
 export type BatchApplicationStep =
   | {
@@ -20,44 +18,6 @@ export type BatchApplicationStep =
       agentId: string;
       suggestions: AgentSuggestionResource[];
     };
-
-function getSkillSuggestionAction(kind: SkillSuggestionKind): SuggestionAction {
-  switch (kind) {
-    case "create":
-      return "create";
-    case "delete":
-      return "delete";
-    case "availability":
-    case "edit":
-    case "editors":
-    case "name":
-    case "user_facing_description":
-      return "edit";
-    default:
-      return assertNever(kind);
-  }
-}
-
-function getAgentSuggestionAction(kind: AgentSuggestionKind): SuggestionAction {
-  switch (kind) {
-    case "create":
-      return "create";
-    case "delete":
-      return "delete";
-    case "description":
-    case "instructions":
-    case "knowledge":
-    case "model":
-    case "name":
-    case "scope":
-    case "skills":
-    case "sub_agent":
-    case "tools":
-      return "edit";
-    default:
-      return assertNever(kind);
-  }
-}
 
 /** Groups suggestions by action, then by target, in a single pass that keeps their order. */
 function groupByActionAndTarget<T>(

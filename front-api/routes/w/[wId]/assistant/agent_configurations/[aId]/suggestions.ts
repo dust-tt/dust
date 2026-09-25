@@ -213,7 +213,7 @@ app.patch(
       }
 
       const applyRes = await applyAgentSuggestions(auth, {
-        agent,
+        agent: agentResource,
         suggestions,
       });
       if (applyRes.isErr()) {
