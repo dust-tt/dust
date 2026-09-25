@@ -1,8 +1,6 @@
-import { searchSkills } from "@app/lib/api/skills/search";
-import { UserResource } from "@app/lib/resources/user_resource";
+import { searchSkillListings } from "@app/lib/api/skills/search_listing";
 import { SearchSkillsQuerySchema } from "@app/lib/skill_search/query_schema";
 import type { SearchSkillsResponseBody } from "@app/types/api/skills";
-import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -29,6 +27,11 @@ app.post(
       availability,
       editedByMe,
       codeDefinedOnly,
+      editorIds,
+      childSkillIds,
+      spaceIds,
+      activeUsersCount,
+      facets,
       sortBy,
       sortOrder,
     } = ctx.req.valid("json");
@@ -41,19 +44,24 @@ app.post(
         },
       });
     }
-    const result = await searchSkills(auth, {
+    const result = await searchSkillListings(auth, {
       searchTerm: query,
       limit,
       offset,
       sortBy,
       sortOrder,
       permissionFiltering,
+      facets,
       filters: {
         status,
         mcpServerViewIds,
         availability,
         editedByMe,
         codeDefinedOnly,
+        editorIds,
+        childSkillIds,
+        spaceIds,
+        activeUsersCount,
       },
     });
 
@@ -80,27 +88,7 @@ app.post(
       );
     }
 
-    const editorIds = [
-      ...new Set(result.value.skills.flatMap((skill) => skill.editorIds)),
-    ];
-    const users = await UserResource.fetchByIds(editorIds);
-
-    const editorsById = new Map(
-      users.map((user) => {
-        const { sId, fullName, image } = user.toJSON();
-        return [sId, { sId, fullName, image }];
-      })
-    );
-
-    return ctx.json({
-      ...result.value,
-      skills: result.value.skills.map((skill) => ({
-        ...skill,
-        editors: removeNulls(
-          [...new Set(skill.editorIds)].map((id) => editorsById.get(id))
-        ),
-      })),
-    });
+    return ctx.json(result.value);
   }
 );
 

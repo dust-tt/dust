@@ -108,6 +108,7 @@ async function setup({
       skills: [skill],
       total: 1,
       hasMore: false,
+      facets: {},
     });
   const fetcherWithBody = vi.fn(async () => search());
   const mutation = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
@@ -194,6 +195,7 @@ describe("search-backed Manage Skills", () => {
       ],
       total: 2,
       hasMore: false,
+      facets: {},
     });
     mount();
     await screen.findByRole("button", { name: /Zebra/ });
@@ -233,6 +235,7 @@ describe("search-backed Manage Skills", () => {
       skills: [skill],
       total: 51,
       hasMore: true,
+      facets: {},
     });
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
@@ -240,6 +243,7 @@ describe("search-backed Manage Skills", () => {
       skills: [{ ...skill, name: "Second page" }],
       total: 51,
       hasMore: false,
+      facets: {},
     });
     const [, nextButton] = screen
       .getAllByRole("button", { name: "" })
@@ -271,9 +275,15 @@ describe("search-backed Manage Skills", () => {
       skills: [skill],
       total: 1,
       hasMore: false,
+      facets: {},
     });
     await act(async () => {
-      pending.resolve({ skills: [skill], total: 1, hasMore: false });
+      pending.resolve({
+        skills: [skill],
+        total: 1,
+        hasMore: false,
+        facets: {},
+      });
     });
     await screen.findByRole("button", { name: /Weekly report/ });
 
@@ -422,6 +432,7 @@ describe("search-backed Manage Skills", () => {
       skills: [skill],
       total: 51,
       hasMore: true,
+      facets: {},
     });
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
@@ -497,6 +508,7 @@ describe("search-backed Manage Skills", () => {
       skills: [],
       total: 0,
       hasMore: false,
+      facets: {},
     });
     await userEvent.click(screen.getByRole("tab", { name: "Editable" }));
     await screen.findByText("No skills to show.");
@@ -540,12 +552,18 @@ describe("search-backed Manage Skills", () => {
 
   it("refreshes All after importing a skill", async () => {
     const { skill, context, search, mutation, mount } = await setup();
-    search.mockResolvedValue({ skills: [], total: 0, hasMore: false });
+    search.mockResolvedValue({
+      skills: [],
+      total: 0,
+      hasMore: false,
+      facets: {},
+    });
     mutation.mockImplementation(async () => {
       search.mockResolvedValue({
         skills: [skill],
         total: 1,
         hasMore: false,
+        facets: {},
       });
     });
     // Test import-driven cache refresh without the dropdown-to-dialog focus transition.
@@ -616,6 +634,7 @@ describe("search-backed Manage Skills", () => {
         skills: [],
         total: 0,
         hasMore: false,
+        facets: {},
       });
     });
     const ConfirmationDialog =
@@ -666,11 +685,13 @@ describe("search-backed Manage Skills", () => {
       skills: [{ ...skill, name: "Zebra" }],
       total: 51,
       hasMore: true,
+      facets: {},
     };
     const secondPage = {
       skills: [{ ...skill, sId: "next", name: "Alpha" }],
       total: 51,
       hasMore: false,
+      facets: {},
     };
     search.mockResolvedValueOnce(firstPage);
     mount();
@@ -715,6 +736,7 @@ describe("search-backed Manage Skills", () => {
       skills: [skill],
       total: 1,
       hasMore: false,
+      facets: {},
     });
 
     const input = screen.getByLabelText("Search skills");
@@ -773,6 +795,7 @@ describe("search-backed Manage Skills", () => {
         skills: [{ ...skill, name: "New report" }],
         total: 1,
         hasMore: false,
+        facets: {},
       });
     });
     await screen.findByRole("button", { name: /New report/ });
@@ -806,6 +829,7 @@ describe("search-backed Manage Skills", () => {
       skills: [],
       total: 0,
       hasMore: false,
+      facets: {},
     });
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     await screen.findByText("No skills to show.");
