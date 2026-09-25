@@ -224,9 +224,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const action = getSecureFileAction(ctx.req.query("action"), file);
   if (action === "view") {
     if (file.isFrameV2 && (await hasFeatureFlag(auth, "frames_v2"))) {
-      // Every Frame view loads its bundle here first: start waking the Frame's sandbox so the calls
-      // its UI makes once loaded find it running. The pre-warm decides on its own whether this
-      // viewer may.
+      // Start waking the Frame's sandbox while its UI loads; the pre-warm gates itself.
       void prewarmFrameSandbox(auth, file);
 
       const owner = renderLightWorkspaceType({

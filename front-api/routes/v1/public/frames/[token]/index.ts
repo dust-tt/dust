@@ -192,8 +192,7 @@ app.get(
       }
     }
 
-    // The viewer is past every access check: start waking the Frame's sandbox so the calls its UI
-    // makes once loaded find it running. The pre-warm decides on its own whether this viewer may.
+    // Start waking the Frame's sandbox while its UI loads; the pre-warm gates itself.
     if (auth && hasFunctions) {
       void prewarmFrameSandbox(auth, file);
     }
