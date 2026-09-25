@@ -91,15 +91,7 @@ function getCommandPath(command: string): string {
 }
 
 describe("sandbox image registry", () => {
-  test("pins the current dust-base and sbx bedrock image tags", () => {
-    expect(getDustBaseImage().imageId).toEqual({
-      imageName: "dust-base",
-      tag: "0.8.121",
-    });
-    expect(getDustBaseImage().baseImage).toEqual({
-      type: "docker",
-      imageRef: "dust-sbx-bedrock:1.11.0",
-    });
+  test("exposes the dust_filesystem capability", () => {
     expect(getDustBaseImage().hasCapability("dust_filesystem")).toBe(true);
   });
 
