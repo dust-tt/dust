@@ -12,12 +12,14 @@ export const MAX_AGENT_SEARCH_RESULTS = 100;
 
 // Null represents a type-wide read grant; do not enumerate resources in that case.
 function getAgentSearchReadableSpaceIds(auth: Authenticator) {
-  const workspaceId = auth.getNonNullableWorkspace().id;
+  const workspaceModelId = auth.getNonNullableWorkspace().id;
   const spaces = auth.getReadableSpaceModelIds();
   return spaces.kind === "all"
     ? null
     : spaces.resourceIds
-        .map((id) => SpaceResource.modelIdToSId({ id, workspaceId }))
+        .map((id) =>
+          SpaceResource.modelIdToSId({ id, workspaceId: workspaceModelId })
+        )
         .sort();
 }
 

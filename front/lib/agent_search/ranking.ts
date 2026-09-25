@@ -52,9 +52,9 @@ export function buildAgentDefaultSort({
 
 /**
  * @cc [owner:tdraier,label:product] indexed-agent-name-matching
- * An empty (or whitespace-only) search term matches every agent. Otherwise every term must
- * prefix-match the agent name through `name.keyword` or the autocomplete fields; the description
- * is not matched.
+ * An empty (or whitespace-only) search term matches every agent. Otherwise the agent name must
+ * contain every term of the search, the last one as a prefix (earlier terms match whole words), or
+ * start with the whole search via `name.keyword`; the description is not matched.
  */
 export function buildAgentNameAutocompleteQuery(
   searchTerm: string
