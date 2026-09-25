@@ -87,6 +87,6 @@ export type SearchAgentsResponseBody = {
   agents: (AgentSearchListItemType & {
     editors: Pick<UserType, "sId" | "fullName" | "image">[];
   })[];
+  total: number;
   hasMore: boolean;
-  nextCursor: string | null;
 };

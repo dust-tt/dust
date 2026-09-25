@@ -21,7 +21,7 @@ app.post(
     const {
       query,
       limit,
-      cursor,
+      offset,
       permissionFiltering,
       status,
       scope,
@@ -35,7 +35,7 @@ app.post(
     const result = await searchAgents(auth, {
       searchTerm: query,
       limit,
-      cursor,
+      offset,
       sortBy,
       sortOrder,
       permissionFiltering,
@@ -59,12 +59,12 @@ app.post(
           },
         });
       }
-      if (result.error === "invalid_cursor") {
+      if (result.error === "offset_out_of_range") {
         return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid agent search cursor",
+            message: "Agent search offset is out of range",
           },
         });
       }
