@@ -21,9 +21,9 @@ import {
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
 import {
+  agentSuggestionDirective,
   getConversationAgentSuggestionPlugin,
-  sidekickSuggestionDirective,
-} from "@app/components/markdown/suggestion/SidekickSuggestionDirective";
+} from "@app/components/markdown/suggestion/AgentSuggestionDirective";
 import {
   getSkillSuggestionPlugin,
   skillSuggestionDirective,
@@ -116,7 +116,7 @@ export const AgentMessageMarkdown = ({
       buildSkillDirective,
       buildAgentDirective,
       skillSuggestionDirective,
-      sidekickSuggestionDirective,
+      agentSuggestionDirective,
       ...additionalMarkdownPlugins,
     ];
 

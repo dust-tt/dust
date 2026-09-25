@@ -22,6 +22,11 @@ interface UseConversationAgentSuggestionReviewParams {
  * Once an accept request succeeds, the reviewed agent's configuration MUST be revalidated so the
  * applied change shows without a reload; a failed accept MUST NOT trigger it.
  */
+/**
+ * @cc [owner:avervaet,label:product] conversational-source-only
+ * `suggestions` MUST only contain `conversational` suggestions of the agent created in
+ * `conversationId`.
+ */
 export function useConversationAgentSuggestionReview({
   workspaceId,
   agentId,
@@ -81,6 +86,11 @@ interface UseConversationSkillSuggestionReviewParams {
  * @cc [owner:avervaet,label:product] refetch-skill-on-accept
  * Once an accept request succeeds, the reviewed skill MUST be revalidated so the applied change
  * shows without a reload; a failed accept MUST NOT trigger it.
+ */
+/**
+ * @cc [owner:avervaet,label:product] conversational-source-only
+ * `suggestions` MUST only contain `conversational` suggestions of the skill created in
+ * `conversationId`.
  */
 export function useConversationSkillSuggestionReview({
   workspaceId,
