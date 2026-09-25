@@ -34,9 +34,7 @@ export function useVoiceTranscriptionToggle({
       if (!res.ok) {
         throw new Error("Failed to update Voice transcription setting");
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (error) {
+    } catch {
       sendNotification({
         type: "error",
         title: "Failed to update Voice transcription setting",

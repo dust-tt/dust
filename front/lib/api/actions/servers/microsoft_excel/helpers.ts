@@ -51,9 +51,7 @@ async function getExcelSession(
     sessionCache.set(cacheKey, { sessionId, expiresAt });
 
     return sessionId;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (err) {
+  } catch {
     // Session creation failed, proceed without session
     return null;
   }

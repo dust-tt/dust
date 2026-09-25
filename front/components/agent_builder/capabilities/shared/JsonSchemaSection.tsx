@@ -74,9 +74,7 @@ export function JsonSchemaSection({
 
       jsonSchemaField.onChange(schemaObject);
       jsonSchemaStringField.onChange(schemaString);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (e) {
+    } catch {
       sendNotification({
         title: "Failed to generate schema.",
         type: "error",

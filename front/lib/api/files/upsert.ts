@@ -144,9 +144,7 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   let section: CoreAPIDataSourceDocumentSection | null = null;
   try {
     section = JSON.parse(content);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (e) {
+  } catch {
     return new Err<DustError>({
       name: "dust_error",
       code: "internal_error",

@@ -1430,9 +1430,7 @@ export const getUserActivity = async ({
             if (result?.results && result.results.length > 0) {
               break;
             }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-          } catch (propertyError) {
+          } catch {
             continue;
           }
         }
@@ -1897,9 +1895,7 @@ export const listAssociations = async ({
                 associations: result.results,
               });
             }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-          } catch (error) {
+          } catch {
             continue;
           }
         }

@@ -588,9 +588,7 @@ export function MCPServerViewsSheet({
         setConfigurationTool(null);
         setConfigurationMCPServerView(null);
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (error) {
+    } catch {
       sendNotification({
         title: "Configuration failed",
         description:

@@ -117,9 +117,7 @@ export async function sendInvitations({
     let data: any = {};
     try {
       data = await res.json();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (e) {
+    } catch {
       // ignore
     }
     if (data?.error?.type === "invitation_already_sent_recently") {

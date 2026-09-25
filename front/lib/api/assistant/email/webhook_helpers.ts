@@ -453,9 +453,7 @@ export const parseSendgridWebhookContent = async (
       },
       attachments,
     });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (e) {
+  } catch {
     return new Err(new Error("Failed to parse email content"));
   }
 };

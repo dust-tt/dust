@@ -119,9 +119,7 @@ AgentMCPServerConfigurationModel.init(
             let parsed;
             try {
               parsed = JSON.parse(value);
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-            } catch (e) {
+            } catch {
               throw new Error("additionalConfiguration is invalid JSON");
             }
             if (parsed && typeof parsed !== "object") {

@@ -244,9 +244,7 @@ AgentConfigurationModel.init(
               if (parsed && typeof parsed !== "object") {
                 throw new Error("Response format is invalid JSON");
               }
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-            } catch (e) {
+            } catch {
               throw new Error("Response format is invalid JSON");
             }
           }

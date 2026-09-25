@@ -139,9 +139,7 @@ export const useJoinConversation = ({
 
         throw new Error("Failed to subscribe to the conversation.");
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (error) {
+    } catch {
       sendNotification({
         type: "error",
         title: "Error",

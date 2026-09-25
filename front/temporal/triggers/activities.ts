@@ -347,9 +347,7 @@ export async function runTriggeredAgentsActivity({
           recentActions.length > 0
             ? recentActions[recentActions.length - 2].takenAt // -2 to get the last completed action, -1 is the current running action
             : null;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         // We can ignore this error, schedule might not have run yet.
       }
       break;

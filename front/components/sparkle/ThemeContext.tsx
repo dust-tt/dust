@@ -40,9 +40,7 @@ function getSavedTheme() {
     }
 
     return DEFAULT_THEME;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (e) {
+  } catch {
     // do nothing
   }
 

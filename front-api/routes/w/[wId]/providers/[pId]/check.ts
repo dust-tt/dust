@@ -88,8 +88,7 @@ app.post(
           }
           await deploymentsRes.json();
           return ctx.json({ ok: true });
-          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-        } catch (e) {
+        } catch {
           return ctx.json(
             { ok: false, error: "Invalid Azure endpoint URL" },
             400

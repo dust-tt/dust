@@ -212,9 +212,7 @@ export function useDeleteWebhookSource({
         } else {
           throw new Error("Delete operation failed");
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         sendNotification({
           type: "error",
           title: "Failed to delete webhook source",

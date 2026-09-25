@@ -427,9 +427,7 @@ export const triggerAgentMessageFeedbackNotification = async (
         message: `Failed to trigger agent message feedback notification: errors: ${eventErrors}`,
       });
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (error) {
+  } catch {
     return new Err({
       name: "dust_error",
       code: "internal_error",

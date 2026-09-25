@@ -461,9 +461,7 @@ export async function augmentDataSourceWithConnectorDetails(
     } else {
       connector = { ...statusRes.value, connectionId: null };
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (e) {
+  } catch {
     // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
     // the datasources (eventual actions will fail but a 500 just at display is not desirable).
     // When that happens the managed data sources are shown as failed.

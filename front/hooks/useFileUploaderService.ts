@@ -282,9 +282,7 @@ export function useFileUploaderService({
                   isAPIErrorResponse(res) ? res.error.message : undefined
                 )
               );
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-            } catch (err) {
+            } catch {
               return new Err(new FileBlobUploadError(fileBlob.file));
             }
           }
