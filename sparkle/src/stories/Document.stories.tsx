@@ -839,6 +839,9 @@ export const PermissionChanges: Story = {
     const draft = editor.textContent;
     await userEvent.click(canvas.getByRole("checkbox", { name: "Read only" }));
     await expect(editor).toHaveAttribute("contenteditable", "false");
+    await expect(
+      canvas.queryByRole("button", { name: "Move block", hidden: true })
+    ).not.toBeInTheDocument();
     await userEvent.click(editor);
     await userEvent.keyboard(" must not appear{Control>}s{/Control}");
     await expect(editor.textContent).toBe(draft);
@@ -857,11 +860,18 @@ export const PermissionChanges: Story = {
     await expect(editor).toHaveAttribute("contenteditable", "true");
     await expect(editor.textContent).toBe(draft);
     await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+    await userEvent.hover(editor.querySelector("p")!);
+    await expect(
+      await canvas.findByRole("button", { name: "Move block" })
+    ).toBeVisible();
     await userEvent.click(
       canvas.getByRole("checkbox", { name: "Persistence available" })
     );
     await expect(editor).toHaveAttribute("contenteditable", "false");
     await expect(canvas.getByRole("status")).toHaveTextContent("Not saved");
+    await expect(
+      canvas.queryByRole("button", { name: "Move block", hidden: true })
+    ).not.toBeInTheDocument();
     await expect(canvas.getByRole("alert")).toHaveTextContent(
       "Saving is unavailable"
     );
