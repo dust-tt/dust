@@ -18,6 +18,7 @@ import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import { TopUpsHistoryTable } from "@app/components/workspace/TopUpsHistoryTable";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
+import { CreditSpendCheckpointSettingsCard } from "@app/components/workspace/usage/CreditSpendCheckpointSettingsCard";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTiersSettingsCard";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
@@ -1414,6 +1415,7 @@ export function UsagePage() {
                       seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
                     />
                   )}
+                  <CreditSpendCheckpointSettingsCard workspaceId={owner.sId} />
                   <ModelTiersSettingsCard owner={owner} />
                   {isCreditPriced && (
                     <LockedSection
