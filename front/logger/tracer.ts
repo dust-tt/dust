@@ -22,16 +22,6 @@ interface SpanLike {
   setOperationName(name: string): SpanLike;
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-const noopSpan: SpanLike = {
-  setTag() {
-    return noopSpan;
-  },
-  setOperationName() {
-    return noopSpan;
-  },
-};
-
 const noopTracer: TracerLike = {
   scope() {
     return {
