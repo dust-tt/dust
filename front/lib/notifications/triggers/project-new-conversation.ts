@@ -2,8 +2,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications";
 import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
-import { triggerActivationNewConversationEmail } from "@app/lib/notifications/workflows/activation-new-conversation";
-import { shouldSkipConversationExternalNotification } from "@app/lib/notifications/workflows/conversation-unread";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -11,19 +9,13 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import {
-  ACTIVATION_NUDGE_ORIGIN,
-  isPodConversation,
-} from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   CONVERSATION_UNREAD_TRIGGER_ID,
   DEFAULT_NOTIFICATION_CONDITION,
-  FOR_YOU_NOTIFICATION_METADATA_KEY,
-  isForYouNotificationsEnabled,
   isNotificationCondition,
 } from "@app/types/notification_preferences";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -132,7 +124,7 @@ const triggerProjectNewConversationNotifications = async (
     return new Err(new DustError("space_not_found", "Space not found"));
   }
 
-  // Activation pods send a dedicated email to the target user after the agent has replied.
+  // Activation pods are nudged by the scheduler, not announced as a new project conversation.
   const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
   if (activationPod !== null) {
     return new Ok(undefined);
@@ -240,95 +232,4 @@ export function notifyNewProjectConversation(
       context: { conversationId: conversation.sId },
     }
   );
-}
-
-export async function areForYouNotificationsEnabled(
-  user: UserResource
-): Promise<boolean> {
-  const metadata = await user.getMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY);
-  return isForYouNotificationsEnabled(metadata?.value);
-}
-
-/**
- * Send the dedicated activation email once the agent has replied in an
- * activation-pod conversation. Called from the agent-loop completion path so
- * the notification starts only after the reply exists.
- *
- * Runs only if the conversation belongs to an activation pod and was started
- * by the activation nudge workflow. Respects the workspace email/Slack setting,
- * the target user's For You toggle, and "Notify me about" condition; Email
- * frequency does not apply.
- */
-export async function notifyActivationConversationAgentReplied(
-  auth: Authenticator,
-  { conversationId }: { conversationId: string }
-): Promise<void> {
-  if (
-    await shouldSkipConversationExternalNotification(
-      auth.getNonNullableWorkspace().sId
-    )
-  ) {
-    return;
-  }
-
-  const conversationResource = await ConversationResource.fetchById(
-    auth,
-    conversationId,
-    { excludeTest: true }
-  );
-  if (!conversationResource) {
-    return;
-  }
-
-  const conversation = conversationResource.toJSON();
-  if (!isPodConversation(conversation)) {
-    return;
-  }
-
-  const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-  if (!space) {
-    return;
-  }
-
-  const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
-  if (activationPod === null) {
-    return;
-  }
-
-  // Only a conversation Dust opened with a nudge gets the notification, not one
-  // the user started themselves.
-  const openingOrigin =
-    await conversationResource.openingUserMessageOrigin(auth);
-  if (openingOrigin !== ACTIVATION_NUDGE_ORIGIN) {
-    return;
-  }
-
-  const userToNotify = auth.user();
-  if (!userToNotify) {
-    return;
-  }
-
-  const [allowedUser] = await filterMembersByNotifyCondition(
-    auth,
-    [userToNotify],
-    space.id
-  );
-  if (!allowedUser) {
-    return;
-  }
-
-  if (!(await areForYouNotificationsEnabled(allowedUser))) {
-    return;
-  }
-
-  const res = await triggerActivationNewConversationEmail(auth, {
-    conversation,
-    userToNotify: allowedUser,
-  });
-  if (res.isErr()) {
-    logger.error(
-      { error: res.error, conversationId },
-      "Failed to trigger activation new conversation email"
-    );
-  }
 }

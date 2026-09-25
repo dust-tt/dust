@@ -22,10 +22,7 @@ import {
 } from "@app/temporal/agent_loop/activities/common";
 import { recordExecutionFinalized as recordConsumptionExecutionFinalized } from "@app/temporal/agent_loop/activities/consumption";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
-import {
-  activationNewConversationNotification,
-  conversationUnreadNotification,
-} from "@app/temporal/agent_loop/activities/notification";
+import { conversationUnreadNotification } from "@app/temporal/agent_loop/activities/notification";
 import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
 import {
   launchEmitMetronomeUsageEvents,
@@ -77,7 +74,6 @@ export async function finalizeSuccessfulAgentLoopActivity(
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     conversationUnreadNotification(auth, agentLoopArgs),
-    activationNewConversationNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
     sendEmailReplyOnCompletion(auth, agentLoopArgs),
   ]);
