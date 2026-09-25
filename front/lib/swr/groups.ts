@@ -173,6 +173,7 @@ export function useGroup({
   return {
     group: data?.group ?? null,
     members: data ? data.members : emptyArray<UserType>(),
+    managers: data ? data.managers : emptyArray<UserType>(),
     isGroupLoading: !error && !data && !disabled && !!groupId,
     isGroupError: !!error,
     mutateGroup: mutate,
@@ -471,9 +472,11 @@ export function useUpdateGroup({
     async ({
       name,
       memberIds,
+      managerIds,
     }: {
       name?: string;
       memberIds?: string[];
+      managerIds?: string[];
     }): Promise<PatchGroupResponseBody | null> => {
       if (!groupId) {
         return null;
@@ -483,7 +486,7 @@ export function useUpdateGroup({
         const res = await clientFetch(`/api/w/${owner.sId}/groups/${groupId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, memberIds }),
+          body: JSON.stringify({ name, memberIds, managerIds }),
         });
 
         if (!res.ok) {
