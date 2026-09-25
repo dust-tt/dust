@@ -117,7 +117,7 @@ async function setup({
   };
   const search = vi
     .fn<() => Promise<SearchAgentsResponseBody>>()
-    .mockResolvedValue({ agents: [agent], hasMore: false, nextCursor: null });
+    .mockResolvedValue({ agents: [agent], total: 1, hasMore: false });
   const fetcherWithBody = vi.fn(async () => search());
   const fetcher = vi.fn(async (url: string) => {
     if (url.endsWith(`/agent_configurations/${agent.sId}`)) {
@@ -182,7 +182,7 @@ describe("search-backed Manage Agents", () => {
       scope: ["visible", "hidden"],
       sortBy: "usage",
       limit: 25,
-      cursor: null,
+      offset: 0,
       permissionFiltering: "strict",
     });
     expect(
@@ -278,7 +278,7 @@ describe("search-backed Manage Agents", () => {
         query: "report",
         sortBy: "name",
         sortOrder: "asc",
-        cursor: null,
+        offset: 0,
       })
     );
   });
@@ -324,11 +324,7 @@ describe("search-backed Manage Agents", () => {
 
   it("keeps the selection across pages and offers batch actions", async () => {
     const { agent, search, fetcherWithBody, mount } = await setup();
-    search.mockResolvedValueOnce({
-      agents: [agent],
-      hasMore: true,
-      nextCursor: "next-page",
-    });
+    search.mockResolvedValueOnce({ agents: [agent], total: 30, hasMore: true });
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
@@ -343,18 +339,12 @@ describe("search-backed Manage Agents", () => {
 
     search.mockResolvedValue({
       agents: [{ ...agent, sId: "second", name: "Second page" }],
+      total: 30,
       hasMore: false,
-      nextCursor: null,
     });
-    const [, nextButton] = screen
-      .getAllByRole("button", { name: "" })
-      .filter((button) => !button.getAttribute("aria-haspopup"))
-      .slice(-2);
-    await userEvent.click(nextButton);
+    await userEvent.click(screen.getByRole("button", { name: "2" }));
     await screen.findByRole("button", { name: /Second page/ });
-    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
-      cursor: "next-page",
-    });
+    expect(lastSearchBody(fetcherWithBody)).toMatchObject({ offset: 25 });
     await userEvent.click(
       screen.getByRole("checkbox", { name: "Select Second page" })
     );
@@ -380,8 +370,8 @@ describe("search-backed Manage Agents", () => {
           editorIds: [],
         },
       ],
+      total: 3,
       hasMore: false,
-      nextCursor: null,
     });
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });

@@ -17,7 +17,7 @@ const SEARCH_AGENTS_QUERY_MAX_LENGTH = 200;
 export function useSearchAgents({
   owner,
   searchTerm,
-  cursor,
+  offset,
   limit,
   sortBy,
   sortOrder,
@@ -27,7 +27,7 @@ export function useSearchAgents({
 }: {
   owner: LightWorkspaceType;
   searchTerm: string;
-  cursor?: string | null;
+  offset?: number;
   limit?: number;
   sortBy?: AgentSearchSort;
   sortOrder?: AgentSearchSortOrder;
@@ -50,7 +50,7 @@ export function useSearchAgents({
   const body = {
     ...filters,
     query: debouncedSearchTerm,
-    cursor,
+    offset,
     limit,
     sortBy,
     sortOrder,
@@ -70,7 +70,7 @@ export function useSearchAgents({
     }
   );
 
-  // Search filters and cursors are in the body, so refresh every search key for this workspace.
+  // Search filters and offsets are in the body, so refresh every search key for this workspace.
   const mutateRegardlessOfQueryParams = useCallback(
     () => globalMutate((key) => Array.isArray(key) && key[0] === url),
     [globalMutate, url]
@@ -80,8 +80,7 @@ export function useSearchAgents({
     agents:
       (disabled ? undefined : data?.agents) ??
       emptyArray<SearchAgentsResponseBody["agents"][number]>(),
-    hasMore: data?.hasMore ?? false,
-    nextCursor: data?.nextCursor ?? null,
+    total: data?.total ?? 0,
     isAgentsError: !!error,
     isAgentsLoading: !disabled && (isDebouncing || isLoading),
     mutate,

@@ -9,7 +9,6 @@ import {
   useSetContentWidth,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
-import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
@@ -35,6 +34,7 @@ import {
   TabsTrigger,
   Tooltip,
 } from "@dust-tt/sparkle";
+import type { PaginationState } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 const AGENT_SEARCH_PAGE_SIZE = 25;
@@ -81,12 +81,10 @@ function AgentsList({
   const [selectedAgents, setSelectedAgents] = useState<AgentSearchItem[]>([]);
   const { tags } = useTags({ owner, disabled: selectedAgents.length === 0 });
   const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
-  const {
-    cursorPagination,
-    tablePagination,
-    handlePaginationChange,
-    resetPagination,
-  } = useCursorPaginationForDataTable(AGENT_SEARCH_PAGE_SIZE);
+  const [tablePagination, setTablePagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: AGENT_SEARCH_PAGE_SIZE,
+  });
   const [selectedSort, setSelectedSort] = useState<{
     sortBy: Exclude<AgentSearchSort, "relevance">;
     sortOrder: AgentSearchSortOrder;
@@ -105,27 +103,21 @@ function AgentsList({
 
   if (queryKey !== previousQueryKey) {
     setPreviousQueryKey(queryKey);
-    resetPagination();
+    setTablePagination({ pageIndex: 0, pageSize: AGENT_SEARCH_PAGE_SIZE });
     setSelectedAgents([]);
   }
 
-  const {
-    agents,
-    hasMore,
-    nextCursor,
-    isAgentsLoading,
-    isAgentsError,
-    mutate,
-  } = useSearchAgents({
-    owner,
-    searchTerm,
-    filters,
-    permissionFiltering,
-    cursor: cursorPagination.cursor,
-    limit: AGENT_SEARCH_PAGE_SIZE,
-    sortBy,
-    sortOrder,
-  });
+  const { agents, total, isAgentsLoading, isAgentsError, mutate } =
+    useSearchAgents({
+      owner,
+      searchTerm,
+      filters,
+      permissionFiltering,
+      offset: tablePagination.pageIndex * AGENT_SEARCH_PAGE_SIZE,
+      limit: AGENT_SEARCH_PAGE_SIZE,
+      sortBy,
+      sortOrder,
+    });
 
   // Batch edits are reserved to the agent's editors and to workspace admins, as on the legacy page.
   const canSelect = (agent: AgentSearchItem) =>
@@ -177,12 +169,8 @@ function AgentsList({
           onSelect={onSelect}
           onRefresh={mutate}
           pagination={tablePagination}
-          setPagination={(pagination) => {
-            if (!isAgentsLoading) {
-              handlePaginationChange(pagination, nextCursor);
-            }
-          }}
-          hasMore={hasMore}
+          setPagination={setTablePagination}
+          total={total}
           sorting={
             sortBy === "relevance"
               ? []

@@ -39,7 +39,7 @@ interface AgentSearchTableProps {
   onRefresh: () => void;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
-  hasMore: boolean;
+  total: number;
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
   isLoading: boolean;
@@ -57,7 +57,7 @@ export function AgentSearchTable({
   onRefresh,
   pagination,
   setPagination,
-  hasMore,
+  total,
   sorting,
   setSorting,
   isLoading,
@@ -307,13 +307,7 @@ export function AgentSearchTable({
       sorting={sorting}
       setSorting={setSorting}
       isServerSideSorting
-      totalRowCount={
-        hasMore
-          ? (pagination.pageIndex + 1) * pagination.pageSize + 1
-          : pagination.pageIndex * pagination.pageSize + agents.length
-      }
-      rowCountIsCapped={hasMore}
-      disablePaginationNumbers
+      totalRowCount={total}
     />
   );
 }
