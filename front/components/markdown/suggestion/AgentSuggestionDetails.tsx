@@ -1,32 +1,22 @@
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
+import { formatModelEffortLabel } from "@app/components/model_picker/modelPickerUtils";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { SkillFieldEditSection } from "@app/components/skill_builder/SkillFieldEditSection";
-import type {
-  AgentConfigurationScope,
-  AgentConfigurationType,
-} from "@app/types/assistant/agent";
+import { getAgentScopeLabel } from "@app/lib/agent_builder/labels";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { DiffBlock } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
 
-function formatModel(modelId: string, reasoningEffort?: string | null) {
+function formatModel(modelId: string, reasoningEffort?: ReasoningEffort) {
   const modelName = getModelDisplayNameFromId(modelId);
-  if (!reasoningEffort) {
-    return modelName;
-  }
-  const effort =
-    reasoningEffort.charAt(0).toUpperCase() + reasoningEffort.slice(1);
-  return `${modelName} (${effort} reasoning)`;
-}
-
-function formatScope(scope: AgentConfigurationScope | undefined) {
-  if (!scope) {
-    return "";
-  }
-  return scope === "visible" ? "Published" : "Unpublished";
+  return reasoningEffort
+    ? formatModelEffortLabel(modelName, reasoningEffort)
+    : modelName;
 }
 
 interface NewInstructionsBlockProps {
@@ -146,8 +136,12 @@ export function AgentSuggestionDetails({
       return (
         <SkillFieldEditSection
           label="Visibility"
-          currentValue={formatScope(agentConfiguration?.scope)}
-          newValue={formatScope(suggestion.suggestion.scope)}
+          currentValue={
+            agentConfiguration
+              ? getAgentScopeLabel(agentConfiguration.scope)
+              : ""
+          }
+          newValue={getAgentScopeLabel(suggestion.suggestion.scope)}
         />
       );
 
