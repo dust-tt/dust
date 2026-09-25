@@ -1,7 +1,19 @@
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterPanel";
 import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
+import type { AgentFilter } from "@app/components/assistant/manager/agentFilter";
+import {
+  AGENT_FILTER_CATEGORIES,
+  AGENT_FILTER_CATEGORY_SINGULAR_LABEL,
+  toAgentSearchFilters,
+} from "@app/components/assistant/manager/agentFilter";
+import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
+import {
+  clearFilterCategory,
+  getFilterSummaries,
+} from "@app/components/shared/filter_panel/filterState";
 import {
   useSetContentWidth,
   useSetPageTitle,
@@ -241,6 +253,13 @@ export function SearchAgentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
   const [showHiddenAgents, setShowHiddenAgents] = useState(false);
+  const [filter, setFilter] = useState<AgentFilter>({});
+  // Default agents all share the global scope, so Access does not apply to them.
+  const filterCategories = AGENT_FILTER_CATEGORIES.filter(
+    (category) => selectedTab !== "default" || category !== "access"
+  );
+  const activeTab =
+    SEARCH_TABS.find((tab) => tab.id === selectedTab) ?? SEARCH_TABS[0];
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Agents");
 
@@ -296,8 +315,9 @@ export function SearchAgentsPage() {
             {SEARCH_TABS.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
             ))}
+            <div className="grow" />
             {isAdmin && selectedTab === "all" && (
-              <span className="ml-auto flex gap-1 self-center text-sm text-muted-foreground">
+              <span className="flex gap-1 self-center text-sm text-muted-foreground">
                 <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
                   <Checkbox
                     checked={showHiddenAgents}
@@ -315,13 +335,34 @@ export function SearchAgentsPage() {
                 />
               </span>
             )}
+            <div className="flex items-center">
+              <AgentFilterPanel
+                owner={owner}
+                categories={filterCategories}
+                tabFilters={activeTab.filters}
+                permissionFiltering={getPermissionFiltering(activeTab.id)}
+                filter={filter}
+                onFilterChange={setFilter}
+              />
+            </div>
           </TabsList>
+          <FilterSummaryChips
+            summaries={getFilterSummaries(
+              filter,
+              filterCategories,
+              AGENT_FILTER_CATEGORY_SINGULAR_LABEL
+            )}
+            onClearCategory={(category) =>
+              setFilter(clearFilterCategory(filter, category))
+            }
+            onClearAll={() => setFilter({})}
+          />
           {SEARCH_TABS.map((tab) => (
             <TabsContent key={tab.id} value={tab.id}>
               <AgentsList
                 key={owner.sId}
                 searchTerm={searchTerm}
-                filters={tab.filters}
+                filters={toAgentSearchFilters(filter, tab.filters)}
                 permissionFiltering={getPermissionFiltering(tab.id)}
                 onSelect={setDetailedAgentId}
               />

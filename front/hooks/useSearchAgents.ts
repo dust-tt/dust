@@ -1,6 +1,7 @@
 import { useDebounce } from "@app/hooks/useDebounce";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
+  AgentSearchFacet,
   AgentSearchFilters,
   AgentSearchPermissionFiltering,
   AgentSearchSort,
@@ -23,6 +24,7 @@ export function useSearchAgents({
   sortOrder,
   permissionFiltering,
   filters,
+  facets,
   disabled,
 }: {
   owner: LightWorkspaceType;
@@ -33,6 +35,7 @@ export function useSearchAgents({
   sortOrder?: AgentSearchSortOrder;
   permissionFiltering?: AgentSearchPermissionFiltering;
   filters?: AgentSearchFilters;
+  facets?: AgentSearchFacet[];
   disabled?: boolean;
 }) {
   const { fetcherWithBody } = useFetcher();
@@ -55,6 +58,7 @@ export function useSearchAgents({
     sortBy,
     sortOrder,
     permissionFiltering,
+    facets,
   };
   const agentsFetcher: () => Promise<SearchAgentsResponseBody> = () =>
     fetcherWithBody([url, body, "POST"]);
@@ -81,6 +85,7 @@ export function useSearchAgents({
       (disabled ? undefined : data?.agents) ??
       emptyArray<SearchAgentsResponseBody["agents"][number]>(),
     total: data?.total ?? 0,
+    facets: data?.facets,
     isAgentsError: !!error,
     isAgentsValidating: !disabled && isValidating,
     isAgentsLoading: !disabled && (isDebouncing || isLoading),
