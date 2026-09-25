@@ -1,6 +1,7 @@
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -362,6 +363,7 @@ interface CatalogRowProps {
 
 export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
   const name = getItemName(item);
+  const avatarSize = useIsMobile() ? "md" : "lg";
   return (
     <div
       onClick={onDetails}
@@ -380,9 +382,9 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
         className="col-start-1 row-start-1 shrink-0 rounded-2xl transition duration-200 ease-out hover:brightness-110 active:brightness-90 md:row-span-2"
       >
         {item.kind === "agent" ? (
-          <Avatar size="lg" visual={item.agent.pictureUrl} />
+          <Avatar size={avatarSize} visual={item.agent.pictureUrl} />
         ) : (
-          <SkillCatalogAvatar skill={item.skill} />
+          <SkillCatalogAvatar skill={item.skill} size={avatarSize} />
         )}
       </button>
       <div className="col-start-2 col-end-4 row-start-1 flex min-w-0 items-center gap-2 self-center md:col-end-3 md:self-end">
