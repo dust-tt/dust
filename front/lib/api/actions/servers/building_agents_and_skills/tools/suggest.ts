@@ -4,14 +4,20 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
-import type { SingletonAgentSuggestionData } from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
+import type {
+  AgentLinkSuggestionData,
+  SingletonAgentSuggestionData,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import {
-  recordAgentCreationSuggestion,
+  createPendingAgentForSuggestion,
+  recordAgentCreationSuggestionOnPlaceholder,
+  recordAgentLinkSuggestions,
   recordSingletonAgentSuggestions,
   validateAgentCreation,
   validateAgentDeletion,
   validateAgentDescriptionChange,
   validateAgentInstructionsChange,
+  validateAgentLinksChange,
   validateAgentModelChange,
   validateAgentNameChange,
   validateAgentPublishStateChange,
@@ -24,12 +30,14 @@ import type {
   DeleteSkillSuggestion,
   EditAgentSuggestion,
   EditSkillSuggestion,
+  SkillTarget,
+  SubAgentTarget,
   SuggestArgs,
   Suggestion,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import {
   checkSkillSuggestionKindAuthorized,
-  recordSkillCreationSuggestion,
+  recordSkillCreationSuggestionOnPlaceholder,
   recordSkillSuggestions,
   validateSkillAvailabilitySuggestion,
   validateSkillCreation,
@@ -41,11 +49,17 @@ import {
 } from "@app/lib/api/actions/servers/building_agents_and_skills/skill_suggestion_changes";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  getAgentConfiguration,
+  getAgentConfigurations,
+} from "@app/lib/api/assistant/configuration/agent";
 import { fetchCustomSkillById } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillReference } from "@app/lib/skills/format";
+import { extractSkillRefs, resolveSkillRefTags } from "@app/lib/skills/format";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -61,13 +75,20 @@ import type {
   SkillSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
 import assert from "assert";
+import uniq from "lodash/uniq";
 
 /**
  * What one validated suggestion records. Each maps to one or more rows of the existing agent and
  * skill suggestion kinds, all attached to the same batch.
  */
 type PlannedChange =
-  | { type: "agent_creation"; create: CreateSuggestionType }
+  | {
+      type: "agent_creation";
+      ref: string | null;
+      create: CreateSuggestionType;
+      skills: SkillTarget[];
+      subAgents: SubAgentTarget[];
+    }
   | {
       type: "agent";
       agent: LightAgentConfigurationType;
@@ -76,9 +97,221 @@ type PlannedChange =
         agent: AgentConfigurationType;
         edits: InstructionSuggestionEditInput[];
       } | null;
+      links: AgentLinkChanges | null;
     }
-  | { type: "skill_creation"; create: SkillCreateSuggestionType }
+  | {
+      type: "skill_creation";
+      ref: string | null;
+      create: SkillCreateSuggestionType;
+    }
   | { type: "skill"; skill: SkillResource; rows: SkillSuggestionData[] };
+
+type AgentLinkChanges = {
+  addSkills: SkillTarget[];
+  removeSkillIds: string[];
+  addSubAgents: SubAgentTarget[];
+  removeSubAgentIds: string[];
+};
+
+/** The placeholders created for the creations of a call, and the refs they resolve. */
+type Placeholders = {
+  agents: Map<PlannedChange, LightAgentConfigurationType>;
+  skills: Map<PlannedChange, SkillResource>;
+  agentRefs: Map<string, string>;
+  skillRefs: Map<string, SkillReference>;
+};
+
+function refsOf(targets: (SkillTarget | SubAgentTarget)[]): string[] {
+  return targets.flatMap((t) => ("ref" in t ? [t.ref] : []));
+}
+
+function skillIdsOf(targets: SkillTarget[]): string[] {
+  return targets.flatMap((t) => ("skillId" in t ? [t.skillId] : []));
+}
+
+function agentIdsOf(targets: SubAgentTarget[]): string[] {
+  return targets.flatMap((t) => ("agentId" in t ? [t.agentId] : []));
+}
+
+/** The skills and sub-agents a suggestion attaches, as existing ids or refs. */
+function linkTargetsOf(suggestion: Suggestion): {
+  skills: SkillTarget[];
+  subAgents: SubAgentTarget[];
+} {
+  switch (suggestion.kind) {
+    case "create_agent":
+      return {
+        skills: suggestion.skills ?? [],
+        subAgents: suggestion.subAgents ?? [],
+      };
+    case "edit_agent":
+      return {
+        skills: suggestion.addSkills ?? [],
+        subAgents: suggestion.addSubAgents ?? [],
+      };
+    case "create_skill":
+    case "edit_skill":
+    case "delete_agent":
+    case "delete_skill":
+      return { skills: [], subAgents: [] };
+    default:
+      assertNever(suggestion);
+  }
+}
+
+/** The skill instructions HTML a suggestion writes, where skill tags may cite refs. */
+function skillInstructionsOf(suggestion: Suggestion): string[] {
+  switch (suggestion.kind) {
+    case "create_skill":
+      return [suggestion.instructions];
+    case "edit_skill":
+      return (suggestion.instructionEdits ?? []).map((edit) => edit.content);
+    case "create_agent":
+    case "edit_agent":
+    case "delete_agent":
+    case "delete_skill":
+      return [];
+    default:
+      assertNever(suggestion);
+  }
+}
+
+function declaredRefOf(
+  suggestion: Suggestion
+): { ref: string; kind: "agent" | "skill" } | null {
+  switch (suggestion.kind) {
+    case "create_agent":
+      return suggestion.ref ? { ref: suggestion.ref, kind: "agent" } : null;
+    case "create_skill":
+      return suggestion.ref ? { ref: suggestion.ref, kind: "skill" } : null;
+    case "edit_agent":
+    case "edit_skill":
+    case "delete_agent":
+    case "delete_skill":
+      return null;
+    default:
+      assertNever(suggestion);
+  }
+}
+
+/**
+ * Refs are unique within the call, every cited ref is declared by a creation of the right kind
+ * (a skill where a skill is expected, an agent where a sub-agent is expected), no list cites the
+ * same entity twice, and a new agent does not list itself as a sub-agent.
+ */
+function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
+  const declared = new Map<string, "agent" | "skill">();
+  for (const suggestion of suggestions) {
+    const declaration = declaredRefOf(suggestion);
+    if (declaration) {
+      if (declared.has(declaration.ref)) {
+        return new Err(
+          new MCPError(`The ref "${declaration.ref}" is declared twice.`)
+        );
+      }
+      declared.set(declaration.ref, declaration.kind);
+    }
+  }
+
+  for (const suggestion of suggestions) {
+    const { skills, subAgents } = linkTargetsOf(suggestion);
+    const cited = [
+      ...refsOf(skills).map((ref) => ({ ref, kind: "skill" as const })),
+      ...skillInstructionsOf(suggestion)
+        .flatMap(extractSkillRefs)
+        .map((ref) => ({ ref, kind: "skill" as const })),
+      ...refsOf(subAgents).map((ref) => ({ ref, kind: "agent" as const })),
+    ];
+    for (const { ref, kind } of cited) {
+      const declaredKind = declared.get(ref);
+      if (!declaredKind) {
+        return new Err(
+          new MCPError(
+            `The ref "${ref}" is not declared by any creation of this call.`
+          )
+        );
+      }
+      if (declaredKind !== kind) {
+        return new Err(
+          new MCPError(
+            `The ref "${ref}" does not point at ${kind === "agent" ? "an agent" : "a skill"}.`
+          )
+        );
+      }
+    }
+
+    const selfRef = declaredRefOf(suggestion);
+    if (selfRef && refsOf(subAgents).includes(selfRef.ref)) {
+      return new Err(new MCPError("An agent cannot be its own sub-agent."));
+    }
+
+    for (const keys of [
+      skills.map((t) => ("ref" in t ? `ref:${t.ref}` : t.skillId)),
+      subAgents.map((t) => ("ref" in t ? `ref:${t.ref}` : t.agentId)),
+    ]) {
+      if (uniq(keys).length !== keys.length) {
+        return new Err(
+          new MCPError(
+            "A skill or sub-agent is listed twice in the same change."
+          )
+        );
+      }
+    }
+  }
+
+  return new Ok(undefined);
+}
+
+/** Existing skills and sub-agents cited by the call exist and are readable by the caller. */
+async function validateExistingLinkTargets(
+  auth: Authenticator,
+  suggestions: Suggestion[]
+): Promise<Result<undefined, MCPError>> {
+  const targets = suggestions.map(linkTargetsOf);
+  const skillIds = uniq(targets.flatMap((t) => skillIdsOf(t.skills)));
+  const agentIds = uniq(targets.flatMap((t) => agentIdsOf(t.subAgents)));
+
+  if (skillIds.length > 0) {
+    const skills = await SkillResource.fetchByIds(auth, skillIds, {
+      onlyActive: true,
+      withInstructions: false,
+      withTools: false,
+      withFileAttachments: false,
+    });
+    const found = new Set(skills.map((s) => s.sId));
+    const missing = skillIds.filter((id) => !found.has(id));
+    if (missing.length > 0) {
+      return new Err(
+        new MCPError(`These skills were not found: ${missing.join(", ")}.`)
+      );
+    }
+  }
+
+  const globalAgentIds = agentIds.filter(isGlobalAgentId);
+  if (globalAgentIds.length > 0) {
+    return new Err(
+      new MCPError(
+        `Global agents cannot be sub-agents: ${globalAgentIds.join(", ")}.`
+      )
+    );
+  }
+
+  if (agentIds.length > 0) {
+    const agents = await getAgentConfigurations(auth, {
+      agentIds,
+      variant: "light",
+    });
+    const found = new Set(agents.filter((a) => a.canRead).map((a) => a.sId));
+    const missing = agentIds.filter((id) => !found.has(id));
+    if (missing.length > 0) {
+      return new Err(
+        new MCPError(`These agents were not found: ${missing.join(", ")}.`)
+      );
+    }
+  }
+
+  return new Ok(undefined);
+}
 
 async function fetchAgentForSuggestion(
   auth: Authenticator,
@@ -106,7 +339,14 @@ async function fetchAgentForSuggestion(
 
 async function planAgentCreation(
   auth: Authenticator,
-  { name, description, instructions }: CreateAgentSuggestion
+  {
+    ref,
+    name,
+    description,
+    instructions,
+    skills,
+    subAgents,
+  }: CreateAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const validation = await validateAgentCreation(auth, { name });
   if (validation.isErr()) {
@@ -115,13 +355,17 @@ async function planAgentCreation(
 
   return new Ok({
     type: "agent_creation",
+    ref: ref ?? null,
     create: { name: validation.value.name, description, instructions },
+    skills: skills ?? [],
+    subAgents: subAgents ?? [],
   });
 }
 
 async function planSkillCreation(
   auth: Authenticator,
   {
+    ref,
     name,
     userFacingDescription,
     agentFacingDescription,
@@ -135,6 +379,7 @@ async function planSkillCreation(
 
   return new Ok({
     type: "skill_creation",
+    ref: ref ?? null,
     create: {
       name,
       userFacingDescription,
@@ -154,6 +399,10 @@ async function planAgentEdit(
     modelId,
     reasoningEffort,
     scope,
+    addSkills = [],
+    removeSkillIds = [],
+    addSubAgents = [],
+    removeSubAgentIds = [],
   }: EditAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const agentRes = await fetchAgentForSuggestion(auth, agentId);
@@ -219,7 +468,29 @@ async function planAgentEdit(
     instructions = { agent, edits: validation.value };
   }
 
-  if (singletons.length === 0 && instructions === null) {
+  let links: AgentLinkChanges | null = null;
+  if (
+    addSkills.length +
+      removeSkillIds.length +
+      addSubAgents.length +
+      removeSubAgentIds.length >
+    0
+  ) {
+    const validation = await validateAgentLinksChange(auth, agent, {
+      addSkillIds: skillIdsOf(addSkills),
+      addSkillRefCount: refsOf(addSkills).length,
+      removeSkillIds,
+      addSubAgentIds: agentIdsOf(addSubAgents),
+      addSubAgentRefCount: refsOf(addSubAgents).length,
+      removeSubAgentIds,
+    });
+    if (validation.isErr()) {
+      return validation;
+    }
+    links = { addSkills, removeSkillIds, addSubAgents, removeSubAgentIds };
+  }
+
+  if (singletons.length === 0 && instructions === null && links === null) {
     return new Err(
       new MCPError(
         `The edit of agent "${agentId}" does not change anything: provide at least one field.`
@@ -227,7 +498,7 @@ async function planAgentEdit(
     );
   }
 
-  return new Ok({ type: "agent", agent, singletons, instructions });
+  return new Ok({ type: "agent", agent, singletons, instructions, links });
 }
 
 async function planAgentDeletion(
@@ -250,6 +521,7 @@ async function planAgentDeletion(
     agent,
     singletons: [{ kind: "delete", suggestion: validation.value }],
     instructions: null,
+    links: null,
   });
 }
 
@@ -448,23 +720,192 @@ function findDuplicateTarget(suggestions: Suggestion[]): string | null {
   return null;
 }
 
+async function createPlaceholders(
+  auth: Authenticator,
+  changes: PlannedChange[]
+): Promise<Result<Placeholders, MCPError>> {
+  const placeholders: Placeholders = {
+    agents: new Map(),
+    skills: new Map(),
+    agentRefs: new Map(),
+    skillRefs: new Map(),
+  };
+
+  for (const change of changes) {
+    switch (change.type) {
+      case "agent_creation": {
+        const pendingAgent = await createPendingAgentForSuggestion(auth);
+        if (pendingAgent.isErr()) {
+          return pendingAgent;
+        }
+        placeholders.agents.set(change, pendingAgent.value);
+        if (change.ref) {
+          placeholders.agentRefs.set(change.ref, pendingAgent.value.sId);
+        }
+        break;
+      }
+      case "skill_creation": {
+        const pendingSkill = await SkillResource.createPending(auth);
+        if (pendingSkill.isErr()) {
+          return new Err(new MCPError(pendingSkill.error.message));
+        }
+        placeholders.skills.set(change, pendingSkill.value);
+        if (change.ref) {
+          placeholders.skillRefs.set(change.ref, {
+            id: pendingSkill.value.sId,
+            name: change.create.name,
+            icon: null,
+          });
+        }
+        break;
+      }
+      case "agent":
+      case "skill":
+        break;
+      default:
+        assertNever(change);
+    }
+  }
+
+  return new Ok(placeholders);
+}
+
+function resolveSkillTarget(
+  target: SkillTarget,
+  { skillRefs }: Placeholders
+): string {
+  if ("skillId" in target) {
+    return target.skillId;
+  }
+  const skill = skillRefs.get(target.ref);
+  assert(skill, `Unresolved skill ref "${target.ref}".`);
+  return skill.id;
+}
+
+function resolveSubAgentTarget(
+  target: SubAgentTarget,
+  { agentRefs }: Placeholders
+): string {
+  if ("agentId" in target) {
+    return target.agentId;
+  }
+  const agentId = agentRefs.get(target.ref);
+  assert(agentId, `Unresolved agent ref "${target.ref}".`);
+  return agentId;
+}
+
+function resolveSkillRow(
+  row: SkillSuggestionData,
+  { skillRefs }: Placeholders
+): SkillSuggestionData {
+  switch (row.kind) {
+    case "edit":
+      return {
+        kind: "edit",
+        suggestion: {
+          ...row.suggestion,
+          instructionEdits: row.suggestion.instructionEdits?.map((edit) => ({
+            ...edit,
+            content: resolveSkillRefTags(edit.content, skillRefs),
+          })),
+        },
+      };
+    case "editors":
+    case "user_facing_description":
+    case "create":
+    case "name":
+    case "delete":
+    case "availability":
+      return row;
+    default:
+      assertNever(row);
+  }
+}
+
+function resolveAgentLinks(
+  links: AgentLinkChanges,
+  placeholders: Placeholders,
+  runAgentViewId: string | null
+): AgentLinkSuggestionData[] {
+  const skillRows: AgentLinkSuggestionData[] = [
+    ...links.addSkills.map((target) => ({
+      kind: "skills" as const,
+      suggestion: {
+        action: "add" as const,
+        skillId: resolveSkillTarget(target, placeholders),
+      },
+    })),
+    ...links.removeSkillIds.map((skillId) => ({
+      kind: "skills" as const,
+      suggestion: { action: "remove" as const, skillId },
+    })),
+  ];
+  const childAgentIds = [
+    ...links.addSubAgents.map((target) => ({
+      action: "add" as const,
+      childAgentId: resolveSubAgentTarget(target, placeholders),
+    })),
+    ...links.removeSubAgentIds.map((childAgentId) => ({
+      action: "remove" as const,
+      childAgentId,
+    })),
+  ];
+  if (childAgentIds.length === 0) {
+    return skillRows;
+  }
+
+  assert(runAgentViewId, "The run_agent view is required for sub-agents.");
+  return [
+    ...skillRows,
+    ...childAgentIds.map(({ action, childAgentId }) => ({
+      kind: "sub_agent" as const,
+      suggestion: { action, toolId: runAgentViewId, childAgentId },
+    })),
+  ];
+}
+
 async function recordPlannedChange(
   auth: Authenticator,
   change: PlannedChange,
   {
     batch,
     conversation,
-  }: { batch: BatchSuggestionResource; conversation: ConversationType }
+    placeholders,
+    runAgentViewId,
+  }: {
+    batch: BatchSuggestionResource;
+    conversation: ConversationType;
+    placeholders: Placeholders;
+    runAgentViewId: string | null;
+  }
 ): Promise<Result<undefined, MCPError>> {
   switch (change.type) {
     case "agent_creation": {
-      const res = await recordAgentCreationSuggestion(auth, {
-        create: change.create,
+      const pendingAgent = placeholders.agents.get(change);
+      assert(pendingAgent, "Missing placeholder agent.");
+      await recordAgentCreationSuggestionOnPlaceholder(auth, pendingAgent, {
+        create: {
+          ...change.create,
+          ...(change.skills.length > 0
+            ? {
+                skillIds: change.skills.map((t) =>
+                  resolveSkillTarget(t, placeholders)
+                ),
+              }
+            : {}),
+          ...(change.subAgents.length > 0
+            ? {
+                subAgentIds: change.subAgents.map((t) =>
+                  resolveSubAgentTarget(t, placeholders)
+                ),
+              }
+            : {}),
+        },
         analysis: null,
         conversation,
         batch,
       });
-      return res.isErr() ? res : new Ok(undefined);
+      return new Ok(undefined);
     }
 
     case "agent": {
@@ -487,22 +928,38 @@ async function recordPlannedChange(
           return new Err(new MCPError(res.error));
         }
       }
+
+      if (change.links) {
+        await recordAgentLinkSuggestions(auth, change.agent, {
+          data: resolveAgentLinks(change.links, placeholders, runAgentViewId),
+          conversation,
+          batch,
+        });
+      }
       return new Ok(undefined);
     }
 
     case "skill_creation": {
-      const res = await recordSkillCreationSuggestion(auth, {
-        create: change.create,
+      const pendingSkill = placeholders.skills.get(change);
+      assert(pendingSkill, "Missing placeholder skill.");
+      await recordSkillCreationSuggestionOnPlaceholder(auth, pendingSkill, {
+        create: {
+          ...change.create,
+          instructions: resolveSkillRefTags(
+            change.create.instructions,
+            placeholders.skillRefs
+          ),
+        },
         analysis: null,
         conversation,
         batch,
       });
-      return res.isErr() ? res : new Ok(undefined);
+      return new Ok(undefined);
     }
 
     case "skill": {
       await recordSkillSuggestions(auth, change.skill, {
-        data: change.rows,
+        data: change.rows.map((row) => resolveSkillRow(row, placeholders)),
         analysis: null,
         title: null,
         conversation,
@@ -520,7 +977,14 @@ async function recordPlannedChange(
  * @cc [owner:fabiencelier,label:product;mcp] suggest-validates-all-before-writing
  * `suggest` MUST validate every suggestion of the call against live state before recording any of
  * them: when one suggestion is invalid or unsupported, or two suggestions target the same agent or
- * skill, the call fails and no batch, placeholder agent or skill, or suggestion row is created.
+ * skill, or a ref is unknown, declared twice or of the wrong kind, the call fails and no batch,
+ * placeholder agent or skill, or suggestion row is created.
+ */
+/**
+ * @cc [owner:achilleburah,label:product;mcp] refs-resolved-before-storage
+ * Every ref of a `suggest` call MUST be resolved to the sId of the placeholder created for the
+ * creation that declares it before any suggestion row is stored: all placeholders are created
+ * first, then rows are written with real ids only. No stored row holds a ref.
  */
 export async function suggest(
   auth: Authenticator,
@@ -542,6 +1006,19 @@ export async function suggest(
     );
   }
 
+  const refsValidation = validateRefs(suggestions);
+  if (refsValidation.isErr()) {
+    return refsValidation;
+  }
+
+  const targetsValidation = await validateExistingLinkTargets(
+    auth,
+    suggestions
+  );
+  if (targetsValidation.isErr()) {
+    return targetsValidation;
+  }
+
   const plannedChanges: PlannedChange[] = [];
   for (const suggestion of suggestions) {
     const planned = await planSuggestion(auth, suggestion);
@@ -551,23 +1028,57 @@ export async function suggest(
     plannedChanges.push(planned.value);
   }
 
+  const touchesSubAgents = suggestions.some(
+    (suggestion) =>
+      suggestion.kind === "edit_agent" &&
+      (suggestion.addSubAgents?.length ?? 0) +
+        (suggestion.removeSubAgentIds?.length ?? 0) >
+        0
+  );
+  let runAgentViewId: string | null = null;
+  if (touchesSubAgents) {
+    const runAgentView =
+      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        "run_agent"
+      );
+    if (!runAgentView) {
+      return new Err(
+        new MCPError("The run_agent server is not available in this workspace.")
+      );
+    }
+    runAgentViewId = runAgentView.sId;
+  }
+
   const batch = await BatchSuggestionResource.makeNew(auth, {
     title,
     analysis,
     sourceConversation: conversation,
   });
 
+  const outdatePartialBatch = async () => {
+    const partialBatch = await BatchSuggestionResource.fetchById(
+      auth,
+      batch.sId
+    );
+    await partialBatch?.updateState(auth, "outdated");
+  };
+
+  const placeholders = await createPlaceholders(auth, plannedChanges);
+  if (placeholders.isErr()) {
+    await outdatePartialBatch();
+    return placeholders;
+  }
+
   for (const change of plannedChanges) {
     const recorded = await recordPlannedChange(auth, change, {
       batch,
       conversation,
+      placeholders: placeholders.value,
+      runAgentViewId,
     });
     if (recorded.isErr()) {
-      const partialBatch = await BatchSuggestionResource.fetchById(
-        auth,
-        batch.sId
-      );
-      await partialBatch?.updateState(auth, "outdated");
+      await outdatePartialBatch();
       return recorded;
     }
   }

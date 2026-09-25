@@ -367,8 +367,39 @@ export type SuggestSkillAvailabilityArgs = z.infer<
   typeof SUGGEST_SKILL_AVAILABILITY_INPUT_SCHEMA
 >;
 
+const RefSchema = z.string().regex(/^[\w-]+$/);
+
+const RefTargetSchema = z.object({
+  ref: RefSchema.describe(
+    "The local name of an agent or skill created in this same call."
+  ),
+});
+
+const ExistingSkillTargetSchema = z.object({
+  skillId: z.string().describe("The id of an existing skill."),
+});
+
+const ExistingAgentTargetSchema = z.object({
+  agentId: z.string().describe("The id of an existing agent."),
+});
+
+const SkillTargetSchema = z.union([ExistingSkillTargetSchema, RefTargetSchema]);
+
+export type SkillTarget = z.infer<typeof SkillTargetSchema>;
+
+const SubAgentTargetSchema = z.union([
+  ExistingAgentTargetSchema,
+  RefTargetSchema,
+]);
+
+export type SubAgentTarget = z.infer<typeof SubAgentTargetSchema>;
+
 export const CreateAgentSuggestionSchema = z.object({
   kind: z.literal("create_agent"),
+  ref: RefSchema.optional().describe(
+    "A local name for the new agent, unique in this call, so another change of the same call " +
+      "can add it as a sub-agent."
+  ),
   name: z
     .string()
     .trim()
@@ -386,12 +417,24 @@ export const CreateAgentSuggestionSchema = z.object({
     .trim()
     .min(1)
     .describe("The agent's instructions, as HTML."),
+  skills: z
+    .array(SkillTargetSchema)
+    .optional()
+    .describe("The skills to equip the new agent with."),
+  subAgents: z
+    .array(SubAgentTargetSchema)
+    .optional()
+    .describe("The agents the new agent can call as sub-agents."),
 });
 
 export type CreateAgentSuggestion = z.infer<typeof CreateAgentSuggestionSchema>;
 
 export const CreateSkillSuggestionSchema = z.object({
   kind: z.literal("create_skill"),
+  ref: RefSchema.optional().describe(
+    "A local name for the new skill, unique in this call, so other changes of the same call can " +
+      'use it: in a list of skills, or in the instructions of a skill as <skill ref="name"/>.'
+  ),
   name: z
     .string()
     .trim()
@@ -459,6 +502,22 @@ export const EditAgentSuggestionSchema = z.object({
       "The new publish state: 'visible' to publish the agent (visible to the " +
         "whole workspace), 'hidden' to unpublish it (visible to editors only)."
     ),
+  addSkills: z
+    .array(SkillTargetSchema)
+    .optional()
+    .describe("The skills to add to the agent."),
+  removeSkillIds: z
+    .array(z.string())
+    .optional()
+    .describe("Ids of the skills to remove from the agent."),
+  addSubAgents: z
+    .array(SubAgentTargetSchema)
+    .optional()
+    .describe("The agents to add as sub-agents of the agent."),
+  removeSubAgentIds: z
+    .array(z.string())
+    .optional()
+    .describe("Ids of the sub-agents to remove from the agent."),
 });
 
 export type EditAgentSuggestion = z.infer<typeof EditAgentSuggestionSchema>;
@@ -550,7 +609,8 @@ export type Suggestion = z.infer<typeof SuggestionSchema>;
 export const SUGGEST_DESCRIPTION =
   "Suggest one or more changes to the agents and skills of this workspace: create, edit, or " +
   "delete agents and skills. The changes are not applied directly: they are recorded as " +
-  "pending suggestions that editors can review, accept, or reject.";
+  "pending suggestions that editors can review, accept, or reject. An agent or skill created " +
+  "in the call can be used by the other changes of the same call through its local name.";
 
 // Bounded by the `batch_suggestions.analysis` column.
 const BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH = 255;

@@ -367,13 +367,13 @@ export async function validateSkillCreation(
 
 /**
  * @cc [owner:achilleburah,label:product] no-direct-skill-mutation
- * Recording a skill creation MUST NOT make the proposed skill usable: the only skill it creates
- * is a `pending` placeholder (see `pending-skill-unlisted`), and the proposal is recorded as a
- * `pending` `create` suggestion targeting it. Turning the suggestion into a usable skill is a
- * separate, human-reviewed step.
+ * Recording a skill creation MUST NOT make the proposed skill usable: the proposal is recorded as a
+ * `pending` `create` suggestion on a `pending` placeholder skill (see `pending-skill-unlisted`),
+ * never applied. Turning the suggestion into a usable skill is a separate, human-reviewed step.
  */
-export async function recordSkillCreationSuggestion(
+export async function recordSkillCreationSuggestionOnPlaceholder(
   auth: Authenticator,
+  pendingSkill: SkillResource,
   {
     create,
     analysis,
@@ -385,19 +385,12 @@ export async function recordSkillCreationSuggestion(
     conversation: ConversationType;
     batch: BatchSuggestionResource | null;
   }
-): Promise<Result<SkillSuggestionResource, MCPError>> {
-  const pendingResult = await SkillResource.createPending(auth);
-  if (pendingResult.isErr()) {
-    return new Err(new MCPError(pendingResult.error.message));
-  }
-
-  const suggestion = await recordSkillSuggestion(auth, pendingResult.value, {
+): Promise<SkillSuggestionResource> {
+  return recordSkillSuggestion(auth, pendingSkill, {
     data: { kind: "create", suggestion: create },
     analysis,
     title: null,
     conversation,
     batch,
   });
-
-  return new Ok(suggestion);
 }

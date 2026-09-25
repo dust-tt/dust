@@ -99,6 +99,25 @@ export function serializeSkillTag(
   return `<${SKILL_TAG_NAME} ${attributes} />`;
 }
 
+const SKILL_REF_TAG_REGEX = /<skill\s+ref="([\w-]+)"\s*(?:\/>|><\/skill>)/g;
+
+export function extractSkillRefs(content: string): string[] {
+  return [
+    ...new Set([...content.matchAll(SKILL_REF_TAG_REGEX)].map((m) => m[1])),
+  ];
+}
+
+export function resolveSkillRefTags(
+  content: string,
+  refs: Map<string, SkillReference>
+): string {
+  return content.replace(SKILL_REF_TAG_REGEX, (tag, ref: string) => {
+    const skill = refs.get(ref);
+
+    return skill ? serializeSkillTag(skill, { html: true }) : tag;
+  });
+}
+
 export function serializeUnavailableSkillTag(
   { id }: { id: string },
   { html = false }: { html?: boolean } = {}

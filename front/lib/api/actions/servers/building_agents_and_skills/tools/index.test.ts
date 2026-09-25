@@ -275,6 +275,18 @@ async function createSkillAuthorTestContext() {
   return result;
 }
 
+async function createBuilderTestContext() {
+  const result = await createResourceTest({ role: "user" });
+  for (const resourceType of ["agent", "skill"] as const) {
+    await grantWorkspacePermission(result.workspace, result.user, {
+      grantType: "create",
+      resourceType,
+    });
+  }
+  await result.authenticator.refresh();
+  return result;
+}
+
 describe("building_agents_and_skills tools", () => {
   describe(DESCRIBE_SKILL_TOOL_NAME, () => {
     it("returns the skill with its block-structured instructions", async () => {
@@ -2982,6 +2994,353 @@ describe("building_agents_and_skills tools", () => {
       });
 
       expectMcpError(result, "does not change anything");
+    });
+
+    describe("refs", () => {
+      const createAgent = {
+        kind: "create_agent",
+        name: "MeetingBot",
+        description: "Handles meetings.",
+        instructions: "<p>Handle meetings.</p>",
+      };
+
+      const fetchBatch = async (
+        auth: Authenticator,
+        result: Awaited<ReturnType<typeof runSuggest>>
+      ) => {
+        const batch = await BatchSuggestionResource.fetchById(
+          auth,
+          extractBatchId(result)
+        );
+        assert(batch);
+        return batch;
+      };
+
+      it("adds a skill created in the same call to an existing agent", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+
+        const batch = await fetchBatch(
+          authenticator,
+          await runSuggest(authenticator, {
+            title: "Notes skill",
+            analysis: "Move note taking to a skill.",
+            suggestions: [
+              {
+                kind: "edit_agent",
+                agentId: agent.sId,
+                addSkills: [{ ref: "notes" }],
+              },
+              { ...createSkill, ref: "notes" },
+            ],
+          })
+        );
+
+        const placeholderId = batch.skillSuggestions[0]?.skillConfigurationSId;
+        expect(
+          batch.agentSuggestions.map((s) => s._agentConfigurationId)
+        ).toEqual([agent.sId]);
+        expect(batch.agentSuggestions.map((s) => s.toJSON())).toMatchObject([
+          {
+            kind: "skills",
+            suggestion: { action: "add", skillId: placeholderId },
+          },
+        ]);
+      });
+
+      it("equips a new agent with a new skill and an existing one", async () => {
+        const { authenticator } = await createBuilderTestContext();
+        const existing = await seedSkill(authenticator, { name: "Existing" });
+
+        const batch = await fetchBatch(
+          authenticator,
+          await runSuggest(authenticator, {
+            title: "Meeting bot",
+            analysis: "A bot for meetings.",
+            suggestions: [
+              {
+                ...createAgent,
+                skills: [{ ref: "notes" }, { skillId: existing.sId }],
+              },
+              { ...createSkill, ref: "notes" },
+            ],
+          })
+        );
+
+        const placeholderId = batch.skillSuggestions[0]?.skillConfigurationSId;
+        expect(batch.agentSuggestions.map((s) => s.toJSON())).toMatchObject([
+          {
+            kind: "create",
+            suggestion: { skillIds: [placeholderId, existing.sId] },
+          },
+        ]);
+      });
+
+      it("adds an agent created in the same call as a sub-agent", async () => {
+        const { authenticator } = await createAgentAuthorTestContext();
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+
+        const batch = await fetchBatch(
+          authenticator,
+          await runSuggest(authenticator, {
+            title: "Delegate meetings",
+            analysis: "Delegate meetings to a bot.",
+            suggestions: [
+              {
+                kind: "edit_agent",
+                agentId: agent.sId,
+                addSubAgents: [{ ref: "bot" }],
+              },
+              { ...createAgent, ref: "bot" },
+            ],
+          })
+        );
+
+        const placeholder = batch.agentSuggestions.find(
+          (s) => s.kind === "create"
+        );
+        const subAgentRow = batch.agentSuggestions.find(
+          (s) => s.kind === "sub_agent"
+        );
+        expect(subAgentRow?._agentConfigurationId).toBe(agent.sId);
+        expect(subAgentRow?.toJSON()).toMatchObject({
+          suggestion: {
+            action: "add",
+            childAgentId: placeholder?._agentConfigurationId,
+          },
+        });
+      });
+
+      it("lets a new agent call another new agent as a sub-agent", async () => {
+        const { authenticator } = await createAgentAuthorTestContext();
+
+        const batch = await fetchBatch(
+          authenticator,
+          await runSuggest(authenticator, {
+            title: "Two bots",
+            analysis: "A bot and its helper.",
+            suggestions: [
+              { ...createAgent, subAgents: [{ ref: "helper" }] },
+              { ...createAgent, name: "MeetingHelper", ref: "helper" },
+            ],
+          })
+        );
+
+        const byName = new Map(
+          batch.agentSuggestions.map((s) => {
+            const json = s.toJSON();
+            return [
+              json.kind === "create" ? json.suggestion.name : json.kind,
+              { sId: s._agentConfigurationId, json },
+            ];
+          })
+        );
+        expect(byName.get("MeetingBot")?.json).toMatchObject({
+          suggestion: { subAgentIds: [byName.get("MeetingHelper")?.sId] },
+        });
+      });
+
+      it("resolves skill tags of skills citing each other", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+
+        const batch = await fetchBatch(
+          authenticator,
+          await runSuggest(authenticator, {
+            title: "Meeting skills",
+            analysis: "Two skills that call each other.",
+            suggestions: [
+              {
+                ...createSkill,
+                ref: "notes",
+                instructions: '<p>Then use <skill ref="summary"/></p>',
+              },
+              {
+                ...createSkill,
+                name: "Meeting Summary",
+                ref: "summary",
+                instructions: '<p>Reuse <skill ref="notes"/></p>',
+              },
+            ],
+          })
+        );
+
+        const [notes, summary] = batch.skillSuggestions;
+        expect(notes.toJSON().suggestion).toMatchObject({
+          instructions: `<p>Then use <skill id="${summary.skillConfigurationSId}" name="Meeting Summary"></skill></p>`,
+        });
+        expect(summary.toJSON().suggestion).toMatchObject({
+          instructions: `<p>Reuse <skill id="${notes.skillConfigurationSId}" name="Meeting Notes"></skill></p>`,
+        });
+      });
+
+      it("refuses an unknown ref and writes nothing", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+
+        const result = await runSuggest(authenticator, {
+          title: "Notes skill",
+          analysis: "Notes.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              addSkills: [{ ref: "notez" }],
+            },
+            { ...createSkill, ref: "notes" },
+          ],
+        });
+
+        expectMcpError(result, "is not declared");
+        const pendingSkills = await SkillResource.listByWorkspace(
+          authenticator,
+          { status: "pending" }
+        );
+        expect(pendingSkills).toHaveLength(0);
+      });
+
+      it("refuses a ref declared twice", async () => {
+        const { authenticator } = await createBuilderTestContext();
+
+        const result = await runSuggest(authenticator, {
+          title: "Duplicate",
+          analysis: "Duplicate.",
+          suggestions: [
+            { ...createSkill, ref: "notes" },
+            { ...createAgent, ref: "notes" },
+          ],
+        });
+
+        expectMcpError(result, "declared twice");
+      });
+
+      it("refuses a skill ref where a sub-agent is expected", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+
+        const result = await runSuggest(authenticator, {
+          title: "Wrong kind",
+          analysis: "Wrong kind.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              addSubAgents: [{ ref: "notes" }],
+            },
+            { ...createSkill, ref: "notes" },
+          ],
+        });
+
+        expectMcpError(result, "does not point at an agent");
+      });
+
+      it("refuses an agent adding itself as a sub-agent", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+
+        const result = await runSuggest(authenticator, {
+          title: "Self",
+          analysis: "Self.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              addSubAgents: [{ agentId: agent.sId }],
+            },
+          ],
+        });
+
+        expectMcpError(result, "own sub-agent");
+      });
+
+      it("refuses adding a skill already on the agent", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const skill = await seedSkill(authenticator, { name: "Attached" });
+        await SkillFactory.linkToAgent(authenticator, {
+          skillId: skill.id,
+          agentConfigurationId: agent.id,
+        });
+
+        const result = await runSuggest(authenticator, {
+          title: "Add",
+          analysis: "Add.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              addSkills: [{ skillId: skill.sId }],
+            },
+          ],
+        });
+
+        expectMcpError(result, "already on the agent");
+      });
+
+      it("refuses removing a skill or sub-agent the agent does not have", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const other = await AgentConfigurationFactory.createTestAgent(
+          authenticator,
+          { name: "OtherAgent" }
+        );
+        const skill = await seedSkill(authenticator, { name: "Detached" });
+
+        expectMcpError(
+          await runSuggest(authenticator, {
+            title: "Remove",
+            analysis: "Remove.",
+            suggestions: [
+              {
+                kind: "edit_agent",
+                agentId: agent.sId,
+                removeSkillIds: [skill.sId],
+              },
+            ],
+          }),
+          "is not on the agent"
+        );
+        expectMcpError(
+          await runSuggest(authenticator, {
+            title: "Remove",
+            analysis: "Remove.",
+            suggestions: [
+              {
+                kind: "edit_agent",
+                agentId: agent.sId,
+                removeSubAgentIds: [other.sId],
+              },
+            ],
+          }),
+          "is not a sub-agent"
+        );
+      });
+
+      it("refuses a skill the caller cannot find", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+
+        const result = await runSuggest(authenticator, {
+          title: "Add",
+          analysis: "Add.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              addSkills: [{ skillId: "skl_missing" }],
+            },
+          ],
+        });
+
+        expectMcpError(result, "were not found");
+      });
     });
   });
 

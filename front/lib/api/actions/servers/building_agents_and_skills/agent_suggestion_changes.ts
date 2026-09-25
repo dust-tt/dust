@@ -12,6 +12,7 @@ import { hasSuggestionSelfConflict } from "@app/lib/reinforcement/skill_suggesti
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -23,6 +24,7 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   AgentSuggestionData,
   AgentSuggestionKind,
@@ -461,28 +463,9 @@ export async function recordSingletonAgentSuggestion(
   return suggestion;
 }
 
-/**
- * @cc [owner:avervaet,label:product] no-direct-mutation
- * Recording an agent creation MUST NOT make the proposed agent usable: the only agent it creates
- * is a `pending`, `hidden` placeholder editable solely by the caller, and the proposal is recorded
- * as a `pending` `create` suggestion targeting it. No other suggestion can target that
- * placeholder, so there are no conflicting suggestions to mark `outdated`. Turning the suggestion
- * into a usable agent is a separate, human-reviewed step.
- */
-export async function recordAgentCreationSuggestion(
-  auth: Authenticator,
-  {
-    create,
-    analysis,
-    conversation,
-    batch,
-  }: {
-    create: CreateSuggestionType;
-    analysis: string | null;
-    conversation: ConversationType;
-    batch: BatchSuggestionResource | null;
-  }
-): Promise<Result<AgentSuggestionResource, MCPError>> {
+export async function createPendingAgentForSuggestion(
+  auth: Authenticator
+): Promise<Result<LightAgentConfigurationType, MCPError>> {
   const pendingResult = await AgentResource.createPending(auth);
   if (pendingResult.isErr()) {
     return new Err(new MCPError(pendingResult.error.message));
@@ -498,18 +481,211 @@ export async function recordAgentCreationSuggestion(
     );
   }
 
-  const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
+  return new Ok(pendingAgent);
+}
+
+export async function recordAgentCreationSuggestionOnPlaceholder(
+  auth: Authenticator,
+  pendingAgent: LightAgentConfigurationType,
+  {
+    create,
+    analysis,
+    conversation,
+    batch,
+  }: {
+    create: CreateSuggestionType;
+    analysis: string | null;
+    conversation: ConversationType;
+    batch: BatchSuggestionResource | null;
+  }
+): Promise<AgentSuggestionResource> {
+  return AgentSuggestionResource.createSuggestionForAgent(auth, pendingAgent, {
+    kind: "create",
+    suggestion: create,
+    analysis,
+    state: "pending",
+    conversationId: conversation.id,
+    source: "conversational",
+    batchId: batch?.id ?? null,
+  });
+}
+
+/**
+ * @cc [owner:avervaet,label:product] no-direct-mutation
+ * Recording an agent creation MUST NOT make the proposed agent usable: the only agent it creates
+ * is a `pending`, `hidden` placeholder editable solely by the caller, and the proposal is recorded
+ * as a `pending` `create` suggestion targeting it. No other suggestion can target that
+ * placeholder, so there are no conflicting suggestions to mark `outdated`, though a suggestion of
+ * the same batch may reference it as a sub-agent. Turning the suggestion into a usable agent is a
+ * separate, human-reviewed step.
+ */
+export async function recordAgentCreationSuggestion(
+  auth: Authenticator,
+  {
+    create,
+    analysis,
+    conversation,
+    batch,
+  }: {
+    create: CreateSuggestionType;
+    analysis: string | null;
+    conversation: ConversationType;
+    batch: BatchSuggestionResource | null;
+  }
+): Promise<Result<AgentSuggestionResource, MCPError>> {
+  const pendingResult = await createPendingAgentForSuggestion(auth);
+  if (pendingResult.isErr()) {
+    return pendingResult;
+  }
+
+  const suggestion = await recordAgentCreationSuggestionOnPlaceholder(
     auth,
-    pendingAgent,
-    {
-      kind: "create",
-      suggestion: create,
-      analysis,
-      state: "pending",
-      conversationId: conversation.id,
-      source: "conversational",
-      batchId: batch?.id ?? null,
-    }
+    pendingResult.value,
+    { create, analysis, conversation, batch }
   );
   return new Ok(suggestion);
+}
+
+/** Kinds that add or remove one skill or sub-agent of an agent per suggestion. */
+export type AgentLinkSuggestionData = Extract<
+  AgentSuggestionData,
+  { kind: "skills" | "sub_agent" }
+>;
+
+export async function recordAgentLinkSuggestions(
+  auth: Authenticator,
+  agent: LightAgentConfigurationType,
+  {
+    data,
+    conversation,
+    batch,
+  }: {
+    data: AgentLinkSuggestionData[];
+    conversation: ConversationType;
+    batch: BatchSuggestionResource | null;
+  }
+): Promise<AgentSuggestionResource[]> {
+  return AgentSuggestionResource.createSuggestionsForAgent(
+    auth,
+    agent,
+    data.map((d) => ({
+      ...d,
+      analysis: null,
+      state: "pending" as const,
+      conversationId: conversation.id,
+      source: "conversational" as const,
+      batchId: batch?.id ?? null,
+    }))
+  );
+}
+
+/**
+ * Checks skill and sub-agent additions and removals against the agent's live links and the
+ * pending `skills` / `sub_agent` caps (see `pending-suggestion-limit-enforced-by-caller`). Added
+ * ids are existing entities, refs to entities created in the same call are only counted.
+ */
+export async function validateAgentLinksChange(
+  auth: Authenticator,
+  agent: AgentConfigurationType,
+  {
+    addSkillIds,
+    addSkillRefCount,
+    removeSkillIds,
+    addSubAgentIds,
+    addSubAgentRefCount,
+    removeSubAgentIds,
+  }: {
+    addSkillIds: string[];
+    addSkillRefCount: number;
+    removeSkillIds: string[];
+    addSubAgentIds: string[];
+    addSubAgentRefCount: number;
+    removeSubAgentIds: string[];
+  }
+): Promise<Result<undefined, MCPError>> {
+  if (!agent.canEdit && !auth.isAdmin()) {
+    return new Err(
+      new MCPError(
+        "Only editors can suggest changing a workspace agent's skills or sub-agents."
+      )
+    );
+  }
+
+  if (addSubAgentIds.includes(agent.sId)) {
+    return new Err(new MCPError("An agent cannot be its own sub-agent."));
+  }
+
+  const [currentSkills, pendingSkills, pendingSubAgents] = await Promise.all([
+    SkillResource.listByAgentConfiguration(auth, agent),
+    AgentSuggestionResource.listByAgentConfigurationId(auth, agent.sId, {
+      states: ["pending"],
+      kind: "skills",
+    }),
+    AgentSuggestionResource.listByAgentConfigurationId(auth, agent.sId, {
+      states: ["pending"],
+      kind: "sub_agent",
+    }),
+  ]);
+  const currentSkillIds = new Set(currentSkills.map((s) => s.sId));
+  const currentSubAgentIds = new Set(
+    removeNulls(
+      agent.actions.map((a) => ("childAgentId" in a ? a.childAgentId : null))
+    )
+  );
+
+  const invalid = [
+    ...addSkillIds
+      .filter((id) => currentSkillIds.has(id))
+      .map((id) => `skill "${id}" is already on the agent`),
+    ...removeSkillIds
+      .filter((id) => !currentSkillIds.has(id))
+      .map((id) => `skill "${id}" is not on the agent`),
+    ...removeSkillIds
+      .filter((id) => addSkillIds.includes(id))
+      .map((id) => `skill "${id}" is both added and removed`),
+    ...addSubAgentIds
+      .filter((id) => currentSubAgentIds.has(id))
+      .map((id) => `agent "${id}" is already a sub-agent`),
+    ...removeSubAgentIds
+      .filter((id) => !currentSubAgentIds.has(id))
+      .map((id) => `agent "${id}" is not a sub-agent`),
+    ...removeSubAgentIds
+      .filter((id) => addSubAgentIds.includes(id))
+      .map((id) => `agent "${id}" is both added and removed`),
+  ];
+  if (invalid.length > 0) {
+    return new Err(new MCPError(`Invalid change: ${invalid.join(", ")}.`));
+  }
+
+  const resolutionHint =
+    "Reject or accept some of the existing pending suggestions before adding new ones.";
+  for (const { kind, newPendingCount, currentPendingCount } of [
+    {
+      kind: "skills" as const,
+      newPendingCount:
+        addSkillIds.length + addSkillRefCount + removeSkillIds.length,
+      currentPendingCount: pendingSkills.length,
+    },
+    {
+      kind: "sub_agent" as const,
+      newPendingCount:
+        addSubAgentIds.length + addSubAgentRefCount + removeSubAgentIds.length,
+      currentPendingCount: pendingSubAgents.length,
+    },
+  ]) {
+    if (newPendingCount === 0) {
+      continue;
+    }
+    const limitCheck = canAddPendingSuggestions({
+      kind,
+      newPendingCount,
+      currentPendingCount,
+      resolutionHint,
+    });
+    if (!limitCheck.allowed) {
+      return new Err(new MCPError(limitCheck.errorMessage));
+    }
+  }
+
+  return new Ok(undefined);
 }

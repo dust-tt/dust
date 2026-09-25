@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { renameSkillReferencesInContent } from "./format";
+import {
+  extractSkillRefs,
+  renameSkillReferencesInContent,
+  resolveSkillRefTags,
+} from "./format";
 
 describe("renameSkillReferencesInContent", () => {
   it("preserves dollar replacement tokens in renamed skill names", () => {
@@ -15,6 +19,25 @@ describe("renameSkillReferencesInContent", () => {
       })
     ).toEqual(
       `before <skill id="ski_target" name="${newName}" /> middle <skill id="ski_other" name="Other" /> after`
+    );
+  });
+});
+
+describe("skill ref tags", () => {
+  const content =
+    '<p>Use <skill ref="notes"/> then <skill ref="summary"></skill> and <skill ref="notes" /></p>';
+
+  it("extracts each ref once, in self-closing and paired forms", () => {
+    expect(extractSkillRefs(content)).toEqual(["notes", "summary"]);
+  });
+
+  it("rewrites ref tags into real skill tags and leaves unknown refs untouched", () => {
+    const refs = new Map([
+      ["notes", { id: "skl_A", name: "Meeting Notes", icon: null }],
+    ]);
+
+    expect(resolveSkillRefTags(content, refs)).toEqual(
+      '<p>Use <skill id="skl_A" name="Meeting Notes"></skill> then <skill ref="summary"></skill> and <skill id="skl_A" name="Meeting Notes"></skill></p>'
     );
   });
 });
