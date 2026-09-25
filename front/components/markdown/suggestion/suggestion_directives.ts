@@ -67,16 +67,7 @@ function capRecap(text: string): string {
 
 /**
  * @cc [owner:avervaet,label:product] pile-two-or-more-suggestions
- * When `content` holds at least two suggestion directives carrying every identifier their
- * conversational card needs, all of them MUST be removed from the returned `content` and returned
- * in `pileDirectives` in order of appearance. Otherwise no suggestion directive is removed and
- * `pileDirectives` is empty. Directives missing an identifier MUST never be removed.
- */
-/**
- * @cc [owner:avervaet,label:product] recap-from-message
- * Recap directives MUST always be removed from the returned `content`, pile or not. `recap` is the
- * first non-empty one, capped to `MAX_SUGGESTION_RECAP_LENGTH` characters, and MUST be `null`
- * when there is no pile.
+ * Two or more complete suggestion directives MUST all move, in order, to `pileDirectives`; else none.
  */
 export function extractSuggestionPile(content: string): {
   content: string;
