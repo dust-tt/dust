@@ -42,6 +42,7 @@ function renderList() {
       ],
       total: 51,
       hasMore: !offset,
+      facets: {},
     };
   });
   render(

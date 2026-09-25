@@ -100,6 +100,7 @@ export function EnumSelect({
                     value={option.label}
                     keywords={[option.value.replaceAll("_", " ")]}
                     key={option.value}
+                    disabled={option.disabled}
                     onSelect={() => {
                       onValuesChange([option.value]);
                       if (!multiple) {

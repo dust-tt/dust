@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -56,10 +55,7 @@ app.patch(
       });
     }
 
-    const agent = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, aId);
     if (!agent) {
       return apiError(ctx, {
         status_code: 404,
@@ -70,7 +66,7 @@ app.patch(
       });
     }
 
-    if (!agent.canEdit && !auth.isAdmin()) {
+    if (!auth.can("write", agent) && !auth.isAdmin()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -127,14 +123,10 @@ app.patch(
     });
 
     // Re-read the current version to return the tags of the version just created (tag associations
-    // are per-version, so `agent.id` above points at the previous version's row).
-    const updatedAgent = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    const tags = updatedAgent
-      ? await TagResource.listForAgent(auth, updatedAgent.id)
-      : [];
+    // are per-version, so `agent.agentConfigurationModelId` above points at the previous version's
+    // row).
+    const updatedAgent = await AgentResource.fetchById(auth, aId);
+    const tags = updatedAgent ? await updatedAgent.listTags(auth) : [];
 
     return ctx.json({ tags: tags.map((t) => t.toJSON()) });
   }

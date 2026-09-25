@@ -5,11 +5,16 @@ import { ModelsFilterMenu } from "@app/components/assistant/ModelsFilterMenu";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { NoArchivedAgentsCTA } from "@app/components/assistant/manager/NoArchivedAgentsCTA";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
+import { SearchAgentsPage } from "@app/components/pages/builder/agents/SearchAgentsPage";
 import { getModelLogoByModelId } from "@app/components/providers/types";
 import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
@@ -67,6 +72,15 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 }
 
 export function ManageAgentsPage() {
+  const { hasFeature } = useFeatureFlags();
+  return hasFeature("new_manage_agents_page") ? (
+    <SearchAgentsPage />
+  ) : (
+    <LegacyManageAgentsPage />
+  );
+}
+
+function LegacyManageAgentsPage() {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const [assistantSearch, setAssistantSearch] = useState("");

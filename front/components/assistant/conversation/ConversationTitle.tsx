@@ -10,14 +10,9 @@ import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useActivationPod } from "@app/lib/swr/activation";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import {
-  getConversationRoute,
-  getGetStartedRoute,
-  getPodRoute,
-} from "@app/lib/utils/router";
+import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
@@ -57,9 +52,6 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? null,
   });
-  const { activationPodId } = useActivationPod({
-    workspaceId: owner.sId,
-  });
   const isMobile = useIsMobile();
 
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -94,13 +86,10 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const breadcrumbItems: BreadcrumbsItem[] = [];
 
   if (spaceId && spaceInfo) {
-    const isActivationPod = spaceId === activationPodId;
     breadcrumbItems.push({
       icon: isMobile ? undefined : ArrowLeft,
-      label: isActivationPod ? "For you" : spaceInfo.name,
-      href: isActivationPod
-        ? getGetStartedRoute(owner.sId)
-        : getPodRoute(owner.sId, spaceId),
+      label: spaceInfo.name,
+      href: getPodRoute(owner.sId, spaceId),
     });
   }
 

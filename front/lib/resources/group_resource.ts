@@ -8,6 +8,10 @@ import {
 } from "@app/lib/metronome/seat_types";
 import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import {
+  deleteGrantsForResources,
+  listRegularAutoGroupIdsForResources,
+} from "@app/lib/resources/group_permission_cleanup";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -26,6 +30,7 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
 import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
@@ -706,6 +711,26 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
       transaction
     );
+  }
+
+  // Grant creation and deletion lock the same target rows before changing group permissions.
+  // A missing row cannot be locked, so grant creation must also check the returned IDs.
+  static async lockGroupIdsForUpdate(
+    auth: Authenticator,
+    groupModelIds: ModelId[],
+    transaction: Transaction
+  ): Promise<ModelId[]> {
+    const groups = await GroupModel.findAll({
+      attributes: ["id"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: { [Op.in]: groupModelIds },
+      },
+      order: [["id", "ASC"]],
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+    return groups.map((group) => group.id);
   }
 
   static async fetchById(
@@ -2365,6 +2390,13 @@ export class GroupResource extends BaseResource<GroupModel> {
   // deletions run as scoped (`IN`) queries so the work does not scale per group (see
   // `batch-database-queries`). `delete` delegates here so the single- and multi-group paths cannot
   // diverge.
+  /**
+   * @cc [owner:philipperolet,label:security;backend] group-deletion-revokes-delegation
+   * Deleting a group MUST remove grants targeting it and the automatic groups holding those
+   * grants in the same transaction. Affected grant and membership caches MUST be invalidated
+   * after commit so former managers lose the deleted group's authority. Deletion MUST lock the
+   * target group rows before reading grants, sharing that lock with grant creation.
+   */
   static async batchDelete(
     auth: Authenticator,
     groups: GroupResource[],
@@ -2374,78 +2406,98 @@ export class GroupResource extends BaseResource<GroupModel> {
       return new Ok(undefined);
     }
 
-    const owner = auth.getNonNullableWorkspace();
-    const workspaceId = owner.id;
-    const groupIds = [...new Set(groups.map((group) => group.id))];
-
     try {
-      // Fetch active member user IDs before deletion for cache invalidation.
-      const activeMemberships = await GroupMembershipModel.findAll({
-        where: {
-          groupId: groupIds,
-          workspaceId,
-          status: "active",
-          startAt: { [Op.lte]: new Date() },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        },
-        attributes: ["userId"],
-        transaction,
-      });
-      const memberUserIds = [
-        ...new Set(activeMemberships.map((m) => m.userId)),
-      ];
+      return await withTransaction(async (t) => {
+        const workspaceId = auth.getNonNullableWorkspace().id;
+        const deletedGroupIds = [...new Set(groups.map((group) => group.id))];
+        await this.lockGroupIdsForUpdate(auth, deletedGroupIds, t);
+        const managerGroupIds = await listRegularAutoGroupIdsForResources(
+          auth,
+          {
+            resourceType: "group",
+            resourceIds: deletedGroupIds,
+            transaction: t,
+          }
+        );
+        const groupIds = [...new Set([...deletedGroupIds, ...managerGroupIds])];
 
-      // Strip every deleted group id from any key that references it, in a single UPDATE (nested
-      // `array_remove`s peel the ids off one by one).
-      const groupIdsExpr = groupIds.reduce<
-        ReturnType<typeof fn> | ReturnType<typeof col>
-      >((expr, groupId) => fn("array_remove", expr, groupId), col("groupIds"));
-      await KeyModel.update(
-        { groupIds: groupIdsExpr },
-        {
-          where: {
-            groupIds: { [Op.overlap]: groupIds },
-            workspaceId,
-          },
-          transaction,
-        }
-      );
-
-      await GroupMembershipModel.destroy({
-        where: { groupId: groupIds, workspaceId },
-        transaction,
-      });
-
-      await GroupPermissionModel.destroy({
-        where: { groupId: groupIds, workspaceId },
-        transaction,
-      });
-
-      await GroupPinnedItemModel.destroy({
-        where: { groupId: groupIds, workspaceId },
-        transaction,
-      });
-
-      await GroupModel.destroy({
-        where: { id: groupIds, workspaceId },
-        transaction,
-      });
-
-      if (memberUserIds.length > 0) {
-        invalidateCacheAfterCommit(transaction, async () => {
-          await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-            memberUserIds.map((userId) => [
-              { user: { id: userId }, workspace: { id: workspaceId } },
-            ])
-          );
+        await deleteGrantsForResources(auth, {
+          resourceType: "group",
+          resourceIds: deletedGroupIds,
+          transaction: t,
         });
-      }
 
-      invalidateCacheAfterCommit(transaction, () =>
-        GroupResource.invalidateWorkspaceGroupsFromSystemKeyCache(workspaceId)
-      );
+        // Fetch active member user IDs before deletion for cache invalidation.
+        const activeMemberships = await GroupMembershipModel.findAll({
+          where: {
+            groupId: groupIds,
+            workspaceId,
+            status: "active",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+          attributes: ["userId"],
+          transaction: t,
+        });
+        const memberUserIds = [
+          ...new Set(activeMemberships.map((m) => m.userId)),
+        ];
 
-      return new Ok(undefined);
+        // Strip every deleted group id from any key that references it, in a single UPDATE (nested
+        // `array_remove`s peel the ids off one by one).
+        const groupIdsExpr = groupIds.reduce<
+          ReturnType<typeof fn> | ReturnType<typeof col>
+        >(
+          (expr, groupId) => fn("array_remove", expr, groupId),
+          col("groupIds")
+        );
+        await KeyModel.update(
+          { groupIds: groupIdsExpr },
+          {
+            where: {
+              groupIds: { [Op.overlap]: groupIds },
+              workspaceId,
+            },
+            transaction: t,
+          }
+        );
+
+        await GroupMembershipModel.destroy({
+          where: { groupId: groupIds, workspaceId },
+          transaction: t,
+        });
+
+        await GroupPermissionModel.destroy({
+          where: { groupId: groupIds, workspaceId },
+          transaction: t,
+        });
+
+        await GroupPinnedItemModel.destroy({
+          where: { groupId: groupIds, workspaceId },
+          transaction: t,
+        });
+
+        await GroupModel.destroy({
+          where: { id: groupIds, workspaceId },
+          transaction: t,
+        });
+
+        if (memberUserIds.length > 0) {
+          invalidateCacheAfterCommit(t, async () => {
+            await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+              memberUserIds.map((userId) => [
+                { user: { id: userId }, workspace: { id: workspaceId } },
+              ])
+            );
+          });
+        }
+
+        invalidateCacheAfterCommit(t, () =>
+          GroupResource.invalidateWorkspaceGroupsFromSystemKeyCache(workspaceId)
+        );
+
+        return new Ok(undefined);
+      }, transaction);
     } catch (err) {
       return new Err(normalizeError(err));
     }

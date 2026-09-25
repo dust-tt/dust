@@ -452,6 +452,11 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     return count > 0;
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:product] batched-state-only-through-batch
+   * `bulkUpdateState` MUST throw, without updating anything, when one of the suggestions belongs to
+   * a batch.
+   */
   static async bulkUpdateState(
     auth: Authenticator,
     suggestions: SkillSuggestionResource[],
@@ -462,24 +467,54 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       return;
     }
 
-    // Track the user who accepted/rejected. Do not set for "outdated"
-    // (suggestion became obsolete) or "pending" (reset).
-    const updates: { state: SkillSuggestionState; updatedByUserId?: ModelId } =
-      { state };
-    if (state === "approved" || state === "rejected") {
-      const user = auth.user();
-      if (user) {
-        updates.updatedByUserId = user.id;
-      }
+    if (suggestions.some((s) => s.batchId !== null)) {
+      throw new Error(
+        "Suggestions that belong to a batch can only change state through their batch."
+      );
     }
 
-    await this.model.update(updates, {
+    await this.model.update(this.stateUpdate(auth, state), {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: { [Op.in]: suggestions.map((s) => s.id) },
       },
       transaction,
     });
+  }
+
+  /**
+   * Sets the state of every suggestion of the given batches.
+   */
+  static async updateStateOfBatchMembers(
+    auth: Authenticator,
+    batchModelIds: ModelId[],
+    state: SkillSuggestionState,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (batchModelIds.length === 0) {
+      return;
+    }
+
+    await this.model.update(this.stateUpdate(auth, state), {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        batchId: batchModelIds,
+      },
+      transaction,
+    });
+  }
+
+  // Track the user who accepted/rejected. Do not set for "outdated" (suggestion became obsolete)
+  // or "pending" (reset).
+  private static stateUpdate(
+    auth: Authenticator,
+    state: SkillSuggestionState
+  ): { state: SkillSuggestionState; updatedByUserId?: ModelId } {
+    const user = auth.user();
+    if ((state === "approved" || state === "rejected") && user) {
+      return { state, updatedByUserId: user.id };
+    }
+    return { state };
   }
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {

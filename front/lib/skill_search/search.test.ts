@@ -423,6 +423,7 @@ describe("custom skill search", () => {
       skills: [expected[0]],
       total: 3,
       hasMore: true,
+      facets: {},
     });
   });
 
@@ -728,6 +729,7 @@ describe("custom skill search", () => {
       skills: pageDocuments.map((document) => toSkillListItem(auth, document)),
       total: documents.length,
       hasMore: offset + pageDocuments.length < documents.length,
+      facets: {},
     });
     expect(mockSearch).toHaveBeenCalledOnce();
     expect(mockSearch.mock.lastCall![0]).toMatchObject({

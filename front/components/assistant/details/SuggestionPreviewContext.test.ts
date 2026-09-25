@@ -28,6 +28,7 @@ const AGENT_SUGGESTION: Omit<AgentSuggestionType, "kind" | "suggestion"> = {
   createdAt: 0,
   updatedAt: 0,
   agentConfigurationId: 1,
+  agentId: "agent-1",
   analysis: null,
   state: "pending",
   source: "conversational",

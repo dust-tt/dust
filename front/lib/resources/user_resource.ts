@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
 import {
@@ -19,6 +20,7 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
@@ -775,31 +777,47 @@ export class UserResource extends BaseResource<UserModel> {
       .map((v) => v.replaceAll(USER_METADATA_COMMA_REPLACEMENT, ","));
   }
 
+  /**
+   * @cc [owner:adrsimon,label:backend;concurrency] metadata-array-append-is-atomic
+   * Concurrent appends to the same global metadata array of a user MUST all be kept: none may
+   * overwrite another, and none may fail because another created the row first.
+   */
   async upsertMetadataArray(key: string, value: string) {
-    const valueWithCommaReplaced = value.replaceAll(
-      ",",
-      USER_METADATA_COMMA_REPLACEMENT
-    );
-    const metadata = await this.getMetadata(key);
-    if (!metadata) {
-      await UserMetadataModel.create({
-        userId: this.id,
-        key,
-        value: valueWithCommaReplaced,
+    const encodedValue = value.replaceAll(",", USER_METADATA_COMMA_REPLACEMENT);
+
+    await withTransaction(async (transaction) => {
+      // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
+      await frontSequelize.query(
+        "SELECT pg_advisory_xact_lock(hashtext(:lockKey))",
+        {
+          replacements: { lockKey: `user_metadata_array:${this.id}:${key}` },
+          transaction,
+        }
+      );
+
+      const metadata = await UserMetadataModel.findOne({
+        where: { userId: this.id, key, workspaceId: null },
+        transaction,
       });
-      return;
-    }
+      if (!metadata) {
+        await UserMetadataModel.create(
+          { userId: this.id, key, value: encodedValue },
+          { transaction }
+        );
+        return;
+      }
 
-    const metadataArray = metadata.value
-      .split(USER_METADATA_COMMA_SEPARATOR)
-      .map((v) => v.replace(USER_METADATA_COMMA_REPLACEMENT, ","));
-
-    if (!metadataArray.includes(valueWithCommaReplaced)) {
-      metadataArray.push(valueWithCommaReplaced);
-    }
-
-    await metadata.update({
-      value: metadataArray.join(USER_METADATA_COMMA_SEPARATOR),
+      const encodedValues = metadata.value.split(USER_METADATA_COMMA_SEPARATOR);
+      if (!encodedValues.includes(encodedValue)) {
+        await metadata.update(
+          {
+            value: [...encodedValues, encodedValue].join(
+              USER_METADATA_COMMA_SEPARATOR
+            ),
+          },
+          { transaction }
+        );
+      }
     });
   }
 
@@ -949,6 +967,15 @@ export class UserResource extends BaseResource<UserModel> {
       email: this.email,
       full_name: this.fullName(),
       updated_at: this.updatedAt,
+    };
+  }
+
+  toSearchFacetJSON(count: number) {
+    return {
+      sId: this.sId,
+      fullName: this.fullName(),
+      image: this.imageUrl,
+      count,
     };
   }
 

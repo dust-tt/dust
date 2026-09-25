@@ -376,6 +376,11 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     });
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:product] batched-state-only-through-batch
+   * `bulkUpdateState` MUST throw, without updating anything, when one of the suggestions belongs to
+   * a batch.
+   */
   static async bulkUpdateState(
     auth: Authenticator,
     suggestions: AgentSuggestionResource[],
@@ -384,6 +389,12 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   ): Promise<void> {
     if (suggestions.length === 0) {
       return;
+    }
+
+    if (suggestions.some((s) => s.batchId !== null)) {
+      throw new Error(
+        "Suggestions that belong to a batch can only change state through their batch."
+      );
     }
 
     assert(
@@ -399,6 +410,32 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
           id: { [Op.in]: suggestions.map((s) => s.id) },
+        },
+        transaction,
+      }
+    );
+  }
+
+  /**
+   * Sets the state of every suggestion of the given batches. Reserved to `BatchSuggestionResource`,
+   * which owns the state of batched suggestions (see `batched-state-only-through-batch`).
+   */
+  static async updateStateOfBatchMembers(
+    auth: Authenticator,
+    batchModelIds: ModelId[],
+    state: AgentSuggestionState,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (batchModelIds.length === 0) {
+      return;
+    }
+
+    await this.model.update(
+      { state },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          batchId: batchModelIds,
         },
         transaction,
       }
@@ -430,6 +467,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       agentConfigurationId: this.agentConfigurationId,
+      agentId: this._agentConfigurationId,
       analysis: this.analysis,
       state: this.state,
       source: this.source,

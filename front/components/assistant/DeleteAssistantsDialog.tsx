@@ -16,7 +16,7 @@ import {
 import { useState } from "react";
 
 interface DeleteAssistantsDialogProps {
-  agentConfigurations: LightAgentConfigurationType[];
+  agentConfigurations: Pick<LightAgentConfigurationType, "sId" | "usage">[];
   disabled: boolean;
   owner: LightWorkspaceType;
   onSave: () => void;

@@ -1592,12 +1592,18 @@ describe("updateAgentConfigurationsScope", () => {
       role: "user",
     });
 
+    const agentResource = await AgentResource.fetchById(
+      authenticator,
+      agent.sId
+    );
+    assert(agentResource);
+
     // Trigger owned by the admin (an agent editor).
     const editorTriggerRes = await TriggerResource.makeNew(authenticator, {
       workspaceId: workspace.id,
       name: "editor-trigger",
       kind: "webhook",
-      agentConfigurationId: agent.sId,
+      agent: agentResource,
       editor: user.id,
       customPrompt: null,
       status: "enabled",
@@ -1616,7 +1622,7 @@ describe("updateAgentConfigurationsScope", () => {
       workspaceId: workspace.id,
       name: "non-editor-trigger",
       kind: "webhook",
-      agentConfigurationId: agent.sId,
+      agent: agentResource,
       editor: nonEditor.id,
       customPrompt: null,
       status: "enabled",

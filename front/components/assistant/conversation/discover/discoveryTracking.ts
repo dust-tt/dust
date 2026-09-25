@@ -41,6 +41,17 @@ export function trackHomepageUseCaseClick({
   });
 }
 
+export function trackHomepageUseCaseDismiss({
+  useCaseId,
+}: HomepageUseCaseTracking): void {
+  trackEvent({
+    area: TRACKING_AREAS.DISCOVER,
+    object: HOMEPAGE_USE_CASE_OBJECT,
+    action: TRACKING_ACTIONS.DISMISS,
+    extra: { use_case_id: useCaseId },
+  });
+}
+
 export function trackHomepageUseCaseView({
   useCaseId,
 }: HomepageUseCaseTracking): void {

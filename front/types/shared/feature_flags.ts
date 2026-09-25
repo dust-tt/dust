@@ -16,6 +16,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "aubin-tchoi",
   },
+  new_manage_agents_page: {
+    description: "Enable the search-backed Manage Agents page",
+    stage: "dust_only",
+    owner: "tdraier",
+  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",

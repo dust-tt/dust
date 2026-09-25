@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   MAX_INACTIVITY_THRESHOLD_DAYS,
   MIN_INACTIVITY_THRESHOLD_DAYS,
@@ -18,6 +17,7 @@ import {
   updateWorkspaceMetadata,
 } from "@app/lib/api/workspace";
 import { getFeatureFlags, hasFeatureFlag } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -32,8 +32,6 @@ import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
 import { escape } from "html-escaper";
 import { z } from "zod";
 import activationPod from "./activation-pod";
-import actionRecommendations from "./activation-recommendations";
-import activationWorkAreas from "./activation-work-areas";
 import analytics from "./analytics";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
@@ -945,11 +943,11 @@ app.post(
       // Validate the default agent exists and is usable (handles both global
       // agents and workspace agents). A null value clears the default (@dust).
       if (body.workspaceDefaultAgentId) {
-        const agent = await getAgentConfiguration(auth, {
-          agentId: body.workspaceDefaultAgentId,
-          variant: "extra_light",
-        });
-        if (!agent || agent.status !== "active") {
+        const agent = await AgentResource.fetchById(
+          auth,
+          body.workspaceDefaultAgentId
+        );
+        if (!agent || !auth.can("read", agent) || agent.status !== "active") {
           return apiError(ctx, {
             status_code: 400,
             api_error: {
@@ -1032,8 +1030,6 @@ app.post(
 
 // Sub-apps using the catch-all default + the partial-subtree exception
 // targets declared above.
-app.route("/activation-recommendations", actionRecommendations);
-app.route("/activation-work-areas", activationWorkAreas);
 app.route("/activation-pod", activationPod);
 app.route("/analytics", analytics);
 app.route("/model_tiers", modelTiers);

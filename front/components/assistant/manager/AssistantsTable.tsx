@@ -807,7 +807,14 @@ export function AssistantsTable({
   // Selection only ever contains selectable rows (only those render a
   // checkbox), so no extra filtering is needed here.
   const selectedAgents = useMemo(
-    () => agents.filter((a) => selectionSet.has(a.sId)),
+    () =>
+      agents
+        .filter((a) => selectionSet.has(a.sId))
+        .map((a) => ({
+          sId: a.sId,
+          usage: a.usage,
+          tagIds: a.tags.map((tag) => tag.sId),
+        })),
     [agents, selectionSet]
   );
 

@@ -46,6 +46,10 @@ import { fetchCustomSkillById } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import {
+  extractSkillRefs,
+  hasUnparsableSkillRefTag,
+} from "@app/lib/skills/format";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -415,6 +419,83 @@ async function planSuggestion(
   }
 }
 
+/** The refs the suggestions give to the skills they create. */
+function skillRefsOf(suggestions: Suggestion[]): string[] {
+  return suggestions.flatMap((suggestion) => {
+    switch (suggestion.kind) {
+      case "create_skill":
+        return suggestion.ref ? [suggestion.ref] : [];
+      case "edit_skill":
+      case "create_agent":
+      case "edit_agent":
+      case "delete_agent":
+      case "delete_skill":
+        return [];
+      default:
+        assertNever(suggestion);
+    }
+  });
+}
+
+/** The skill instructions the suggestions write, where skill tags may use a ref. */
+function skillInstructionsOf(suggestions: Suggestion[]): string[] {
+  return suggestions.flatMap((suggestion) => {
+    switch (suggestion.kind) {
+      case "create_skill":
+        return [suggestion.instructions];
+      case "edit_skill":
+        return (suggestion.instructionEdits ?? []).map((edit) => edit.content);
+      case "create_agent":
+      case "edit_agent":
+        // TODO(conversational-building): collect the refs agents use once they can add skills.
+        return [];
+      case "delete_agent":
+      case "delete_skill":
+        return [];
+      default:
+        assertNever(suggestion);
+    }
+  });
+}
+
+/**
+ * Checks that each ref is declared only once, by a skill creation. Every skill tag citing a ref in
+ * the call's instructions must point at one of those declared refs.
+ */
+function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
+  const pendingSkillRefs = new Set<string>();
+  for (const ref of skillRefsOf(suggestions)) {
+    if (pendingSkillRefs.has(ref)) {
+      return new Err(new MCPError(`The ref "${ref}" is declared twice.`));
+    }
+    pendingSkillRefs.add(ref);
+  }
+
+  for (const content of skillInstructionsOf(suggestions)) {
+    if (hasUnparsableSkillRefTag(content)) {
+      return new Err(
+        new MCPError(
+          'A skill tag citing a ref must be written as <skill ref="name"/>.'
+        )
+      );
+    }
+    // A skill tag can only use the ref of a skill created in this call: that skill gets a pending
+    // skill whose id replaces the ref before storage.
+    const unknownRef = extractSkillRefs(content).find(
+      (ref) => !pendingSkillRefs.has(ref)
+    );
+    if (unknownRef) {
+      return new Err(
+        new MCPError(
+          `The ref "${unknownRef}" is not declared by any skill creation of this call.`
+        )
+      );
+    }
+  }
+
+  return new Ok(undefined);
+}
+
 /** Each existing agent or skill may be targeted by at most one suggestion of the batch. */
 function findDuplicateTarget(suggestions: Suggestion[]): string | null {
   const seen = new Set<string>();
@@ -520,7 +601,8 @@ async function recordPlannedChange(
  * @cc [owner:fabiencelier,label:product;mcp] suggest-validates-all-before-writing
  * `suggest` MUST validate every suggestion of the call against live state before recording any of
  * them: when one suggestion is invalid or unsupported, or two suggestions target the same agent or
- * skill, the call fails and no batch, placeholder agent or skill, or suggestion row is created.
+ * skill, or a ref is declared twice or used without being declared, the call fails and no batch,
+ * placeholder agent or skill, or suggestion row is created.
  */
 export async function suggest(
   auth: Authenticator,
@@ -540,6 +622,11 @@ export async function suggest(
         `"${duplicateTarget}" is targeted by several suggestions: merge them into one.`
       )
     );
+  }
+
+  const refsValidation = validateRefs(suggestions);
+  if (refsValidation.isErr()) {
+    return refsValidation;
   }
 
   const plannedChanges: PlannedChange[] = [];

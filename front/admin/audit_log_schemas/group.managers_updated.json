@@ -1,0 +1,11 @@
+{
+  "action": "group.managers_updated",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "group" }
+  ],
+  "metadata": {
+    "added_manager_ids": "string",
+    "removed_manager_ids": "string"
+  }
+}

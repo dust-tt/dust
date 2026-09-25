@@ -3,8 +3,11 @@ import type {
   AgentSearchListItemType,
 } from "@app/types/agent_search/agent_search";
 
+// Default agents are indexed without a model; `workspaceModel` is the one they resolve to for the
+// caller's workspace.
 export function toAgentListItem(
-  document: AgentSearchDocument
+  document: AgentSearchDocument,
+  workspaceModel: AgentSearchListItemType["model"] = null
 ): AgentSearchListItemType {
   return {
     sId: document.agent_id,
@@ -13,6 +16,19 @@ export function toAgentListItem(
     name: document.name,
     description: document.description,
     pictureUrl: document.picture_url,
+    model:
+      workspaceModel ??
+      (document.model
+        ? {
+            providerId: document.model.provider_id,
+            modelId: document.model.model_id,
+            reasoningEffort: document.model.reasoning_effort,
+          }
+        : null),
+    feedbacks: {
+      up: document.feedback_positive_count,
+      down: document.feedback_negative_count,
+    },
     requestedSpaceIds: document.requested_space_ids,
     tagIds: document.tag_ids,
     editorIds: document.editor_ids,

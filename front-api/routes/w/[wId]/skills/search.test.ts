@@ -74,6 +74,7 @@ describe("POST /api/w/:wId/skills/search", () => {
         ],
         total: 1,
         hasMore: false,
+        facets: {},
       })
     );
 
@@ -85,6 +86,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       limit: undefined,
       offset: undefined,
       permissionFiltering: undefined,
+      facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
       filters: {
@@ -93,11 +95,16 @@ describe("POST /api/w/:wId/skills/search", () => {
         availability: undefined,
         editedByMe: undefined,
         codeDefinedOnly: undefined,
+        editorIds: undefined,
+        childSkillIds: undefined,
+        spaceIds: undefined,
+        activeUsersCount: undefined,
       },
     });
     expect(await response.json()).toEqual({
       total: 1,
       hasMore: false,
+      facets: {},
       skills: [
         {
           status: "active",
@@ -127,7 +134,7 @@ describe("POST /api/w/:wId/skills/search", () => {
   it("passes offset through and returns total", async () => {
     const { workspace } = await setup();
     searchSkills.mockResolvedValue(
-      new Ok({ skills: [], total: 130, hasMore: true })
+      new Ok({ skills: [], total: 130, hasMore: true, facets: {} })
     );
     const response = await searchRequest(workspace.sId, {
       query: "research",
@@ -140,6 +147,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       limit: 100,
       offset: 25,
       permissionFiltering: undefined,
+      facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
       filters: {
@@ -148,6 +156,10 @@ describe("POST /api/w/:wId/skills/search", () => {
         availability: undefined,
         editedByMe: undefined,
         codeDefinedOnly: undefined,
+        editorIds: undefined,
+        childSkillIds: undefined,
+        spaceIds: undefined,
+        activeUsersCount: undefined,
       },
     });
     const body = await response.json();
@@ -155,11 +167,11 @@ describe("POST /api/w/:wId/skills/search", () => {
       skills: [],
       total: 130,
       hasMore: true,
+      facets: {},
     });
   });
 
   it.each([
-    { limit: 0 },
     { limit: 101 },
     { limit: 1.5 },
     { offset: -1 },
@@ -176,11 +188,68 @@ describe("POST /api/w/:wId/skills/search", () => {
     { status: ["active", "suggested"] },
     { status: [] },
     { mcpServerViewIds: [""] },
+    { editorIds: [""] },
+    { childSkillIds: [""] },
+    { spaceIds: [""] },
+    { activeUsersCount: { max: -1 } },
+    { facets: ["tags"] },
   ])("rejects invalid pagination: %s", async (query) => {
     const { workspace } = await setup();
     const response = await searchRequest(workspace.sId, query);
     expect(response.status).toBe(400);
     expect(searchSkills).not.toHaveBeenCalled();
+  });
+
+  it("returns facet values with counts and names", async () => {
+    const { workspace, user, globalSpace } = await setup();
+    searchSkills.mockResolvedValue(
+      new Ok({
+        skills: [],
+        total: 0,
+        hasMore: false,
+        facets: {
+          availability: [
+            { value: "workspace_users", count: 2 },
+            { value: "unknown", count: 1 },
+          ],
+          editors: [
+            { value: user.sId, count: 3 },
+            { value: "missing-user", count: 1 },
+          ],
+          childSkills: [{ value: "missing-skill", count: 1 }],
+          spaces: [{ value: globalSpace.sId, count: 4 }],
+          usage: { min: 1, max: 9 },
+        },
+      })
+    );
+
+    const response = await searchRequest(workspace.sId, {
+      limit: 0,
+      facets: ["availability", "editors", "childSkills", "spaces", "usage"],
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).facets).toEqual({
+      availability: [{ availability: "workspace_users", count: 2 }],
+      editors: [
+        {
+          sId: user.sId,
+          fullName: user.toJSON().fullName,
+          image: user.toJSON().image,
+          count: 3,
+        },
+      ],
+      childSkills: [],
+      spaces: [
+        {
+          sId: globalSpace.sId,
+          name: globalSpace.name,
+          kind: "global",
+          count: 4,
+        },
+      ],
+      usage: { min: 1, max: 9 },
+    });
   });
 
   it("returns a bad request when the offset is out of range", async () => {
@@ -209,7 +278,7 @@ describe("POST /api/w/:wId/skills/search", () => {
   it("allows admins to opt into redacted search", async () => {
     const { workspace } = await setup("admin");
     searchSkills.mockResolvedValue(
-      new Ok({ skills: [], total: 0, hasMore: false })
+      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
     );
     const response = await searchRequest(workspace.sId, {
       permissionFiltering: "redact_unreadable",
@@ -220,6 +289,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       limit: undefined,
       offset: undefined,
       permissionFiltering: "redact_unreadable",
+      facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
       filters: {
@@ -228,6 +298,10 @@ describe("POST /api/w/:wId/skills/search", () => {
         availability: undefined,
         editedByMe: undefined,
         codeDefinedOnly: undefined,
+        editorIds: undefined,
+        childSkillIds: undefined,
+        spaceIds: undefined,
+        activeUsersCount: undefined,
       },
     });
   });
@@ -235,7 +309,7 @@ describe("POST /api/w/:wId/skills/search", () => {
   it("accepts structured filters and opt-in editor selection", async () => {
     const { workspace } = await setup();
     searchSkills.mockResolvedValue(
-      new Ok({ skills: [], total: 0, hasMore: false })
+      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
     );
     const response = await searchRequest(workspace.sId, {
       status: ["active", "archived"],

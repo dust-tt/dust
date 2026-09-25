@@ -1,5 +1,6 @@
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -117,6 +118,25 @@ describe("POST /api/w/:wId (workspace default agent)", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("returns 400 for a hidden agent the admin cannot read", async () => {
+    const { workspace, auth } = await setup();
+    await FeatureFlagFactory.basic(auth, "workspace_default_agent");
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await post(workspace, {
+      workspaceDefaultAgentId: agent.sId,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.metadata?.workspaceDefaultAgentId).toBeUndefined();
   });
 
   it("returns 403 when the feature flag is disabled", async () => {

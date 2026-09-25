@@ -533,6 +533,13 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - updated", () =
   });
 });
 
+function del(workspace: { sId: string }, aId: string) {
+  return honoApp.request(
+    `/api/w/${workspace.sId}/assistant/agent_configurations/${aId}`,
+    { method: "DELETE" }
+  );
+}
+
 function get(workspace: { sId: string }, aId: string) {
   return honoApp.request(
     `/api/w/${workspace.sId}/assistant/agent_configurations/${aId}`,
@@ -711,5 +718,88 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     const data = await response.json();
     expect(data.agentConfiguration.sId).toBe(agent.sId);
     expect(data.agentConfiguration.instructions).toBe(agent.instructions);
+  });
+});
+
+describe("DELETE /api/w/:wId/assistant/agent_configurations/:aId", () => {
+  it("lets a non-editor admin archive an agent built on a space they cannot read", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
+      workspace,
+      "user"
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [agentOwner.sId] });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "visible", requestedSpaceIds: [restrictedSpace.id] }
+    );
+
+    const response = await del(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    const archived = await AgentResource.fetchById(agentOwnerAuth, agent.sId);
+    expect(archived?.status).toBe("archived");
+  });
+
+  it("lets an editor who lost access to a required space archive the agent", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(internalAdminAuth, {
+      userIds: [user.sId],
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      scope: "visible",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    await restrictedSpace.removeMembers(internalAdminAuth, {
+      userIds: [user.sId],
+    });
+
+    const response = await del(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    const archived = await AgentResource.fetchById(
+      internalAdminAuth,
+      agent.sId
+    );
+    expect(archived?.status).toBe("archived");
+  });
+
+  it("refuses a member who can read the agent but does not edit it", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "user" });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "visible" }
+    );
+
+    const response = await del(workspace, agent.sId);
+
+    expect(response.status).toBe(403);
+    const unchanged = await AgentResource.fetchById(agentOwnerAuth, agent.sId);
+    expect(unchanged?.status).toBe("active");
+  });
+
+  it("returns not found to a member for a hidden agent they do not edit", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "user" });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await del(workspace, agent.sId);
+
+    expect(response.status).toBe(404);
+    const unchanged = await AgentResource.fetchById(agentOwnerAuth, agent.sId);
+    expect(unchanged?.status).toBe("active");
   });
 });

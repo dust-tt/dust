@@ -183,6 +183,19 @@ app.patch(
       }
     }
 
+    const batchedSuggestionIds = suggestions
+      .filter((suggestion) => suggestion.batchId !== null)
+      .map((suggestion) => suggestion.sId);
+    if (batchedSuggestionIds.length > 0) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `The following suggestions belong to a batch and must be reviewed with it: ${batchedSuggestionIds.join(", ")}.`,
+        },
+      });
+    }
+
     if (applyToAgent) {
       const alreadyReviewedIds = suggestions
         .filter((suggestion) => suggestion.state !== "pending")

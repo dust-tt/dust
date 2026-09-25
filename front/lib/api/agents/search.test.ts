@@ -280,6 +280,28 @@ describe("searchAgents", () => {
     });
   });
 
+  it("reports the workspace model of default agents, indexed without one", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    mockHits([
+      makeDocument({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: GLOBAL_AGENTS_SID.HELPER,
+        scope: "global",
+        model: null,
+      }),
+    ]);
+
+    const result = await searchAgents(auth, { searchTerm: "" });
+    assert(result.isOk());
+    const [helper] = result.value.agents;
+    expect(helper.sId).toBe(GLOBAL_AGENTS_SID.HELPER);
+    expect(helper.model).toEqual({
+      providerId: expect.any(String),
+      modelId: expect.any(String),
+      reasoningEffort: expect.any(String),
+    });
+  });
+
   it("rejects offsets past the result window without querying", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
 

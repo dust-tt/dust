@@ -193,23 +193,11 @@ export class TagResource extends BaseResource<TagModel> {
     });
   }
 
-  static async listForAgent(
-    auth: Authenticator,
-    agentConfigurationId: number
-  ): Promise<TagResource[]> {
-    const tags = await TagAgentModel.findAll({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        agentConfigurationId,
-      },
-    });
-    return this.baseFetch(auth, {
-      where: {
-        id: tags.map((t) => t.tagId),
-      },
-    });
-  }
-
+  /**
+   * @cc [owner:tdraier,label:architecture] agent-tags-through-agent-resource
+   * Reserved for the agent domain (`AgentResource` and its save steps): other callers MUST read an
+   * agent's tags through `AgentResource.listTags`/`batchListTags`.
+   */
   static async listForAgents(
     auth: Authenticator,
     agentConfigurationIds: number[]
@@ -343,5 +331,9 @@ export class TagResource extends BaseResource<TagModel> {
       name: this.name,
       kind: this.kind,
     };
+  }
+
+  toSearchFacetJSON(count: number) {
+    return { ...this.toJSON(), count };
   }
 }

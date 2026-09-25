@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -112,8 +113,11 @@ async function createWebhookSourceAndTrigger(
     workspace
   ).create(systemSpace, { webhookSourceId: webhookSource.sId });
 
+  const agent =
+    await AgentConfigurationFactory.createTestAgent(triggerEditorAuth);
+
   await TriggerFactory.webhook(triggerEditorAuth, {
-    agentConfigurationId: "agent_test",
+    agentConfigurationId: agent.sId,
     status: "enabled",
     webhookSourceViewId: webhookSourceView.id,
     configuration: {

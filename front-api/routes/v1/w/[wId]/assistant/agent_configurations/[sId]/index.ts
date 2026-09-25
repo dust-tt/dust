@@ -427,17 +427,22 @@ app.delete(
     const { sId } = ctx.req.valid("param");
 
     const agent = await AgentResource.fetchById(auth, sId);
-
-    // Space-scoping: an API key whose groups don't cover every `requestedSpaceId` of the agent must
-    // not archive it, even with the admin role (the `admin` verb survives losing space read). Unlike
-    // `getAgentConfiguration`, `fetchById` returns such an agent to an admin, so re-check space read
-    // here to keep this route's security model (matching its PATCH).
-    if (!agent || !agent.requestedSpacesReadable(auth)) {
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_configuration_not_found",
           message: "The agent configuration you requested was not found.",
+        },
+      });
+    }
+
+    if (!auth.can("admin", agent)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Archiving an agent requires admin access to it.",
         },
       });
     }

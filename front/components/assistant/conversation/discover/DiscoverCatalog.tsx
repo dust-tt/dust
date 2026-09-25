@@ -22,6 +22,7 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCatalogSearch } from "@app/lib/swr/catalog_search";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { useTagsUsage } from "@app/lib/swr/tags";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -42,6 +43,7 @@ import {
   NavigationList,
   NavigationListItem,
   Pin02,
+  SearchInput,
   Spinner,
   Users01,
 } from "@dust-tt/sparkle";
@@ -112,8 +114,6 @@ function formatAuthors(authors: readonly string[]): string {
 
 interface DiscoverCatalogProps {
   owner: WorkspaceType;
-  search: string;
-  onClearSearch: () => void;
   onAgentClick: (agent: RichAgentMentionCandidate) => void;
   onSkillClick: (skill: PendingSkill) => void;
   onPin?: (item: CatalogItem) => void;
@@ -131,6 +131,8 @@ interface CatalogActions {
 interface CatalogSourceProps extends CatalogActions {
   owner: WorkspaceType;
   query: CatalogQuery;
+  search: string;
+  onSearchChange: (value: string) => void;
   onUpdateFilters: (update: Partial<CatalogFilters>) => void;
   canClearFilters: boolean;
   onClearFilters: () => void;
@@ -139,6 +141,8 @@ interface CatalogSourceProps extends CatalogActions {
 function HydratedCatalog({
   owner,
   query,
+  search,
+  onSearchChange,
   onUpdateFilters,
   canClearFilters,
   onClearFilters,
@@ -224,6 +228,8 @@ function HydratedCatalog({
     <CatalogLayout
       filters={query}
       tags={tags}
+      search={search}
+      onSearchChange={onSearchChange}
       onUpdateFilters={onUpdateFilters}
     >
       <CatalogResults
@@ -246,13 +252,15 @@ interface SearchCatalogProps extends CatalogSourceProps {
 function SearchCatalog({
   owner,
   query,
+  search,
+  onSearchChange,
   onUpdateFilters,
   canClearFilters,
   onClearFilters,
   isDebouncing,
   ...actions
 }: SearchCatalogProps) {
-  const search = useCatalogSearch({ owner, query });
+  const catalogSearch = useCatalogSearch({ owner, query });
   const { tags: tagsWithUsage, isTagsLoading } = useTagsUsage({ owner });
   const tags = useMemo(
     () => tagsWithUsage.filter((tag) => tag.usage > 0).sort(tagsSorter),
@@ -263,19 +271,21 @@ function SearchCatalog({
     <CatalogLayout
       filters={query}
       tags={tags}
+      search={search}
+      onSearchChange={onSearchChange}
       onUpdateFilters={onUpdateFilters}
     >
       <CatalogResults
-        items={search.items}
+        items={catalogSearch.items}
         isLoading={
           isDebouncing ||
           isTagsLoading ||
-          search.isLoading ||
-          search.isLoadingMore
+          catalogSearch.isLoading ||
+          catalogSearch.isLoadingMore
         }
-        hasError={search.hasError}
-        hasNextPage={search.hasMore}
-        onLoadMore={search.loadMore}
+        hasError={catalogSearch.hasError}
+        hasNextPage={catalogSearch.hasMore}
+        onLoadMore={catalogSearch.loadMore}
         canClearFilters={canClearFilters}
         onClearFilters={onClearFilters}
         {...actions}
@@ -286,8 +296,6 @@ function SearchCatalog({
 
 export function DiscoverCatalog({
   owner,
-  search,
-  onClearSearch,
   onAgentClick,
   onSkillClick,
   onPin,
@@ -295,6 +303,7 @@ export function DiscoverCatalog({
   onFiltersChange,
 }: DiscoverCatalogProps) {
   const [filters, setFilters] = useState<CatalogFilters>(DEFAULT_FILTERS);
+  const [search, setSearch] = useState("");
   const searchTerm = search.trim().toLowerCase().replace(/^@/, "");
   const {
     debouncedValue: debouncedSearchTerm,
@@ -313,18 +322,35 @@ export function DiscoverCatalog({
   const useSearch =
     filters.view !== "favorites" &&
     (filters.kind !== "skill" || skillsSearchEnabled);
-  const effectiveSearchTerm = useSearch ? debouncedSearchTerm : searchTerm;
   const query = useMemo(() => {
-    const built = buildCatalogQuery(filters, effectiveSearchTerm);
-    return skillsSearchEnabled ? built : { ...built, showSkills: false };
-  }, [effectiveSearchTerm, filters, skillsSearchEnabled]);
+    const built = buildCatalogQuery(
+      filters,
+      useSearch ? debouncedSearchTerm : searchTerm
+    );
+    // Skill search 403s without the flag. Favorites and the skill-only view stay
+    // on the hydrated lists, which still include skills.
+    if (!useSearch || skillsSearchEnabled) {
+      return built;
+    }
+    return { ...built, showSkills: false };
+  }, [
+    debouncedSearchTerm,
+    filters,
+    searchTerm,
+    skillsSearchEnabled,
+    useSearch,
+  ]);
   const updateFilters = (update: Partial<CatalogFilters>) => {
     setFilters((current) => ({ ...current, ...update }));
     onFiltersChange();
   };
   const clearFilters = () => {
     setFilters(DEFAULT_FILTERS);
-    onClearSearch();
+    setSearch("");
+    onFiltersChange();
+  };
+  const onSearchChange = (value: string) => {
+    setSearch(value);
     onFiltersChange();
   };
   const canClearFilters =
@@ -339,6 +365,8 @@ export function DiscoverCatalog({
       key={query.key}
       owner={owner}
       query={query}
+      search={search}
+      onSearchChange={onSearchChange}
       onUpdateFilters={updateFilters}
       canClearFilters={canClearFilters}
       onClearFilters={clearFilters}
@@ -349,6 +377,8 @@ export function DiscoverCatalog({
     <HydratedCatalog
       owner={owner}
       query={query}
+      search={search}
+      onSearchChange={onSearchChange}
       onUpdateFilters={updateFilters}
       canClearFilters={canClearFilters}
       onClearFilters={clearFilters}
@@ -360,6 +390,8 @@ export function DiscoverCatalog({
 interface CatalogLayoutProps {
   filters: CatalogFilters;
   tags: { sId: string; name: string }[];
+  search: string;
+  onSearchChange: (value: string) => void;
   onUpdateFilters: (update: Partial<CatalogFilters>) => void;
   children: React.ReactNode;
 }
@@ -367,17 +399,27 @@ interface CatalogLayoutProps {
 function CatalogLayout({
   filters,
   tags,
+  search,
+  onSearchChange,
   onUpdateFilters,
   children,
 }: CatalogLayoutProps) {
   return (
-    <div className="grid grid-cols-1 gap-10 md:grid-cols-[12rem_1fr]">
-      <CatalogFiltersNav
-        filters={filters}
-        tags={tags}
-        onUpdateFilters={onUpdateFilters}
+    <div className="flex flex-col gap-8">
+      <SearchInput
+        name="discover-search"
+        placeholder="Search for agents or skills"
+        value={search}
+        onChange={onSearchChange}
       />
-      {children}
+      <div className="grid grid-cols-1 gap-10 md:grid-cols-[12rem_1fr]">
+        <CatalogFiltersNav
+          filters={filters}
+          tags={tags}
+          onUpdateFilters={onUpdateFilters}
+        />
+        {children}
+      </div>
     </div>
   );
 }
@@ -394,10 +436,7 @@ function CatalogFiltersNav({
   onUpdateFilters,
 }: CatalogFiltersNavProps) {
   return (
-    <nav
-      aria-label="Filter"
-      className="flex flex-col gap-6 self-start md:sticky md:top-6"
-    >
+    <nav aria-label="Filter" className="flex flex-col gap-6 self-start">
       <NavigationList>
         {CATALOG_VIEWS.map((v) => (
           <NavigationListItem
@@ -545,34 +584,49 @@ interface CatalogRowProps {
 
 export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
   const name = getItemName(item);
+  const isMobile = useIsMobile();
+  const avatar =
+    item.kind === "agent" ? (
+      <Avatar size={isMobile ? "md" : "lg"} visual={item.agent.pictureUrl} />
+    ) : (
+      <SkillCatalogAvatar
+        icon={item.skill.icon}
+        isDustProvided={item.isDustProvided}
+        size={isMobile ? "md" : "lg"}
+      />
+    );
   return (
-    <div className="group flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
-      <button
-        type="button"
-        aria-label={`Show ${name} details`}
-        onClick={onDetails}
-        className="shrink-0 rounded-2xl transition duration-200 ease-out hover:brightness-110 active:brightness-90"
-      >
-        {item.kind === "agent" ? (
-          <Avatar size="lg" visual={item.agent.pictureUrl} />
-        ) : (
-          <SkillCatalogAvatar
-            icon={item.skill.icon}
-            isDustProvided={item.isDustProvided}
-          />
-        )}
-      </button>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="heading-base notranslate text-foreground">
+    <div
+      className={cn(
+        "group relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2",
+        "border-b border-separator py-4 last:border-b-0 md:gap-y-1"
+      )}
+    >
+      <div className="col-start-1 row-start-1 shrink-0 md:row-span-2">
+        {avatar}
+      </div>
+      <div className="col-start-2 col-end-4 row-start-1 flex min-w-0 items-center gap-2 self-center md:col-end-3 md:self-end">
+        {isMobile ? (
+          <span className="heading-base notranslate truncate text-foreground">
             {name}
           </span>
-          <Chip
-            size="xs"
-            label={item.kind === "agent" ? `@${name}` : `/${name}`}
-            className="font-mono"
-          />
-        </div>
+        ) : (
+          <button
+            type="button"
+            aria-label={`Show ${name} details`}
+            onClick={onDetails}
+            className="heading-base notranslate cursor-pointer truncate text-left text-foreground after:absolute after:inset-0"
+          >
+            {name}
+          </button>
+        )}
+        <Chip
+          size="xs"
+          label={item.kind === "agent" ? `@${name}` : `/${name}`}
+          className="shrink-0 font-mono"
+        />
+      </div>
+      <div className="col-start-1 col-end-3 row-start-2 flex min-w-0 flex-col gap-1 self-start md:col-start-2">
         <div className="flex h-5 items-center gap-4 copy-sm">
           <ItemAuthor item={item} />
           {item.activeUsersCount !== null && (
@@ -583,11 +637,11 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
             </span>
           )}
         </div>
-        <p className="copy-sm text-muted-foreground">
+        <p className="copy-sm line-clamp-2 text-muted-foreground">
           {getItemDescription(item)}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="relative col-start-3 row-start-2 flex shrink-0 items-center gap-1 self-end md:row-span-2 md:row-start-1 md:self-center">
         {onPin && (
           <Button
             variant="ghost"

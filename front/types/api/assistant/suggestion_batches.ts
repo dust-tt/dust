@@ -22,6 +22,14 @@ export const PatchSuggestionBatchRequestBodySchema = z.object({
   state: z.enum(["approved", "rejected"]),
 });
 
+export type PatchSuggestionBatchRequestBody = z.infer<
+  typeof PatchSuggestionBatchRequestBodySchema
+>;
+
+/** The states a reviewer can move a pending batch to. */
+export type SuggestionBatchReviewState =
+  PatchSuggestionBatchRequestBody["state"];
+
 export type PatchSuggestionBatchResponseBody = {
   batch: BatchSuggestionType;
 };

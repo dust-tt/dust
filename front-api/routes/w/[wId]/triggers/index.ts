@@ -1,4 +1,4 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import {
   resolveTriggerSpaceId,
@@ -54,14 +54,8 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("query");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (
-      !agentConfiguration ||
-      (!agentConfiguration.canRead && !auth.isAdmin())
-    ) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -102,14 +96,8 @@ app.delete(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("query");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (
-      !agentConfiguration ||
-      (!agentConfiguration.canRead && !auth.isAdmin())
-    ) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -172,14 +160,8 @@ app.patch(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("query");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (
-      !agentConfiguration ||
-      (!agentConfiguration.canRead && !auth.isAdmin())
-    ) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -350,14 +332,8 @@ app.post(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("query");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (
-      !agentConfiguration ||
-      (!agentConfiguration.canRead && !auth.isAdmin())
-    ) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent || !auth.can("read", agent)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -409,7 +385,7 @@ app.post(
 
       const newTrigger = await TriggerResource.makeNew(auth, {
         workspaceId: workspace.id,
-        agentConfigurationId: aId,
+        agent,
         name: validatedTrigger.name,
         kind: validatedTrigger.kind,
         status: validatedTrigger.status ?? "enabled",

@@ -1,5 +1,5 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
@@ -66,11 +66,8 @@ app.patch(
       throw new Error("Unreachable code: connectorId is null.");
     }
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (!agentConfiguration) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -81,7 +78,7 @@ app.patch(
       });
     }
 
-    if (!agentConfiguration.canEdit && !auth.isAdmin()) {
+    if (!auth.can("write", agent)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -91,7 +88,7 @@ app.patch(
       });
     }
 
-    if (isArchivedAgent(agentConfiguration)) {
+    if (isArchivedAgent(agent)) {
       return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
@@ -102,7 +99,7 @@ app.patch(
 
     const connectorsApiRes = await connectorsAPI.linkSlackChannelsWithAgent({
       connectorId: connectorId.toString(),
-      agentConfigurationId: agentConfiguration.sId,
+      agentConfigurationId: agent.sId,
       slackChannelInternalIds: body.slack_channel_internal_ids,
       autoRespondWithoutMention: body.auto_respond_without_mention,
       autoRespondWithoutMentionSkipThreadReplies:

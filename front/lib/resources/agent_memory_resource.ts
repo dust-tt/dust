@@ -1,5 +1,6 @@
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -113,9 +114,18 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     );
   }
 
-  static async fetchByIdForUser(
+  /**
+   * @cc [owner:tdraier,label:security] memory-fetch-bound-to-agent-and-user
+   * Returns the memory only if it belongs to both the given agent and the given user, so a caller
+   * authorized on one agent cannot reach another agent's memory by its id.
+   */
+  static async fetchByIdForAgentAndUser(
     auth: Authenticator,
-    { user, memoryId }: { user: UserType | null; memoryId: string }
+    {
+      agent,
+      user,
+      memoryId,
+    }: { agent: AgentResource; user: UserType | null; memoryId: string }
   ): Promise<AgentMemoryResource | null> {
     const id = getResourceIdFromSId(memoryId);
     if (!id) {
@@ -126,6 +136,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       where: {
         id,
         workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfigurationId: agent.sId,
         userId: user?.id ?? null,
       },
     });

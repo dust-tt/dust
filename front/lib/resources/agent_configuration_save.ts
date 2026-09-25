@@ -363,7 +363,9 @@ export async function syncAgentTags(
   );
 
   const existingTags = existingAgent
-    ? await TagResource.listForAgent(auth, existingAgent.id)
+    ? ((await TagResource.listForAgents(auth, [existingAgent.id]))[
+        existingAgent.id
+      ] ?? [])
     : [];
   const existingReservedTags = existingTags
     .filter((tag) => tag.kind === "protected")

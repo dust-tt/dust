@@ -73,7 +73,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchDeleteAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
-import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
+import type {
+  AgentSearchDocument,
+  AgentSearchListItemType,
+} from "@app/types/agent_search/agent_search";
 import type { DiscoveryAgentType } from "@app/types/api/discovery";
 import type {
   AgentConfigurationBaseType,
@@ -1260,6 +1263,50 @@ export class AgentResource
     return result;
   }
 
+  async listTags(auth: Authenticator): Promise<TagResource[]> {
+    const tagsByConfigurationModelId = await AgentResource.batchListTags(auth, [
+      this,
+    ]);
+    const tags = tagsByConfigurationModelId.get(this.agentConfigurationModelId);
+    assert(tags !== undefined);
+
+    return tags;
+  }
+
+  /**
+   * @cc [owner:tdraier,label:backend] tag-results-by-version
+   * Keyed by `agentConfigurationModelId`: tags attach to a configuration version, not to the agent
+   * across versions. Each input agent has an entry, `[]` when it has no tag. Global agents MUST get
+   * `[]` without a tag lookup: they hold no tag row and share a sentinel configuration id.
+   */
+  static async batchListTags(
+    auth: Authenticator,
+    agents: AgentResource[]
+  ): Promise<Map<ModelId, TagResource[]>> {
+    const result = new Map<ModelId, TagResource[]>(
+      agents.map((agent) => [agent.agentConfigurationModelId, []])
+    );
+    const customConfigurationModelIds = agents
+      .filter((agent) => agent.scope !== "global")
+      .map((agent) => agent.agentConfigurationModelId);
+    if (customConfigurationModelIds.length === 0) {
+      return result;
+    }
+
+    const tagsByConfigurationModelId = await TagResource.listForAgents(
+      auth,
+      customConfigurationModelIds
+    );
+    for (const configurationModelId of customConfigurationModelIds) {
+      result.set(
+        configurationModelId,
+        tagsByConfigurationModelId[configurationModelId] ?? []
+      );
+    }
+
+    return result;
+  }
+
   static async listEditorConfigModelIds(
     auth: Authenticator
   ): Promise<ModelId[]> {
@@ -1630,7 +1677,7 @@ export class AgentResource
     }
 
     const [tags, editors, skills] = await Promise.all([
-      TagResource.listForAgent(auth, this.agentConfigurationModelId),
+      this.listTags(auth),
       this.listEditors(auth),
       // No space filtering: tools and skills are carried over as-is, so re-saving an agent behind a
       // space the caller cannot read keeps them rather than dropping them.
@@ -1885,8 +1932,10 @@ export class AgentResource
    * @cc [owner:tdraier,label:security] agent-archive-restore-requires-admin
    * Archiving, restoring, or hard-deleting a custom agent MUST require the agent `admin` verb,
    * checked inside the resource (`auth.can("admin", this)`) and never delegated to the caller: no
-   * caller may archive, restore, or delete an agent it does not hold `admin` on. Editors and
-   * workspace admins hold it; a Poke superuser session holds it through its admin role.
+   * caller may archive, restore, or delete an agent it does not hold `admin` on, and `write` alone
+   * MUST NOT suffice. `admin` alone MUST be enough, whether or not the caller can `read` the agent,
+   * and callers MUST NOT add a space-read check on top. Editors and workspace admins hold it; a Poke
+   * superuser session holds it through its admin role.
    */
   /**
    * @cc [owner:tdraier,label:product] archive-disables-triggers
@@ -2418,7 +2467,7 @@ export class AgentResource
   // a system key downscoped to a group subset (see `Authenticator.fromKey` with `requestedGroupIds`)
   // enumerates only what those groups grant, so it is checked like any other caller. A missing or
   // deleted space is absent from the snapshot and therefore fails closed.
-  requestedSpacesReadable(auth: Authenticator): boolean {
+  private requestedSpacesReadable(auth: Authenticator): boolean {
     const readableSpaces = auth.getReadableSpaceModelIds();
     return (
       readableSpaces.kind === "all" ||
@@ -2600,6 +2649,14 @@ export class AgentResource
       feedback_negative_count: isGlobal ? 0 : feedbackNegativeCount,
       active_users_count: isGlobal ? null : activeUsersCount,
       favorite_count: isGlobal ? 0 : favoriteCount,
+    };
+  }
+
+  toSearchModelJSON(): NonNullable<AgentSearchListItemType["model"]> {
+    return {
+      providerId: this.modelConfiguration.providerId,
+      modelId: this.modelConfiguration.modelId,
+      reasoningEffort: getEffectiveReasoningEffort(this.modelConfiguration),
     };
   }
 

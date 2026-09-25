@@ -123,12 +123,6 @@ const chatWithEntranceStyle = heroEntranceStyle({
 });
 
 const USE_CASES_ENTER_DELAY_SECONDS = 0.22;
-const useCasesEntranceStyle = heroEntranceStyle({
-  yPx: 8,
-  blurPx: 3,
-  durationSeconds: 0.28,
-  delaySeconds: USE_CASES_ENTER_DELAY_SECONDS,
-});
 
 const DISCOVER_BUTTON_ENTER_DELAY_SECONDS = 0.42;
 const discoverButtonEntranceStyle = heroEntranceStyle({
@@ -357,11 +351,11 @@ export function ConversationContainerVirtuoso({
   const {
     alignDiscover,
     discoverRef,
-    fillProgress,
     goToDiscover,
     goToHome,
+    isOpeningDiscover,
     scrollerRef,
-  } = useDiscoverScroll({ isFillEnabled: isDiscoveryHomepage && !isMobile });
+  } = useDiscoverScroll({ isLockEnabled: isDiscoveryHomepage && !isMobile });
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
@@ -373,7 +367,7 @@ export function ConversationContainerVirtuoso({
         id="agent-input-header"
         className={classNames(
           "flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4",
-          isDiscoveryHomepage ? "" : "md:min-h-[36vh]"
+          isDiscoveryHomepage ? "md:basis-[36vh]" : "md:min-h-[36vh]"
         )}
         ref={startConversationRef}
       >
@@ -423,8 +417,8 @@ export function ConversationContainerVirtuoso({
 
       {isDiscoveryHomepage && (
         <HomepageUseCases
+          enterDelaySeconds={USE_CASES_ENTER_DELAY_SECONDS}
           onPick={handleUseCasePick}
-          style={shouldReduceMotion ? undefined : useCasesEntranceStyle}
           workspaceId={owner.sId}
         />
       )}
@@ -476,7 +470,7 @@ export function ConversationContainerVirtuoso({
         <>
           {isDiscoveryHomepage ? (
             <div className="flex h-panel w-full shrink-0 flex-col items-center">
-              <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center">
+              <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center md:justify-start">
                 {homeHero}
               </div>
               <div
@@ -487,7 +481,7 @@ export function ConversationContainerVirtuoso({
               >
                 <DiscoverButton
                   onClick={goToDiscover}
-                  progress={fillProgress}
+                  isOpening={isOpeningDiscover}
                 />
               </div>
             </div>

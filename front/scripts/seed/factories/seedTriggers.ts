@@ -1,3 +1,4 @@
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 
 import type { CreatedWebhookSourceView } from "./seedWebhookSources";
@@ -93,11 +94,19 @@ export async function seedTriggers(
     }
 
     if (execute) {
+      const agentResource = await AgentResource.fetchById(auth, agent.sId);
+      if (!agentResource) {
+        logger.warn(
+          { agentName: asset.agentName },
+          "Agent not found for trigger, skipping"
+        );
+        continue;
+      }
       const result = await TriggerResource.makeNew(auth, {
         workspaceId: workspace.id,
         name: asset.name,
         kind: asset.kind,
-        agentConfigurationId: agent.sId,
+        agent: agentResource,
         editor: user.id,
         customPrompt: asset.customPrompt,
         status: asset.status,

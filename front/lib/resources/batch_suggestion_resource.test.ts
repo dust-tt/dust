@@ -1,6 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
@@ -172,6 +174,47 @@ describe("BatchSuggestionResource", () => {
     expect(refetched!.skillSuggestions.map((s) => [s.sId, s.state])).toEqual([
       [skillSuggestion.sId, "approved"],
     ]);
+  });
+
+  it("outdates the whole batch of an outdated member", async () => {
+    const { batch, agentSuggestion, skillSuggestion } =
+      await createBatchWithMembers(authenticator);
+
+    await BatchSuggestionResource.outdateBatchesOf(authenticator, [batch.id]);
+
+    const fetched = await BatchSuggestionResource.fetchById(
+      authenticator,
+      batch.sId
+    );
+    expect(fetched?.state).toBe("outdated");
+    const stateById = new Map(
+      [
+        ...(fetched?.agentSuggestions ?? []),
+        ...(fetched?.skillSuggestions ?? []),
+      ].map((s) => [s.sId, s.state])
+    );
+    expect(stateById.get(agentSuggestion.sId)).toBe("outdated");
+    expect(stateById.get(skillSuggestion.sId)).toBe("outdated");
+  });
+
+  it("refuses to update the state of batched suggestions outside their batch", async () => {
+    const { agentSuggestion, skillSuggestion } =
+      await createBatchWithMembers(authenticator);
+
+    await expect(
+      AgentSuggestionResource.bulkUpdateState(
+        authenticator,
+        [agentSuggestion],
+        "rejected"
+      )
+    ).rejects.toThrow("through their batch");
+    await expect(
+      SkillSuggestionResource.bulkUpdateState(
+        authenticator,
+        [skillSuggestion],
+        "rejected"
+      )
+    ).rejects.toThrow("through their batch");
   });
 
   it("deletes a batch once its members are gone", async () => {

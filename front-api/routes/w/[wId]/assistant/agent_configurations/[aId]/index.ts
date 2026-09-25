@@ -1,10 +1,6 @@
-import {
-  getAgentConfiguration,
-  getAgentConfigurationForDetails,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationForDetails } from "@app/lib/api/assistant/configuration/agent";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -92,11 +88,8 @@ app.patch(
     const { aId } = ctx.req.valid("param");
     const body = ctx.req.valid("json");
 
-    const agent = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "full",
-    });
-    if (!agent || (!agent.canRead && !auth.isAdmin())) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -112,29 +105,12 @@ app.patch(
 
     // Editors only, admins included: an admin who wants to change an agent has to add themselves
     // as an editor first. Batch operations on agents are a separate, admin-only path.
-    if (!agent.canEdit) {
+    if (!auth.can("write", agent)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
           message: "Only editors can modify workspace agent.",
-        },
-      });
-    }
-
-    const agentConfiguration = await AgentConfigurationModel.findOne({
-      where: {
-        sId: aId,
-        workspaceId: auth.workspace()?.id,
-      },
-    });
-
-    if (!agentConfiguration) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "agent_configuration_not_found",
-          message: "The Agent you're trying to access was not found.",
         },
       });
     }
@@ -171,11 +147,8 @@ app.delete(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agent = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "full",
-    });
-    if (!agent || (!agent.canRead && !auth.isAdmin())) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -185,7 +158,9 @@ app.delete(
       });
     }
 
-    if (!agent.canEdit && !auth.isAdmin()) {
+    // Archiving needs the agent `admin` verb only, readable or not (see
+    // `agent-archive-restore-requires-admin`); `archive` enforces it too.
+    if (!auth.can("admin", agent)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -199,18 +174,7 @@ app.delete(
       return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
-    const agentToArchive = await AgentResource.fetchById(auth, aId);
-    if (!agentToArchive) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "agent_configuration_not_found",
-          message: "The agent you're trying to delete was not found.",
-        },
-      });
-    }
-
-    const archiveResult = await agentToArchive.archive(auth);
+    const archiveResult = await agent.archive(auth);
     if (archiveResult.isErr()) {
       return apiError(ctx, {
         status_code: 500,
