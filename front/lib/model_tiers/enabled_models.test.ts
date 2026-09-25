@@ -88,9 +88,13 @@ describe("withModelSelectability", () => {
     expect(model.isSelectable).toBe(true);
     expect(model.supportedReasoningEfforts).toEqual({
       none: false,
+      minimal: false,
       light: true,
+      low: false,
       medium: false,
       high: false,
+      xhigh: false,
+      maximal: false,
     });
     expect(model.defaultReasoningEffort).toBe("light");
   });
@@ -107,9 +111,13 @@ describe("withModelSelectability", () => {
     expect(model.isSelectable).toBe(true);
     expect(model.supportedReasoningEfforts).toEqual({
       none: false,
+      minimal: false,
       light: true,
+      low: false,
       medium: true,
       high: false,
+      xhigh: false,
+      maximal: false,
     });
     expect(model.defaultReasoningEffort).toBe("medium");
   });
@@ -138,9 +146,13 @@ describe("withModelSelectability", () => {
     expect(model.isSelectable).toBe(false);
     expect(model.supportedReasoningEfforts).toEqual({
       none: false,
+      minimal: false,
       light: false,
+      low: false,
       medium: false,
       high: false,
+      xhigh: false,
+      maximal: false,
     });
   });
 

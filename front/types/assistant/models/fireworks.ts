@@ -50,9 +50,13 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   // https://api-docs.deepseek.com/guides/thinking_mode
   supportedReasoningEfforts: {
     none: true,
+    minimal: false,
     light: false,
+    low: false,
     medium: false,
     high: false,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
@@ -86,9 +90,13 @@ export const FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_CONFIG: ModelConfigurationTy
     // No native `medium`; `mapReasoningEffortToLowHighMax` folds our ladder on.
     supportedReasoningEfforts: {
       none: true,
+      minimal: false,
       light: true,
+      low: false,
       medium: true,
       high: true,
+      xhigh: false,
+      maximal: false,
     },
     defaultReasoningEffort: "light",
     // Native thinking at `light`, so no chain-of-thought meta prompt.
@@ -128,9 +136,13 @@ export const FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG: ModelConfigurationType 
     // native `medium`; `mapReasoningEffortToLowHighMax` folds our ladder on.
     supportedReasoningEfforts: {
       none: true,
+      minimal: false,
       light: true,
+      low: false,
       medium: true,
       high: true,
+      xhigh: false,
+      maximal: false,
     },
     defaultReasoningEffort: "light",
     // Native thinking at `light`, so no chain-of-thought meta prompt.
@@ -166,9 +178,13 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   supportedReasoningEfforts: {
     none: true,
+    minimal: false,
     light: false,
+    low: false,
     medium: false,
     high: false,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
@@ -211,9 +227,13 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_0813_MODEL_CONFIG: ModelConfigurationType
     // ladder on. No `none` rung, as on Kimi K3 and GLM-5.3 Flash.
     supportedReasoningEfforts: {
       none: false,
+      minimal: false,
       light: true,
+      low: false,
       medium: true,
       high: true,
+      xhigh: false,
+      maximal: false,
     },
     defaultReasoningEffort: "light",
     // Native thinking at `light`, so no chain-of-thought meta prompt.
@@ -242,9 +262,13 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   supportedReasoningEfforts: {
     none: false,
+    minimal: false,
     light: true,
+    low: false,
     medium: false,
     high: false,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -271,9 +295,13 @@ export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   supportedReasoningEfforts: {
     none: true,
+    minimal: false,
     light: true,
+    low: false,
     medium: true,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
@@ -305,9 +333,13 @@ export const FIREWORKS_KIMI_K2P6_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   supportedReasoningEfforts: {
     none: true,
+    minimal: false,
     light: true,
+    low: false,
     medium: true,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
@@ -344,11 +376,15 @@ export const FIREWORKS_KIMI_K3_MODEL_CONFIG: ModelConfigurationType = {
   // Fireworks as `low`, then `medium`/`high` straight through.
   supportedReasoningEfforts: {
     none: false,
+    minimal: false,
     light: true,
+    low: false,
     // K3 has no native `medium`; the `mapReasoningEffortToLowHighMax` config
     // parser folds it onto `high`.
     medium: true,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "light",
   // Native thinking at `light`, so no chain-of-thought meta prompt.
@@ -378,9 +414,13 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   supportedReasoningEfforts: {
     none: false,
+    minimal: false,
     light: true,
+    low: false,
     medium: true,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
@@ -412,9 +452,13 @@ export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   supportedReasoningEfforts: {
     none: false,
+    minimal: false,
     light: false,
+    low: false,
     medium: false,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "high",
   supportsResponseFormat: true,
@@ -450,9 +494,13 @@ export const FIREWORKS_GLM_5P3_MODEL_CONFIG: ModelConfigurationType = {
   // llms layer.
   supportedReasoningEfforts: {
     none: false,
+    minimal: false,
     light: true,
+    low: false,
     medium: true,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "high",
   // Native thinking at `light`, so no chain-of-thought meta prompt.
@@ -491,9 +539,13 @@ export const FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   // those native efforts in the llms layer; thinking cannot be disabled.
   supportedReasoningEfforts: {
     none: false,
+    minimal: false,
     light: true,
+    low: false,
     medium: true,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "light",
   useNativeLightReasoning: true,
@@ -522,9 +574,13 @@ export const FIREWORKS_GLM_5_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   supportedReasoningEfforts: {
     none: false,
+    minimal: false,
     light: true,
+    low: false,
     medium: true,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
@@ -564,9 +620,13 @@ export const FIREWORKS_INKLING_MODEL_CONFIG: ModelConfigurationType = {
     // Fireworks accepts `none` as the lowest effort, but Inkling still emits a
     // reasoning trace at that level, so Dust does not present it as disabled.
     none: false,
+    minimal: false,
     light: true,
+    low: false,
     medium: true,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "high",
   useNativeLightReasoning: true,

@@ -109,9 +109,13 @@ function makeEnabledModels(
     defaultReasoningEffort: efforts[0],
     supportedReasoningEfforts: {
       none: efforts.includes("none"),
+      minimal: false,
       light: efforts.includes("light"),
+      low: false,
       medium: efforts.includes("medium"),
       high: efforts.includes("high"),
+      xhigh: false,
+      maximal: false,
     },
   }));
 }
