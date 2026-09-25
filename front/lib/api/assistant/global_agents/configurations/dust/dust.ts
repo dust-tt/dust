@@ -1088,7 +1088,9 @@ export function _getDustNextGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
-  const customModel = CUSTOM_MODEL_CONFIGS[0];
+  const customModel = getCustomModelForDustGlobalAgent(
+    GLOBAL_AGENTS_SID.DUST_NEXT
+  );
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_NEXT,
     name: "dust-next",
@@ -1102,7 +1104,9 @@ export function _getDustNextMediumGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
-  const customModel = CUSTOM_MODEL_CONFIGS[0];
+  const customModel = getCustomModelForDustGlobalAgent(
+    GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM
+  );
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
     name: "dust-next-medium",
@@ -1116,7 +1120,9 @@ export function _getDustNextHighGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
-  const customModel = CUSTOM_MODEL_CONFIGS[0];
+  const customModel = getCustomModelForDustGlobalAgent(
+    GLOBAL_AGENTS_SID.DUST_NEXT_HIGH
+  );
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
     name: "dust-next-high",
@@ -1259,11 +1265,20 @@ const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   ],
 ]);
 
-export function getCustomModelDustGlobalAgentIndex(
+export function isCustomModelDustGlobalAgent(
   agentId: GLOBAL_AGENTS_SID
-): number | null {
-  return (
-    CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId)?.customModelIndex ??
-    null
-  );
+): boolean {
+  return CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.has(agentId);
+}
+
+// Null when the agent is not bound to a custom model, or when its index is missing from the
+// generated custom models.
+export function getCustomModelForDustGlobalAgent(
+  agentId: GLOBAL_AGENTS_SID
+): ModelConfigurationType | null {
+  const config = CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId);
+  if (!config) {
+    return null;
+  }
+  return CUSTOM_MODEL_CONFIGS[config.customModelIndex] ?? null;
 }

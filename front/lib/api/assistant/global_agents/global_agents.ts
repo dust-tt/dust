@@ -70,7 +70,8 @@ import {
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
   _getRetiredDustLikeGlobalAgent,
-  getCustomModelDustGlobalAgentIndex,
+  getCustomModelForDustGlobalAgent,
+  isCustomModelDustGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getReinforcementGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/reinforcement";
@@ -129,7 +130,6 @@ import {
   GLOBAL_AGENTS_SID,
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
-import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
@@ -1033,14 +1033,6 @@ export function listDefaultGlobalAgentIds(): GLOBAL_AGENTS_SID[] {
   );
 }
 
-function getCustomModelIndexForGlobalAgent(sId: string): number | null {
-  if (!isGlobalAgentId(sId)) {
-    return null;
-  }
-
-  return getCustomModelDustGlobalAgentIndex(sId);
-}
-
 export async function getGlobalAgents(
   auth: Authenticator,
   agentIds?: string[],
@@ -1171,17 +1163,16 @@ export async function getGlobalAgents(
 
   if (!flags.includes("custom_model_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => getCustomModelIndexForGlobalAgent(sId) === null
+      (sId) => !isGlobalAgentId(sId) || !isCustomModelDustGlobalAgent(sId)
     );
   }
 
   agentsIdsToFetch = agentsIdsToFetch.filter((sId) => {
-    const customModelIndex = getCustomModelIndexForGlobalAgent(sId);
-    if (customModelIndex === null) {
+    if (!isGlobalAgentId(sId) || !isCustomModelDustGlobalAgent(sId)) {
       return true;
     }
 
-    const customModel = CUSTOM_MODEL_CONFIGS[customModelIndex];
+    const customModel = getCustomModelForDustGlobalAgent(sId);
     if (!customModel) {
       return false;
     }
