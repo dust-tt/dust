@@ -1,6 +1,7 @@
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -362,35 +363,49 @@ interface CatalogRowProps {
 
 export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
   const name = getItemName(item);
+  const isMobile = useIsMobile();
+  const avatar =
+    item.kind === "agent" ? (
+      <Avatar size={isMobile ? "md" : "lg"} visual={item.agent.pictureUrl} />
+    ) : (
+      <SkillCatalogAvatar skill={item.skill} size={isMobile ? "md" : "lg"} />
+    );
   return (
-    <div className="group flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
-      <button
-        type="button"
-        aria-label={`Show ${name} details`}
-        onClick={onDetails}
-        className="shrink-0 rounded-2xl transition duration-200 ease-out hover:brightness-110 active:brightness-90"
-      >
-        {item.kind === "agent" ? (
-          <Avatar size="lg" visual={item.agent.pictureUrl} />
-        ) : (
-          <SkillCatalogAvatar skill={item.skill} />
-        )}
-      </button>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="heading-base notranslate text-foreground">
+    <div
+      className={cn(
+        "group relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2",
+        "border-b border-separator py-4 last:border-b-0 md:gap-y-1"
+      )}
+    >
+      <div className="col-start-1 row-start-1 shrink-0 md:row-span-2">
+        {avatar}
+      </div>
+      <div className="col-start-2 col-end-4 row-start-1 flex min-w-0 items-center gap-2 self-center md:col-end-3 md:self-end">
+        {isMobile ? (
+          <span className="heading-base notranslate truncate text-foreground">
             {name}
           </span>
-          <Chip
-            size="xs"
-            label={
-              item.kind === "agent"
-                ? `@${item.agent.name}`
-                : `/${item.skill.name}`
-            }
-            className="font-mono"
-          />
-        </div>
+        ) : (
+          <button
+            type="button"
+            aria-label={`Show ${name} details`}
+            onClick={onDetails}
+            className="heading-base notranslate cursor-pointer truncate text-left text-foreground after:absolute after:inset-0"
+          >
+            {name}
+          </button>
+        )}
+        <Chip
+          size="xs"
+          label={
+            item.kind === "agent"
+              ? `@${item.agent.name}`
+              : `/${item.skill.name}`
+          }
+          className="shrink-0 font-mono"
+        />
+      </div>
+      <div className="col-start-1 col-end-3 row-start-2 flex min-w-0 flex-col gap-1 self-start md:col-start-2">
         <div className="flex h-5 items-center gap-4 copy-sm">
           <ItemAuthor item={item} />
           <span className="flex items-center gap-1 text-muted-foreground">
@@ -400,19 +415,19 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
               {item.kind === "agent" ? "messages" : "uses"}
             </span>
           </span>
-          {item.kind === "agent" && item.agent.usage && (
+          {item.kind === "agent" && (
             <span className="flex items-center gap-1 text-muted-foreground">
               <Icon visual={Users01} size="xs" />
-              {item.agent.usage.userCount.toLocaleString()}
+              {(item.agent.usage?.userCount ?? 0).toLocaleString()}
               <span className="sr-only">members</span>
             </span>
           )}
         </div>
-        <p className="copy-sm text-muted-foreground">
+        <p className="copy-sm line-clamp-2 text-muted-foreground">
           {getItemDescription(item)}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="relative col-start-3 row-start-2 flex shrink-0 items-center gap-1 self-end md:row-span-2 md:row-start-1 md:self-center">
         {onPin && (
           <Button
             variant="ghost"
@@ -448,6 +463,9 @@ export function SkillCatalogAvatar({
   skill,
   size = "lg",
 }: SkillCatalogAvatarProps) {
-  const SkillAvatar = useMemo(() => getSkillAvatarIcon(skill), [skill]);
+  const SkillAvatar = useMemo(
+    () => getSkillAvatarIcon(skill.icon),
+    [skill.icon]
+  );
   return <SkillAvatar size={size} className="shrink-0" />;
 }

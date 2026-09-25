@@ -40,7 +40,7 @@ export const DiscoverContainer = forwardRef<
       className="flex min-h-panel w-full shrink-0 flex-col items-center pb-16"
     >
       <Tabs value={tab} className="flex w-full max-w-4xl flex-col gap-8">
-        <div className="sticky top-0 z-30 flex flex-col gap-6 bg-panel-background pt-10">
+        <div className="sticky top-0 z-30 flex flex-col gap-6 bg-(--color-panel-background) pt-10">
           <h1 className="heading-2xl text-foreground">Discover</h1>
           <TabsList>
             {DISCOVER_TABS.map((t) => (
