@@ -1,6 +1,11 @@
 import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
+import { isNumber, isRecord } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
+
+function isFieldContainer(value: unknown): value is Record<string, unknown> {
+  return value instanceof Object && isRecord(value);
+}
 
 // Apply the query's filters in ES mocks. Text matching and ranking are tested separately.
 export function matchesAgentSearchFilters(
@@ -13,7 +18,7 @@ export function matchesAgentSearchFilters(
       if (value === null) {
         return [];
       }
-      assert(typeof value === "object", `Unknown agent search field: ${field}`);
+      assert(isFieldContainer(value), `Unknown agent search field: ${field}`);
       const entry = Object.entries(value).find(([name]) => name === key);
       assert(entry, `Unknown agent search field: ${field}`);
       value = entry[1];
@@ -65,7 +70,7 @@ export function matchesAgentSearchFilters(
       const { gte, lte } = bounds;
       return values(field).some(
         (value) =>
-          typeof value === "number" &&
+          isNumber(value) &&
           (gte === undefined || value >= Number(gte)) &&
           (lte === undefined || value <= Number(lte))
       );

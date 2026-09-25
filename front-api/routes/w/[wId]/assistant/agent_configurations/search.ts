@@ -1,12 +1,7 @@
 import { SearchAgentsQuerySchema } from "@app/lib/agent_search/query_schema";
-import { searchAgents } from "@app/lib/api/agents/search";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { TagResource } from "@app/lib/resources/tags_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
+import { searchAgentListings } from "@app/lib/api/agents/search_listing";
 import logger from "@app/logger/logger";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
-import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -40,7 +35,7 @@ app.post(
       sortBy,
       sortOrder,
     } = ctx.req.valid("json");
-    const result = await searchAgents(auth, {
+    const result = await searchAgentListings(auth, {
       searchTerm: query,
       limit,
       offset,
@@ -101,109 +96,7 @@ app.post(
       );
     }
 
-    const { facets: facetValues } = result.value;
-    const editorIds = [
-      ...new Set([
-        ...result.value.agents.flatMap((agent) => agent.editorIds),
-        ...(facetValues.editors ?? []).map(({ value }) => value),
-      ]),
-    ];
-    const facetIds = (values: { value: string }[] | undefined) =>
-      (values ?? []).map(({ value }) => value);
-    const facetCount = (
-      values: { value: string; count: number }[] | undefined,
-      id: string
-    ) => values?.find(({ value }) => value === id)?.count ?? 0;
-    const [users, tags, skills, spaces] = await Promise.all([
-      UserResource.fetchByIds(editorIds),
-      facetValues.tags?.length
-        ? TagResource.fetchByIds(auth, facetIds(facetValues.tags))
-        : [],
-      facetValues.skills?.length
-        ? SkillResource.fetchByIds(auth, facetIds(facetValues.skills), {
-            withInstructions: false,
-            withTools: false,
-            withFileAttachments: false,
-          })
-        : [],
-      facetValues.spaces?.length
-        ? SpaceResource.fetchByIds(auth, facetIds(facetValues.spaces))
-        : [],
-    ]);
-
-    const editorsById = new Map(
-      users.map((user) => {
-        const { sId, fullName, image } = user.toJSON();
-        return [sId, { sId, fullName, image }];
-      })
-    );
-
-    return ctx.json({
-      ...result.value,
-      facets: {
-        ...(facetValues.editors
-          ? {
-              editors: facetValues.editors
-                .flatMap(({ value, count }) => {
-                  const editor = editorsById.get(value);
-                  return editor ? [{ ...editor, count }] : [];
-                })
-                .toSorted((a, b) => a.fullName.localeCompare(b.fullName)),
-            }
-          : {}),
-        ...(facetValues.models
-          ? {
-              models: facetValues.models.map(({ value, count }) => ({
-                modelId: value,
-                count,
-              })),
-            }
-          : {}),
-        ...(facetValues.tags
-          ? {
-              tags: tags
-                .map((tag) => ({
-                  ...tag.toJSON(),
-                  count: facetCount(facetValues.tags, tag.sId),
-                }))
-                .toSorted((a, b) => a.name.localeCompare(b.name)),
-            }
-          : {}),
-        ...(facetValues.skills
-          ? {
-              skills: skills
-                .map((skill) => ({
-                  sId: skill.sId,
-                  name: skill.name,
-                  icon: skill.icon,
-                  count: facetCount(facetValues.skills, skill.sId),
-                }))
-                .toSorted((a, b) => a.name.localeCompare(b.name)),
-            }
-          : {}),
-        ...(facetValues.spaces
-          ? {
-              // Unrestricted search can surface spaces the caller cannot read: never name them.
-              spaces: spaces
-                .filter((space) => auth.can("read", space))
-                .map((space) => ({
-                  sId: space.sId,
-                  name: space.name,
-                  kind: space.kind,
-                  count: facetCount(facetValues.spaces, space.sId),
-                }))
-                .toSorted((a, b) => a.name.localeCompare(b.name)),
-            }
-          : {}),
-        ...(facetValues.usage ? { usage: facetValues.usage } : {}),
-      },
-      agents: result.value.agents.map((agent) => ({
-        ...agent,
-        editors: removeNulls(
-          [...new Set(agent.editorIds)].map((id) => editorsById.get(id))
-        ),
-      })),
-    });
+    return ctx.json(result.value);
   }
 );
 
