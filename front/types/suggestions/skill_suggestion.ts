@@ -172,6 +172,19 @@ export const SkillCreateSuggestionSchema = z.object({
     .trim()
     .min(1)
     .describe("The name the agent proposed for the new skill."),
+  userFacingDescription: z
+    .string()
+    .min(1)
+    .describe("The description members read when browsing skills."),
+  agentFacingDescription: z
+    .string()
+    .min(1)
+    .describe("The description agents read to decide when to use the skill."),
+  instructions: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("The skill's instructions, as HTML."),
 });
 
 export type SkillCreateSuggestionType = z.infer<

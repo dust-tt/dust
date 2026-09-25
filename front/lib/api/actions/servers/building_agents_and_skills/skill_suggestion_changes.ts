@@ -17,7 +17,7 @@ import {
   pruneConflictingSkillUserFacingDescriptionSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -28,6 +28,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   SkillAgentFacingDescriptionEditType,
   SkillAvailabilitySuggestionType,
+  SkillCreateSuggestionType,
   SkillEditorsSuggestionType,
   SkillEditSuggestionType,
   SkillInstructionEditItemType,
@@ -345,4 +346,58 @@ export async function recordSkillSuggestion(
   });
 
   return created;
+}
+
+export async function validateSkillCreation(
+  auth: Authenticator,
+  { name }: { name: string }
+): Promise<Result<undefined, MCPError>> {
+  if (!auth.hasWorkspacePermission("create", "skill")) {
+    return new Err(new MCPError("Creating skills is restricted."));
+  }
+
+  if (await SkillResource.isNameTaken(auth, name)) {
+    return new Err(
+      new MCPError(`A skill with the name "${name}" already exists.`)
+    );
+  }
+
+  return new Ok(undefined);
+}
+
+/**
+ * @cc [owner:achilleburah,label:product] no-direct-skill-mutation
+ * Recording a skill creation MUST NOT make the proposed skill usable: the only skill it creates
+ * is a `pending` placeholder (see `pending-skill-unlisted`), and the proposal is recorded as a
+ * `pending` `create` suggestion targeting it. Turning the suggestion into a usable skill is a
+ * separate, human-reviewed step.
+ */
+export async function recordSkillCreationSuggestion(
+  auth: Authenticator,
+  {
+    create,
+    analysis,
+    conversation,
+    batch,
+  }: {
+    create: SkillCreateSuggestionType;
+    analysis: string | null;
+    conversation: ConversationType;
+    batch: BatchSuggestionResource | null;
+  }
+): Promise<Result<SkillSuggestionResource, MCPError>> {
+  const pendingResult = await SkillResource.createPending(auth);
+  if (pendingResult.isErr()) {
+    return new Err(new MCPError(pendingResult.error.message));
+  }
+
+  const suggestion = await recordSkillSuggestion(auth, pendingResult.value, {
+    data: { kind: "create", suggestion: create },
+    analysis,
+    title: null,
+    conversation,
+    batch,
+  });
+
+  return new Ok(suggestion);
 }
