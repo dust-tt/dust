@@ -11,6 +11,7 @@ import type {
   PatchSuggestionBatchResponseBody,
   SuggestionBatchReviewState,
 } from "@app/types/api/assistant/suggestion_batches";
+import { isString } from "@app/types/shared/utils/general";
 import type { BatchSuggestionType } from "@app/types/suggestions/batch_suggestion";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
@@ -118,7 +119,7 @@ export function useRevalidateBatchTargets({
       ]);
 
       void mutate(
-        (key) => typeof key === "string" && targetPaths.has(key.split("?")[0])
+        (key) => isString(key) && targetPaths.has(key.split("?")[0])
       );
     },
     [mutate, workspaceId]
