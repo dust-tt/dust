@@ -25,7 +25,13 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import type { TargetAndTransition, Variants } from "framer-motion";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  AnimatePresence,
+  domMax,
+  LazyMotion,
+  m,
+  useReducedMotion,
+} from "framer-motion";
 import sampleSize from "lodash/sampleSize";
 import { forwardRef, useEffect, useRef, useState } from "react";
 
@@ -181,25 +187,27 @@ export function HomepageUseCases({
 
   if (isPreparing) {
     return (
-      <motion.div
-        className="mt-4 w-full max-w-conversation"
-        initial={shouldReduceMotion ? false : { opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{
-          duration: 0.28,
-          ease: MOTION_EASINGS.emphasized,
-          delay: enterDelaySeconds,
-        }}
-      >
-        <ul className="flex flex-col gap-1">
-          {Array.from({ length: VISIBLE_COUNT }, (_, index) => (
-            <li key={index} className="flex h-12 items-center gap-3 px-2">
-              <LoadingBlock className="h-9 w-9 shrink-0 rounded-full" />
-              <LoadingBlock className="h-4 w-64 max-w-full" />
-            </li>
-          ))}
-        </ul>
-      </motion.div>
+      <LazyMotion features={domMax}>
+        <m.div
+          className="mt-4 w-full max-w-conversation"
+          initial={shouldReduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{
+            duration: 0.28,
+            ease: MOTION_EASINGS.emphasized,
+            delay: enterDelaySeconds,
+          }}
+        >
+          <ul className="flex flex-col gap-1">
+            {Array.from({ length: VISIBLE_COUNT }, (_, index) => (
+              <li key={index} className="flex h-12 items-center gap-3 px-2">
+                <LoadingBlock className="h-9 w-9 shrink-0 rounded-full" />
+                <LoadingBlock className="h-4 w-64 max-w-full" />
+              </li>
+            ))}
+          </ul>
+        </m.div>
+      </LazyMotion>
     );
   }
 
@@ -208,41 +216,43 @@ export function HomepageUseCases({
   }
 
   return (
-    <div className="mt-4 w-full max-w-conversation">
-      <motion.ul
-        className="relative flex flex-col gap-1"
-        initial={shouldReduceMotion ? false : "hidden"}
-        animate="visible"
-        variants={{
-          visible: {
-            transition: {
-              delayChildren: rowsDelaySeconds,
-              staggerChildren: ROW_STAGGER_SECONDS,
+    <LazyMotion features={domMax}>
+      <div className="mt-4 w-full max-w-conversation">
+        <m.ul
+          className="relative flex flex-col gap-1"
+          initial={shouldReduceMotion ? false : "hidden"}
+          animate="visible"
+          variants={{
+            visible: {
+              transition: {
+                delayChildren: rowsDelaySeconds,
+                staggerChildren: ROW_STAGGER_SECONDS,
+              },
             },
-          },
-        }}
-      >
-        <AnimatePresence mode="popLayout">
-          {page.map((useCase) => (
-            <UseCaseRow
-              key={useCase.id}
-              isMotionReduced={!!shouldReduceMotion}
-              isDisabled={isTyping}
-              onDismiss={() => {
-                trackHomepageUseCaseDismiss({ useCaseId: useCase.id });
-                return dismissUseCase(useCase.id);
-              }}
-              onPick={() => {
-                trackHomepageUseCaseClick({ useCaseId: useCase.id });
-                setIsTyping(true);
-                onPick(useCase);
-              }}
-              useCase={useCase}
-            />
-          ))}
-        </AnimatePresence>
-      </motion.ul>
-    </div>
+          }}
+        >
+          <AnimatePresence mode="popLayout">
+            {page.map((useCase) => (
+              <UseCaseRow
+                key={useCase.id}
+                isMotionReduced={!!shouldReduceMotion}
+                isDisabled={isTyping}
+                onDismiss={() => {
+                  trackHomepageUseCaseDismiss({ useCaseId: useCase.id });
+                  return dismissUseCase(useCase.id);
+                }}
+                onPick={() => {
+                  trackHomepageUseCaseClick({ useCaseId: useCase.id });
+                  setIsTyping(true);
+                  onPick(useCase);
+                }}
+                useCase={useCase}
+              />
+            ))}
+          </AnimatePresence>
+        </m.ul>
+      </div>
+    </LazyMotion>
   );
 }
 
@@ -262,7 +272,7 @@ const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
     const [isDismissing, setIsDismissing] = useState(false);
 
     return (
-      <motion.li
+      <m.li
         ref={ref}
         layout={!isMotionReduced}
         variants={isMotionReduced ? undefined : rowVariants}
@@ -308,7 +318,7 @@ const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
             />
           )}
         </div>
-      </motion.li>
+      </m.li>
     );
   }
 );
