@@ -1,4 +1,8 @@
+import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -190,6 +194,42 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
   });
 
   describe("GET", () => {
+    it("shows a group manager only their group's member limit", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const member = await UserFactory.basic();
+      const outsider = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+      await MembershipFactory.associate(workspace, outsider, { role: "user" });
+      const { user: delegate } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+        workspace,
+      });
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const group = await GroupResource.makeNew(
+        { name: "Support", kind: "regular_manual", workspaceId: workspace.id },
+        { memberIds: [member.id] }
+      );
+      const grant = await GroupPermissionResource.grantToUser(adminAuth, {
+        user: delegate.toJSON(),
+        grantType: "group_manager",
+        resourceType: "group",
+        resourceId: group.id,
+      });
+      expect(grant.isOk()).toBe(true);
+      await FeatureFlagFactory.basic(adminAuth, "group_management");
+
+      expect(
+        (await honoApp.request(spendLimitUrl(workspace.sId, member.sId))).status
+      ).toBe(200);
+      expect(
+        (await honoApp.request(spendLimitUrl(workspace.sId, outsider.sId)))
+          .status
+      ).toBe(404);
+    });
+
     it("returns unlimited when no override is persisted", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const { user } = await createPrivateApiMockRequest({

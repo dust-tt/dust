@@ -74,9 +74,18 @@ const app = workspaceApp();
 app.get(
   "/",
   validate("param", ParamsSchema),
-  ensureIsManager(),
   async (ctx): HandlerResult<GetUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");
+    if (!auth.isManager() && !(await auth.hasFeatureFlag("group_management"))) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "Only workspace managers and group managers can view member limits.",
+        },
+      });
+    }
 
     if (!auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled) {
       return apiError(ctx, {
