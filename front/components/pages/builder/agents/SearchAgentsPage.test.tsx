@@ -12,6 +12,9 @@ import assert from "assert";
 import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// The full table renders slower on shared CI runners than the default 1s wait.
+const CI_RENDER_TIMEOUT_MS = 5_000;
+
 beforeEach(() => {
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
@@ -199,7 +202,9 @@ describe("search-backed Manage Agents", () => {
       permissionFiltering: "strict",
     });
     expect(
-      await screen.findByText(`Details of ${agent.sId}`)
+      await screen.findByText(`Details of ${agent.sId}`, undefined, {
+        timeout: CI_RENDER_TIMEOUT_MS,
+      })
     ).toBeInTheDocument();
     for (const header of [
       "Name",
@@ -334,13 +339,21 @@ describe("search-backed Manage Agents", () => {
     await userEvent.click(moreButton);
 
     expect(
-      await screen.findByRole("menuitem", { name: "Loading actions…" })
+      await screen.findByRole(
+        "menuitem",
+        { name: "Loading actions…" },
+        { timeout: CI_RENDER_TIMEOUT_MS }
+      )
     ).toBeInTheDocument();
     await act(async () => {
       pendingAgent.resolve({ agentConfiguration });
     });
     expect(
-      await screen.findByRole("menuitem", { name: "Archive" })
+      await screen.findByRole(
+        "menuitem",
+        { name: "Archive" },
+        { timeout: CI_RENDER_TIMEOUT_MS }
+      )
     ).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Edit" })).toBeInTheDocument();
     expect(
