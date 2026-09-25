@@ -19,6 +19,8 @@ import { useMemo } from "react";
 
 interface GroupsUsageTableProps {
   owner: LightWorkspaceType;
+  visibleGroupIds?: ReadonlySet<string>;
+  editableGroupIds?: ReadonlySet<string>;
   showSpendLimitColumn?: boolean;
   showModelTiersColumn?: boolean;
   // When set (with `seatPlans` and `grantableSeatTypes`), renders the "Granted
@@ -63,6 +65,8 @@ function GroupUsageSkeletonCell({ columnId }: DataTableSkeletonCellProps) {
 
 export function GroupsUsageTable({
   owner,
+  visibleGroupIds,
+  editableGroupIds,
   showSpendLimitColumn = true,
   showModelTiersColumn = false,
   showSeatColumn = false,
@@ -79,14 +83,16 @@ export function GroupsUsageTable({
 
   const rows: GroupRowData[] = useMemo(
     () =>
-      groups.map((group) => ({
-        groupId: group.sId,
-        name: group.name,
-        memberCount: group.memberCount,
-        poolCapAwuCredits: group.poolCapAwuCredits,
-        grantedSeatType: group.grantedSeatType,
-      })),
-    [groups]
+      groups
+        .filter((group) => !visibleGroupIds || visibleGroupIds.has(group.sId))
+        .map((group) => ({
+          groupId: group.sId,
+          name: group.name,
+          memberCount: group.memberCount,
+          poolCapAwuCredits: group.poolCapAwuCredits,
+          grantedSeatType: group.grantedSeatType,
+        })),
+    [groups, visibleGroupIds]
   );
 
   const columns: ColumnDef<GroupRowData, string>[] = useMemo(
@@ -147,6 +153,10 @@ export function GroupsUsageTable({
               cell: (info: GroupInfo) => (
                 <GroupSpendLimitCell
                   group={info.row.original}
+                  disabled={
+                    editableGroupIds !== undefined &&
+                    !editableGroupIds.has(info.row.original.groupId)
+                  }
                   onSave={async (group, limit) => {
                     await doUpdateGroupSpendLimit({
                       groupId: group.groupId,
@@ -185,6 +195,7 @@ export function GroupsUsageTable({
     [
       owner,
       showSpendLimitColumn,
+      editableGroupIds,
       showModelTiersColumn,
       showSeatColumn,
       seatPlans,

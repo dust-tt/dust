@@ -6,6 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 interface MemberGroupLimitTableProps {
   rows: GroupRow[];
   readOnly: boolean;
+  editableGroupIds?: ReadonlySet<string>;
   groupLimitInputs: Record<string, string>;
   groupValidationMessages: Record<string, string | null>;
   onChange: (groupId: string, cleaned: string) => void;
@@ -73,6 +74,7 @@ const groupColumns: ColumnDef<GroupLimitRow, string>[] = [
 export function MemberGroupLimitTable({
   rows,
   readOnly,
+  editableGroupIds,
   groupLimitInputs,
   groupValidationMessages,
   onChange,
@@ -81,7 +83,7 @@ export function MemberGroupLimitTable({
     ...row,
     draft: groupLimitInputs[row.groupId] ?? "",
     validationMessage: groupValidationMessages[row.groupId] ?? null,
-    readOnly,
+    readOnly: readOnly || editableGroupIds?.has(row.groupId) === false,
     onDraftChange: (cleaned) => onChange(row.groupId, cleaned),
   }));
 
