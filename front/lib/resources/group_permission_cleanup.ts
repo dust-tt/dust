@@ -63,16 +63,18 @@ export async function listRegularAutoGroupIdsForResources(
   return groups.map((group) => group.id);
 }
 
-export async function invalidateGroupGrantsAfterCommit(
+// Inside a transaction, defer eviction until commit: an earlier eviction lets a reader refill
+// the cache from uncommitted rows. Delete the fields rather than rewriting them.
+export function invalidateGroupGrantsAfterCommit(
   auth: Authenticator,
   groupModelIds: ModelId[],
   transaction?: Transaction
-): Promise<void> {
+): void {
   if (groupModelIds.length === 0) {
     return;
   }
   const workspaceId = auth.getNonNullableWorkspace().id;
-  await invalidateCacheAfterCommit(transaction, async () => {
+  invalidateCacheAfterCommit(transaction, async () => {
     try {
       const redis = await getRedisCacheClient({
         origin: "group_permissions_cache",
@@ -130,6 +132,8 @@ export async function deleteGrantsForResources(
   };
   const groupIds = await listGroupModelIdsForGrants(where, transaction);
   const deleted = await GroupPermissionModel.destroy({ where, transaction });
-  await invalidateGroupGrantsAfterCommit(auth, groupIds, transaction);
+  // Without a transaction this starts invalidation immediately. The delete must finish first so
+  // another reader cannot refill the cache with a grant that is about to be revoked.
+  invalidateGroupGrantsAfterCommit(auth, groupIds, transaction);
   return deleted;
 }
