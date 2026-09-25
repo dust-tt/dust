@@ -36,3 +36,48 @@ export interface AgentSearchDocument extends ElasticsearchBaseDocument {
   favorite_count: number;
   editor_ids: string[];
 }
+
+// OR within a dimension, AND across dimensions. Selection never replaces ACLs.
+export interface AgentSearchFilters {
+  // Omitted means active only. Draft and pending agents are never indexed.
+  status?: Extract<AgentConfigurationStatus, "active" | "archived">[];
+  scope?: Exclude<AgentConfigurationScope, "global">[];
+  tagIds?: string[];
+  skillIds?: string[];
+  mcpServerViewIds?: string[];
+  // Supports "edited by me", but not "not edited by me".
+  editedByMe?: true;
+}
+
+export const AGENT_SEARCH_PERMISSION_FILTERINGS = [
+  "strict",
+  "unrestricted",
+] as const;
+export type AgentSearchPermissionFiltering =
+  (typeof AGENT_SEARCH_PERMISSION_FILTERINGS)[number];
+
+export const AGENT_SEARCH_SORTS = [
+  "relevance",
+  "usage",
+  "name",
+  "updatedAt",
+] as const;
+export type AgentSearchSort = (typeof AGENT_SEARCH_SORTS)[number];
+
+export const AGENT_SEARCH_SORT_ORDERS = ["asc", "desc"] as const;
+export type AgentSearchSortOrder = (typeof AGENT_SEARCH_SORT_ORDERS)[number];
+
+export interface AgentSearchListItemType {
+  sId: string;
+  status: AgentConfigurationStatus;
+  scope: AgentConfigurationScope;
+  name: string;
+  description: string;
+  pictureUrl: string;
+  requestedSpaceIds: string[];
+  tagIds: string[];
+  editorIds: string[];
+  editedBy: string | null;
+  activeUsersCount: number | null;
+  updatedAt: number | null;
+}
