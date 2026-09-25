@@ -1,7 +1,7 @@
 import { useClientType } from "@app/lib/context/clientType";
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
-const MOBILE_BREAKPOINT = 768;
+export const MOBILE_BREAKPOINT = 768;
 
 export function useIsMobile({
   excludeExtension = true,
@@ -32,8 +32,16 @@ export function useIsMobile({
   return isMobile;
 }
 
+// Lets a container narrower than the screen (e.g. a conversation next to a docked side panel)
+// mark its subtree as width constrained.
+export const WidthConstrainedContext = createContext(false);
+
+// Whether the layout is short on horizontal room: a narrow screen, the extension, or a container
+// flagged through WidthConstrainedContext. Touch-specific behaviors should use `useIsMobile`.
 export function useIsWidthConstrained() {
-  return useIsMobile({ excludeExtension: false });
+  const isContainerConstrained = useContext(WidthConstrainedContext);
+  const isScreenConstrained = useIsMobile({ excludeExtension: false });
+  return isScreenConstrained || isContainerConstrained;
 }
 
 // Whether the pointer can hover — the capability hover-only affordances
