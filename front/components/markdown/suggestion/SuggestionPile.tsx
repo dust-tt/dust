@@ -36,7 +36,7 @@ import {
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import type { ReactElement, ReactNode } from "react";
-import { cloneElement, useCallback, useState } from "react";
+import { cloneElement, useState } from "react";
 
 interface PileCardExtras {
   titleAside: ReactNode;
@@ -247,15 +247,6 @@ function SkillPileTarget({
 
   const { openPanel } = useConversationSidePanelContext();
 
-  const getSkillInstructionsHtml = useCallback(
-    () => skill?.instructionsHtml ?? "",
-    [skill]
-  );
-  const getCurrentAgentFacingDescription = useCallback(
-    () => skill?.agentFacingDescription ?? "",
-    [skill]
-  );
-
   const entries: PileEntry[] = skill
     ? target.directives.flatMap(({ sId }) => {
         const suggestion = suggestions.find((s) => s.sId === sId);
@@ -273,8 +264,7 @@ function SkillPileTarget({
                 target={{
                   type: "skill",
                   suggestion,
-                  getSkillInstructionsHtml,
-                  getCurrentAgentFacingDescription,
+                  skill,
                   workspaceId: owner.sId,
                 }}
                 onAccept={() => void acceptSuggestions([suggestion])}
