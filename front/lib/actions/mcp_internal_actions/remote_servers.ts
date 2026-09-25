@@ -3718,6 +3718,356 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10037,
+    name: "Qonto",
+    description: "Qonto tools for reading and managing business banking data.",
+    url: "https://mcp.qonto.com/mcp",
+    icon: "QontoLogo",
+    documentationUrl: "https://docs.qonto.com/mcp/overview",
+    connectionInstructions:
+      "Qonto uses OAuth with dynamic client registration. Connect your Qonto organization to use its banking tools.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      get_organization: "never_ask",
+      list_user_organizations: "never_ask",
+      list_memberships: "never_ask",
+      get_authenticated_membership: "never_ask",
+      list_teams: "never_ask",
+      list_labels: "never_ask",
+      list_cards: "never_ask",
+      list_transactions: "never_ask",
+      get_transaction: "never_ask",
+      export_transactions: "never_ask",
+      list_statements: "never_ask",
+      get_statement: "never_ask",
+      get_attachment: "never_ask",
+      list_transaction_attachments: "never_ask",
+      export_transaction_attachments: "never_ask",
+      list_clients: "never_ask",
+      get_client: "never_ask",
+      list_client_invoices: "never_ask",
+      get_client_invoice: "never_ask",
+      list_reminders: "never_ask",
+      list_credit_notes: "never_ask",
+      get_credit_note: "never_ask",
+      list_quotes: "never_ask",
+      get_quote: "never_ask",
+      list_supplier_invoices: "never_ask",
+      get_supplier_invoice: "never_ask",
+      list_products: "never_ask",
+      list_payment_links: "never_ask",
+      get_payment_link: "never_ask",
+      list_requests: "never_ask",
+      list_cash_flow_categories: "never_ask",
+      get_subscription: "never_ask",
+      get_qonto_public_pricing: "never_ask",
+      get_card_iframe_url: "high",
+      create_membership: "high",
+      create_team: "high",
+      create_card: "high",
+      update_card: "high",
+      change_card_status: "high",
+      remove_transaction_attachment: "high",
+      request_attachment_upload: "high",
+      upload_attachment: "high",
+      create_client: "high",
+      update_client: "high",
+      delete_client: "high",
+      modify_transaction_cash_flow_category: "high",
+      create_cash_flow_category: "high",
+      create_client_invoice: "high",
+      update_client_invoice: "high",
+      delete_client_invoice: "high",
+      change_client_invoice_status: "high",
+      mark_client_invoice_as_paid: "high",
+      send_client_invoice: "high",
+      create_reminder: "high",
+      delete_reminder: "high",
+      create_credit_note: "high",
+      create_quote: "high",
+      update_quote: "high",
+      delete_quote: "high",
+      send_quote: "high",
+      change_supplier_invoice_status: "high",
+      create_product: "high",
+      create_payment_link: "high",
+      create_card_request: "high",
+      create_multi_transfer_request: "high",
+      approve_request: "high",
+      decline_request: "high",
+    },
+    toolDisplayLabels: {
+      get_organization: {
+        running: "Loading organization details from Qonto",
+        done: "Loaded organization details from Qonto",
+      },
+      list_user_organizations: {
+        running: "Listing organizations on Qonto",
+        done: "Listed organizations on Qonto",
+      },
+      list_memberships: {
+        running: "Listing memberships on Qonto",
+        done: "Listed memberships on Qonto",
+      },
+      get_authenticated_membership: {
+        running: "Loading your Qonto membership from Qonto",
+        done: "Loaded your Qonto membership from Qonto",
+      },
+      list_teams: {
+        running: "Listing teams on Qonto",
+        done: "Listed teams on Qonto",
+      },
+      list_labels: {
+        running: "Listing labels on Qonto",
+        done: "Listed labels on Qonto",
+      },
+      list_cards: {
+        running: "Listing cards on Qonto",
+        done: "Listed cards on Qonto",
+      },
+      list_transactions: {
+        running: "Listing transactions on Qonto",
+        done: "Listed transactions on Qonto",
+      },
+      get_transaction: {
+        running: "Loading a transaction from Qonto",
+        done: "Loaded a transaction from Qonto",
+      },
+      export_transactions: {
+        running: "Exporting transactions from Qonto",
+        done: "Exported transactions from Qonto",
+      },
+      list_statements: {
+        running: "Listing statements on Qonto",
+        done: "Listed statements on Qonto",
+      },
+      get_statement: {
+        running: "Loading a statement from Qonto",
+        done: "Loaded a statement from Qonto",
+      },
+      get_attachment: {
+        running: "Loading an attachment from Qonto",
+        done: "Loaded an attachment from Qonto",
+      },
+      list_transaction_attachments: {
+        running: "Listing transaction attachments on Qonto",
+        done: "Listed transaction attachments on Qonto",
+      },
+      export_transaction_attachments: {
+        running: "Exporting transaction attachments from Qonto",
+        done: "Exported transaction attachments from Qonto",
+      },
+      list_clients: {
+        running: "Listing clients on Qonto",
+        done: "Listed clients on Qonto",
+      },
+      get_client: {
+        running: "Loading a client from Qonto",
+        done: "Loaded a client from Qonto",
+      },
+      list_client_invoices: {
+        running: "Listing client invoices on Qonto",
+        done: "Listed client invoices on Qonto",
+      },
+      get_client_invoice: {
+        running: "Loading a client invoice from Qonto",
+        done: "Loaded a client invoice from Qonto",
+      },
+      list_reminders: {
+        running: "Listing invoice reminders on Qonto",
+        done: "Listed invoice reminders on Qonto",
+      },
+      list_credit_notes: {
+        running: "Listing credit notes on Qonto",
+        done: "Listed credit notes on Qonto",
+      },
+      get_credit_note: {
+        running: "Loading a credit note from Qonto",
+        done: "Loaded a credit note from Qonto",
+      },
+      list_quotes: {
+        running: "Listing quotes on Qonto",
+        done: "Listed quotes on Qonto",
+      },
+      get_quote: {
+        running: "Loading a quote from Qonto",
+        done: "Loaded a quote from Qonto",
+      },
+      list_supplier_invoices: {
+        running: "Listing supplier invoices on Qonto",
+        done: "Listed supplier invoices on Qonto",
+      },
+      get_supplier_invoice: {
+        running: "Loading a supplier invoice from Qonto",
+        done: "Loaded a supplier invoice from Qonto",
+      },
+      list_products: {
+        running: "Listing products on Qonto",
+        done: "Listed products on Qonto",
+      },
+      list_payment_links: {
+        running: "Listing payment links on Qonto",
+        done: "Listed payment links on Qonto",
+      },
+      get_payment_link: {
+        running: "Loading a payment link from Qonto",
+        done: "Loaded a payment link from Qonto",
+      },
+      list_requests: {
+        running: "Listing requests on Qonto",
+        done: "Listed requests on Qonto",
+      },
+      list_cash_flow_categories: {
+        running: "Listing cash flow categories on Qonto",
+        done: "Listed cash flow categories on Qonto",
+      },
+      get_subscription: {
+        running: "Loading the Qonto subscription from Qonto",
+        done: "Loaded the Qonto subscription from Qonto",
+      },
+      get_qonto_public_pricing: {
+        running: "Loading Qonto public pricing from Qonto",
+        done: "Loaded Qonto public pricing from Qonto",
+      },
+      get_card_iframe_url: {
+        running: "Preparing secure card details on Qonto",
+        done: "Preparing secure card details on Qonto",
+      },
+      create_membership: {
+        running: "Creating a membership on Qonto",
+        done: "Created a membership on Qonto",
+      },
+      create_team: {
+        running: "Creating a team on Qonto",
+        done: "Created a team on Qonto",
+      },
+      create_card: {
+        running: "Creating a card on Qonto",
+        done: "Created a card on Qonto",
+      },
+      update_card: {
+        running: "Updating a card on Qonto",
+        done: "Updated a card on Qonto",
+      },
+      change_card_status: {
+        running: "Changing a card status on Qonto",
+        done: "Changed a card status on Qonto",
+      },
+      remove_transaction_attachment: {
+        running: "Removing a transaction attachment on Qonto",
+        done: "Removed a transaction attachment on Qonto",
+      },
+      request_attachment_upload: {
+        running: "Preparing an attachment upload on Qonto",
+        done: "Preparing an attachment upload on Qonto",
+      },
+      upload_attachment: {
+        running: "Uploading an attachment on Qonto",
+        done: "Uploaded an attachment on Qonto",
+      },
+      create_client: {
+        running: "Creating a client on Qonto",
+        done: "Created a client on Qonto",
+      },
+      update_client: {
+        running: "Updating a client on Qonto",
+        done: "Updated a client on Qonto",
+      },
+      delete_client: {
+        running: "Deleting a client on Qonto",
+        done: "Deleted a client on Qonto",
+      },
+      modify_transaction_cash_flow_category: {
+        running: "Updating transaction categories on Qonto",
+        done: "Updated transaction categories on Qonto",
+      },
+      create_cash_flow_category: {
+        running: "Creating a cash flow category on Qonto",
+        done: "Created a cash flow category on Qonto",
+      },
+      create_client_invoice: {
+        running: "Creating a client invoice on Qonto",
+        done: "Created a client invoice on Qonto",
+      },
+      update_client_invoice: {
+        running: "Updating a client invoice on Qonto",
+        done: "Updated a client invoice on Qonto",
+      },
+      delete_client_invoice: {
+        running: "Deleting a client invoice on Qonto",
+        done: "Deleted a client invoice on Qonto",
+      },
+      change_client_invoice_status: {
+        running: "Changing a client invoice status on Qonto",
+        done: "Changed a client invoice status on Qonto",
+      },
+      mark_client_invoice_as_paid: {
+        running: "Marking a client invoice as paid on Qonto",
+        done: "Marked a client invoice as paid on Qonto",
+      },
+      send_client_invoice: {
+        running: "Sending a client invoice on Qonto",
+        done: "Sent a client invoice on Qonto",
+      },
+      create_reminder: {
+        running: "Creating an invoice reminder on Qonto",
+        done: "Created an invoice reminder on Qonto",
+      },
+      delete_reminder: {
+        running: "Deleting an invoice reminder on Qonto",
+        done: "Deleted an invoice reminder on Qonto",
+      },
+      create_credit_note: {
+        running: "Creating a credit note on Qonto",
+        done: "Created a credit note on Qonto",
+      },
+      create_quote: {
+        running: "Creating a quote on Qonto",
+        done: "Created a quote on Qonto",
+      },
+      update_quote: {
+        running: "Updating a quote on Qonto",
+        done: "Updated a quote on Qonto",
+      },
+      delete_quote: {
+        running: "Deleting a quote on Qonto",
+        done: "Deleted a quote on Qonto",
+      },
+      send_quote: {
+        running: "Sending a quote on Qonto",
+        done: "Sent a quote on Qonto",
+      },
+      change_supplier_invoice_status: {
+        running: "Changing a supplier invoice on Qonto",
+        done: "Changed a supplier invoice on Qonto",
+      },
+      create_product: {
+        running: "Creating a product on Qonto",
+        done: "Created a product on Qonto",
+      },
+      create_payment_link: {
+        running: "Creating a payment link on Qonto",
+        done: "Created a payment link on Qonto",
+      },
+      create_card_request: {
+        running: "Creating a card request on Qonto",
+        done: "Created a card request on Qonto",
+      },
+      create_multi_transfer_request: {
+        running: "Creating a multi-transfer request on Qonto",
+        done: "Created a multi-transfer request on Qonto",
+      },
+      approve_request: {
+        running: "Preparing request approval on Qonto",
+        done: "Preparing request approval on Qonto",
+      },
+      decline_request: {
+        running: "Declining a request on Qonto",
+        done: "Declined a request on Qonto",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (
