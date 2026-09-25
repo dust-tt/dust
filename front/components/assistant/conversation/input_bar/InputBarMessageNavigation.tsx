@@ -12,6 +12,7 @@ import {
   Stop,
   Zap,
 } from "@dust-tt/sparkle";
+import styles from "./InputBarMessageNavigation.module.css";
 
 interface InputBarMessageNavigationProps {
   variant: "floating" | "compact";
@@ -25,6 +26,8 @@ interface InputBarMessageNavigationProps {
   canScrollDown: boolean;
   onScrollUp: () => void;
   onScrollDown: () => void;
+  responseNavigation: "idle" | "streaming" | "ready";
+  onScrollToResponse: () => void;
 }
 
 export function InputBarMessageNavigation({
@@ -39,12 +42,22 @@ export function InputBarMessageNavigation({
   canScrollDown,
   onScrollUp,
   onScrollDown,
+  responseNavigation,
+  onScrollToResponse,
 }: InputBarMessageNavigationProps) {
   const stopButtonVariant = variant === "compact" ? "ghost-secondary" : "ghost";
   const isStopActionPending = pendingAction !== null;
   const stopIcon = hasPendingMessages ? Zap : Stop;
   const showNavigationArrows =
-    showMessageNavigation && !(variant === "compact" && showStopButton);
+    showMessageNavigation &&
+    responseNavigation !== "streaming" &&
+    !(variant === "compact" && showStopButton);
+  const showResponseNavigation =
+    showMessageNavigation && responseNavigation === "streaming";
+  const downLabel =
+    responseNavigation === "ready"
+      ? "Answer ready, go to bottom"
+      : "Next user message";
 
   const renderNavigationArrowButton = (
     icon: typeof ArrowUp,
@@ -108,22 +121,36 @@ export function InputBarMessageNavigation({
           )}
         </>
       )}
-      {showNavigationArrows && (
-        <>
-          {renderNavigationArrowButton(
-            ArrowUp,
-            onScrollUp,
-            !canScrollUp,
-            "Previous user message"
-          )}
-          {renderNavigationArrowButton(
-            ArrowDown,
-            onScrollDown,
-            !canScrollDown,
-            "Next user message"
-          )}
-        </>
+      {showNavigationArrows &&
+        renderNavigationArrowButton(
+          ArrowUp,
+          onScrollUp,
+          !canScrollUp,
+          "Previous user message"
+        )}
+      {showResponseNavigation && (
+        <Button
+          variant={variant === "compact" ? "ghost-secondary" : "ghost"}
+          size={variant === "compact" ? "mini" : "xs"}
+          icon={
+            <span className={styles.dots} aria-hidden="true">
+              <span className={styles.dot} />
+              <span className={styles.dot} />
+              <span className={styles.dot} />
+            </span>
+          }
+          tooltip="Go to latest answer"
+          aria-label="Go to latest answer"
+          onClick={onScrollToResponse}
+        />
       )}
+      {showNavigationArrows &&
+        renderNavigationArrowButton(
+          ArrowDown,
+          responseNavigation === "idle" ? onScrollDown : onScrollToResponse,
+          responseNavigation === "idle" && !canScrollDown,
+          downLabel
+        )}
     </>
   );
 

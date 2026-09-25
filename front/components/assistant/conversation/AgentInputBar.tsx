@@ -1,6 +1,7 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ContextUsageWarningBanner } from "@app/components/assistant/conversation/ContextUsageWarningBanner";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { getCurrentAnswerScrollLocation } from "@app/components/assistant/conversation/input_bar/getCurrentAnswerScrollLocation";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarMessageNavigation } from "@app/components/assistant/conversation/input_bar/InputBarMessageNavigation";
 import { INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
@@ -412,6 +413,62 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
+  const generatingMessages =
+    generationContext.getConversationGeneratingMessages(
+      context.conversation?.sId ?? ""
+    );
+  const currentGenerationMessageId = generatingMessages.at(-1)?.messageId;
+  const previousGenerationMessageIdRef = useRef<string | null>(null);
+  const [unseenCompletedMessageId, setUnseenCompletedMessageId] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    if (currentGenerationMessageId) {
+      previousGenerationMessageIdRef.current = currentGenerationMessageId;
+      setUnseenCompletedMessageId(null);
+    } else if (previousGenerationMessageIdRef.current) {
+      setUnseenCompletedMessageId(previousGenerationMessageIdRef.current);
+      previousGenerationMessageIdRef.current = null;
+    }
+  }, [currentGenerationMessageId]);
+
+  useEffect(() => {
+    if (bottomOffset <= 0 && unseenCompletedMessageId) {
+      setUnseenCompletedMessageId(null);
+    }
+  }, [bottomOffset, unseenCompletedMessageId]);
+
+  const completedMessage = allMessages.find(
+    (message) => message.sId === unseenCompletedMessageId
+  );
+  const responseNavigation: "idle" | "streaming" | "ready" =
+    currentGenerationMessageId
+      ? "streaming"
+      : completedMessage &&
+          isAgentMessageWithStreaming(completedMessage) &&
+          completedMessage.status === "succeeded" &&
+          bottomOffset > 0
+        ? "ready"
+        : "idle";
+
+  const scrollToResponse = () => {
+    if (responseNavigation === "ready") {
+      methods.scrollToItem({
+        index: "LAST",
+        align: "end",
+        behavior:
+          bottomOffset < MAX_DISTANCE_FOR_SMOOTH_SCROLL ? "smooth" : "instant",
+      });
+      setUnseenCompletedMessageId(null);
+      return;
+    }
+
+    methods.scrollToItem(
+      getCurrentAnswerScrollLocation(allMessages, currentGenerationMessageId)
+    );
+  };
+
   if (
     context.isProjectMember === false &&
     context.projectId &&
@@ -429,11 +486,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       </div>
     );
   }
-
-  const generatingMessages =
-    generationContext.getConversationGeneratingMessages(
-      context.conversation?.sId ?? ""
-    );
 
   const conversationId = context.conversation?.sId ?? "";
   const hasPendingMessages =
@@ -542,6 +594,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     canScrollDown,
     onScrollUp: scrollToPreviousUserMessage,
     onScrollDown: scrollToNextUserMessage,
+    responseNavigation,
+    onScrollToResponse: scrollToResponse,
   };
 
   if (context.projectId && context.isProjectArchived) {
