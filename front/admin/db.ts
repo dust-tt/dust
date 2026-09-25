@@ -51,6 +51,7 @@ import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_sourc
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { BatchSuggestionModel } from "@app/lib/models/batch_suggestion";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
+import { EvalRunModel, EvalStepModel } from "@app/lib/models/eval_run";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
@@ -278,6 +279,8 @@ export function loadAllModels() {
     SkillMCPServerConfigurationModel,
     SkillFileAttachmentModel,
     BatchSuggestionModel,
+    EvalRunModel,
+    EvalStepModel,
     SkillSuggestionModel,
     SelfImprovingSkillsUsageModel,
     WorkspaceVerificationAttemptModel,
