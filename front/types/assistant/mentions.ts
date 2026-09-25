@@ -62,6 +62,12 @@ export interface RichAgentMentionInConversation extends RichAgentMention {
   lastActivityAt?: number;
 }
 
+export type RichAgentMentionCandidate = Pick<
+  LightAgentConfigurationType,
+  "sId" | "name" | "pictureUrl" | "description"
+> &
+  Partial<Pick<LightAgentConfigurationType, "userFavorite">>;
+
 /**
  * User-specific rich mention.
  */
@@ -136,7 +142,7 @@ export function toMentionType(rich: RichMention): MentionType {
 }
 
 export function toRichAgentMentionType(
-  agentConfiguration: LightAgentConfigurationType
+  agentConfiguration: RichAgentMentionCandidate
 ): RichAgentMention {
   return {
     id: agentConfiguration.sId,
