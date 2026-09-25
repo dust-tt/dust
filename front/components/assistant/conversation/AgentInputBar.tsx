@@ -2,8 +2,12 @@ import { useBlockedActionsContext } from "@app/components/assistant/conversation
 import { ContextUsageWarningBanner } from "@app/components/assistant/conversation/ContextUsageWarningBanner";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { InputBarMessageNavigation } from "@app/components/assistant/conversation/input_bar/InputBarMessageNavigation";
 import { INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
+import { ConversationNavigationPill } from "@app/components/assistant/conversation/input_bar/message_navigation/ConversationNavigationPill";
+import {
+  MAX_DISTANCE_FOR_SMOOTH_SCROLL,
+  useConversationResponseNavigation,
+} from "@app/components/assistant/conversation/input_bar/useConversationResponseNavigation";
 import { useInputBarCompactMode } from "@app/components/assistant/conversation/input_bar/useInputBarCompactMode";
 import type {
   VirtuosoMessage,
@@ -51,7 +55,6 @@ import type { MotionProps, Transition } from "framer-motion";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 const DOUBLE_ESC_WINDOW_MS = 300;
 
 // Offsets in px
@@ -412,6 +415,17 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
+  const generatingMessages =
+    generationContext.getConversationGeneratingMessages(
+      context.conversation?.sId ?? ""
+    );
+  const { responseNavigation, scrollToResponse } =
+    useConversationResponseNavigation({
+      conversationId: context.conversation?.sId ?? "",
+      messages: allMessages,
+      bottomOffset,
+    });
+
   if (
     context.isProjectMember === false &&
     context.projectId &&
@@ -429,11 +443,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       </div>
     );
   }
-
-  const generatingMessages =
-    generationContext.getConversationGeneratingMessages(
-      context.conversation?.sId ?? ""
-    );
 
   const conversationId = context.conversation?.sId ?? "";
   const hasPendingMessages =
@@ -542,6 +551,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     canScrollDown,
     onScrollUp: scrollToPreviousUserMessage,
     onScrollDown: scrollToNextUserMessage,
+    responseNavigation,
+    onScrollToResponse: scrollToResponse,
   };
 
   if (context.projectId && context.isProjectArchived) {
@@ -567,7 +578,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       <div className="flex w-full justify-center gap-2">
         {showNavigationContainer &&
           (!effectiveIsCompact || !!userAnswerRequiredItem) && (
-            <InputBarMessageNavigation
+            <ConversationNavigationPill
               variant="floating"
               {...messageNavigationProps}
             />
@@ -730,7 +741,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           showNavigationContainer && (
             <div className="shrink-0">
               <div className={INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES}>
-                <InputBarMessageNavigation
+                <ConversationNavigationPill
                   variant="compact"
                   {...messageNavigationProps}
                 />
