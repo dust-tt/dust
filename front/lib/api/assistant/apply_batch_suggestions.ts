@@ -1,3 +1,4 @@
+import { isAuthorizedToApplyAgentSuggestions } from "@app/lib/api/assistant/agent_suggestion_authorization";
 import type { ResolvedAgentChange } from "@app/lib/api/assistant/apply_agent_suggestions";
 import {
   resolveAgentSuggestions,
@@ -13,10 +14,16 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-type ApplyBatchSuggestionsError = DustError<"invalid_request_error">;
+type ApplyBatchSuggestionsError = DustError<
+  "unauthorized" | "invalid_request_error"
+>;
 
 type SkillStep = Extract<BatchApplicationStep, { type: "skill" }>;
 type AgentStep = Extract<BatchApplicationStep, { type: "agent" }>;
+
+// A step whose caller is allowed to apply it, with the agent it targets.
+type AuthorizedAgentStep = AgentStep & { agent: AgentResource };
+type AuthorizedStep = SkillStep | AuthorizedAgentStep;
 
 // A step resolved against the current state of its target into the writes it applies.
 type ResolvedAgentStep = AgentStep & { change: ResolvedAgentChange };
@@ -53,13 +60,52 @@ function checkOneStepPerTarget(
   return new Ok(undefined);
 }
 
+async function checkSkillStepPermissions(
+  auth: Authenticator,
+  step: SkillStep
+): Promise<Result<SkillStep, ApplyBatchSuggestionsError>> {
+  // TODO: check that the caller can apply the step's suggestions to its skill.
+  return new Ok(step);
+}
+
+async function checkAgentStepPermissions(
+  auth: Authenticator,
+  step: AgentStep
+): Promise<Result<AuthorizedAgentStep, ApplyBatchSuggestionsError>> {
+  const agent = await AgentResource.fetchById(auth, step.agentId);
+  if (!agent) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The agent this suggestion targets was not found."
+      )
+    );
+  }
+
+  if (!isAuthorizedToApplyAgentSuggestions(auth, agent, step.suggestions)) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        `You are not allowed to apply one or more of these suggestions to the agent ${agent.name}.`
+      )
+    );
+  }
+
+  return new Ok({ ...step, agent });
+}
+
 async function checkPermissions(
   auth: Authenticator,
   step: BatchApplicationStep
-): Promise<Result<undefined, ApplyBatchSuggestionsError>> {
-  // TODO: check that the caller can apply the step's suggestions to its target. Each action needs
-  // its own permission.
-  return new Ok(undefined);
+): Promise<Result<AuthorizedStep, ApplyBatchSuggestionsError>> {
+  switch (step.type) {
+    case "skill":
+      return checkSkillStepPermissions(auth, step);
+    case "agent":
+      return checkAgentStepPermissions(auth, step);
+    default:
+      return assertNever(step);
+  }
 }
 
 async function resolveSkillStep(
@@ -72,18 +118,8 @@ async function resolveSkillStep(
 
 async function resolveAgentStep(
   auth: Authenticator,
-  step: AgentStep
+  { agent, ...step }: AuthorizedAgentStep
 ): Promise<Result<ResolvedAgentStep, ApplyBatchSuggestionsError>> {
-  const agent = await AgentResource.fetchById(auth, step.agentId);
-  if (!agent) {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        `The agent ${step.agentId} was not found.`
-      )
-    );
-  }
-
   const change = await resolveAgentSuggestions(auth, {
     agent,
     suggestions: step.suggestions,
@@ -97,7 +133,7 @@ async function resolveAgentStep(
 
 async function resolveStep(
   auth: Authenticator,
-  step: BatchApplicationStep
+  step: AuthorizedStep
 ): Promise<Result<ResolvedStep, ApplyBatchSuggestionsError>> {
   switch (step.type) {
     case "skill":
@@ -152,15 +188,17 @@ export async function applyBatchSuggestions(
     return oneStepPerTarget;
   }
 
+  const authorizedSteps: AuthorizedStep[] = [];
   for (const step of steps) {
     const res = await checkPermissions(auth, step);
     if (res.isErr()) {
       return res;
     }
+    authorizedSteps.push(res.value);
   }
 
   const resolvedSteps: ResolvedStep[] = [];
-  for (const step of steps) {
+  for (const step of authorizedSteps) {
     const res = await resolveStep(auth, step);
     if (res.isErr()) {
       return res;
