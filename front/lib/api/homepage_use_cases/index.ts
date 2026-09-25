@@ -168,11 +168,11 @@ function resolveTool(
   const resolving = alternatives.filter((alternative) =>
     toolsByKey.has(toolKey(alternative))
   );
+  const favorites = new Set<string>(favoritePlatforms);
   const chosen =
     resolving.find(
       (alternative) =>
-        alternative.type === "internalServer" &&
-        favoritePlatforms.some((platform) => platform === alternative.name)
+        alternative.type === "internalServer" && favorites.has(alternative.name)
     ) ?? resolving[0];
 
   return chosen ? (toolsByKey.get(toolKey(chosen)) ?? null) : null;
