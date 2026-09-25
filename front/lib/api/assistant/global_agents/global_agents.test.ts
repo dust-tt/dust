@@ -72,8 +72,7 @@ vi.mock("@app/types/assistant/models/custom_models.generated", async () => {
   return {
     CUSTOM_MODEL_CONFIGS: mockCustomModels.configs,
     CUSTOM_MODEL_IDS: [CUSTOM_MODEL_ID, UNBOUND_CUSTOM_MODEL_ID],
-    CUSTOM_OPENAI_MODEL_IDS: [CUSTOM_MODEL_ID, UNBOUND_CUSTOM_MODEL_ID],
-    CUSTOM_ANTHROPIC_MODEL_IDS: [],
+    CUSTOM_MODELS: [],
   };
 });
 
