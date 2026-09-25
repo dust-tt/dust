@@ -14,6 +14,7 @@ import type { GroupType } from "@app/types/groups";
 import { isRegularManualGroupKind } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Button,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -134,6 +135,7 @@ function GroupForm({
     governancePermissions,
     isLoading: isGovernanceLoading,
     isGovernancePermissionsError,
+    mutateGovernancePermissions,
   } = useGovernancePermissions(owner, { disabled: !canManageManagers });
   const initialMemberIds = new Set(initialMembers.map((member) => member.sId));
   const hasGroupChanges =
@@ -266,6 +268,26 @@ function GroupForm({
               disabled={isSubmitting}
             />
           )}
+          {managersNeedingWarning.length > 0 &&
+            isGovernancePermissionsError && (
+              <ContentMessage
+                variant="warning"
+                icon={InfoCircle}
+                title="Could not review group access"
+                size="sm"
+              >
+                <p>
+                  Try loading the group's permissions again before appointing
+                  these managers.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label="Retry"
+                  onClick={() => void mutateGovernancePermissions()}
+                />
+              </ContentMessage>
+            )}
         </div>
       </DialogContainer>
       <DialogFooter
