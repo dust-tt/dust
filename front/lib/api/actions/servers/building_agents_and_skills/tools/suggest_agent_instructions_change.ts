@@ -10,8 +10,8 @@ import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/bui
 import type { SuggestAgentInstructionsChangeArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import type { CreatedInstructionSuggestion } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
@@ -34,11 +34,8 @@ export async function suggestAgentInstructionsChange(
     );
   }
 
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "full",
-  });
-  if (!agent || (!agent.canRead && !auth.isAdmin())) {
+  const agent = await AgentResource.fetchById(auth, agentId);
+  if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
     return new Err(new MCPError("Agent not found."));
   }
 
@@ -48,9 +45,10 @@ export async function suggestAgentInstructionsChange(
   if (validation.isErr()) {
     return validation;
   }
+  assert(agent.isFull(), "Validated instruction edits imply a readable agent.");
 
   const result = await createAgentInstructionSuggestions(auth, {
-    agentConfiguration: agent,
+    agent,
     edits: validation.value,
     source: "conversational",
     conversation: runContext.conversation,
