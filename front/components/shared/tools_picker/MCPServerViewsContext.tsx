@@ -6,7 +6,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
+import { useMCPServerViewsFromMemberSpaces } from "@app/lib/swr/mcp_servers";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -155,14 +155,14 @@ export const MCPServerViewsProvider = ({
   children,
   includeRestrictedToSkills = false,
 }: MCPServerViewsProviderProps) => {
-  const { spaces, isSpacesLoading } = useSpacesContext();
+  const { spaces } = useSpacesContext();
   const { featureFlags } = useFeatureFlags();
 
   const {
     serverViews: mcpServerViews,
     isLoading,
     isError: isMCPServerViewsError,
-  } = useMCPServerViewsFromSpaces(owner, spaces, {
+  } = useMCPServerViewsFromMemberSpaces(owner, {
     includeRestrictedToSkills,
     revalidateIfStale: false,
     revalidateOnFocus: false,
@@ -187,7 +187,7 @@ export const MCPServerViewsProvider = ({
       mcpServerViews: sortedMCPServerViews,
       mcpServerViewsWithKnowledge,
       mcpServerViewsWithoutKnowledge,
-      isMCPServerViewsLoading: isLoading || isSpacesLoading, // Spaces is required to fetch server views so we check isSpacesLoading too.
+      isMCPServerViewsLoading: isLoading,
       isMCPServerViewsError,
     };
   }, [
@@ -196,7 +196,6 @@ export const MCPServerViewsProvider = ({
     mcpServerViewsWithoutKnowledge,
     isLoading,
     isMCPServerViewsError,
-    isSpacesLoading,
   ]);
 
   return (

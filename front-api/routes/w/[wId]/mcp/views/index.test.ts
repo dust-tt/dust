@@ -1,8 +1,12 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
@@ -78,5 +82,65 @@ describe("GET /api/w/:wId/mcp/views", () => {
     );
     expect(skillBuilderView).toBeDefined();
     expect(skillBuilderView.isRestrictedToSkills).toBe(true);
+  });
+
+  it("defaults to the spaces the user is a member of when spaceIds is omitted", async () => {
+    const { workspace, user, globalSpace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+
+    const memberSpace = await SpaceFactory.regular(workspace);
+    const addMembersRes = await memberSpace.addMembers(adminAuth, {
+      userIds: [user.sId],
+    });
+    if (!addMembersRes.isOk()) {
+      throw new Error("Failed to add user to space");
+    }
+    const otherSpace = await SpaceFactory.regular(workspace);
+
+    const server = await RemoteMCPServerFactory.create(workspace);
+    const globalView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
+    const memberView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      memberSpace
+    );
+    const otherView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      otherSpace
+    );
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/mcp/views?availabilities=manual,auto`
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    const viewIds = body.serverViews.map((v: MCPServerViewType) => v.sId);
+    expect(viewIds).toContain(globalView.sId);
+    expect(viewIds).toContain(memberView.sId);
+    expect(viewIds).not.toContain(otherView.sId);
+  });
+
+  it("returns 400 when spaceIds is empty", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "user" });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/mcp/views?spaceIds=&availabilities=manual,auto`
+    );
+
+    expect(response.status).toBe(400);
   });
 });
