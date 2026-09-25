@@ -172,7 +172,10 @@ makeScript(
               if (execute) {
                 await AgentMCPActionOutputItemModel.update(
                   { citations },
-                  { where: { id: item.id, workspaceId: workspaceModelId } }
+                  {
+                    where: { id: item.id, workspaceId: workspaceModelId },
+                    dangerouslyByPassAppendOnlyRule: true,
+                  }
                 );
               }
               updated += 1;

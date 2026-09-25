@@ -19,7 +19,51 @@ import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import type {
+  Attributes,
+  BulkCreateOptions,
+  CreationAttributes,
+  CreationOptional,
+  ForeignKey,
+  IncrementDecrementOptions,
+  IncrementDecrementOptionsWithBy,
+  InstanceRestoreOptions,
+  Model,
+  ModelStatic,
+  NonAttribute,
+  RestoreOptions,
+  SaveOptions,
+  UpdateOptions,
+  UpsertOptions,
+} from "sequelize";
+import type { Col, Fn, Literal } from "sequelize/types/utils";
+
+type AppendOnlyUpdateBypass = { dangerouslyByPassAppendOnlyRule?: boolean };
+
+type OutputItemAttributes = Attributes<AgentMCPActionOutputItemModel>;
+
+type OutputItemUpdateValues<M extends Model> = {
+  [key in keyof Attributes<M>]?: Attributes<M>[key] | Fn | Col | Literal;
+};
+
+function requireAppendOnlyUpdateBypass(
+  options: { dangerouslyByPassAppendOnlyRule?: boolean } | undefined
+): void {
+  if (options?.dangerouslyByPassAppendOnlyRule !== true) {
+    throw new Error(
+      "Updating MCP action output items requires dangerouslyByPassAppendOnlyRule."
+    );
+  }
+}
+
+function isIncrementRecord<M extends Model>(
+  fields:
+    | keyof Attributes<M>
+    | ReadonlyArray<keyof Attributes<M>>
+    | { [key in keyof Attributes<M>]?: number }
+): fields is { [key in keyof Attributes<M>]?: number } {
+  return typeof fields === "object" && !Array.isArray(fields);
+}
 
 export type AdditionalConfigurationValueType =
   | boolean
@@ -344,6 +388,11 @@ AgentStepContentModel.hasMany(AgentMCPActionModel, {
   as: "agentMCPActions",
 });
 
+/**
+ * @cc [owner:id13,label:backend] append-only-output-item-rows
+ * Output item rows MUST be immutable after insertion. Every Sequelize method capable of updating
+ * an existing row MUST require `dangerouslyByPassAppendOnlyRule: true`.
+ */
 export class AgentMCPActionOutputItemModel extends WorkspaceAwareModel<AgentMCPActionOutputItemModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -357,6 +406,99 @@ export class AgentMCPActionOutputItemModel extends WorkspaceAwareModel<AgentMCPA
   declare generatedFileContentType: string | null;
 
   declare file: NonAttribute<FileModel>;
+
+  static override update<M extends Model>(
+    this: ModelStatic<M>,
+    values: OutputItemUpdateValues<M>,
+    options: Omit<UpdateOptions<Attributes<M>>, "returning"> & {
+      returning: true | (keyof Attributes<M>)[];
+    } & AppendOnlyUpdateBypass
+  ): Promise<[affectedCount: number, affectedRows: M[]]>;
+  static override update<M extends Model>(
+    this: ModelStatic<M>,
+    values: OutputItemUpdateValues<M>,
+    options: UpdateOptions<Attributes<M>> & AppendOnlyUpdateBypass
+  ): Promise<[affectedCount: number]>;
+  static override update<M extends Model>(
+    this: ModelStatic<M>,
+    values: OutputItemUpdateValues<M>,
+    options: UpdateOptions<Attributes<M>> & AppendOnlyUpdateBypass
+  ): Promise<
+    [affectedCount: number] | [affectedCount: number, affectedRows: M[]]
+  > {
+    requireAppendOnlyUpdateBypass(options);
+    return super.update(values, options);
+  }
+
+  static override upsert<M extends Model>(
+    this: ModelStatic<M>,
+    values: CreationAttributes<M>,
+    options?: UpsertOptions<Attributes<M>> & AppendOnlyUpdateBypass
+  ): Promise<[M, boolean | null]> {
+    requireAppendOnlyUpdateBypass(options);
+    return super.upsert(values, options);
+  }
+
+  static override bulkCreate<M extends Model>(
+    this: ModelStatic<M>,
+    records: ReadonlyArray<CreationAttributes<M>>,
+    options?: BulkCreateOptions<Attributes<M>> & AppendOnlyUpdateBypass
+  ): Promise<M[]> {
+    if (options?.updateOnDuplicate?.length) {
+      requireAppendOnlyUpdateBypass(options);
+    }
+    return super.bulkCreate(records, options);
+  }
+
+  static override restore<M extends Model>(
+    this: ModelStatic<M>,
+    options?: RestoreOptions<Attributes<M>> & AppendOnlyUpdateBypass
+  ): Promise<void> {
+    requireAppendOnlyUpdateBypass(options);
+    return super.restore(options);
+  }
+
+  static override increment<M extends Model>(
+    this: ModelStatic<M>,
+    fields: keyof Attributes<M> | ReadonlyArray<keyof Attributes<M>>,
+    options: IncrementDecrementOptionsWithBy<Attributes<M>> &
+      AppendOnlyUpdateBypass
+  ): Promise<[affectedRows: M[], affectedCount?: number]>;
+  static override increment<M extends Model>(
+    this: ModelStatic<M>,
+    fields: { [key in keyof Attributes<M>]?: number },
+    options: IncrementDecrementOptions<Attributes<M>> & AppendOnlyUpdateBypass
+  ): Promise<[affectedRows: M[], affectedCount?: number]>;
+  static override increment<M extends Model>(
+    this: ModelStatic<M>,
+    fields:
+      | keyof Attributes<M>
+      | ReadonlyArray<keyof Attributes<M>>
+      | { [key in keyof Attributes<M>]?: number },
+    options: IncrementDecrementOptions<Attributes<M>> & AppendOnlyUpdateBypass
+  ): Promise<[affectedRows: M[], affectedCount?: number]> {
+    requireAppendOnlyUpdateBypass(options);
+    if (isIncrementRecord<M>(fields)) {
+      return super.increment<M>(fields, options);
+    }
+    return super.increment<M>(fields, options);
+  }
+
+  override save(
+    options?: SaveOptions<OutputItemAttributes> & AppendOnlyUpdateBypass
+  ): Promise<this> {
+    if (!this.isNewRecord) {
+      requireAppendOnlyUpdateBypass(options);
+    }
+    return super.save(options);
+  }
+
+  override restore(
+    options?: InstanceRestoreOptions & AppendOnlyUpdateBypass
+  ): Promise<void> {
+    requireAppendOnlyUpdateBypass(options);
+    return super.restore(options);
+  }
 }
 
 AgentMCPActionOutputItemModel.init(

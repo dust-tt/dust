@@ -46,6 +46,7 @@ import {
   batchFetchContentsFromGcs,
   batchWriteContentsToGcs,
   deleteActionOutputsFromGcs,
+  deleteContentsFromGcs,
   stageMcpOutputContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -108,7 +109,12 @@ const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
 export interface AgentMCPActionResource
   extends ReadonlyAttributesType<AgentMCPActionModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
+/**
+ * @cc [owner:id13,label:backend] output-items-append-only
+ * Runtime output item creation MUST insert rows with their final GCS paths and MUST NOT update
+ * output item rows after insertion.
+ */
 export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static model: ModelStaticWorkspaceAware<AgentMCPActionModel> =
     AgentMCPActionModel;
@@ -1091,27 +1097,32 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
-   * Creates output item rows and stages content in Redis so callers can read
-   * without waiting on GCS. When `deferDurablePersist` is true, the GCS write
-   * runs in the background — await {@link awaitDeferredOutputPersist} before
-   * the activity/request ends (e.g. after `markAsSucceeded`).
-   *
-   * Content is also written to DB to ease rollback during the migration period.
+   * @cc [label:backend] durable-output-before-return
+   * Successful output creation MUST finish the GCS write and record every output item's path
+   * before returning.
    */
   async createOutputItems(
     auth: Authenticator,
     contents: Array<{
       content: CallToolResult["content"][number];
       fileId?: ModelId;
-    }>,
-    options?: { deferDurablePersist?: boolean }
+    }>
   ): Promise<Result<ToolOutputItemType[], Error>> {
-    // Leave `contentGcsPath` null until the GCS write succeeds — readers with a null
-    // path use the DB content column (legacy path); staged Redis covers the hot window.
+    const gcsResult = await batchWriteContentsToGcs(
+      auth,
+      this,
+      contents.map((c) => c.content)
+    );
+    if (gcsResult.isErr()) {
+      return new Err(gcsResult.error);
+    }
+
     let outputItems: AgentMCPActionOutputItemModel[];
     try {
       outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
-        contents.map((c) => {
+        contents.map((c, index) => {
+          const contentGcsPath = gcsResult.value[index];
+          assert(contentGcsPath, "GCS path not found for output item.");
           const { generatedFilePath, generatedFileContentType } =
             isToolGeneratedFilePath(c.content)
               ? {
@@ -1124,7 +1135,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             agentMCPActionId: this.id,
             // Write content to DB (kept during migration period to ease rollback).
             content: c.content,
-            contentGcsPath: null,
+            contentGcsPath,
             citations: getCitationsFromToolOutput([c.content]),
             fileId: c.fileId,
             workspaceId: this.workspaceId,
@@ -1134,6 +1145,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         })
       );
     } catch (err) {
+      const cleanupResult = await deleteContentsFromGcs(gcsResult.value);
+      if (cleanupResult.isErr()) {
+        logger.error(
+          { err: cleanupResult.error, actionId: this.sId },
+          "Failed to clean up MCP output content after row insert failure"
+        );
+      }
       return new Err(normalizeError(err));
     }
 
@@ -1143,26 +1161,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         outputItems.map((item) => ({
           itemId: item.id,
           content: item.content,
-          gcsPath: "",
+          gcsPath: item.contentGcsPath ?? "",
         }))
       );
     } catch (err) {
-      // Staging is best-effort when we still have DB content; durable GCS follows.
       logger.warn(
         { err: normalizeError(err), actionId: this.sId },
         "Failed to stage MCP output content cache"
       );
-    }
-
-    const durablePersist = this.persistOutputItemsToGcs(auth, outputItems);
-
-    if (options?.deferDurablePersist) {
-      this.deferredOutputPersist = durablePersist;
-    } else {
-      const persistResult = await durablePersist;
-      if (persistResult.isErr()) {
-        return new Err(persistResult.error);
-      }
     }
 
     // Return the stored contents in the generic tool output item shape.
@@ -1180,58 +1186,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         )
       )
     );
-  }
-
-  private deferredOutputPersist: Promise<Result<void, Error>> | undefined;
-
-  /**
-   * Awaits a durable GCS persist started by {@link createOutputItems} with
-   * `deferDurablePersist: true`. Safe to call when nothing was deferred.
-   */
-  async awaitDeferredOutputPersist(): Promise<Result<void, Error>> {
-    const pending = this.deferredOutputPersist;
-    this.deferredOutputPersist = undefined;
-    if (!pending) {
-      return new Ok(undefined);
-    }
-    return pending;
-  }
-
-  private async persistOutputItemsToGcs(
-    auth: Authenticator,
-    outputItems: AgentMCPActionOutputItemModel[]
-  ): Promise<Result<void, Error>> {
-    const gcsResult = await batchWriteContentsToGcs(
-      auth,
-      this,
-      outputItems.map((item) => item.content)
-    );
-
-    if (gcsResult.isErr()) {
-      // Rows already exist with DB content; log and surface the error so deferred
-      // callers can decide. Sync callers treat this as createOutputItems failure.
-      logger.error(
-        { err: gcsResult.error, actionId: this.sId },
-        "Failed to write MCP output items to GCS"
-      );
-      return new Err(gcsResult.error);
-    }
-
-    try {
-      await Promise.all(
-        outputItems.map(async (item, index) => {
-          const contentGcsPath = gcsResult.value[index];
-          assert(contentGcsPath, "GCS path not found for output item.");
-          await item.update({ contentGcsPath });
-        })
-      );
-    } catch (err) {
-      // Keep the GCS objects rather than risk deleting content that may already be
-      // referenced; action-prefix cleanup removes orphans.
-      return new Err(normalizeError(err));
-    }
-
-    return new Ok(undefined);
   }
 
   static async fetchOutputItemsByActionIds(
@@ -1913,3 +1867,4 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return this.stepContent.value.value.arguments;
   }
 }
+/* eslint-enable @typescript-eslint/no-unsafe-declaration-merging */

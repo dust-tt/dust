@@ -199,6 +199,7 @@ makeScript(
                 {
                   where: { id: item.id, workspaceId: workspaceModelId },
                   silent: true,
+                  dangerouslyByPassAppendOnlyRule: true,
                 }
               );
 
