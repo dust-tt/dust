@@ -4,12 +4,8 @@ import { getAgentConfigurationContext } from "@app/lib/api/assistant/configurati
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  AgentBatchChanges,
-  AgentChange,
-  AgentFieldEdits,
-} from "@app/lib/editor/merge_agent_suggestion_changes";
-import { mergeAgentSuggestionChanges } from "@app/lib/editor/merge_agent_suggestion_changes";
+import type { AgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import { mergeAgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
 import {
   applyInstructionEditsToHtml,
   convertMarkdownToBlockHtml,
@@ -28,7 +24,11 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
-import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import {
+  AgentSuggestionDataSchema,
+  getAgentSuggestionAction,
+  INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+} from "@app/types/suggestions/agent_suggestion";
 
 type ApplyAgentSuggestionsError = DustError<"invalid_request_error">;
 
@@ -279,30 +279,6 @@ async function resolveAgentFieldEdits(
   });
 }
 
-function getAgentChange(
-  changes: AgentBatchChanges
-): Result<AgentChange, ApplyAgentSuggestionsError> {
-  const hasEdits = Object.keys(changes.edit).length > 0;
-  if (
-    [!!changes.create, hasEdits, !!changes.delete].filter(Boolean).length !== 1
-  ) {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        "Suggestions applied together must all create, all edit, or all delete the agent."
-      )
-    );
-  }
-
-  if (changes.create) {
-    return new Ok({ type: "create", create: changes.create });
-  }
-  if (changes.delete) {
-    return new Ok({ type: "delete" });
-  }
-  return new Ok({ type: "edit", edit: changes.edit });
-}
-
 /**
  * @cc [owner:matteotrab,label:product] single-action-per-agent
  * `suggestions` MUST all create, all edit, or all delete `agent`: when they mix these actions, the
@@ -319,25 +295,51 @@ export async function resolveAgentSuggestions(
     suggestions: AgentSuggestionResource[];
   }
 ): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
-  const batchChanges = mergeAgentSuggestionChanges(suggestions);
-  if (batchChanges.isErr()) {
-    return batchChanges;
+  const actions = new Set(
+    suggestions.map((suggestion) => getAgentSuggestionAction(suggestion.kind))
+  );
+  const [action] = actions;
+  if (!action || actions.size > 1) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Suggestions applied together must all create, all edit, or all delete the agent."
+      )
+    );
   }
 
-  const change = getAgentChange(batchChanges.value);
-  if (change.isErr()) {
-    return change;
-  }
-
-  switch (change.value.type) {
-    case "create":
-      return resolveCreateSuggestion(auth, agent, change.value.create);
-    case "edit":
-      return resolveAgentFieldEdits(auth, agent, change.value.edit);
+  switch (action) {
+    case "create": {
+      const [suggestion] = suggestions;
+      const parsed = AgentSuggestionDataSchema.safeParse({
+        kind: suggestion.kind,
+        suggestion: suggestion.suggestion,
+      });
+      if (
+        suggestions.length > 1 ||
+        !parsed.success ||
+        parsed.data.kind !== "create"
+      ) {
+        return new Err(
+          new DustError(
+            "invalid_request_error",
+            "An agent is created from a single valid create suggestion."
+          )
+        );
+      }
+      return resolveCreateSuggestion(auth, agent, parsed.data.suggestion);
+    }
+    case "edit": {
+      const edits = mergeAgentFieldEdits(suggestions);
+      if (edits.isErr()) {
+        return edits;
+      }
+      return resolveAgentFieldEdits(auth, agent, edits.value);
+    }
     case "delete":
       return resolveDeleteSuggestion(agent);
     default:
-      return assertNever(change.value);
+      return assertNever(action);
   }
 }
 
@@ -400,17 +402,6 @@ export async function writeAgentChange(
   }
 }
 
-/**
- * @cc [owner:matteotrab,label:product] one-version-per-batch
- * Applying a batch of accepted suggestions should write at most one new agent version: every field
- * a suggestion changes, including `instructions`, is merged into a single
- * `createOrUpgradeAgentConfiguration` call.
- */
-/**
- * @cc [owner:matteotrab,label:product] resolve-before-writing
- * The change of `suggestions` MUST be resolved against the current state of `agent` before it is
- * written: when it fails to resolve, nothing is written.
- */
 export async function applyAgentSuggestions(
   auth: Authenticator,
   params: {

@@ -3,6 +3,8 @@ import {
   SKILL_AVAILABILITIES,
   SKILL_NAME_MAX_LENGTH,
 } from "@app/types/assistant/skill_configuration_constants";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SuggestionAction } from "@app/types/suggestions/agent_suggestion";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { z } from "zod";
 
@@ -64,6 +66,25 @@ export const SKILL_SUGGESTION_KINDS = [
 ] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
+
+export function getSkillSuggestionAction(
+  kind: SkillSuggestionKind
+): SuggestionAction {
+  switch (kind) {
+    case "create":
+      return "create";
+    case "delete":
+      return "delete";
+    case "availability":
+    case "edit":
+    case "editors":
+    case "name":
+    case "user_facing_description":
+      return "edit";
+    default:
+      return assertNever(kind);
+  }
+}
 
 // Kinds the reinforcement workflow produces (synthetic analysis) and consumes (aggregation).
 // Reinforcement code MUST filter on these kinds when fetching suggestions so it never has to
