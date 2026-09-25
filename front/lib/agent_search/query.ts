@@ -9,6 +9,8 @@ import type {
 import type { estypes } from "@elastic/elasticsearch";
 
 export const MAX_AGENT_SEARCH_RESULTS = 100;
+// Elasticsearch's default `index.max_result_window`: `offset + limit` cannot go past it.
+export const MAX_AGENT_SEARCH_WINDOW = 10_000;
 
 // Null represents a type-wide read grant; do not enumerate resources in that case.
 function getAgentSearchReadableSpaceIds(auth: Authenticator) {

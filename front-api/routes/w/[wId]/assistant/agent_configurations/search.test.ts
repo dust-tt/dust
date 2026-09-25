@@ -60,20 +60,20 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       updatedAt: null,
     };
     searchAgents.mockResolvedValue(
-      new Ok({ agents: [agent], hasMore: true, nextCursor: "opaque-cursor" })
+      new Ok({ agents: [agent], total: 30, hasMore: true })
     );
 
     const response = await searchRequest(workspace.sId, {
       query: "research",
       limit: 100,
-      cursor: "previous-cursor",
+      offset: 25,
     });
 
     expect(response.status).toBe(200);
     expect(searchAgents).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "research",
       limit: 100,
-      cursor: "previous-cursor",
+      offset: 25,
       sortBy: undefined,
       sortOrder: undefined,
       permissionFiltering: undefined,
@@ -81,7 +81,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     });
     expect(await response.json()).toEqual({
       hasMore: true,
-      nextCursor: "opaque-cursor",
+      total: 30,
       agents: [
         {
           ...agent,
@@ -100,7 +100,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   it("accepts structured filters and sorts", async () => {
     const { workspace } = await setup();
     searchAgents.mockResolvedValue(
-      new Ok({ agents: [], hasMore: false, nextCursor: null })
+      new Ok({ agents: [], total: 0, hasMore: false })
     );
     const filters = {
       status: ["active", "archived"],
@@ -121,7 +121,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     expect(searchAgents).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "",
       limit: undefined,
-      cursor: undefined,
+      offset: undefined,
       sortBy: "name",
       sortOrder: "desc",
       permissionFiltering: undefined,
@@ -132,7 +132,9 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   it.each([
     { limit: 0 },
     { limit: 101 },
-    { cursor: [{}] },
+    { offset: -1 },
+    { offset: 1.5 },
+    { offset: "25" },
     { permissionFiltering: "redact_unreadable" },
     { editedByMe: false },
     { sortBy: "unknown" },
@@ -154,7 +156,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   it("passes unrestricted filtering through for admins", async () => {
     const { workspace } = await setup("admin");
     searchAgents.mockResolvedValue(
-      new Ok({ agents: [], hasMore: false, nextCursor: null })
+      new Ok({ agents: [], total: 0, hasMore: false })
     );
 
     const response = await searchRequest(workspace.sId, {
@@ -182,11 +184,11 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     });
   });
 
-  it("returns a bad request when search rejects the cursor", async () => {
+  it("returns a bad request when the offset is out of range", async () => {
     const { workspace } = await setup();
-    searchAgents.mockResolvedValue(new Err("invalid_cursor"));
+    searchAgents.mockResolvedValue(new Err("offset_out_of_range"));
 
-    const response = await searchRequest(workspace.sId, { cursor: "invalid" });
+    const response = await searchRequest(workspace.sId, { offset: 9990 });
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({

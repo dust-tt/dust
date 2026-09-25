@@ -17,7 +17,10 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
 });
 
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
-import { MAX_AGENT_SEARCH_RESULTS } from "@app/lib/agent_search/query";
+import {
+  MAX_AGENT_SEARCH_RESULTS,
+  MAX_AGENT_SEARCH_WINDOW,
+} from "@app/lib/agent_search/query";
 import { buildAgentNameAutocompleteQuery } from "@app/lib/agent_search/ranking";
 import { searchAgents } from "@app/lib/api/agents/search";
 import type { Authenticator } from "@app/lib/auth";
@@ -60,18 +63,20 @@ function makeDocument(
 }
 
 function mockHits(documents: AgentSearchDocument[]) {
-  mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
-    hits: {
-      hits: documents
-        .filter((document) =>
-          matchesAgentSearchFilters(document, request.query!)
-        )
-        .map((document) => ({
-          _source: document,
-          sort: [document.agent_id],
-        })),
-    },
-  }));
+  mockSearch.mockImplementation(async (request: estypes.SearchRequest) => {
+    const matching = documents.filter((document) =>
+      matchesAgentSearchFilters(document, request.query!)
+    );
+    const from = request.from ?? 0;
+    return {
+      hits: {
+        total: { value: matching.length, relation: "eq" },
+        hits: matching
+          .slice(from, from + (request.size ?? matching.length))
+          .map((document) => ({ _source: document })),
+      },
+    };
+  });
 }
 
 async function searchAgentIds(
@@ -88,7 +93,7 @@ describe("searchAgents", () => {
     mockSearch.mockReset();
   });
 
-  it("defaults to the maximum page size and paginates on the last consumed hit", async () => {
+  it("defaults to the maximum page size and paginates by offset with the exact total", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "user",
     });
@@ -99,21 +104,29 @@ describe("searchAgents", () => {
     );
 
     await searchAgents(auth, { searchTerm: "" });
-    expect(mockSearch.mock.calls[0][0].size).toBe(MAX_AGENT_SEARCH_RESULTS + 1);
-    expect(mockSearch.mock.calls[0][0]).not.toHaveProperty("search_after");
+    expect(mockSearch.mock.calls[0][0]).toMatchObject({
+      from: 0,
+      size: MAX_AGENT_SEARCH_RESULTS,
+      track_total_hits: true,
+    });
 
-    const page = await searchAgents(auth, { searchTerm: "", limit: 2 });
-    assert(page.isOk());
-    expect(page.value.agents.map((agent) => agent.sId)).toEqual(["a", "b"]);
-    expect(page.value.hasMore).toBe(true);
-    assert(page.value.nextCursor);
+    const firstPage = await searchAgents(auth, { searchTerm: "", limit: 2 });
+    assert(firstPage.isOk());
+    expect(firstPage.value).toMatchObject({ total: 3, hasMore: true });
+    expect(firstPage.value.agents.map((agent) => agent.sId)).toEqual([
+      "a",
+      "b",
+    ]);
 
-    await searchAgents(auth, {
+    const lastPage = await searchAgents(auth, {
       searchTerm: "",
       limit: 2,
-      cursor: page.value.nextCursor,
+      offset: 2,
     });
-    expect(mockSearch.mock.lastCall?.[0].search_after).toEqual(["b"]);
+    assert(lastPage.isOk());
+    expect(lastPage.value).toMatchObject({ total: 3, hasMore: false });
+    expect(lastPage.value.agents.map((agent) => agent.sId)).toEqual(["c"]);
+    expect(mockSearch.mock.lastCall?.[0]).toMatchObject({ from: 2, size: 2 });
   });
 
   it("requires every search term to prefix-match the name, in any order", async () => {
@@ -136,15 +149,16 @@ describe("searchAgents", () => {
     expect(buildAgentNameAutocompleteQuery("   ")).toEqual({ match_all: {} });
   });
 
-  it("rejects malformed cursors without querying", async () => {
+  it("rejects offsets past the result window without querying", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
 
     const result = await searchAgents(auth, {
       searchTerm: "",
-      cursor: "not-a-cursor",
+      limit: 25,
+      offset: MAX_AGENT_SEARCH_WINDOW - 24,
     });
     assert(result.isErr());
-    expect(result.error).toBe("invalid_cursor");
+    expect(result.error).toBe("offset_out_of_range");
     expect(mockSearch).not.toHaveBeenCalled();
   });
 

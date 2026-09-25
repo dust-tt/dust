@@ -94,8 +94,8 @@ vi.mock(import("@app/lib/swr/skill_configurations"), () => ({
   useSearchSkills: () => ({
     skills: [],
     resolvedSearchTerm: "",
+    total: 0,
     hasMore: false,
-    nextCursor: null,
     isSkillsError: false,
     isSkillsLoading: false,
     mutate: vi.fn(async () => undefined),

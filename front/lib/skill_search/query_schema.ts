@@ -9,7 +9,7 @@ import { z } from "zod";
 export const SearchSkillsQuerySchema = z.object({
   query: z.string().max(200).optional().default(""),
   limit: z.number().int().min(1).max(MAX_SKILL_SEARCH_RESULTS).optional(),
-  cursor: z.string().nullish(),
+  offset: z.number().int().min(0).optional(),
   permissionFiltering: z.enum(["strict", "redact_unreadable"]).optional(),
   status: z
     .array(z.enum(["active", "archived"]))

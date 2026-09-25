@@ -44,8 +44,8 @@ export type SkillSearchSortOrder = (typeof SKILL_SEARCH_SORT_ORDERS)[number];
 
 export type SearchSkillsResponseBody = {
   skills: SkillListItemType[];
+  total: number;
   hasMore: boolean;
-  nextCursor: string | null;
 };
 
 /**

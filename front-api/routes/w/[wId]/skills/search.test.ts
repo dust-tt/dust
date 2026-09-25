@@ -72,8 +72,8 @@ describe("POST /api/w/:wId/skills/search", () => {
             userFacingDescription: "Description",
           },
         ],
+        total: 1,
         hasMore: false,
-        nextCursor: null,
       })
     );
 
@@ -83,7 +83,7 @@ describe("POST /api/w/:wId/skills/search", () => {
     expect(searchSkills).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "research",
       limit: undefined,
-      cursor: undefined,
+      offset: undefined,
       permissionFiltering: undefined,
       sortBy: undefined,
       sortOrder: undefined,
@@ -96,8 +96,8 @@ describe("POST /api/w/:wId/skills/search", () => {
       },
     });
     expect(await response.json()).toEqual({
+      total: 1,
       hasMore: false,
-      nextCursor: null,
       skills: [
         {
           status: "active",
@@ -124,22 +124,21 @@ describe("POST /api/w/:wId/skills/search", () => {
     });
   });
 
-  it("passes opaque cursor strings through without interpreting them", async () => {
+  it("passes offset through and returns total", async () => {
     const { workspace } = await setup();
-    const cursor = "opaque-cursor";
     searchSkills.mockResolvedValue(
-      new Ok({ skills: [], hasMore: true, nextCursor: cursor })
+      new Ok({ skills: [], total: 130, hasMore: true })
     );
     const response = await searchRequest(workspace.sId, {
       query: "research",
       limit: 100,
-      cursor,
+      offset: 25,
     });
     expect(response.status).toBe(200);
     expect(searchSkills).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "research",
       limit: 100,
-      cursor,
+      offset: 25,
       permissionFiltering: undefined,
       sortBy: undefined,
       sortOrder: undefined,
@@ -154,8 +153,8 @@ describe("POST /api/w/:wId/skills/search", () => {
     const body = await response.json();
     expect(body).toEqual({
       skills: [],
+      total: 130,
       hasMore: true,
-      nextCursor: cursor,
     });
   });
 
@@ -163,8 +162,9 @@ describe("POST /api/w/:wId/skills/search", () => {
     { limit: 0 },
     { limit: 101 },
     { limit: 1.5 },
-    { cursor: [{}] },
-    { cursor: [["nested"]] },
+    { offset: -1 },
+    { offset: 1.5 },
+    { offset: "25" },
     { permissionFiltering: "dangerously_skip" },
     { editedByMe: false },
     { editedByMe: 1 },
@@ -183,11 +183,11 @@ describe("POST /api/w/:wId/skills/search", () => {
     expect(searchSkills).not.toHaveBeenCalled();
   });
 
-  it("returns a bad request when search rejects the cursor", async () => {
+  it("returns a bad request when the offset is out of range", async () => {
     const { workspace } = await setup();
-    searchSkills.mockResolvedValue(new Err("invalid_cursor"));
+    searchSkills.mockResolvedValue(new Err("offset_out_of_range"));
 
-    const response = await searchRequest(workspace.sId, { cursor: "invalid" });
+    const response = await searchRequest(workspace.sId, { offset: 9990 });
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({
@@ -209,7 +209,7 @@ describe("POST /api/w/:wId/skills/search", () => {
   it("allows admins to opt into redacted search", async () => {
     const { workspace } = await setup("admin");
     searchSkills.mockResolvedValue(
-      new Ok({ skills: [], hasMore: false, nextCursor: null })
+      new Ok({ skills: [], total: 0, hasMore: false })
     );
     const response = await searchRequest(workspace.sId, {
       permissionFiltering: "redact_unreadable",
@@ -218,7 +218,7 @@ describe("POST /api/w/:wId/skills/search", () => {
     expect(searchSkills).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "",
       limit: undefined,
-      cursor: undefined,
+      offset: undefined,
       permissionFiltering: "redact_unreadable",
       sortBy: undefined,
       sortOrder: undefined,
@@ -235,7 +235,7 @@ describe("POST /api/w/:wId/skills/search", () => {
   it("accepts structured filters and opt-in editor selection", async () => {
     const { workspace } = await setup();
     searchSkills.mockResolvedValue(
-      new Ok({ skills: [], hasMore: false, nextCursor: null })
+      new Ok({ skills: [], total: 0, hasMore: false })
     );
     const response = await searchRequest(workspace.sId, {
       status: ["active", "archived"],

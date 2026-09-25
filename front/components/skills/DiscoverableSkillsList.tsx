@@ -14,9 +14,7 @@ interface DiscoverableSkillsListProps {
 export function DiscoverableSkillsList({ owner }: DiscoverableSkillsListProps) {
   const { hasFeature } = useFeatureFlags();
   const useSkillSearch = hasFeature("skills_search");
-  const [discoverableCursors, setDiscoverableCursors] = useState<
-    (string | null)[]
-  >([null]);
+  const [pageIndex, setPageIndex] = useState(0);
 
   const { skills: listedSkills, isSkillsLoading: isListedSkillsLoading } =
     useSkills({
@@ -29,11 +27,10 @@ export function DiscoverableSkillsList({ owner }: DiscoverableSkillsListProps) {
     skills: searchSkills,
     isSkillsLoading: isSearchSkillsLoading,
     hasMore,
-    nextCursor,
   } = useSearchSkills({
     owner,
     searchTerm: "",
-    cursor: discoverableCursors.at(-1),
+    offset: pageIndex * DISCOVERABLE_SKILLS_PAGE_SIZE,
     limit: DISCOVERABLE_SKILLS_PAGE_SIZE,
     filters: { availability: ["users_and_agents"] },
     disabled: !useSkillSearch,
@@ -71,16 +68,14 @@ export function DiscoverableSkillsList({ owner }: DiscoverableSkillsListProps) {
           })}
         </div>
       )}
-      {useSkillSearch && (discoverableCursors.length > 1 || hasMore) && (
+      {useSkillSearch && (pageIndex > 0 || hasMore) && (
         <div className="flex items-center gap-2">
           <Button
             label="Previous"
             variant="outline"
             size="sm"
-            disabled={discoverableCursors.length === 1 || isDiscoverableLoading}
-            onClick={() =>
-              setDiscoverableCursors((cursors) => cursors.slice(0, -1))
-            }
+            disabled={pageIndex === 0 || isDiscoverableLoading}
+            onClick={() => setPageIndex((index) => index - 1)}
           />
           <Button
             label="Next"
@@ -88,9 +83,7 @@ export function DiscoverableSkillsList({ owner }: DiscoverableSkillsListProps) {
             size="sm"
             disabled={!hasMore || isDiscoverableLoading}
             isLoading={isDiscoverableLoading}
-            onClick={() =>
-              setDiscoverableCursors((cursors) => [...cursors, nextCursor])
-            }
+            onClick={() => setPageIndex((index) => index + 1)}
           />
         </div>
       )}
