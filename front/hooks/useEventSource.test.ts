@@ -27,17 +27,40 @@ describe("useEventSource", () => {
     expected,
   }) => {
     mockHasFeature.mockReturnValue(enabled);
-
+    const buildLongPollURL = vi.fn();
     const { unmount } = renderHook(() =>
       useEventSource(vi.fn(), vi.fn(), "message-msg_1", {
         workspaceId: "w_1",
-        buildLongPollURL: vi.fn(),
+        buildLongPollURL,
       })
     );
 
     expect(eventSourceManager.subscribe).toHaveBeenCalledWith(
       expect.objectContaining({
-        config: expect.objectContaining({ longPollActivation: expected }),
+        config: expect.objectContaining({
+          workspaceId: "w_1",
+          buildLongPollURL: expect.any(Function),
+          longPollActivation: expected,
+        }),
+      })
+    );
+    unmount();
+  });
+
+  it("keeps SSE for streams without a long-poll endpoint", () => {
+    mockHasFeature.mockReturnValue(true);
+    const { unmount } = renderHook(() =>
+      useEventSource(vi.fn(), vi.fn(), "conversation-conv_1", {
+        workspaceId: "w_1",
+      })
+    );
+
+    expect(eventSourceManager.subscribe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          buildLongPollURL: undefined,
+          longPollActivation: "fallback",
+        }),
       })
     );
     unmount();

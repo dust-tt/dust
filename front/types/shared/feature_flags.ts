@@ -255,7 +255,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   agent_stream_long_polling: {
     description:
       "Start agent event streams with long polling for this workspace",
-    stage: "dust_only",
+    stage: "self_serve",
     owner: "id13",
   },
   discord_bot: {

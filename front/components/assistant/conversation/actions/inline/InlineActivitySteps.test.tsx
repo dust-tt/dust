@@ -14,7 +14,7 @@ vi.mock(
   "@app/components/assistant/conversation/actions/inline/ThinkingStep",
   () => ({
     ThinkingStep: ({ content }: { content: string }) =>
-      React.createElement("div", null, content),
+      React.createElement("div", { "data-testid": "thinking-step" }, content),
   })
 );
 
@@ -175,5 +175,28 @@ describe("InlineActivitySteps", () => {
 
     expect(screen.getByText("Historical reasoning step")).not.toBeVisible();
     expect(screen.getByText("Live final answer")).toBeVisible();
+  });
+
+  it("does not render an empty thinking row for whitespace-only streamed reasoning", () => {
+    render(
+      <InlineActivitySteps
+        agentMessage={{ ...mockAgentMessage, chainOfThought: "\n  " }}
+        lastAgentStateClassification="thinking"
+        completedSteps={[
+          {
+            type: "thinking",
+            content: "Earlier reasoning",
+            id: "thinking-1",
+          },
+        ]}
+        pendingToolCalls={[]}
+        owner={mockOwner}
+        conversationId="conv-1"
+        isLastMessage
+      />
+    );
+
+    expect(screen.getAllByTestId("thinking-step")).toHaveLength(1);
+    expect(screen.getByText("Earlier reasoning")).toBeInTheDocument();
   });
 });

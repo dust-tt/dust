@@ -91,13 +91,20 @@ export async function clientFetch(
 // Client-side EventSource helper. Shares `resolveRequest` with `clientFetch` so that SSE
 // connections pick up the same auth context (Bearer tokens in the extension, cookies in the
 // web app).
+/**
+ * @cc [owner:id13,label:concurrency] cancelled-sse-stays-unopened
+ * If the supplied signal is aborted while request credentials resolve, no EventSource transport
+ * may be constructed.
+ */
 export async function clientEventSource(
   input: string,
-  init?: EventSourcePolyfillInit
+  init?: EventSourcePolyfillInit,
+  signal?: AbortSignal
 ): Promise<EventSourcePolyfill> {
   const { url, headers, withCredentials } = await resolveRequest(input, {
     headers: init?.headers,
   });
+  signal?.throwIfAborted();
 
   return new EventSourcePolyfill(url, {
     ...init,

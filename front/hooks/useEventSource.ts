@@ -18,6 +18,11 @@ interface UseEventSourceOptions {
   telemetryContext?: DatadogLogContext;
 }
 
+/**
+ * @cc [owner:id13,label:react;reliability] long-polling-feature-activation
+ * A long-poll URL MUST make a stream eligible for fallback when SSE is degraded in every workspace.
+ * The agent_stream_long_polling feature flag MUST start eligible streams with long polling.
+ */
 export function useEventSource(
   buildURL: (lastEvent: string | null) => string | null,
   onEventCallback: (event: string) => void,

@@ -13,6 +13,7 @@ import type {
   LongPollFactory,
   Subscriber,
 } from "@app/types/event_source";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { MANAGED_SSE_HANDSHAKE_EVENT } from "@app/types/sse";
 import type {
   Event as PolyfillEvent,
@@ -62,6 +63,7 @@ type ConnectionEntry = {
   reconnectAttempts: number;
   unsuccessfulResumes: number;
   reconnectTimeout: ReturnType<typeof setTimeout> | null;
+  pendingSseController: AbortController | null;
   state: EventSourceConnectionState;
   subscribers: Set<Subscriber>;
   transport: ActiveTransport | null;
@@ -79,17 +81,18 @@ function getClientPath(url: string): string {
 
 async function createEventSource(
   url: string,
-  headers?: Record<string, string>
+  headers: Record<string, string> | undefined,
+  signal: AbortSignal
 ): Promise<EventSourceLike> {
-  return clientEventSource(getClientPath(url), {
-    heartbeatTimeout: HEARTBEAT_TIMEOUT_MS,
-    ...(typeof globalThis.fetch === "function" &&
-    typeof Response !== "undefined" &&
-    "body" in Response.prototype
-      ? { Transport: ManagedEventSourceTransport }
-      : {}),
-    ...(headers ? { headers } : {}),
-  });
+  return clientEventSource(
+    getClientPath(url),
+    {
+      heartbeatTimeout: HEARTBEAT_TIMEOUT_MS,
+      Transport: ManagedEventSourceTransport,
+      ...(headers ? { headers } : {}),
+    },
+    signal
+  );
 }
 
 async function createLongPoll(
@@ -124,9 +127,10 @@ async function createLongPoll(
  */
 /**
  * @cc [owner:id13,label:architecture;concurrency] browser-session-sse-fallback
- * After two consecutive pre-handshake failures, fallback-capable streams MUST use long polling for
- * the rest of the browser session. Immediate polling MAY select long polling before any SSE
- * attempt. SSE and long polling MUST NOT run concurrently for one stream.
+ * Fallback-capable streams MUST start with SSE while browser-session SSE health is unknown or
+ * healthy unless immediate long polling is configured. Once SSE health is degraded, they MUST use
+ * long polling for the rest of the browser session. SSE and long polling MUST NOT run concurrently
+ * for one stream.
  */
 /**
  * @cc [owner:id13,label:logging;performance] devtools-stream-diagnostics
@@ -140,6 +144,7 @@ export class EventSourceManager {
   private readonly connections = new Map<string, ConnectionEntry>();
   private readonly stateListeners = new Map<string, Set<() => void>>();
   private isPageWakeRecoveryInstalled = false;
+  private wasPageInactive = false;
   private readonly handshakeTimeoutMs: number;
   private readonly longPollFactory: LongPollFactory;
   private readonly maxReconnectAttempts: number;
@@ -337,6 +342,7 @@ export class EventSourceManager {
       reconnectAttempts: 0,
       unsuccessfulResumes: 0,
       reconnectTimeout: null,
+      pendingSseController: null,
       state: { kind: "idle" },
       subscribers: new Set(),
       transport: null,
@@ -352,8 +358,6 @@ export class EventSourceManager {
     if (!entry) {
       return;
     }
-    const hasPendingFactory =
-      entry.state.kind === "connecting" && entry.transport === null;
     entry.generation++;
     this.stopTransport(streamId);
     if (entry.reconnectTimeout) {
@@ -369,9 +373,7 @@ export class EventSourceManager {
       entry.keepAliveState = "active";
     }
     entry.reconnectAttempts = 0;
-    if (!hasPendingFactory) {
-      this.transition(streamId, { kind: "idle" });
-    }
+    this.transition(streamId, { kind: "idle" });
   }
 
   private ensureConnected(streamId: string): void {
@@ -417,17 +419,29 @@ export class EventSourceManager {
     entry.lastURL = url;
 
     const generation = ++entry.generation;
+    const controller = new AbortController();
+    entry.pendingSseController = controller;
     this.logVerbose(streamId, "sse_connect");
     this.transition(streamId, {
       kind: "connecting",
       attempt: entry.reconnectAttempts + 1,
       startedAt: Date.now(),
     });
+    if (controller.signal.aborted) {
+      return;
+    }
 
     let source: EventSourceLike;
     try {
-      source = await this.sourceFactory(url, entry.config.headers);
+      source = await this.sourceFactory(
+        url,
+        entry.config.headers,
+        controller.signal
+      );
     } catch (error) {
+      if (entry.pendingSseController === controller) {
+        entry.pendingSseController = null;
+      }
       const current = this.connections.get(streamId);
       if (!current) {
         return;
@@ -437,24 +451,24 @@ export class EventSourceManager {
           kind: "failure",
           failure: error,
         });
-      } else if (current === entry && current.state.kind === "connecting") {
-        this.transition(streamId, { kind: "idle" });
-        this.ensureConnected(streamId);
       }
       return;
     }
 
+    if (entry.pendingSseController === controller) {
+      entry.pendingSseController = null;
+    }
     const current = this.connections.get(streamId);
     if (!current) {
       source.close();
       return;
     }
-    if (current !== entry || generation !== current.generation) {
+    if (
+      current !== entry ||
+      generation !== current.generation ||
+      controller.signal.aborted
+    ) {
       source.close();
-      if (current === entry && current.state.kind === "connecting") {
-        this.transition(streamId, { kind: "idle" });
-        this.ensureConnected(streamId);
-      }
       return;
     }
 
@@ -563,6 +577,7 @@ export class EventSourceManager {
         readyState,
         failure: outcome.failure,
       });
+      context.transport = "sse";
 
       if (entry.config.buildLongPollURL && this.sseHealth === "degraded") {
         entry.reconnectAttempts = 0;
@@ -610,8 +625,6 @@ export class EventSourceManager {
       ) {
         continue;
       }
-      const hasPendingFactory =
-        entry.state.kind === "connecting" && entry.transport === null;
       entry.generation++;
       this.stopTransport(streamId);
       if (entry.reconnectTimeout) {
@@ -619,9 +632,7 @@ export class EventSourceManager {
         entry.reconnectTimeout = null;
       }
       entry.reconnectAttempts = 0;
-      if (!hasPendingFactory) {
-        this.startLongPolling(streamId);
-      }
+      this.startLongPolling(streamId);
     }
   }
 
@@ -776,12 +787,24 @@ export class EventSourceManager {
     return {
       ...entry.config.telemetryContext,
       workspaceId: entry.config.workspaceId,
+      conversationId: entry.config.telemetryContext?.conversationId ?? null,
       streamId,
       connectionState: entry.state.kind,
+      connectionStateDetails: entry.state,
+      transport: entry.transport?.kind ?? null,
+      keepAliveState: entry.keepAliveState,
+      generation: entry.generation,
+      subscriberCount: entry.subscribers.size,
+      bufferedEventCount: entry.events.length,
       reconnectAttempt: entry.reconnectAttempts,
       maxReconnectAttempts: this.maxReconnectAttempts,
+      unsuccessfulResumes: entry.unsuccessfulResumes,
+      msSinceLastResume:
+        entry.lastResumeAtMs === null ? null : now - entry.lastResumeAtMs,
+      reconnectScheduled: entry.reconnectTimeout !== null,
       readyState,
       sseHealth: this.sseHealth,
+      consecutivePreHandshakeFailures: this.consecutivePreHandshakeFailures,
       hasReceivedEvent: entry.lastEvent !== null,
       sourcePath: this.getSourcePath(entry.lastURL),
       msSinceLastEvent:
@@ -801,6 +824,7 @@ export class EventSourceManager {
         failure instanceof Error
           ? { name: failure.name, message: failure.message }
           : null,
+      err: failure,
     };
   }
 
@@ -866,6 +890,8 @@ export class EventSourceManager {
     if (!entry) {
       return;
     }
+    entry.pendingSseController?.abort();
+    entry.pendingSseController = null;
     const transport = entry.transport;
     entry.transport = null;
     if (transport?.kind === "sse") {
@@ -934,11 +960,19 @@ export class EventSourceManager {
     }
     datadogLogger.info(
       {
+        ...entry.config.telemetryContext,
         event,
         streamId,
         workspaceId: entry.config.workspaceId,
+        conversationId: entry.config.telemetryContext?.conversationId ?? null,
         state: entry.state.kind,
+        stateDetails: entry.state,
+        transport: entry.transport?.kind ?? null,
+        keepAliveState: entry.keepAliveState,
+        generation: entry.generation,
+        sseHealth: this.sseHealth,
         reconnectAttempts: entry.reconnectAttempts,
+        unsuccessfulResumes: entry.unsuccessfulResumes,
         subscriberCount: entry.subscribers.size,
         ...details,
       },
@@ -968,47 +1002,81 @@ export class EventSourceManager {
   }
 
   /**
-   * A backgrounded page can resume with a closed EventSource but no `onerror` callback. Install
-   * one set of browser-session listeners to recover stale streams when the page becomes active.
-   * Terminal and retry-exhausted streams remain stopped.
+   * @cc [owner:id13,label:concurrency;reliability] wake-resumes-live-streams
+   * After an inactive page becomes visible or focused, or network connectivity returns, live
+   * streams MUST replace stale transports without resetting their retry budgets.
+   * Terminal and failed streams MUST remain stopped.
    */
   private installPageWakeRecovery(): void {
     if (this.isPageWakeRecoveryInstalled || typeof window === "undefined") {
       return;
     }
     this.isPageWakeRecoveryInstalled = true;
+    this.wasPageInactive = document.visibilityState === "hidden";
 
-    const recoverStaleStreams = () => {
+    const recoverStaleStreams = (
+      replaceActiveTransports: boolean,
+      wakeTrigger: "visibility" | "focus" | "online"
+    ) => {
       for (const [streamId, entry] of this.connections) {
         if (entry.state.kind === "terminal" || entry.state.kind === "failed") {
           continue;
         }
         const source =
           entry.transport?.kind === "sse" ? entry.transport.source : null;
-        if (source?.readyState === EventSourcePolyfill.CLOSED) {
-          this.handleSseDisconnect(streamId, {
-            kind: "failure",
-            failure: new Error(
-              "SSE source closed while the page was inactive."
-            ),
-          });
-        } else if (!entry.transport && !entry.reconnectTimeout) {
-          this.ensureConnected(streamId);
+        if (
+          replaceActiveTransports ||
+          source?.readyState === EventSourcePolyfill.CLOSED
+        ) {
+          datadogLogger.info(
+            {
+              ...this.telemetryContext({
+                streamId,
+                entry,
+                readyState: source?.readyState ?? null,
+                failure: null,
+              }),
+              wakeTrigger,
+            },
+            "Resuming stream after page wake."
+          );
+          entry.generation++;
+          this.stopTransport(streamId);
+          if (entry.reconnectTimeout) {
+            clearTimeout(entry.reconnectTimeout);
+            entry.reconnectTimeout = null;
+          }
+          this.transition(streamId, { kind: "idle" });
+          this.logVerbose(streamId, "page_wake_reconnect");
         }
+        this.ensureConnected(streamId);
       }
     };
-    // Visibility covers returning to a background tab; persisted pageshow covers bfcache restores.
     document.addEventListener("visibilitychange", () => {
+      switch (document.visibilityState) {
+        case "hidden":
+          this.wasPageInactive = true;
+          break;
+        case "visible":
+          recoverStaleStreams(this.wasPageInactive, "visibility");
+          this.wasPageInactive = false;
+          break;
+        default:
+          assertNever(document.visibilityState);
+      }
+    });
+    window.addEventListener("blur", () => {
+      this.wasPageInactive = true;
+    });
+    window.addEventListener("focus", () => {
       if (document.visibilityState === "visible") {
-        recoverStaleStreams();
+        recoverStaleStreams(this.wasPageInactive, "focus");
+        this.wasPageInactive = false;
       }
     });
-    window.addEventListener("pageshow", (event) => {
-      if (event.persisted) {
-        recoverStaleStreams();
-      }
-    });
-    window.addEventListener("online", recoverStaleStreams);
+    window.addEventListener("online", () =>
+      recoverStaleStreams(true, "online")
+    );
   }
 }
 
