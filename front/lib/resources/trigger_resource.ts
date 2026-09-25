@@ -10,6 +10,7 @@ import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -74,6 +75,8 @@ export async function resolveTriggerSpaceId(
 }
 
 export class TriggerExecutionModeForbiddenError extends Error {}
+
+export class TriggerAgentNotReadableError extends Error {}
 
 const BULK_TRIGGER_AUDIT_CONCURRENCY = 10;
 
@@ -144,13 +147,34 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     super(TriggerModel, blob);
   }
 
+  /**
+   * @cc [owner:tdraier,label:security;product] trigger-create-requires-agent-read
+   * A trigger MUST NOT be created unless the caller holds `read` on its agent, whatever their
+   * workspace role; otherwise `makeNew` fails with `TriggerAgentNotReadableError` without persisting
+   * the trigger.
+   */
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<TriggerModel>, "executionMode"> & {
+    {
+      agent,
+      ...blob
+    }: Omit<
+      CreationAttributes<TriggerModel>,
+      "executionMode" | "agentConfigurationId"
+    > & {
+      agent: AgentResource;
       executionMode?: TriggerExecutionMode;
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<TriggerResource, Error>> {
+    if (!auth.can("read", agent)) {
+      return new Err(
+        new TriggerAgentNotReadableError(
+          "Cannot create a trigger on an agent you cannot read."
+        )
+      );
+    }
+
     const executionModes = await availableExecutionModes(auth);
     const executionMode = blob.executionMode ?? executionModes[0];
     if (!executionMode) {
@@ -169,7 +193,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     const trigger = await TriggerModel.create(
-      { ...blob, executionMode },
+      { ...blob, agentConfigurationId: agent.sId, executionMode },
       { transaction }
     );
 

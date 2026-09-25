@@ -1,6 +1,6 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { validatePodFileTabs } from "@app/lib/api/projects/file_tabs";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -144,11 +144,8 @@ app.patch(
     // Validate the default agent exists and is usable (handles both global agents like
     // "claude-4.5-sonnet" and workspace agents). A null value clears the default (@dust).
     if (body.defaultAgentId) {
-      const agent = await getAgentConfiguration(auth, {
-        agentId: body.defaultAgentId,
-        variant: "extra_light",
-      });
-      if (!agent || agent.status !== "active") {
+      const agent = await AgentResource.fetchById(auth, body.defaultAgentId);
+      if (!agent || !auth.can("read", agent) || agent.status !== "active") {
         return apiError(ctx, {
           status_code: 400,
           api_error: {

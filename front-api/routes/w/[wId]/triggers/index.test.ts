@@ -2,6 +2,7 @@ import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
@@ -66,6 +67,35 @@ async function createScheduleTrigger(
   const { triggers } = await listRes.json();
   return triggers[triggers.length - 1];
 }
+
+describe("POST /api/w/:wId/triggers (agent access)", () => {
+  it("rejects an admin creating a trigger on an agent they cannot read", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
+      method: "POST",
+      role: "admin",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await postTriggers(
+      workspace,
+      agent.sId,
+      scheduleTriggerBody(null)
+    );
+
+    expect(response.status).toBe(404);
+    expect(
+      await TriggerResource.listByAgentConfigurationId(
+        agentOwnerAuth,
+        agent.sId
+      )
+    ).toEqual([]);
+  });
+});
 
 describe("POST /api/w/:wId/triggers (spaceId)", () => {
   it("creates a trigger scoped to an open pod", async () => {

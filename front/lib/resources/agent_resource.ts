@@ -1885,8 +1885,10 @@ export class AgentResource
    * @cc [owner:tdraier,label:security] agent-archive-restore-requires-admin
    * Archiving, restoring, or hard-deleting a custom agent MUST require the agent `admin` verb,
    * checked inside the resource (`auth.can("admin", this)`) and never delegated to the caller: no
-   * caller may archive, restore, or delete an agent it does not hold `admin` on. Editors and
-   * workspace admins hold it; a Poke superuser session holds it through its admin role.
+   * caller may archive, restore, or delete an agent it does not hold `admin` on, and `write` alone
+   * MUST NOT suffice. `admin` alone MUST be enough, whether or not the caller can `read` the agent,
+   * and callers MUST NOT add a space-read check on top. Editors and workspace admins hold it; a Poke
+   * superuser session holds it through its admin role.
    */
   /**
    * @cc [owner:tdraier,label:product] archive-disables-triggers
@@ -2418,7 +2420,7 @@ export class AgentResource
   // a system key downscoped to a group subset (see `Authenticator.fromKey` with `requestedGroupIds`)
   // enumerates only what those groups grant, so it is checked like any other caller. A missing or
   // deleted space is absent from the snapshot and therefore fails closed.
-  requestedSpacesReadable(auth: Authenticator): boolean {
+  private requestedSpacesReadable(auth: Authenticator): boolean {
     const readableSpaces = auth.getReadableSpaceModelIds();
     return (
       readableSpaces.kind === "all" ||

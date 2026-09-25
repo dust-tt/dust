@@ -1,7 +1,5 @@
-import {
-  getAgentConfiguration,
-  listsAgentConfigurationVersions,
-} from "@app/lib/api/assistant/configuration/agent";
+import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GetAgentConfigurationsHistoryQuerySchema } from "@app/types/api/agent_configuration";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -30,11 +28,8 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const assistant = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (!assistant || (!assistant.canRead && !auth.isAdmin())) {
+    const assistant = await AgentResource.fetchById(auth, aId);
+    if (!assistant || (!auth.can("read", assistant) && !auth.isAdmin())) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -75,7 +70,7 @@ app.get(
       agentConfigurations = agentConfigurations.slice(0, limit);
     }
 
-    if (!agentConfigurations || !agentConfigurations[0].canRead) {
+    if (agentConfigurations.length === 0 || !agentConfigurations[0].canRead) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

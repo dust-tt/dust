@@ -1,7 +1,9 @@
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
+import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 import { getWebhookSourcesUsage } from "./agent_triggers";
@@ -58,13 +60,25 @@ describe("getWebhookSourcesUsage", () => {
 
     const webhookSourceViewId = Number(systemView.id);
 
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Archived Agent" }
+    );
+
     await TriggerFactory.webhook(authenticator, {
       name: "Orphan Trigger",
-      agentConfigurationId: "non-existent-agent",
+      agentConfigurationId: agent.sId,
       status: "enabled",
       configuration: { includePayload: true },
       webhookSourceViewId,
     });
+
+    const agentResource = await AgentResource.fetchById(
+      authenticator,
+      agent.sId
+    );
+    assert(agentResource);
+    expect((await agentResource.archive(authenticator)).isOk()).toBe(true);
 
     const usage = await getWebhookSourcesUsage({ auth: authenticator });
 
