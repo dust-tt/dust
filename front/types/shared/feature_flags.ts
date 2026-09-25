@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  durable_evals: {
+    description: "Internal pilot for remotely launched Temporal eval runs",
+    stage: "dust_only",
+    owner: "fontanierh",
+  },
   group_management: {
     description:
       "Delegate group membership and usage management to group managers",
