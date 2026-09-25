@@ -1,5 +1,6 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { TagFactory } from "@app/tests/utils/TagFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -31,6 +32,8 @@ function searchRequest(
 
 const noFilters = {
   status: undefined,
+  editorIds: undefined,
+  modelIds: undefined,
   scope: undefined,
   tagIds: undefined,
   skillIds: undefined,
@@ -77,11 +80,13 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       sortBy: undefined,
       sortOrder: undefined,
       permissionFiltering: undefined,
+      facets: undefined,
       filters: noFilters,
     });
     expect(await response.json()).toEqual({
       hasMore: true,
       total: 30,
+      facets: {},
       agents: [
         {
           ...agent,
@@ -125,6 +130,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       sortBy: "name",
       sortOrder: "desc",
       permissionFiltering: undefined,
+      facets: undefined,
       filters,
     });
   });
@@ -144,6 +150,10 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     { scope: ["private"] },
     { scope: [] },
     { tagIds: [""] },
+    { editorIds: [""] },
+    { modelIds: [""] },
+    { facets: ["usage"] },
+    { limit: -1 },
   ])("rejects invalid input: %s", async (body) => {
     const { workspace } = await setup();
 
@@ -181,6 +191,48 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({
       error: { type: "app_auth_error" },
+    });
+  });
+
+  it("returns facet values with editor and tag names", async () => {
+    const { workspace, user } = await setup();
+    const tag = await TagFactory.create(workspace, { name: "Sales" });
+    searchAgents.mockResolvedValue(
+      new Ok({
+        agents: [],
+        total: 0,
+        hasMore: false,
+        facets: {
+          editors: [user.sId, "missing-user"],
+          models: ["claude-sonnet-5"],
+          tags: [tag.sId],
+        },
+      })
+    );
+
+    const response = await searchRequest(workspace.sId, {
+      limit: 0,
+      facets: ["editors", "models", "tags"],
+    });
+
+    expect(response.status).toBe(200);
+    expect(searchAgents).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        limit: 0,
+        facets: ["editors", "models", "tags"],
+      })
+    );
+    expect((await response.json()).facets).toEqual({
+      editors: [
+        {
+          sId: user.sId,
+          fullName: user.toJSON().fullName,
+          image: user.toJSON().image,
+        },
+      ],
+      models: ["claude-sonnet-5"],
+      tags: [{ sId: tag.sId, name: "Sales", kind: "standard" }],
     });
   });
 

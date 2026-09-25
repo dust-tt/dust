@@ -7,10 +7,18 @@ export function matchesAgentSearchFilters(
   document: AgentSearchDocument,
   query: estypes.QueryDslQueryContainer
 ): boolean {
-  const values = (field: string) => {
-    const entry = Object.entries(document).find(([key]) => key === field);
-    assert(entry, `Unknown agent search field: ${field}`);
-    return [entry[1]].flat();
+  const values = (field: string): unknown[] => {
+    let value: unknown = document;
+    for (const key of field.split(".")) {
+      if (value === null) {
+        return [];
+      }
+      assert(typeof value === "object", `Unknown agent search field: ${field}`);
+      const entry = Object.entries(value).find(([name]) => name === key);
+      assert(entry, `Unknown agent search field: ${field}`);
+      value = entry[1];
+    }
+    return [value].flat();
   };
   if (query.bool) {
     const { filter = [], must = [], must_not = [], should = [] } = query.bool;

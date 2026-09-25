@@ -149,6 +149,64 @@ describe("searchAgents", () => {
     expect(buildAgentNameAutocompleteQuery("   ")).toEqual({ match_all: {} });
   });
 
+  it("filters on editors and models and requests facet values without counts", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "user",
+    });
+    const model = {
+      provider_id: "anthropic" as const,
+      model_id: "claude-sonnet-5" as const,
+      reasoning_effort: "medium" as const,
+    };
+    mockHits([
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: "sonnet-by-alice",
+        model,
+        editor_ids: ["alice"],
+      }),
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: "sonnet-by-bob",
+        model,
+        editor_ids: ["bob"],
+      }),
+      makeDocument({ workspace_id: workspace.sId, agent_id: "no-model" }),
+    ]);
+
+    expect(
+      await searchAgentIds(auth, {
+        filters: { modelIds: ["claude-sonnet-5"], editorIds: ["alice"] },
+      })
+    ).toEqual(["sonnet-by-alice"]);
+
+    mockSearch.mockResolvedValueOnce({
+      hits: { total: { value: 2, relation: "eq" }, hits: [] },
+      aggregations: {
+        editors: { buckets: [{ key: "alice" }, { key: "bob" }] },
+        models: { buckets: [{ key: "claude-sonnet-5" }] },
+      },
+    });
+    const result = await searchAgents(auth, {
+      searchTerm: "",
+      limit: 0,
+      facets: ["editors", "models"],
+    });
+    assert(result.isOk());
+    expect(result.value.facets).toEqual({
+      editors: ["alice", "bob"],
+      models: ["claude-sonnet-5"],
+    });
+    expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
+      size: 0,
+      aggs: {
+        editors: { terms: { field: "editor_ids" } },
+        models: { terms: { field: "model.model_id" } },
+      },
+    });
+    expect(mockSearch.mock.lastCall?.[0].aggs).not.toHaveProperty("tags");
+  });
+
   it("rejects offsets past the result window without querying", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
 

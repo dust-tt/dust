@@ -1,5 +1,6 @@
 import { SearchAgentsQuerySchema } from "@app/lib/agent_search/query_schema";
 import { searchAgents } from "@app/lib/api/agents/search";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
@@ -28,7 +29,10 @@ app.post(
       tagIds,
       skillIds,
       mcpServerViewIds,
+      editorIds: editorIdsFilter,
+      modelIds,
       editedByMe,
+      facets,
       sortBy,
       sortOrder,
     } = ctx.req.valid("json");
@@ -39,12 +43,15 @@ app.post(
       sortBy,
       sortOrder,
       permissionFiltering,
+      facets,
       filters: {
         status,
         scope,
         tagIds,
         skillIds,
         mcpServerViewIds,
+        editorIds: editorIdsFilter,
+        modelIds,
         editedByMe,
       },
     });
@@ -88,10 +95,19 @@ app.post(
       );
     }
 
+    const { facets: facetValues } = result.value;
     const editorIds = [
-      ...new Set(result.value.agents.flatMap((agent) => agent.editorIds)),
+      ...new Set([
+        ...result.value.agents.flatMap((agent) => agent.editorIds),
+        ...(facetValues.editors ?? []),
+      ]),
     ];
-    const users = await UserResource.fetchByIds(editorIds);
+    const [users, tags] = await Promise.all([
+      UserResource.fetchByIds(editorIds),
+      facetValues.tags?.length
+        ? TagResource.fetchByIds(auth, facetValues.tags)
+        : [],
+    ]);
 
     const editorsById = new Map(
       users.map((user) => {
@@ -102,6 +118,23 @@ app.post(
 
     return ctx.json({
       ...result.value,
+      facets: {
+        ...(facetValues.editors
+          ? {
+              editors: removeNulls(
+                facetValues.editors.map((id) => editorsById.get(id))
+              ).toSorted((a, b) => a.fullName.localeCompare(b.fullName)),
+            }
+          : {}),
+        ...(facetValues.models ? { models: facetValues.models } : {}),
+        ...(facetValues.tags
+          ? {
+              tags: tags
+                .map((tag) => tag.toJSON())
+                .toSorted((a, b) => a.name.localeCompare(b.name)),
+            }
+          : {}),
+      },
       agents: result.value.agents.map((agent) => ({
         ...agent,
         editors: removeNulls(

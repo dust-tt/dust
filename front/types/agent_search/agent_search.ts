@@ -8,6 +8,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
 
 export interface AgentSearchDocumentModel {
@@ -46,9 +47,19 @@ export interface AgentSearchFilters {
   tagIds?: string[];
   skillIds?: string[];
   mcpServerViewIds?: string[];
+  editorIds?: string[];
+  modelIds?: string[];
   // Supports "edited by me", but not "not edited by me".
   editedByMe?: true;
 }
+
+export const AGENT_SEARCH_FACETS = ["editors", "models", "tags"] as const;
+export type AgentSearchFacet = (typeof AGENT_SEARCH_FACETS)[number];
+
+// Distinct indexed values of each requested facet, without counts.
+export type AgentSearchFacetValues = Partial<
+  Record<AgentSearchFacet, string[]>
+>;
 
 export const AGENT_SEARCH_PERMISSION_FILTERINGS = [
   "strict",
@@ -89,4 +100,9 @@ export type SearchAgentsResponseBody = {
   })[];
   total: number;
   hasMore: boolean;
+  facets: {
+    editors?: Pick<UserType, "sId" | "fullName" | "image">[];
+    models?: string[];
+    tags?: Pick<TagType, "sId" | "name" | "kind">[];
+  };
 };

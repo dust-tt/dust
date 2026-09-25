@@ -1,16 +1,23 @@
 import {
   buildAgentSearchQuery,
+  MAX_AGENT_SEARCH_FACET_VALUES,
   MAX_AGENT_SEARCH_RESULTS,
   MAX_AGENT_SEARCH_WINDOW,
 } from "@app/lib/agent_search/query";
 import { buildAgentDefaultSort } from "@app/lib/agent_search/ranking";
 import { toAgentListItem } from "@app/lib/agent_search/serialization";
 import { listDefaultGlobalAgentIds } from "@app/lib/api/assistant/global_agents/global_agents";
-import { AGENT_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
+import {
+  AGENT_SEARCH_ALIAS_NAME,
+  bucketsToArray,
+  withEs,
+} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type {
   AgentSearchDocument,
+  AgentSearchFacet,
+  AgentSearchFacetValues,
   AgentSearchFilters,
   AgentSearchPermissionFiltering,
   AgentSearchSort,
@@ -18,6 +25,13 @@ import type {
 } from "@app/types/agent_search/agent_search";
 import { Err, Ok } from "@app/types/shared/result";
 import { isNumber, removeNulls } from "@app/types/shared/utils/general";
+import type { estypes } from "@elastic/elasticsearch";
+
+const AGENT_SEARCH_FACET_FIELDS: Record<AgentSearchFacet, string> = {
+  editors: "editor_ids",
+  models: "model.model_id",
+  tags: "tag_ids",
+};
 
 /**
  * @cc [owner:tdraier,label:security;product] searchable-global-agents
@@ -53,6 +67,12 @@ async function listSearchableGlobalAgentIds(
  * `unrestricted_requires_admin`, without querying, unless the caller is a workspace admin.
  */
 /**
+ * @cc [owner:tdraier,label:security] agent-search-facets
+ * Facet values MUST come from the same authorized query as the returned page (including the
+ * caller's filters), so they never reveal values held only by agents the caller cannot list.
+ * Facets return distinct values without counts, at most MAX_AGENT_SEARCH_FACET_VALUES each.
+ */
+/**
  * @cc [owner:tdraier,label:security;product] agent-search-pagination
  * Custom and global agents share one ES-ranked stream, paginated by offset so any page can be
  * reached directly. `offset + limit` beyond the ES result window MUST fail with
@@ -68,9 +88,11 @@ export async function searchAgents(
     offset = 0,
     sortBy,
     sortOrder,
+    facets = [],
     ...options
   }: {
     searchTerm: string;
+    facets?: AgentSearchFacet[];
     permissionFiltering?: AgentSearchPermissionFiltering;
     filters?: AgentSearchFilters;
     limit?: number;
@@ -91,7 +113,12 @@ export async function searchAgents(
   const query = buildAgentSearchQuery(auth, { ...options, globalAgentIds });
 
   const result = await withEs((client) =>
-    client.search<AgentSearchDocument>({
+    client.search<
+      AgentSearchDocument,
+      Partial<
+        Record<AgentSearchFacet, estypes.AggregationsStringTermsAggregate>
+      >
+    >({
       index: AGENT_SEARCH_ALIAS_NAME,
       _source: true,
       query,
@@ -99,6 +126,21 @@ export async function searchAgents(
       size: limit,
       track_total_hits: true,
       sort: buildAgentDefaultSort({ sortBy, sortOrder }),
+      ...(facets.length > 0
+        ? {
+            aggs: Object.fromEntries(
+              facets.map((facet) => [
+                facet,
+                {
+                  terms: {
+                    field: AGENT_SEARCH_FACET_FIELDS[facet],
+                    size: MAX_AGENT_SEARCH_FACET_VALUES,
+                  },
+                },
+              ])
+            ),
+          }
+        : {}),
     })
   );
   if (result.isErr()) {
@@ -106,10 +148,19 @@ export async function searchAgents(
   }
   const { hits, total } = result.value.hits;
   const totalCount = isNumber(total) ? total : (total?.value ?? 0);
+  const facetValues: AgentSearchFacetValues = Object.fromEntries(
+    facets.map((facet) => [
+      facet,
+      bucketsToArray(result.value.aggregations?.[facet]?.buckets).map(
+        (bucket) => String(bucket.key)
+      ),
+    ])
+  );
 
   return new Ok({
     agents: removeNulls(hits.map((hit) => hit._source)).map(toAgentListItem),
     total: totalCount,
     hasMore: offset + hits.length < totalCount,
+    facets: facetValues,
   });
 }
