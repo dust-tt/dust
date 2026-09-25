@@ -74,6 +74,16 @@
           "sId": "ConvBuildingAMsg07",
           "content": "Yes: :build_skill[MeetingNotesFormatter]{sId=__MEETING_NOTES_SKILL_SID__} is currently available to members and agents, which lets agents pick it on their own. Making it available to members only keeps it in everyone's composer while agents stop discovering it:\n\n:skill_suggestion[]{sId=__SKILL_AVAILABILITY_SUGGESTION_SID__ kind=availability skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting this requires the permission to publish skills."
         }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg08",
+          "content": "The summaries only ever say \"Sam\" or \"Ana\". Outside the team nobody knows who that is. Can it use our Team Directory Lookup skill to fill in who they are?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg08",
+          "content": "Yes. :build_skill[TeamDirectoryLookup]{sId=__TEAM_DIRECTORY_SKILL_SID__} already owns the directory rules, so rather than restating them here I referenced it from :build_skill[MeetingNotesFormatter]{sId=__MEETING_NOTES_SKILL_SID__} as a sub-skill. Attendees get resolved to a full name and team before the summary is written, and a name with no match is kept as written:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_SUB_SKILL_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting this makes MeetingNotesFormatter require whatever spaces TeamDirectoryLookup requires."
+        }
       }
     ]
   }

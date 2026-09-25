@@ -30,6 +30,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { extractSkillReferenceTags } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -77,6 +78,7 @@ function resolveInstructions(
 
 async function resolveInstructionAttachments(
   auth: Authenticator,
+  skill: SkillResource,
   instructions: string
 ): Promise<
   Result<
@@ -94,6 +96,24 @@ async function resolveInstructionAttachments(
     : [];
   const resolvedToolIds = new Set(
     mcpServerViews.filter((v) => auth.can("read", v)).map((v) => v.sId)
+  );
+
+  // A sub-skill reference the caller cannot read would be dropped silently by the space
+  // computation, leaving the parent pointing at a skill it cannot use. Resolve it here so the
+  // batch fails loudly instead, like tools and knowledge do. `<unavailable_skill>` tags are
+  // skipped: they already record a reference the skill lost access to, and re-flagging them
+  // would block every later suggestion on that skill. A self-reference is allowed (#26680).
+  const skillReferences = extractSkillReferenceTags(instructions).filter(
+    (reference) => !reference.unavailable && reference.id !== skill.sId
+  );
+  const referencedSkillIds = uniq(skillReferences.map((r) => r.id));
+  const referencedSkills = referencedSkillIds.length
+    ? await SkillResource.fetchByIds(auth, referencedSkillIds)
+    : [];
+  const resolvedSkillIds = new Set(
+    referencedSkills
+      .filter((referenced) => referenced.status === "active")
+      .map((referenced) => referenced.sId)
   );
 
   const knowledgeReferences = extractKnowledgeTagReferences(instructions);
@@ -127,6 +147,12 @@ async function resolveInstructionAttachments(
   for (const { id, name } of toolReferences) {
     if (!resolvedToolIds.has(id)) {
       unresolved.push(`tool "${name}" (${id})`);
+    }
+  }
+
+  for (const { id, name } of skillReferences) {
+    if (!resolvedSkillIds.has(id)) {
+      unresolved.push(`skill "${name}" (${id})`);
     }
   }
 
@@ -164,7 +190,11 @@ async function resolveInstructionRequirements(
     DustError<"invalid_request_error">
   >
 > {
-  const attachments = await resolveInstructionAttachments(auth, instructions);
+  const attachments = await resolveInstructionAttachments(
+    auth,
+    skill,
+    instructions
+  );
   if (attachments.isErr()) {
     return attachments;
   }

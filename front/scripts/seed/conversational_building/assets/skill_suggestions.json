@@ -43,8 +43,12 @@
     "state": "pending",
     "source": "conversational",
     "suggestion": {
-      "addUserIds": ["SeedUserLeila"],
-      "removeUserIds": ["SeedUserLuke"]
+      "addUserIds": [
+        "SeedUserLeila"
+      ],
+      "removeUserIds": [
+        "SeedUserLuke"
+      ]
     }
   },
   {
@@ -80,6 +84,25 @@
         {
           "targetBlockId": "mn02intr",
           "content": "<p>When given raw meeting notes, produce a structured summary. Expand acronyms on first use by looking them up in <knowledge id=\"meeting_notes_team_glossary\" title=\"Team Glossary\" space=\"__MEETING_NOTES_ARCHIVE_SPACE_ID__\" dsv=\"__MEETING_NOTES_ARCHIVE_DSV_ID__\" hasChildren=\"false\" />.</p>",
+          "type": "replace"
+        }
+      ]
+    }
+  },
+  {
+    "id": "skillEditSubSkill",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "edit",
+    "title": "Resolve attendee names",
+    "analysis": "Attendees are written as first names, which makes the summary ambiguous for anyone outside the meeting. The Team Directory Lookup skill already owns the directory rules, so the skill delegates to it instead of restating them.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "instructionEdits": [
+        {
+          "targetBlockId": "mn05attd",
+          "content": "<p>Attendees are listed by the first name used in the notes. Resolve each one to a full name and team with <skill id=\"__TEAM_DIRECTORY_SKILL_ID__\" name=\"TeamDirectoryLookup\" /> before writing the summary, and keep the first name as written when the directory has no match.</p>",
           "type": "replace"
         }
       ]

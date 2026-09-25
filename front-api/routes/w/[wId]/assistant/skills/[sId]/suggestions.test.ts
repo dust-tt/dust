@@ -811,6 +811,58 @@ describe("PATCH with applyToSkill", () => {
     expect(updated.requestedSpaceIds).toContain(restrictedSpace.id);
   });
 
+  it("rejects an edit that adds a <skill> tag that does not exist", async () => {
+    const { workspace, auth, skill, blockIds } =
+      await setupSkillWithBlockInstructions();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: instructionEditSuggestion(
+        blockIds[0],
+        '<p>Start with <skill id="skil_abc123" name="Ghost"></skill>.</p>'
+      ),
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      'skill "Ghost" (skil_abc123)'
+    );
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.instructions).toBe("Original instructions");
+  });
+
+  it("rejects an edit that adds a <skill> tag pointing at an archived skill", async () => {
+    const { workspace, auth, skill, blockIds } =
+      await setupSkillWithBlockInstructions();
+    const child = await SkillFactory.create(auth, { name: "Retired child" });
+    await child.archive(auth);
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: instructionEditSuggestion(
+        blockIds[0],
+        `<p>Start with ${skillReferenceHtml(child)}.</p>`
+      ),
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(child.sId);
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.instructions).toBe("Original instructions");
+  });
+
   it("rejects a nested skill whose spaces another editor cannot read", async () => {
     const { workspace, auth, globalSpace, skill, blockIds } =
       await setupSkillWithBlockInstructions();
