@@ -482,10 +482,7 @@ describe("ensureConversationSandboxReady", () => {
     const result = await ensureFrameSandboxReady(auth, frame);
 
     expect(result.isOk()).toBe(true);
-    expect(mockEnsureFrameSandboxActive).toHaveBeenCalledWith(auth, frame, {
-      requireRunning: false,
-      wakeOnly: false,
-    });
+    expect(mockEnsureFrameSandboxActive).toHaveBeenCalledWith(auth, frame, {});
     expect(mockForFrameSandboxProvisioning).toHaveBeenCalledWith(auth, frame, {
       sandboxOnlyMounts: [
         {

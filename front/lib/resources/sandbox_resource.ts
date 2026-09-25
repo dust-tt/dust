@@ -53,6 +53,22 @@ export interface EnsureSandboxResult<TScope = undefined> {
   scope: TScope;
 }
 
+/**
+ * How far `ensureActive` may go to make a sandbox available. At most one of the two flags may be
+ * set; with neither, it creates, wakes, or recreates as needed.
+ *
+ * - `requireRunning`: use the sandbox only if it is already running: do not create, wake, or
+ *   recreate one. Creating and waking take seconds to minutes, which a caller running inside a
+ *   request cannot wait for.
+ * - `wakeOnly`: use a running sandbox or wake a sleeping one, but never create or recreate one: a
+ *   sandbox this call creates would be marked running before the caller finishes setting it up,
+ *   and any concurrent caller would then use it half-initialized.
+ */
+export type SandboxActivationMode =
+  | { requireRunning?: false; wakeOnly?: false }
+  | { requireRunning: true; wakeOnly?: false }
+  | { requireRunning?: false; wakeOnly: true };
+
 export type SandboxCreateBlob = {
   providerId: string;
   status: SandboxStatus;
@@ -791,25 +807,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   static async ensureActive<TScope = undefined>(
     auth: Authenticator,
     owner: SandboxCreateOwner<TScope>,
-    opts: {
-      beforeSleep?: SandboxPreSleepCheck;
-      // Use the sandbox only if it is already running: do not create, wake, or recreate one.
-      // Creating and waking take seconds to minutes, which a caller running inside a request
-      // cannot wait for.
-      requireRunning?: boolean;
-      // Use a running sandbox or wake a sleeping one, but never create or recreate one: a
-      // sandbox this call creates would be marked running before the caller finishes setting it
-      // up, and any concurrent caller would then use it half-initialized.
-      wakeOnly?: boolean;
-    } = {}
+    opts: { beforeSleep?: SandboxPreSleepCheck } & SandboxActivationMode = {}
   ): Promise<Result<EnsureSandboxResult<TScope>, Error>> {
     assert(
       auth.getNonNullableWorkspace().id !== undefined,
       "Cannot ensure sandbox without a workspace"
-    );
-    assert(
-      !(opts.requireRunning && opts.wakeOnly),
-      "requireRunning and wakeOnly are mutually exclusive"
     );
 
     // Lock-free fast path: `requireRunning` never creates, wakes, or recreates, so a running,
@@ -833,33 +835,37 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     // multi-second wake would defeat the caller's latency bound anyway.
     //
     // wakeOnly shares the fast path for a running sandbox, and takes the lock below otherwise.
-    if (opts.requireRunning || opts.wakeOnly) {
-      const existing = await owner.fetchSandbox();
-      if (
-        existing &&
-        existing.killRequestedAt === null &&
-        existing.status === "running"
-      ) {
-        // Same touch the locked path performs, so the reaper's inactivity clock keeps running for
-        // sandboxes served entirely through the fast path. Throttled internally to one write/30s.
-        await existing.updateLastActivityAt();
-        // Resolved outside the lock: this path never creates, wakes, or mints,
-        // so the scope parameterizes nothing lifecycle-ordered. requireRunning
-        // and wakeOnly callers must therefore have lock-independent (immutable) scope.
-        const fastPathScopeResult = await owner.resolveScope();
-        if (fastPathScopeResult.isErr()) {
-          return fastPathScopeResult;
-        }
-        return new Ok({
-          sandbox: existing,
-          freshlyCreated: false,
-          wokeFromSleep: false,
-          scope: fastPathScopeResult.value,
-        });
+    //
+    // Only these two modes read the sandbox before the lock: the locked path must re-read it under
+    // the lock anyway, so reading it here for a full ensure would only add a query.
+    const unlockedSnapshot =
+      opts.requireRunning || opts.wakeOnly ? await owner.fetchSandbox() : null;
+    const isUsableWithoutLock =
+      unlockedSnapshot !== null &&
+      unlockedSnapshot.killRequestedAt === null &&
+      unlockedSnapshot.status === "running";
+
+    if (isUsableWithoutLock) {
+      // Same touch the locked path performs, so the reaper's inactivity clock keeps running for
+      // sandboxes served entirely through the fast path. Throttled internally to one write/30s.
+      await unlockedSnapshot.updateLastActivityAt();
+      // Resolved outside the lock: this path never creates, wakes, or mints,
+      // so the scope parameterizes nothing lifecycle-ordered. requireRunning
+      // and wakeOnly callers must therefore have lock-independent (immutable) scope.
+      const fastPathScopeResult = await owner.resolveScope();
+      if (fastPathScopeResult.isErr()) {
+        return fastPathScopeResult;
       }
-      if (opts.requireRunning) {
-        return new Err(new SandboxNotRunningError());
-      }
+      return new Ok({
+        sandbox: unlockedSnapshot,
+        freshlyCreated: false,
+        wokeFromSleep: false,
+        scope: fastPathScopeResult.value,
+      });
+    }
+
+    if (opts.requireRunning) {
+      return new Err(new SandboxNotRunningError());
     }
 
     return this.withLifecycleLock(owner.lockKey, async (provider) => {

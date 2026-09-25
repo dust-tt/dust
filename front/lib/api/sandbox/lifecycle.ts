@@ -20,6 +20,7 @@ import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import type {
   EnsureSandboxResult,
+  SandboxActivationMode,
   SandboxResource,
 } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
@@ -351,19 +352,13 @@ async function ensureConversationSandboxReadyRun(
 export async function ensureFrameSandboxReady(
   auth: Authenticator,
   frame: FileResource,
-  {
-    requireRunning = false,
-    wakeOnly = false,
-  }: { requireRunning?: boolean; wakeOnly?: boolean } = {}
+  mode: SandboxActivationMode = {}
 ): Promise<
   Result<EnsureSandboxReadyWithScopeResult<FrameSandboxScope>, Error>
 > {
   return ensureOwnerSandboxReady(auth, {
     ensureActive: () =>
-      FrameSandboxAdapter.ensureSandboxActive(auth, frame, {
-        requireRunning,
-        wakeOnly,
-      }),
+      FrameSandboxAdapter.ensureSandboxActive(auth, frame, mode),
     deriveConfig: (scope) => ({
       getFileSystem: () =>
         DustFileSystem.forFrameSandboxProvisioning(auth, frame, {

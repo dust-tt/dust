@@ -9,6 +9,7 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type {
   EnsureSandboxResult,
+  SandboxActivationMode,
   SandboxCreateBlob,
   SandboxDeleteOwner,
   SandboxLifecycleOwner,
@@ -266,10 +267,7 @@ export class FrameSandboxAdapter {
   static async ensureSandboxActive(
     auth: Authenticator,
     frame: FrameSandboxScopeOwner,
-    {
-      requireRunning = false,
-      wakeOnly = false,
-    }: { requireRunning?: boolean; wakeOnly?: boolean } = {}
+    mode: SandboxActivationMode = {}
   ): Promise<Result<EnsureSandboxResult<FrameSandboxScope>, Error>> {
     return SandboxResource.ensureActive(
       auth,
@@ -284,8 +282,7 @@ export class FrameSandboxAdapter {
       },
       {
         beforeSleep: this.sqliteStatePreSleepCheck(auth, frame),
-        requireRunning,
-        wakeOnly,
+        ...mode,
       }
     );
   }
