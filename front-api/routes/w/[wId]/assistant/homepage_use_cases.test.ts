@@ -1,15 +1,19 @@
+import { HOMEPAGE_USE_CASES } from "@app/lib/api/homepage_use_cases/registry";
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { MAX_FEATURED_USE_CASES } from "@app/types/api/homepage_use_cases";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 const GMAIL_USE_CASE_ID = "unanswered-messages";
+const SALES_USE_CASE_ID = "account-research";
+const POD_USE_CASE_ID = "create-pod";
 
 const ReferenceSchema = z.object({ id: z.string(), name: z.string() });
 
@@ -17,6 +21,7 @@ const UseCasesResponseSchema = z.object({
   useCases: z.array(
     z.object({
       id: z.string(),
+      tier: z.string(),
       skills: z.array(ReferenceSchema),
       tools: z.array(ReferenceSchema),
     })
@@ -30,7 +35,7 @@ async function setupWorkspace({
   role?: MembershipRoleType;
   withFlag?: boolean;
 } = {}) {
-  const { workspace } = await createPrivateApiMockRequest({ role });
+  const { user, workspace } = await createPrivateApiMockRequest({ role });
   const adminAuth = await Authenticator.internalAdminForWorkspace(
     workspace.sId
   );
@@ -39,7 +44,7 @@ async function setupWorkspace({
     await FeatureFlagFactory.basic(adminAuth, "discovery_homepage");
   }
 
-  return { adminAuth, workspace };
+  return { adminAuth, user, workspace };
 }
 
 async function getUseCases(workspaceId: string) {
@@ -138,5 +143,57 @@ describe("GET /api/w/[wId]/assistant/homepage_use_cases", () => {
     expect(useCases.map((useCase) => useCase.id)).not.toContain(
       GMAIL_USE_CASE_ID
     );
+  });
+
+  it("offers a role use case only to users with a matching job type", async () => {
+    const { adminAuth, user, workspace } = await setupWorkspace();
+    const globalSpace =
+      await SpaceResource.fetchWorkspaceGlobalSpace(adminAuth);
+    await MCPServerViewFactory.internal(
+      workspace,
+      "web_search_&_browse",
+      globalSpace
+    );
+
+    const withoutJobType = await getUseCases(workspace.sId);
+    expect(withoutJobType.useCases.map((useCase) => useCase.id)).not.toContain(
+      SALES_USE_CASE_ID
+    );
+
+    await user.setMetadata("job_type", "engineering");
+    const asEngineer = await getUseCases(workspace.sId);
+    expect(asEngineer.useCases.map((useCase) => useCase.id)).not.toContain(
+      SALES_USE_CASE_ID
+    );
+
+    await user.setMetadata("job_type", "sales");
+    const asSales = await getUseCases(workspace.sId);
+    expect(
+      asSales.useCases.find((useCase) => useCase.id === SALES_USE_CASE_ID)
+    ).toMatchObject({ tier: "role" });
+  });
+
+  it("stops offering the Pod use case once the user is in a Pod", async () => {
+    const { user, workspace } = await setupWorkspace();
+
+    const beforePod = await getUseCases(workspace.sId);
+    expect(
+      beforePod.useCases.find((useCase) => useCase.id === POD_USE_CASE_ID)
+    ).toMatchObject({ tier: "milestone" });
+
+    await SpaceFactory.project(workspace, user.id);
+
+    const afterPod = await getUseCases(workspace.sId);
+    expect(afterPod.useCases.map((useCase) => useCase.id)).not.toContain(
+      POD_USE_CASE_ID
+    );
+  });
+
+  it("features at most MAX_FEATURED_USE_CASES use cases", () => {
+    const featured = HOMEPAGE_USE_CASES.filter(
+      ({ audience }) => audience.type === "featured"
+    );
+
+    expect(featured.length).toBeLessThanOrEqual(MAX_FEATURED_USE_CASES);
   });
 });
