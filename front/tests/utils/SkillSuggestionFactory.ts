@@ -21,7 +21,7 @@ export class SkillSuggestionFactory {
       state: SkillSuggestionState;
       source: SkillSuggestionSource;
       sourceConversationIds: number[] | null;
-      batchId: number | null;
+      batchModelId: number | null;
     }> = {}
   ): Promise<SkillSuggestionResource> {
     return SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
@@ -40,7 +40,7 @@ export class SkillSuggestionFactory {
       state: overrides.state ?? "pending",
       source: overrides.source ?? "reinforcement",
       sourceConversationIds: overrides.sourceConversationIds ?? null,
-      batchId: overrides.batchId ?? null,
+      batchId: overrides.batchModelId ?? null,
     });
   }
 

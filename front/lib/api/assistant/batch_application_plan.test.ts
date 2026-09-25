@@ -33,22 +33,25 @@ describe("planBatchApplication", () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const skill = await SkillFactory.create(auth);
     await auth.refresh();
-    const { id: batchId, sId } = await BatchSuggestionFactory.createEmpty(auth);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
 
     // Created in reverse order, so the plan cannot just follow insertion order.
     await SkillSuggestionFactory.create(auth, skill, {
       kind: "delete",
       suggestion: {},
-      batchId,
+      batchModelId,
     });
-    await AgentSuggestionFactory.createDelete(auth, agent, { batchId });
-    await AgentSuggestionFactory.createInstructions(auth, agent, { batchId });
-    await SkillSuggestionFactory.create(auth, skill, { batchId });
-    await AgentSuggestionFactory.createCreate(auth, agent, { batchId });
+    await AgentSuggestionFactory.createDelete(auth, agent, { batchModelId });
+    await AgentSuggestionFactory.createInstructions(auth, agent, {
+      batchModelId,
+    });
+    await SkillSuggestionFactory.create(auth, skill, { batchModelId });
+    await AgentSuggestionFactory.createCreate(auth, agent, { batchModelId });
     await SkillSuggestionFactory.create(auth, skill, {
       kind: "create",
       suggestion: { name: skill.name },
-      batchId,
+      batchModelId,
     });
 
     const steps = planBatchApplication(await fetchBatch(sId));
@@ -68,22 +71,23 @@ describe("planBatchApplication", () => {
     const otherAgent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Other Agent",
     });
-    const { id: batchId, sId } = await BatchSuggestionFactory.createEmpty(auth);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
 
     const instructions = await AgentSuggestionFactory.createInstructions(
       auth,
       agent,
-      { batchId }
+      { batchModelId }
     );
     const otherInstructions = await AgentSuggestionFactory.createInstructions(
       auth,
       otherAgent,
-      { batchId }
+      { batchModelId }
     );
     const moreInstructions = await AgentSuggestionFactory.createInstructions(
       auth,
       agent,
-      { batchId }
+      { batchModelId }
     );
 
     const steps = planBatchApplication(await fetchBatch(sId));

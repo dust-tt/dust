@@ -85,6 +85,15 @@ function groupByActionAndTarget<T>(
   return suggestionsByAction;
 }
 
+/**
+ * Orders the suggestions of a batch into steps, one per action and target, so that each step only
+ * depends on steps applied before it. Agents reference skills, so dependencies go from agents to
+ * skills:
+ * - creations come first, so later steps can reference the agents and skills they create;
+ * - skills are created and edited before agents, so an agent can use a skill in its final state;
+ * - edits come before deletions, so an edit can detach a skill before it is deleted;
+ * - agents are deleted before skills, so no remaining agent references a deleted skill.
+ */
 export function planBatchApplication(
   batch: BatchSuggestionResource
 ): BatchApplicationStep[] {
