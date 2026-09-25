@@ -173,6 +173,28 @@ function expectMcpError(
   expect(result.error.message).toContain(fragment);
 }
 
+// An agent built on a restricted space its owner belongs to: a workspace admin outside that space
+// holds `admin` on it but not `read`, so they only get its light resource (no instructions).
+async function createAgentOnUnreadableSpace(workspace: WorkspaceType) {
+  const owner = await addMember(workspace);
+  const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    owner.sId,
+    workspace.sId
+  );
+  const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  const restrictedSpace = await SpaceFactory.regular(workspace);
+  await restrictedSpace.addMembers(internalAdminAuth, {
+    userIds: [owner.sId],
+  });
+  return AgentConfigurationFactory.createTestAgent(ownerAuth, {
+    name: "RestrictedAgent",
+    instructionsHtml: '<p data-block-id="block1">Secret instructions.</p>',
+    requestedSpaceIds: [restrictedSpace.id],
+  });
+}
+
 function extractAgentCreateSuggestionDirective(text: string): {
   suggestionId: string;
   agentId: string;
@@ -2086,6 +2108,38 @@ describe("building_agents_and_skills tools", () => {
       expectMcpError(result, "no block-structured instructions");
     });
 
+    it("returns an MCPError to an admin who cannot read the agent's instructions", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const agent = await createAgentOnUnreadableSpace(workspace);
+
+      const result = await getTool(
+        SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+      ).handler(
+        {
+          agentId: agent.sId,
+          instructionEdit: {
+            targetBlockId: "block1",
+            type: "replace",
+            content: "<p>Leaked?</p>",
+          },
+        },
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
+      );
+
+      expectMcpError(result, "instructions of this agent are not readable");
+      expect(
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agent.sId
+        )
+      ).toEqual([]);
+    });
+
     it("returns an MCPError when exceeding the pending suggestions limit", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       const agent = await createBlockStructuredAgent(authenticator);
@@ -2757,6 +2811,40 @@ describe("building_agents_and_skills tools", () => {
       });
 
       expectMcpError(result, "global agent");
+    });
+
+    it("refuses instruction edits from an admin who cannot read the agent, recording nothing", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const agent = await createAgentOnUnreadableSpace(workspace);
+
+      expectMcpError(
+        await runSuggest(authenticator, {
+          title: "Edit restricted agent",
+          analysis: "Edit.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              instructionEdits: [
+                {
+                  targetBlockId: "block1",
+                  content: "<p>Replaced.</p>",
+                  type: "replace",
+                },
+              ],
+            },
+          ],
+        }),
+        "instructions of this agent are not readable"
+      );
+      expect(
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agent.sId
+        )
+      ).toEqual([]);
     });
 
     it("refuses instruction edits targeting a block that does not exist", async () => {
