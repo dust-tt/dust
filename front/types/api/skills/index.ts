@@ -8,6 +8,7 @@ import type {
   SkillWithoutInstructionsAndToolsWithRelationsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import type { SpaceKind } from "@app/types/space";
 import type { UserType } from "@app/types/user";
 
@@ -78,6 +79,10 @@ export type SkillSearchSort = (typeof SKILL_SEARCH_SORTS)[number];
 
 export const SKILL_SEARCH_SORT_ORDERS = ["asc", "desc"] as const;
 export type SkillSearchSortOrder = (typeof SKILL_SEARCH_SORT_ORDERS)[number];
+
+export type PostSkillsUsedByResponseBody = {
+  usedBy: Record<string, AgentsAndSkillsUsageType>;
+};
 
 export type SearchSkillsResponseBody = {
   skills: SkillListItemType[];
