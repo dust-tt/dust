@@ -11,16 +11,9 @@ import type { SuggestionPileDirective } from "@app/components/markdown/suggestio
 import { DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS } from "@app/components/markdown/suggestion/suggestion_directives";
 import { getSuggestionStateChip } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
-  usePatchSkillSuggestions,
-  useSkillSuggestions,
-} from "@app/hooks/useSkillSuggestions";
-import { useSuggestionActions } from "@app/hooks/useSuggestionActions";
-import {
-  useAgentSuggestions,
-  usePatchAgentSuggestions,
-} from "@app/lib/swr/agent_suggestions";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import { useSkill } from "@app/lib/swr/skill_configurations";
+  useConversationAgentSuggestionReview,
+  useConversationSkillSuggestionReview,
+} from "@app/hooks/useConversationalSuggestionReview";
 import {
   AGENT_SIDE_PANEL_TYPE,
   SKILL_SIDE_PANEL_TYPE,
@@ -116,36 +109,24 @@ function AgentPileTarget({
   target,
   children,
 }: AgentPileTargetProps) {
-  const { suggestions, isSuggestionsLoading, mutateSuggestions } =
-    useAgentSuggestions({
-      agentConfigurationId: target.agentId,
-      workspaceId: owner.sId,
-      sources: ["conversational"],
-      conversationId,
-    });
-
-  const { patchSuggestions } = usePatchAgentSuggestions({
-    agentConfigurationId: target.agentId,
-    workspaceId: owner.sId,
-  });
   const {
+    suggestions,
+    agentConfiguration,
+    isLoading,
+    isAgentConfigurationValidating,
     getPendingAction,
-    acceptSuggestion,
-    rejectSuggestion,
-    batchAcceptSuggestions,
-    batchRejectSuggestions,
-  } = useSuggestionActions({ patchSuggestions, mutateSuggestions });
+    acceptSuggestions,
+    rejectSuggestions,
+  } = useConversationAgentSuggestionReview({
+    workspaceId: owner.sId,
+    agentId: target.agentId,
+    conversationId,
+    skipAgentConfiguration: target.directives.every(({ kind }) =>
+      DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind)
+    ),
+  });
 
   const { openPanel } = useConversationSidePanelContext();
-
-  const { agentConfiguration, isAgentConfigurationLoading } =
-    useAgentConfiguration({
-      workspaceId: owner.sId,
-      agentConfigurationId: target.agentId,
-      disabled: target.directives.every(({ kind }) =>
-        DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind)
-      ),
-    });
 
   const entries: PileEntry[] = target.directives.flatMap(({ sId, kind }) => {
     const suggestion = suggestions.find((s) => s.sId === sId);
@@ -165,8 +146,8 @@ function AgentPileTarget({
         renderCard: (extras: PileCardExtras) => (
           <ConversationalSuggestionReviewCard
             target={{ type: "agent", suggestion, agentConfiguration }}
-            onAccept={() => void acceptSuggestion(suggestion)}
-            onReject={() => void rejectSuggestion(suggestion)}
+            onAccept={() => void acceptSuggestions([suggestion])}
+            onReject={() => void rejectSuggestions([suggestion])}
             onPreview={() =>
               openPanel({
                 type: AGENT_SIDE_PANEL_TYPE,
@@ -176,6 +157,8 @@ function AgentPileTarget({
             }
             isAccepting={getPendingAction(suggestion) === "accept"}
             isRejecting={getPendingAction(suggestion) === "reject"}
+            // Reviewing against stale agent details would be misleading, so wait for the refresh.
+            disabled={isAgentConfigurationValidating}
             {...extras}
           />
         ),
@@ -186,16 +169,18 @@ function AgentPileTarget({
   const pendingEntries = entries.filter((e) => e.state === "pending");
 
   return children({
-    isLoading: isSuggestionsLoading || isAgentConfigurationLoading,
-    isBusy: pendingEntries.some((e) => getPendingAction(e) !== null),
+    isLoading,
+    isBusy:
+      isAgentConfigurationValidating ||
+      pendingEntries.some((e) => getPendingAction(e) !== null),
     entries,
     reviewPending: async (decision) => {
       if (pendingEntries.length === 0) {
         return;
       }
       await (decision === "accept"
-        ? batchAcceptSuggestions(pendingEntries)
-        : batchRejectSuggestions(pendingEntries));
+        ? acceptSuggestions(pendingEntries)
+        : rejectSuggestions(pendingEntries));
     },
   });
 }
@@ -213,37 +198,18 @@ function SkillPileTarget({
   target,
   children,
 }: SkillPileTargetProps) {
-  const { suggestions, isSuggestionsLoading, mutateSuggestions } =
-    useSkillSuggestions({
-      skillId: target.skillId,
-      workspaceId: owner.sId,
-      sources: ["conversational"],
-      conversationId,
-    });
-
-  const { skill, isSkillLoading, mutateSkillRegardlessOfQueryParams } =
-    useSkill({
-      workspaceId: owner.sId,
-      skillId: target.skillId,
-    });
-
-  const { patchSuggestions } = usePatchSkillSuggestions({
-    skillId: target.skillId,
-    workspaceId: owner.sId,
-  });
   const {
+    suggestions,
+    skill,
+    isLoading,
     getPendingAction,
-    rejectSuggestion,
-    batchAcceptSuggestions,
-    batchRejectSuggestions,
-  } = useSuggestionActions({ patchSuggestions, mutateSuggestions });
-
-  // Accepting applies the suggestion to the skill, so the skill is refetched to show the change.
-  const acceptSuggestions = async (toAccept: { sId: string }[]) => {
-    if (await batchAcceptSuggestions(toAccept)) {
-      mutateSkillRegardlessOfQueryParams();
-    }
-  };
+    acceptSuggestions,
+    rejectSuggestions,
+  } = useConversationSkillSuggestionReview({
+    workspaceId: owner.sId,
+    skillId: target.skillId,
+    conversationId,
+  });
 
   const { openPanel } = useConversationSidePanelContext();
 
@@ -268,7 +234,7 @@ function SkillPileTarget({
                   workspaceId: owner.sId,
                 }}
                 onAccept={() => void acceptSuggestions([suggestion])}
-                onReject={() => void rejectSuggestion(suggestion)}
+                onReject={() => void rejectSuggestions([suggestion])}
                 onPreview={() =>
                   openPanel({
                     type: SKILL_SIDE_PANEL_TYPE,
@@ -289,7 +255,7 @@ function SkillPileTarget({
   const pendingEntries = entries.filter((e) => e.state === "pending");
 
   return children({
-    isLoading: isSuggestionsLoading || isSkillLoading,
+    isLoading,
     isBusy: pendingEntries.some((e) => getPendingAction(e) !== null),
     entries,
     reviewPending: async (decision) => {
@@ -298,7 +264,7 @@ function SkillPileTarget({
       }
       await (decision === "accept"
         ? acceptSuggestions(pendingEntries)
-        : batchRejectSuggestions(pendingEntries));
+        : rejectSuggestions(pendingEntries));
     },
   });
 }
@@ -618,9 +584,14 @@ interface ConversationSuggestionPileProps {
 export function ConversationSuggestionPile({
   owner,
   conversationId,
-  directives,
+  directives: rawDirectives,
   recap,
 }: ConversationSuggestionPileProps) {
+  // The agent may repeat a directive; each suggestion is reviewed once.
+  const directives = rawDirectives.filter(
+    (d, index) => rawDirectives.findIndex((o) => o.sId === d.sId) === index
+  );
+
   return (
     <PileTargetsLoader
       owner={owner}
