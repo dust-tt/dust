@@ -77,7 +77,7 @@ app.patch(
       });
     }
 
-    if (!auth.can("write", agent) && !auth.isAdmin()) {
+    if (!auth.can("write", agent)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

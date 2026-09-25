@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type {
   ScheduleConfig,
@@ -8,6 +9,7 @@ import type {
 } from "@app/types/assistant/triggers";
 import type { ModelId } from "@app/types/shared/model_id";
 import { faker } from "@faker-js/faker";
+import assert from "assert";
 
 interface WebhookTriggerOptions {
   agentConfigurationId: string;
@@ -29,6 +31,15 @@ interface ScheduleTriggerOptions {
   executionMode?: TriggerExecutionMode;
 }
 
+async function fetchAgent(
+  auth: Authenticator,
+  agentId: string
+): Promise<AgentResource> {
+  const agent = await AgentResource.fetchById(auth, agentId);
+  assert(agent, `Agent ${agentId} not found`);
+  return agent;
+}
+
 export class TriggerFactory {
   /**
    * Creates a webhook trigger for tests.
@@ -45,7 +56,7 @@ export class TriggerFactory {
       workspaceId: workspace.id,
       name: options.name ?? `trigger-${faker.string.alphanumeric(8)}`,
       kind: "webhook",
-      agentConfigurationId: options.agentConfigurationId,
+      agent: await fetchAgent(auth, options.agentConfigurationId),
       editor: user.id,
       customPrompt: options.customPrompt ?? null,
       status: options.status ?? "disabled",
@@ -78,7 +89,7 @@ export class TriggerFactory {
       workspaceId: workspace.id,
       name: options.name ?? `trigger-${faker.string.alphanumeric(8)}`,
       kind: "schedule",
-      agentConfigurationId: options.agentConfigurationId,
+      agent: await fetchAgent(auth, options.agentConfigurationId),
       editor: user.id,
       customPrompt: options.customPrompt ?? null,
       status: options.status ?? "disabled",

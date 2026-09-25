@@ -70,7 +70,7 @@ app.get(
       agentConfigurations = agentConfigurations.slice(0, limit);
     }
 
-    if (!agentConfigurations || !agentConfigurations[0].canRead) {
+    if (agentConfigurations.length === 0 || !agentConfigurations[0].canRead) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

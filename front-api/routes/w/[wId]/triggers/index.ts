@@ -333,7 +333,7 @@ app.post(
     const { aId } = ctx.req.valid("query");
 
     const agent = await AgentResource.fetchById(auth, aId);
-    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
+    if (!agent || !auth.can("read", agent)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -385,7 +385,7 @@ app.post(
 
       const newTrigger = await TriggerResource.makeNew(auth, {
         workspaceId: workspace.id,
-        agentConfigurationId: aId,
+        agent,
         name: validatedTrigger.name,
         kind: validatedTrigger.kind,
         status: validatedTrigger.status ?? "enabled",

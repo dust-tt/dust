@@ -8,6 +8,7 @@ import { generateScheduleRule } from "@app/lib/api/assistant/configuration/trigg
 import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
 import type { Authenticator } from "@app/lib/auth";
 import { parseMatcherExpression } from "@app/lib/matcher/parser";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   resolveTriggerSpaceId,
@@ -207,11 +208,16 @@ export function createTriggersManagementTools(
         );
       }
       const scheduleConfig = scheduleResult.value;
+      const agent = await AgentResource.fetchById(auth, agentConfiguration.sId);
+      if (!agent) {
+        return new Err(new MCPError("Agent not found."));
+      }
+
       let result;
       try {
         result = await TriggerResource.makeNew(auth, {
           workspaceId: owner.id,
-          agentConfigurationId: agentConfiguration.sId,
+          agent,
           name,
           kind: "schedule",
           status: "enabled",
@@ -584,11 +590,16 @@ export function createTriggersManagementTools(
       }
       const spaceId = spaceIdRes.value;
 
+      const agent = await AgentResource.fetchById(auth, agentConfiguration.sId);
+      if (!agent) {
+        return new Err(new MCPError("Agent not found."));
+      }
+
       let result;
       try {
         result = await TriggerResource.makeNew(auth, {
           workspaceId: owner.id,
-          agentConfigurationId: agentConfiguration.sId,
+          agent,
           name,
           kind: "webhook",
           status: "enabled",
