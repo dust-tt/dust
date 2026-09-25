@@ -139,7 +139,8 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     { sortOrder: "unknown" },
     { status: ["draft"] },
     { status: [] },
-    { scope: ["global"] },
+    { scope: ["private"] },
+    { scope: [] },
     { tagIds: [""] },
   ])("rejects invalid input: %s", async (body) => {
     const { workspace } = await setup();

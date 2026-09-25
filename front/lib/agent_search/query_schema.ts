@@ -4,6 +4,7 @@ import {
   AGENT_SEARCH_SORT_ORDERS,
   AGENT_SEARCH_SORTS,
 } from "@app/types/agent_search/agent_search";
+import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import { z } from "zod";
 
 export const SearchAgentsQuerySchema = z.object({
@@ -17,9 +18,9 @@ export const SearchAgentsQuerySchema = z.object({
     .max(2)
     .optional(),
   scope: z
-    .array(z.enum(["visible", "hidden"]))
+    .array(z.enum(AGENT_CONFIGURATION_SCOPES))
     .min(1)
-    .max(2)
+    .max(AGENT_CONFIGURATION_SCOPES.length)
     .optional(),
   tagIds: z.array(z.string().min(1)).max(100).optional(),
   skillIds: z.array(z.string().min(1)).max(100).optional(),

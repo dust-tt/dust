@@ -42,7 +42,7 @@ export interface AgentSearchDocument extends ElasticsearchBaseDocument {
 export interface AgentSearchFilters {
   // Omitted means active only. Draft and pending agents are never indexed.
   status?: Extract<AgentConfigurationStatus, "active" | "archived">[];
-  scope?: Exclude<AgentConfigurationScope, "global">[];
+  scope?: AgentConfigurationScope[];
   tagIds?: string[];
   skillIds?: string[];
   mcpServerViewIds?: string[];

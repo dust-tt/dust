@@ -260,5 +260,11 @@ describe("searchAgents", () => {
     expect(
       await searchAgentIds(auth, { filters: { editedByMe: true } })
     ).toEqual(["hidden-editor"]);
+    expect(
+      await searchAgentIds(auth, { filters: { scope: ["global"] } })
+    ).toEqual([GLOBAL_AGENTS_SID.HELPER]);
+    expect(
+      await searchAgentIds(auth, { filters: { scope: ["visible", "hidden"] } })
+    ).toEqual(["visible", "hidden-editor", "readable-spaces"]);
   });
 });
