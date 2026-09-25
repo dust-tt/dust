@@ -3033,6 +3033,93 @@ describe("building_agents_and_skills tools", () => {
     });
 
     describe("refs", () => {
+      const fetchBatch = async (
+        auth: Authenticator,
+        result: Awaited<ReturnType<typeof runSuggest>>
+      ) => {
+        const batch = await BatchSuggestionResource.fetchById(
+          auth,
+          extractBatchId(result)
+        );
+        assert(batch);
+        return batch;
+      };
+
+      it("resolves skill tags of new skills citing each other", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+
+        const batch = await fetchBatch(
+          authenticator,
+          await runSuggest(authenticator, {
+            title: "Meeting skills",
+            analysis: "Two skills that call each other.",
+            suggestions: [
+              {
+                ...createSkill,
+                ref: "notes",
+                instructions: '<p>Then use <skill ref="summary"/></p>',
+              },
+              {
+                ...createSkill,
+                name: "Meeting Summary",
+                ref: "summary",
+                instructions: "<p>Reuse <skill ref='notes' name=\"Old\"/></p>",
+              },
+            ],
+          })
+        );
+
+        const [notes, summary] = batch.skillSuggestions;
+        expect(notes.toJSON().suggestion).toMatchObject({
+          instructions: `<p>Then use <skill id="${summary.skillConfigurationSId}" name="Meeting Summary"></skill></p>`,
+        });
+        expect(summary.toJSON().suggestion).toMatchObject({
+          instructions: `<p>Reuse <skill id="${notes.skillConfigurationSId}" name="Meeting Notes"></skill></p>`,
+        });
+      });
+
+      it("resolves a new skill cited by an edit of an existing skill", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+        const skill = await seedSkill(authenticator, {
+          name: "Triage",
+          instructionsHtml: '<p data-block-id="blk00001">Triage.</p>',
+        });
+
+        const batch = await fetchBatch(
+          authenticator,
+          await runSuggest(authenticator, {
+            title: "Notes skill",
+            analysis: "Delegate notes to a new skill.",
+            suggestions: [
+              {
+                kind: "edit_skill",
+                skillId: skill.sId,
+                instructionEdits: [
+                  {
+                    targetBlockId: "blk00001",
+                    content: '<p>Triage, then use <skill ref="notes"/></p>',
+                    type: "replace",
+                  },
+                ],
+              },
+              { ...createSkill, ref: "notes" },
+            ],
+          })
+        );
+
+        const pendingSkillId = batch.skillSuggestions.find(
+          (s) => s.kind === "create"
+        )?.skillConfigurationSId;
+        const edit = batch.skillSuggestions.find((s) => s.kind === "edit");
+        expect(edit?.toJSON().suggestion).toMatchObject({
+          instructionEdits: [
+            {
+              content: `<p>Triage, then use <skill id="${pendingSkillId}" name="Meeting Notes"></skill></p>`,
+            },
+          ],
+        });
+      });
+
       it("refuses an unknown ref and writes nothing", async () => {
         const { authenticator } = await createSkillAuthorTestContext();
 
@@ -3085,6 +3172,20 @@ describe("building_agents_and_skills tools", () => {
         });
 
         expectMcpError(result, "must be written as");
+      });
+
+      it("refuses a quote in the name of a skill cited by a ref", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+
+        const result = await runSuggest(authenticator, {
+          title: "Notes skill",
+          analysis: "Notes.",
+          suggestions: [
+            { ...createSkill, name: 'Meeting "Notes"', ref: "notes" },
+          ],
+        });
+
+        expectMcpError(result, "cannot contain");
       });
     });
   });

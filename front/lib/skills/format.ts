@@ -119,6 +119,18 @@ export function hasUnparsableSkillRefTag(content: string): boolean {
   );
 }
 
+export function resolveSkillRefTags(
+  content: string,
+  skillReferenceByRef: Map<string, SkillReference>
+): string {
+  return content.replace(SKILL_TAG_REGEX, (tag, attributes: string) => {
+    const ref = parseSkillRef(attributes);
+    const skill = ref ? skillReferenceByRef.get(ref) : undefined;
+
+    return skill ? serializeSkillTag(skill, { html: true }) : tag;
+  });
+}
+
 export function serializeUnavailableSkillTag(
   { id }: { id: string },
   { html = false }: { html?: boolean } = {}

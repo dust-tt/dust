@@ -4,6 +4,7 @@ import {
   extractSkillRefs,
   hasUnparsableSkillRefTag,
   renameSkillReferencesInContent,
+  resolveSkillRefTags,
 } from "./format";
 
 describe("renameSkillReferencesInContent", () => {
@@ -29,6 +30,16 @@ describe("skill ref tags", () => {
 
   it("extracts each ref once, whatever the quotes, attributes or closing form", () => {
     expect(extractSkillRefs(content)).toEqual(["notes", "summary"]);
+  });
+
+  it("rewrites ref tags into real skill tags and leaves unknown refs untouched", () => {
+    const refs = new Map([
+      ["notes", { id: "skl_A", name: "Meeting Notes", icon: null }],
+    ]);
+
+    expect(resolveSkillRefTags(content, refs)).toEqual(
+      '<p>Use <skill id="skl_A" name="Meeting Notes"></skill> then <skill ref=\'summary\' name="Old"></skill> and <skill id="skl_A" name="Meeting Notes"></skill></p>'
+    );
   });
 
   it("flags skill tags whose ref cannot be parsed", () => {
