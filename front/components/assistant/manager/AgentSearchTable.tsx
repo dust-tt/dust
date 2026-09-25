@@ -1,12 +1,23 @@
 import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AgentSearchActionsMenu } from "@app/components/assistant/manager/AgentSearchActionsMenu";
+import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
+import { ModelTierChip } from "@app/components/model_picker/ModelTierChip";
+import { getModelMakerLogo } from "@app/components/providers/types";
 import {
   SkillEditorsCell,
   SkillLastEditedCell,
 } from "@app/components/skills/SkillTableCells";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { useTags } from "@app/lib/swr/tags";
+import { tagsSorter } from "@app/lib/utils";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
+import { getTieredReasoningEffort } from "@app/types/assistant/models/model_tiers";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   AvatarCellSkeleton,
@@ -18,22 +29,20 @@ import {
   Label,
   LoadingBlock,
   TextCellSkeleton,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type {
   ColumnDef,
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
+import capitalize from "lodash/capitalize";
 import { useMemo } from "react";
-
-// Leave room for Select, Usage and Actions, then Editors/Last edited at sm and Access at md.
-export const AGENT_SEARCH_NAME_COLUMN_WIDTH =
-  "w-[calc(100%-12rem)] sm:w-[calc(100%-28rem)] md:w-[calc(100%-38rem)]";
 
 type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
 
 interface AgentSearchTableProps {
-  owner: LightWorkspaceType;
+  owner: WorkspaceType;
   agents: AgentSearchItem[];
   onSelect: (agentId: string) => void;
   onRefresh: () => void;
@@ -50,6 +59,60 @@ interface AgentSearchTableProps {
 
 type AgentSearchRow = AgentSearchItem & { onClick: () => void };
 
+interface AgentSearchModelCellProps {
+  model: AgentSearchItem["model"];
+  isDark: boolean;
+}
+
+function AgentSearchModelCell({ model, isDark }: AgentSearchModelCellProps) {
+  const modelConfig = model ? getSupportedModelConfig(model) : null;
+  if (!model || !modelConfig) {
+    return <DataTable.BasicCellContent label={model?.modelId ?? "-"} />;
+  }
+  const modelName = modelConfig.displayName;
+  // Surface the reasoning effort the tier resolves at: two agents on the same model can be on
+  // different tiers because of it.
+  const reasoningEffort = getTieredReasoningEffort(
+    modelConfig,
+    model.reasoningEffort
+  );
+  const tooltipLabel =
+    reasoningEffort && reasoningEffort !== "none"
+      ? `${modelName} ${capitalize(reasoningEffort)}`
+      : modelName;
+
+  return (
+    <Tooltip
+      tooltipTriggerAsChild
+      label={tooltipLabel}
+      trigger={
+        <div className="inline-flex w-full min-w-0">
+          <DataTable.CellContent
+            className="w-full min-w-0"
+            icon={getModelMakerLogo(getModelMaker(modelConfig), isDark)}
+            iconClassName="mr-2"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              {/* Streams are named after their tier: the chip alone carries the info. */}
+              {!isModelStreamId(modelConfig.modelId) && (
+                <span className="hidden min-w-0 truncate @xl:inline">
+                  {modelName}
+                </span>
+              )}
+              <div className="shrink-0">
+                <ModelTierChip
+                  model={modelConfig}
+                  reasoningEffort={model.reasoningEffort}
+                />
+              </div>
+            </div>
+          </DataTable.CellContent>
+        </div>
+      }
+    />
+  );
+}
+
 export function AgentSearchTable({
   owner,
   agents,
@@ -65,6 +128,9 @@ export function AgentSearchTable({
   setSelectedAgentIds,
   canSelect,
 }: AgentSearchTableProps) {
+  const { isDark } = useTheme();
+  const { tags } = useTags({ owner });
+  const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
   const columns = useMemo(
     () =>
       [
@@ -160,7 +226,15 @@ export function AgentSearchTable({
               </button>
             </DataTable.CellContent>
           ),
-          meta: { className: AGENT_SEARCH_NAME_COLUMN_WIDTH },
+          meta: { className: "w-48 @lg:w-full" },
+        },
+        {
+          id: "model" as const,
+          header: "Model",
+          cell: ({ row: { original: agent } }) => (
+            <AgentSearchModelCell model={agent.model} isDark={isDark} />
+          ),
+          meta: { className: "hidden @sm:w-28 @sm:table-cell @xl:w-56" },
         },
         {
           id: "access" as const,
@@ -177,25 +251,7 @@ export function AgentSearchTable({
               )}
             </DataTable.CellContent>
           ),
-          meta: { className: "hidden w-40 md:table-cell" },
-        },
-        {
-          id: "usage" as const,
-          accessorKey: "activeUsersCount",
-          header: "Usage",
-          sortDescFirst: true,
-          enableMultiSort: false,
-          cell: ({ row: { original: agent } }) => (
-            <DataTable.BasicCellContent
-              label={agent.activeUsersCount?.toLocaleString() ?? "-"}
-              tooltip={
-                agent.activeUsersCount === null
-                  ? "Usage is not available for this agent."
-                  : "Number of active users in the last 30 days."
-              }
-            />
-          ),
-          meta: { className: "w-24 font-mono tabular-nums" },
+          meta: { className: "hidden @lg:w-32 @lg:table-cell" },
         },
         {
           id: "editors" as const,
@@ -205,7 +261,77 @@ export function AgentSearchTable({
               editors={agent.scope === "global" ? null : agent.editors}
             />
           ),
-          meta: { className: "hidden w-32 sm:table-cell" },
+          meta: { className: "hidden @lg:w-24 @lg:table-cell" },
+        },
+        {
+          id: "tags" as const,
+          header: "Tags",
+          cell: ({ row: { original: agent } }) => {
+            const tagNames = agent.tags.map((tag) => tag.name).join(", ");
+            return (
+              <DataTable.CellContent
+                grow
+                className="flex flex-row items-center"
+              >
+                <div className="group flex flex-row items-center gap-1">
+                  <div className="truncate text-muted-foreground">
+                    <Tooltip
+                      tooltipTriggerAsChild
+                      label={tagNames}
+                      trigger={<span>{tagNames}</span>}
+                    />
+                  </div>
+                  {canSelect(agent) && (
+                    <TableTagSelector
+                      tags={sortedTags}
+                      agentTags={agent.tags}
+                      agentConfigurationId={agent.sId}
+                      owner={owner}
+                      onChange={async () => onRefresh()}
+                    />
+                  )}
+                </div>
+              </DataTable.CellContent>
+            );
+          },
+          meta: { className: "hidden @lg:table-cell @lg:w-24 @xl:w-40" },
+        },
+        {
+          id: "usage" as const,
+          accessorKey: "activeUsersCount",
+          header: "Usage",
+          sortDescFirst: true,
+          enableMultiSort: false,
+          cell: ({ row: { original: agent } }) => (
+            <DataTable.BasicCellContent
+              className="font-mono"
+              label={agent.activeUsersCount?.toLocaleString() ?? "-"}
+              tooltip={
+                agent.activeUsersCount === null
+                  ? "Usage is not available for this agent."
+                  : "Number of active users in the last 30 days."
+              }
+            />
+          ),
+          meta: { className: "hidden @sm:w-24 @sm:table-cell" },
+        },
+        {
+          id: "feedback" as const,
+          header: "Feedback",
+          cell: ({ row: { original: agent } }) => {
+            if (agent.scope === "global") {
+              return <DataTable.BasicCellContent label="-" />;
+            }
+            const { up, down } = agent.feedbacks;
+            return (
+              <DataTable.BasicCellContent
+                className="font-mono"
+                label={`${up + down}`}
+                tooltip={`${up} positive and ${down} negative feedback${pluralize(up + down)}`}
+              />
+            );
+          },
+          meta: { className: "hidden @lg:w-28 @lg:table-cell" },
         },
         {
           id: "updatedAt" as const,
@@ -216,7 +342,7 @@ export function AgentSearchTable({
           cell: ({ row: { original: agent } }) => (
             <SkillLastEditedCell updatedAt={agent.updatedAt} emptyLabel="-" />
           ),
-          meta: { className: "hidden w-32 sm:table-cell" },
+          meta: { className: "hidden @sm:w-32 @sm:table-cell" },
         },
         {
           id: "actions" as const,
@@ -231,10 +357,10 @@ export function AgentSearchTable({
                 onRefresh={onRefresh}
               />
             ),
-          meta: { className: "w-14" },
+          meta: { className: "hidden @md:table-cell @md:w-14" },
         },
       ] satisfies ColumnDef<AgentSearchRow>[],
-    [onRefresh, onSelect, owner]
+    [canSelect, isDark, onRefresh, onSelect, owner, sortedTags]
   );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
@@ -257,8 +383,14 @@ export function AgentSearchTable({
                     <TextCellSkeleton className="h-4 w-3/4" />
                   </AvatarCellSkeleton>
                 );
+              case "model":
+                return <TextCellSkeleton className="w-24" />;
               case "access":
                 return <ChipCellSkeleton />;
+              case "tags":
+                return <TextCellSkeleton className="w-16" />;
+              case "feedback":
+                return <TextCellSkeleton className="w-8" />;
               case "usage":
                 return <TextCellSkeleton className="w-8" />;
               case "editors":

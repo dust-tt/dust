@@ -113,6 +113,13 @@ export interface AgentSearchListItemType {
   name: string;
   description: string;
   pictureUrl: string;
+  // Null for default agents, which resolve their model per caller.
+  model: {
+    providerId: ModelProviderIdType;
+    modelId: ModelIdType;
+    reasoningEffort: ReasoningEffort;
+  } | null;
+  feedbacks: { up: number; down: number };
   requestedSpaceIds: string[];
   tagIds: string[];
   editorIds: string[];
@@ -124,6 +131,7 @@ export interface AgentSearchListItemType {
 export type SearchAgentsResponseBody = {
   agents: (AgentSearchListItemType & {
     editors: Pick<UserType, "sId" | "fullName" | "image">[];
+    tags: Pick<TagType, "sId" | "name" | "kind">[];
   })[];
   total: number;
   hasMore: boolean;

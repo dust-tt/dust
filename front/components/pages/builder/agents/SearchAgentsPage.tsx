@@ -1,10 +1,7 @@
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
-import {
-  AGENT_SEARCH_NAME_COLUMN_WIDTH,
-  AgentSearchTable,
-} from "@app/components/assistant/manager/AgentSearchTable";
+import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
 import {
   useSetContentWidth,
   useSetPageTitle,
@@ -265,7 +262,7 @@ export function SearchAgentsPage() {
           }
           noTopPadding
         />
-        <div className={AGENT_SEARCH_NAME_COLUMN_WIDTH}>
+        <div className="w-full">
           <label htmlFor="agent-search" className="sr-only">
             Search agents
           </label>

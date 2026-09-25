@@ -8,6 +8,7 @@ import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_sea
 import type { MembershipRoleType } from "@app/types/memberships";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import assert from "assert";
 import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -96,6 +97,13 @@ async function setup({
     name: agentConfiguration.name,
     description: "Writes the weekly report",
     pictureUrl: agentConfiguration.pictureUrl,
+    model: {
+      providerId: "anthropic",
+      modelId: "claude-sonnet-5",
+      reasoningEffort: "medium",
+    },
+    feedbacks: { up: 4, down: 1 },
+    tags: [],
     requestedSpaceIds: [],
     tagIds: [],
     editorIds: [sId],
@@ -117,7 +125,12 @@ async function setup({
   };
   const search = vi
     .fn<() => Promise<SearchAgentsResponseBody>>()
-    .mockResolvedValue({ agents: [agent], total: 1, hasMore: false });
+    .mockResolvedValue({
+      agents: [agent],
+      total: 1,
+      hasMore: false,
+      facets: {},
+    });
   const fetcherWithBody = vi.fn(async () => search());
   const fetcher = vi.fn(async (url: string) => {
     if (url.endsWith(`/agent_configurations/${agent.sId}`)) {
@@ -188,6 +201,20 @@ describe("search-backed Manage Agents", () => {
     expect(
       await screen.findByText(`Details of ${agent.sId}`)
     ).toBeInTheDocument();
+    for (const header of [
+      "Name",
+      "Model",
+      "Access",
+      "Editors",
+      "Tags",
+      "Usage",
+      "Feedback",
+      "Last edited",
+    ]) {
+      expect(
+        screen.getByRole("columnheader", { name: header })
+      ).toBeInTheDocument();
+    }
     expect(fetchedUrls(fetcher)).not.toContainEqual(
       expect.stringContaining(`/agent_configurations/${agent.sId}`)
     );
@@ -299,9 +326,11 @@ describe("search-backed Manage Agents", () => {
       expect.stringContaining(`/agent_configurations/${agent.sId}`)
     );
 
-    const [moreButton] = screen
+    const moreButton = screen
       .getAllByRole("button")
-      .filter((button) => button.getAttribute("aria-haspopup") === "menu");
+      .filter((button) => button.getAttribute("aria-haspopup") === "menu")
+      .at(-1);
+    assert(moreButton);
     await userEvent.click(moreButton);
 
     expect(
@@ -324,7 +353,12 @@ describe("search-backed Manage Agents", () => {
 
   it("keeps the selection across pages and offers batch actions", async () => {
     const { agent, search, fetcherWithBody, mount } = await setup();
-    search.mockResolvedValueOnce({ agents: [agent], total: 30, hasMore: true });
+    search.mockResolvedValueOnce({
+      agents: [agent],
+      total: 30,
+      hasMore: true,
+      facets: {},
+    });
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
@@ -341,6 +375,7 @@ describe("search-backed Manage Agents", () => {
       agents: [{ ...agent, sId: "second", name: "Second page" }],
       total: 30,
       hasMore: false,
+      facets: {},
     });
     await userEvent.click(screen.getByRole("button", { name: "2" }));
     await screen.findByRole("button", { name: /Second page/ });
@@ -372,6 +407,7 @@ describe("search-backed Manage Agents", () => {
       ],
       total: 3,
       hasMore: false,
+      facets: {},
     });
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
