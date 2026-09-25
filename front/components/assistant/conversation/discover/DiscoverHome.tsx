@@ -15,6 +15,7 @@ import {
   trackDiscoverySuggestionClick,
   trackDiscoverySuggestionView,
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
+import { getSkillIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useDiscoveryFeatured,
@@ -32,6 +33,7 @@ import {
   ChevronLeft,
   ChevronRight,
   cn,
+  EmptyCTA,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -141,16 +143,23 @@ export function DiscoverHome({
   const onUse = (item: CatalogItem) =>
     item.kind === "agent" ? onAgentClick(item.agent) : onSkillClick(item.skill);
 
+  const isFeaturedLoadingAll = isFeaturedLoading || isCatalogLoading;
+  const isFeaturedHidden =
+    !onPin && !isFeaturedLoadingAll && featured.length === 0;
+
   return (
     <>
-      <FeaturedCarousel
-        items={featured}
-        isLoading={isFeaturedLoading || isCatalogLoading}
-        isRefreshing={isCatalogRefreshing}
-        onUse={onUse}
-      />
+      {!isFeaturedHidden && (
+        <FeaturedCarousel
+          items={featured}
+          isLoading={isFeaturedLoadingAll}
+          isRefreshing={isCatalogRefreshing}
+          onUse={onUse}
+        />
+      )}
       <DiscoverSection
         title="Agent & Skill for you"
+        emptyMessage="Recommendations will show up here as you chat with agents and use skills."
         section="for_you"
         items={forYou}
         isLoading={isForYouLoading || isCatalogLoading}
@@ -162,6 +171,7 @@ export function DiscoverHome({
       />
       <DiscoverSection
         title="Trending in the workspace"
+        emptyMessage="Trending picks will fill in as usage grows across the workspace."
         section="trending"
         items={trending}
         isLoading={isTrendingLoading || isCatalogLoading}
@@ -290,10 +300,19 @@ function FeaturedCarousel({
             />
           ))}
         </div>
-        {isLoading && (
+        {isLoading ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <Spinner />
           </div>
+        ) : (
+          items.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center px-6">
+              <p className="copy-sm text-center text-muted-foreground">
+                Nothing featured yet. Pin agents and skills from the list to
+                show them here.
+              </p>
+            </div>
+          )
         )}
       </div>
     </section>
@@ -302,6 +321,7 @@ function FeaturedCarousel({
 
 interface DiscoverSectionProps {
   title: string;
+  emptyMessage: string;
   section: DiscoverySuggestionSection;
   items: CatalogItem[];
   isLoading: boolean;
@@ -314,6 +334,7 @@ interface DiscoverSectionProps {
 
 function DiscoverSection({
   title,
+  emptyMessage,
   section,
   items,
   isLoading,
@@ -341,21 +362,31 @@ function DiscoverSection({
     <section className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center justify-between">
         <SectionTitle title={title} isRefreshing={isRefreshing} />
-        <Button
-          variant="ghost"
-          size="xs"
-          label="Find more"
-          onClick={onFindMore}
-        />
+        {!isLoading && items.length > 0 && (
+          <Button
+            variant="ghost"
+            size="xs"
+            label="Find more"
+            onClick={onFindMore}
+          />
+        )}
       </div>
       {isLoading ? (
         <div className="flex justify-center py-6">
           <Spinner />
         </div>
       ) : items.length === 0 ? (
-        <p className="copy-sm py-6 text-muted-foreground">
-          Nothing to show yet.
-        </p>
+        <EmptyCTA
+          message={emptyMessage}
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              label="Browse agents & skills"
+              onClick={onFindMore}
+            />
+          }
+        />
       ) : (
         <div className="flex flex-col">
           {items.map((item) => (
@@ -412,7 +443,12 @@ function FeaturedCard({ item, onClick }: FeaturedCardProps) {
             />
           </>
         ) : (
-          <SkillCatalogAvatar skill={item.skill} size="md" />
+          <>
+            <SkillBackdrop skill={item.skill} />
+            <span className="relative">
+              <SkillCatalogAvatar skill={item.skill} size="md" />
+            </span>
+          </>
         )}
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 px-4 py-3">
@@ -427,5 +463,21 @@ function FeaturedCard({ item, onClick }: FeaturedCardProps) {
         </span>
       </div>
     </button>
+  );
+}
+
+interface SkillBackdropProps {
+  skill: DiscoverSkill;
+}
+
+function SkillBackdrop({ skill }: SkillBackdropProps) {
+  const SkillIcon = useMemo(() => getSkillIcon(skill.icon), [skill.icon]);
+  return (
+    <span
+      aria-hidden
+      className="absolute inset-0 flex items-center justify-center"
+    >
+      <SkillIcon className="h-full w-full scale-150 opacity-30 blur-xl" />
+    </span>
   );
 }
