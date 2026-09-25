@@ -8,6 +8,10 @@ import {
 } from "@app/lib/metronome/seat_types";
 import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import {
+  deleteGrantsForResources,
+  listRegularAutoGroupIdsForResources,
+} from "@app/lib/resources/group_permission_cleanup";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -2385,25 +2389,17 @@ export class GroupResource extends BaseResource<GroupModel> {
       return await withTransaction(async (t) => {
         const workspaceId = auth.getNonNullableWorkspace().id;
         const deletedGroupIds = [...new Set(groups.map((group) => group.id))];
-        // GroupPermissionResource depends on GroupResource; load it after module initialization.
-        // biome-ignore lint/suspicious/noImportCycles: This dynamic import avoids a runtime cycle.
-        const { GroupPermissionResource } = await import(
-          "@app/lib/resources/group_permission_resource"
+        const managerGroupIds = await listRegularAutoGroupIdsForResources(
+          auth,
+          {
+            resourceType: "group",
+            resourceIds: deletedGroupIds,
+            transaction: t,
+          }
         );
-        const managerGroups =
-          await GroupPermissionResource.listRegularAutoGroupsForResources(
-            auth,
-            {
-              resourceType: "group",
-              resourceIds: deletedGroupIds,
-              transaction: t,
-            }
-          );
-        const groupIds = [
-          ...new Set([...deletedGroupIds, ...managerGroups.map((g) => g.id)]),
-        ];
+        const groupIds = [...new Set([...deletedGroupIds, ...managerGroupIds])];
 
-        await GroupPermissionResource.deleteAllForResources(auth, {
+        await deleteGrantsForResources(auth, {
           resourceType: "group",
           resourceIds: deletedGroupIds,
           transaction: t,

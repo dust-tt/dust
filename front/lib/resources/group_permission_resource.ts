@@ -2,8 +2,14 @@ import type { PokeGroupPermissionType } from "@app/lib/api/poke/group_permission
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import {
+  deleteGrantsForResources,
+  GROUP_PERMISSION_CACHE_SCHEMA_VERSION,
+  groupPermissionCacheKey,
+  invalidateGroupGrantsAfterCommit,
+  listGroupModelIdsForGrants,
+} from "@app/lib/resources/group_permission_cleanup";
 import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
-// biome-ignore lint/suspicious/noImportCycles: GroupResource loads this module dynamically after initialization.
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -56,14 +62,7 @@ export type GroupGrant = {
   resourceId: number;
 };
 
-// Bump to orphan hashes written under the previous field encoding.
-const CACHE_SCHEMA_VERSION = 2;
-
 type SerializedGrant = [GrantType, GroupPermissionResourceType, number];
-
-function cacheKey(workspaceModelId: ModelId): string {
-  return `group_permissions:v${CACHE_SCHEMA_VERSION}:ws:${workspaceModelId}`;
-}
 
 // One field per requested group, so a group with no grant caches as [] instead of missing forever.
 function encodeFields(
@@ -108,7 +107,8 @@ function decodeField(groupId: ModelId, value: string): GroupGrant[] {
 }
 
 /**
- * All writes to `group_permissions` go through this resource — never a raw model write elsewhere.
+ * Grant changes go through this resource. The cleanup module removes grants targeting deleted
+ * resources; GroupResource.batchDelete removes grants held by deleted groups.
  * This file covers instance-level grants and reads; wildcard / type-level writes (resourceId = -1,
  * "*") land through dedicated named methods in a follow-up so a defaulted -1 can never silently
  * grant a whole type.
@@ -198,8 +198,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       },
     ],
     inputSchema: z.object({ workspaceModelId: z.coerce.number() }),
-    buildKey: ({ workspaceModelId }) => cacheKey(workspaceModelId),
-    keyPattern: `group_permissions:v${CACHE_SCHEMA_VERSION}:ws:*`,
+    buildKey: ({ workspaceModelId }) =>
+      groupPermissionCacheKey(workspaceModelId),
+    keyPattern: `group_permissions:v${GROUP_PERMISSION_CACHE_SCHEMA_VERSION}:ws:*`,
   });
 
   constructor(
@@ -366,16 +367,14 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     if (resourceIds.length === 0) {
       return [];
     }
-
-    const grants = await GroupPermissionModel.findAll({
-      where: {
+    const groupIds = await listGroupModelIdsForGrants(
+      {
         workspaceId: auth.getNonNullableWorkspace().id,
         resourceType,
         resourceId: [...new Set(resourceIds)],
       },
-      transaction,
-    });
-    const groupIds = [...new Set(grants.map((grant) => grant.groupId))];
+      transaction
+    );
     if (groupIds.length === 0) {
       return [];
     }
@@ -754,7 +753,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     const uniqueGroupModelIds = [...new Set(groupModelIds)];
 
     try {
-      const key = cacheKey(workspace.id);
+      const key = groupPermissionCacheKey(workspace.id);
       const redis = await getRedisCacheClient({
         origin: "group_permissions_cache",
       });
@@ -807,34 +806,6 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
   }
 
-  private static async invalidateGroupGrants(
-    auth: Authenticator,
-    groupModelIds: ModelId[]
-  ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-    const statsDClient = statsDMetrics;
-    try {
-      const redis = await getRedisCacheClient({
-        origin: "group_permissions_cache",
-      });
-      await redis.hDel(cacheKey(workspace.id), groupModelIds.map(String));
-
-      statsDClient.increment("group_permissions_cache.invalidate", 1, [
-        "result:ok",
-      ]);
-    } catch (err) {
-      // A lost delete keeps revoked grants readable until the hash expires, the next mutation on
-      // those groups or a Poke flush.
-      logger.error(
-        { panic: true, err: normalizeError(err), workspaceId: workspace.id },
-        "group_permissions cache invalidation failed"
-      );
-      statsDClient.increment("group_permissions_cache.invalidate", 1, [
-        "result:error",
-      ]);
-    }
-  }
-
   // After commit only: inside the transaction a reader would refill the field from rows that are
   // not committed yet. Deletes rather than rewrites the fields: a rewrite that fails leaves
   // revoked grants readable, a delete that fails only costs the next reader a query.
@@ -843,13 +814,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     groupModelIds: ModelId[],
     transaction?: Transaction
   ): Promise<void> {
-    if (groupModelIds.length === 0) {
-      return;
-    }
-
-    await invalidateCacheAfterCommit(transaction, () =>
-      this.invalidateGroupGrants(auth, [...new Set(groupModelIds)])
-    );
+    await invalidateGroupGrantsAfterCommit(auth, groupModelIds, transaction);
   }
 
   // Teardown only: no group set worth reconstructing.
@@ -863,7 +828,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         const redis = await getRedisCacheClient({
           origin: "group_permissions_cache",
         });
-        await redis.del(cacheKey(workspaceModelId));
+        await redis.del(groupPermissionCacheKey(workspaceModelId));
       } catch (err) {
         logger.error(
           { panic: true, err: normalizeError(err), workspaceModelId },
@@ -907,51 +872,18 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       transaction?: Transaction;
     }
   ): Promise<number> {
-    const uniqueResourceIds = [...new Set(resourceIds)];
-    if (uniqueResourceIds.length === 0) {
-      return 0;
-    }
-    assert(
-      uniqueResourceIds.every(
-        (resourceId) => resourceId > 0 && resourceId !== WHOLE_TYPE_RESOURCE_ID
-      ),
-      "deleteAllForResources targets concrete resources; it must not clear type-wide grants."
-    );
-
-    const workspaceId = auth.getNonNullableWorkspace().id;
-    const groupModelIds = await this.listGroupModelIdsForGrants(
-      { workspaceId, resourceType, resourceId: uniqueResourceIds },
-      transaction
-    );
-    const deleted = await GroupPermissionModel.destroy({
-      where: {
-        workspaceId,
-        resourceType,
-        resourceId: uniqueResourceIds,
-      },
+    return deleteGrantsForResources(auth, {
+      resourceType,
+      resourceIds,
       transaction,
     });
-    await this.invalidateGroupGrantsAfterCommit(
-      auth,
-      groupModelIds,
-      transaction
-    );
-
-    return deleted;
   }
 
-  // Read before the delete: afterwards there is nothing left to attribute the refresh to.
   private static async listGroupModelIdsForGrants(
     where: WhereOptions<GroupPermissionModel>,
     transaction?: Transaction
   ): Promise<ModelId[]> {
-    const rows = await GroupPermissionModel.findAll({
-      attributes: ["groupId"],
-      where,
-      transaction,
-    });
-
-    return [...new Set(rows.map((row) => row.groupId))];
+    return listGroupModelIdsForGrants(where, transaction);
   }
 
   static async listForWorkspace(
