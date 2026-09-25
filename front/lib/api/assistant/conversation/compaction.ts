@@ -5,6 +5,7 @@ import {
 import { createCompactionMessage } from "@app/lib/api/assistant/conversation/messages";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { CompactionMessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -15,6 +16,8 @@ import type {
   CompactionMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { CUSTOM_MODEL_FEATURE_FLAG } from "@app/types/assistant/models/custom_models";
+import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
@@ -44,6 +47,22 @@ export async function compactConversation(
     APIErrorWithContentfulStatusCode
   >
 > {
+  // Custom models only run in conversations with the global agents bound to them, which are
+  // gated on this flag.
+  const featureFlags = await getFeatureFlags(auth);
+  const isUnavailableCustomModel =
+    !isStaticModelId(model.modelId) &&
+    !featureFlags.includes(CUSTOM_MODEL_FEATURE_FLAG);
+  if (isUnavailableCustomModel) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The model is not available.",
+      },
+    });
+  }
+
   const conversationResource = await ConversationResource.fetchById(
     auth,
     conversation.sId
