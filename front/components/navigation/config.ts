@@ -252,11 +252,13 @@ export const subNavigationAdmin = ({
   featureFlags,
   subscription,
   hasPermission,
+  canManageUsage = false,
 }: {
   owner: WorkspaceType;
   currentRoute: string;
   featureFlags: WhitelistableFeature[];
   subscription: SubscriptionType;
+  canManageUsage?: boolean;
   hasPermission: (
     verb: GrantVerb,
     resourceType: ConcreteResourceType
@@ -269,7 +271,12 @@ export const subNavigationAdmin = ({
 
   // Admins and managers see the admin sidebar. Each item is then individually enabled/disabled
   // based on permission.
-  if (!isManager(owner) && !canAdminBilling && !canAdminSecurity) {
+  if (
+    !isManager(owner) &&
+    !canAdminBilling &&
+    !canAdminSecurity &&
+    !canManageUsage
+  ) {
     return nav;
   }
 
@@ -325,7 +332,7 @@ export const subNavigationAdmin = ({
         icon: PieChart01,
         href: `/w/${owner.sId}/usage`,
         current: isCurrent("usage"),
-        disabled: !hasManagerRole,
+        disabled: !hasManagerRole && !canManageUsage,
       },
       {
         id: "model_providers",

@@ -1170,6 +1170,7 @@ interface MembersUsageTableProps {
   seatChangePendingMemberIds: ReadonlySet<string>;
   isSeatBased: boolean;
   showSpendLimit: boolean;
+  canEditSpendLimit?: (member: MemberUsageType) => boolean;
   // Disables every row action
   readOnly?: boolean;
   // Seat and credits usage columns plus the seat row actions. Off for
@@ -1220,6 +1221,7 @@ export function MembersUsageTable({
   seatChangePendingMemberIds,
   isSeatBased,
   showSpendLimit,
+  canEditSpendLimit = () => true,
   readOnly = false,
   showSeatAndCredits = true,
   showSeatActions = true,
@@ -1329,7 +1331,7 @@ export function MembersUsageTable({
                   {
                     kind: "item" as const,
                     label: "Edit spend limit",
-                    disabled: readOnly,
+                    disabled: readOnly || !canEditSpendLimit(m),
                     onClick: () => onEditSpendLimit(m),
                   },
                 ]
@@ -1381,6 +1383,7 @@ export function MembersUsageTable({
       seatChangePendingMemberIds,
       isSeatBased,
       showSpendLimit,
+      canEditSpendLimit,
       showModelTiersColumn,
       userModelTierSelectionByUserId,
       userAllowedModelTiersByUserId,
