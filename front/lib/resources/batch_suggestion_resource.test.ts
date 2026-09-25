@@ -39,11 +39,11 @@ describe("BatchSuggestionResource", () => {
     const agentSuggestion = await AgentSuggestionFactory.createInstructions(
       auth,
       agentConfiguration,
-      { source: "conversational", batchId: batch.id }
+      { source: "conversational", batchModelId: batch.id }
     );
     const skillSuggestion = await SkillSuggestionFactory.create(auth, skill, {
       source: "conversational",
-      batchId: batch.id,
+      batchModelId: batch.id,
     });
 
     return { batch, agentSuggestion, skillSuggestion };
@@ -138,7 +138,7 @@ describe("BatchSuggestionResource", () => {
     await otherAuth.refresh();
     await SkillSuggestionFactory.create(otherAuth, otherSkill, {
       source: "conversational",
-      batchId: batch.id,
+      batchModelId: batch.id,
     });
 
     // Neither user can access every member.
@@ -179,7 +179,7 @@ describe("BatchSuggestionResource", () => {
     const agentSuggestion = await AgentSuggestionFactory.createInstructions(
       authenticator,
       agentConfiguration,
-      { source: "conversational", batchId: batch.id }
+      { source: "conversational", batchModelId: batch.id }
     );
 
     const deleteSuggestion = await agentSuggestion.delete(authenticator);

@@ -30,11 +30,11 @@ async function setup({ withFlag = true }: { withFlag?: boolean } = {}) {
   const agentSuggestion = await AgentSuggestionFactory.createInstructions(
     auth,
     agentConfiguration,
-    { source: "conversational", batchId: batch.id }
+    { source: "conversational", batchModelId: batch.id }
   );
   const skillSuggestion = await SkillSuggestionFactory.create(auth, skill, {
     source: "conversational",
-    batchId: batch.id,
+    batchModelId: batch.id,
   });
 
   return { workspace, auth, batch, agentSuggestion, skillSuggestion };
@@ -88,7 +88,7 @@ describe("GET /api/w/:wId/assistant/suggestion_batches", () => {
       await BatchSuggestionFactory.createEmpty(otherAuth);
     await SkillSuggestionFactory.create(otherAuth, otherSkill, {
       source: "conversational",
-      batchId: inaccessibleBatch.id,
+      batchModelId: inaccessibleBatch.id,
     });
 
     const response = await get(workspace, [batch.sId, inaccessibleBatch.sId]);

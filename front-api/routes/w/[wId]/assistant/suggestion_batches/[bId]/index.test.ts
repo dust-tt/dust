@@ -24,11 +24,11 @@ async function setup() {
   const batch = await BatchSuggestionFactory.createEmpty(auth);
   await AgentSuggestionFactory.createInstructions(auth, agentConfiguration, {
     source: "conversational",
-    batchId: batch.id,
+    batchModelId: batch.id,
   });
   await SkillSuggestionFactory.create(auth, skill, {
     source: "conversational",
-    batchId: batch.id,
+    batchModelId: batch.id,
   });
 
   return { workspace, auth, batch };
