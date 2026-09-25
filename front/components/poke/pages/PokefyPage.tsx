@@ -42,9 +42,7 @@ export function PokefyPage() {
       } else {
         setError("No poke page available for this URL");
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (err) {
+    } catch {
       setError("Invalid URL format");
     }
   };
