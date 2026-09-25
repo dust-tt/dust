@@ -1,3 +1,5 @@
+import appConfig from "@app/lib/api/config";
+import { getWorkspaceEgressPolicyPrefix } from "@app/lib/api/sandbox/egress_policy";
 import { getBucketInstance } from "@app/lib/file_storage";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
@@ -133,6 +135,92 @@ export async function startTransferFrontPrivateFiles({
       jobName: transferResult.value,
     },
     "[Storage Transfer] Private files transfer job created successfully."
+  );
+
+  return transferResult.value;
+}
+
+/**
+ * @cc [owner:smb2268,label:backend] skip-empty-egress-policy-transfers
+ * An empty source prefix MUST return null without creating an STS job.
+ * Listing failures MUST fail the activity.
+ */
+/**
+ * @cc [owner:smb2268,label:backend] egress-policy-paths-preserved
+ * Policy objects MUST land at the same `w/{wId}/...` path in the destination
+ * bucket as in the source bucket.
+ */
+export async function startTransferFrontEgressPolicyFiles({
+  destBucket,
+  destCell,
+  sourceCell,
+  workspaceId,
+}: {
+  destBucket: string;
+  destCell: CellType;
+  sourceCell: CellType;
+  workspaceId: string;
+}): Promise<string | null> {
+  const sourceBucket = appConfig.getEgressPolicyBucket();
+  const prefix = getWorkspaceEgressPolicyPrefix(workspaceId);
+
+  const localLogger = logger.child({
+    destBucket,
+    destCell,
+    path: prefix,
+    sourceCell,
+    workspaceId,
+  });
+
+  // Most workspaces have no egress policy files; skip the job (and its
+  // one-minute polling floor) rather than transferring an empty prefix.
+  const files = await getBucketInstance(sourceBucket, {
+    useServiceAccount: isDevelopment(),
+  }).getFiles({
+    prefix,
+    maxResults: 1,
+  });
+
+  if (files.length === 0) {
+    localLogger.info(
+      "[Storage Transfer] Skipping empty egress policy files transfer."
+    );
+    return null;
+  }
+
+  localLogger.info(
+    "[Storage Transfer] Initiating front egress policy files transfer."
+  );
+
+  const storageTransferService = new StorageTransferService();
+
+  const transferResult = await storageTransferService.createTransferJob({
+    destBucket,
+    destPath: prefix,
+    destCell,
+    sourceBucket,
+    sourcePath: prefix,
+    transferProjectId: config.getGcsTransferProjectId(),
+    sourceCell,
+    workspaceId,
+  });
+
+  if (transferResult.isErr()) {
+    localLogger.error(
+      {
+        error: transferResult.error,
+      },
+      "[Storage Transfer] Failed to create egress policy files transfer job."
+    );
+
+    throw transferResult.error;
+  }
+
+  localLogger.info(
+    {
+      jobName: transferResult.value,
+    },
+    "[Storage Transfer] Egress policy files transfer job created successfully."
   );
 
   return transferResult.value;
