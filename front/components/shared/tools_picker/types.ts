@@ -2,7 +2,7 @@ import { additionalConfigurationSchema } from "@app/lib/actions/additional_confi
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import { ReasoningEffortSchema } from "@app/types/assistant/models/reasoning";
 import type {
   DataSourceViewContentNode,
   DataSourceViewType,
@@ -17,7 +17,7 @@ export type CapabilityFilterType = "all" | "skills" | "tools";
 
 const modelIdSchema = z.enum(MODEL_IDS);
 const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
-const reasoningEffortSchema = z.enum(ORDERED_REASONING_EFFORTS);
+const reasoningEffortSchema = ReasoningEffortSchema;
 
 const supportedModelSchema = z.object({
   modelId: modelIdSchema,

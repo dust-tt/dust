@@ -1,6 +1,6 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
-import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import { ReasoningEffortSchema } from "@app/types/assistant/models/reasoning";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewType } from "@app/types/data_source_view";
@@ -78,7 +78,7 @@ const InstructionsSuggestionSchema = z.object({
 
 const ModelSuggestionSchema = z.object({
   modelId: z.enum(MODEL_IDS),
-  reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
+  reasoningEffort: ReasoningEffortSchema.optional(),
 });
 
 const CreateSuggestionSchema = z.object({
