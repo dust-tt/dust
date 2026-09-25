@@ -125,19 +125,16 @@ app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
       const sources = sourcesByTodoId.get(t.sId) ?? [];
       const { conversationId } = serializedTodo;
       let conversationSidebarStatus: ConversationDotStatus | null = null;
-      let conversationIsRunningAgentLoop: boolean = false;
       if (conversationId) {
         const listItem = listItemByConversationId.get(conversationId);
         conversationSidebarStatus = listItem
           ? getConversationDotStatus(listItem)
           : "idle";
-        conversationIsRunningAgentLoop = listItem?.isRunningAgentLoop ?? false;
       }
 
       return {
         ...serializedTodo,
         conversationSidebarStatus,
-        conversationIsRunningAgentLoop,
         sources: sources.map((s) => ({
           sourceType: s.sourceType,
           sourceId: s.sourceId,

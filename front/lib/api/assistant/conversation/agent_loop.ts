@@ -47,11 +47,6 @@ export const runAgentLoopWorkflow = async ({
           : agentMessage;
       }
 
-      await ConversationResource.setIsRunningAgentLoop(auth, {
-        conversation,
-        isRunningAgentLoop: true,
-      });
-
       void launchAgentLoopWorkflow({
         auth,
         agentLoopArgs: {

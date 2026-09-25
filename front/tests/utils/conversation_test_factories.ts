@@ -326,7 +326,6 @@ export function mockConversation(
     },
     visibility: "unlisted",
     content: messages,
-    isRunningAgentLoop: false,
     isParticipant: false,
   };
 }

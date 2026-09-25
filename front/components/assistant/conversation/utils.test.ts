@@ -13,7 +13,6 @@ function makeConversation(
     isParticipant: false,
     created: 1,
     hasError: false,
-    isRunningAgentLoop: false,
     lastReadMs: null,
     metadata: {},
     nextWakeupAt: null,

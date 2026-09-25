@@ -98,3 +98,14 @@ export function useRegisterAgentLoopStream({
     return registerStream(conversationId, streamId);
   }, [conversationId, enabled, registerStream, streamId]);
 }
+
+export function useOngoingAgentLoopConversationId(
+  conversationIds: readonly string[]
+): string | null {
+  const { conversationStreamIds } = useContext(AgentLoopStreamContext);
+  return (
+    conversationIds.find((conversationId) =>
+      conversationStreamIds.has(conversationId)
+    ) ?? null
+  );
+}

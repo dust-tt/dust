@@ -137,7 +137,6 @@ function createMockConversation(
     content,
     triggerId: null,
     metadata: {},
-    isRunningAgentLoop: false,
     isParticipant: false,
   };
 }

@@ -784,7 +784,6 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
       user: this.assignee,
       conversationId: this.conversationSId,
       conversationSidebarStatus: null,
-      conversationIsRunningAgentLoop: null,
       text: this.text,
       status: this.status,
       doneAt: this.doneAt,

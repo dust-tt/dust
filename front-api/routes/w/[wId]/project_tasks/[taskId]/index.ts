@@ -61,7 +61,6 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
 
   const serializedBase = taskRow.toJSON();
   let conversationSidebarStatus: ConversationDotStatus | null = null;
-  let conversationIsRunningAgentLoop: boolean = false;
   if (conversationId) {
     const listItemByConversationId =
       await ConversationResource.fetchListItemsBySIds(auth, [conversationId]);
@@ -69,7 +68,6 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     conversationSidebarStatus = listItem
       ? getConversationDotStatus(listItem)
       : "idle";
-    conversationIsRunningAgentLoop = listItem?.isRunningAgentLoop ?? false;
   }
 
   const sources = sourcesByTaskId.get(taskRow.sId) ?? [];
@@ -77,7 +75,6 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     ...serializedBase,
     conversationId,
     conversationSidebarStatus,
-    conversationIsRunningAgentLoop,
     sources: sources.map((s) => ({
       sourceType: s.sourceType,
       sourceId: s.sourceId,

@@ -54,7 +54,6 @@ const conversation: ConversationListItemType = {
   triggerId: null,
   unread: false,
   updated: 1,
-  isRunningAgentLoop: false,
   isParticipant: false,
 };
 

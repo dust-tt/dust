@@ -1,4 +1,5 @@
 import { ActivationRunningBanner } from "@app/components/activation/ActivationRunningBanner";
+import { useOngoingAgentLoopConversationId } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import { usePodConversations } from "@app/hooks/conversations";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -67,9 +68,13 @@ export function WorkAreaSection({
     podId,
     options: { disabled },
   });
+  const runningConversationId = useOngoingAgentLoopConversationId(
+    conversations.map((conversation) => conversation.id)
+  );
   const runningConversation =
-    conversations.find((conversation) => conversation.isRunningAgentLoop) ??
-    null;
+    conversations.find(
+      (conversation) => conversation.id === runningConversationId
+    ) ?? null;
 
   const { updateWorkArea } = useUpdateActivationWorkArea({
     workspaceId: owner.sId,

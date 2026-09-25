@@ -39,11 +39,6 @@ it("cancels the message when the agent becomes unreadable before launch", async 
       rank: 1,
     }
   );
-  await ConversationResource.setIsRunningAgentLoop(authorAuth, {
-    conversation,
-    isRunningAgentLoop: true,
-  });
-
   const otherUser = await UserFactory.basic();
   await MembershipFactory.associate(workspace, otherUser, { role: "user" });
   const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -73,6 +68,5 @@ it("cancels the message when the agent becomes unreadable before launch", async 
   assert(message.isOk());
   expect(message.value.agentMessage?.status).toBe("cancelled");
   expect(message.value.agentMessage?.completedAt).toBeInstanceOf(Date);
-  expect(updatedConversation.isRunningAgentLoop).toBe(false);
   expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
 });

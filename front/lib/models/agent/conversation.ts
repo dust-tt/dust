@@ -37,7 +37,6 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
   declare depth: CreationOptional<number>;
-  declare isRunningAgentLoop: CreationOptional<boolean>;
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   declare hasError: CreationOptional<boolean>;
   declare metadata: CreationOptional<ConversationMetadata>;
@@ -79,11 +78,6 @@ ConversationModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
-    },
-    isRunningAgentLoop: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
     },
     requestedSpaceIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),

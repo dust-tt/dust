@@ -164,7 +164,6 @@ const conversation: ConversationWithoutContentType = {
   actionRequired: false,
   created: 1,
   hasError: false,
-  isRunningAgentLoop: false,
   isParticipant: true,
   lastReadMs: null,
   metadata: {},

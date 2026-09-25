@@ -1,4 +1,7 @@
-import { useIsAgentLoopStreaming } from "@app/components/assistant/conversation/AgentLoopStreamContext";
+import {
+  useIsAgentLoopStreaming,
+  useOngoingAgentLoopConversationId,
+} from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import { AgentLoopStreamProvider } from "@app/components/assistant/conversation/AgentLoopStreamProvider";
 import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
@@ -21,6 +24,16 @@ const owner = LightWorkspaceFactory.build({ sId: "w_1" });
 
 function StreamIndicator() {
   return useIsAgentLoopStreaming("conv_1") ? "active" : "inactive";
+}
+
+interface OngoingConversationProps {
+  conversationIds: string[];
+}
+
+function OngoingConversation({ conversationIds }: OngoingConversationProps) {
+  const conversationId =
+    useOngoingAgentLoopConversationId(conversationIds) ?? "none";
+  return <div data-testid="ongoing-conversation">{conversationId}</div>;
 }
 
 describe("AgentLoopStreamProvider", () => {
@@ -119,5 +132,25 @@ describe("AgentLoopStreamProvider", () => {
     );
 
     expect(screen.getByText("active")).toBeInTheDocument();
+  });
+
+  it("exposes the first matching ongoing conversation", () => {
+    mockUseOngoingAgentLoops.mockReturnValue({
+      ongoingAgentLoops: [
+        { conversationId: "conv_2", messageId: "msg_2" },
+        { conversationId: "conv_3", messageId: "msg_3" },
+      ],
+      refreshOngoingAgentLoops: mockRefreshOngoingAgentLoops,
+    });
+
+    const view = render(
+      <AgentLoopStreamProvider owner={owner}>
+        <OngoingConversation conversationIds={["conv_1", "conv_2", "conv_3"]} />
+      </AgentLoopStreamProvider>
+    );
+
+    expect(view.getByTestId("ongoing-conversation")).toHaveTextContent(
+      "conv_2"
+    );
   });
 });

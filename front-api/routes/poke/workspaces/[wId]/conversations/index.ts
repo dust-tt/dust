@@ -117,7 +117,6 @@ app.get(
         requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
         spaceId: c.space?.sId ?? null,
         metadata: c.metadata,
-        isRunningAgentLoop: c.isRunningAgentLoop,
         isParticipant: false,
       }));
     } else {
