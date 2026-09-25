@@ -8,8 +8,7 @@ import type {
 } from "@app/types/poke/plugins";
 import { Button, cn } from "@dust-tt/sparkle";
 import { Clock, User } from "lucide-react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useState } from "react";
+import { useState } from "react";
 
 interface PluginRunsListProps {
   pluginResourceTarget: PluginResourceTarget;

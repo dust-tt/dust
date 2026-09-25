@@ -17,8 +17,7 @@ import {
   InfoCircle,
   Spinner,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
 interface ProjectMessageProps {

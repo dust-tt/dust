@@ -2,8 +2,7 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { ActionCard, Clock, SearchInput } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 interface TriggerSelectionPageContentProps {
   onScheduleSelect: () => void;

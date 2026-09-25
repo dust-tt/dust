@@ -25,8 +25,7 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Button, ContentMessage } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 interface ToolSetupCardProps {
   toolName: string;

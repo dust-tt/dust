@@ -39,14 +39,7 @@ import {
   Plus,
   Tooltip,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;

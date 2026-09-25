@@ -2,8 +2,6 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { AlertCircle, ContentMessage } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 
 interface UnsupportedContentRendererProps {
   contentType: string;

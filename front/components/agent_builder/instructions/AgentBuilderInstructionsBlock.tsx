@@ -15,8 +15,7 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { format } from "date-fns/format";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useState } from "react";
+import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 const DEFAULT_INSTRUCTIONS_HISTORY_LIMIT = 50;

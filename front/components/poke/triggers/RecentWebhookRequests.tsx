@@ -16,8 +16,7 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useState } from "react";
+import { useState } from "react";
 
 const PAGE_SIZE = 15;
 

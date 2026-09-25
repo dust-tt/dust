@@ -38,8 +38,7 @@ import {
   SearchInput,
   Separator,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type DataSourceBuilderSelectorProps = {
   viewType: ContentNodesViewType;

@@ -24,8 +24,7 @@ import {
   Zap,
 } from "@dust-tt/sparkle";
 import uniqBy from "lodash/uniqBy";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 interface AgentBuilderTriggersBlockProps {

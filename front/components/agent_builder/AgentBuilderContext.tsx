@@ -7,8 +7,7 @@ import type { FetchAgentTemplateResponse } from "@app/lib/resources/template_res
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 
 type AgentBuilderContextType = {
   owner: WorkspaceType;

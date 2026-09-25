@@ -4,8 +4,7 @@ import {
   trackEvent,
 } from "@app/lib/tracking";
 import { Button, MessageChatSquare } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useState } from "react";
+import { useState } from "react";
 import { visit } from "unist-util-visit";
 
 interface QuickReplyBlockProps {

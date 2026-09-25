@@ -40,8 +40,6 @@ import {
   VolumeMax,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 
 export type AttachmentCitationIconSize = "sm" | "md" | "lg";
 

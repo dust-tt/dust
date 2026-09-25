@@ -25,8 +25,7 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useState } from "react";
+import { useState } from "react";
 
 export type PriceTableDisplay = "landing" | "subscribe";
 

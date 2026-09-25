@@ -31,8 +31,7 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FormProvider, useController, useForm } from "react-hook-form";
 import { z } from "zod";
 

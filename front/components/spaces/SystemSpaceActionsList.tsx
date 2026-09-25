@@ -6,8 +6,6 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import * as React from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
 interface SpaceActionsListProps {

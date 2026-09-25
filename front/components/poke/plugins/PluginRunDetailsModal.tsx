@@ -15,8 +15,6 @@ import {
   DialogTitle,
 } from "@dust-tt/sparkle";
 import { Clock, User } from "lucide-react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 
 interface PluginRunDetailsModalProps {
   onClose: () => void;

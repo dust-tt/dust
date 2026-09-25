@@ -3,8 +3,7 @@ import { useSpaces } from "@app/lib/swr/spaces";
 import type { EnrichedSpaceType, PodType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { createContext, useContext, useEffect, useMemo } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 
 interface SpacesContextType {
   owner: LightWorkspaceType;

@@ -9,14 +9,7 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const RENAME_DIALOG_TITLES: Record<RenameMountItem["kind"], string> = {
   file: "Rename file",

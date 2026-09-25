@@ -29,8 +29,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ChangeEvent } from "react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Helper to check if a file should be treated as a table based on its MIME type
 function isDelimitedFile(file: File): boolean {
