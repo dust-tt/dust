@@ -1,9 +1,5 @@
 import { SKIP, visit } from "unist-util-visit";
 
-/**
- * Builds a remark plugin that turns `:<name>[]{sId=xxx kind=yyy <targetAttribute>=zzz}` into a
- * custom `<name>` element whose properties are `suggestionId`, `kind` and `<targetAttribute>`.
- */
 export function makeSuggestionDirective(name: string, targetAttribute: string) {
   const toSuggestionProperties = (attributes: Record<string, string>) => ({
     suggestionId: attributes.sId,

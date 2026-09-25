@@ -1,11 +1,3 @@
-/**
- * Markdown directive plugin for conversational agent suggestions.
- *
- * `suggest_agent_*` tools (building_agents_and_skills MCP) record a pending suggestion and emit
- * `:agent_suggestion[]{sId=xxx kind=yyy agentId=zzz}`. The directive carries identifiers only: the
- * card below resolves the suggestion and the agent it targets through their SWR hooks.
- */
-
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { getAgentSuggestionLabels } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { ConversationalSuggestionReviewCard } from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
