@@ -9,7 +9,6 @@ import type { PutGroupSpendLimitResponseBody } from "@app/types/api/groups/spend
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -80,10 +79,19 @@ const app = workspaceApp();
 app.put(
   "/",
   validate("param", ParamsSchema),
-  ensureIsManager(),
   validate("json", UpdateGroupSpendLimitBodySchema),
   async (ctx): HandlerResult<PutGroupSpendLimitResponseBody> => {
     const auth = ctx.get("auth");
+    if (!auth.isManager() && !(await auth.hasFeatureFlag("group_management"))) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "Only workspace managers and group managers can change group limits.",
+        },
+      });
+    }
 
     if (!auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled) {
       return apiError(ctx, {

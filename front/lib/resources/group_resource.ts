@@ -2341,9 +2341,8 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // Pass null to clear the cap.
-  // Authorization is handled the same way as user and workspace spend limits:
-  // by the route (`ensureIsManager`), and `setGroupSpendLimit` validates the
-  // group kind. This is a plain setter, mirroring `updatePoolCapOverride`.
+  // `setGroupSpendLimit` checks authorization and the group kind before calling
+  // this plain setter, mirroring `updatePoolCapOverride`.
   async updatePoolCap(
     poolCapAwuCredits: number | null
   ): Promise<Result<undefined, Error>> {

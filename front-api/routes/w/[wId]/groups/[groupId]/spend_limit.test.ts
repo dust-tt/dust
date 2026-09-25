@@ -1,4 +1,7 @@
+import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
@@ -38,6 +41,44 @@ function putLimit(wId: string, groupId: string, body: Record<string, unknown>) {
 
 describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
   describe("auth", () => {
+    it("lets a group manager change only a managed group's cap when enabled", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const managed = await makeProvisionedGroup(workspace);
+      const other = await GroupResource.makeNew({
+        name: "Other",
+        workspaceId: workspace.id,
+        kind: "provisioned",
+        workOSGroupId: "fake-other",
+      });
+      const { user: delegate } = await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "user",
+        workspace,
+      });
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const grant = await GroupPermissionResource.grantToUser(adminAuth, {
+        user: delegate.toJSON(),
+        grantType: "group_manager",
+        resourceType: "group",
+        resourceId: managed.id,
+      });
+      expect(grant.isOk()).toBe(true);
+      const limit = { kind: "limited", awuCredits: 1500 };
+
+      expect((await putLimit(workspace.sId, managed.sId, limit)).status).toBe(
+        403
+      );
+      await FeatureFlagFactory.basic(adminAuth, "group_management");
+      expect((await putLimit(workspace.sId, other.sId, limit)).status).toBe(
+        403
+      );
+      expect((await putLimit(workspace.sId, managed.sId, limit)).status).toBe(
+        200
+      );
+    });
+
     it("returns 403 when caller is neither an admin nor a manager", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const group = await makeProvisionedGroup(workspace);
