@@ -19,6 +19,7 @@ import {
   SKILL_EDITOR_FILTER_OPTIONS,
   SKILL_FILTER_CATEGORIES,
   SKILL_FILTER_CATEGORY_LABEL,
+  toSkillSearchFilters,
 } from "@app/components/skills/skillFilter";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
@@ -35,7 +36,7 @@ import {
 import { useState } from "react";
 
 // The skill search endpoint accepts at most 100 MCP server view IDs.
-const MAX_TOOL_FILTER_SELECTIONS = 100;
+const MAX_MCP_SERVER_VIEW_IDS = 100;
 
 interface SkillFilterPanelProps {
   owner: LightWorkspaceType;
@@ -77,16 +78,22 @@ export function SkillFilterPanel({
   const categoryOptions: Record<SkillFilterCategory, SkillFilterOption[]> = {
     availability: SKILL_AVAILABILITY_FILTER_OPTIONS,
     tool: mcpServers
-      .flatMap((server) =>
-        server.views.map(
-          (view): SkillFilterOption => ({
-            category: "tool",
-            id: view.sId,
-            name: getMcpServerViewDisplayName({ ...view, server }),
-            icon: server.icon,
-            disabled: false,
-          })
-        )
+      .flatMap((server): SkillFilterOption[] =>
+        server.views.length > 0
+          ? [
+              {
+                category: "tool",
+                id: server.sId,
+                name: getMcpServerViewDisplayName({
+                  ...server.views[0],
+                  server,
+                }),
+                icon: server.icon,
+                mcpServerViewIds: server.views.map((view) => view.sId),
+                disabled: false,
+              },
+            ]
+          : []
       )
       .toSorted((a, b) => a.name.localeCompare(b.name)),
     editor: SKILL_EDITOR_FILTER_OPTIONS,
@@ -114,7 +121,8 @@ export function SkillFilterPanel({
   };
   const activeCategorySelectionCount = categorySelectionCounts[activeCategory];
   const hasTooManyTools =
-    categorySelectionCounts.tool > MAX_TOOL_FILTER_SELECTIONS;
+    (toSkillSearchFilters(draftFilter).mcpServerViewIds?.length ?? 0) >
+    MAX_MCP_SERVER_VIEW_IDS;
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -222,7 +230,7 @@ export function SkillFilterPanel({
         </div>
         {hasTooManyTools && (
           <div role="alert" className="px-4 py-2 text-sm text-warning">
-            Select up to {MAX_TOOL_FILTER_SELECTIONS} tools.
+            Too many tools selected.
           </div>
         )}
         <FilterFooter

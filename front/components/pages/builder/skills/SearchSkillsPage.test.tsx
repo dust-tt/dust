@@ -112,11 +112,18 @@ async function setup({
   const fetcherWithBody = vi.fn(async () => search());
   const mutation = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
   const serverView = MCPServerViewTypeFactory.build({ name: "Slack" });
+  const otherSpaceServerView = MCPServerViewTypeFactory.build({
+    name: "Slack",
+    spaceId: "sp_2",
+    server: serverView.server,
+  });
   const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith("/mcp")) {
       return {
         success: true,
-        servers: [{ ...serverView.server, views: [serverView] }],
+        servers: [
+          { ...serverView.server, views: [serverView, otherSpaceServerView] },
+        ],
       };
     }
     if (init?.method === "DELETE" || url.endsWith("/restore")) {
@@ -173,7 +180,7 @@ async function setup({
     fetcherWithBody,
     mutation,
     mount,
-    serverView,
+    mcpServerViewIds: [serverView.sId, otherSpaceServerView.sId],
   };
 }
 
@@ -298,7 +305,7 @@ describe("search-backed Manage Skills", () => {
   });
 
   it("applies filters together, keeps them across tabs, and clears the chips", async () => {
-    const { fetcher, fetcherWithBody, serverView, mount } = await setup();
+    const { fetcher, fetcherWithBody, mcpServerViewIds, mount } = await setup();
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
     const initialSearchCount = fetcherWithBody.mock.calls.length;
@@ -325,7 +332,7 @@ describe("search-backed Manage Skills", () => {
         expect.objectContaining({
           status: ["active"],
           availability: ["workspace_users", "users_and_agents"],
-          mcpServerViewIds: [serverView.sId],
+          mcpServerViewIds,
           editedByMe: true,
           cursor: null,
         }),
@@ -343,7 +350,7 @@ describe("search-backed Manage Skills", () => {
         expect.objectContaining({
           status: ["archived"],
           availability: ["workspace_users", "users_and_agents"],
-          mcpServerViewIds: [serverView.sId],
+          mcpServerViewIds,
           editedByMe: true,
         }),
         "POST",
@@ -358,7 +365,7 @@ describe("search-backed Manage Skills", () => {
         {
           query: "",
           status: ["archived"],
-          mcpServerViewIds: [serverView.sId],
+          mcpServerViewIds,
           editedByMe: true,
           sortBy: "usage",
           limit: 50,

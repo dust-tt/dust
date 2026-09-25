@@ -35,7 +35,11 @@ export const SKILL_FILTER_CATEGORY_SINGULAR_LABEL: Record<
 export type SkillFilterOption = FilterOptionBase &
   (
     | { category: "availability"; id: SkillAvailability }
-    | { category: "tool"; icon: MCPServerType["icon"] }
+    | {
+        category: "tool";
+        icon: MCPServerType["icon"];
+        mcpServerViewIds: string[];
+      }
     | { category: "editor"; id: "me" }
   );
 
@@ -63,7 +67,7 @@ export function toSkillSearchFilters(filter: SkillFilter): SkillSearchFilters {
     .map((option) => option.id);
   const mcpServerViewIds = options
     .filter((option) => option?.category === "tool")
-    .map((option) => option.id);
+    .flatMap((option) => option.mcpServerViewIds);
 
   return {
     ...(availability.length > 0 ? { availability } : {}),
