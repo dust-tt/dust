@@ -2,7 +2,6 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { validateInstructionEdits } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
 import type { Authenticator } from "@app/lib/auth";
 import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
@@ -12,10 +11,6 @@ import { hasSuggestionSelfConflict } from "@app/lib/reinforcement/skill_suggesti
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ModelIdType,
@@ -39,7 +34,7 @@ import type {
 
 export async function validateAgentNameChange(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentResource,
   { name }: { name: string }
 ): Promise<
   Result<
@@ -47,7 +42,7 @@ export async function validateAgentNameChange(
     DustError<"unauthorized" | "invalid_request_error" | "name_conflict">
   >
 > {
-  if (!agent.canEdit) {
+  if (!auth.can("write", agent)) {
     return new Err(
       new DustError("unauthorized", "Only editors of this agent can rename it.")
     );
@@ -116,13 +111,14 @@ async function validateAgentName(
 }
 
 export function validateAgentDescriptionChange(
-  agent: LightAgentConfigurationType,
+  auth: Authenticator,
+  agent: AgentResource,
   { description }: { description: string }
 ): Result<
   DescriptionSuggestionType,
   DustError<"unauthorized" | "invalid_request_error">
 > {
-  if (!agent.canEdit) {
+  if (!auth.can("write", agent)) {
     return new Err(
       new DustError(
         "unauthorized",
@@ -163,13 +159,14 @@ export function validateAgentDescriptionChange(
 }
 
 export function validateAgentPublishStateChange(
-  agent: LightAgentConfigurationType,
+  auth: Authenticator,
+  agent: AgentResource,
   { scope }: { scope: "hidden" | "visible" }
 ): Result<
   ScopeSuggestionType,
   DustError<"unauthorized" | "invalid_request_error">
 > {
-  if (!agent.canEdit) {
+  if (!auth.can("write", agent)) {
     return new Err(
       new DustError(
         "unauthorized",
@@ -207,13 +204,13 @@ export function validateAgentPublishStateChange(
  */
 export async function validateAgentModelChange(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentResource,
   {
     modelId,
     reasoningEffort,
   }: { modelId: ModelIdType; reasoningEffort?: ReasoningEffort }
 ): Promise<Result<ModelSuggestionType, MCPError>> {
-  if (!agent.canEdit && !auth.isAdmin()) {
+  if (!auth.can("write", agent) && !auth.isAdmin()) {
     return new Err(
       new MCPError(
         "Only editors can suggest changing a workspace agent's model."
@@ -257,9 +254,9 @@ export async function validateAgentModelChange(
 
 export function validateAgentDeletion(
   auth: Authenticator,
-  agent: LightAgentConfigurationType
+  agent: AgentResource
 ): Result<DeleteSuggestionType, MCPError> {
-  if (!agent.canEdit && !auth.isAdmin()) {
+  if (!auth.can("write", agent) && !auth.isAdmin()) {
     return new Err(
       new MCPError("Only editors can suggest deleting a workspace agent.")
     );
@@ -278,10 +275,10 @@ export function validateAgentDeletion(
  */
 export async function validateAgentInstructionsChange(
   auth: Authenticator,
-  agent: AgentConfigurationType,
+  agent: AgentResource,
   edits: InstructionSuggestionEditInput[]
 ): Promise<Result<InstructionSuggestionEditInput[], MCPError>> {
-  if (!agent.canEdit && !auth.isAdmin()) {
+  if (!auth.can("write", agent) && !auth.isAdmin()) {
     return new Err(
       new MCPError(
         "Only editors can suggest changing a workspace agent's instructions."
@@ -295,7 +292,17 @@ export async function validateAgentInstructionsChange(
     );
   }
 
-  if (!agent.instructionsHtml) {
+  if (!agent.isFull()) {
+    return new Err(
+      new MCPError(
+        "The instructions of this agent are not readable, so instruction edits cannot be " +
+          "suggested."
+      )
+    );
+  }
+
+  const { instructionsHtml } = agent.content;
+  if (!instructionsHtml) {
     return new Err(
       new MCPError(
         "This agent has no block-structured instructions, so instruction edits cannot be " +
@@ -305,7 +312,7 @@ export async function validateAgentInstructionsChange(
   }
 
   const unknownBlockIds = findUnknownTargetBlockIds(
-    agent.instructionsHtml,
+    instructionsHtml,
     edits.map((edit) => edit.targetBlockId)
   );
   if (unknownBlockIds.length > 0) {
@@ -338,10 +345,7 @@ export async function validateAgentInstructionsChange(
   }
 
   if (
-    hasSuggestionSelfConflict(
-      { instructionEdits: edits },
-      agent.instructionsHtml
-    )
+    hasSuggestionSelfConflict({ instructionEdits: edits }, instructionsHtml)
   ) {
     return new Err(
       new MCPError(
@@ -388,7 +392,7 @@ export type SingletonAgentSuggestionData = Extract<
  */
 export async function recordSingletonAgentSuggestions(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentResource,
   {
     data,
     analysis,
@@ -438,7 +442,7 @@ export async function recordSingletonAgentSuggestions(
 
 export async function recordSingletonAgentSuggestion(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentResource,
   {
     data,
     analysis,
@@ -488,19 +492,9 @@ export async function recordAgentCreationSuggestion(
     return new Err(new MCPError(pendingResult.error.message));
   }
 
-  const pendingAgent = await getAgentConfiguration(auth, {
-    agentId: pendingResult.value.sId,
-    variant: "light",
-  });
-  if (!pendingAgent) {
-    return new Err(
-      new MCPError("Failed to load the newly created pending agent.")
-    );
-  }
-
   const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
     auth,
-    pendingAgent,
+    pendingResult.value,
     {
       kind: "create",
       suggestion: create,
