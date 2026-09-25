@@ -27,7 +27,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -50,14 +50,32 @@ export function DiscoverPinDialog({
   item,
   onClose,
 }: DiscoverPinDialogProps) {
-  const { groups } = useGroups({ owner, kinds: USER_VISIBLE_GROUP_KINDS });
-  const audiences = [
-    ...groups.filter((g) => g.kind === "global"),
-    ...groups.filter((g) => g.kind !== "global"),
-  ];
+  const { groups, isGroupsLoading } = useGroups({
+    owner,
+    kinds: USER_VISIBLE_GROUP_KINDS,
+  });
+  const audiences = useMemo(
+    () => [
+      ...groups.filter((g) => g.kind === "global"),
+      ...groups.filter((g) => g.kind !== "global"),
+    ],
+    [groups]
+  );
   const [selectedGroup, setSelectedGroup] = useState<GroupType | null>(null);
+  const [audienceOpen, setAudienceOpen] = useState(false);
+  const [audienceQuery, setAudienceQuery] = useState("");
+  const [dialogEl, setDialogEl] = useState<HTMLDivElement | null>(null);
   const group = selectedGroup ?? audiences[0] ?? null;
   const [position, setPosition] = useState(0);
+  const filteredAudiences = useMemo(() => {
+    const query = audienceQuery.trim().toLowerCase();
+    if (!query) {
+      return audiences;
+    }
+    return audiences.filter((g) =>
+      getAudienceName(g).toLowerCase().includes(query)
+    );
+  }, [audiences, audienceQuery]);
   const { doPin, isPinning } = usePinDiscoveryItem({ workspaceId: owner.sId });
 
   const name = getItemName(item);
@@ -81,7 +99,11 @@ export function DiscoverPinDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent size="md">
+      <DialogContent
+        ref={setDialogEl}
+        size="md"
+        className={audienceOpen ? "overflow-visible" : undefined}
+      >
         <DialogHeader>
           <DialogTitle>
             Pin <span className="notranslate">{name}</span> to Featured
@@ -94,7 +116,16 @@ export function DiscoverPinDialog({
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
               <span className="heading-sm text-foreground">Show to</span>
-              <DropdownMenu>
+              <DropdownMenu
+                modal={false}
+                open={audienceOpen}
+                onOpenChange={(open) => {
+                  setAudienceOpen(open);
+                  if (!open) {
+                    setAudienceQuery("");
+                  }
+                }}
+              >
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
@@ -105,15 +136,37 @@ export function DiscoverPinDialog({
                     className="w-fit"
                   />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuLabel label="Audience" />
-                  {audiences.map((g) => (
-                    <DropdownMenuItem
-                      key={g.sId}
-                      label={getAudienceName(g)}
-                      onClick={() => setSelectedGroup(g)}
-                    />
-                  ))}
+                <DropdownMenuContent
+                  align="start"
+                  className="z-[60] w-72"
+                  mountPortalContainer={dialogEl ?? undefined}
+                >
+                  <DropdownMenuSearchbar
+                    autoFocus
+                    name="audience-search"
+                    placeholder="Search groups"
+                    value={audienceQuery}
+                    onChange={setAudienceQuery}
+                  />
+                  <div className="max-h-64 overflow-y-auto">
+                    {isGroupsLoading ? (
+                      <div className="flex h-16 items-center justify-center">
+                        <Spinner size="sm" />
+                      </div>
+                    ) : filteredAudiences.length > 0 ? (
+                      filteredAudiences.map((g) => (
+                        <DropdownMenuItem
+                          key={g.sId}
+                          label={getAudienceName(g)}
+                          onClick={() => setSelectedGroup(g)}
+                        />
+                      ))
+                    ) : (
+                      <div className="flex h-16 items-center justify-center text-sm text-muted-foreground">
+                        No groups found
+                      </div>
+                    )}
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
