@@ -75,13 +75,17 @@ app.post(
         },
         "Failed to search agents"
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to search agents",
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to search agents",
+          },
         },
-      });
+        result.error
+      );
     }
 
     const editorIds = [
