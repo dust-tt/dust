@@ -35,5 +35,6 @@ describe("skill ref tags", () => {
     expect(hasUnparsableSkillRefTag(content)).toBe(false);
     expect(hasUnparsableSkillRefTag('<skill ref="bad ref"/>')).toBe(true);
     expect(hasUnparsableSkillRefTag("<skill ref=notes/>")).toBe(true);
+    expect(hasUnparsableSkillRefTag('<skill ref = "notes"/>')).toBe(true);
   });
 });
