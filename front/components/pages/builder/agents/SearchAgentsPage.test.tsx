@@ -144,8 +144,8 @@ async function setup({
     total: 1,
     hasMore: false,
     facets: {
-      editors: [{ sId, fullName, image }],
-      models: ["claude-sonnet-5"],
+      editors: [{ sId, fullName, image, count: 1 }],
+      models: [{ modelId: "claude-sonnet-5", count: 1 }],
       tags: [],
     },
   };

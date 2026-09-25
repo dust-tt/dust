@@ -98,7 +98,7 @@ export function AgentFilterPanel({
     })),
     model: (facets?.models ?? [])
       .map(
-        (modelId): AgentFilterOption => ({
+        ({ modelId }): AgentFilterOption => ({
           category: "model",
           id: modelId,
           name: getAgentModelDisplayName(modelId),
