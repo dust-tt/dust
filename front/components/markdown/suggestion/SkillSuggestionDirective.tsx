@@ -154,8 +154,6 @@ function ConversationSkillSuggestion({
           type: "skill",
           suggestion,
           skill,
-          getSkillInstructionsHtml,
-          getCurrentAgentFacingDescription,
           workspaceId: owner.sId,
         }}
         onAccept={() => void handleAccept(suggestion)}

@@ -22,8 +22,6 @@ type ConversationalSuggestionTarget =
       type: "skill";
       suggestion: SkillSuggestionType;
       skill: SkillType;
-      getSkillInstructionsHtml: () => string;
-      getCurrentAgentFacingDescription: () => string;
       workspaceId: string;
     };
 
@@ -73,9 +71,9 @@ function renderCardContent(target: ConversationalSuggestionTarget) {
         collapsibleContent: (
           <PendingSkillSuggestionDetails
             suggestion={target.suggestion}
-            getSkillInstructionsHtml={target.getSkillInstructionsHtml}
-            getCurrentAgentFacingDescription={
-              target.getCurrentAgentFacingDescription
+            getSkillInstructionsHtml={() => target.skill.instructionsHtml ?? ""}
+            getCurrentAgentFacingDescription={() =>
+              target.skill.agentFacingDescription
             }
             workspaceId={target.workspaceId}
           />
