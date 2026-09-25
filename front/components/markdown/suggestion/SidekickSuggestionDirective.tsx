@@ -8,7 +8,6 @@
 
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import {
   AgentSuggestionActionCard,
   getAgentSuggestionLabels,
@@ -22,12 +21,7 @@ import {
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/SidekickSuggestionCard";
 import { ReviewedSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
-import { useSuggestionActions } from "@app/hooks/useSuggestionActions";
-import {
-  useAgentSuggestions,
-  usePatchAgentSuggestions,
-} from "@app/lib/swr/agent_suggestions";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { useConversationAgentSuggestionReview } from "@app/hooks/useConversationalSuggestionReview";
 import { AGENT_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -206,39 +200,23 @@ function ConversationAgentSuggestion({
 }: ConversationAgentSuggestionProps) {
   const { openPanel } = useConversationSidePanelContext();
 
-  const { suggestions, isSuggestionsLoading, mutateSuggestions } =
-    useAgentSuggestions({
-      agentConfigurationId: agentId,
-      workspaceId: owner.sId,
-      sources: ["conversational"],
-      conversationId,
-    });
-
-  const { patchSuggestions } = usePatchAgentSuggestions({
-    agentConfigurationId: agentId,
-    workspaceId: owner.sId,
-  });
-  const { getPendingAction, acceptSuggestion, rejectSuggestion } =
-    useSuggestionActions({ patchSuggestions, mutateSuggestions });
-
   const {
+    suggestions,
     agentConfiguration,
-    isAgentConfigurationLoading,
+    isLoading,
     isAgentConfigurationValidating,
-    mutateAgentConfiguration,
-  } = useAgentConfiguration({
+    getPendingAction,
+    acceptSuggestions,
+    rejectSuggestions,
+  } = useConversationAgentSuggestionReview({
     workspaceId: owner.sId,
-    agentConfigurationId: agentId,
-    disabled: DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind),
+    agentId,
+    conversationId,
+    skipAgentConfiguration:
+      DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind),
   });
 
-  const handleAccept = async (suggestion: AgentActionCardSuggestionType) => {
-    if (await acceptSuggestion(suggestion)) {
-      void mutateAgentConfiguration();
-    }
-  };
-
-  if (isSuggestionsLoading || isAgentConfigurationLoading) {
+  if (isLoading) {
     return <LoadingBlock className="h-24 w-full" />;
   }
 
@@ -270,8 +248,8 @@ function ConversationAgentSuggestion({
           suggestion,
           agentConfiguration,
         }}
-        onAccept={() => void handleAccept(suggestion)}
-        onReject={() => void rejectSuggestion(suggestion)}
+        onAccept={() => void acceptSuggestions([suggestion])}
+        onReject={() => void rejectSuggestions([suggestion])}
         onPreview={() =>
           openPanel({
             type: AGENT_SIDE_PANEL_TYPE,
@@ -291,8 +269,8 @@ function ConversationAgentSuggestion({
       agentSuggestion={suggestion}
       pictureUrl={agentConfiguration?.pictureUrl}
       disabled={isReviewDisabled}
-      onAccept={() => void handleAccept(suggestion)}
-      onReject={() => void rejectSuggestion(suggestion)}
+      onAccept={() => void acceptSuggestions([suggestion])}
+      onReject={() => void rejectSuggestions([suggestion])}
     />
   );
 }
