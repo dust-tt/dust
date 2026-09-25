@@ -1,6 +1,6 @@
+import { FilterSection } from "@app/components/shared/filter_panel/FilterSection";
 import type { UsageFilterAgentScope } from "@app/components/workspace/analytics/usageFilter";
 import { USAGE_FILTER_SCOPE_LABEL } from "@app/components/workspace/analytics/usageFilter";
-import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import { Button } from "@dust-tt/sparkle";
 
 interface UsageFilterAgentScopeControlsProps {
@@ -15,7 +15,7 @@ export function UsageFilterAgentScopeControls({
   onScopeChange,
 }: UsageFilterAgentScopeControlsProps) {
   return (
-    <UsageFilterSection title="Scopes">
+    <FilterSection title="Scopes">
       <div className="flex items-center gap-1">
         {scopes.map((scope) => (
           <Button
@@ -28,6 +28,6 @@ export function UsageFilterAgentScopeControls({
           />
         ))}
       </div>
-    </UsageFilterSection>
+    </FilterSection>
   );
 }

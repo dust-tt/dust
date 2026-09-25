@@ -1,4 +1,4 @@
-import { FilterSummaryChips } from "@app/components/workspace/analytics/filterPanel/FilterSummaryChips";
+import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   clearUsageFilterCategory,

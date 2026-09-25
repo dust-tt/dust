@@ -1,4 +1,4 @@
-import { filterOptionMatchesSearch } from "@app/components/workspace/analytics/filterPanel/filterState";
+import { filterOptionMatchesSearch } from "@app/components/shared/filter_panel/filterState";
 import { describe, expect, it } from "vitest";
 
 describe("filterOptionMatchesSearch", () => {

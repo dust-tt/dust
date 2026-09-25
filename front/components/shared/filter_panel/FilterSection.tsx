@@ -1,16 +1,12 @@
 import type { ReactNode } from "react";
 
-interface UsageFilterSectionProps {
+interface FilterSectionProps {
   title: string;
   action?: ReactNode;
   children: ReactNode;
 }
 
-export function UsageFilterSection({
-  title,
-  action,
-  children,
-}: UsageFilterSectionProps) {
+export function FilterSection({ title, action, children }: FilterSectionProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center text-sm font-medium text-muted-foreground">
