@@ -187,7 +187,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions", ()
     const suggestion = await AgentSuggestionFactory.createInstructions(
       auth,
       agent,
-      { source: "conversational", state: "pending", batchId: batch.id }
+      { source: "conversational", state: "pending", batchModelId: batch.id }
     );
 
     const response = await patchSuggestions(workspace, agent.sId, {

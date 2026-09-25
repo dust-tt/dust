@@ -134,7 +134,7 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     const batch = await BatchSuggestionFactory.createEmpty(auth);
     const suggestion = await SkillSuggestionFactory.create(auth, skill, {
       source: "conversational",
-      batchId: batch.id,
+      batchModelId: batch.id,
     });
 
     const response = await patch(workspace, skill.sId, {
