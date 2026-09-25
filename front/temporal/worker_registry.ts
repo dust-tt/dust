@@ -13,6 +13,7 @@ import { runCreditAlertsWorker } from "@app/temporal/credit_alerts/worker";
 import { runCreditConsumptionWorker } from "@app/temporal/credit_consumption/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runESIndexationQueueWorker } from "@app/temporal/es_indexation/worker";
+import { runEvalsWorker } from "@app/temporal/evals/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runInvitationsWorker } from "@app/temporal/invitations/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
@@ -50,6 +51,7 @@ export type WorkerName =
   | "credit_alerts"
   | "data_retention"
   | "es_indexation_queue"
+  | "evals"
   | "hard_delete"
   | "labs"
   | "invitations"
@@ -105,6 +107,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   upsert_queue: runUpsertQueueWorker,
   upsert_table_queue: runUpsertTableQueueWorker,
   es_indexation_queue: runESIndexationQueueWorker,
+  evals: runEvalsWorker,
   workos_events_queue: runWorkOSEventsWorker,
 };
 
