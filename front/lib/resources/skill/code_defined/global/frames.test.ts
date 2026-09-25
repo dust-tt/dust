@@ -59,87 +59,46 @@ describe("framesSkill.fetchInstructions", () => {
       spaceIds: [],
     });
 
-    expect(instructions).toContain("dsbx frame publish");
-    expect(instructions).toContain('mkdir -p "$FRAME"');
-    expect(instructions).toContain(
-      "write the real source\nand publish a new Frame in one Computer command"
-    );
-    expect(instructions).toContain("There is no scaffold step");
-    expect(instructions).not.toContain("dsbx frame create");
-    expect(instructions).not.toContain("dsbx frame register");
-    expect(instructions).toContain("dsbx frame share-link");
-    expect(instructions).toContain("dsbx frame call");
-    expect(instructions).toContain("stable Frame ID");
-    expect(instructions).toContain("additionally requires read access");
-    expect(instructions).toContain("does not test the Frame");
-    expect(instructions).not.toContain("dsbx frame validate");
-    expect(instructions).toContain(
-      'bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME"'
-    );
-    expect(instructions).toContain("Fix those errors before");
-    expect(instructions).toContain(
-      "keeps generated configs on local sandbox disk"
-    );
-    expect(instructions).toContain("configs untouched");
-    expect(instructions).toContain(
-      "Frame sharing and use rights are configured by the user in the Dust UI"
-    );
-    expect(instructions).toContain("This command is read-only");
-    expect(instructions).not.toContain("--scope");
-    expect(instructions).not.toContain("--email");
-    expect(instructions).toContain("package-like folder");
-    expect(instructions).toContain("canonical Frame resource");
-    expect(instructions).toContain("`index.tsx` by default");
-    expect(instructions).toContain("single `.tsx` entry file");
-    expect(instructions).toContain("atomically activates the publication");
-    expect(instructions).toContain("## Authoring a function");
-    expect(instructions).toContain('userIdentity: "workspace_user_required"');
-    expect(instructions).toContain("### Fast and durable functions");
-    expect(instructions).toContain("tools.call");
-    expect(instructions).toContain('import { tools } from "@dust/pod"');
-    expect(instructions).toContain(
-      "Computer vs Frame function — do not mix the two call styles"
-    );
-    expect(instructions).not.toContain(
-      "Inside a durable function, shell out to:"
-    );
-    expect(instructions).toContain("useFrameFunctionMutation");
-    expect(instructions).toContain("data` is typed as `unknown`");
-    expect(instructions).toContain("as CommentList | undefined");
-    expect(instructions).toContain("isMutating");
-    expect(instructions).toContain("## Persisting state in a Frame database");
-    expect(instructions).toContain('db("comments")');
-    expect(instructions).toContain("reconciles the declared schemas");
-    expect(instructions).toContain("### React Component Rules");
-    expect(instructions).toContain("### Slideshows");
-    expect(instructions).toContain("Keep the built-in width and height");
-    expect(instructions).toContain("legacy Frame");
-    expect(instructions).toContain("<frame>.tsx");
-    expect(instructions).toContain(
-      "Chat apps, task lists, trackers, forms, CRUD apps"
-    );
-    expect(instructions).toContain(
-      "Do not store durable application state in memory; use a Frame database"
-    );
-    expect(instructions).toContain(
-      "Use the Computer to create and edit their source"
-    );
-    expect(instructions).toContain("Do not pass the convenience aliases");
-    expect(instructions).toContain("`/files/conversation` or `/files/pod`");
-    expect(instructions).toContain(
-      "Never run concurrent file mutations against the same path"
-    );
-    expect(instructions).toContain(
-      "Do not replace an entire UI or function for a localized"
-    );
-    expect(instructions).toContain(
-      "mark required fields in a newly created table as `.notNull()`"
-    );
-    expect(instructions).toContain("shared Zod domain");
-    expect(instructions).toContain("instead of `bun build`");
-    expect(instructions).toContain(
-      "`export_interactive_content_file`: use it to export a Frame as a PNG screenshot or PDF document"
-    );
+    for (const expected of [
+      'mkdir -p "$FRAME"',
+      'bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME"',
+      'dsbx frame publish "$FRAME/manifest.json"',
+      "dsbx frame publish /files/<scope>/<frame>.tsx",
+      "--replaces /files/<scope>/dashboards/Sales.tsx",
+      "`gmail1` and `gmail2`",
+      "dsbx frame call <frame-id>",
+      "dsbx frame share-link",
+      "conversation_side_panel.open_frame",
+      "`export_interactive_content_file` is the only interactive-content tool",
+      "never the `/files/conversation` or `/files/pod` aliases",
+      "server's `move` tool",
+      "Never `mv` or `cp`",
+      'userIdentity: "workspace_user_required"',
+      "frame_author_required",
+      'import { tools } from "@dust/pod"',
+      "never shell out to `dsbx`",
+      'db("comments")',
+      "`.notNull()`",
+      "persistentFilesDir()",
+      "useFrameFunctionMutation",
+      "as CommentList | undefined",
+      "triggerUserFileDownload",
+      "<FrameRoot theme={theme}",
+      "@dust/slideshow/v2",
+    ]) {
+      expect(instructions).toContain(expected);
+    }
+    for (const unexpected of [
+      "dsbx frame create",
+      "dsbx frame register",
+      "dsbx frame validate",
+      "--scope",
+      "--email",
+      "Do not offer a download button",
+      "@dust/document/v1",
+    ]) {
+      expect(instructions).not.toContain(unexpected);
+    }
     expect(framesSkill.mcpServers).toEqual([
       { name: "interactive_content" },
       { name: "conversation_side_panel" },
@@ -150,6 +109,20 @@ describe("framesSkill.fetchInstructions", () => {
         "interactive_content"
       )
     ).resolves.toBe(false);
+  });
+
+  it("adds Document guidance only with frame_documents", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frame_documents");
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).toContain("### Documents");
+    expect(instructions).toContain("`@dust/document/v1`");
+    expect(instructions).toContain("document.md");
   });
 
   it("teaches the computer-first flow when the Computer is enabled", async () => {
