@@ -93,6 +93,7 @@ import type {
 } from "@app/types/memberships";
 import {
   isMembershipSeatType,
+  isPaidSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
@@ -723,7 +724,11 @@ export function UsagePage() {
   }, [singleSelectedMember, handleChangeSeatFromTable]);
 
   const handleBatchEditSpendLimit = useCallback(() => {
-    if (singleSelectedMember) {
+    // Same rule as the row menu for opening the individual modal.
+    if (
+      singleSelectedMember?.seatType &&
+      isPaidSeatType(singleSelectedMember.seatType)
+    ) {
       handleEditSpendLimitFromTable(singleSelectedMember);
       return;
     }

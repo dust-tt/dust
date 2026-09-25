@@ -19,6 +19,7 @@ import type { UserVisibleGroupKind } from "@app/types/groups";
 import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
 import { MEMBERSHIP_SEAT_TYPES, PAID_SEAT_TYPES } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type {
   ActiveRoleType,
   LightUserTypeWithWorkspace,
@@ -287,8 +288,8 @@ export function useBulkSetUserSpendLimit({
         title: "Spend limit updated",
         description:
           limit.kind === "limited"
-            ? `Applied a ${limit.awuCredits.toLocaleString("en-US")} credit limit to ${body.memberCount.toLocaleString("en-US")} members.`
-            : `Removed the personal limit for ${body.memberCount.toLocaleString("en-US")} members.`,
+            ? `Applied a ${limit.awuCredits.toLocaleString("en-US")} credit limit to ${body.memberCount.toLocaleString("en-US")} member${pluralize(body.memberCount)}.`
+            : `Removed the personal limit for ${body.memberCount.toLocaleString("en-US")} member${pluralize(body.memberCount)}.`,
       });
 
       await invalidateMembersUsage(workspaceId);

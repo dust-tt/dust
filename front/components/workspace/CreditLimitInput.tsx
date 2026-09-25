@@ -102,8 +102,11 @@ interface PersonalLimitInputProps {
   readOnly: boolean;
   isActive?: boolean;
   validationMessage: string | null;
-  // Receives "" when the limit is removed.
+  // Receives "" when the limit is removed, unless a remove handler is given.
   onChange: (cleaned: string) => void;
+  // For forms where an empty field doesn't already mean "remove": the action
+  // then stays available on an empty field and removal is left to the caller.
+  onRemove?: () => void;
 }
 
 // An empty value means no personal limit, so removing it just clears the field.
@@ -113,7 +116,15 @@ export function PersonalLimitInput({
   isActive,
   validationMessage,
   onChange,
+  onRemove,
 }: PersonalLimitInputProps) {
+  let action: { label: string; onClick: () => void } | undefined;
+  if (onRemove) {
+    action = { label: "Remove personal limit", onClick: onRemove };
+  } else if (value !== "") {
+    action = { label: "Remove personal limit", onClick: () => onChange("") };
+  }
+
   return (
     <CreditLimitInput
       label="Personal limit"
@@ -122,11 +133,7 @@ export function PersonalLimitInput({
       isActive={isActive}
       validationMessage={validationMessage}
       onChange={onChange}
-      action={
-        value !== ""
-          ? { label: "Remove personal limit", onClick: () => onChange("") }
-          : undefined
-      }
+      action={action}
     />
   );
 }

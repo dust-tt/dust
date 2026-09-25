@@ -6,13 +6,14 @@ import {
 } from "@app/components/workspace/member_spend_limit_helpers";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface BulkEditSpendLimitModalProps {
   isOpen: boolean;
@@ -36,6 +37,19 @@ export function BulkEditSpendLimitModal({
   seatsHaveBuiltInAllowance,
   onValidate,
 }: BulkEditSpendLimitModalProps) {
+  // A successful save clears the selection upstream: keep showing the last
+  // targeted members while the dialog closes rather than "0 members".
+  const lastSelectionRef = useRef({ memberCount, selectedMembers });
+  useEffect(() => {
+    if (memberCount > 0) {
+      lastSelectionRef.current = { memberCount, selectedMembers };
+    }
+  }, [memberCount, selectedMembers]);
+  const displayed =
+    memberCount > 0
+      ? { memberCount, selectedMembers }
+      : lastSelectionRef.current;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       {/* Without this, the dialog auto-focuses the avatar stack's tooltip
@@ -50,8 +64,8 @@ export function BulkEditSpendLimitModal({
           // unmounting, so the content stays visible while the dialog closes.
           key={String(isOpen)}
           onClose={onClose}
-          memberCount={memberCount}
-          selectedMembers={selectedMembers}
+          memberCount={displayed.memberCount}
+          selectedMembers={displayed.selectedMembers}
           seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
           onValidate={onValidate}
         />
@@ -76,6 +90,9 @@ function BulkEditSpendLimitForm({
   onValidate,
 }: BulkEditSpendLimitFormProps) {
   const [personalLimitInput, setPersonalLimitInput] = useState<string>("");
+  // The field starts empty, so emptiness alone can't mean "remove": removal
+  // must be asked for explicitly before it can be validated.
+  const [removeRequested, setRemoveRequested] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null
@@ -89,7 +106,7 @@ function BulkEditSpendLimitForm({
     }
     setIsSaving(true);
     try {
-      // An empty field removes the personal limit, falling back to the
+      // A requested removal leaves the field empty, which falls back to the
       // workspace default.
       const ok = await onValidate(toSpendLimit(result.awuCredits));
       if (ok) {
@@ -105,7 +122,7 @@ function BulkEditSpendLimitForm({
       <BulkMembersModalHeader
         selectedMembers={selectedMembers}
         memberCount={memberCount}
-        title={`Set personal limit for ${memberCount.toLocaleString("en-US")} members`}
+        title={`Set personal limit for ${memberCount.toLocaleString("en-US")} member${pluralize(memberCount)}`}
         subtitle={
           seatsHaveBuiltInAllowance
             ? "They will be able to consume this amount from the pool after " +
@@ -122,9 +139,22 @@ function BulkEditSpendLimitForm({
           validationMessage={validationMessage}
           onChange={(cleaned) => {
             setPersonalLimitInput(cleaned);
+            setRemoveRequested(false);
+            setValidationMessage(null);
+          }}
+          onRemove={() => {
+            setPersonalLimitInput("");
+            setRemoveRequested(true);
             setValidationMessage(null);
           }}
         />
+        {removeRequested && (
+          <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {`Personal limit${pluralize(memberCount)} will be removed for ` +
+              `${memberCount.toLocaleString("en-US")} member${pluralize(memberCount)}. ` +
+              "They will fall back to the workspace default."}
+          </p>
+        )}
       </DialogContainer>
       <DialogFooter
         leftButtonProps={{
@@ -135,7 +165,7 @@ function BulkEditSpendLimitForm({
         rightButtonProps={{
           label: "Validate",
           variant: "highlight",
-          disabled: isSaving,
+          disabled: isSaving || (personalLimitInput === "" && !removeRequested),
           isLoading: isSaving,
           onClick: handleValidate,
         }}
