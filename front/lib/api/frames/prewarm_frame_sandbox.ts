@@ -30,9 +30,10 @@ export async function prewarmFrameSandbox(
   auth: Authenticator,
   frame: FileResource
 ): Promise<void> {
+  // Read from the Frame rather than `auth`, so building it cannot throw outside the `try`.
   const logContext = {
     frameId: frame.sId,
-    workspaceId: auth.getNonNullableWorkspace().sId,
+    workspaceModelId: frame.workspaceId,
   };
   try {
     // `canCurrentUserUseFrame` also requires a workspace member.

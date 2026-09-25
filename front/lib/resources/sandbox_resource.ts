@@ -747,8 +747,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   /**
    * @cc [owner:davidebbo,label:concurrency] wake-only-never-creates
    * With `opts.wakeOnly`, a running sandbox MUST be returned and a sleeping one woken, and the call
-   * MUST NOT create or recreate a sandbox: a missing, deleted, kill-requested, or unwakeable
-   * sandbox MUST fail with `SandboxNotRunningError` and leave the stored sandbox untouched.
+   * MUST NOT create or recreate a sandbox: a missing, deleted, or kill-requested sandbox, or a
+   * sleeping one that fails to wake, MUST fail with `SandboxNotRunningError` and leave the stored
+   * sandbox untouched. A `pending_approval` sandbox that fails to wake keeps its own error, as it
+   * does without `wakeOnly`, since it is never recreated either way.
    */
   /**
    * Ensure a running sandbox exists for the given owner.

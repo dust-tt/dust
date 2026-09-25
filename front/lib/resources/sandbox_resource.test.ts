@@ -1603,6 +1603,29 @@ describe("SandboxResource.ensureActive", () => {
       expect(mockProviderCreate).not.toHaveBeenCalled();
     });
 
+    it("keeps the error of a pending_approval sandbox that fails to wake", async () => {
+      const frame = await createFrameInPod();
+      await SandboxFactory.createForFrame(authenticator, frame, {
+        status: "pending_approval",
+      });
+      mockProviderWake.mockResolvedValueOnce(
+        new Err(new Error("provider unavailable"))
+      );
+
+      const result = await FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        { wakeOnly: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        return;
+      }
+      expect(isSandboxNotRunningError(result.error)).toBe(false);
+      expect(mockProviderCreate).not.toHaveBeenCalled();
+    });
+
     it("refuses to recreate a sandbox that fails to wake", async () => {
       const frame = await createFrameInPod();
       await SandboxFactory.createForFrame(authenticator, frame, {
