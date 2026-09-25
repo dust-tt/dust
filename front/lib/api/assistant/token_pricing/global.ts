@@ -1,3 +1,4 @@
+import { CUSTOM_MODELS } from "@app/types/assistant/models/custom_models.generated";
 import type { StaticModelIdType } from "@app/types/assistant/models/models";
 
 // All pricing are in USD per million tokens (equivalent to micro-USD per token).
@@ -18,7 +19,7 @@ export type PricingEntry = TokenPricingRates & {
 };
 
 // Pricing for current models (USD per million tokens - equivalent to micro-USD per token)
-// This record contains all static model IDs. Custom models use default pricing.
+// This record contains all static model IDs. Custom models are priced from their config.
 const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   // Verified 2026-09-05: https://developers.openai.com/api/docs/pricing
   "gpt-6-astra": {
@@ -872,9 +873,24 @@ const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
   },
 };
 
-// Combined pricing record for all models (current + legacy + image).
+const CUSTOM_MODEL_PRICING: Record<string, PricingEntry> = Object.fromEntries(
+  CUSTOM_MODELS.map(({ modelConfig, endpoint: { tokenPricing } }) => [
+    modelConfig.modelId,
+    {
+      input: tokenPricing.standardInput,
+      output: tokenPricing.standardOutput,
+      cache_creation_input_tokens:
+        tokenPricing.shortCacheCreated ?? tokenPricing.cacheCreated,
+      long_cache_creation_input_tokens: tokenPricing.longCacheCreated,
+      cache_read_input_tokens: tokenPricing.cacheHit,
+    },
+  ])
+);
+
+// Combined pricing record for all models (current + legacy + image + custom).
 export const MODEL_PRICING: Record<string, PricingEntry> = {
   ...CURRENT_MODEL_PRICING,
   ...IMAGE_MODEL_PRICING,
   ...LEGACY_MODEL_PRICING,
+  ...CUSTOM_MODEL_PRICING,
 };
