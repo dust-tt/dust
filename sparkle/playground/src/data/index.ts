@@ -7,6 +7,7 @@ export * from "./agents";
 export * from "./build";
 export * from "./companySpaces";
 export * from "./conversations";
+export * from "./groupLimits";
 export * from "./myPod";
 export * from "./podSettings";
 export * from "./requests";
