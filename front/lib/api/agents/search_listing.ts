@@ -39,10 +39,9 @@ export async function searchAgentListings(
       ...facetIds(facetValues.tags),
     ]),
   ];
-  const facetCount = (
-    values: { value: string; count: number }[] | undefined,
-    id: string
-  ) => values?.find(({ value }) => value === id)?.count ?? 0;
+  const facetCountsById = (
+    values: { value: string; count: number }[] | undefined
+  ) => new Map((values ?? []).map(({ value, count }) => [value, count]));
   const [users, tags, skills, spaces] = await Promise.all([
     UserResource.fetchByIds(editorIds),
     tagIds.length > 0 ? TagResource.fetchByIds(auth, tagIds) : [],
@@ -67,6 +66,8 @@ export async function searchAgentListings(
 
   const usersById = new Map(users.map((user) => [user.sId, user]));
   const tagsById = new Map(tags.map((tag) => [tag.sId, tag]));
+  const skillCounts = facetCountsById(facetValues.skills);
+  const spaceCounts = facetCountsById(facetValues.spaces);
 
   return new Ok<SearchAgentsResponseBody>({
     ...result.value,
@@ -103,9 +104,7 @@ export async function searchAgentListings(
         ? {
             skills: skills
               .map((skill) =>
-                skill.toSearchFacetJSON(
-                  facetCount(facetValues.skills, skill.sId)
-                )
+                skill.toSearchFacetJSON(skillCounts.get(skill.sId) ?? 0)
               )
               .toSorted((a, b) => a.name.localeCompare(b.name)),
           }
@@ -116,9 +115,7 @@ export async function searchAgentListings(
             spaces: spaces
               .filter((space) => auth.can("read", space))
               .map((space) =>
-                space.toSearchFacetJSON(
-                  facetCount(facetValues.spaces, space.sId)
-                )
+                space.toSearchFacetJSON(spaceCounts.get(space.sId) ?? 0)
               )
               .toSorted((a, b) => a.name.localeCompare(b.name)),
           }
