@@ -17,6 +17,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -196,6 +197,13 @@ export async function createOrUpgradeAgentConfiguration({
         `Unsupported model "${assistant.model.modelId}" for provider ` +
           `"${assistant.model.providerId}".`
       )
+    );
+  }
+
+  // Custom models are only reachable through the global agents bound to them.
+  if (!isStaticModelId(modelConfig.modelId)) {
+    return new Err(
+      new Error(`Model "${modelConfig.modelId}" cannot be used by an agent.`)
     );
   }
 
