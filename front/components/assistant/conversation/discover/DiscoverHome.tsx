@@ -337,6 +337,13 @@ function DiscoverSection({
     });
   }, [isLoading, items, section]);
 
+  const trackClick = (item: CatalogItem) =>
+    trackDiscoverySuggestionClick({
+      section,
+      itemKind: item.kind,
+      itemId: getItemId(item),
+    });
+
   return (
     <section className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -363,15 +370,14 @@ function DiscoverSection({
               key={`${item.kind}-${getItemId(item)}`}
               item={item}
               onUse={() => {
-                trackDiscoverySuggestionClick({
-                  section,
-                  itemKind: item.kind,
-                  itemId: getItemId(item),
-                });
+                trackClick(item);
                 onUse(item);
               }}
               onPin={onPin && (() => onPin(item))}
-              onDetails={() => onDetails(item)}
+              onDetails={() => {
+                trackClick(item);
+                onDetails(item);
+              }}
             />
           ))}
         </div>

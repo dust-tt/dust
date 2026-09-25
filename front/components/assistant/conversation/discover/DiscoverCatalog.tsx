@@ -370,38 +370,31 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
     ) : (
       <SkillCatalogAvatar skill={item.skill} size={isMobile ? "md" : "lg"} />
     );
-  const avatarClassName = "col-start-1 row-start-1 shrink-0 md:row-span-2";
   return (
     <div
-      onClick={isMobile ? undefined : onDetails}
       className={cn(
-        "group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2",
-        "border-b border-separator py-4 last:border-b-0 md:gap-y-1",
-        !isMobile && "cursor-pointer"
+        "group relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2",
+        "border-b border-separator py-4 last:border-b-0 md:gap-y-1"
       )}
     >
-      {isMobile ? (
-        <div className={avatarClassName}>{avatar}</div>
-      ) : (
-        <button
-          type="button"
-          aria-label={`Show ${name} details`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onDetails();
-          }}
-          className={cn(
-            avatarClassName,
-            "rounded-2xl transition duration-200 ease-out hover:brightness-110 active:brightness-90"
-          )}
-        >
-          {avatar}
-        </button>
-      )}
+      <div className="col-start-1 row-start-1 shrink-0 md:row-span-2">
+        {avatar}
+      </div>
       <div className="col-start-2 col-end-4 row-start-1 flex min-w-0 items-center gap-2 self-center md:col-end-3 md:self-end">
-        <span className="heading-base notranslate truncate text-foreground">
-          {name}
-        </span>
+        {isMobile ? (
+          <span className="heading-base notranslate truncate text-foreground">
+            {name}
+          </span>
+        ) : (
+          <button
+            type="button"
+            aria-label={`Show ${name} details`}
+            onClick={onDetails}
+            className="heading-base notranslate cursor-pointer truncate text-left text-foreground after:absolute after:inset-0"
+          >
+            {name}
+          </button>
+        )}
         <Chip
           size="xs"
           label={
@@ -434,10 +427,7 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
           {getItemDescription(item)}
         </p>
       </div>
-      <div
-        onClick={(event) => event.stopPropagation()}
-        className="col-start-3 row-start-2 flex shrink-0 items-center gap-1 self-end md:row-span-2 md:row-start-1 md:self-center"
-      >
+      <div className="relative col-start-3 row-start-2 flex shrink-0 items-center gap-1 self-end md:row-span-2 md:row-start-1 md:self-center">
         {onPin && (
           <Button
             variant="ghost"
