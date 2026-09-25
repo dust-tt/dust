@@ -1,4 +1,5 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { getAgentSuggestionLabels } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { ConversationalSuggestionReviewCard } from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
 import type { ConversationAgentSuggestionKind } from "@app/components/markdown/suggestion/suggestion_directives";
@@ -10,7 +11,10 @@ import { makeSuggestionDirective } from "@app/components/markdown/suggestion/sug
 import { ReviewedSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import { useConversationAgentSuggestionReview } from "@app/hooks/useConversationalSuggestionReview";
 import { AGENT_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
-import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
+import type {
+  AgentSuggestionKind,
+  AgentSuggestionType,
+} from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
 
@@ -24,6 +28,13 @@ export const agentSuggestionDirective = makeSuggestionDirective(
   "agent_suggestion",
   "agentId"
 );
+
+/** Whether the suggestion is of a kind the conversational agent cards render. */
+export function isAgentActionCardSuggestion(
+  suggestion: AgentSuggestionType
+): suggestion is AgentActionCardSuggestionType {
+  return isConversationAgentSuggestionKind(suggestion.kind);
+}
 
 interface ConversationAgentSuggestionProps {
   owner: LightWorkspaceType;

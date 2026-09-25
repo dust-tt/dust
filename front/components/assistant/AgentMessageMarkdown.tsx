@@ -25,6 +25,10 @@ import {
   getConversationAgentSuggestionPlugin,
 } from "@app/components/markdown/suggestion/AgentSuggestionDirective";
 import {
+  batchSuggestionDirective,
+  getBatchSuggestionPlugin,
+} from "@app/components/markdown/suggestion/BatchSuggestionDirective";
+import {
   getSkillSuggestionPlugin,
   skillSuggestionDirective,
 } from "@app/components/markdown/suggestion/SkillSuggestionDirective";
@@ -92,6 +96,7 @@ export const AgentMessageMarkdown = ({
       build_skill: BuildSkillDirectiveBlock,
       build_agent: getBuildAgentDirectivePlugin(owner),
       skill_suggestion: getSkillSuggestionPlugin(owner, conversationId),
+      batch_edit: getBatchSuggestionPlugin(owner),
       agent_suggestion: getConversationAgentSuggestionPlugin(
         owner,
         conversationId
@@ -117,6 +122,7 @@ export const AgentMessageMarkdown = ({
       buildAgentDirective,
       skillSuggestionDirective,
       agentSuggestionDirective,
+      batchSuggestionDirective,
       ...additionalMarkdownPlugins,
     ];
 
