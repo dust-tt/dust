@@ -529,17 +529,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   }
 
   /**
-   * @cc [owner:davidebbo,label:backend] publication-function-rows-deleted-as-a-set
-   * Every function row of `publicationId` MUST be deleted together. A publication serving a
-   * function whose row is gone is not a state any caller can recover from, so retention deletes
-   * the publication's whole set or none of it.
-   */
-  /**
-   * Drop the function rows of one superseded publication. The caller owns the checks that make
-   * this safe: the publication is not the frame's active one, it is past the retention window,
-   * and none of its functions has an invocation left (they FK these rows with `RESTRICT`).
-   */
-  /**
    * The publications of `frame` whose functions still have invocations, in one grouped query.
    * Retention uses this to tell a superseded publication that can be dropped from one whose runs
    * are still on record.
@@ -549,18 +538,18 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     frame: FileResource
   ): Promise<Set<string>> {
     assert(frame.isFrameV2, "Frame functions require a Frames v2 file.");
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
 
     const rows = await this.model.findAll({
       attributes: ["publicationId"],
-      where: { workspaceId, fileId: frame.id },
+      where: { workspaceId: workspaceModelId, fileId: frame.id },
       include: [
         {
           model: SandboxFunctionInvocationModel,
           as: "invocations",
           attributes: [],
           required: true,
-          where: { workspaceId },
+          where: { workspaceId: workspaceModelId },
         },
       ],
       group: ["publicationId"],
@@ -570,6 +559,17 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return new Set(rows.map(({ publicationId }) => publicationId));
   }
 
+  /**
+   * @cc [owner:davidebbo,label:backend] publication-function-rows-deleted-as-a-set
+   * Every function row of each publication in `publicationIds` MUST be deleted together. A
+   * publication serving a function whose row is gone is not a state any caller can recover from,
+   * so retention deletes each publication's whole set or none of it.
+   */
+  /**
+   * Drop the function rows of superseded publications. The caller owns the checks that make this
+   * safe: no publication is the frame's active one, each is past the retention window, and none
+   * of their functions has an invocation left (they FK these rows with `RESTRICT`).
+   */
   static async deleteAllForFramePublications(
     auth: Authenticator,
     { frame, publicationIds }: { frame: FileResource; publicationIds: string[] }
