@@ -1,7 +1,6 @@
 import { searchSkills } from "@app/lib/api/skills/search";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { SearchSkillsQuerySchema } from "@app/lib/skill_search/query_schema";
-import logger from "@app/logger/logger";
 import type { SearchSkillsResponseBody } from "@app/types/api/skills";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -68,20 +67,17 @@ app.post(
           },
         });
       }
-      logger.error(
+      return apiError(
+        ctx,
         {
-          error: result.error,
-          workspaceId: auth.getNonNullableWorkspace().sId,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to search skills",
+          },
         },
-        "Failed to search skills"
+        result.error
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to search skills",
-        },
-      });
     }
 
     const editorIds = [

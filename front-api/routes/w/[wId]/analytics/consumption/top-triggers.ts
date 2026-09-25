@@ -5,7 +5,6 @@ import {
 } from "@app/lib/api/analytics/consumption/schema";
 import type { GetConsumptionTopTriggersResponse } from "@app/lib/api/analytics/consumption/top_triggers";
 import { fetchConsumptionTopTriggers } from "@app/lib/api/analytics/consumption/top_triggers";
-import logger from "@app/logger/logger";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { consumptionAnalyticsApp } from "./context";
@@ -46,20 +45,17 @@ app.post(
       sortOrder,
     });
     if (result.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          err: result.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve top triggers.",
+          },
         },
-        "[ConsumptionAnalytics] Failed to retrieve top-triggers."
+        result.error
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to retrieve top triggers.",
-        },
-      });
     }
 
     return ctx.json(result.value);

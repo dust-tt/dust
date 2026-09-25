@@ -3,6 +3,7 @@ import config from "@app/lib/api/config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -110,30 +111,30 @@ app.patch(
 
     if (connectorsApiRes.isErr()) {
       if (connectorsApiRes.error.type === "connector_operation_in_progress") {
-        logger.info(
-          connectorsApiRes.error,
-          "Slack channel linking already in progress."
-        );
-        return apiError(ctx, {
-          status_code: 409,
-          api_error: {
-            type: "connector_operation_in_progress",
-            message: connectorsApiRes.error.message,
+        return apiError(
+          ctx,
+          {
+            status_code: 409,
+            api_error: {
+              type: "connector_operation_in_progress",
+              message: connectorsApiRes.error.message,
+            },
           },
-        });
+          normalizeError(connectorsApiRes.error)
+        );
       }
 
-      logger.error(
-        connectorsApiRes.error,
-        "An error occurred while linking Slack channels."
-      );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "An error occurred while linking Slack channels.",
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "An error occurred while linking Slack channels.",
+          },
         },
-      });
+        normalizeError(connectorsApiRes.error)
+      );
     }
 
     return ctx.json({ success: true });
