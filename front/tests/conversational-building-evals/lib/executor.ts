@@ -1,4 +1,3 @@
-import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import {
   MAX_TOOL_CALL_ROUNDS,
@@ -11,6 +10,7 @@ import {
 import type {
   BuildingAgentConfig,
   ExecutionResult,
+  SeededScenario,
   TestCase,
   ToolCall,
 } from "@app/tests/conversational-building-evals/lib/types";
@@ -76,11 +76,11 @@ function buildInitialMessages(
  * when a round produces no tool call.
  */
 export async function executeBuildingAgent(
-  auth: Authenticator,
+  scenario: SeededScenario,
   config: BuildingAgentConfig,
   testCase: TestCase
 ): Promise<ExecutionResult> {
-  const llm = await getEvalStreamLLM(auth, {
+  const llm = await getEvalStreamLLM(scenario.auth, {
     modelId: config.model.modelId,
     temperature: config.model.temperature ?? undefined,
     reasoningEffort: config.model.reasoningEffort ?? undefined,
@@ -181,7 +181,7 @@ export async function executeBuildingAgent(
 
     for (const tc of currentRoundToolCalls) {
       const output = await runTool(
-        auth,
+        scenario,
         tc.toolCall.name,
         tc.toolCall.arguments
       );

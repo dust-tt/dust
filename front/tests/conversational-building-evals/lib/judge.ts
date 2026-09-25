@@ -14,8 +14,8 @@ import { getJudgeLLM } from "@app/tests/utils/eval_llm";
 const JUDGE_PROMPT = `You are evaluating an AI agent that helps users build and improve Agents and Skills from a conversation.
 A Skill is a named set of instructions (block-structured HTML) plus an agent-facing description.
 An Agent is a configured assistant: a name, a description and instructions.
-The agent never applies changes directly: it records a suggestion through a \`suggest_*\` tool
-that the entity's editors review later.
+The agent never applies changes directly: it records suggestions through the \`suggest\` tool,
+one item per entity, that the entities' editors review later. One call is reviewed as a whole.
 
 ## Scoring Rubric
 
@@ -101,7 +101,8 @@ User message:
    it acted on, as \`:build_skill[Skill Name]{sId=<skillId>}\` or
    \`:build_agent[Agent Name]{sId=<agentId>}\`, with the same id the suggestion targets, so the
    user can click it open? An entity named in plain text, or with an invented id, does not render
-   as a clickable chip.
+   as a clickable chip. Exception: an agent or skill the suggestion creates has no id yet, so it
+   is named in plain text; a mention directive for it can only carry an invented id.
 
 Provide your evaluation using the REASONING: and SCORE: format described above.`;
 
@@ -111,9 +112,7 @@ async function renderWorkspaceSkills(
 ): Promise<string> {
   const rendered: string[] = [];
   for (const skillId of scenario.skillIdsByKey.values()) {
-    rendered.push(
-      await runTool(scenario.auth, TOOL.describeSkill, { skillId })
-    );
+    rendered.push(await runTool(scenario, TOOL.describeSkill, { skillId }));
   }
   return rendered.length > 0 ? rendered.join("\n\n") : "(none)";
 }
@@ -136,9 +135,7 @@ async function renderWorkspaceAgents(
 ): Promise<string> {
   const rendered: string[] = [];
   for (const agentId of scenario.agentIdsByKey.values()) {
-    rendered.push(
-      await runTool(scenario.auth, TOOL.describeAgent, { agentId })
-    );
+    rendered.push(await runTool(scenario, TOOL.describeAgent, { agentId }));
   }
   return rendered.length > 0 ? rendered.join("\n\n") : "(none)";
 }
