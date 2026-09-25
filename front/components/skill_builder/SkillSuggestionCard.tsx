@@ -1,4 +1,4 @@
-import { getBlockOuterHtml } from "@app/components/shared/utils";
+import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { SkillFieldEditSection } from "@app/components/skill_builder/SkillFieldEditSection";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
 import { SuggestedSkillEditors } from "@app/components/skill_builder/SuggestedSkillEditors";
@@ -10,7 +10,6 @@ import { useSkill } from "@app/lib/swr/skill_configurations";
 import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
-  SkillInstructionEditItemType,
   SkillSuggestionState,
   SkillSuggestionType,
 } from "@app/types/suggestions/skill_suggestion";
@@ -20,15 +19,12 @@ import {
   CheckCircle,
   Chip,
   Clock,
-  DiffBlock,
   Hoverable,
   LoadingBlock,
   Tooltip,
   XCircle,
 } from "@dust-tt/sparkle";
-import { EditorContent, useEditor } from "@tiptap/react";
 import type { ComponentType, KeyboardEvent } from "react";
-import { useMemo } from "react";
 
 const MAX_VISIBLE_CONVERSATIONS = 3;
 
@@ -109,54 +105,6 @@ function ReviewedSuggestionCard({ suggestion }: ReviewedSuggestionCardProps) {
         </span>
       </div>
     </Card>
-  );
-}
-
-interface InstructionEditDiffBlockProps {
-  edit: SkillInstructionEditItemType;
-  getSkillInstructionsHtml: () => string;
-}
-
-function InstructionEditDiffBlock({
-  edit,
-  getSkillInstructionsHtml,
-}: InstructionEditDiffBlockProps) {
-  const { targetBlockId, content } = edit;
-
-  const blockHtml = useMemo(() => {
-    const instructionsHtml = getSkillInstructionsHtml();
-    if (!instructionsHtml) {
-      return "";
-    }
-    return getBlockOuterHtml(instructionsHtml, targetBlockId);
-  }, [targetBlockId, getSkillInstructionsHtml]);
-
-  const editor = useEditor(
-    {
-      extensions: [...buildSkillInstructionsExtensions(true)],
-      editable: false,
-      content: blockHtml,
-      immediatelyRender: false,
-      onCreate: ({ editor: e }) => {
-        if (!content) {
-          return;
-        }
-        e.commands.applySuggestion({
-          id: targetBlockId,
-          targetBlockId,
-          content,
-        });
-        e.commands.setHighlightedSuggestion(targetBlockId);
-      },
-    },
-    [blockHtml]
-  );
-
-  // The diff box's border is not configurable, so it is overridden here.
-  return (
-    <DiffBlock className="[&_.rounded-2xl.border]:border-0">
-      {editor && <EditorContent editor={editor} />}
-    </DiffBlock>
   );
 }
 
@@ -302,10 +250,12 @@ function SuggestionDetails({
                 Instructions
               </span>
               {instructionEdits.map((edit, index) => (
-                <InstructionEditDiffBlock
+                <SuggestionInstructionsDiffBlock
                   key={index}
-                  edit={edit}
-                  getSkillInstructionsHtml={getSkillInstructionsHtml}
+                  instructionsHtml={getSkillInstructionsHtml()}
+                  targetBlockId={edit.targetBlockId}
+                  content={edit.content}
+                  extensions={buildSkillInstructionsExtensions(true)}
                 />
               ))}
             </div>

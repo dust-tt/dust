@@ -1,7 +1,9 @@
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { getAgentSuggestionLabels } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
+import { AgentSuggestionDetails } from "@app/components/markdown/suggestion/AgentSuggestionDetails";
 import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import { PendingSkillSuggestionDetails } from "@app/components/skill_builder/SkillSuggestionCard";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { Avatar } from "@dust-tt/sparkle";
@@ -10,7 +12,7 @@ type ConversationalSuggestionTarget =
   | {
       type: "agent";
       suggestion: AgentActionCardSuggestionType;
-      pictureUrl?: string;
+      agentConfiguration: AgentConfigurationType | null;
     }
   | {
       type: "skill";
@@ -36,10 +38,15 @@ function renderCardContent(target: ConversationalSuggestionTarget) {
       return {
         title: labels.title,
         analysis: labels.description,
-        visual: target.pictureUrl ? (
-          <Avatar visual={target.pictureUrl} size="sm" />
+        visual: target.agentConfiguration ? (
+          <Avatar visual={target.agentConfiguration.pictureUrl} size="sm" />
         ) : undefined,
-        collapsibleContent: undefined,
+        collapsibleContent: (
+          <AgentSuggestionDetails
+            suggestion={target.suggestion}
+            agentConfiguration={target.agentConfiguration}
+          />
+        ),
       };
     }
     case "skill":
