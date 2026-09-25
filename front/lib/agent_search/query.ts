@@ -11,6 +11,7 @@ import type { estypes } from "@elastic/elasticsearch";
 export const MAX_AGENT_SEARCH_RESULTS = 100;
 // Elasticsearch's default `index.max_result_window`: `offset + limit` cannot go past it.
 export const MAX_AGENT_SEARCH_WINDOW = 10_000;
+export const MAX_AGENT_SEARCH_FACET_VALUES = 1_000;
 
 // Null represents a type-wide read grant; do not enumerate resources in that case.
 function getAgentSearchReadableSpaceIds(auth: Authenticator) {
@@ -100,6 +101,9 @@ function buildSelectionFilters(
     ["tag_ids", filters.tagIds],
     ["skill_ids", filters.skillIds],
     ["mcp_server_view_ids", filters.mcpServerViewIds],
+    ["editor_ids", filters.editorIds],
+    ["model.model_id", filters.modelIds],
+    ["requested_space_ids", filters.spaceIds],
   ] as const) {
     if (values?.length) {
       selected.push({ terms: { [field]: values } });
@@ -107,6 +111,10 @@ function buildSelectionFilters(
   }
   if (filters.editedByMe) {
     selected.push(buildEditorFilter(auth));
+  }
+  const { min, max } = filters.activeUsersCount ?? {};
+  if (min !== undefined || max !== undefined) {
+    selected.push({ range: { active_users_count: { gte: min, lte: max } } });
   }
   return selected;
 }

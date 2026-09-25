@@ -1,5 +1,6 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { TagFactory } from "@app/tests/utils/TagFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -31,6 +32,8 @@ function searchRequest(
 
 const noFilters = {
   status: undefined,
+  editorIds: undefined,
+  modelIds: undefined,
   scope: undefined,
   tagIds: undefined,
   skillIds: undefined,
@@ -60,7 +63,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       updatedAt: null,
     };
     searchAgents.mockResolvedValue(
-      new Ok({ agents: [agent], total: 30, hasMore: true })
+      new Ok({ agents: [agent], total: 30, hasMore: true, facets: {} })
     );
 
     const response = await searchRequest(workspace.sId, {
@@ -77,11 +80,13 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       sortBy: undefined,
       sortOrder: undefined,
       permissionFiltering: undefined,
+      facets: undefined,
       filters: noFilters,
     });
     expect(await response.json()).toEqual({
       hasMore: true,
       total: 30,
+      facets: {},
       agents: [
         {
           ...agent,
@@ -100,7 +105,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   it("accepts structured filters and sorts", async () => {
     const { workspace } = await setup();
     searchAgents.mockResolvedValue(
-      new Ok({ agents: [], total: 0, hasMore: false })
+      new Ok({ agents: [], total: 0, hasMore: false, facets: {} })
     );
     const filters = {
       status: ["active", "archived"],
@@ -125,12 +130,12 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       sortBy: "name",
       sortOrder: "desc",
       permissionFiltering: undefined,
+      facets: undefined,
       filters,
     });
   });
 
   it.each([
-    { limit: 0 },
     { limit: 101 },
     { offset: -1 },
     { offset: 1.5 },
@@ -144,6 +149,12 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     { scope: ["private"] },
     { scope: [] },
     { tagIds: [""] },
+    { editorIds: [""] },
+    { modelIds: [""] },
+    { facets: ["unknown"] },
+    { activeUsersCount: { min: -1 } },
+    { spaceIds: [""] },
+    { limit: -1 },
   ])("rejects invalid input: %s", async (body) => {
     const { workspace } = await setup();
 
@@ -156,7 +167,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   it("passes unrestricted filtering through for admins", async () => {
     const { workspace } = await setup("admin");
     searchAgents.mockResolvedValue(
-      new Ok({ agents: [], total: 0, hasMore: false })
+      new Ok({ agents: [], total: 0, hasMore: false, facets: {} })
     );
 
     const response = await searchRequest(workspace.sId, {
@@ -181,6 +192,65 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({
       error: { type: "app_auth_error" },
+    });
+  });
+
+  it("returns facet values with counts and editor and tag names", async () => {
+    const { workspace, user, globalSpace } = await setup();
+    const tag = await TagFactory.create(workspace, { name: "Sales" });
+    searchAgents.mockResolvedValue(
+      new Ok({
+        agents: [],
+        total: 0,
+        hasMore: false,
+        facets: {
+          editors: [
+            { value: user.sId, count: 3 },
+            { value: "missing-user", count: 1 },
+          ],
+          models: [{ value: "claude-sonnet-5", count: 4 }],
+          tags: [{ value: tag.sId, count: 2 }],
+          skills: [{ value: "missing-skill", count: 1 }],
+          spaces: [{ value: globalSpace.sId, count: 5 }],
+          usage: { min: 0, max: 12 },
+        },
+      })
+    );
+
+    const response = await searchRequest(workspace.sId, {
+      limit: 0,
+      facets: ["editors", "models", "tags", "skills", "spaces", "usage"],
+    });
+
+    expect(response.status).toBe(200);
+    expect(searchAgents).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        limit: 0,
+        facets: ["editors", "models", "tags", "skills", "spaces", "usage"],
+      })
+    );
+    expect((await response.json()).facets).toEqual({
+      editors: [
+        {
+          sId: user.sId,
+          fullName: user.toJSON().fullName,
+          image: user.toJSON().image,
+          count: 3,
+        },
+      ],
+      models: [{ modelId: "claude-sonnet-5", count: 4 }],
+      tags: [{ sId: tag.sId, name: "Sales", kind: "standard", count: 2 }],
+      skills: [],
+      spaces: [
+        {
+          sId: globalSpace.sId,
+          name: globalSpace.name,
+          kind: "global",
+          count: 5,
+        },
+      ],
+      usage: { min: 0, max: 12 },
     });
   });
 

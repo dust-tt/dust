@@ -1,9 +1,7 @@
 import { SearchAgentsQuerySchema } from "@app/lib/agent_search/query_schema";
-import { searchAgents } from "@app/lib/api/agents/search";
-import { UserResource } from "@app/lib/resources/user_resource";
+import { searchAgentListings } from "@app/lib/api/agents/search_listing";
 import logger from "@app/logger/logger";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
-import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -28,23 +26,33 @@ app.post(
       tagIds,
       skillIds,
       mcpServerViewIds,
+      editorIds: editorIdsFilter,
+      modelIds,
+      spaceIds,
+      activeUsersCount,
       editedByMe,
+      facets,
       sortBy,
       sortOrder,
     } = ctx.req.valid("json");
-    const result = await searchAgents(auth, {
+    const result = await searchAgentListings(auth, {
       searchTerm: query,
       limit,
       offset,
       sortBy,
       sortOrder,
       permissionFiltering,
+      facets,
       filters: {
         status,
         scope,
         tagIds,
         skillIds,
         mcpServerViewIds,
+        editorIds: editorIdsFilter,
+        modelIds,
+        spaceIds,
+        activeUsersCount,
         editedByMe,
       },
     });
@@ -88,27 +96,7 @@ app.post(
       );
     }
 
-    const editorIds = [
-      ...new Set(result.value.agents.flatMap((agent) => agent.editorIds)),
-    ];
-    const users = await UserResource.fetchByIds(editorIds);
-
-    const editorsById = new Map(
-      users.map((user) => {
-        const { sId, fullName, image } = user.toJSON();
-        return [sId, { sId, fullName, image }];
-      })
-    );
-
-    return ctx.json({
-      ...result.value,
-      agents: result.value.agents.map((agent) => ({
-        ...agent,
-        editors: removeNulls(
-          [...new Set(agent.editorIds)].map((id) => editorsById.get(id))
-        ),
-      })),
-    });
+    return ctx.json(result.value);
   }
 );
 

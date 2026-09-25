@@ -1,16 +1,29 @@
 import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
+import { isNumber, isRecord } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
+
+function isFieldContainer(value: unknown): value is Record<string, unknown> {
+  return value instanceof Object && isRecord(value);
+}
 
 // Apply the query's filters in ES mocks. Text matching and ranking are tested separately.
 export function matchesAgentSearchFilters(
   document: AgentSearchDocument,
   query: estypes.QueryDslQueryContainer
 ): boolean {
-  const values = (field: string) => {
-    const entry = Object.entries(document).find(([key]) => key === field);
-    assert(entry, `Unknown agent search field: ${field}`);
-    return [entry[1]].flat();
+  const values = (field: string): unknown[] => {
+    let value: unknown = document;
+    for (const key of field.split(".")) {
+      if (value === null) {
+        return [];
+      }
+      assert(isFieldContainer(value), `Unknown agent search field: ${field}`);
+      const entry = Object.entries(value).find(([name]) => name === key);
+      assert(entry, `Unknown agent search field: ${field}`);
+      value = entry[1];
+    }
+    return [value].flat();
   };
   if (query.bool) {
     const { filter = [], must = [], must_not = [], should = [] } = query.bool;
@@ -48,6 +61,18 @@ export function matchesAgentSearchFilters(
       return (
         required.length > 0 &&
         required.every((value) => terms.terms.includes(String(value)))
+      );
+    });
+  }
+  if (query.range) {
+    return Object.entries(query.range).every(([field, bounds]) => {
+      assert(bounds && "gte" in bounds);
+      const { gte, lte } = bounds;
+      return values(field).some(
+        (value) =>
+          isNumber(value) &&
+          (gte === undefined || value >= Number(gte)) &&
+          (lte === undefined || value <= Number(lte))
       );
     });
   }

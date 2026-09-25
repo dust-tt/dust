@@ -149,6 +149,137 @@ describe("searchAgents", () => {
     expect(buildAgentNameAutocompleteQuery("   ")).toEqual({ match_all: {} });
   });
 
+  it("filters on editors and models and returns facet values with counts", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "user",
+    });
+    const model = {
+      provider_id: "anthropic" as const,
+      model_id: "claude-sonnet-5" as const,
+      reasoning_effort: "medium" as const,
+    };
+    mockHits([
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: "sonnet-by-alice",
+        model,
+        editor_ids: ["alice"],
+      }),
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: "sonnet-by-bob",
+        model,
+        editor_ids: ["bob"],
+      }),
+      makeDocument({ workspace_id: workspace.sId, agent_id: "no-model" }),
+    ]);
+
+    expect(
+      await searchAgentIds(auth, {
+        filters: { modelIds: ["claude-sonnet-5"], editorIds: ["alice"] },
+      })
+    ).toEqual(["sonnet-by-alice"]);
+
+    mockSearch.mockResolvedValueOnce({
+      hits: { total: { value: 2, relation: "eq" }, hits: [] },
+      aggregations: {
+        editors: {
+          buckets: [
+            { key: "alice", doc_count: 1 },
+            { key: "bob", doc_count: 1 },
+          ],
+        },
+        models: { buckets: [{ key: "claude-sonnet-5", doc_count: 2 }] },
+      },
+    });
+    const result = await searchAgents(auth, {
+      searchTerm: "",
+      limit: 0,
+      facets: ["editors", "models"],
+    });
+    assert(result.isOk());
+    expect(result.value.facets).toEqual({
+      editors: [
+        { value: "alice", count: 1 },
+        { value: "bob", count: 1 },
+      ],
+      models: [{ value: "claude-sonnet-5", count: 2 }],
+    });
+    expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
+      size: 0,
+      aggs: {
+        editors: { terms: { field: "editor_ids" } },
+        models: { terms: { field: "model.model_id" } },
+      },
+    });
+    expect(mockSearch.mock.lastCall?.[0].aggs).not.toHaveProperty("tags");
+  });
+
+  it("filters on usage and spaces and returns the usage range", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    mockHits([
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: "busy",
+        active_users_count: 40,
+        requested_space_ids: [],
+      }),
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: "quiet",
+        active_users_count: 2,
+      }),
+      makeDocument({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: GLOBAL_AGENTS_SID.HELPER,
+        scope: "global",
+        active_users_count: null,
+      }),
+    ]);
+
+    expect(
+      await searchAgentIds(auth, {
+        filters: { activeUsersCount: { min: 10 } },
+      })
+    ).toEqual(["busy"]);
+    expect(
+      await searchAgentIds(auth, {
+        filters: { activeUsersCount: { min: 0, max: 5 } },
+      })
+    ).toEqual(["quiet"]);
+    expect(mockSearch.mock.lastCall?.[0].query.bool.filter).toContainEqual({
+      range: { active_users_count: { gte: 0, lte: 5 } },
+    });
+
+    await searchAgentIds(auth, { filters: { spaceIds: ["space-a"] } });
+    expect(mockSearch.mock.lastCall?.[0].query.bool.filter).toContainEqual({
+      terms: { requested_space_ids: ["space-a"] },
+    });
+
+    mockSearch.mockResolvedValueOnce({
+      hits: { total: { value: 2, relation: "eq" }, hits: [] },
+      aggregations: { usage: { count: 2, min: 2, max: 40 } },
+    });
+    const result = await searchAgents(auth, {
+      searchTerm: "",
+      limit: 0,
+      facets: ["usage", "spaces"],
+    });
+    assert(result.isOk());
+    expect(result.value.facets).toEqual({
+      usage: { min: 2, max: 40 },
+      spaces: [],
+    });
+    expect(mockSearch.mock.lastCall?.[0].aggs).toEqual({
+      usage: { stats: { field: "active_users_count" } },
+      spaces: {
+        terms: { field: "requested_space_ids", size: 1000 },
+      },
+    });
+  });
+
   it("rejects offsets past the result window without querying", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
 

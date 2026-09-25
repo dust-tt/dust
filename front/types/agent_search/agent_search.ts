@@ -8,6 +8,8 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { SpaceKind } from "@app/types/space";
+import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
 
 export interface AgentSearchDocumentModel {
@@ -46,9 +48,45 @@ export interface AgentSearchFilters {
   tagIds?: string[];
   skillIds?: string[];
   mcpServerViewIds?: string[];
+  editorIds?: string[];
+  modelIds?: string[];
+  spaceIds?: string[];
+  // Inclusive bounds; agents without usage (default agents) never match.
+  activeUsersCount?: { min?: number; max?: number };
   // Supports "edited by me", but not "not edited by me".
   editedByMe?: true;
 }
+
+export const AGENT_SEARCH_TERMS_FACETS = [
+  "editors",
+  "models",
+  "tags",
+  "skills",
+  "spaces",
+] as const;
+export type AgentSearchTermsFacet = (typeof AGENT_SEARCH_TERMS_FACETS)[number];
+
+export const AGENT_SEARCH_FACETS = [
+  ...AGENT_SEARCH_TERMS_FACETS,
+  "usage",
+] as const;
+export type AgentSearchFacet = (typeof AGENT_SEARCH_FACETS)[number];
+
+// Bounds of a numeric facet; null when no matching agent holds a value.
+export interface AgentSearchRangeFacetValue {
+  min: number | null;
+  max: number | null;
+}
+
+export interface AgentSearchFacetValue {
+  value: string;
+  count: number;
+}
+
+// Distinct indexed values of each requested facet, with the number of matching agents holding each.
+export type AgentSearchFacetValues = Partial<
+  Record<AgentSearchTermsFacet, AgentSearchFacetValue[]>
+> & { usage?: AgentSearchRangeFacetValue };
 
 export const AGENT_SEARCH_PERMISSION_FILTERINGS = [
   "strict",
@@ -89,4 +127,19 @@ export type SearchAgentsResponseBody = {
   })[];
   total: number;
   hasMore: boolean;
+  facets: {
+    editors?: (Pick<UserType, "sId" | "fullName" | "image"> & {
+      count: number;
+    })[];
+    models?: { modelId: string; count: number }[];
+    tags?: (Pick<TagType, "sId" | "name" | "kind"> & { count: number })[];
+    skills?: {
+      sId: string;
+      name: string;
+      icon: string | null;
+      count: number;
+    }[];
+    spaces?: { sId: string; name: string; kind: SpaceKind; count: number }[];
+    usage?: AgentSearchRangeFacetValue;
+  };
 };
