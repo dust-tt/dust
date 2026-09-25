@@ -6,10 +6,12 @@ import {
 } from "@app/lib/api/assistant/apply_agent_suggestions";
 import type { BatchApplicationStep } from "@app/lib/api/assistant/batch_application_plan";
 import { planBatchApplication } from "@app/lib/api/assistant/batch_application_plan";
+import { isAuthorizedToApplySkillSuggestions } from "@app/lib/api/skills/suggestion_authorization";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -57,11 +59,30 @@ function checkOneStepPerTarget(
   return new Ok(undefined);
 }
 
-async function checkSkillStepPermissions(
+function checkSkillStepPermissions(
   auth: Authenticator,
-  step: SkillStep
-): Promise<Result<undefined, ApplyBatchSuggestionsError>> {
-  // TODO: check that the caller can apply the step's suggestions to its skill.
+  step: SkillStep,
+  skillsById: Map<string, SkillResource>
+): Result<undefined, ApplyBatchSuggestionsError> {
+  const skill = skillsById.get(step.skillId);
+  if (!skill) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The skill this suggestion targets was not found."
+      )
+    );
+  }
+
+  if (!isAuthorizedToApplySkillSuggestions(auth, skill, step.suggestions)) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        `You are not allowed to apply one or more of these suggestions to the skill ${skill.name}.`
+      )
+    );
+  }
+
   return new Ok(undefined);
 }
 
@@ -95,11 +116,17 @@ function checkAgentStepPermissions(
 async function checkPermissions(
   auth: Authenticator,
   step: BatchApplicationStep,
-  agentsById: Map<string, AgentResource>
+  {
+    agentsById,
+    skillsById,
+  }: {
+    agentsById: Map<string, AgentResource>;
+    skillsById: Map<string, SkillResource>;
+  }
 ): Promise<Result<undefined, ApplyBatchSuggestionsError>> {
   switch (step.type) {
     case "skill":
-      return checkSkillStepPermissions(auth, step);
+      return checkSkillStepPermissions(auth, step, skillsById);
     case "agent":
       return checkAgentStepPermissions(auth, step, agentsById);
     default:
@@ -198,8 +225,14 @@ export async function applyBatchSuggestions(
   );
   const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
 
+  const skills = await SkillResource.fetchByIds(
+    auth,
+    steps.filter((step) => step.type === "skill").map((step) => step.skillId)
+  );
+  const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
+
   for (const step of steps) {
-    const res = await checkPermissions(auth, step, agentsById);
+    const res = await checkPermissions(auth, step, { agentsById, skillsById });
     if (res.isErr()) {
       return res;
     }

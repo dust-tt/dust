@@ -1,4 +1,4 @@
-import { isAuthorizedForSkillSuggestionKind } from "@app/lib/api/skills/suggestion_authorization";
+import { isAuthorizedForSkillSuggestion } from "@app/lib/api/skills/suggestion_authorization";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
@@ -118,9 +118,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     const owner = auth.getNonNullableWorkspace();
 
     if (
-      !blobs.every((blob) =>
-        isAuthorizedForSkillSuggestionKind(auth, skill, blob.kind)
-      )
+      !blobs.every((blob) => isAuthorizedForSkillSuggestion(auth, skill, blob))
     ) {
       throw new Error("User does not have permission to edit this skill");
     }
