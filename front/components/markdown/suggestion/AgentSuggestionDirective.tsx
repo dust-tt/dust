@@ -1,6 +1,11 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { getAgentSuggestionLabels } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { ConversationalSuggestionReviewCard } from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
+import type { ConversationAgentSuggestionKind } from "@app/components/markdown/suggestion/suggestion_directives";
+import {
+  DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS,
+  isConversationAgentSuggestionKind,
+} from "@app/components/markdown/suggestion/suggestion_directives";
 import { makeSuggestionDirective } from "@app/components/markdown/suggestion/suggestionDirective";
 import { ReviewedSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import { useConversationAgentSuggestionReview } from "@app/hooks/useConversationalSuggestionReview";
@@ -19,31 +24,6 @@ export const agentSuggestionDirective = makeSuggestionDirective(
   "agent_suggestion",
   "agentId"
 );
-
-const CONVERSATION_AGENT_SUGGESTION_KINDS = [
-  "create",
-  "delete",
-  "description",
-  "instructions",
-  "model",
-  "name",
-  "scope",
-] as const;
-
-type ConversationAgentSuggestionKind =
-  (typeof CONVERSATION_AGENT_SUGGESTION_KINDS)[number];
-
-// `create` targets a not-yet-created placeholder agent, so there is no configuration to fetch.
-const DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS: ConversationAgentSuggestionKind[] =
-  ["create"];
-
-function isConversationAgentSuggestionKind(
-  kind: AgentSuggestionKind
-): kind is ConversationAgentSuggestionKind {
-  return CONVERSATION_AGENT_SUGGESTION_KINDS.includes(
-    kind as ConversationAgentSuggestionKind
-  );
-}
 
 interface ConversationAgentSuggestionProps {
   owner: LightWorkspaceType;
