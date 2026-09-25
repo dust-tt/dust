@@ -8,6 +8,8 @@ import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory"
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -127,6 +129,39 @@ describe("applyBatchSuggestions", () => {
     assert(res.isErr());
     expect(res.error.code).toBe("unauthorized");
     expect(await fetchAgentName(agent.sId)).toBe(agent.name);
+  });
+
+  it("writes nothing when the caller cannot apply a skill step", async () => {
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+    const adminAgent = await AgentConfigurationFactory.createTestAgent(
+      adminAuth,
+      { name: "Admin Agent" }
+    );
+    // The admin is not an editor of this skill: holding only its `admin` verb, they cannot edit its
+    // content.
+    const skill = await SkillFactory.create(auth);
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(adminAuth);
+    await AgentSuggestionFactory.createName(adminAuth, adminAgent, {
+      suggestion: { name: "RenamedAdminAgent" },
+      batchModelId,
+    });
+    // Only an editor can suggest an edit of the skill.
+    await SkillSuggestionFactory.create(auth, skill, { batchModelId });
+    const batch = await BatchSuggestionResource.fetchById(adminAuth, sId);
+    assert(batch);
+
+    const res = await applyBatchSuggestions(adminAuth, batch);
+
+    assert(res.isErr());
+    expect(res.error.code).toBe("unauthorized");
+    expect(await fetchAgentName(adminAgent.sId)).toBe(adminAgent.name);
   });
 
   it("writes nothing when a later step fails validation", async () => {
