@@ -23,6 +23,7 @@ import {
   NavigationList,
   NavigationListItem,
   Pin02,
+  SearchInput,
   Spinner,
   Users01,
 } from "@dust-tt/sparkle";
@@ -149,8 +150,6 @@ function formatAuthors(authors: readonly string[]): string {
 
 interface DiscoverCatalogProps {
   owner: WorkspaceType;
-  search: string;
-  onClearSearch: () => void;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
   onSkillClick: (skill: DiscoverSkill) => void;
   onPin?: (item: CatalogItem) => void;
@@ -160,8 +159,6 @@ interface DiscoverCatalogProps {
 
 export function DiscoverCatalog({
   owner,
-  search,
-  onClearSearch,
   onAgentClick,
   onSkillClick,
   onPin,
@@ -169,6 +166,7 @@ export function DiscoverCatalog({
   onFiltersChange,
 }: DiscoverCatalogProps) {
   const [filters, setFilters] = useState<CatalogFilters>(DEFAULT_FILTERS);
+  const [search, setSearch] = useState("");
   const { view, kind, tagId } = filters;
 
   const updateFilters = (update: Partial<CatalogFilters>) => {
@@ -247,7 +245,7 @@ export function DiscoverCatalog({
 
   const clearFilters = () => {
     updateFilters(DEFAULT_FILTERS);
-    onClearSearch();
+    setSearch("");
   };
 
   const isInitialLoading =
@@ -256,93 +254,101 @@ export function DiscoverCatalog({
   const isRefreshing = isAgentsLoading && !isInitialLoading;
 
   return (
-    <div className="grid grid-cols-1 gap-10 md:grid-cols-[12rem_1fr]">
-      <nav
-        aria-label="Filter"
-        className="flex flex-col gap-6 self-start md:sticky md:top-6"
-      >
-        <NavigationList>
-          {CATALOG_VIEWS.map((v) => (
-            <NavigationListItem
-              key={v.id}
-              label={v.label}
-              selected={view === v.id}
-              onClick={() => updateFilters({ view: v.id })}
-            />
-          ))}
-        </NavigationList>
-        <NavigationList>
-          {CATALOG_KINDS.map((k) => (
-            <NavigationListItem
-              key={k.id}
-              label={k.label}
-              selected={kind === k.id}
-              onClick={() =>
-                updateFilters(
-                  k.id === "skill"
-                    ? { kind: k.id, tagId: null }
-                    : { kind: k.id }
-                )
-              }
-            />
-          ))}
-        </NavigationList>
-        {tags.length > 0 && kind !== "skill" && (
+    <div className="flex flex-col gap-8">
+      <SearchInput
+        name="discover-search"
+        placeholder="Search for agents or skills"
+        value={search}
+        onChange={(value) => {
+          setSearch(value);
+          onFiltersChange();
+        }}
+      />
+      <div className="grid grid-cols-1 gap-10 md:grid-cols-[12rem_1fr]">
+        <nav aria-label="Filter" className="flex flex-col gap-6 self-start">
           <NavigationList>
-            {tags.map((t) => (
+            {CATALOG_VIEWS.map((v) => (
               <NavigationListItem
-                key={t.sId}
-                label={capitalizeWords(t.name)}
-                selected={tagId === t.sId}
+                key={v.id}
+                label={v.label}
+                selected={view === v.id}
+                onClick={() => updateFilters({ view: v.id })}
+              />
+            ))}
+          </NavigationList>
+          <NavigationList>
+            {CATALOG_KINDS.map((k) => (
+              <NavigationListItem
+                key={k.id}
+                label={k.label}
+                selected={kind === k.id}
                 onClick={() =>
-                  updateFilters({ tagId: tagId === t.sId ? null : t.sId })
+                  updateFilters(
+                    k.id === "skill"
+                      ? { kind: k.id, tagId: null }
+                      : { kind: k.id }
+                  )
                 }
               />
             ))}
           </NavigationList>
-        )}
-      </nav>
-      <section className="relative flex min-w-0 flex-col">
-        {isRefreshing && (
-          <div className="absolute right-0 top-0">
-            <Spinner size="xs" />
-          </div>
-        )}
-        {isInitialLoading ? (
-          <div className="flex justify-center py-6">
-            <Spinner />
-          </div>
-        ) : items.length === 0 ? (
-          <EmptyCTA
-            title="No agents or skills found"
-            message="Try another search or different filters."
-            action={
-              hasActiveFilters && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  label="Clear filters"
-                  onClick={clearFilters}
+          {tags.length > 0 && kind !== "skill" && (
+            <NavigationList>
+              {tags.map((t) => (
+                <NavigationListItem
+                  key={t.sId}
+                  label={capitalizeWords(t.name)}
+                  selected={tagId === t.sId}
+                  onClick={() =>
+                    updateFilters({ tagId: tagId === t.sId ? null : t.sId })
+                  }
                 />
-              )
-            }
-          />
-        ) : (
-          items.map((item) => (
-            <CatalogRow
-              key={`${item.kind}-${getItemId(item)}`}
-              item={item}
-              onUse={() =>
-                item.kind === "agent"
-                  ? onAgentClick(item.agent)
-                  : onSkillClick(item.skill)
+              ))}
+            </NavigationList>
+          )}
+        </nav>
+        <section className="relative flex min-w-0 flex-col">
+          {isRefreshing && (
+            <div className="absolute right-0 top-0">
+              <Spinner size="xs" />
+            </div>
+          )}
+          {isInitialLoading ? (
+            <div className="flex justify-center py-6">
+              <Spinner />
+            </div>
+          ) : items.length === 0 ? (
+            <EmptyCTA
+              title="No agents or skills found"
+              message="Try another search or different filters."
+              action={
+                hasActiveFilters && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    label="Clear filters"
+                    onClick={clearFilters}
+                  />
+                )
               }
-              onPin={onPin && (() => onPin(item))}
-              onDetails={() => onDetails(item)}
             />
-          ))
-        )}
-      </section>
+          ) : (
+            items.map((item) => (
+              <CatalogRow
+                key={`${item.kind}-${getItemId(item)}`}
+                item={item}
+                onUse={() =>
+                  item.kind === "agent"
+                    ? onAgentClick(item.agent)
+                    : onSkillClick(item.skill)
+                }
+                onPin={onPin && (() => onPin(item))}
+                onDetails={() => onDetails(item)}
+              />
+            ))
+          )}
+        </section>
+      </div>
     </div>
   );
 }

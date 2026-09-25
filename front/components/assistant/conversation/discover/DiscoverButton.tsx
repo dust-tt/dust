@@ -7,25 +7,15 @@ const RING_WIDTH_PX = 1.5;
 const RING_INSET_PX = RING_WIDTH_PX / 2;
 const RING_RADIUS_PX = BUTTON_HEIGHT_PX / 2 - RING_INSET_PX;
 
-// Filling tracks the wheel tick for tick, draining is a longer eased release, so the two
-// read as different gestures.
-const FILL_DURATION_MS = 80;
-const FILL_EASING = "linear";
-const DRAIN_DURATION_MS = 300;
-const DRAIN_EASING = "var(--ease-emphasized)";
+const RING_DURATION_MS = 300;
+const RING_EASING = "var(--ease-emphasized)";
 
 interface DiscoverButtonProps {
   onClick: () => void;
-  progress: number;
+  isOpening: boolean;
 }
 
-export function DiscoverButton({ onClick, progress }: DiscoverButtonProps) {
-  const percent = Math.round(Math.min(1, Math.max(0, progress)) * 100);
-  const isComplete = progress >= 1;
-  const isDraining = progress === 0;
-  const durationMs = isDraining ? DRAIN_DURATION_MS : FILL_DURATION_MS;
-  const easing = isDraining ? DRAIN_EASING : FILL_EASING;
-
+export function DiscoverButton({ onClick, isOpening }: DiscoverButtonProps) {
   return (
     <button
       type="button"
@@ -38,7 +28,7 @@ export function DiscoverButton({ onClick, progress }: DiscoverButtonProps) {
         "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-px",
         "[@media(hover:hover)_and_(pointer:fine)]:hover:shadow-[0px_2px_2px_-1px_rgba(0,0,0,0.06),0px_6px_10px_-4px_rgba(0,0,0,0.10)]",
         "active:translate-y-0 active:scale-[0.97] motion-reduce:active:scale-100",
-        isComplete &&
+        isOpening &&
           "border-highlight-200 bg-highlight-50 text-highlight-700 dark:border-highlight-800"
       )}
     >
@@ -61,9 +51,9 @@ export function DiscoverButton({ onClick, progress }: DiscoverButtonProps) {
           strokeLinecap="round"
           pathLength={100}
           strokeDasharray={100}
-          strokeDashoffset={100 - percent}
+          strokeDashoffset={isOpening ? 0 : 100}
           style={{
-            transition: `stroke-dashoffset ${durationMs}ms ${easing}`,
+            transition: `stroke-dashoffset ${RING_DURATION_MS}ms ${RING_EASING}`,
           }}
         />
       </svg>
@@ -71,33 +61,33 @@ export function DiscoverButton({ onClick, progress }: DiscoverButtonProps) {
         aria-hidden
         className={classNames(
           "relative flex transition-[color,rotate] motion-reduce:rotate-0",
-          isComplete ? "text-highlight-500" : "text-muted-foreground",
+          isOpening ? "text-highlight-500" : "text-muted-foreground",
           "[@media(hover:hover)_and_(pointer:fine)]:group-hover:text-highlight-500"
         )}
         style={{
-          rotate: `${progress * 90}deg`,
-          transitionDuration: `${durationMs}ms`,
-          transitionTimingFunction: easing,
+          rotate: isOpening ? "90deg" : "0deg",
+          transitionDuration: `${RING_DURATION_MS}ms`,
+          transitionTimingFunction: RING_EASING,
         }}
       >
         <Icon visual={Stars02} size="xs" />
       </span>
       <span className="relative grid heading-sm">
         <span
-          aria-hidden={isComplete}
+          aria-hidden={isOpening}
           className={classNames(
             "col-start-1 row-start-1 transition-[opacity,translate,filter] duration-200 ease-emphasized motion-reduce:transition-opacity",
-            isComplete &&
+            isOpening &&
               "-translate-y-1 opacity-0 blur-[2px] motion-reduce:translate-y-0 motion-reduce:blur-none"
           )}
         >
           Discover Skills and agents
         </span>
         <span
-          aria-hidden={!isComplete}
+          aria-hidden={!isOpening}
           className={classNames(
             "col-start-1 row-start-1 transition-[opacity,translate,filter] duration-200 ease-emphasized motion-reduce:transition-opacity",
-            !isComplete &&
+            !isOpening &&
               "translate-y-1 opacity-0 blur-[2px] motion-reduce:translate-y-0 motion-reduce:blur-none"
           )}
         >
