@@ -193,9 +193,7 @@ describe("search-backed Manage Agents", () => {
     const { agent, fetcherWithBody, fetcher, mount } = await setup();
     mount();
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Weekly report/ })
-    );
+    await screen.findByRole("button", { name: /Weekly report/ });
     expect(lastSearchBody(fetcherWithBody)).toEqual({
       query: "",
       status: ["active"],
@@ -205,11 +203,16 @@ describe("search-backed Manage Agents", () => {
       offset: 0,
       permissionFiltering: "strict",
     });
-    expect(
-      await screen.findByText(`Details of ${agent.sId}`, undefined, {
-        timeout: CI_RENDER_TIMEOUT_MS,
-      })
-    ).toBeInTheDocument();
+    // Rows re-render once workspace tags load; click the current row until the details open.
+    await waitFor(
+      async () => {
+        await userEvent.click(
+          screen.getByRole("button", { name: /Weekly report/ })
+        );
+        expect(screen.getByText(`Details of ${agent.sId}`)).toBeInTheDocument();
+      },
+      { timeout: CI_RENDER_TIMEOUT_MS }
+    );
     for (const header of [
       "Name",
       "Model",
