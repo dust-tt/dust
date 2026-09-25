@@ -1,7 +1,7 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
-import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
+import { PodDefaultSkillPicker } from "@app/components/pod/settings/PodDefaultSkillPicker";
 import { PodTabsCustomizationSection } from "@app/components/pod/settings/PodTabsCustomizationSection";
 import {
   getPodAgentsMdScopedPath,
@@ -22,18 +22,12 @@ import {
   Button,
   ChevronDown,
   cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Icon,
   InfoCircle,
-  ShapesPlus,
   Tooltip,
   XCircle,
 } from "@dust-tt/sparkle";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo } from "react";
 
 const DEFAULT_PILL_BASE_CLASSNAME =
   "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border bg-background text-sm text-primary transition-colors duration-200";
@@ -115,32 +109,16 @@ export function PodSettingsCustomizationTab({
     owner,
     status: "active",
   });
-  const [skillSearchText, setSkillSearchText] = useState("");
-  const [isSkillPickerOpen, setIsSkillPickerOpen] = useState(false);
 
   const defaultSkillIds = useMemo(
     () => podMetadata?.defaultSkillIds ?? [],
     [podMetadata]
   );
-  const selectedDefaultSkillIdSet = new Set(defaultSkillIds);
   const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
   const selectedDefaultSkills = defaultSkillIds.flatMap((skillId) => {
     const skill = skillById.get(skillId);
     return skill ? [skill] : [];
   });
-  const normalizedSkillSearch = skillSearchText.trim().toLowerCase();
-  const addableSkills = skills
-    .filter(
-      (skill) =>
-        !selectedDefaultSkillIdSet.has(skill.sId) &&
-        (normalizedSkillSearch.length === 0 ||
-          skill.name.toLowerCase().includes(normalizedSkillSearch) ||
-          (skill.userFacingDescription ?? "")
-            .toLowerCase()
-            .includes(normalizedSkillSearch))
-    )
-    .sort((a, b) => a.name.localeCompare(b.name));
-
   const addDefaultSkill = useCallback(
     async (skillId: string) => {
       await doUpdateMetadata({
@@ -157,21 +135,6 @@ export function PodSettingsCustomizationTab({
       });
     },
     [doUpdateMetadata, defaultSkillIds]
-  );
-
-  const skillPickerDropdownHeaders = useMemo(
-    () => (
-      <>
-        <DropdownMenuSearchbar
-          name="search-default-skills"
-          placeholder="Search skills"
-          value={skillSearchText}
-          onChange={setSkillSearchText}
-        />
-        <DropdownMenuSeparator />
-      </>
-    ),
-    [skillSearchText]
   );
 
   const renderDefaultAgentPill = (interactive: boolean) => (
@@ -326,65 +289,16 @@ export function PodSettingsCustomizationTab({
             </div>
           ))}
           {isPodEditor && (
-            <DropdownMenu
-              open={isSkillPickerOpen}
-              onOpenChange={(open) => {
-                setIsSkillPickerOpen(open);
-                if (open) {
-                  setSkillSearchText("");
-                }
-              }}
-            >
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Add a default skill"
-                  className={cn(
-                    DEFAULT_PILL_BASE_CLASSNAME,
-                    DEFAULT_PILL_INTERACTIVE_CLASSNAME
-                  )}
-                >
-                  <Icon visual={ShapesPlus} size="xs" />
-                  <span className="grow truncate">Add skill</span>
-                  <Icon
-                    visual={ChevronDown}
-                    size="xs"
-                    className="-mr-1 text-faint"
-                  />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-80"
-                align="start"
-                dropdownHeaders={skillPickerDropdownHeaders}
-              >
-                <CapabilitiesPickerItemsList
-                  emptyMessage={
-                    normalizedSkillSearch.length > 0
-                      ? "No skills found"
-                      : "No more skills to add"
-                  }
-                  items={addableSkills.map((skill) => {
-                    const SkillAvatar = getSkillAvatarIcon(skill);
-
-                    return {
-                      kind: "skill" as const,
-                      skill,
-                      id: `pod-default-skills-picker-${skill.sId}`,
-                      icon: <SkillAvatar size="xs" />,
-                      label: skill.name,
-                      sortName: skill.name.toLowerCase(),
-                      description: skill.userFacingDescription ?? undefined,
-                    };
-                  })}
-                  onItemSelect={(item) => {
-                    if (item.kind === "skill") {
-                      void addDefaultSkill(item.skill.sId);
-                    }
-                  }}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <PodDefaultSkillPicker
+              owner={owner}
+              skills={skills}
+              selectedSkillIds={defaultSkillIds}
+              onSelect={(skillId) => void addDefaultSkill(skillId)}
+              triggerClassName={cn(
+                DEFAULT_PILL_BASE_CLASSNAME,
+                DEFAULT_PILL_INTERACTIVE_CLASSNAME
+              )}
+            />
           )}
           {!isPodEditor && selectedDefaultSkills.length === 0 && (
             <p className="text-sm text-muted-foreground">
