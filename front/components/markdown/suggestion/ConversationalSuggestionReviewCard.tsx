@@ -32,6 +32,7 @@ interface ConversationalSuggestionReviewCardProps {
   onPreview?: () => void;
   isAccepting?: boolean;
   isRejecting?: boolean;
+  disabled?: boolean;
   titleAside?: ReactNode;
   secondaryAction?: ReactNode;
 }
@@ -118,6 +119,7 @@ export function ConversationalSuggestionReviewCard({
   onPreview,
   isAccepting = false,
   isRejecting = false,
+  disabled = false,
   titleAside,
   secondaryAction,
 }: ConversationalSuggestionReviewCardProps) {
@@ -134,7 +136,7 @@ export function ConversationalSuggestionReviewCard({
       onAccept={onAccept}
       onReject={onReject}
       onPreview={onPreview}
-      disabled={isAccepting || isRejecting}
+      disabled={disabled || isAccepting || isRejecting}
       isAccepting={isAccepting}
       isDeclining={isRejecting}
       secondaryAction={secondaryAction}

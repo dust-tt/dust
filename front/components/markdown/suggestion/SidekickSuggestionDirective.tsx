@@ -224,6 +224,7 @@ function ConversationAgentSuggestion({
   const {
     agentConfiguration,
     isAgentConfigurationLoading,
+    isAgentConfigurationValidating,
     mutateAgentConfiguration,
   } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -257,6 +258,9 @@ function ConversationAgentSuggestion({
   }
 
   const pendingAction = getPendingAction(suggestion);
+  // Reviewing against stale agent details would be misleading, so wait for the refresh.
+  const isReviewDisabled =
+    pendingAction !== null || isAgentConfigurationValidating;
 
   if (shouldUseConversationalReviewCard(suggestion)) {
     return (
@@ -277,6 +281,7 @@ function ConversationAgentSuggestion({
         }
         isAccepting={pendingAction === "accept"}
         isRejecting={pendingAction === "reject"}
+        disabled={isReviewDisabled}
       />
     );
   }
@@ -285,7 +290,7 @@ function ConversationAgentSuggestion({
     <AgentSuggestionActionCard
       agentSuggestion={suggestion}
       pictureUrl={agentConfiguration?.pictureUrl}
-      disabled={pendingAction !== null}
+      disabled={isReviewDisabled}
       onAccept={() => void handleAccept(suggestion)}
       onReject={() => void rejectSuggestion(suggestion)}
     />
