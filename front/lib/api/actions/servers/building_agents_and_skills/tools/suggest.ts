@@ -19,6 +19,7 @@ import {
 import { formatBatchSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type {
   CreateAgentSuggestion,
+  CreateSkillSuggestion,
   DeleteAgentSuggestion,
   DeleteSkillSuggestion,
   EditAgentSuggestion,
@@ -28,8 +29,10 @@ import type {
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import {
   checkSkillSuggestionKindAuthorized,
+  recordSkillCreationSuggestion,
   recordSkillSuggestions,
   validateSkillAvailabilitySuggestion,
+  validateSkillCreation,
   validateSkillDeletionSuggestion,
   validateSkillEditorsSuggestion,
   validateSkillEditSuggestion,
@@ -53,7 +56,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreateSuggestionType } from "@app/types/suggestions/agent_suggestion";
-import type { SkillSuggestionData } from "@app/types/suggestions/skill_suggestion";
+import type {
+  SkillCreateSuggestionType,
+  SkillSuggestionData,
+} from "@app/types/suggestions/skill_suggestion";
 import assert from "assert";
 
 /**
@@ -71,6 +77,7 @@ type PlannedChange =
         edits: InstructionSuggestionEditInput[];
       } | null;
     }
+  | { type: "skill_creation"; create: SkillCreateSuggestionType }
   | { type: "skill"; skill: SkillResource; rows: SkillSuggestionData[] };
 
 async function fetchAgentForSuggestion(
@@ -109,6 +116,31 @@ async function planAgentCreation(
   return new Ok({
     type: "agent_creation",
     create: { name: validation.value.name, description, instructions },
+  });
+}
+
+async function planSkillCreation(
+  auth: Authenticator,
+  {
+    name,
+    userFacingDescription,
+    agentFacingDescription,
+    instructions,
+  }: CreateSkillSuggestion
+): Promise<Result<PlannedChange, MCPError>> {
+  const validation = await validateSkillCreation(auth, { name });
+  if (validation.isErr()) {
+    return validation;
+  }
+
+  return new Ok({
+    type: "skill_creation",
+    create: {
+      name,
+      userFacingDescription,
+      agentFacingDescription,
+      instructions,
+    },
   });
 }
 
@@ -373,10 +405,7 @@ async function planSuggestion(
     case "delete_agent":
       return planAgentDeletion(auth, suggestion);
     case "create_skill":
-      // TODO(conversational-building): record a creation on a pending placeholder skill.
-      return new Err(
-        new MCPError("Suggesting a new skill is not supported yet.")
-      );
+      return planSkillCreation(auth, suggestion);
     case "edit_skill":
       return planSkillEdit(auth, suggestion);
     case "delete_skill":
@@ -461,6 +490,16 @@ async function recordPlannedChange(
       return new Ok(undefined);
     }
 
+    case "skill_creation": {
+      const res = await recordSkillCreationSuggestion(auth, {
+        create: change.create,
+        analysis: null,
+        conversation,
+        batch,
+      });
+      return res.isErr() ? res : new Ok(undefined);
+    }
+
     case "skill": {
       await recordSkillSuggestions(auth, change.skill, {
         data: change.rows,
@@ -481,7 +520,7 @@ async function recordPlannedChange(
  * @cc [owner:fabiencelier,label:product;mcp] suggest-validates-all-before-writing
  * `suggest` MUST validate every suggestion of the call against live state before recording any of
  * them: when one suggestion is invalid or unsupported, or two suggestions target the same agent or
- * skill, the call fails and no batch, placeholder agent or suggestion row is created.
+ * skill, the call fails and no batch, placeholder agent or skill, or suggestion row is created.
  */
 export async function suggest(
   auth: Authenticator,

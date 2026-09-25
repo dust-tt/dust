@@ -338,7 +338,9 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
  */
 /**
  * @cc [owner:achilleburah,label:product] pending-skill-unlisted
- * A `pending` skill MUST NOT be returned by any listing or search, and MUST NOT be indexed.
+ * A `pending` skill MUST NOT be returned by a listing unless the caller explicitly requests the
+ * `pending` status (e.g. space cleanup passing every status). Listings MUST default to excluding it,
+ * and it MUST NOT be indexed or returned by search.
  */
 /**
  * @cc [owner:fabiencelier,label:security;product] skill-publish-capability
