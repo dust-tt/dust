@@ -83,14 +83,10 @@ function extractFrontmatter(
 
 /**
  * Scans file entries for directories containing a SKILL.md (case-insensitive).
- * Prefers nested skill directories, and falls back to a root-level SKILL.md
- * only when no nested skills were found. This avoids treating a whole
- * multi-skill repository as attachments for a root skill.
  */
 export function findSkillDirectories(entries: FileEntry[]): SkillDirectory[] {
   const skillDirs: SkillDirectory[] = [];
   const seenDirs = new Set<string>();
-  let rootSkillDir: SkillDirectory | null = null;
 
   for (const entry of entries) {
     if (path.basename(entry.path).toLowerCase() !== SKILL_MD_FILENAME) {
@@ -98,11 +94,6 @@ export function findSkillDirectories(entries: FileEntry[]): SkillDirectory[] {
     }
 
     const dirPath = path.dirname(entry.path);
-    if (dirPath === ".") {
-      rootSkillDir ??= { dirPath, skillMdPath: entry.path };
-      continue;
-    }
-
     // Avoid duplicates if a directory has both skill.md and SKILL.md.
     if (seenDirs.has(dirPath)) {
       continue;
@@ -110,10 +101,6 @@ export function findSkillDirectories(entries: FileEntry[]): SkillDirectory[] {
     seenDirs.add(dirPath);
 
     skillDirs.push({ dirPath, skillMdPath: entry.path });
-  }
-
-  if (skillDirs.length === 0 && rootSkillDir) {
-    return [rootSkillDir];
   }
 
   return skillDirs;
@@ -124,13 +111,37 @@ export function collectAttachments(
   skillDir: SkillDirectory
 ): DetectedSkillAttachment[] {
   const attachments: DetectedSkillAttachment[] = [];
+  const nestedSkillDirs = findSkillDirectories(entries)
+    .map((dir) => dir.dirPath)
+    .filter((dirPath) => {
+      if (dirPath === skillDir.dirPath) {
+        return false;
+      }
+
+      const rel = path.relative(skillDir.dirPath, dirPath);
+
+      return rel.length > 0 && !rel.startsWith("..") && !path.isAbsolute(rel);
+    });
 
   for (const entry of entries) {
     if (entry.path === skillDir.skillMdPath) {
       continue;
     }
     const rel = path.relative(skillDir.dirPath, entry.path);
-    if (rel.startsWith("..")) {
+    if (rel.startsWith("..") || path.isAbsolute(rel)) {
+      continue;
+    }
+    if (
+      nestedSkillDirs.some((dirPath) => {
+        const nestedRel = path.relative(dirPath, entry.path);
+
+        return (
+          nestedRel.length > 0 &&
+          !nestedRel.startsWith("..") &&
+          !path.isAbsolute(nestedRel)
+        );
+      })
+    ) {
       continue;
     }
     const contentType = getSkillAttachmentContentType(entry);
