@@ -442,7 +442,7 @@ export class CustomerioServerSideTracking {
 
     const body: Record<string, any> = {
       name: eventName,
-      data: eventAttributes,
+      data: eventData,
     };
 
     // eslint-disable-next-line no-restricted-globals
