@@ -30,8 +30,9 @@ export function InputBarModelPicker({
   const { stickyModelOverride, setStickyModelOverride, openModelPickerRef } =
     useContext(InputBarContext);
 
-  // On mobile (and in the narrow extension) the input bar has no room for the
-  // model name, so the trigger stays icon-only with its tooltip.
+  // On mobile, in the narrow extension or next to a docked side panel, the
+  // input bar has no room for the model name, so the trigger stays icon-only
+  // with its tooltip.
   const isWidthConstrained = useIsWidthConstrained();
 
   return (
