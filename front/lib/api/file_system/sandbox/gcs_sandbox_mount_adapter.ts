@@ -330,6 +330,12 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
     return new Ok(undefined);
   }
 
+  /**
+   * @cc [owner:davidebbo,label:security;concurrency] firewall-before-token-writes
+   * The broker UID firewall MUST be re-applied before any token file is written, and MUST NOT
+   * rely on the lifecycle egress check having run first: the sandbox ready path runs that check
+   * concurrently with this refresh.
+   */
   async refreshCredential(
     auth: Authenticator,
     sandbox: SandboxResource,
