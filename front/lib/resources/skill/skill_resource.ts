@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
@@ -334,6 +335,10 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
  * `create` on the `skill` type means bringing a new skill into the workspace: creating one,
  * importing one (zip, GitHub) or detecting one from files. Every such path MUST require
  * `hasWorkspacePermission("create", "skill")`. Editing an existing skill MUST NOT.
+ */
+/**
+ * @cc [owner:achilleburah,label:product] pending-skill-unlisted
+ * A `pending` skill MUST NOT be returned by any listing or search, and MUST NOT be indexed.
  */
 /**
  * @cc [owner:fabiencelier,label:security;product] skill-publish-capability
@@ -697,7 +702,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // construction are now stale and the caller would not be an editor of the skill they just
     // created. Refresh the snapshot now that the write has committed, as space creation does.
     await auth.refresh();
-    await this.launchSearchIndexation(auth, [skillResource.sId]);
+    if (skillResource.status !== "pending") {
+      await this.launchSearchIndexation(auth, [skillResource.sId]);
+    }
 
     return skillResource;
   }
@@ -776,6 +783,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     return new Ok(createdSuggestedSkill);
+  }
+
+  static async createPending(
+    auth: Authenticator
+  ): Promise<Result<SkillResource, Error>> {
+    if (!auth.hasWorkspacePermission("create", "skill")) {
+      return new Err(new Error("Creating skills is restricted."));
+    }
+
+    const user = auth.getNonNullableUser();
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+    const pendingSkill = await this.makeNew(
+      auth,
+      {
+        name: `__PENDING__${randomUUID()}`,
+        agentFacingDescription: "",
+        userFacingDescription: "",
+        instructions: "",
+        status: "pending",
+        availability: "editors",
+        editedBy: user.id,
+        requestedSpaceIds: [globalSpace.id],
+      },
+      { mcpServerViews: [] }
+    );
+
+    return new Ok(pendingSkill);
   }
 
   /**
@@ -1262,7 +1297,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         where: {
           id: customSkillIds,
           sId: globalSkillIds,
-          status: onlyActive ? ["active"] : ["active", "archived", "suggested"],
+          status: onlyActive
+            ? ["active"]
+            : ["active", "archived", "suggested", "pending"],
         },
         withInstructions,
         withTools,
