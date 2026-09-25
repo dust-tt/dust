@@ -1,8 +1,9 @@
 import type { KnowledgeBrowserItem } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
+import { POD_FILES_TITLE } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
+import { getKnowledgeBrowserBreadcrumbItems } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import { SELECT_ATTACH_CONTEXT_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import {
-  getKnowledgeBrowserBreadcrumbItems,
   isNavigateKnowledgeBrowserSlashCommand,
   NAVIGATE_KNOWLEDGE_BROWSER_ACTION,
   toKnowledgeBrowserSlashCommands,
@@ -77,6 +78,23 @@ describe("toKnowledgeBrowserSlashCommands", () => {
 });
 
 describe("toKnowledgeBrowserSlashCommands data source rows", () => {
+  it("labels a pod's own data source as its files", () => {
+    const [command] = toKnowledgeBrowserSlashCommands([
+      {
+        kind: "data_source",
+        id: "pod-files",
+        title: "Project (vlt_abc): Launch",
+        icon: () => null,
+        dataSourceView: makeDataSourceViewFixture("pod-files", {
+          name: "Project (vlt_abc): Launch",
+          connectorProvider: "dust_project",
+          connectorId: "c2",
+        }),
+      },
+    ]);
+    expect(command.label).toBe(POD_FILES_TITLE);
+  });
+
   it("adds an Add action attaching the view's root node", () => {
     const dataSourceView = makeDataSourceViewFixture("dsv1");
     const onAttachNode = vi.fn();

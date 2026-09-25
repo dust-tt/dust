@@ -126,7 +126,8 @@ export function buildCategoryItems(
 }
 
 // A pod's own data source is stored as "Project (<sId>): <pod>", which does not fit a menu row;
-// the browser uses the pod page's own word for it, and the pod is already named one level up.
+// the slash menu uses the pod page's own word for it, since the pod is already named one level up.
+// Rows keep the stored name so other surfaces (the Agent Builder) read as they always did.
 export const POD_FILES_TITLE = "Pod files";
 
 export function getBrowsableDataSourceViewTitle(
@@ -184,7 +185,7 @@ export function buildDataSourceViewItems(
       return {
         kind: "data_source" as const,
         id: dsv.sId,
-        title: getBrowsableDataSourceViewTitle(dsv),
+        title: getDataSourceNameFromView(dsv),
         icon,
         dataSourceView: dsv,
       };
