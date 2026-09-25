@@ -2,8 +2,8 @@ import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { formatModelEffortLabel } from "@app/components/model_picker/modelPickerUtils";
+import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
-import { SkillFieldEditSection } from "@app/components/skill_builder/SkillFieldEditSection";
 import { getAgentScopeLabel } from "@app/lib/agent_builder/labels";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
@@ -58,8 +58,12 @@ export function AgentSuggestionDetails({
       const { name, description, instructions } = suggestion.suggestion;
       return (
         <div className="flex flex-col gap-3">
-          <SkillFieldEditSection label="Name" currentValue="" newValue={name} />
-          <SkillFieldEditSection
+          <SuggestionFieldEditSection
+            label="Name"
+            currentValue=""
+            newValue={name}
+          />
+          <SuggestionFieldEditSection
             label="Description"
             currentValue=""
             newValue={description}
@@ -80,7 +84,7 @@ export function AgentSuggestionDetails({
 
     case "description":
       return (
-        <SkillFieldEditSection
+        <SuggestionFieldEditSection
           label="Description"
           currentValue={agentConfiguration?.description ?? ""}
           newValue={suggestion.suggestion.description}
@@ -108,7 +112,7 @@ export function AgentSuggestionDetails({
     case "model": {
       const { modelId, reasoningEffort } = suggestion.suggestion;
       return (
-        <SkillFieldEditSection
+        <SuggestionFieldEditSection
           label="Model"
           currentValue={
             agentConfiguration
@@ -125,7 +129,7 @@ export function AgentSuggestionDetails({
 
     case "name":
       return (
-        <SkillFieldEditSection
+        <SuggestionFieldEditSection
           label="Name"
           currentValue={agentConfiguration?.name ?? ""}
           newValue={suggestion.suggestion.name}
@@ -134,7 +138,7 @@ export function AgentSuggestionDetails({
 
     case "scope":
       return (
-        <SkillFieldEditSection
+        <SuggestionFieldEditSection
           label="Visibility"
           currentValue={
             agentConfiguration

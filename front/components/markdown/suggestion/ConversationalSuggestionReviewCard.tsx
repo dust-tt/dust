@@ -3,11 +3,14 @@ import { getAgentSuggestionLabels } from "@app/components/markdown/suggestion/Ag
 import { AgentSuggestionDetails } from "@app/components/markdown/suggestion/AgentSuggestionDetails";
 import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import { PendingSkillSuggestionDetails } from "@app/components/skill_builder/SkillSuggestionCard";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { Avatar } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 
 type ConversationalSuggestionTarget =
   | {
@@ -18,8 +21,7 @@ type ConversationalSuggestionTarget =
   | {
       type: "skill";
       suggestion: SkillSuggestionType;
-      getSkillInstructionsHtml: () => string;
-      getCurrentAgentFacingDescription: () => string;
+      skill: SkillType;
       workspaceId: string;
     };
 
@@ -30,8 +32,18 @@ interface ConversationalSuggestionReviewCardProps {
   onPreview?: () => void;
   isAccepting?: boolean;
   isRejecting?: boolean;
+  disabled?: boolean;
   titleAside?: ReactNode;
   secondaryAction?: ReactNode;
+}
+
+interface SkillAvatarVisualProps {
+  skill: SkillType;
+}
+
+function SkillAvatarVisual({ skill }: SkillAvatarVisualProps) {
+  const SkillAvatar = useMemo(() => getSkillAvatarIcon(skill), [skill]);
+  return <SkillAvatar size="sm" />;
 }
 
 function renderCardContent(target: ConversationalSuggestionTarget) {
@@ -56,13 +68,13 @@ function renderCardContent(target: ConversationalSuggestionTarget) {
       return {
         title: target.suggestion.title ?? "Suggestion",
         analysis: target.suggestion.analysis,
-        visual: undefined,
+        visual: <SkillAvatarVisual skill={target.skill} />,
         collapsibleContent: (
           <PendingSkillSuggestionDetails
             suggestion={target.suggestion}
-            getSkillInstructionsHtml={target.getSkillInstructionsHtml}
-            getCurrentAgentFacingDescription={
-              target.getCurrentAgentFacingDescription
+            getSkillInstructionsHtml={() => target.skill.instructionsHtml ?? ""}
+            getCurrentAgentFacingDescription={() =>
+              target.skill.agentFacingDescription
             }
             workspaceId={target.workspaceId}
           />
@@ -107,6 +119,7 @@ export function ConversationalSuggestionReviewCard({
   onPreview,
   isAccepting = false,
   isRejecting = false,
+  disabled = false,
   titleAside,
   secondaryAction,
 }: ConversationalSuggestionReviewCardProps) {
@@ -123,7 +136,7 @@ export function ConversationalSuggestionReviewCard({
       onAccept={onAccept}
       onReject={onReject}
       onPreview={onPreview}
-      disabled={isAccepting || isRejecting}
+      disabled={disabled || isAccepting || isRejecting}
       isAccepting={isAccepting}
       isDeclining={isRejecting}
       secondaryAction={secondaryAction}

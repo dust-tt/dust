@@ -1,5 +1,5 @@
+import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
-import { SkillFieldEditSection } from "@app/components/skill_builder/SkillFieldEditSection";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
 import { SuggestedSkillEditors } from "@app/components/skill_builder/SuggestedSkillEditors";
 import { SuggestedSkillName } from "@app/components/skill_builder/SuggestedSkillName";
@@ -225,7 +225,7 @@ function SuggestionDetails({
       return (
         <>
           {agentFacingDescriptionEdit && (
-            <SkillFieldEditSection
+            <SuggestionFieldEditSection
               label="Description"
               currentValue={getCurrentAgentFacingDescription()}
               newValue={agentFacingDescriptionEdit.content}
