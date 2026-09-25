@@ -193,7 +193,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     });
   });
 
-  it("returns facet values with editor and tag names", async () => {
+  it("returns facet values with counts and editor and tag names", async () => {
     const { workspace, user } = await setup();
     const tag = await TagFactory.create(workspace, { name: "Sales" });
     searchAgents.mockResolvedValue(
@@ -202,9 +202,12 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
         total: 0,
         hasMore: false,
         facets: {
-          editors: [user.sId, "missing-user"],
-          models: ["claude-sonnet-5"],
-          tags: [tag.sId],
+          editors: [
+            { value: user.sId, count: 3 },
+            { value: "missing-user", count: 1 },
+          ],
+          models: [{ value: "claude-sonnet-5", count: 4 }],
+          tags: [{ value: tag.sId, count: 2 }],
         },
       })
     );
@@ -228,10 +231,11 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
           sId: user.sId,
           fullName: user.toJSON().fullName,
           image: user.toJSON().image,
+          count: 3,
         },
       ],
-      models: ["claude-sonnet-5"],
-      tags: [{ sId: tag.sId, name: "Sales", kind: "standard" }],
+      models: [{ modelId: "claude-sonnet-5", count: 4 }],
+      tags: [{ sId: tag.sId, name: "Sales", kind: "standard", count: 2 }],
     });
   });
 

@@ -70,7 +70,8 @@ async function listSearchableGlobalAgentIds(
  * @cc [owner:tdraier,label:security] agent-search-facets
  * Facet values MUST come from the same authorized query as the returned page (including the
  * caller's filters), so they never reveal values held only by agents the caller cannot list.
- * Facets return distinct values without counts, at most MAX_AGENT_SEARCH_FACET_VALUES each.
+ * Facets return distinct values, at most MAX_AGENT_SEARCH_FACET_VALUES each, with the number of
+ * agents matching that query (every filter included) that hold each value.
  */
 /**
  * @cc [owner:tdraier,label:security;product] agent-search-pagination
@@ -152,7 +153,7 @@ export async function searchAgents(
     facets.map((facet) => [
       facet,
       bucketsToArray(result.value.aggregations?.[facet]?.buckets).map(
-        (bucket) => String(bucket.key)
+        (bucket) => ({ value: String(bucket.key), count: bucket.doc_count })
       ),
     ])
   );

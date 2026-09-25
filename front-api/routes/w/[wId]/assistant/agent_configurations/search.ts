@@ -99,13 +99,16 @@ app.post(
     const editorIds = [
       ...new Set([
         ...result.value.agents.flatMap((agent) => agent.editorIds),
-        ...(facetValues.editors ?? []),
+        ...(facetValues.editors ?? []).map(({ value }) => value),
       ]),
     ];
     const [users, tags] = await Promise.all([
       UserResource.fetchByIds(editorIds),
       facetValues.tags?.length
-        ? TagResource.fetchByIds(auth, facetValues.tags)
+        ? TagResource.fetchByIds(
+            auth,
+            facetValues.tags.map(({ value }) => value)
+          )
         : [],
     ]);
 
@@ -121,16 +124,31 @@ app.post(
       facets: {
         ...(facetValues.editors
           ? {
-              editors: removeNulls(
-                facetValues.editors.map((id) => editorsById.get(id))
-              ).toSorted((a, b) => a.fullName.localeCompare(b.fullName)),
+              editors: facetValues.editors
+                .flatMap(({ value, count }) => {
+                  const editor = editorsById.get(value);
+                  return editor ? [{ ...editor, count }] : [];
+                })
+                .toSorted((a, b) => a.fullName.localeCompare(b.fullName)),
             }
           : {}),
-        ...(facetValues.models ? { models: facetValues.models } : {}),
+        ...(facetValues.models
+          ? {
+              models: facetValues.models.map(({ value, count }) => ({
+                modelId: value,
+                count,
+              })),
+            }
+          : {}),
         ...(facetValues.tags
           ? {
               tags: tags
-                .map((tag) => tag.toJSON())
+                .map((tag) => ({
+                  ...tag.toJSON(),
+                  count:
+                    facetValues.tags?.find(({ value }) => value === tag.sId)
+                      ?.count ?? 0,
+                }))
                 .toSorted((a, b) => a.name.localeCompare(b.name)),
             }
           : {}),

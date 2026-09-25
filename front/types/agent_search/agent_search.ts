@@ -56,9 +56,14 @@ export interface AgentSearchFilters {
 export const AGENT_SEARCH_FACETS = ["editors", "models", "tags"] as const;
 export type AgentSearchFacet = (typeof AGENT_SEARCH_FACETS)[number];
 
-// Distinct indexed values of each requested facet, without counts.
+export interface AgentSearchFacetValue {
+  value: string;
+  count: number;
+}
+
+// Distinct indexed values of each requested facet, with the number of matching agents holding each.
 export type AgentSearchFacetValues = Partial<
-  Record<AgentSearchFacet, string[]>
+  Record<AgentSearchFacet, AgentSearchFacetValue[]>
 >;
 
 export const AGENT_SEARCH_PERMISSION_FILTERINGS = [
@@ -101,8 +106,10 @@ export type SearchAgentsResponseBody = {
   total: number;
   hasMore: boolean;
   facets: {
-    editors?: Pick<UserType, "sId" | "fullName" | "image">[];
-    models?: string[];
-    tags?: Pick<TagType, "sId" | "name" | "kind">[];
+    editors?: (Pick<UserType, "sId" | "fullName" | "image"> & {
+      count: number;
+    })[];
+    models?: { modelId: string; count: number }[];
+    tags?: (Pick<TagType, "sId" | "name" | "kind"> & { count: number })[];
   };
 };

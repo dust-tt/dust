@@ -149,7 +149,7 @@ describe("searchAgents", () => {
     expect(buildAgentNameAutocompleteQuery("   ")).toEqual({ match_all: {} });
   });
 
-  it("filters on editors and models and requests facet values without counts", async () => {
+  it("filters on editors and models and returns facet values with counts", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "user",
     });
@@ -183,8 +183,13 @@ describe("searchAgents", () => {
     mockSearch.mockResolvedValueOnce({
       hits: { total: { value: 2, relation: "eq" }, hits: [] },
       aggregations: {
-        editors: { buckets: [{ key: "alice" }, { key: "bob" }] },
-        models: { buckets: [{ key: "claude-sonnet-5" }] },
+        editors: {
+          buckets: [
+            { key: "alice", doc_count: 1 },
+            { key: "bob", doc_count: 1 },
+          ],
+        },
+        models: { buckets: [{ key: "claude-sonnet-5", doc_count: 2 }] },
       },
     });
     const result = await searchAgents(auth, {
@@ -194,8 +199,11 @@ describe("searchAgents", () => {
     });
     assert(result.isOk());
     expect(result.value.facets).toEqual({
-      editors: ["alice", "bob"],
-      models: ["claude-sonnet-5"],
+      editors: [
+        { value: "alice", count: 1 },
+        { value: "bob", count: 1 },
+      ],
+      models: [{ value: "claude-sonnet-5", count: 2 }],
     });
     expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
       size: 0,
