@@ -7,6 +7,7 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { Avatar } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 
 type ConversationalSuggestionTarget =
   | {
@@ -29,6 +30,8 @@ interface ConversationalSuggestionReviewCardProps {
   onPreview?: () => void;
   isAccepting?: boolean;
   isRejecting?: boolean;
+  titleAside?: ReactNode;
+  secondaryAction?: ReactNode;
 }
 
 function renderCardContent(target: ConversationalSuggestionTarget) {
@@ -104,6 +107,8 @@ export function ConversationalSuggestionReviewCard({
   onPreview,
   isAccepting = false,
   isRejecting = false,
+  titleAside,
+  secondaryAction,
 }: ConversationalSuggestionReviewCardProps) {
   const { title, analysis, visual, collapsibleContent } =
     renderCardContent(target);
@@ -111,6 +116,7 @@ export function ConversationalSuggestionReviewCard({
   return (
     <ConversationalSuggestionCard
       title={title}
+      titleAside={titleAside}
       analysis={analysis}
       visual={visual}
       collapsibleContent={collapsibleContent}
@@ -120,6 +126,7 @@ export function ConversationalSuggestionReviewCard({
       disabled={isAccepting || isRejecting}
       isAccepting={isAccepting}
       isDeclining={isRejecting}
+      secondaryAction={secondaryAction}
     />
   );
 }

@@ -28,41 +28,20 @@ import type { ComponentType, KeyboardEvent } from "react";
 
 const MAX_VISIBLE_CONVERSATIONS = 3;
 
-function getStatusChip(
-  state: SkillSuggestionState,
-  { actor, when }: { actor: string | undefined; when: string }
-): {
+export function getSuggestionStateChip(state: SkillSuggestionState): {
   color: "success" | "warning" | "primary";
   icon: ComponentType;
   label: string;
-  tooltip: string;
 } | null {
-  const by = actor ? ` by ${actor}` : "";
-
   switch (state) {
     case "pending":
       return null;
     case "approved":
-      return {
-        color: "success",
-        icon: CheckCircle,
-        label: "Accepted",
-        tooltip: `Accepted${by} ${when}`,
-      };
+      return { color: "success", icon: CheckCircle, label: "Accepted" };
     case "rejected":
-      return {
-        color: "warning",
-        icon: XCircle,
-        label: "Declined",
-        tooltip: `Declined${by} ${when}`,
-      };
+      return { color: "warning", icon: XCircle, label: "Declined" };
     case "outdated":
-      return {
-        color: "primary",
-        icon: Clock,
-        label: "Outdated",
-        tooltip: `Superseded by a later suggestion`,
-      };
+      return { color: "primary", icon: Clock, label: "Outdated" };
     default:
       assertNeverAndIgnore(state);
       return null;
@@ -70,19 +49,26 @@ function getStatusChip(
 }
 
 interface ReviewedSuggestionCardProps {
-  suggestion: SkillSuggestionType;
+  state: SkillSuggestionState;
+  title: string;
+  updatedAt: number;
+  /** Named in the tooltip when known. */
+  updatedBy?: { sId: string; fullName: string } | null;
 }
 
-function ReviewedSuggestionCard({ suggestion }: ReviewedSuggestionCardProps) {
-  const { state, title, updatedAt, updatedBy } = suggestion;
+export function ReviewedSuggestionCard({
+  state,
+  title,
+  updatedAt,
+  updatedBy,
+}: ReviewedSuggestionCardProps) {
   const { user } = useAuth();
 
   const isCurrentUser = !!updatedBy && updatedBy.sId === user?.sId;
 
-  const chip = getStatusChip(state, {
-    actor: isCurrentUser ? "you" : updatedBy?.fullName,
-    when: formatRelativeTime(updatedAt),
-  });
+  const chip = getSuggestionStateChip(state);
+  const actor = isCurrentUser ? "you" : updatedBy?.fullName;
+  const by = actor ? ` by ${actor}` : "";
 
   return (
     <Card variant="primary" size="sm" className="flex-col gap-1">
@@ -97,12 +83,14 @@ function ReviewedSuggestionCard({ suggestion }: ReviewedSuggestionCardProps) {
                 label={chip.label}
               />
             }
-            label={chip.tooltip}
+            label={
+              state === "outdated"
+                ? "Superseded by a later suggestion"
+                : `${chip.label}${by} ${formatRelativeTime(updatedAt)}`
+            }
           />
         )}
-        <span className="truncate text-sm text-muted-foreground">
-          {title ?? "Suggestion"}
-        </span>
+        <span className="truncate text-sm text-muted-foreground">{title}</span>
       </div>
     </Card>
   );
@@ -360,7 +348,14 @@ export function SkillSuggestionCard({
   const hasActions = !!onAccept && !!onDecline;
 
   if (suggestion.state !== "pending") {
-    return <ReviewedSuggestionCard suggestion={suggestion} />;
+    return (
+      <ReviewedSuggestionCard
+        state={suggestion.state}
+        title={suggestion.title ?? "Suggestion"}
+        updatedAt={suggestion.updatedAt}
+        updatedBy={suggestion.updatedBy}
+      />
+    );
   }
 
   const wrapperClassName = `rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300" : ""}`;
