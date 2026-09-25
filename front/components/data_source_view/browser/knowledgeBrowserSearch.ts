@@ -66,17 +66,22 @@ export function getKnowledgeBrowserSearchScope(
   }
 }
 
-// Search results carry every view a node is visible through; the browser keeps the one in the
-// searched space so the node attaches through that view.
+/**
+ * @cc [owner:smb2268,label:product] search-hit-attaches-through-visible-view
+ * A search hit carries every view a node is visible through; the returned node MUST carry the
+ * first of those views whose space is in `spaceIds`, in the hit's own order, so the node attaches
+ * through a view the user can see, and a hit with no such view MUST be dropped.
+ */
 export function toDataSourceViewContentNodes(
   nodes: DataSourceContentNode[],
-  spaceId: string
+  spaceIds: Iterable<string>
 ): DataSourceViewContentNode[] {
+  const visibleSpaceIds = new Set(spaceIds);
   return removeNulls(
     nodes.map((node) => {
       const { dataSourceViews, ...rest } = node;
-      const dataSourceView = dataSourceViews.find(
-        (view) => view.spaceId === spaceId
+      const dataSourceView = dataSourceViews.find((view) =>
+        visibleSpaceIds.has(view.spaceId)
       );
       return dataSourceView ? { ...rest, dataSourceView } : null;
     })
