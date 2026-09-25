@@ -21,7 +21,6 @@ import {
   useSetContentWidth,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
-import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
@@ -41,6 +40,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import type { PaginationState } from "@tanstack/react-table";
 import { useState } from "react";
 
 const SKILL_SEARCH_PAGE_SIZE = 50;
@@ -63,12 +63,10 @@ interface SkillsListProps {
 
 function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
   const owner = useWorkspace();
-  const {
-    cursorPagination,
-    tablePagination,
-    handlePaginationChange,
-    resetPagination,
-  } = useCursorPaginationForDataTable(SKILL_SEARCH_PAGE_SIZE);
+  const [tablePagination, setTablePagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: SKILL_SEARCH_PAGE_SIZE,
+  });
   const [selectedSort, setSelectedSort] = useState<{
     sortBy: Exclude<SkillSearchSort, "relevance">;
     sortOrder: SkillSearchSortOrder;
@@ -81,25 +79,19 @@ function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
 
   if (queryKey !== previousQueryKey) {
     setPreviousQueryKey(queryKey);
-    resetPagination();
+    setTablePagination({ pageIndex: 0, pageSize: SKILL_SEARCH_PAGE_SIZE });
   }
 
-  const {
-    skills,
-    hasMore,
-    nextCursor,
-    isSkillsLoading,
-    isSkillsError,
-    mutate,
-  } = useSearchSkills({
-    owner,
-    searchTerm,
-    filters,
-    cursor: cursorPagination.cursor,
-    limit: SKILL_SEARCH_PAGE_SIZE,
-    sortBy,
-    sortOrder,
-  });
+  const { skills, total, isSkillsLoading, isSkillsError, mutate } =
+    useSearchSkills({
+      owner,
+      searchTerm,
+      filters,
+      offset: tablePagination.pageIndex * SKILL_SEARCH_PAGE_SIZE,
+      limit: SKILL_SEARCH_PAGE_SIZE,
+      sortBy,
+      sortOrder,
+    });
 
   return (
     <div className="flex flex-col gap-4">
@@ -126,12 +118,8 @@ function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
           onSelect={onSelect}
           onRefresh={mutate}
           pagination={tablePagination}
-          setPagination={(pagination) => {
-            if (!isSkillsLoading) {
-              handlePaginationChange(pagination, nextCursor);
-            }
-          }}
-          hasMore={hasMore}
+          setPagination={setTablePagination}
+          total={total}
           sorting={
             sortBy === "relevance"
               ? []

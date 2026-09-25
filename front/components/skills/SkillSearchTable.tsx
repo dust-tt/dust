@@ -35,7 +35,7 @@ interface SkillSearchTableProps {
   onRefresh: () => void;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
-  hasMore: boolean;
+  total: number;
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
   isLoading: boolean;
@@ -50,7 +50,7 @@ export function SkillSearchTable({
   onRefresh,
   pagination,
   setPagination,
-  hasMore,
+  total,
   sorting,
   setSorting,
   isLoading,
@@ -199,13 +199,7 @@ export function SkillSearchTable({
       sorting={sorting}
       setSorting={setSorting}
       isServerSideSorting
-      totalRowCount={
-        hasMore
-          ? (pagination.pageIndex + 1) * pagination.pageSize + 1
-          : pagination.pageIndex * pagination.pageSize + skills.length
-      }
-      rowCountIsCapped={hasMore}
-      disablePaginationNumbers
+      totalRowCount={total}
     />
   );
 }

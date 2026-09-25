@@ -191,7 +191,7 @@ export function useSkills({
 export function useSearchSkills({
   owner,
   searchTerm,
-  cursor,
+  offset,
   limit,
   sortBy,
   sortOrder,
@@ -201,7 +201,7 @@ export function useSearchSkills({
 }: {
   owner: LightWorkspaceType;
   searchTerm: string;
-  cursor?: string | null;
+  offset?: number;
   limit?: number;
   sortBy?: SkillSearchSort;
   sortOrder?: SkillSearchSortOrder;
@@ -224,7 +224,7 @@ export function useSearchSkills({
   const body = {
     ...filters,
     query: debouncedSearchTerm,
-    cursor,
+    offset,
     limit,
     sortBy,
     sortOrder,
@@ -250,7 +250,7 @@ export function useSearchSkills({
     }
   );
 
-  // Search filters and cursors are in the body, so refresh every search key for this workspace.
+  // Search filters and offsets are in the body, so refresh every search key for this workspace.
   const mutateRegardlessOfQueryParams = useCallback(
     () => globalMutate((key) => Array.isArray(key) && key[0] === url),
     [globalMutate, url]
@@ -260,8 +260,8 @@ export function useSearchSkills({
     skills:
       (disabled ? undefined : data?.skills) ?? emptyArray<SkillListItemType>(),
     resolvedSearchTerm: disabled ? null : (data?.searchTerm ?? null),
+    total: data?.total ?? 0,
     hasMore: data?.hasMore ?? false,
-    nextCursor: data?.nextCursor ?? null,
     isSkillsError: !!error,
     isSkillsLoading: !disabled && (isDebouncing || isLoading),
     mutate,

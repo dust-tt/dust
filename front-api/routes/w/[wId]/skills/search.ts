@@ -23,7 +23,7 @@ app.post(
     const {
       query,
       limit,
-      cursor,
+      offset,
       permissionFiltering,
       status,
       mcpServerViewIds,
@@ -45,7 +45,7 @@ app.post(
     const result = await searchSkills(auth, {
       searchTerm: query,
       limit,
-      cursor,
+      offset,
       sortBy,
       sortOrder,
       permissionFiltering,
@@ -59,12 +59,12 @@ app.post(
     });
 
     if (result.isErr()) {
-      if (result.error === "invalid_cursor") {
+      if (result.error === "offset_out_of_range") {
         return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid skill search cursor",
+            message: "Skill search offset is out of range",
           },
         });
       }
