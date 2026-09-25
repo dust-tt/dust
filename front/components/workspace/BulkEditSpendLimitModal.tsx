@@ -1,5 +1,5 @@
 import { BulkMembersModalHeader } from "@app/components/workspace/BulkMembersModalHeader";
-import { CreditLimitInput } from "@app/components/workspace/CreditLimitInput";
+import { PersonalLimitInput } from "@app/components/workspace/CreditLimitInput";
 import {
   parseCreditsInput,
   toSpendLimit,
@@ -45,15 +45,16 @@ export function BulkEditSpendLimitModal({
         className="font-sans"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        {isOpen && (
-          <BulkEditSpendLimitForm
-            onClose={onClose}
-            memberCount={memberCount}
-            selectedMembers={selectedMembers}
-            seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
-            onValidate={onValidate}
-          />
-        )}
+        <BulkEditSpendLimitForm
+          // Remounts with fresh draft state on every open instead of
+          // unmounting, so the content stays visible while the dialog closes.
+          key={String(isOpen)}
+          onClose={onClose}
+          memberCount={memberCount}
+          selectedMembers={selectedMembers}
+          seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
+          onValidate={onValidate}
+        />
       </DialogContent>
     </Dialog>
   );
@@ -104,7 +105,7 @@ function BulkEditSpendLimitForm({
       <BulkMembersModalHeader
         selectedMembers={selectedMembers}
         memberCount={memberCount}
-        title={`Edit personal limit for ${memberCount.toLocaleString("en-US")} members`}
+        title={`Set personal limit for ${memberCount.toLocaleString("en-US")} members`}
         subtitle={
           seatsHaveBuiltInAllowance
             ? "They will be able to consume this amount from the pool after " +
@@ -115,27 +116,14 @@ function BulkEditSpendLimitForm({
         }
       />
       <DialogContainer>
-        <CreditLimitInput
-          label="Personal limit"
+        <PersonalLimitInput
           value={personalLimitInput}
           readOnly={false}
-          isActive={false}
           validationMessage={validationMessage}
           onChange={(cleaned) => {
             setPersonalLimitInput(cleaned);
             setValidationMessage(null);
           }}
-          action={
-            personalLimitInput !== ""
-              ? {
-                  label: "Remove personal limit",
-                  onClick: () => {
-                    setPersonalLimitInput("");
-                    setValidationMessage(null);
-                  },
-                }
-              : undefined
-          }
         />
       </DialogContainer>
       <DialogFooter

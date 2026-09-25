@@ -50,7 +50,7 @@ export function MembersSelectionBanner({
         <Button
           size="sm"
           variant="primary"
-          label="Batch change seat"
+          label={selectedCount === 1 ? "Change seat" : "Batch change seat"}
           onClick={onBatchChangeSeat}
           disabled={disabled}
         />

@@ -12,6 +12,7 @@ import type {
 import type {
   GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
+  UserSpendLimit,
 } from "@app/types/api/users/spend_limit";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import type { UserVisibleGroupKind } from "@app/types/groups";
@@ -262,7 +263,7 @@ export function useBulkSetUserSpendLimit({
       limit,
     }: {
       selection: BulkMemberSelectionBody;
-      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
+      limit: UserSpendLimit;
     }): Promise<{ workflowId: string; memberCount: number } | null> => {
       const res = await clientFetch(bulkSpendLimitUrl(workspaceId), {
         method: "POST",
@@ -287,7 +288,7 @@ export function useBulkSetUserSpendLimit({
         description:
           limit.kind === "limited"
             ? `Applied a ${limit.awuCredits.toLocaleString("en-US")} credit limit to ${body.memberCount.toLocaleString("en-US")} members.`
-            : `Removed the spend limit for ${body.memberCount.toLocaleString("en-US")} members.`,
+            : `Removed the personal limit for ${body.memberCount.toLocaleString("en-US")} members.`,
       });
 
       await invalidateMembersUsage(workspaceId);

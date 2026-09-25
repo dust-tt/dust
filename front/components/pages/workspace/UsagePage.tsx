@@ -79,6 +79,7 @@ import {
   useDefaultUserSpendLimit,
   useUsageSettings,
 } from "@app/lib/swr/usage_settings";
+import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { GroupGrantableSeatType } from "@app/types/groups";
 import {
@@ -694,10 +695,6 @@ export function UsagePage() {
   });
   const [isBulkChangeSeatOpen, setIsBulkChangeSeatOpen] = useState(false);
 
-  const handleBatchChangeSeat = useCallback(() => {
-    setIsBulkChangeSeatOpen(true);
-  }, []);
-
   // Selected members visible on the current page, for the bulk modals'
   // avatar row (with an "all across pages" selection this is the visible
   // subset only). Kept in pick order so the first avatars stay put as more
@@ -711,19 +708,27 @@ export function UsagePage() {
     return descriptor.ids.flatMap((id) => membersById.get(id) ?? []);
   }, [membersUsage, selection.descriptor, selection.rowSelection]);
 
-  // A single selected member gets the individual modal, which shows their
-  // current limits instead of a blank batch form.
+  // A single selected member gets the individual modals rather than the batch
+  // ones, since only that member is concerned.
+  const singleSelectedMember =
+    selection.selectedCount === 1 && selectedVisibleMembers.length === 1
+      ? selectedVisibleMembers[0]
+      : null;
+  const handleBatchChangeSeat = useCallback(() => {
+    if (singleSelectedMember) {
+      handleChangeSeatFromTable(singleSelectedMember);
+      return;
+    }
+    setIsBulkChangeSeatOpen(true);
+  }, [singleSelectedMember, handleChangeSeatFromTable]);
+
   const handleBatchEditSpendLimit = useCallback(() => {
-    if (selection.selectedCount === 1 && selectedVisibleMembers.length === 1) {
-      handleEditSpendLimitFromTable(selectedVisibleMembers[0]);
+    if (singleSelectedMember) {
+      handleEditSpendLimitFromTable(singleSelectedMember);
       return;
     }
     setIsBulkSpendLimitOpen(true);
-  }, [
-    selection.selectedCount,
-    selectedVisibleMembers,
-    handleEditSpendLimitFromTable,
-  ]);
+  }, [singleSelectedMember, handleEditSpendLimitFromTable]);
 
   // Translate the cross-page selection into the descriptor the bulk member
   // endpoints expect: explicit ids, or the current filter minus exclusions.
@@ -798,9 +803,7 @@ export function UsagePage() {
   }, [selection, pageItemIds]);
 
   const handleBulkSpendLimitValidate = useCallback(
-    async (
-      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number }
-    ): Promise<boolean> => {
+    async (limit: UserSpendLimit): Promise<boolean> => {
       const pendingMemberIds = getBulkPendingMemberIds();
       setTotalAllowedUsagePendingMemberIds((prev) => {
         const next = new Set(prev);
