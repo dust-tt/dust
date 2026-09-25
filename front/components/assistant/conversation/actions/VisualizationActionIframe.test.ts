@@ -17,7 +17,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   clientFetch: vi.fn(),
   isDark: false,
-  prewarmFrameSandbox: vi.fn(),
   logInfo: vi.fn(),
 }));
 
@@ -38,10 +37,6 @@ vi.mock("@app/hooks/conversations", () => ({
 
 vi.mock("@app/hooks/useNotification", () => ({
   useSendNotification: () => vi.fn(),
-}));
-
-vi.mock("@app/hooks/usePrewarmFrameSandbox", () => ({
-  usePrewarmFrameSandbox: mocks.prewarmFrameSandbox,
 }));
 
 vi.mock("@app/lib/egress/client", () => ({
@@ -320,11 +315,6 @@ describe("VisualizationActionIframe", () => {
       .mockImplementation(() => {});
 
     expect(mocks.clientFetch).not.toHaveBeenCalled();
-    expect(mocks.prewarmFrameSandbox).toHaveBeenCalledWith({
-      workspaceId: "w_current",
-      frameId: "fil_frame",
-      disabled: false,
-    });
 
     window.dispatchEvent(
       new MessageEvent("message", {

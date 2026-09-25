@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { prewarmFrameSandbox } from "@app/lib/api/frames/prewarm_frame_sandbox";
 import {
   FRAME_SESSION_COOKIE_NAME,
   getFrameSessionEmail,
@@ -189,6 +190,12 @@ app.get(
 
         await recordFrameView(file, grant, verifiedEmail);
       }
+    }
+
+    // The viewer is past every access check: start waking the Frame's sandbox so the calls its UI
+    // makes once loaded find it running. The pre-warm decides on its own whether this viewer may.
+    if (auth && hasFunctions) {
+      void prewarmFrameSandbox(auth, file);
     }
 
     const conversationId = file.useCaseMetadata?.conversationId;
