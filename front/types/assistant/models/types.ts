@@ -6,7 +6,7 @@ import type { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import type { TokenizerConfig } from "../../tokenizer";
 import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
 import type { SUPPORTED_MODEL_CONFIGS } from "./models";
-import { MODEL_IDS } from "./models";
+import { isStaticModelId, MODEL_IDS } from "./models";
 import type { BYOK_MODEL_PROVIDER_IDS } from "./providers";
 import { MODEL_MAKER_IDS, MODEL_PROVIDER_IDS } from "./providers";
 import {
@@ -21,10 +21,17 @@ export type ByokModelProviderIdType = (typeof BYOK_MODEL_PROVIDER_IDS)[number];
 export type ModelMakerIdType = (typeof MODEL_MAKER_IDS)[number];
 
 // Raw model selection coming from the input-bar model picker: an explicit
-// provider/model pick, with an optional reasoning-effort override.
+// provider/model pick, with an optional reasoning-effort override. Static ids only: custom
+// models are reachable only through the global agents bound to them.
 export const ModelSelectionSchema = z.object({
   providerId: z.enum(MODEL_PROVIDER_IDS),
-  modelId: z.enum(MODEL_IDS),
+  // Refined rather than `z.enum(STATIC_MODEL_IDS)` so the type stays `ModelIdType`: selections are
+  // also rebuilt from stored models, which can be custom ones.
+  modelId: z
+    .enum(MODEL_IDS)
+    .refine((modelId): boolean => isStaticModelId(modelId), {
+      message: "Custom models cannot be selected.",
+    }),
   reasoningEffort: ReasoningEffortSchema.optional(),
 });
 export type ModelSelectionType = z.infer<typeof ModelSelectionSchema>;
