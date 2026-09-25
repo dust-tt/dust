@@ -8,6 +8,7 @@ import {
   ConversationModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
@@ -16,10 +17,7 @@ import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
@@ -183,14 +181,14 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
   static async getAgentConfigurationFeedbacksByDescVersion({
     workspace,
-    agentConfiguration,
+    agent,
     paginationParams,
     filter = "active",
     version,
     days,
   }: {
     workspace: WorkspaceType;
-    agentConfiguration: LightAgentConfigurationType;
+    agent: AgentResource;
     paginationParams: PaginationParams;
     filter?: "active" | "all";
     version?: number;
@@ -199,7 +197,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     const where: WhereOptions<AgentMessageFeedbackModel> = {
       // Safety check: global models share ids across workspaces and some have had feedbacks.
       workspaceId: workspace.id,
-      agentConfigurationId: agentConfiguration.sId,
+      agentConfigurationId: agent.sId,
     };
 
     if (version !== undefined) {

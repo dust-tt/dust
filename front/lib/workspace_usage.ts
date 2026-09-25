@@ -13,7 +13,6 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -621,7 +620,7 @@ export async function getAssistantUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType,
-  agentConfiguration: LightAgentConfigurationType
+  agentId: string
 ): Promise<number> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
@@ -641,7 +640,7 @@ export async function getAssistantUsageData(
       replacements: {
         startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"),
         endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"),
-        agentConfigurationId: agentConfiguration.sId,
+        agentConfigurationId: agentId,
         wId,
       },
     }

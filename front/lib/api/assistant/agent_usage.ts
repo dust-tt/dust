@@ -8,6 +8,7 @@ import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
@@ -107,11 +108,11 @@ export async function getAgentUsage(
   auth: Authenticator,
   {
     workspaceId,
-    agentConfiguration,
+    agent,
     rankingUsageDays = RANKING_USAGE_DAYS,
   }: {
     workspaceId: string;
-    agentConfiguration: LightAgentConfigurationType;
+    agent: AgentResource;
     providedRedis?: RedisClientType;
     rankingUsageDays?: number;
   }
@@ -128,16 +129,11 @@ export async function getAgentUsage(
   const start = new Date();
   start.setDate(end.getDate() - rankingUsageDays);
 
-  const agentUsage = await getAssistantUsageData(
-    start,
-    end,
-    owner,
-    agentConfiguration
-  );
+  const agentUsage = await getAssistantUsageData(start, end, owner, agent.sId);
 
   return agentUsage
     ? {
-        agentId: agentConfiguration.sId,
+        agentId: agent.sId,
         messageCount: agentUsage,
         conversationCount: 0,
         userCount: 0,

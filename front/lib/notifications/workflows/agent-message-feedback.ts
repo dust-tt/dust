@@ -1,6 +1,4 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import { getEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
@@ -86,13 +84,13 @@ const getFeedbackDetails = async ({
         userWhoGaveFeedbackFullName = userWhoGaveFeedback.fullName();
       }
 
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: payload.agentConfigurationId,
-        variant: "light",
-      });
+      const agent = await AgentResource.fetchById(
+        auth,
+        payload.agentConfigurationId
+      );
 
-      if (agentConfiguration) {
-        agentName = agentConfiguration.name;
+      if (agent) {
+        agentName = agent.name;
       }
     }
   }
@@ -360,18 +358,17 @@ export const triggerAgentMessageFeedbackNotification = async (
     return new Ok(undefined);
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "light",
-  });
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-  if (!agentConfiguration) {
+  if (!agent) {
     return new Err(
       new DustError("internal_error", "Agent configuration not found")
     );
   }
 
-  const editors = await getEditors(auth, agentConfiguration);
+  const editors = ((await agent.listEditors(auth)) ?? []).map((editor) =>
+    editor.toJSON()
+  );
 
   if (editors.length === 0) {
     logger.info(
