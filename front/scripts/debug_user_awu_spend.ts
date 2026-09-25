@@ -7,9 +7,8 @@
  * Read-only: ignores --execute. Dumps:
  *   - contract.starting_at and the current billing period bounds
  *   - the user's live seat AWU balance (balance + starting_balance)
- *   - per-hour usage buckets for the user (cost_awu + tool invocations), split
- *     by usage_type, flagging buckets trimmed because they precede the period
- *     start, and weighting tool invocations into AWU
+ *   - per-hour cost_awu usage buckets for the user, split by usage_type,
+ *     flagging buckets trimmed because they precede the period start
  *   - the canonical Consumed from fetchPerUserAwuUsage, and the comparison with
  *     the seat ledger (starting_balance - balance)
  *
@@ -24,16 +23,11 @@ import {
 import {
   getCreditTypeAwuId,
   getMetricLlmProviderCostAwuId,
-  getMetricToolInvocationsId,
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
   USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
-import {
-  isToolCostCategory,
-  TOOL_COST_CATEGORY_AWU_WEIGHTS,
-} from "@app/lib/metronome/events";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -135,34 +129,17 @@ makeScript(
       new Date(Math.min(cycleEnd.getTime(), Date.now()))
     ).toISOString();
 
-    const [aiResult, toolResult] = await Promise.all([
-      listMetronomeUsageWithGroups({
-        customerId: metronomeCustomerId,
-        billableMetricId: getMetricLlmProviderCostAwuId(),
-        startingOn,
-        endingBefore,
-        windowSize: "HOUR",
-        groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
-        groupFilters: { user_id: [userId] },
-      }),
-      listMetronomeUsageWithGroups({
-        customerId: metronomeCustomerId,
-        billableMetricId: getMetricToolInvocationsId(),
-        startingOn,
-        endingBefore,
-        windowSize: "HOUR",
-        groupKey: ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
-        groupFilters: { user_id: [userId] },
-      }),
-    ]);
-    if (aiResult.isErr() || toolResult.isErr()) {
-      logger.error(
-        {
-          aiErr: aiResult.isErr() ? aiResult.error : null,
-          toolErr: toolResult.isErr() ? toolResult.error : null,
-        },
-        "Failed to read usage"
-      );
+    const aiResult = await listMetronomeUsageWithGroups({
+      customerId: metronomeCustomerId,
+      billableMetricId: getMetricLlmProviderCostAwuId(),
+      startingOn,
+      endingBefore,
+      windowSize: "HOUR",
+      groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
+      groupFilters: { user_id: [userId] },
+    });
+    if (aiResult.isErr()) {
+      logger.error({ aiErr: aiResult.error }, "Failed to read usage");
       return;
     }
 
@@ -193,40 +170,6 @@ makeScript(
       }
     }
 
-    let toolPaid = 0;
-    let toolFree = 0;
-    let toolTrimmed = 0;
-    for (const e of toolResult.value) {
-      const category = e.group?.["tool_category"];
-      if (e.value === null || !category || !isToolCostCategory(category)) {
-        continue;
-      }
-      const awuSpent = e.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
-      const tsMs = new Date(e.startingOn).getTime();
-      const usageType = e.group?.[USAGE_TYPE_GROUP_KEY] ?? "?";
-      const trimmed = tsMs < cycleStartMs;
-      if (trimmed) {
-        toolTrimmed += awuSpent;
-      } else if (usageType === "free") {
-        toolFree += awuSpent;
-      } else {
-        toolPaid += awuSpent;
-      }
-      if (awuSpent !== 0) {
-        logger.info(
-          {
-            startingOn: e.startingOn,
-            usageType,
-            category,
-            count: e.value,
-            awu: awuSpent,
-            trimmed,
-          },
-          "[debug] Tool hourly bucket"
-        );
-      }
-    }
-
     // --- Canonical query replica -------------------------------------------
     // Reproduce fetchPerUserAwuUsage's EXACT queries (usage_type filter, no
     // user_id filter; same windowSize logic) and sum for THIS user, to see
@@ -236,26 +179,15 @@ makeScript(
         ? "DAY"
         : "HOUR";
     const paidUsageTypes = [USAGE_TYPE_USER, USAGE_TYPE_PROGRAMMATIC];
-    const [aiPaid, toolPaidRes] = await Promise.all([
-      listMetronomeUsageWithGroups({
-        customerId: metronomeCustomerId,
-        billableMetricId: getMetricLlmProviderCostAwuId(),
-        startingOn,
-        endingBefore,
-        windowSize: windowSizeUsed,
-        groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
-        groupFilters: { [USAGE_TYPE_GROUP_KEY]: paidUsageTypes },
-      }),
-      listMetronomeUsageWithGroups({
-        customerId: metronomeCustomerId,
-        billableMetricId: getMetricToolInvocationsId(),
-        startingOn,
-        endingBefore,
-        windowSize: windowSizeUsed,
-        groupKey: ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
-        groupFilters: { [USAGE_TYPE_GROUP_KEY]: paidUsageTypes },
-      }),
-    ]);
+    const aiPaid = await listMetronomeUsageWithGroups({
+      customerId: metronomeCustomerId,
+      billableMetricId: getMetricLlmProviderCostAwuId(),
+      startingOn,
+      endingBefore,
+      windowSize: windowSizeUsed,
+      groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
+      groupFilters: { [USAGE_TYPE_GROUP_KEY]: paidUsageTypes },
+    });
     let canonLlm = 0;
     let canonLlmTrimmed = 0;
     if (aiPaid.isOk()) {
@@ -270,30 +202,12 @@ makeScript(
         }
       }
     }
-    let canonTool = 0;
-    if (toolPaidRes.isOk()) {
-      for (const e of toolPaidRes.value) {
-        const category = e.group?.["tool_category"];
-        if (
-          e.group?.["user_id"] !== userId ||
-          e.value === null ||
-          !category ||
-          !isToolCostCategory(category) ||
-          new Date(e.startingOn).getTime() < cycleStartMs
-        ) {
-          continue;
-        }
-        canonTool += e.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
-      }
-    }
     logger.info(
       {
         windowSizeUsed,
         canonicalQueryLlm: canonLlm,
-        canonicalQueryTool: canonTool,
-        canonicalQueryTotal: canonLlm + canonTool,
         canonicalQueryLlmTrimmed: canonLlmTrimmed,
-        userIdFilterTotal: llmPaid + toolPaid,
+        userIdFilterTotal: llmPaid,
       },
       "[debug] Canonical query (usage_type filter) vs user_id-filter query"
     );
@@ -345,28 +259,16 @@ makeScript(
 
     // --- Fix candidate: same metrics & group keys, NO usage_type filter ----
     // (drop free in code). Logs row counts to detect truncation/empty results.
-    const [aiFix, toolFix] = await Promise.all([
-      listMetronomeUsageWithGroups({
-        customerId: metronomeCustomerId,
-        billableMetricId: getMetricLlmProviderCostAwuId(),
-        startingOn,
-        endingBefore,
-        windowSize: windowSizeUsed,
-        groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
-      }),
-      listMetronomeUsageWithGroups({
-        customerId: metronomeCustomerId,
-        billableMetricId: getMetricToolInvocationsId(),
-        startingOn,
-        endingBefore,
-        windowSize: windowSizeUsed,
-        groupKey: ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
-      }),
-    ]);
+    const aiFix = await listMetronomeUsageWithGroups({
+      customerId: metronomeCustomerId,
+      billableMetricId: getMetricLlmProviderCostAwuId(),
+      startingOn,
+      endingBefore,
+      windowSize: windowSizeUsed,
+      groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
+    });
     let fixLlm = 0;
-    let fixTool = 0;
     let fixLlmRows = 0;
-    let fixToolRows = 0;
     if (aiFix.isOk()) {
       for (const e of aiFix.value) {
         fixLlmRows++;
@@ -381,34 +283,12 @@ makeScript(
         fixLlm += e.value;
       }
     }
-    if (toolFix.isOk()) {
-      for (const e of toolFix.value) {
-        fixToolRows++;
-        const category = e.group?.["tool_category"];
-        if (
-          e.group?.["user_id"] !== userId ||
-          e.value === null ||
-          e.group?.[USAGE_TYPE_GROUP_KEY] === "free" ||
-          !category ||
-          !isToolCostCategory(category) ||
-          new Date(e.startingOn).getTime() < cycleStartMs
-        ) {
-          continue;
-        }
-        fixTool += e.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
-      }
-    }
     logger.info(
       {
         aiFixOk: aiFix.isOk(),
-        toolFixOk: toolFix.isOk(),
         aiFixErr: aiFix.isErr() ? aiFix.error.message : null,
-        toolFixErr: toolFix.isErr() ? toolFix.error.message : null,
         fixLlmRowsTotal: fixLlmRows,
-        fixToolRowsTotal: fixToolRows,
         fixLlm,
-        fixTool,
-        fixTotal: fixLlm + fixTool,
         seatLedgerConsumedAwu: seatConsumed,
       },
       "[debug] Fix candidate (remove usage_type filter, drop free in code) vs seat"
@@ -426,15 +306,12 @@ makeScript(
 
     logger.info(
       {
-        paidConsumedRecomputed: llmPaid + toolPaid,
+        paidConsumedRecomputed: llmPaid,
         canonicalConsumed,
         breakdown: {
           llmPaid,
-          toolPaid,
           llmFree,
-          toolFree,
           llmTrimmedPreStart: llmTrimmed,
-          toolTrimmedPreStart: toolTrimmed,
         },
         seatLedgerConsumedAwu: seatConsumed,
         consumedMinusSeatLedger:
