@@ -240,7 +240,6 @@ export const makeInitialMessageStreamState = (
     streaming: {
       actionProgress: new Map(),
       agentState: message.status === "created" ? "thinking" : "done",
-      // Live messages rebuild inline steps from the SSE replay on mount.
       inlineActivitySteps:
         message.status === "created" ? [] : (message.activitySteps ?? []),
       isRetrying: false,
@@ -290,7 +289,7 @@ export const isAtInitialStreamState = (
  */
 /**
  * @cc [owner:id13,label:react;reliability] preserve-live-agent-message-progress
- * An initial snapshot of the same agent-message version MUST NOT erase live streaming progress.
+ * A nonterminal snapshot of the same agent-message version MUST NOT erase accumulated inline steps.
  * A terminal snapshot of that version MUST replace the live state.
  */
 export function reconcileAgentMessage(
@@ -308,8 +307,12 @@ export function reconcileAgentMessage(
   if (
     isAgentMessageWithStreaming(current) &&
     current.sId === incoming.sId &&
+    current.version === incoming.version &&
     !isAtInitialStreamState(current) &&
-    isAtInitialStreamState(incoming)
+    !isTerminalAgentMessageStatus(incoming.status) &&
+    (isAtInitialStreamState(incoming) ||
+      current.streaming.inlineActivitySteps.length >
+        incoming.streaming.inlineActivitySteps.length)
   ) {
     return incoming.richMentions.length > 0
       ? { ...current, richMentions: incoming.richMentions }

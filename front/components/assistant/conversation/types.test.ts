@@ -51,6 +51,82 @@ describe("reconcileAgentMessage", () => {
     expect(reconcileAgentMessage(streaming, initial)).toBe(streaming);
   });
 
+  it("does not erase live thinking steps with a partial nonterminal snapshot", () => {
+    const initial = makeInitialMessageStreamState(
+      makeAgentMessage({ sId: "message-v1", version: 1, status: "created" })
+    );
+    const thinkingStep = {
+      type: "thinking" as const,
+      content: "Reasoning before the tool.",
+      id: "thinking-toolparams-1-0",
+      step: 0,
+    };
+    const streaming = {
+      ...initial,
+      streaming: {
+        ...initial.streaming,
+        inlineActivitySteps: [thinkingStep],
+      },
+    };
+    const partialSnapshot = makeInitialMessageStreamState(
+      makeAgentMessage({
+        sId: "message-v1",
+        version: 1,
+        status: "created",
+        chainOfThought: "Partial persisted reasoning",
+        activitySteps: [],
+      })
+    );
+
+    expect(reconcileAgentMessage(streaming, partialSnapshot)).toBe(streaming);
+  });
+
+  it("accepts a newer partial snapshot before inline steps accumulate", () => {
+    const earlier = makeInitialMessageStreamState(
+      makeAgentMessage({
+        sId: "message-v1",
+        version: 1,
+        status: "created",
+        content: "Earlier partial answer",
+      })
+    );
+    const later = makeInitialMessageStreamState(
+      makeAgentMessage({
+        sId: "message-v1",
+        version: 1,
+        status: "created",
+        content: "Later partial answer",
+      })
+    );
+
+    expect(reconcileAgentMessage(earlier, later)).toBe(later);
+  });
+
+  it("replaces live state when the same message has a newer version", () => {
+    const initial = makeInitialMessageStreamState(
+      makeAgentMessage({ sId: "message-v1", version: 1, status: "created" })
+    );
+    const streaming = {
+      ...initial,
+      streaming: {
+        ...initial.streaming,
+        inlineActivitySteps: [
+          {
+            type: "thinking" as const,
+            content: "Reasoning from version 1",
+            id: "thinking-toolparams-1-0",
+            step: 0,
+          },
+        ],
+      },
+    };
+    const retry = makeInitialMessageStreamState(
+      makeAgentMessage({ sId: "message-v1", version: 2, status: "created" })
+    );
+
+    expect(reconcileAgentMessage(streaming, retry)).toBe(retry);
+  });
+
   it("replaces live state with the terminal snapshot", () => {
     const initial = makeInitialMessageStreamState(
       makeAgentMessage({ sId: "message-v1", version: 1, status: "created" })

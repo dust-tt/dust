@@ -251,6 +251,28 @@ describe("clientEventSource", () => {
 
     expect(eventSourceCalls[0].init?.withCredentials).toBe(true);
   });
+
+  it("does not open an event source after cancellation during auth resolution", async () => {
+    let resolveDefaults: ((init: RequestInit) => void) | undefined;
+    setDefaultInitResolver(
+      () =>
+        new Promise<RequestInit>((resolve) => {
+          resolveDefaults = resolve;
+        })
+    );
+    const controller = new AbortController();
+    const source = clientEventSource(
+      "/api/w/w1/events",
+      undefined,
+      controller.signal
+    );
+
+    controller.abort();
+    resolveDefaults?.({});
+
+    await expect(source).rejects.toMatchObject({ name: "AbortError" });
+    expect(eventSourceCalls).toHaveLength(0);
+  });
 });
 
 // `clientFetch` carries every other client-side request in the app, so its three deployment

@@ -244,6 +244,11 @@ export function useChildAgentStream({
       buildLongPollURL,
       isReadyToConsumeStream:
         childStreamIds !== null && !isStreamDone && !disabled,
+      telemetryContext: {
+        sseKind: "child_agent",
+        conversationId: childStreamIds?.conversationId ?? null,
+        messageId: childStreamIds?.agentMessageId ?? null,
+      },
     }
   );
 

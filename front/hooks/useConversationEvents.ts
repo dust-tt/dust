@@ -43,6 +43,7 @@ export function useConversationEvents({
     {
       workspaceId: owner.sId,
       isReadyToConsumeStream,
+      telemetryContext: { sseKind: "conversation", conversationId },
     }
   );
 }
