@@ -37,7 +37,7 @@ import {
 import { useState } from "react";
 
 interface SetModelAssistantsDialogProps {
-  agentConfigurations: LightAgentConfigurationType[];
+  agentConfigurations: Pick<LightAgentConfigurationType, "sId" | "usage">[];
   disabled: boolean;
   owner: LightWorkspaceType;
 }

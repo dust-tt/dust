@@ -10,8 +10,9 @@ import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
  * @cc [owner:tdraier,label:security] agent-search-listing-names
- * Resolve editor, tag, skill and space names for `searchAgents` results through resources, and only
- * name skills and spaces the caller can read: unreadable ones are dropped from the facets.
+ * Resolve editor, tag, skill and space names for `searchAgents` results (listed agents and facets)
+ * through resources, and only name skills and spaces the caller can read: unreadable ones are
+ * dropped from the facets.
  */
 export async function searchAgentListings(
   auth: Authenticator,
@@ -31,15 +32,20 @@ export async function searchAgentListings(
   ];
   const facetIds = (values: { value: string }[] | undefined) =>
     (values ?? []).map(({ value }) => value);
+  // Tags are resolved once for both the listed agents and the tag facet.
+  const tagIds = [
+    ...new Set([
+      ...result.value.agents.flatMap((agent) => agent.tagIds),
+      ...facetIds(facetValues.tags),
+    ]),
+  ];
   const facetCount = (
     values: { value: string; count: number }[] | undefined,
     id: string
   ) => values?.find(({ value }) => value === id)?.count ?? 0;
   const [users, tags, skills, spaces] = await Promise.all([
     UserResource.fetchByIds(editorIds),
-    facetValues.tags?.length
-      ? TagResource.fetchByIds(auth, facetIds(facetValues.tags))
-      : [],
+    tagIds.length > 0 ? TagResource.fetchByIds(auth, tagIds) : [],
     facetValues.skills?.length
       ? SkillResource.fetchByIds(auth, facetIds(facetValues.skills), {
           withInstructions: false,
@@ -59,6 +65,9 @@ export async function searchAgentListings(
     })
   );
 
+  const usersById = new Map(users.map((user) => [user.sId, user]));
+  const tagsById = new Map(tags.map((tag) => [tag.sId, tag]));
+
   return new Ok<SearchAgentsResponseBody>({
     ...result.value,
     facets: {
@@ -66,8 +75,8 @@ export async function searchAgentListings(
         ? {
             editors: facetValues.editors
               .flatMap(({ value, count }) => {
-                const editor = editorsById.get(value);
-                return editor ? [{ ...editor, count }] : [];
+                const editor = usersById.get(value);
+                return editor ? [editor.toSearchFacetJSON(count)] : [];
               })
               .toSorted((a, b) => a.fullName.localeCompare(b.fullName)),
           }
@@ -82,23 +91,22 @@ export async function searchAgentListings(
         : {}),
       ...(facetValues.tags
         ? {
-            tags: tags
-              .map((tag) => ({
-                ...tag.toJSON(),
-                count: facetCount(facetValues.tags, tag.sId),
-              }))
+            tags: facetValues.tags
+              .flatMap(({ value, count }) => {
+                const tag = tagsById.get(value);
+                return tag ? [tag.toSearchFacetJSON(count)] : [];
+              })
               .toSorted((a, b) => a.name.localeCompare(b.name)),
           }
         : {}),
       ...(facetValues.skills
         ? {
             skills: skills
-              .map((skill) => ({
-                sId: skill.sId,
-                name: skill.name,
-                icon: skill.icon,
-                count: facetCount(facetValues.skills, skill.sId),
-              }))
+              .map((skill) =>
+                skill.toSearchFacetJSON(
+                  facetCount(facetValues.skills, skill.sId)
+                )
+              )
               .toSorted((a, b) => a.name.localeCompare(b.name)),
           }
         : {}),
@@ -107,12 +115,11 @@ export async function searchAgentListings(
             // Unrestricted search can surface spaces the caller cannot read: never name them.
             spaces: spaces
               .filter((space) => auth.can("read", space))
-              .map((space) => ({
-                sId: space.sId,
-                name: space.name,
-                kind: space.kind,
-                count: facetCount(facetValues.spaces, space.sId),
-              }))
+              .map((space) =>
+                space.toSearchFacetJSON(
+                  facetCount(facetValues.spaces, space.sId)
+                )
+              )
               .toSorted((a, b) => a.name.localeCompare(b.name)),
           }
         : {}),
@@ -123,6 +130,9 @@ export async function searchAgentListings(
       editors: removeNulls(
         [...new Set(agent.editorIds)].map((id) => editorsById.get(id))
       ),
+      tags: removeNulls(
+        agent.tagIds.map((id) => tagsById.get(id)?.toJSON())
+      ).toSorted((a, b) => a.name.localeCompare(b.name)),
     })),
   });
 }

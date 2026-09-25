@@ -73,7 +73,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchDeleteAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
-import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
+import type {
+  AgentSearchDocument,
+  AgentSearchListItemType,
+} from "@app/types/agent_search/agent_search";
 import type { DiscoveryAgentType } from "@app/types/api/discovery";
 import type {
   AgentConfigurationBaseType,
@@ -2646,6 +2649,14 @@ export class AgentResource
       feedback_negative_count: isGlobal ? 0 : feedbackNegativeCount,
       active_users_count: isGlobal ? null : activeUsersCount,
       favorite_count: isGlobal ? 0 : favoriteCount,
+    };
+  }
+
+  toSearchModelJSON(): NonNullable<AgentSearchListItemType["model"]> {
+    return {
+      providerId: this.modelConfiguration.providerId,
+      modelId: this.modelConfiguration.modelId,
+      reasoningEffort: getEffectiveReasoningEffort(this.modelConfiguration),
     };
   }
 

@@ -970,6 +970,15 @@ export class UserResource extends BaseResource<UserModel> {
     };
   }
 
+  toSearchFacetJSON(count: number) {
+    return {
+      sId: this.sId,
+      fullName: this.fullName(),
+      image: this.imageUrl,
+      count,
+    };
+  }
+
   toJSON(): UserType {
     return {
       sId: this.sId,

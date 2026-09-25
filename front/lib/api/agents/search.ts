@@ -1,3 +1,4 @@
+import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import {
   buildAgentSearchQuery,
   MAX_AGENT_SEARCH_FACET_VALUES,
@@ -62,23 +63,24 @@ function buildFacetAggregation(
  * Global agents are searchable only when the workspace resolves them as `active` (not disabled by
  * an admin, a missing data source or the plan) and the caller holds `read` on them (audience).
  */
-async function listSearchableGlobalAgentIds(
+async function listSearchableGlobalAgents(
   auth: Authenticator
-): Promise<string[]> {
+): Promise<AgentResource[]> {
   const agents = await AgentResource.fetchByIds(
     auth,
     listDefaultGlobalAgentIds()
   );
-  return agents
-    .filter((agent) => agent.status === "active" && auth.can("read", agent))
-    .map((agent) => agent.sId);
+  return agents.filter(
+    (agent) => agent.status === "active" && auth.can("read", agent)
+  );
 }
 
 /**
  * @cc [owner:tdraier,label:security;performance] indexed-agent-search-listings
  * Return only workspace-scoped or searchable global indexed metadata (see
- * `workspace-scoped-agent-search`); never the agent's instructions. Global eligibility is resolved
- * before the query and result projection must not read the database. Permission-bearing document
+ * `workspace-scoped-agent-search`); never the agent's instructions. Global eligibility, and the
+ * model each searchable global agent resolves to for the workspace, are resolved before the query;
+ * result projection must not read the database. Permission-bearing document
  * changes are eventually consistent; full-agent access remains separately authorized.
  * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
  * Preserve Elasticsearch hit order without exposing scores.
@@ -135,7 +137,11 @@ export async function searchAgents(
     return new Err("offset_out_of_range" as const);
   }
 
-  const globalAgentIds = await listSearchableGlobalAgentIds(auth);
+  const globalAgents = await listSearchableGlobalAgents(auth);
+  const globalAgentIds = globalAgents.map((agent) => agent.sId);
+  const globalAgentModels = new Map(
+    globalAgents.map((agent) => [agent.sId, agent.toSearchModelJSON()])
+  );
   const query = buildAgentSearchQuery(auth, { ...options, globalAgentIds });
 
   const result = await withEs((client) =>
@@ -179,7 +185,14 @@ export async function searchAgents(
   }
 
   return new Ok({
-    agents: removeNulls(hits.map((hit) => hit._source)).map(toAgentListItem),
+    agents: removeNulls(hits.map((hit) => hit._source)).map((document) =>
+      toAgentListItem(
+        document,
+        document.workspace_id === GLOBAL_AGENTS_WORKSPACE_ID
+          ? globalAgentModels.get(document.agent_id)
+          : null
+      )
+    ),
     total: totalCount,
     hasMore: offset + hits.length < totalCount,
     facets: facetValues,

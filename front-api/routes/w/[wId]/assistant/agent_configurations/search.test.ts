@@ -55,6 +55,8 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       name: "Search result",
       description: "Description",
       pictureUrl: "https://dust.tt/static/agent.png",
+      model: null,
+      feedbacks: { up: 0, down: 0 },
       requestedSpaceIds: [],
       tagIds: [],
       editorIds: [user.sId, user.sId, "missing-user"],
@@ -90,6 +92,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       agents: [
         {
           ...agent,
+          tags: [],
           editors: [
             {
               sId: user.sId,

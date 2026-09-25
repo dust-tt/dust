@@ -21,10 +21,15 @@ import { DeleteAssistantsDialog } from "./DeleteAssistantsDialog";
 import { SetModelAssistantsDialog } from "./SetModelAssistantsDialog";
 import { UnpublishAssistantsDialog } from "./UnpublishAssistantsDialog";
 
+export type BatchEditableAgent = Pick<
+  LightAgentConfigurationType,
+  "sId" | "usage"
+> & { tagIds: string[] };
+
 type AgentEditBarProps = {
   onClear: () => void;
   onSelectAll: () => void;
-  selectedAgents: LightAgentConfigurationType[];
+  selectedAgents: BatchEditableAgent[];
   totalCount: number;
   owner: WorkspaceType;
   tags: TagType[];
@@ -115,11 +120,7 @@ export const AgentEditBar = ({
                     setIsLoading(true);
                     const agentIds = selectedAgents.map((a) => a.sId);
 
-                    if (
-                      selectedAgents.every((a) =>
-                        a.tags.find((agentTag) => agentTag.sId === t.sId)
-                      )
-                    ) {
+                    if (selectedAgents.every((a) => a.tagIds.includes(t.sId))) {
                       // Remove tag from all selected agents
                       await batchUpdateAgentTags(agentIds, {
                         removeTagIds: [t.sId],
@@ -127,8 +128,7 @@ export const AgentEditBar = ({
                     } else {
                       // Add tag to agents that don't have it
                       const toAdd = selectedAgents.filter(
-                        (a) =>
-                          !a.tags.find((agentTag) => agentTag.sId === t.sId)
+                        (a) => !a.tagIds.includes(t.sId)
                       );
                       await batchUpdateAgentTags(
                         toAdd.map((a) => a.sId),
