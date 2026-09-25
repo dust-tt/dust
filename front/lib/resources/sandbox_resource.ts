@@ -846,12 +846,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       const existing = await owner.fetchSandbox();
 
-      if (
-        opts.wakeOnly &&
-        (!existing ||
-          existing.killRequestedAt !== null ||
-          existing.status === "deleted")
-      ) {
+      // Refused here, before the code below creates a missing sandbox or destroys a kill-requested
+      // one. A deleted or unwakeable sandbox is refused where it would be recreated.
+      if (opts.wakeOnly && (!existing || existing.killRequestedAt !== null)) {
         return new Err(new SandboxNotRunningError());
       }
 
@@ -986,8 +983,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           if (wakeResult.isErr()) {
             // The sandbox may have been killed by the provider (e.g. lifetime
             // expired). Fall through to recreation instead of propagating the
-            // error, unless the caller asked not to create one: the next
-            // full ensure then recreates it.
+            // error; a wake-only caller refuses it there, leaving recreation
+            // to the next full ensure.
             logger.error(
               {
                 sandbox: existing.toLogJSON(),
@@ -997,9 +994,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
                 ? "Failed to wake sandbox — leaving recreation to the next access"
                 : "Failed to wake sandbox — will recreate"
             );
-            if (opts.wakeOnly) {
-              return new Err(new SandboxNotRunningError());
-            }
           } else {
             wokeFromSleep = true;
 
@@ -1009,6 +1003,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         // Falls through to recreation when wake fails.
 
         case "deleted": {
+          if (opts.wakeOnly) {
+            return new Err(new SandboxNotRunningError());
+          }
           const imageResult = getSandboxImage(auth);
           if (imageResult.isErr()) {
             return imageResult;

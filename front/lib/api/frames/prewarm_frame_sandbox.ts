@@ -1,39 +1,9 @@
 import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
-import { getAuthenticatedWorkspaceUser } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-async function prewarmFrameSandboxRun(
-  auth: Authenticator,
-  frame: FileResource
-): Promise<void> {
-  const [hasFunctions, canUse, user] = await Promise.all([
-    frame.hasActiveFrameFunctions(),
-    frame.canCurrentUserUseFrame(auth),
-    getAuthenticatedWorkspaceUser(auth),
-  ]);
-  if (!hasFunctions || !canUse || !user) {
-    return;
-  }
-
-  const result = await ensureFrameSandboxReady(auth, frame, {
-    wakeOnly: true,
-  });
-  // A Frame without a wakeable sandbox is left to its first call, which creates one.
-  if (result.isErr() && !isSandboxNotRunningError(result.error)) {
-    logger.warn(
-      {
-        frameId: frame.sId,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        err: result.error,
-      },
-      "Frame sandbox pre-warm failed"
-    );
-  }
-}
 
 /**
  * @cc [owner:davidebbo,label:security;performance] prewarm-gated-like-a-call
@@ -56,18 +26,38 @@ async function prewarmFrameSandboxRun(
  * Start waking a Frame's sandbox, so the calls its UI makes once loaded find it running. Callers
  * do not wait on it: the next call runs the full readiness path itself.
  */
-export function prewarmFrameSandbox(
+export async function prewarmFrameSandbox(
   auth: Authenticator,
   frame: FileResource
 ): Promise<void> {
-  return prewarmFrameSandboxRun(auth, frame).catch((err) => {
+  const logContext = {
+    frameId: frame.sId,
+    workspaceId: auth.getNonNullableWorkspace().sId,
+  };
+  try {
+    // `canCurrentUserUseFrame` also requires a workspace member.
+    const [hasFunctions, canUse] = await Promise.all([
+      frame.hasActiveFrameFunctions(),
+      frame.canCurrentUserUseFrame(auth),
+    ]);
+    if (!hasFunctions || !canUse) {
+      return;
+    }
+
+    const result = await ensureFrameSandboxReady(auth, frame, {
+      wakeOnly: true,
+    });
+    // A Frame without a wakeable sandbox is left to its first call, which creates one.
+    if (result.isErr() && !isSandboxNotRunningError(result.error)) {
+      logger.warn(
+        { ...logContext, err: result.error },
+        "Frame sandbox pre-warm failed"
+      );
+    }
+  } catch (err) {
     logger.error(
-      {
-        frameId: frame.sId,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        err: normalizeError(err),
-      },
+      { ...logContext, err: normalizeError(err) },
       "Frame sandbox pre-warm threw"
     );
-  });
+  }
 }
