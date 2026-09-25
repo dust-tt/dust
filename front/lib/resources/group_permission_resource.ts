@@ -16,6 +16,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import { defineCacheOperations } from "@app/lib/utils/cache_operations";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -649,6 +650,128 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
       return new Ok(undefined);
     }, transaction);
+  }
+
+  /**
+   * @cc [owner:philipperolet,label:security;backend] replace-grant-users-atomically
+   * Replacing the users holding one grant MUST serialize with other changes to that grant and
+   * either apply every addition/removal or apply none. Callers MUST validate that the supplied
+   * users are active members of the workspace before invoking this method.
+   */
+  static async replaceUsersForGrant(
+    auth: Authenticator,
+    {
+      users,
+      grantType,
+      resourceType,
+      resourceId,
+    }: Omit<UsersGrantSpec, "transaction">
+  ): Promise<{ addedUsers: UserType[]; removedUsers: UserType[] }> {
+    return withTransaction(async (transaction) => {
+      await this.getGrantLock(
+        auth,
+        { grantType, resourceType, resourceId },
+        transaction
+      );
+      const group = await this.findRegularAutoGroupForGrant(auth, {
+        grantType,
+        resourceType,
+        resourceId,
+        transaction,
+      });
+      const now = new Date();
+      const memberships = group
+        ? await GroupMembershipModel.findAll({
+            where: {
+              workspaceId: auth.getNonNullableWorkspace().id,
+              groupId: group.id,
+              [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+            },
+            transaction,
+          })
+        : [];
+      const currentUsers = await UserResource.fetchByModelIds(
+        [...new Set(memberships.map((membership) => membership.userId))],
+        { transaction }
+      );
+      const requestedIds = new Set(users.map((user) => user.id));
+      const activeIds = new Set(
+        memberships
+          .filter(
+            (membership) =>
+              membership.status === "active" && membership.startAt <= now
+          )
+          .map((membership) => membership.userId)
+      );
+      const addedUsers = users.filter((user) => !activeIds.has(user.id));
+      const removedUsers = currentUsers
+        .filter((user) => !requestedIds.has(user.id))
+        .map((user) => user.toJSON());
+
+      // End stale and suspended memberships as well: otherwise an inactive former manager could
+      // regain the assignment when their workspace membership is restored.
+      const expiredUserIds = [
+        ...new Set(
+          memberships
+            .filter(
+              (membership) =>
+                !requestedIds.has(membership.userId) ||
+                membership.status !== "active" ||
+                membership.startAt > now
+            )
+            .map((membership) => membership.userId)
+        ),
+      ];
+      if (group && expiredUserIds.length > 0) {
+        await GroupMembershipModel.update(
+          { endAt: now },
+          {
+            where: {
+              workspaceId: auth.getNonNullableWorkspace().id,
+              groupId: group.id,
+              userId: expiredUserIds,
+              [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+            },
+            transaction,
+          }
+        );
+        invalidateCacheAfterCommit(transaction, () =>
+          GroupResource.batchInvalidateGroupIdsCacheForUsers(
+            expiredUserIds.map((userId) => [
+              {
+                user: { id: userId },
+                workspace: { id: auth.getNonNullableWorkspace().id },
+              },
+            ])
+          )
+        );
+      }
+
+      const grantResult = await this.grantToUsers(auth, {
+        users: addedUsers,
+        grantType,
+        resourceType,
+        resourceId,
+        transaction,
+      });
+      if (grantResult.isErr()) {
+        throw grantResult.error;
+      }
+      if (group && users.length === 0) {
+        await this.revoke(auth, {
+          group,
+          grantType,
+          resourceType,
+          resourceId,
+          transaction,
+        });
+        const deleteResult = await group.delete(auth, { transaction });
+        if (deleteResult.isErr()) {
+          throw deleteResult.error;
+        }
+      }
+      return { addedUsers, removedUsers };
+    });
   }
 
   // Grant an instance-level permission to the whole workspace via the global group. Idempotent.
