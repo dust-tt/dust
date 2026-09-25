@@ -57,13 +57,6 @@ function pickDefaultAvatar(): string {
  * the suggested name, description and instructions. Applying it to an agent that is not `pending`
  * fails with `invalid_request_error` and changes nothing.
  */
-/**
- * @cc [owner:fabiencelier,label:security] create-requires-capability
- * Applying a `create` suggestion MUST fail with `invalid_request_error` when the caller no longer
- * holds the workspace `create` capability on agents. The capability was checked when the
- * placeholder was created, but `createAgentConfiguration` skips that check for an existing row, so
- * this is the only place it is re-verified against live state.
- */
 async function resolveCreateSuggestion(
   auth: Authenticator,
   agent: AgentResource,
@@ -78,15 +71,9 @@ async function resolveCreateSuggestion(
     );
   }
 
-  if (!auth.hasWorkspacePermission("create", "agent")) {
-    return new Err(
-      new DustError("invalid_request_error", "Creating agents is restricted.")
-    );
-  }
-
-  // Editor access is not re-checked here: the route only reaches this point for `agent.canEdit`
-  // callers, and `createAgentConfiguration` refuses to update a pending agent owned by someone
-  // else.
+  // Neither editor access nor the `create` capability is re-checked here: callers authorize the
+  // suggestions first (see `callers-authorize-suggestions`), and `createAgentConfiguration` refuses
+  // to update a pending agent owned by someone else.
 
   // The suggested instructions are HTML: run them through the editor schema so the stored
   // markdown and block HTML match what the builder would have saved.
@@ -287,6 +274,12 @@ async function resolveAgentFieldEdits(
  * resolution fails and no change is returned. Each change is resolved against the current state of
  * `agent`, so a second change on the same agent would be written from stale state.
  */
+/**
+ * @cc [owner:matteotrab,label:security] callers-authorize-suggestions
+ * Callers MUST authorize `suggestions` with `isAuthorizedToApplyAgentSuggestions` against the live
+ * `agent` before calling this. Permissions are not re-checked here, and the write path does not
+ * re-check the workspace `create` capability when it saves the existing `pending` placeholder.
+ */
 export async function resolveAgentSuggestions(
   auth: Authenticator,
   {
@@ -404,6 +397,12 @@ export async function writeAgentChange(
   }
 }
 
+/**
+ * @cc [owner:matteotrab,label:security] callers-authorize-suggestions
+ * Callers MUST authorize `suggestions` with `isAuthorizedToApplyAgentSuggestions` against the live
+ * `agent` before calling this. Permissions are not re-checked here, and the write path does not
+ * re-check the workspace `create` capability when it saves the existing `pending` placeholder.
+ */
 export async function applyAgentSuggestions(
   auth: Authenticator,
   params: {

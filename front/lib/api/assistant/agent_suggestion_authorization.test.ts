@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/assistant/agent_suggestion_authorization";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -29,20 +30,50 @@ async function fetchAgent(auth: Authenticator, agentId: string) {
 }
 
 describe("agent suggestion authorization", () => {
-  it("authorizes an editor for every kind", async () => {
-    const { authenticator } = await createResourceTest({ role: "user" });
+  it("authorizes an editor holding the workspace capabilities for every kind", async () => {
+    const { user, workspace } = await createResourceTest({ role: "user" });
+    await GroupPermissionResource.setForEverybody(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      { grantType: "create", resourceType: "agent" }
+    );
+    await GroupPermissionResource.setForEverybody(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      { grantType: "publish", resourceType: "agent" }
+    );
+    const authenticator = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
     const agentConfiguration =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const agent = await fetchAgent(authenticator, agentConfiguration.sId);
 
     expect(
       isAuthorizedToApplyAgentSuggestions(authenticator, agent, [
+        { kind: "create" },
         { kind: "name" },
         { kind: "instructions" },
         { kind: "model" },
         { kind: "scope" },
         { kind: "delete" },
       ])
+    ).toBe(true);
+  });
+
+  it("refuses an editor `create` and `scope` without the matching workspace capability", async () => {
+    const { authenticator } = await createResourceTest({ role: "user" });
+    const agentConfiguration =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const agent = await fetchAgent(authenticator, agentConfiguration.sId);
+
+    expect(
+      isAuthorizedForAgentSuggestionKind(authenticator, agent, "create")
+    ).toBe(false);
+    expect(
+      isAuthorizedForAgentSuggestionKind(authenticator, agent, "scope")
+    ).toBe(false);
+    expect(
+      isAuthorizedForAgentSuggestionKind(authenticator, agent, "name")
     ).toBe(true);
   });
 

@@ -1,3 +1,4 @@
+import { isAuthorizedToApplyAgentSuggestions } from "@app/lib/api/assistant/agent_suggestion_authorization";
 import type { ResolvedAgentChange } from "@app/lib/api/assistant/apply_agent_suggestions";
 import {
   resolveAgentSuggestions,
@@ -12,8 +13,11 @@ import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestio
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
 
-type ApplyBatchSuggestionsError = DustError<"invalid_request_error">;
+type ApplyBatchSuggestionsError = DustError<
+  "unauthorized" | "invalid_request_error"
+>;
 
 type SkillStep = Extract<BatchApplicationStep, { type: "skill" }>;
 type AgentStep = Extract<BatchApplicationStep, { type: "agent" }>;
@@ -53,13 +57,54 @@ function checkOneStepPerTarget(
   return new Ok(undefined);
 }
 
+async function checkSkillStepPermissions(
+  auth: Authenticator,
+  step: SkillStep
+): Promise<Result<undefined, ApplyBatchSuggestionsError>> {
+  // TODO: check that the caller can apply the step's suggestions to its skill.
+  return new Ok(undefined);
+}
+
+function checkAgentStepPermissions(
+  auth: Authenticator,
+  step: AgentStep,
+  agentsById: Map<string, AgentResource>
+): Result<undefined, ApplyBatchSuggestionsError> {
+  const agent = agentsById.get(step.agentId);
+  if (!agent) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The agent this suggestion targets was not found."
+      )
+    );
+  }
+
+  if (!isAuthorizedToApplyAgentSuggestions(auth, agent, step.suggestions)) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        `You are not allowed to apply one or more of these suggestions to the agent ${agent.name}.`
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
 async function checkPermissions(
   auth: Authenticator,
-  step: BatchApplicationStep
+  step: BatchApplicationStep,
+  agentsById: Map<string, AgentResource>
 ): Promise<Result<undefined, ApplyBatchSuggestionsError>> {
-  // TODO: check that the caller can apply the step's suggestions to its target. Each action needs
-  // its own permission.
-  return new Ok(undefined);
+  switch (step.type) {
+    case "skill":
+      return checkSkillStepPermissions(auth, step);
+    case "agent":
+      return checkAgentStepPermissions(auth, step, agentsById);
+    default:
+      return assertNever(step);
+  }
 }
 
 async function resolveSkillStep(
@@ -72,17 +117,11 @@ async function resolveSkillStep(
 
 async function resolveAgentStep(
   auth: Authenticator,
-  step: AgentStep
+  step: AgentStep,
+  agentsById: Map<string, AgentResource>
 ): Promise<Result<ResolvedAgentStep, ApplyBatchSuggestionsError>> {
-  const agent = await AgentResource.fetchById(auth, step.agentId);
-  if (!agent) {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        `The agent ${step.agentId} was not found.`
-      )
-    );
-  }
+  const agent = agentsById.get(step.agentId);
+  assert(agent, "The agent this suggestion targets disappeared.");
 
   const change = await resolveAgentSuggestions(auth, {
     agent,
@@ -97,13 +136,14 @@ async function resolveAgentStep(
 
 async function resolveStep(
   auth: Authenticator,
-  step: BatchApplicationStep
+  step: BatchApplicationStep,
+  agentsById: Map<string, AgentResource>
 ): Promise<Result<ResolvedStep, ApplyBatchSuggestionsError>> {
   switch (step.type) {
     case "skill":
       return resolveSkillStep(auth, step);
     case "agent":
-      return resolveAgentStep(auth, step);
+      return resolveAgentStep(auth, step, agentsById);
     default:
       return assertNever(step);
   }
@@ -152,8 +192,14 @@ export async function applyBatchSuggestions(
     return oneStepPerTarget;
   }
 
+  const agents = await AgentResource.fetchByIds(
+    auth,
+    steps.filter((step) => step.type === "agent").map((step) => step.agentId)
+  );
+  const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
+
   for (const step of steps) {
-    const res = await checkPermissions(auth, step);
+    const res = await checkPermissions(auth, step, agentsById);
     if (res.isErr()) {
       return res;
     }
@@ -161,7 +207,7 @@ export async function applyBatchSuggestions(
 
   const resolvedSteps: ResolvedStep[] = [];
   for (const step of steps) {
-    const res = await resolveStep(auth, step);
+    const res = await resolveStep(auth, step, agentsById);
     if (res.isErr()) {
       return res;
     }

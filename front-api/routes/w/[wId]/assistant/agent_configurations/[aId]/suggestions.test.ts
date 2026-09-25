@@ -553,7 +553,7 @@ describe("PATCH with applyToAgent", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns 400 when the caller lost the create-agent capability", async () => {
+  it("returns 403 when the caller does not have the create-agent capability", async () => {
     const { workspace, auth, agent } = await setupPendingAgent();
     const suggestion = await AgentSuggestionFactory.createCreate(auth, agent);
 
@@ -568,8 +568,10 @@ describe("PATCH with applyToAgent", () => {
       applyToAgent: true,
     });
 
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toContain("restricted");
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe(
+      "agent_group_permission_error"
+    );
 
     const placeholder = await getAgentConfiguration(auth, {
       agentId: agent.sId,
@@ -579,7 +581,12 @@ describe("PATCH with applyToAgent", () => {
   });
 
   it("returns 400 and leaves the suggestion pending when the target is not a placeholder", async () => {
-    const { workspace, auth, agent } = await setupTest();
+    const { workspace, auth, user, agent } = await setupTest();
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "agent",
+    });
+    await auth.refresh();
     const suggestion = await AgentSuggestionFactory.createCreate(auth, agent);
 
     const response = await patchSuggestions(workspace, agent.sId, {
@@ -940,7 +947,7 @@ describe("PATCH with applyToAgent", () => {
     });
   });
 
-  it("returns 400 when the caller lacks the publish capability, leaving the agent's scope unchanged", async () => {
+  it("returns 403 when the caller lacks the publish capability, leaving the agent's scope unchanged", async () => {
     const { workspace, auth, agent } = await setupTest();
     // The caller holds `write` on the agent (created it) but not the workspace `publish`
     // capability that a scope change also requires (see `scope-change-requires-edit-and-publish`).
@@ -954,8 +961,10 @@ describe("PATCH with applyToAgent", () => {
       applyToAgent: true,
     });
 
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toContain("publish");
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe(
+      "agent_group_permission_error"
+    );
 
     const untouched = await getAgentConfiguration(auth, {
       agentId: agent.sId,

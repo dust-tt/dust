@@ -3,6 +3,7 @@ import type { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
 
 type AgentSuggestionVerb = "write" | "admin";
+type AgentSuggestionCapability = "create" | "publish";
 
 /**
  * @cc [owner:fabiencelier,label:security] agent-suggestion-kind-accepted-verbs
@@ -32,11 +33,23 @@ const AGENT_SUGGESTION_KIND_ACCEPTED_VERBS: Record<
   delete: ["admin"],
 };
 
+const AGENT_SUGGESTION_KIND_WORKSPACE_CAPABILITY: Partial<
+  Record<AgentSuggestionKind, AgentSuggestionCapability>
+> = {
+  create: "create",
+  scope: "publish",
+};
+
 export function isAuthorizedForAgentSuggestionKind(
   auth: Authenticator,
   agent: AgentResource,
   kind: AgentSuggestionKind
 ): boolean {
+  const capability = AGENT_SUGGESTION_KIND_WORKSPACE_CAPABILITY[kind];
+  if (capability && !auth.hasWorkspacePermission(capability, "agent")) {
+    return false;
+  }
+
   return AGENT_SUGGESTION_KIND_ACCEPTED_VERBS[kind].some((verb) =>
     auth.can(verb, agent)
   );

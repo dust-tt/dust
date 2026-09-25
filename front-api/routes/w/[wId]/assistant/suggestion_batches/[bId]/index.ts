@@ -2,6 +2,7 @@ import { applyBatchSuggestions } from "@app/lib/api/assistant/apply_batch_sugges
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { PatchSuggestionBatchResponseBody } from "@app/types/api/assistant/suggestion_batches";
 import { PatchSuggestionBatchRequestBodySchema } from "@app/types/api/assistant/suggestion_batches";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -50,13 +51,21 @@ app.patch(
     if (state === "approved") {
       const applyRes = await applyBatchSuggestions(auth, batch);
       if (applyRes.isErr()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: applyRes.error.message,
-          },
-        });
+        const { code, message } = applyRes.error;
+        switch (code) {
+          case "unauthorized":
+            return apiError(ctx, {
+              status_code: 403,
+              api_error: { type: "agent_group_permission_error", message },
+            });
+          case "invalid_request_error":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: { type: "invalid_request_error", message },
+            });
+          default:
+            return assertNever(code);
+        }
       }
     }
 
