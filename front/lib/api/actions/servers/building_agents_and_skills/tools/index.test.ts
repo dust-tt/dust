@@ -2983,6 +2983,62 @@ describe("building_agents_and_skills tools", () => {
 
       expectMcpError(result, "does not change anything");
     });
+
+    describe("refs", () => {
+      it("refuses an unknown ref and writes nothing", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+
+        const result = await runSuggest(authenticator, {
+          title: "Notes skill",
+          analysis: "Notes.",
+          suggestions: [
+            {
+              ...createSkill,
+              instructions: '<p>Use <skill ref="missing"/></p>',
+            },
+          ],
+        });
+
+        expectMcpError(result, "is not declared");
+        const pendingSkills = await SkillResource.listByWorkspace(
+          authenticator,
+          { status: "pending" }
+        );
+        expect(pendingSkills).toHaveLength(0);
+      });
+
+      it("refuses a ref declared twice", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+
+        const result = await runSuggest(authenticator, {
+          title: "Duplicate",
+          analysis: "Duplicate.",
+          suggestions: [
+            { ...createSkill, ref: "notes" },
+            { ...createSkill, name: "Other Notes", ref: "notes" },
+          ],
+        });
+
+        expectMcpError(result, "declared twice");
+      });
+
+      it("refuses a skill tag whose ref cannot be parsed", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+
+        const result = await runSuggest(authenticator, {
+          title: "Notes skill",
+          analysis: "Notes.",
+          suggestions: [
+            {
+              ...createSkill,
+              instructions: '<p>Use <skill ref="bad ref"/></p>',
+            },
+          ],
+        });
+
+        expectMcpError(result, "must be written as");
+      });
+    });
   });
 
   describe(SUGGEST_SKILL_AVAILABILITY_TOOL_NAME, () => {

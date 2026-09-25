@@ -392,6 +392,14 @@ export type CreateAgentSuggestion = z.infer<typeof CreateAgentSuggestionSchema>;
 
 export const CreateSkillSuggestionSchema = z.object({
   kind: z.literal("create_skill"),
+  ref: z
+    .string()
+    .regex(/^[\w-]+$/)
+    .optional()
+    .describe(
+      "A local name for the new skill, unique in this call, so the instructions of other skills " +
+        'of the same call can use it as <skill ref="name"/>.'
+    ),
   name: z
     .string()
     .trim()
