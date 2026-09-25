@@ -12,7 +12,7 @@ import {
 } from "@app/lib/api/sandbox/egress_policy";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ScopeMutationResult } from "@app/types/api/sandbox/egress_policy";
 import { SANDBOX_WORKSPACE_SCOPE_ID } from "@app/types/api/sandbox/egress_policy";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
@@ -86,6 +86,29 @@ export async function listPodsWithEgressPolicy(
       .filter((pod) => configured.has(pod.sId))
       .sort((a, b) => a.name.localeCompare(b.name))
   );
+}
+
+// Resolves a pod selection to project spaces, admin surfaces only (the
+// caller must have verified the admin role). Ids that do not resolve to a
+// project space in this workspace are silently dropped: these reads back a
+// live comparison view, and a Pod deleted between listing and query should
+// vanish from the comparison, not fail it.
+export async function resolveSandboxAdminPods(
+  auth: Authenticator,
+  selection: SandboxAdminPodSelection
+): Promise<SpaceResource[]> {
+  if (selection.kind === "all-pods") {
+    const projectSpaces = await listNonArchivedProjectSpacesAsAdmin(auth);
+    if (projectSpaces.isErr()) {
+      // Unreachable behind ensureIsAdmin(); throwing surfaces a plumbing bug
+      // as a 500 rather than silently returning no pods.
+      throw projectSpaces.error;
+    }
+    return projectSpaces.value;
+  }
+
+  const spaces = await SpaceResource.fetchByIds(auth, selection.podIds);
+  return spaces.filter((space) => space.isProject());
 }
 
 // One egress-domain add/remove applied across the workspace policy and/or a
