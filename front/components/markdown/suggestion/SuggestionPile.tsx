@@ -4,24 +4,20 @@
  */
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  AgentSuggestionActionCard,
-  getAgentSuggestionLabels,
-} from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
+import { getAgentSuggestionLabels } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { DEFAULT_SUGGESTION_VISUAL } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
+import { ConversationalSuggestionReviewCard } from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
 import type { SuggestionPileDirective } from "@app/components/markdown/suggestion/suggestion_directives";
 import { DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS } from "@app/components/markdown/suggestion/suggestion_directives";
+import { getSuggestionStateChip } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
-  getSuggestionStateChip,
-  SkillSuggestionCard,
-} from "@app/components/skill_builder/SkillSuggestionCard";
-import {
-  useSkillSuggestionReview,
+  usePatchSkillSuggestions,
   useSkillSuggestions,
 } from "@app/hooks/useSkillSuggestions";
+import { useSuggestionActions } from "@app/hooks/useSuggestionActions";
 import {
-  useAgentSuggestionActions,
   useAgentSuggestions,
+  usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSkill } from "@app/lib/swr/skill_configurations";
@@ -30,7 +26,6 @@ import {
   SKILL_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { ActionCardStackExitDirection } from "@dust-tt/sparkle";
 import {
   ActionCardStack,
   Avatar,
@@ -110,38 +105,47 @@ function groupByTarget(
 
 interface AgentPileTargetProps {
   owner: LightWorkspaceType;
+  conversationId: string;
   target: Extract<PileTargetDirectives, { type: "agent" }>;
   children: (target: PileTarget) => ReactNode;
 }
 
-function AgentPileTarget({ owner, target, children }: AgentPileTargetProps) {
+function AgentPileTarget({
+  owner,
+  conversationId,
+  target,
+  children,
+}: AgentPileTargetProps) {
   const { suggestions, isSuggestionsLoading, mutateSuggestions } =
     useAgentSuggestions({
       agentConfigurationId: target.agentId,
       workspaceId: owner.sId,
+      sources: ["conversational"],
+      conversationId,
     });
 
+  const { patchSuggestions } = usePatchAgentSuggestions({
+    agentConfigurationId: target.agentId,
+    workspaceId: owner.sId,
+  });
   const {
-    isSuggestionPending,
+    getPendingAction,
     acceptSuggestion,
     rejectSuggestion,
     batchAcceptSuggestions,
     batchRejectSuggestions,
-  } = useAgentSuggestionActions({
-    agentConfigurationId: target.agentId,
-    workspaceId: owner.sId,
-    mutateSuggestions,
-  });
+  } = useSuggestionActions({ patchSuggestions, mutateSuggestions });
 
   const { openPanel } = useConversationSidePanelContext();
 
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId: target.agentId,
-    disabled: target.directives.every(({ kind }) =>
-      DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind)
-    ),
-  });
+  const { agentConfiguration, isAgentConfigurationLoading } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: target.agentId,
+      disabled: target.directives.every(({ kind }) =>
+        DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind)
+      ),
+    });
 
   const entries: PileEntry[] = target.directives.flatMap(({ sId, kind }) => {
     const suggestion = suggestions.find((s) => s.sId === sId);
@@ -159,10 +163,8 @@ function AgentPileTarget({ owner, target, children }: AgentPileTargetProps) {
           DEFAULT_SUGGESTION_VISUAL
         ),
         renderCard: (extras: PileCardExtras) => (
-          <AgentSuggestionActionCard
-            agentSuggestion={suggestion}
-            pictureUrl={agentConfiguration?.pictureUrl}
-            disabled={isSuggestionPending(suggestion)}
+          <ConversationalSuggestionReviewCard
+            target={{ type: "agent", suggestion, agentConfiguration }}
             onAccept={() => void acceptSuggestion(suggestion)}
             onReject={() => void rejectSuggestion(suggestion)}
             onPreview={() =>
@@ -172,6 +174,8 @@ function AgentPileTarget({ owner, target, children }: AgentPileTargetProps) {
                 previewSuggestionIds: [suggestion.sId],
               })
             }
+            isAccepting={getPendingAction(suggestion) === "accept"}
+            isRejecting={getPendingAction(suggestion) === "reject"}
             {...extras}
           />
         ),
@@ -182,8 +186,8 @@ function AgentPileTarget({ owner, target, children }: AgentPileTargetProps) {
   const pendingEntries = entries.filter((e) => e.state === "pending");
 
   return children({
-    isLoading: isSuggestionsLoading,
-    isBusy: pendingEntries.some(isSuggestionPending),
+    isLoading: isSuggestionsLoading || isAgentConfigurationLoading,
+    isBusy: pendingEntries.some((e) => getPendingAction(e) !== null),
     entries,
     reviewPending: async (decision) => {
       if (pendingEntries.length === 0) {
@@ -198,16 +202,23 @@ function AgentPileTarget({ owner, target, children }: AgentPileTargetProps) {
 
 interface SkillPileTargetProps {
   owner: LightWorkspaceType;
+  conversationId: string;
   target: Extract<PileTargetDirectives, { type: "skill" }>;
   children: (target: PileTarget) => ReactNode;
 }
 
-function SkillPileTarget({ owner, target, children }: SkillPileTargetProps) {
+function SkillPileTarget({
+  owner,
+  conversationId,
+  target,
+  children,
+}: SkillPileTargetProps) {
   const { suggestions, isSuggestionsLoading, mutateSuggestions } =
     useSkillSuggestions({
       skillId: target.skillId,
       workspaceId: owner.sId,
       sources: ["conversational"],
+      conversationId,
     });
 
   const { skill, isSkillLoading, mutateSkillRegardlessOfQueryParams } =
@@ -216,13 +227,23 @@ function SkillPileTarget({ owner, target, children }: SkillPileTargetProps) {
       skillId: target.skillId,
     });
 
-  const { pendingAction, batchAcceptSuggestions, batchRejectSuggestions } =
-    useSkillSuggestionReview({
-      skillId: target.skillId,
-      workspaceId: owner.sId,
-      mutateSuggestions,
-      onApplied: mutateSkillRegardlessOfQueryParams,
-    });
+  const { patchSuggestions } = usePatchSkillSuggestions({
+    skillId: target.skillId,
+    workspaceId: owner.sId,
+  });
+  const {
+    getPendingAction,
+    rejectSuggestion,
+    batchAcceptSuggestions,
+    batchRejectSuggestions,
+  } = useSuggestionActions({ patchSuggestions, mutateSuggestions });
+
+  // Accepting applies the suggestion to the skill, so the skill is refetched to show the change.
+  const acceptSuggestions = async (toAccept: { sId: string }[]) => {
+    if (await batchAcceptSuggestions(toAccept)) {
+      mutateSkillRegardlessOfQueryParams();
+    }
+  };
 
   const { openPanel } = useConversationSidePanelContext();
 
@@ -248,10 +269,16 @@ function SkillPileTarget({ owner, target, children }: SkillPileTargetProps) {
             title: suggestion.title ?? "Suggestion",
             visual: DEFAULT_SUGGESTION_VISUAL,
             renderCard: (extras: PileCardExtras) => (
-              <SkillSuggestionCard
-                suggestion={suggestion}
-                onAccept={(s) => void batchAcceptSuggestions([s])}
-                onDecline={(s) => void batchRejectSuggestions([s])}
+              <ConversationalSuggestionReviewCard
+                target={{
+                  type: "skill",
+                  suggestion,
+                  getSkillInstructionsHtml,
+                  getCurrentAgentFacingDescription,
+                  workspaceId: owner.sId,
+                }}
+                onAccept={() => void acceptSuggestions([suggestion])}
+                onReject={() => void rejectSuggestion(suggestion)}
                 onPreview={() =>
                   openPanel({
                     type: SKILL_SIDE_PANEL_TYPE,
@@ -259,14 +286,8 @@ function SkillPileTarget({ owner, target, children }: SkillPileTargetProps) {
                     previewSuggestionIds: [suggestion.sId],
                   })
                 }
-                getSkillInstructionsHtml={getSkillInstructionsHtml}
-                getCurrentAgentFacingDescription={
-                  getCurrentAgentFacingDescription
-                }
-                workspaceId={owner.sId}
-                disabled={pendingAction !== null}
-                isAccepting={pendingAction === "accept"}
-                isDeclining={pendingAction === "decline"}
+                isAccepting={getPendingAction(suggestion) === "accept"}
+                isRejecting={getPendingAction(suggestion) === "reject"}
                 {...extras}
               />
             ),
@@ -279,14 +300,14 @@ function SkillPileTarget({ owner, target, children }: SkillPileTargetProps) {
 
   return children({
     isLoading: isSuggestionsLoading || isSkillLoading,
-    isBusy: pendingAction !== null,
+    isBusy: pendingEntries.some((e) => getPendingAction(e) !== null),
     entries,
     reviewPending: async (decision) => {
       if (pendingEntries.length === 0) {
         return;
       }
       await (decision === "accept"
-        ? batchAcceptSuggestions(pendingEntries)
+        ? acceptSuggestions(pendingEntries)
         : batchRejectSuggestions(pendingEntries));
     },
   });
@@ -294,6 +315,7 @@ function SkillPileTarget({ owner, target, children }: SkillPileTargetProps) {
 
 interface PileTargetsLoaderProps {
   owner: LightWorkspaceType;
+  conversationId: string;
   targets: PileTargetDirectives[];
   loaded: PileTarget[];
   children: (loaded: PileTarget[]) => ReactNode;
@@ -303,6 +325,7 @@ interface PileTargetsLoaderProps {
 // one inside the other until every target is available.
 function PileTargetsLoader({
   owner,
+  conversationId,
   targets,
   loaded,
   children,
@@ -315,6 +338,7 @@ function PileTargetsLoader({
   const next = (pileTarget: PileTarget) => (
     <PileTargetsLoader
       owner={owner}
+      conversationId={conversationId}
       targets={targets}
       loaded={[...loaded, pileTarget]}
     >
@@ -323,11 +347,21 @@ function PileTargetsLoader({
   );
 
   return target.type === "agent" ? (
-    <AgentPileTarget key={target.agentId} owner={owner} target={target}>
+    <AgentPileTarget
+      key={target.agentId}
+      owner={owner}
+      conversationId={conversationId}
+      target={target}
+    >
       {next}
     </AgentPileTarget>
   ) : (
-    <SkillPileTarget key={target.skillId} owner={owner} target={target}>
+    <SkillPileTarget
+      key={target.skillId}
+      owner={owner}
+      conversationId={conversationId}
+      target={target}
+    >
       {next}
     </SkillPileTarget>
   );
@@ -498,9 +532,6 @@ function SuggestionPileView({
   const [bulkDecision, setBulkDecision] = useState<"accept" | "reject" | null>(
     null
   );
-  const [exitDirection, setExitDirection] =
-    useState<ActionCardStackExitDirection>();
-  const [previousPendingIds, setPreviousPendingIds] = useState<string[]>([]);
 
   if (targets.some((t) => t.isLoading)) {
     return <LoadingBlock className="h-24 w-full max-w-lg" />;
@@ -517,19 +548,6 @@ function SuggestionPileView({
   const pendingEntries = entries.filter((e) => e.state === "pending");
   const isBusy = bulkDecision !== null || targets.some((t) => t.isBusy);
 
-  // Decisions land through each target's own hooks, so the side a card leaves to is read from the
-  // outcome of the suggestions that just stopped being pending.
-  const pendingIds = pendingEntries.map((e) => e.sId);
-  if (pendingIds.join() !== previousPendingIds.join()) {
-    const decided = entries.find(
-      (e) => previousPendingIds.includes(e.sId) && e.state !== "pending"
-    );
-    if (decided) {
-      setExitDirection(decided.state === "approved" ? "right" : "left");
-    }
-    setPreviousPendingIds(pendingIds);
-  }
-
   const reviewAll = async (decision: "accept" | "reject") => {
     setBulkDecision(decision);
     try {
@@ -541,14 +559,8 @@ function SuggestionPileView({
     }
   };
 
-  const startReview = () => {
-    setExitDirection("right");
-    setIsReviewing(true);
-  };
-
-  const pendingCards = pendingEntries.map((entry) => ({
-    key: entry.sId,
-    card: entry.renderCard({
+  const pendingCards = pendingEntries.map((entry) =>
+    entry.renderCard({
       titleAside: `Edit ${entries.indexOf(entry) + 1} of ${entries.length}`,
       secondaryAction: (
         <Button
@@ -560,46 +572,40 @@ function SuggestionPileView({
           isLoading={bulkDecision === "accept"}
         />
       ),
-    }),
-  }));
+    })
+  );
 
-  const summaryCard = {
-    key: "summary",
-    card: (
-      <SuggestionPileSummaryCard
-        title={
-          <>
-            {formatEditCount(entries.length)} reviewed ·{" "}
-            {formatReviewOutcomes(entries)}
-          </>
-        }
-        recap={recap}
-        entries={entries}
-        showEntryState
-      />
-    ),
-  };
+  const summaryCard = (
+    <SuggestionPileSummaryCard
+      title={
+        <>
+          {formatEditCount(entries.length)} reviewed ·{" "}
+          {formatReviewOutcomes(entries)}
+        </>
+      }
+      recap={recap}
+      entries={entries}
+      showEntryState
+    />
+  );
 
   // The recap card is part of the pile, on top of the pending suggestions.
-  const recapCard = {
-    key: "recap",
-    card: (
-      <SuggestionPileSummaryCard
-        title={`${formatEditCount(pendingEntries.length)} ready for your review`}
-        recap={recap}
-        entries={pendingEntries}
-        actions={
-          <SuggestionPileRecapActions
-            isBusy={isBusy}
-            bulkDecision={bulkDecision}
-            onReview={startReview}
-            onAcceptAll={() => void reviewAll("accept")}
-            onRejectAll={() => void reviewAll("reject")}
-          />
-        }
-      />
-    ),
-  };
+  const recapCard = (
+    <SuggestionPileSummaryCard
+      title={`${formatEditCount(pendingEntries.length)} ready for your review`}
+      recap={recap}
+      entries={pendingEntries}
+      actions={
+        <SuggestionPileRecapActions
+          isBusy={isBusy}
+          bulkDecision={bulkDecision}
+          onReview={() => setIsReviewing(true)}
+          onAcceptAll={() => void reviewAll("accept")}
+          onRejectAll={() => void reviewAll("reject")}
+        />
+      }
+    />
+  );
 
   const cards =
     pendingCards.length === 0
@@ -608,23 +614,27 @@ function SuggestionPileView({
         ? pendingCards
         : [recapCard, ...pendingCards];
 
-  return <ActionCardStack cards={cards} exitDirection={exitDirection} />;
+  // Only the front card is interactive; the ones behind it are drawn as decorative layers.
+  return <ActionCardStack cardCount={cards.length}>{cards[0]}</ActionCardStack>;
 }
 
 interface ConversationSuggestionPileProps {
   owner: LightWorkspaceType;
+  conversationId: string;
   directives: SuggestionPileDirective[];
   recap: string | null;
 }
 
 export function ConversationSuggestionPile({
   owner,
+  conversationId,
   directives,
   recap,
 }: ConversationSuggestionPileProps) {
   return (
     <PileTargetsLoader
       owner={owner}
+      conversationId={conversationId}
       targets={groupByTarget(directives)}
       loaded={[]}
     >
