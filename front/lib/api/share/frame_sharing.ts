@@ -195,6 +195,76 @@ export async function checkFrameShareScopePermission(
   return new Ok(undefined);
 }
 
+/**
+ * Who a share scope lets in beyond the workspace members its grants name. A new scope has to be
+ * classified here, or the exhaustive Record stops compiling.
+ */
+const SHARE_SCOPE_AUDIENCE: Record<
+  FileShareScope,
+  "anyone_with_link" | "grantees_only"
+> = {
+  emails_only: "grantees_only",
+  public: "anyone_with_link",
+  workspace: "grantees_only",
+  workspace_and_emails: "grantees_only",
+};
+
+export type FrameFunctionSharingConflictParams = {
+  /** Whether the publication about to go live declares at least one function. */
+  declaresFunctions: boolean;
+};
+
+/**
+ * Declaring functions narrows a Frame to workspace users, per
+ * [shared-frame-with-functions-needs-workspace-user], silently breaking the links its external
+ * viewers already hold. Publishing writes no sharing, so neither permission check runs to refuse
+ * it. Returns why the publication is refused, or null when every viewer can open it.
+ */
+export async function getFrameFunctionSharingConflict(
+  auth: Authenticator,
+  file: FileResource,
+  { declaresFunctions }: FrameFunctionSharingConflictParams
+): Promise<string | null> {
+  if (!declaresFunctions) {
+    return null;
+  }
+
+  // Sequential on purpose: most Frames are not shared, so this guard skips the other reads.
+  const shareInfo = await file.getShareInfo();
+  if (!shareInfo) {
+    return null;
+  }
+
+  const grants = await SharingGrantResource.listForFile(file);
+  const grantEmails = removeNulls(grants.map((grant) => grant.email)).map(
+    (email) => email.toLowerCase()
+  );
+  const memberEmails = await getFrameWorkspaceMemberEmails(auth, grantEmails);
+  // A domain grant carries no email and admits non-members by design.
+  const externalGrants = grants.filter(
+    (grant) =>
+      grant.email === null || !memberEmails.has(grant.email.toLowerCase())
+  );
+
+  const reachesAnyoneWithLink =
+    SHARE_SCOPE_AUDIENCE[shareInfo.scope] === "anyone_with_link";
+  if (!reachesAnyoneWithLink && externalGrants.length === 0) {
+    return null;
+  }
+
+  const audience = reachesAnyoneWithLink
+    ? "publicly, with anyone holding its link"
+    : `with ${externalGrants.length} recipient${externalGrants.length === 1 ? "" : "s"} outside the workspace`;
+
+  return (
+    `Not published: this Frame is shared ${audience}, and a Frame that declares functions is ` +
+    "only served to signed-in workspace members, so those viewers get a not-found page on the " +
+    "share link they have. The current version stays live. Do not retry this publish. Tell the " +
+    "user that to add functions, they must first restrict the Frame's sharing to workspace " +
+    "members in the Dust UI, or ask whether to go on without the functions."
+  );
+}
+
 export async function checkFrameEmailGrantPermission(
   auth: Authenticator,
   rawEmails: string[],
