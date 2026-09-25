@@ -1,0 +1,19 @@
+{
+  "action": "analytics.exported",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "export_name": "string",
+    "dataset": "string",
+    "format": "string",
+    "file_name": "string",
+    "row_count": "string",
+    "period_start": "string",
+    "period_end": "string",
+    "export_query": "string",
+    "actor_type": "string"
+  }
+}
