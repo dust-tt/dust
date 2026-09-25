@@ -1,10 +1,17 @@
+import { ConfirmContext } from "@app/components/Confirm";
+import {
+  GroupManagerAppointmentWarning,
+  newManagersOutsideGroup,
+} from "@app/components/groups/GroupManagerAppointmentWarning";
 import { GroupManagersField } from "@app/components/groups/GroupManagersField";
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useGovernancePermissions } from "@app/lib/swr/governance";
 import { useCreateGroup, useGroup, useUpdateGroup } from "@app/lib/swr/groups";
 import type { GroupWithAllowedActions } from "@app/types/api/groups";
 import type { GroupType } from "@app/types/groups";
+import { isRegularManualGroupKind } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ContentMessage,
@@ -19,7 +26,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { MouseEvent } from "react";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
 interface GroupDialogProps {
   owner: LightWorkspaceType;
@@ -122,6 +129,12 @@ function GroupForm({
   const { doUpdateGroup, isUpdating } = useUpdateGroup({ owner, groupId });
   const isSubmitting = isCreating || isUpdating;
   const canManageManagers = group?.allowedActions?.canAssignManagers === true;
+  const confirm = useContext(ConfirmContext);
+  const {
+    governancePermissions,
+    isLoading: isGovernanceLoading,
+    isGovernancePermissionsError,
+  } = useGovernancePermissions(owner, { disabled: !canManageManagers });
   const initialMemberIds = new Set(initialMembers.map((member) => member.sId));
   const hasGroupChanges =
     name.trim() !== initialName ||
@@ -134,6 +147,17 @@ function GroupForm({
     canManageManagers &&
     (selectedManagers.length !== initialManagerIds.size ||
       selectedManagers.some((manager) => !initialManagerIds.has(manager.sId)));
+  const managersNeedingWarning =
+    group &&
+    isRegularManualGroupKind(group.kind) &&
+    group.grantedRole !== "admin"
+      ? newManagersOutsideGroup({
+          initialManagers,
+          selectedManagers,
+          initialMembers,
+          selectedMemberIds,
+        })
+      : [];
 
   const handleSubmit = async (e: MouseEvent) => {
     // Prevent DialogClose from auto-closing so we only close on success.
@@ -141,6 +165,29 @@ function GroupForm({
     const trimmedName = name.trim();
     const memberIds = Array.from(selectedMemberIds);
     if (groupId) {
+      if (group && managersNeedingWarning.length > 0) {
+        if (isGovernanceLoading || isGovernancePermissionsError) {
+          return;
+        }
+        const confirmed = await confirm({
+          title: `Appoint ${managersNeedingWarning.map((manager) => manager.fullName).join(", ")} as group manager${managersNeedingWarning.length === 1 ? "" : "s"}?`,
+          message: (
+            <GroupManagerAppointmentWarning
+              group={group}
+              managers={managersNeedingWarning}
+              governancePermissions={governancePermissions}
+            />
+          ),
+          validateLabel:
+            managersNeedingWarning.length === 1
+              ? "Appoint manager"
+              : "Appoint managers",
+          validateVariant: "warning",
+        });
+        if (!confirmed) {
+          return;
+        }
+      }
       if (hasGroupChanges) {
         const result = await doUpdateGroup({ name: trimmedName, memberIds });
         if (!result) {
@@ -169,6 +216,8 @@ function GroupForm({
   const shouldDisableButton =
     readOnly ||
     isSubmitting ||
+    (managersNeedingWarning.length > 0 &&
+      (isGovernanceLoading || isGovernancePermissionsError)) ||
     name.trim().length === 0 ||
     (!groupId && selectedMemberIds.size === 0) ||
     (hasGroupChanges && selectedMemberIds.size === 0);
