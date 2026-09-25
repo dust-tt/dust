@@ -163,6 +163,9 @@ function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
       if (state === "approved") {
         revalidateBatchTargets(result.batch);
       }
+    } else {
+      // The batch may have been reviewed from another flow: resync with the server.
+      await mutateBatch();
     }
     setPendingState(null);
   };
