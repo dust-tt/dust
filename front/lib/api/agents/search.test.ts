@@ -18,6 +18,7 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
 
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { MAX_AGENT_SEARCH_RESULTS } from "@app/lib/agent_search/query";
+import { buildAgentNameAutocompleteQuery } from "@app/lib/agent_search/ranking";
 import { searchAgents } from "@app/lib/api/agents/search";
 import type { Authenticator } from "@app/lib/auth";
 import { matchesAgentSearchFilters } from "@app/tests/utils/agent_search";
@@ -113,6 +114,26 @@ describe("searchAgents", () => {
       cursor: page.value.nextCursor,
     });
     expect(mockSearch.mock.lastCall?.[0].search_after).toEqual(["b"]);
+  });
+
+  it("requires every search term to prefix-match the name, in any order", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    mockSearch.mockResolvedValue({ hits: { hits: [] } });
+
+    await searchAgents(auth, { searchTerm: "  sal   mar " });
+
+    const nameQuery = buildAgentNameAutocompleteQuery("sal mar");
+    expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([nameQuery]);
+    expect(nameQuery.bool?.must).toEqual(
+      ["sal", "mar"].map((term) => ({
+        multi_match: expect.objectContaining({
+          query: term,
+          type: "bool_prefix",
+          operator: "and",
+        }),
+      }))
+    );
+    expect(buildAgentNameAutocompleteQuery("   ")).toEqual({ match_all: {} });
   });
 
   it("rejects malformed cursors without querying", async () => {

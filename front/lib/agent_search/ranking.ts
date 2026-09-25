@@ -50,30 +50,46 @@ export function buildAgentDefaultSort({
   }
 }
 
+const NAME_AUTOCOMPLETE_FIELDS = [
+  "name.autocomplete",
+  "name.autocomplete._2gram",
+  "name.autocomplete_preserved",
+  "name.autocomplete_preserved._2gram",
+];
+
 /**
  * @cc [owner:tdraier,label:product] indexed-agent-name-matching
- * An empty (or whitespace-only) search term matches every agent. Otherwise the agent name must
- * contain every term of the search, the last one as a prefix (earlier terms match whole words), or
- * start with the whole search via `name.keyword`; the description is not matched.
+ * An empty (or whitespace-only) search term matches every agent. Otherwise every
+ * whitespace-separated term MUST prefix-match a word of the agent name, in any order (`sal mar`
+ * matches "Marketing Sales"); the description is not matched. Whole-word, in-order and whole-name
+ * (`name.keyword`) prefix matches only add relevance.
  */
 export function buildAgentNameAutocompleteQuery(
   searchTerm: string
 ): estypes.QueryDslQueryContainer {
-  const query = searchTerm.trim();
-  if (!query) {
+  const terms = searchTerm.split(/\s+/).filter((term) => term.length > 0);
+  if (terms.length === 0) {
     return { match_all: {} };
   }
   return {
-    multi_match: {
-      query,
-      type: "bool_prefix",
-      operator: "and",
-      fields: [
-        "name.keyword",
-        "name.autocomplete",
-        "name.autocomplete._2gram",
-        "name.autocomplete_preserved",
-        "name.autocomplete_preserved._2gram",
+    bool: {
+      must: terms.map((term) => ({
+        multi_match: {
+          query: term,
+          type: "bool_prefix",
+          operator: "and",
+          fields: NAME_AUTOCOMPLETE_FIELDS,
+        },
+      })),
+      should: [
+        {
+          multi_match: {
+            query: terms.join(" "),
+            type: "bool_prefix",
+            operator: "and",
+            fields: ["name.keyword", ...NAME_AUTOCOMPLETE_FIELDS],
+          },
+        },
       ],
     },
   };
