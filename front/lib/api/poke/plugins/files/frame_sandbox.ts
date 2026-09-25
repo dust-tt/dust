@@ -1,7 +1,9 @@
 import {
   canRequestSandboxKill,
+  isSandboxRunning,
   isSandboxSleeping,
   requestSandboxKill,
+  sleepRunningSandbox,
   wakeSleepingSandbox,
 } from "@app/lib/api/poke/sandboxes";
 import { createPlugin } from "@app/lib/api/poke/types";
@@ -15,6 +17,8 @@ function sandboxTarget(auth: Authenticator, frame: FileResource) {
   return {
     ensureReady: () => ensureFrameSandboxReady(auth, frame),
     fetchSandbox: () => FrameSandboxAdapter.fetchSandbox(auth, frame),
+    sleepIfRunning: () =>
+      FrameSandboxAdapter.dangerouslySleepSandboxIfRunning(auth, frame),
   };
 }
 
@@ -35,6 +39,27 @@ export const wakeFrameSandboxPlugin = createPlugin({
     }
 
     return wakeSleepingSandbox(sandboxTarget(auth, file));
+  },
+});
+
+export const sleepFrameSandboxPlugin = createPlugin({
+  manifest: {
+    id: "sleep-frame-sandbox",
+    name: "Sleep Sandbox",
+    description:
+      "Pause this Frame's running sandbox, as the reaper does once it goes idle.",
+    resourceTypes: ["files"],
+    args: {},
+    requiredRoles: ["support"],
+  },
+  isApplicableTo: async (auth, file) =>
+    file?.isFrameV2 ? isSandboxRunning(sandboxTarget(auth, file)) : false,
+  execute: async (auth, file) => {
+    if (!file?.isFrameV2) {
+      return new Err(new Error("Frame not found."));
+    }
+
+    return sleepRunningSandbox(sandboxTarget(auth, file));
   },
 });
 
