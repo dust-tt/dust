@@ -48,6 +48,11 @@ const SKILL_SEARCH_PAGE_SIZE = 50;
 const SEARCH_TABS = [
   { id: "all", label: "All", filters: { status: ["active"] } },
   {
+    id: "editable",
+    label: "Editable",
+    filters: { status: ["active"], editedByMe: true },
+  },
+  {
     id: "default",
     label: "Default",
     filters: { status: ["active"], codeDefinedOnly: true },

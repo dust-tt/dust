@@ -489,7 +489,7 @@ describe("search-backed Manage Skills", () => {
     );
   });
 
-  it("requests Dust-provided skills and archived skills in their own tabs", async () => {
+  it("requests editable, Dust-provided and archived skills in their own tabs", async () => {
     const { search, fetcherWithBody, mount } = await setup();
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
@@ -498,6 +498,17 @@ describe("search-backed Manage Skills", () => {
       hasMore: false,
       nextCursor: null,
     });
+    await userEvent.click(screen.getByRole("tab", { name: "Editable" }));
+    await screen.findByText("No skills to show.");
+    expect(fetcherWithBody).toHaveBeenLastCalledWith([
+      expect.any(String),
+      expect.objectContaining({
+        status: ["active"],
+        editedByMe: true,
+        cursor: null,
+      }),
+      "POST",
+    ]);
     await userEvent.click(screen.getByRole("tab", { name: "Default" }));
     await screen.findByText("No skills to show.");
     expect(fetcherWithBody).toHaveBeenLastCalledWith([
