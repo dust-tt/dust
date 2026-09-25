@@ -64,6 +64,10 @@ vi.mock("@app/components/assistant/TagsFilterMenu", () => ({
   TagsFilterMenu: () => null,
 }));
 
+vi.mock("@app/components/assistant/SetModelAssistantsDialog", () => ({
+  SetModelAssistantsDialog: () => <button type="button">Set model</button>,
+}));
+
 vi.mock("@app/components/assistant/CreateAgentDropdown", () => ({
   CreateAgentDropdown: () => null,
 }));
@@ -177,7 +181,7 @@ describe("search-backed Manage Agents", () => {
       status: ["active"],
       scope: ["visible", "hidden"],
       sortBy: "usage",
-      limit: 50,
+      limit: 25,
       cursor: null,
       permissionFiltering: "strict",
     });
@@ -316,5 +320,80 @@ describe("search-backed Manage Agents", () => {
     expect(fetchedUrls(fetcher)).toContainEqual(
       expect.stringContaining(`/agent_configurations/${agent.sId}`)
     );
+  });
+
+  it("keeps the selection across pages and offers batch actions", async () => {
+    const { agent, search, fetcherWithBody, mount } = await setup();
+    search.mockResolvedValueOnce({
+      agents: [agent],
+      hasMore: true,
+      nextCursor: "next-page",
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Select Weekly report" })
+    );
+    expect(screen.getByText("1 selected.")).toBeInTheDocument();
+    for (const action of ["Change tag", "Set model", "Unpublish", "Archive"]) {
+      expect(screen.getByRole("button", { name: action })).toBeInTheDocument();
+    }
+    expect(screen.queryByText(/Select all/)).not.toBeInTheDocument();
+
+    search.mockResolvedValue({
+      agents: [{ ...agent, sId: "second", name: "Second page" }],
+      hasMore: false,
+      nextCursor: null,
+    });
+    const [, nextButton] = screen
+      .getAllByRole("button", { name: "" })
+      .filter((button) => !button.getAttribute("aria-haspopup"))
+      .slice(-2);
+    await userEvent.click(nextButton);
+    await screen.findByRole("button", { name: /Second page/ });
+    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+      cursor: "next-page",
+    });
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Select Second page" })
+    );
+    expect(screen.getByText("2 selected.")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Search agents"), "report");
+    await waitFor(() =>
+      expect(screen.queryByText(/selected\./)).not.toBeInTheDocument()
+    );
+  });
+
+  it("only lets non-admins select the custom agents they edit", async () => {
+    const { agent, search, mount } = await setup({ role: "user" });
+    search.mockResolvedValue({
+      agents: [
+        agent,
+        { ...agent, sId: "not-mine", name: "Not mine", editorIds: [] },
+        {
+          ...agent,
+          sId: "helper",
+          name: "Default helper",
+          scope: "global",
+          editorIds: [],
+        },
+      ],
+      hasMore: false,
+      nextCursor: null,
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    expect(
+      screen.getByRole("checkbox", { name: "Select Weekly report" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "Select Not mine" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "Select Default helper" })
+    ).not.toBeInTheDocument();
   });
 });

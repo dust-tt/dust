@@ -1,3 +1,4 @@
+import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import {
@@ -12,11 +13,14 @@ import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationF
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import { useTags } from "@app/lib/swr/tags";
+import { tagsSorter } from "@app/lib/utils";
 import type {
   AgentSearchFilters,
   AgentSearchPermissionFiltering,
   AgentSearchSort,
   AgentSearchSortOrder,
+  SearchAgentsResponseBody,
 } from "@app/types/agent_search/agent_search";
 import {
   Button,
@@ -31,9 +35,9 @@ import {
   TabsTrigger,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-const AGENT_SEARCH_PAGE_SIZE = 50;
+const AGENT_SEARCH_PAGE_SIZE = 25;
 
 const SEARCH_TABS = [
   {
@@ -63,6 +67,8 @@ interface AgentsListProps {
   onSelect: (agentId: string) => void;
 }
 
+type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
+
 function AgentsList({
   searchTerm,
   filters,
@@ -70,6 +76,11 @@ function AgentsList({
   onSelect,
 }: AgentsListProps) {
   const owner = useWorkspace();
+  const { user, isAdmin } = useAuth();
+  // Selected rows are kept by id across pages, with the item needed by batch actions.
+  const [selectedAgents, setSelectedAgents] = useState<AgentSearchItem[]>([]);
+  const { tags } = useTags({ owner, disabled: selectedAgents.length === 0 });
+  const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
   const {
     cursorPagination,
     tablePagination,
@@ -95,6 +106,7 @@ function AgentsList({
   if (queryKey !== previousQueryKey) {
     setPreviousQueryKey(queryKey);
     resetPagination();
+    setSelectedAgents([]);
   }
 
   const {
@@ -114,6 +126,31 @@ function AgentsList({
     sortBy,
     sortOrder,
   });
+
+  // Batch edits are reserved to the agent's editors and to workspace admins, as on the legacy page.
+  const canSelect = (agent: AgentSearchItem) =>
+    agent.scope !== "global" &&
+    agent.status !== "archived" &&
+    (isAdmin || agent.editorIds.includes(user.sId));
+
+  // Prefer the freshly loaded row so batch actions see the agent's current tags.
+  const currentSelectedAgents = selectedAgents.map(
+    (selected) => agents.find((agent) => agent.sId === selected.sId) ?? selected
+  );
+
+  const setSelectedAgentIds = (agentIds: string[]) => {
+    const knownAgents = new Map(
+      [...currentSelectedAgents, ...agents].map((agent) => [agent.sId, agent])
+    );
+    setSelectedAgents(
+      agentIds.flatMap((agentId) => knownAgents.get(agentId) ?? [])
+    );
+  };
+
+  const clearSelectionAndRefresh = () => {
+    setSelectedAgents([]);
+    void mutate();
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -166,6 +203,9 @@ function AgentsList({
             }
           }}
           isLoading={isAgentsLoading}
+          selectedAgentIds={selectedAgents.map((agent) => agent.sId)}
+          setSelectedAgentIds={setSelectedAgentIds}
+          canSelect={canSelect}
         />
       ) : !isAgentsError ? (
         <EmptyCTA
@@ -177,6 +217,16 @@ function AgentsList({
           action={null}
         />
       ) : null}
+      <AgentEditBar
+        owner={owner}
+        selectedAgents={currentSelectedAgents}
+        tags={sortedTags}
+        mutateAgentConfigurations={mutate}
+        // Search results carry no total, so selection is extended one page at a time.
+        totalCount={selectedAgents.length}
+        onSelectAll={() => undefined}
+        onClear={clearSelectionAndRefresh}
+      />
     </div>
   );
 }

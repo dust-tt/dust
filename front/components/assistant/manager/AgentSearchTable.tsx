@@ -10,10 +10,12 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   AvatarCellSkeleton,
+  Checkbox,
   Chip,
   ChipCellSkeleton,
   DataTable,
   DataTableSkeleton,
+  Label,
   LoadingBlock,
   TextCellSkeleton,
 } from "@dust-tt/sparkle";
@@ -24,9 +26,9 @@ import type {
 } from "@tanstack/react-table";
 import { useMemo } from "react";
 
-// Leave room for Usage and Actions, then Editors/Last edited at sm and Access at md.
+// Leave room for Select, Usage and Actions, then Editors/Last edited at sm and Access at md.
 export const AGENT_SEARCH_NAME_COLUMN_WIDTH =
-  "w-[calc(100%-9.5rem)] sm:w-[calc(100%-25.5rem)] md:w-[calc(100%-35.5rem)]";
+  "w-[calc(100%-12rem)] sm:w-[calc(100%-28rem)] md:w-[calc(100%-38rem)]";
 
 type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
 
@@ -41,6 +43,9 @@ interface AgentSearchTableProps {
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
   isLoading: boolean;
+  selectedAgentIds: string[];
+  setSelectedAgentIds: (agentIds: string[]) => void;
+  canSelect: (agent: AgentSearchItem) => boolean;
 }
 
 type AgentSearchRow = AgentSearchItem & { onClick: () => void };
@@ -56,10 +61,80 @@ export function AgentSearchTable({
   sorting,
   setSorting,
   isLoading,
+  selectedAgentIds,
+  setSelectedAgentIds,
+  canSelect,
 }: AgentSearchTableProps) {
   const columns = useMemo(
     () =>
       [
+        {
+          id: "select" as const,
+          header: ({ table }) => {
+            const areAllPageRowsSelected = table.getIsAllPageRowsSelected();
+            const hasSelection = Object.values(
+              table.getState().rowSelection
+            ).some((isSelected) => isSelected);
+
+            return (
+              <DataTable.CellContent className="size-full items-center justify-center">
+                <Checkbox
+                  checked={
+                    areAllPageRowsSelected
+                      ? true
+                      : hasSelection
+                        ? "partial"
+                        : false
+                  }
+                  disabled={
+                    !table.getRowModel().rows.some((row) => row.getCanSelect())
+                  }
+                  tooltip={
+                    areAllPageRowsSelected
+                      ? "Clear selection"
+                      : "Select all on page"
+                  }
+                  onClick={(event) => event.stopPropagation()}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      table.toggleAllPageRowsSelected(true);
+                    } else {
+                      // Unticking clears the whole selection across pages.
+                      table.resetRowSelection();
+                    }
+                  }}
+                />
+              </DataTable.CellContent>
+            );
+          },
+          cell: ({ row }) => {
+            if (!row.getCanSelect()) {
+              return null;
+            }
+            const checkboxId = `select-agent-${row.id}`;
+            return (
+              // Keep the click from reaching the row, which opens the agent details.
+              <Label
+                htmlFor={checkboxId}
+                className="flex size-full cursor-pointer items-center justify-center hover:bg-muted-background"
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                <Checkbox
+                  id={checkboxId}
+                  aria-label={
+                    row.getIsSelected()
+                      ? `Deselect ${row.original.name}`
+                      : `Select ${row.original.name}`
+                  }
+                  checked={row.getIsSelected()}
+                  onCheckedChange={(checked) => row.toggleSelected(!!checked)}
+                />
+              </Label>
+            );
+          },
+          meta: { className: "w-10 p-0" },
+        },
         {
           id: "name" as const,
           accessorKey: "name",
@@ -171,6 +246,8 @@ export function AgentSearchTable({
           rowHeight={64}
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
+              case "select":
+                return <LoadingBlock className="h-4 w-4 rounded-sm" />;
               case "name":
                 return (
                   <AvatarCellSkeleton avatarClassName="h-9 w-9 rounded-lg">
@@ -214,6 +291,16 @@ export function AgentSearchTable({
       }))}
       columns={columns}
       getRowId={(agent) => agent.sId}
+      enableRowSelection={(row) => canSelect(row.original)}
+      disableRowClickSelection
+      rowSelection={Object.fromEntries(
+        selectedAgentIds.map((agentId) => [agentId, true])
+      )}
+      setRowSelection={(rowSelection) =>
+        setSelectedAgentIds(
+          Object.keys(rowSelection).filter((agentId) => rowSelection[agentId])
+        )
+      }
       isLoading={isLoading}
       pagination={pagination}
       setPagination={setPagination}
