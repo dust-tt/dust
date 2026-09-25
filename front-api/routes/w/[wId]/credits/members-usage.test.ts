@@ -1,4 +1,8 @@
 import * as membersUsage from "@app/lib/api/credits/members_usage";
+import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { makeMemberUsage } from "@app/tests/utils/MemberUsageFactory";
 import { honoApp } from "@front-api/app";
@@ -72,5 +76,36 @@ describe("GET /api/w/[wId]/credits/members-usage", () => {
       total: 1,
       creditsResetAt: CREDITS_RESET_AT,
     });
+  });
+
+  it("allows a group manager only when group management is enabled", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const group = await GroupResource.makeNew({
+      name: "Support",
+      kind: "regular_manual",
+      workspaceId: workspace.id,
+    });
+    const grant = await GroupPermissionResource.grantToUser(adminAuth, {
+      user: user.toJSON(),
+      grantType: "group_manager",
+      resourceType: "group",
+      resourceId: group.id,
+    });
+    expect(grant.isOk()).toBe(true);
+
+    expect((await honoApp.request(membersUsageUrl(workspace.sId))).status).toBe(
+      403
+    );
+    await FeatureFlagFactory.basic(adminAuth, "group_management");
+
+    expect((await honoApp.request(membersUsageUrl(workspace.sId))).status).toBe(
+      200
+    );
   });
 });

@@ -55,6 +55,7 @@ import {
 } from "@app/lib/metronome/user_block";
 import type { BillingCycle } from "@app/lib/plans/billing_cycle";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { getMemberScopeWithGroupVerb } from "@app/lib/resources/group_management_access";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -1684,14 +1685,16 @@ async function resolveSeatAndGroupRestriction({
   seatType,
   groupId,
   creditState,
+  allowedUserIds,
 }: {
   auth: Authenticator;
   workspace: LightWorkspaceType;
   seatType?: MembershipSeatType;
   groupId?: string;
   creditState?: UserCreditState;
+  allowedUserIds?: string[];
 }): Promise<string[] | undefined> {
-  const restrictionSets: string[][] = [];
+  const restrictionSets: string[][] = allowedUserIds ? [allowedUserIds] : [];
   if (seatType) {
     restrictionSets.push(
       await resolveSeatTypeFilterUserIds({ workspace, seatType })
@@ -2142,16 +2145,22 @@ export async function getMembersUsage({
   // for the table header.
   const creditsResetAt = await fetchCreditsResetAt(workspace);
 
-  // When a seat-type and/or group filter is active, resolve the matching user
-  // sIds up front and restrict the search to their intersection, so pagination
-  // and the returned `total` reflect the filtered set. No match (in any active
-  // filter) means an empty page.
+  // Restrict the search to authorized members before applying the optional
+  // filters, sorting, pagination, and total count.
+  const memberScope = await getMemberScopeWithGroupVerb(auth, "read_usage");
+  const allowedUserIds =
+    memberScope.kind === "all"
+      ? undefined
+      : (await UserResource.fetchByModelIds(memberScope.memberModelIds)).map(
+          (user) => user.sId
+        );
   const restrictToUserIds = await resolveSeatAndGroupRestriction({
     auth,
     workspace,
     seatType: paginationParams.seatType,
     groupId: paginationParams.groupId,
     creditState: paginationParams.creditState,
+    allowedUserIds,
   });
   if (restrictToUserIds !== undefined && restrictToUserIds.length === 0) {
     return { members: [], total: 0, creditsResetAt };
