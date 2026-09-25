@@ -394,11 +394,12 @@ export const CreateSkillSuggestionSchema = z.object({
   kind: z.literal("create_skill"),
   ref: z
     .string()
+    // Letters, digits, underscores and hyphens only, e.g. "meeting-notes".
     .regex(/^[\w-]+$/)
     .optional()
     .describe(
-      "A local name for the new skill, unique in this call, so the instructions of other skills " +
-        'of the same call can use it as <skill ref="name"/>.'
+      "A local name for the new skill, unique in this call. Other skills of the same call cite " +
+        'it as <skill ref="name"/>, in place of an existing skill id.'
     ),
   name: z
     .string()
