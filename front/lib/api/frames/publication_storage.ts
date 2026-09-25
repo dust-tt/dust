@@ -81,6 +81,7 @@ export class FramePublicationError extends Error {
       | "invalid_tailwind"
       | "allowlist_failed"
       | "publication_not_found"
+      | "sharing_conflict"
       | "ui_build_failed"
       | "unauthorized",
     message: string
