@@ -11,6 +11,7 @@ const {
   DUST_MANAGED_ELEVENLABS_API_KEY = "",
   DUST_MANAGED_SPIDER_API_KEY = "",
   DUST_MANAGED_EXA_API_KEY = "",
+  DUST_MANAGED_YDC_API_KEY = "",
 } = process.env;
 
 export const credentialsFromProviders = (
@@ -90,5 +91,6 @@ export const dustManagedServiceCredentials = (): DustManagedCredentialsType => {
     ELEVENLABS_API_KEY: DUST_MANAGED_ELEVENLABS_API_KEY,
     SPIDER_API_KEY: DUST_MANAGED_SPIDER_API_KEY,
     EXA_API_KEY: DUST_MANAGED_EXA_API_KEY,
+    YDC_API_KEY: DUST_MANAGED_YDC_API_KEY,
   };
 };
