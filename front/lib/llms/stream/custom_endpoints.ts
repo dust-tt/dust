@@ -1,3 +1,4 @@
+import type { Model as HostModel } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { defineDustStreamEndpoint } from "@app/lib/llms/stream/dust_stream_endpoint";
 import {
@@ -174,6 +175,8 @@ function createCustomAnthropicStreamEndpoint(
     static readonly model = model;
     static readonly region = region;
     static readonly id = this.buildId();
+
+    modelToHostModel = (): HostModel => endpoint.hostModel;
 
     // Explicit: an omitted `inference_geo` falls back to the Anthropic workspace's
     // `default_inference_geo`, which may pin inference to a region.

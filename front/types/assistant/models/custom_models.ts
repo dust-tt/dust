@@ -4,6 +4,7 @@ import { ORDERED_REASONING_EFFORTS } from "@app/lib/model_constructors/types/rea
 import { REGIONS } from "@app/lib/model_constructors/types/regions";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { ModelConfigurationSchema } from "@app/types/assistant/models/types";
+import kebabCase from "lodash/kebabCase";
 import { z } from "zod";
 
 // Custom models are only reachable by workspaces with this flag, never by BYOK ones.
@@ -18,6 +19,8 @@ export const CustomModelEndpointSchema = z
     lab: z.enum(LABS),
     host: z.enum(HOSTS),
     region: z.enum(REGIONS),
+    // Model name sent to the host API. Server-only: clients only ever see `modelConfig.modelId`.
+    hostModel: z.string().min(1),
     maxOutputTokens: z.number().int().positive(),
     tokenPricing: z.object({
       standardInput: z.number(),
@@ -49,15 +52,35 @@ export type CustomModelEndpointType = z.infer<typeof CustomModelEndpointSchema>;
  * `useEapKey`, on the dedicated one: BYOK exclusion does not depend on the key (see
  * `custom-models-are-never-byok-reachable`).
  */
-export const CustomModelSchema = z.object({
-  // Strict so a field the router does not read fails the build instead of being ignored.
-  modelConfig: ModelConfigurationSchema.extend({
-    availableIfOneOf: z
-      .object({ featureFlag: z.literal(CUSTOM_MODEL_FEATURE_FLAG) })
-      .strict(),
-  }).strict(),
-  endpoint: CustomModelEndpointSchema,
-});
+/**
+ * @cc [owner:pmilliotte,label:security;product] custom-model-host-name-stays-server-side
+ * A custom model's `modelConfig.modelId` and `displayName` are what agent configs, messages,
+ * analytics and exports carry to clients, so `displayName` is a made-up name that never contains
+ * the `endpoint.hostModel` sent to the host API, and `modelId` is its kebab case. Only the
+ * endpoint factory reads `hostModel`.
+ */
+export const CustomModelSchema = z
+  .object({
+    // Strict so a field the router does not read fails the build instead of being ignored.
+    modelConfig: ModelConfigurationSchema.extend({
+      availableIfOneOf: z
+        .object({ featureFlag: z.literal(CUSTOM_MODEL_FEATURE_FLAG) })
+        .strict(),
+    }).strict(),
+    endpoint: CustomModelEndpointSchema,
+  })
+  .refine(
+    ({ modelConfig }) =>
+      modelConfig.modelId === kebabCase(modelConfig.displayName),
+    { message: "modelId must be the kebab case of displayName" }
+  )
+  .refine(
+    ({ modelConfig, endpoint }) =>
+      !kebabCase(modelConfig.displayName).includes(
+        kebabCase(endpoint.hostModel)
+      ),
+    { message: "displayName must not contain endpoint.hostModel" }
+  );
 
 export const CustomModelsFileSchema = z.object({
   version: z.literal(2),

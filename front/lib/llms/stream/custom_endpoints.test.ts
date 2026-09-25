@@ -20,6 +20,7 @@ const ENDPOINT: CustomModelEndpointType = {
   lab: "anthropic",
   host: "anthropic",
   region: "global",
+  hostModel: "claude-host-model-for-test",
   maxOutputTokens: 64_000,
   tokenPricing: { standardInput: 4, standardOutput: 20, cacheHit: 0.2 },
   input: {
@@ -48,7 +49,7 @@ function createEndpoint(endpoint: CustomModelEndpointType = ENDPOINT) {
 }
 
 describe("createCustomStreamEndpoint on the Anthropic host", () => {
-  it("builds an Anthropic endpoint on explicit global inference", async () => {
+  it("sends the host model on explicit global inference, under an alias endpoint id", async () => {
     const Endpoint = createEndpoint();
     const endpoint = new Endpoint({ ANTHROPIC_API_KEY: "test" });
 
@@ -59,7 +60,7 @@ describe("createCustomStreamEndpoint on the Anthropic host", () => {
 
     expect(Endpoint.id).toBe("anthropic/claude-opus-5-5/global/anthropic");
     expect(payload).toMatchObject({
-      model: "claude-opus-5-5",
+      model: "claude-host-model-for-test",
       inference_geo: "global",
     });
   });
@@ -137,6 +138,8 @@ describe("CustomModelSchema", () => {
   const entry = {
     modelConfig: {
       ...CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG,
+      modelId: "test-otter",
+      displayName: "Test Otter",
       useEapKey: true,
       availableIfOneOf: { featureFlag: CUSTOM_MODEL_FEATURE_FLAG },
     },
@@ -170,6 +173,28 @@ describe("CustomModelSchema", () => {
       CustomModelSchema.safeParse({
         ...entry,
         modelConfig: { ...entry.modelConfig, thinkingBudget: 1024 },
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects a modelId other than the kebab case of displayName", () => {
+    expect(
+      CustomModelSchema.safeParse({
+        ...entry,
+        modelConfig: { ...entry.modelConfig, modelId: "test_otter" },
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects a display name containing the host model", () => {
+    expect(
+      CustomModelSchema.safeParse({
+        ...entry,
+        modelConfig: {
+          ...entry.modelConfig,
+          modelId: "claude-host-model-for-test",
+          displayName: "Claude Host Model For Test",
+        },
       }).success
     ).toBe(false);
   });
