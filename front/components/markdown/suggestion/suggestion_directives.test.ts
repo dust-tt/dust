@@ -111,4 +111,33 @@ describe("extractSuggestionPile", () => {
       recap: null,
     });
   });
+
+  it("reads quoted attribute values", () => {
+    const content = [
+      ':agent_suggestion[]{sId="s1" kind="name" agentId="agent_1"}',
+      ":skill_suggestion[]{sId='s2' skillId='skill_1'}",
+    ].join("\n\n");
+
+    const result = extractSuggestionPile(content);
+
+    expect(result.pileDirectives).toEqual([
+      { type: "agent", sId: "s1", kind: "name", agentId: "agent_1" },
+      { type: "skill", sId: "s2", skillId: "skill_1" },
+    ]);
+    expect(result.content).not.toContain("_suggestion");
+  });
+
+  it("ignores directives inside code spans and fences", () => {
+    const content = [
+      agentDirective("s1"),
+      `Syntax: \`${agentDirective("s2")}\``,
+      `\`\`\`\n${agentDirective("s3")}\n\`\`\``,
+    ].join("\n\n");
+
+    expect(extractSuggestionPile(content)).toEqual({
+      content,
+      pileDirectives: [],
+      recap: null,
+    });
+  });
 });
