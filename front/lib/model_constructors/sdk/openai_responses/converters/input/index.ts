@@ -1,4 +1,5 @@
 import type { Client } from "@app/lib/model_constructors/client";
+import { includesOpenAIWebSearchTool } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/native_web_search";
 import { includesOpenAIToolSearchTool } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search";
 import type {
   MessageItemConverters,
@@ -26,6 +27,7 @@ import type {
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import type { Model } from "@app/lib/model_constructors/types/models";
+import { NATIVE_WEB_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/native_web_search";
 import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/tool_search";
 import type {
   ResponseCreateParams,
@@ -89,6 +91,7 @@ export function WithOpenAIResponsesInputConverter<
         cacheKey,
         forceTool,
         toolSearchEnabled,
+        nativeWebSearchEnabled,
         conciseReasoningSummary = false,
       } = config;
 
@@ -102,6 +105,7 @@ export function WithOpenAIResponsesInputConverter<
       const openAITools = toolSpecsToOpenAITools(tools, {
         forceTool,
         toolSearchEnabled: toolSearchEnabled ?? false,
+        nativeWebSearchEnabled: nativeWebSearchEnabled ?? false,
       });
 
       return {
@@ -116,6 +120,15 @@ export function WithOpenAIResponsesInputConverter<
                   role: "system",
                   type: "text",
                   content: { value: TOOL_SEARCH_INSTRUCTION },
+                },
+              ])
+            : []),
+          ...(includesOpenAIWebSearchTool(openAITools)
+            ? this.systemMessagesToInputItems([
+                {
+                  role: "system",
+                  type: "text",
+                  content: { value: NATIVE_WEB_SEARCH_INSTRUCTION },
                 },
               ])
             : []),

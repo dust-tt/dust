@@ -19,6 +19,15 @@ import type {
 } from "@app/lib/model_constructors/types/output/events";
 import type { Phase } from "@app/lib/model_constructors/types/phases";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import {
+  logNativeWebSearchError,
+  logNativeWebSearchRequest,
+} from "@app/lib/model_constructors/utils/native_web_search_logging";
+import type { WebSearchCitationAnnotation } from "@app/lib/model_constructors/utils/web_search_citation";
+import {
+  formatWebSearchCitationLink,
+  insertWebSearchCitationLinks,
+} from "@app/lib/model_constructors/utils/web_search_citation";
 import { OPENAI_PROVIDER_ID } from "@app/types/assistant/models/providers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isRecord } from "@app/types/shared/utils/general";
@@ -27,10 +36,13 @@ import type {
   Response as OpenAIResponse,
   ResponseCreatedEvent,
   ResponseError,
+  ResponseFunctionWebSearch,
   ResponseOutputItem,
+  ResponseOutputText,
   ResponseStreamEvent,
   ResponseUsage,
 } from "openai/resources/responses/responses";
+import { z } from "zod";
 
 type ToolSearchOutputItem = Extract<
   ResponseOutputItem,
@@ -94,6 +106,10 @@ export interface OutputEventConverters {
   toolSearchItemToProviderPassthroughEvent(
     metadata: EndpointMetadata,
     item: ToolSearchOutputItem
+  ): ProviderPassthroughEvent;
+  webSearchItemToProviderPassthroughEvent(
+    metadata: EndpointMetadata,
+    item: ResponseFunctionWebSearch
   ): ProviderPassthroughEvent;
   usageToTokenUsageEvent(
     metadata: EndpointMetadata,
@@ -226,6 +242,22 @@ export function toolSearchItemToProviderPassthroughEvent(
       modelId: metadata.model,
     },
   });
+
+  return {
+    type: "provider_passthrough",
+    content: { provider: OPENAI_PROVIDER_ID, block: item },
+    metadata,
+  };
+}
+
+export function webSearchItemToProviderPassthroughEvent(
+  metadata: EndpointMetadata,
+  item: ResponseFunctionWebSearch
+): ProviderPassthroughEvent {
+  // Replayed verbatim: the API rejects a reasoning item whose following item was
+  // dropped, and a search call routinely sits between a reasoning item and the
+  // message.
+  logOpenAIWebSearchCall(item, metadata);
 
   return {
     type: "provider_passthrough",
@@ -370,6 +402,94 @@ export function makeStreamErrorToErrorEvent(
 
 export const streamErrorToErrorEvent = makeStreamErrorToErrorEvent("OpenAI");
 
+// The url_citation annotations native web search attaches to its text. Other
+// annotation kinds (file citations, file paths) are unrelated to web search and
+// are left alone.
+function toWebSearchCitationAnnotations(
+  annotations: ResponseOutputText["annotations"]
+): WebSearchCitationAnnotation[] {
+  return annotations.flatMap((annotation) =>
+    annotation.type === "url_citation"
+      ? [
+          {
+            title: annotation.title,
+            url: annotation.url,
+            endIndex: annotation.end_index,
+          },
+        ]
+      : []
+  );
+}
+
+// The streaming annotation event types its payload as `unknown`, so validate the
+// shape Dust reads. Returns null for any other annotation kind.
+function toWebSearchCitationAnnotation(
+  annotation: unknown
+): WebSearchCitationAnnotation | null {
+  const parsed = urlCitationAnnotationSchema.safeParse(annotation);
+  if (!parsed.success) {
+    return null;
+  }
+
+  return {
+    title: parsed.data.title,
+    url: parsed.data.url,
+    endIndex: parsed.data.end_index,
+  };
+}
+
+const urlCitationAnnotationSchema = z.object({
+  type: z.literal("url_citation"),
+  url: z.string(),
+  title: z.string().nullish(),
+  end_index: z.number(),
+});
+
+// Native web search produces no `AgentMCPAction` row, so logs are the only
+// visibility into query volume and provider-side failures.
+function logOpenAIWebSearchCall(
+  item: ResponseFunctionWebSearch,
+  metadata: EndpointMetadata
+): void {
+  const logFields = {
+    providerId: metadata.lab,
+    api: metadata.host,
+    modelId: metadata.model,
+  };
+  const details = {
+    queries: webSearchQueries(item.action),
+    status: item.status,
+  };
+  const tags = [
+    `provider_id:${metadata.lab}`,
+    `api:${metadata.host}`,
+    `model_id:${metadata.model}`,
+  ];
+
+  logNativeWebSearchRequest({
+    providerName: "OpenAI",
+    details,
+    tags,
+    logFields,
+  });
+
+  if (item.status === "failed") {
+    logNativeWebSearchError({ providerName: "OpenAI", details, logFields });
+  }
+}
+
+// `queries` is the current field; `query` is its deprecated singular form. Only
+// the search action carries either.
+function webSearchQueries(
+  action: ResponseFunctionWebSearch["action"]
+): string[] {
+  if (action.type !== "search") {
+    return [];
+  }
+
+  return action.queries ?? (action.query ? [action.query] : []);
+}
+
 // -- Composite: a completed output item → unified events --
 
 // Returns the events to emit for a finished output item; the caller decides
@@ -387,7 +507,16 @@ export function outputItemToEvents(
             return [
               converters.accumulatedTextToTextEvent(
                 metadata,
-                part.text,
+                // Native web search reports its sources as offsets into the
+                // finished text rather than inline. Dust's `:cite[REF]` scheme
+                // cannot carry them (refs are keyed on a persisted MCP action
+                // row, and a server-side search produces none), so splice them
+                // in as markdown links. This is the authoritative text event, so
+                // it is also what gets persisted.
+                insertWebSearchCitationLinks(
+                  part.text,
+                  toWebSearchCitationAnnotations(part.annotations)
+                ),
                 item.id,
                 item.phase ?? undefined
               ),
@@ -435,11 +564,14 @@ export function outputItemToEvents(
       return [
         converters.toolSearchItemToProviderPassthroughEvent(metadata, item),
       ];
+    case "web_search_call":
+      return [
+        converters.webSearchItemToProviderPassthroughEvent(metadata, item),
+      ];
     // Output item types we don't surface (server tools, image gen, etc.).
     // Listed explicitly so a new Responses output item type breaks the build.
     case "file_search_call":
     case "function_call_output":
-    case "web_search_call":
     case "computer_call":
     case "computer_call_output":
     case "compaction":
@@ -577,6 +709,20 @@ export async function* rawOutputToEvents(
           originalError: event,
         });
         return;
+      case "response.output_text.annotation.added": {
+        // Keeps the live view in step with the authoritative text assembled at
+        // `response.output_item.done`, which splices the same links in by offset.
+        const citation = toWebSearchCitationAnnotation(event.annotation);
+        outputEvents = citation
+          ? [
+              converters.textDeltaToTextDeltaEvent(
+                metadata,
+                formatWebSearchCitationLink(citation)
+              ),
+            ]
+          : [];
+        break;
+      }
       // Other Responses stream signals (audio, web search, mcp, etc.) are not
       // surfaced. Listed explicitly so a new stream event type breaks the build.
       case "response.audio.delta":
@@ -617,7 +763,6 @@ export async function* rawOutputToEvents(
       case "response.mcp_list_tools.completed":
       case "response.mcp_list_tools.failed":
       case "response.mcp_list_tools.in_progress":
-      case "response.output_text.annotation.added":
       case "response.queued":
       case "response.custom_tool_call_input.delta":
       case "response.custom_tool_call_input.done":
