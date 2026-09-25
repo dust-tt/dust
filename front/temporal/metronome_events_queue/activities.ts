@@ -44,6 +44,11 @@ export async function setSpendLimitForUsersActivity({
     actorUserId,
     workspaceId
   );
+  if (!auth.isManager()) {
+    throw new Error(
+      "Only workspace managers can run bulk spend-limit changes."
+    );
+  }
   const auditContext = getAuditLogContext(auth);
 
   const failures: { userId: string; message: string }[] = [];
