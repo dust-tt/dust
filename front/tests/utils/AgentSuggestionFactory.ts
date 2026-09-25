@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentSuggestionSource,
   AgentSuggestionState,
@@ -16,11 +16,21 @@ import type {
   SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
+import assert from "assert";
+
+async function fetchAgent(
+  auth: Authenticator,
+  agentId: string
+): Promise<AgentResource> {
+  const agent = await AgentResource.fetchById(auth, agentId);
+  assert(agent, `Agent ${agentId} not found`);
+  return agent;
+}
 
 export class AgentSuggestionFactory {
   static async createInstructions(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agentConfiguration: { sId: string },
     overrides: Partial<{
       suggestion: InstructionsSuggestionSchemaType;
       analysis: string | null;
@@ -31,7 +41,7 @@ export class AgentSuggestionFactory {
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      await fetchAgent(auth, agentConfiguration.sId),
       {
         kind: "instructions",
         suggestion: overrides.suggestion ?? {
@@ -50,7 +60,7 @@ export class AgentSuggestionFactory {
 
   static async createTools(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agentConfiguration: { sId: string },
     overrides: Partial<{
       suggestion: ToolsSuggestionType;
       analysis: string | null;
@@ -59,7 +69,7 @@ export class AgentSuggestionFactory {
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      await fetchAgent(auth, agentConfiguration.sId),
       {
         kind: "tools",
         suggestion: overrides.suggestion ?? {
@@ -74,7 +84,7 @@ export class AgentSuggestionFactory {
 
   static async createSubAgent(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agentConfiguration: { sId: string },
     overrides: Partial<{
       suggestion: SubAgentSuggestionType;
       analysis: string | null;
@@ -83,7 +93,7 @@ export class AgentSuggestionFactory {
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      await fetchAgent(auth, agentConfiguration.sId),
       {
         kind: "sub_agent",
         suggestion: overrides.suggestion ?? {
@@ -99,7 +109,7 @@ export class AgentSuggestionFactory {
 
   static async createSkills(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agentConfiguration: { sId: string },
     overrides: Partial<{
       suggestion: SkillsSuggestionType;
       analysis: string | null;
@@ -108,7 +118,7 @@ export class AgentSuggestionFactory {
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      await fetchAgent(auth, agentConfiguration.sId),
       {
         kind: "skills",
         suggestion: overrides.suggestion ?? {
@@ -123,7 +133,7 @@ export class AgentSuggestionFactory {
 
   static async createModel(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agentConfiguration: { sId: string },
     overrides: Partial<{
       suggestion: ModelSuggestionType;
       analysis: string | null;
@@ -133,7 +143,7 @@ export class AgentSuggestionFactory {
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      await fetchAgent(auth, agentConfiguration.sId),
       {
         kind: "model",
         suggestion: overrides.suggestion ?? {
@@ -149,7 +159,7 @@ export class AgentSuggestionFactory {
 
   static async createCreate(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agentConfiguration: { sId: string },
     overrides: Partial<{
       suggestion: CreateSuggestionType;
       analysis: string | null;
@@ -159,7 +169,7 @@ export class AgentSuggestionFactory {
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      await fetchAgent(auth, agentConfiguration.sId),
       {
         kind: "create",
         suggestion: overrides.suggestion ?? {
@@ -177,7 +187,7 @@ export class AgentSuggestionFactory {
 
   static async createDelete(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agentConfiguration: { sId: string },
     overrides: Partial<{
       suggestion: DeleteSuggestionType;
       analysis: string | null;
@@ -186,24 +196,21 @@ export class AgentSuggestionFactory {
       batchModelId: number | null;
     }> = {}
   ): Promise<AgentSuggestionResource> {
-    return AgentSuggestionResource.createSuggestionForAgent(
-      auth,
-      agentConfiguration,
-      {
-        kind: "delete",
-        suggestion: overrides.suggestion ?? { name: agentConfiguration.name },
-        analysis: overrides.analysis ?? "This agent is no longer used",
-        state: overrides.state ?? "pending",
-        conversationId: null,
-        source: overrides.source ?? "conversational",
-        batchId: overrides.batchModelId ?? null,
-      }
-    );
+    const agent = await fetchAgent(auth, agentConfiguration.sId);
+    return AgentSuggestionResource.createSuggestionForAgent(auth, agent, {
+      kind: "delete",
+      suggestion: overrides.suggestion ?? { name: agent.name },
+      analysis: overrides.analysis ?? "This agent is no longer used",
+      state: overrides.state ?? "pending",
+      conversationId: null,
+      source: overrides.source ?? "conversational",
+      batchId: overrides.batchModelId ?? null,
+    });
   }
 
   static async createDescription(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agentConfiguration: { sId: string },
     overrides: Partial<{
       suggestion: DescriptionSuggestionType;
       analysis: string | null;
@@ -213,7 +220,7 @@ export class AgentSuggestionFactory {
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      await fetchAgent(auth, agentConfiguration.sId),
       {
         kind: "description",
         suggestion: overrides.suggestion ?? {
@@ -229,7 +236,7 @@ export class AgentSuggestionFactory {
 
   static async createName(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agentConfiguration: { sId: string },
     overrides: Partial<{
       suggestion: NameSuggestionType;
       analysis: string | null;
@@ -240,7 +247,7 @@ export class AgentSuggestionFactory {
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      await fetchAgent(auth, agentConfiguration.sId),
       {
         kind: "name",
         suggestion: overrides.suggestion ?? { name: "RenamedAgent" },
@@ -255,7 +262,7 @@ export class AgentSuggestionFactory {
 
   static async createScope(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agentConfiguration: { sId: string },
     overrides: Partial<{
       suggestion: ScopeSuggestionType;
       analysis: string | null;
@@ -266,7 +273,7 @@ export class AgentSuggestionFactory {
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      await fetchAgent(auth, agentConfiguration.sId),
       {
         kind: "scope",
         suggestion: overrides.suggestion ?? { scope: "visible" },

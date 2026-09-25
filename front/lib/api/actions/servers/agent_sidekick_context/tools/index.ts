@@ -149,17 +149,14 @@ async function createInstructionSuggestions({
 
   // Fetch the latest version of the agent configuration (full variant needed
   // for instructionsHtml used in conflict pruning).
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "full",
-  });
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-  if (!agentConfiguration) {
+  if (!agent || !agent.isFull()) {
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
   return createAgentInstructionSuggestions(auth, {
-    agentConfiguration,
+    agent,
     edits: suggestions,
     source: "sidekick",
     conversation: conversation ?? null,
@@ -277,12 +274,9 @@ async function createToolsSuggestions({
     return new Err(limitCheck.errorMessage);
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "light",
-  });
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-  if (!agentConfiguration) {
+  if (!agent) {
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
@@ -292,7 +286,7 @@ async function createToolsSuggestions({
     const suggestion: ToolsSuggestionType = { action, toolId };
     const created = await AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      agent,
       {
         kind: "tools",
         suggestion,
@@ -383,12 +377,9 @@ async function createSkillsSuggestions({
     return new Err(limitCheck.errorMessage);
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "light",
-  });
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-  if (!agentConfiguration) {
+  if (!agent) {
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
@@ -397,7 +388,7 @@ async function createSkillsSuggestions({
   for (const { action, skillId, analysis } of suggestions) {
     const created = await AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      agent,
       {
         kind: "skills",
         suggestion: { action, skillId },
@@ -584,12 +575,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     const latestVersionOnlyWithDefault = latestVersionOnly ?? true;
 
     // Fetch the agent configuration to get the current version.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-    if (!agentConfiguration) {
+    if (!agent) {
       return new Err(
         new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
           tracked: false,
@@ -597,7 +585,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const currentVersion = agentConfiguration.version;
+    const currentVersion = agent.currentVersion;
 
     const feedbacksRes = await getAgentFeedbacks({
       auth,
@@ -684,12 +672,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Verify agent configuration exists and is accessible.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-    if (!agentConfiguration) {
+    if (!agent) {
       return new Err(
         new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
           tracked: false,
@@ -724,7 +709,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
     const insights = {
       agentConfigurationId,
-      agentName: agentConfiguration.name,
+      agentName: agent.name,
       period: {
         days: numberOfDays,
       },
@@ -913,12 +898,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Fetch the latest version of the agent configuration.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-    if (!agentConfiguration) {
+    if (!agent) {
       return new Err(
         new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
           tracked: false,
@@ -935,17 +917,13 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
     try {
       const createdSuggestion =
-        await AgentSuggestionResource.createSuggestionForAgent(
-          auth,
-          agentConfiguration,
-          {
-            kind: "sub_agent",
-            suggestion,
-            analysis: params.analysis ?? null,
-            state: "pending",
-            source: "sidekick",
-          }
-        );
+        await AgentSuggestionResource.createSuggestionForAgent(auth, agent, {
+          kind: "sub_agent",
+          suggestion,
+          analysis: params.analysis ?? null,
+          state: "pending",
+          source: "sidekick",
+        });
 
       return new Ok([
         {
@@ -1053,12 +1031,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Fetch the latest version of the agent configuration.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-    if (!agentConfiguration) {
+    if (!agent) {
       return new Err(
         new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
           tracked: false,
@@ -1069,7 +1044,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     try {
       const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
         auth,
-        agentConfiguration,
+        agent,
         {
           kind: "model",
           suggestion: params.suggestion,
@@ -1182,12 +1157,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Fetch the latest version of the agent configuration.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-    if (!agentConfiguration) {
+    if (!agent) {
       return new Err(
         new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
           tracked: false,
@@ -1205,17 +1177,13 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
     try {
       const createdSuggestion =
-        await AgentSuggestionResource.createSuggestionForAgent(
-          auth,
-          agentConfiguration,
-          {
-            kind: "knowledge",
-            suggestion,
-            analysis: params.analysis ?? null,
-            state: "pending",
-            source: "sidekick",
-          }
-        );
+        await AgentSuggestionResource.createSuggestionForAgent(auth, agent, {
+          kind: "knowledge",
+          suggestion,
+          analysis: params.analysis ?? null,
+          state: "pending",
+          source: "sidekick",
+        });
 
       return new Ok([
         {

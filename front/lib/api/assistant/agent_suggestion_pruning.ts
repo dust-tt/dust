@@ -4,6 +4,7 @@ import {
   buildDescendantMap,
   instructionBlockSetsConflict,
 } from "@app/lib/editor/instructions_block_conflict";
+import type { FullAgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
@@ -324,7 +325,7 @@ function getInstructionSuggestionsWithoutExistingBlockId(
  */
 export async function pruneConflictingInstructionSuggestions(
   auth: Authenticator,
-  agentConfiguration: AgentConfigurationType,
+  agent: FullAgentResource,
   newSuggestions: Array<{ sId: string; targetBlockId: string }>
 ): Promise<void> {
   if (newSuggestions.length === 0) {
@@ -333,7 +334,7 @@ export async function pruneConflictingInstructionSuggestions(
 
   const allPending = await AgentSuggestionResource.listByAgentConfigurationId(
     auth,
-    agentConfiguration.sId,
+    agent.sId,
     { states: ["pending"], kind: "instructions" }
   );
 
@@ -352,15 +353,16 @@ export async function pruneConflictingInstructionSuggestions(
     ...newTargetBlockIds,
     ...existingPending.map((s) => s.suggestion.targetBlockId),
   ]);
-  const descendantMap = agentConfiguration.instructionsHtml
-    ? buildDescendantMap(agentConfiguration.instructionsHtml, allBlockIds)
+  const { instructionsHtml } = agent.content;
+  const descendantMap = instructionsHtml
+    ? buildDescendantMap(instructionsHtml, allBlockIds)
     : new Map<string, Set<string>>();
 
   const toMarkOutdated = existingPending.filter((existingSugg) =>
     instructionBlockSetsConflict(
       newTargetBlockIds,
       new Set([existingSugg.suggestion.targetBlockId]),
-      agentConfiguration.instructionsHtml,
+      instructionsHtml,
       descendantMap
     )
   );
