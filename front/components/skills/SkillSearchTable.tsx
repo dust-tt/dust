@@ -67,10 +67,7 @@ export function SkillSearchTable({
           cell: ({ row: { original: skill } }) => (
             <DataTable.CellContent>
               <button type="button" className="w-full min-w-0 text-left">
-                <SkillNameCell
-                  skill={skill}
-                  description={skill.userFacingDescription}
-                />
+                <SkillNameCell skill={skill} />
               </button>
             </DataTable.CellContent>
           ),
@@ -156,7 +153,6 @@ export function SkillSearchTable({
                     <TextCellSkeleton
                       className={rowIndex % 2 === 0 ? "h-4 w-32" : "h-4 w-40"}
                     />
-                    <TextCellSkeleton className="h-4 w-3/4" />
                   </AvatarCellSkeleton>
                 );
               case "availability":
