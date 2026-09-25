@@ -1,3 +1,4 @@
+import { getAgentModelDisplayName } from "@app/components/assistant/manager/agentFilter";
 import { ManageAgentsPage } from "@app/components/pages/builder/agents/ManageAgentsPage";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
@@ -138,7 +139,20 @@ async function setup({
       hasMore: false,
       facets: {},
     });
-  const fetcherWithBody = vi.fn(async () => search());
+  const facetsResponse: SearchAgentsResponseBody = {
+    agents: [],
+    total: 1,
+    hasMore: false,
+    facets: {
+      editors: [{ sId, fullName, image, count: 1 }],
+      models: [{ modelId: "claude-sonnet-5", count: 1 }],
+      tags: [],
+    },
+  };
+  const fetcherWithBody = vi.fn(
+    async ([, body]: [string, { limit?: number }, string]) =>
+      body.limit === 0 ? facetsResponse : search()
+  );
   const fetcher = vi.fn(async (url: string) => {
     if (url.endsWith(`/agent_configurations/${agent.sId}`)) {
       return { agentConfiguration };
@@ -162,7 +176,15 @@ async function setup({
         </SWRConfig>
       ),
     });
-  return { agent, agentConfiguration, search, fetcher, fetcherWithBody, mount };
+  return {
+    agent,
+    agentConfiguration,
+    editor: { sId, fullName },
+    search,
+    fetcher,
+    fetcherWithBody,
+    mount,
+  };
 }
 
 function fetchedUrls(fetcher: ReturnType<typeof vi.fn>): string[] {
@@ -170,7 +192,10 @@ function fetchedUrls(fetcher: ReturnType<typeof vi.fn>): string[] {
 }
 
 function lastSearchBody(fetcherWithBody: ReturnType<typeof vi.fn>) {
-  return fetcherWithBody.mock.lastCall?.[0][1];
+  return fetcherWithBody.mock.calls
+    .map(([[, body]]) => body)
+    .filter((body) => body.limit !== 0)
+    .at(-1);
 }
 
 describe("search-backed Manage Agents", () => {
@@ -441,5 +466,59 @@ describe("search-backed Manage Agents", () => {
     expect(
       screen.queryByRole("checkbox", { name: "Select Default helper" })
     ).not.toBeInTheDocument();
+  });
+
+  it("loads filter options on open and applies Access, Editors and Models", async () => {
+    const { editor, fetcherWithBody, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    expect(
+      fetcherWithBody.mock.calls.some(([[, body]]) => body.limit === 0)
+    ).toBe(false);
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Not published" })
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: editor.fullName })
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "Models" }));
+    await userEvent.click(
+      await screen.findByRole("checkbox", {
+        name: getAgentModelDisplayName("claude-sonnet-5"),
+      })
+    );
+    expect(
+      fetcherWithBody.mock.calls.find(([[, body]]) => body.limit === 0)?.[0][1]
+    ).toMatchObject({
+      limit: 0,
+      facets: ["editors", "models", "tags"],
+      scope: ["visible", "hidden"],
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+        scope: ["hidden"],
+        editorIds: [editor.sId],
+        modelIds: ["claude-sonnet-5"],
+        offset: 0,
+      })
+    );
+  });
+
+  it("hides Access on the Default tab", async () => {
+    const { mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    await userEvent.click(screen.getByRole("tab", { name: "Default" }));
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.queryByRole("tab", { name: "Access" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Editors" })).toBeInTheDocument();
   });
 });
