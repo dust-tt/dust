@@ -70,7 +70,8 @@ async function loadAgentAndMemory(
     };
   }
 
-  const memory = await AgentMemoryResource.fetchByIdForUser(auth, {
+  const memory = await AgentMemoryResource.fetchByIdForAgentAndUser(auth, {
+    agent,
     memoryId: mId,
     user: user.toJSON(),
   });
