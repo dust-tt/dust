@@ -22,6 +22,7 @@ DEV_WORKSPACE_SID=MyWorkspace npx tsx scripts/seed/<folder>/seed.ts --execute
 - `conversational_building/` - Creates a skill with conversational suggestions and a Dust conversation rendering them, for testing the conversational builder
 - `governance/` - Creates users and skills for testing admin governance
 - `mcp_tools/` - Creates data-source-backed agents with internal MCP tools
+- `pagination/` - Creates 100 agents and 100 skills for testing search, sorting and pagination on the Manage pages
 - `reinforcement/` - Creates skills with conversations, feedbacks, Dust conversations with JIT skills for testing reinforcement
 - `sidekick/` - Creates agents and conversations for testing the agent builder sidekick feature
 - `triggers/` - Creates schedule triggers for basics agents
