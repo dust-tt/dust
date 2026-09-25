@@ -1,9 +1,11 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import assert from "assert";
 import { expect, it } from "vitest";
 
 it("replaces the users holding a group-manager grant and removes an empty grant", async () => {
@@ -36,9 +38,27 @@ it("replaces the users holding a group-manager grant and removes an empty grant"
     auth,
     grant
   );
-  expect(
-    (await holder?.getActiveMembers(auth))?.map((user) => user.sId)
-  ).toEqual([bob.sId]);
+  assert(holder);
+  expect((await holder.getActiveMembers(auth)).map((user) => user.sId)).toEqual(
+    [bob.sId]
+  );
+
+  // A stale suspended row for Bob must not cause replacement to end his active row.
+  await GroupMembershipModel.create({
+    workspaceId: workspace.id,
+    groupId: holder.id,
+    userId: bob.id,
+    startAt: new Date(),
+    endAt: null,
+    status: "suspended",
+  });
+  await GroupPermissionResource.replaceUsersForGrant(auth, {
+    ...grant,
+    users: [bob.toJSON()],
+  });
+  expect((await holder.getActiveMembers(auth)).map((user) => user.sId)).toEqual(
+    [bob.sId]
+  );
 
   await GroupPermissionResource.replaceUsersForGrant(auth, {
     ...grant,

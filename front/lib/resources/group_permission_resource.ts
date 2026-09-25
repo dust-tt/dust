@@ -710,31 +710,30 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
       // End stale and suspended memberships as well: otherwise an inactive former manager could
       // regain the assignment when their workspace membership is restored.
-      const expiredUserIds = [
-        ...new Set(
-          memberships
-            .filter(
-              (membership) =>
-                !requestedIds.has(membership.userId) ||
-                membership.status !== "active" ||
-                membership.startAt > now
-            )
-            .map((membership) => membership.userId)
-        ),
-      ];
-      if (group && expiredUserIds.length > 0) {
+      const membershipsToExpire = memberships.filter(
+        (membership) =>
+          !requestedIds.has(membership.userId) ||
+          membership.status !== "active" ||
+          membership.startAt > now
+      );
+      if (group && membershipsToExpire.length > 0) {
         await GroupMembershipModel.update(
           { endAt: now },
           {
             where: {
               workspaceId: auth.getNonNullableWorkspace().id,
               groupId: group.id,
-              userId: expiredUserIds,
+              id: membershipsToExpire.map((membership) => membership.id),
               [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
             },
             transaction,
           }
         );
+        const expiredUserIds = [
+          ...new Set(
+            membershipsToExpire.map((membership) => membership.userId)
+          ),
+        ];
         invalidateCacheAfterCommit(transaction, () =>
           GroupResource.batchInvalidateGroupIdsCacheForUsers(
             expiredUserIds.map((userId) => [
