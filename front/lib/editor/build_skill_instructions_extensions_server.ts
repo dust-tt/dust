@@ -58,7 +58,7 @@ export function buildSkillInstructionsExtensionsForServer(): Extensions {
       levels: [1, 2, 3, 4, 5, 6],
     }),
     BlockIdExtension,
-    KnowledgeNode.configure({ readOnly: true }),
+    KnowledgeNode,
     ToolNode,
     SkillNode,
     InstructionSuggestionExtension.configure({ showBlockHighlight: false }),

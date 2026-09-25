@@ -29,12 +29,12 @@ const DOCUMENT_ICON = "📄";
 export const KNOWLEDGE_NODE_TYPE = "knowledgeNode";
 
 interface KnowledgeNodeOptions {
-  readOnly: boolean;
+  isSuggestion: boolean;
 }
 
 export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
   addOptions() {
-    return { readOnly: false };
+    return { isSuggestion: false };
   },
   name: KNOWLEDGE_NODE_TYPE,
 

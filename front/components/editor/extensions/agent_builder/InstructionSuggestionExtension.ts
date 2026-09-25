@@ -52,6 +52,20 @@ const pluginKey = new PluginKey<PluginState>("suggestionPlugin");
 
 export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
 
+const SUGGESTION_DELETION_SPEC = { isSuggestionDeletion: true };
+
+/**
+ * @cc [owner:ykmsd,label:react] deletion-decorations-carry-spec-marker
+ * Every inline decoration marking suggestion-deleted content MUST be created with
+ * `SUGGESTION_DELETION_SPEC` so this predicate identifies it. Node views (e.g. the knowledge chip)
+ * rely on it to swap to their static suggestion presentation while covered by a deletion.
+ */
+export function isSuggestionDeletionDecoration(
+  decoration: Decoration
+): boolean {
+  return decoration.spec.isSuggestionDeletion === true;
+}
+
 const CLASSES = {
   remove:
     "suggestion-deletion rounded line-through bg-warning-100 text-warning-800 cursor-default",
@@ -245,7 +259,8 @@ function buildBlockDecorations({
           {
             class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
             [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
-          }
+          },
+          SUGGESTION_DELETION_SPEC
         )
       );
     }
@@ -425,7 +440,8 @@ function buildRootDecorations({
             {
               class: isHighlighted ? CLASSES.remove : CLASSES.removeDimmed,
               [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
-            }
+            },
+            SUGGESTION_DELETION_SPEC
           )
         );
       }

@@ -1,3 +1,4 @@
+import { isSuggestionDeletionDecoration } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { KnowledgeNode } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { KnowledgeNodeView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
@@ -9,7 +10,7 @@ const KNOWLEDGE_CHIP_CLASS =
   "inline-flex items-center gap-0.5 border border-current/40 rounded px-0.5 text-xs leading-tight";
 const DOCUMENT_ICON = "📄";
 
-const KnowledgeNodeReadOnlyView: React.FC<NodeViewProps> = ({ node }) => {
+const KnowledgeNodeSuggestionView: React.FC<NodeViewProps> = ({ node }) => {
   const { selectedItems } = node.attrs;
   const item = selectedItems[0] as KnowledgeItem | undefined;
   if (!item) {
@@ -24,11 +25,24 @@ const KnowledgeNodeReadOnlyView: React.FC<NodeViewProps> = ({ node }) => {
   );
 };
 
+// Suggestion deletions are inline decorations over the existing document, so a
+// knowledge node covered by one swaps to the static suggestion chip.
+const KnowledgeNodeEditorView: React.FC<NodeViewProps> = (props) => {
+  const isSuggestionDeletion = props.decorations.some(
+    isSuggestionDeletionDecoration
+  );
+  return isSuggestionDeletion ? (
+    <KnowledgeNodeSuggestionView {...props} />
+  ) : (
+    <KnowledgeNodeView {...props} />
+  );
+};
+
 export const KnowledgeNodeWithView = KnowledgeNode.extend({
   addNodeView() {
-    if (this.options.readOnly) {
-      return ReactNodeViewRenderer(KnowledgeNodeReadOnlyView);
+    if (this.options.isSuggestion) {
+      return ReactNodeViewRenderer(KnowledgeNodeSuggestionView);
     }
-    return ReactNodeViewRenderer(KnowledgeNodeView);
+    return ReactNodeViewRenderer(KnowledgeNodeEditorView);
   },
 });
