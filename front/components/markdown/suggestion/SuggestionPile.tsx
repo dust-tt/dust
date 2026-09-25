@@ -1,8 +1,3 @@
-/**
- * Groups the conversational suggestions of one agent message into a single pile: a recap card
- * first, then each pending suggestion one at a time, then a summary once nothing is left to review.
- */
-
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { getAgentSuggestionLabels } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { DEFAULT_SUGGESTION_VISUAL } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
