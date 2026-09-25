@@ -62,15 +62,13 @@ function groupByTarget(
   const bySkill = new Map<string, SkillDirective[]>();
   for (const directive of directives) {
     if (directive.type === "agent") {
-      byAgent.set(directive.agentId, [
-        ...(byAgent.get(directive.agentId) ?? []),
-        directive,
-      ]);
+      const bucket = byAgent.get(directive.agentId) ?? [];
+      bucket.push(directive);
+      byAgent.set(directive.agentId, bucket);
     } else {
-      bySkill.set(directive.skillId, [
-        ...(bySkill.get(directive.skillId) ?? []),
-        directive,
-      ]);
+      const bucket = bySkill.get(directive.skillId) ?? [];
+      bucket.push(directive);
+      bySkill.set(directive.skillId, bucket);
     }
   }
   return [
@@ -123,8 +121,9 @@ function AgentPileTarget({
 
   const { openPanel } = useConversationSidePanelContext();
 
+  const suggestionsById = new Map(suggestions.map((s) => [s.sId, s]));
   const entries: PileEntry[] = target.directives.flatMap(({ sId, kind }) => {
-    const suggestion = suggestions.find((s) => s.sId === sId);
+    const suggestion = suggestionsById.get(sId);
     if (!suggestion || suggestion.kind !== kind) {
       return [];
     }
@@ -208,9 +207,10 @@ function SkillPileTarget({
 
   const { openPanel } = useConversationSidePanelContext();
 
+  const suggestionsById = new Map(suggestions.map((s) => [s.sId, s]));
   const entries: PileEntry[] = skill
     ? target.directives.flatMap(({ sId }) => {
-        const suggestion = suggestions.find((s) => s.sId === sId);
+        const suggestion = suggestionsById.get(sId);
         if (!suggestion) {
           return [];
         }
@@ -273,7 +273,8 @@ interface PileTargetsLoaderProps {
 }
 
 // Hooks can't be called in a loop, so each agent or skill gets its own loader component, nested
-// one inside the other until every target is available.
+// one inside the other until every target is available. Each level copies the loaded prefix, which
+// is quadratic in the number of targets; a message only touches a handful of agents or skills.
 function PileTargetsLoader({
   owner,
   conversationId,
@@ -497,14 +498,13 @@ function SuggestionPileView({
   }
 
   const pendingEntries = entries.filter((e) => e.state === "pending");
+  const positionById = new Map(entries.map((e, index) => [e.sId, index + 1]));
   const isBusy = bulkDecision !== null || targets.some((t) => t.isBusy);
 
   const reviewAll = async (decision: "accept" | "reject") => {
     setBulkDecision(decision);
     try {
-      for (const target of targets) {
-        await target.reviewPending(decision);
-      }
+      await Promise.all(targets.map((t) => t.reviewPending(decision)));
     } finally {
       setBulkDecision(null);
     }
@@ -512,7 +512,7 @@ function SuggestionPileView({
 
   const pendingCards = pendingEntries.map((entry) =>
     entry.renderCard({
-      titleAside: `Edit ${entries.indexOf(entry) + 1} of ${entries.length}`,
+      titleAside: `Edit ${positionById.get(entry.sId)} of ${entries.length}`,
       secondaryAction: (
         <Button
           variant="ghost-secondary"
@@ -583,9 +583,14 @@ export function ConversationSuggestionPile({
   recap,
 }: ConversationSuggestionPileProps) {
   // The agent may repeat a directive; each suggestion is reviewed once.
-  const directives = rawDirectives.filter(
-    (d, index) => rawDirectives.findIndex((o) => o.sId === d.sId) === index
-  );
+  const seenIds = new Set<string>();
+  const directives = rawDirectives.filter((d) => {
+    if (seenIds.has(d.sId)) {
+      return false;
+    }
+    seenIds.add(d.sId);
+    return true;
+  });
 
   return (
     <PileTargetsLoader
