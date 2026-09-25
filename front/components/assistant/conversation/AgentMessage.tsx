@@ -1451,9 +1451,13 @@ function AgentMessageContent({
     isLastMessage,
   });
 
-  const answer = extractSuggestionPile(
-    sanitizeVisualizationContent(agentMessage.content ?? "")
-  );
+  // The answer only renders once the agent is done, so it is not parsed while streaming.
+  const answer =
+    agentMessage.content && agentMessage.streaming.agentState === "done"
+      ? extractSuggestionPile(
+          sanitizeVisualizationContent(agentMessage.content)
+        )
+      : null;
 
   const blockedActionElement = blockedAction ? (
     <BlockedAction
@@ -1581,34 +1585,32 @@ function AgentMessageContent({
         />
         {allImages.length > 0 && <InteractiveImageGrid images={allImages} />}
 
-        {agentMessage.content !== null &&
-          agentMessage.content !== "" &&
-          agentMessage.streaming.agentState === "done" && (
-            // The agent's answer is the only surface that follows the user's
-            // conversation font (Settings > Customization); thinking, user
-            // messages and the input bar stay in the app font.
-            <div className="font-conversation">
-              <AgentMessageMarkdown
-                content={answer.content}
+        {answer && (
+          // The agent's answer is the only surface that follows the user's
+          // conversation font (Settings > Customization); thinking, user
+          // messages and the input bar stay in the app font.
+          <div className="font-conversation">
+            <AgentMessageMarkdown
+              content={answer.content}
+              owner={owner}
+              conversationId={conversationId}
+              streamingState={
+                agentMessage.status === "cancelled" ? "cancelled" : "none"
+              }
+              isLastMessage={isLastMessage}
+              additionalMarkdownComponents={additionalMarkdownComponents}
+              additionalMarkdownPlugins={additionalMarkdownPlugins}
+            />
+            {answer.pileDirectives.length > 0 && (
+              <ConversationSuggestionPile
                 owner={owner}
                 conversationId={conversationId}
-                streamingState={
-                  agentMessage.status === "cancelled" ? "cancelled" : "none"
-                }
-                isLastMessage={isLastMessage}
-                additionalMarkdownComponents={additionalMarkdownComponents}
-                additionalMarkdownPlugins={additionalMarkdownPlugins}
+                directives={answer.pileDirectives}
+                recap={answer.recap}
               />
-              {answer.pileDirectives.length > 0 && (
-                <ConversationSuggestionPile
-                  owner={owner}
-                  conversationId={conversationId}
-                  directives={answer.pileDirectives}
-                  recap={answer.recap}
-                />
-              )}
-            </div>
-          )}
+            )}
+          </div>
+        )}
         {uiView !== "compact" && generatedFiles.length > 0 && (
           <div className="mt-2 grid grid-cols-2 gap-2 @xs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5">
             {generatedFiles.map((file) => (
