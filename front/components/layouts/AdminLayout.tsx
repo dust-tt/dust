@@ -16,7 +16,7 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
+  const { subscription, groupUsageScope } = useAuth();
 
   const { featureFlags } = useFeatureFlags();
   const { hasPermission } = useWorkspacePermissions();
@@ -31,8 +31,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         featureFlags,
         subscription,
         hasPermission,
+        canManageUsage:
+          featureFlags.includes("group_management") &&
+          !!groupUsageScope?.readGroupIds.length,
       }),
-    [owner, router.pathname, featureFlags, subscription, hasPermission]
+    [
+      owner,
+      router.pathname,
+      featureFlags,
+      subscription,
+      hasPermission,
+      groupUsageScope,
+    ]
   );
 
   useSetSubNavigation(subNavigation);
