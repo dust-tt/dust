@@ -4,6 +4,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { serializeSkillTag } from "@app/lib/skills/format";
+import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -126,6 +127,30 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
 
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("skill_not_found");
+  });
+
+  it("returns 400 for a suggestion that belongs to a batch", async () => {
+    const { workspace, auth, skill } = await setup();
+    const batch = await BatchSuggestionFactory.createEmpty(auth);
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      source: "conversational",
+      batchId: batch.id,
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "rejected",
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "belong to a batch"
+    );
+    const reloaded = await SkillSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(reloaded?.state).toBe("pending");
   });
 
   it("returns 400 for missing suggestionIds", async () => {
