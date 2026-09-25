@@ -7,7 +7,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetHomepageUseCasesResponseBody } from "@app/types/api/homepage_use_cases";
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
 const USE_CASES_DEDUPING_INTERVAL_MS = 30 * 60 * 1000;
@@ -50,33 +50,17 @@ export function useDismissHomepageUseCase({
     disabled: true,
     workspaceId,
   });
-  const pendingDismissal = useRef<Promise<Response>>();
 
   return useCallback(
     async (useCaseId: string): Promise<void> => {
-      void mutateUseCases(
-        (current) =>
-          current && {
-            useCases: current.useCases.filter(({ id }) => id !== useCaseId),
-          },
-        { revalidate: false }
+      const res = await clientFetch(
+        `/api/w/${workspaceId}/assistant/homepage_use_cases/dismissals`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ useCaseId }),
+        }
       );
-
-      const postDismissal = () =>
-        clientFetch(
-          `/api/w/${workspaceId}/assistant/homepage_use_cases/dismissals`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ useCaseId }),
-          }
-        );
-      // The server appends to the user metadata with a read-then-write, so dismissals must not overlap.
-      const request = pendingDismissal.current
-        ? pendingDismissal.current.then(postDismissal, postDismissal)
-        : postDismissal();
-      pendingDismissal.current = request;
-      const res = await request;
 
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
@@ -85,8 +69,16 @@ export function useDismissHomepageUseCase({
           title: "Failed to hide the suggestion.",
           description: errorData.message,
         });
-        void mutateUseCases();
+        return;
       }
+
+      void mutateUseCases(
+        (current) =>
+          current && {
+            useCases: current.useCases.filter(({ id }) => id !== useCaseId),
+          },
+        { revalidate: false }
+      );
     },
     [mutateUseCases, sendNotification, workspaceId]
   );

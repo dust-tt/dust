@@ -54,13 +54,23 @@ function pickUseCases(useCases: HomepageUseCaseType[]): HomepageUseCaseType[] {
 }
 
 function refillPage(
-  keptRows: HomepageUseCaseType[],
+  page: HomepageUseCaseType[],
   useCases: HomepageUseCaseType[]
 ): HomepageUseCaseType[] {
-  const keptIds = new Set(keptRows.map(({ id }) => id));
-  const refill = pickUseCases(useCases.filter(({ id }) => !keptIds.has(id)));
+  const offeredIds = new Set(useCases.map(({ id }) => id));
+  const pageIds = new Set(page.map(({ id }) => id));
+  const replacements = pickUseCases(
+    useCases.filter(({ id }) => !pageIds.has(id))
+  );
 
-  return [...keptRows, ...refill].slice(0, VISIBLE_COUNT);
+  return page.flatMap((row) => {
+    if (offeredIds.has(row.id)) {
+      return [row];
+    }
+    const replacement = replacements.shift();
+
+    return replacement ? [replacement] : [];
+  });
 }
 
 interface HomepageUseCasesProps {
@@ -74,8 +84,8 @@ interface HomepageUseCasesProps {
  * The rendered rows MUST always be a subset of the use cases the endpoint currently resolves,
  * so a use case whose requirements stopped resolving, or that was dismissed, can no longer be
  * picked. When an offered `featured` use case is missing, the rows MUST be resampled. Otherwise a
- * row that is no longer offered MUST be replaced in place of the others: rows still offered keep
- * their position.
+ * row that is no longer offered MUST be replaced in its own slot, and every row still offered MUST
+ * keep its position.
  */
 export function HomepageUseCases({
   onPick,
@@ -97,7 +107,7 @@ export function HomepageUseCases({
   if (needsInitialSample || missesFeaturedUseCase) {
     setPage(pickUseCases(useCases));
   } else if (keptRows.length < page.length) {
-    setPage(refillPage(keptRows, useCases));
+    setPage(refillPage(page, useCases));
   }
 
   const viewedUseCaseIds = useRef(new Set<string>());
@@ -157,7 +167,7 @@ export function HomepageUseCases({
             isDisabled={isTyping}
             onDismiss={() => {
               trackHomepageUseCaseDismiss({ useCaseId: useCase.id });
-              void dismissUseCase(useCase.id);
+              return dismissUseCase(useCase.id);
             }}
             onPick={() => {
               trackHomepageUseCaseClick({ useCaseId: useCase.id });
@@ -174,7 +184,7 @@ export function HomepageUseCases({
 
 interface UseCaseRowProps {
   isDisabled: boolean;
-  onDismiss: () => void;
+  onDismiss: () => Promise<void>;
   onPick: () => void;
   useCase: HomepageUseCaseType;
 }
@@ -185,6 +195,8 @@ function UseCaseRow({
   onPick,
   useCase,
 }: UseCaseRowProps) {
+  const [isDismissing, setIsDismissing] = useState(false);
+
   return (
     <li
       className={cn(
@@ -195,7 +207,7 @@ function UseCaseRow({
     >
       <button
         type="button"
-        disabled={isDisabled}
+        disabled={isDisabled || isDismissing}
         onClick={onPick}
         className="flex h-full min-w-0 flex-1 items-center gap-3 px-2 text-left"
       >
@@ -211,9 +223,17 @@ function UseCaseRow({
           icon={XClose}
           tooltip="Hide this suggestion"
           aria-label="Hide this suggestion"
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-          disabled={isDisabled}
-          onClick={onDismiss}
+          className={cn(
+            "group-hover:opacity-100 focus-visible:opacity-100",
+            !isDismissing && "opacity-0"
+          )}
+          isLoading={isDismissing}
+          disabled={isDisabled || isDismissing}
+          onClick={async () => {
+            setIsDismissing(true);
+            await onDismiss();
+            setIsDismissing(false);
+          }}
         />
       )}
     </li>
