@@ -1,0 +1,57 @@
+name: Check no new bulk Biome suppressions
+
+on:
+  push:
+    paths:
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - ".github/workflows/check-bulk-suppressions.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check-bulk-suppressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Check the bulk suppression count did not grow
+        run: |
+          # The Biome migration silenced every existing violation with this
+          # marker. It is meant to shrink over time, never to be copied, so the
+          # count may only go down. Comparing counts lets refactors move an
+          # existing suppression without being flagged.
+          MARKER='ignored using `--suppress`'
+          BASE=$(git merge-base origin/main HEAD)
+
+          MATCHES=$(mktemp)
+          # git grep exits 1 when nothing matches, which is fine; any other
+          # failure must fail the check rather than count as zero.
+          count() {
+            git grep -F -e "$MARKER" "$1" -- ':!.github/' > "$MATCHES" || [ $? -eq 1 ] || return 1
+            wc -l < "$MATCHES" | tr -d ' '
+          }
+
+          BEFORE=$(count "$BASE")
+          AFTER=$(count HEAD)
+
+          if [ "$AFTER" -gt "$BEFORE" ]; then
+            echo ""
+            echo "ERROR: bulk Biome suppressions went from $BEFORE to $AFTER."
+            echo "The '$MARKER' marker comes from the Biome migration and must not be copied."
+            echo ""
+            echo "Added lines:"
+            git diff -U0 "$BASE" HEAD -- ':!.github/' | awk -v marker="$MARKER" '
+              /^\+\+\+ / { file = substr($0, 7) }
+              /^\+[^+]/ && index($0, marker) { print "  " file ": " substr($0, 2) }
+            '
+            echo ""
+            echo "Fix the violation instead, or write a biome-ignore comment that explains why it is needed."
+            exit 1
+          fi
+
+          echo "OK: bulk Biome suppressions went from $BEFORE to $AFTER."
