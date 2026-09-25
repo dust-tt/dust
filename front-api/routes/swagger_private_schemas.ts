@@ -1503,6 +1503,11 @@
  *           type: array
  *           items:
  *             type: string
+ *         excludedRetrievalTags:
+ *           type: array
+ *           description: Data source tags to exclude from retrieval for this run, as opaque `key:value` strings.
+ *           items:
+ *             type: string
  *     PrivateReaction:
  *       type: object
  *       description: A reaction on a message.
