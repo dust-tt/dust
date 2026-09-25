@@ -57,6 +57,7 @@ export { default as LangfuseLogo } from "./Langfuse";
 export { default as LemlistLogo } from "./Lemlist";
 export { default as LinearLogo } from "./Linear";
 export { default as LinkedinLogo } from "./Linkedin";
+export { default as LokaliseLogo } from "./Lokalise";
 export { default as LumaLogo } from "./Luma";
 export { default as MetaLogo } from "./Meta";
 export { default as MicrosoftLogo } from "./Microsoft";
