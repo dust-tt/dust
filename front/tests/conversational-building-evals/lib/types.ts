@@ -1,5 +1,6 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { Authenticator } from "@app/lib/auth";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ModelIdType,
   ReasoningEffort,
@@ -72,13 +73,12 @@ export interface ConversationMessage {
   content: string;
 }
 
-export type SkillUpdateEditKind =
-  | "instructionEdits"
-  | "agentFacingDescriptionEdit";
+export type SkillUpdateEditKind = "instructionEdits" | "agentFacingDescription";
 
 /**
- * What the run must end with. The "final" tool call is the last non-exploratory call of the run:
- * exploratory calls (listing / describing entities) never count.
+ * The change the run must end with. The "final" tool call is the last non-exploratory call of the
+ * run, which must be a `suggest` call carrying this change: exploratory calls (listing / describing
+ * entities) never count.
  */
 export type FinalToolCallAssertion =
   | {
@@ -178,6 +178,8 @@ export interface SeededScenario {
   toolIdsByKey: Map<string, string>;
   knowledgeByKey: Map<string, SeededKnowledgeNode>;
   agentIdsByKey: Map<string, string>;
+  // The conversation the run happens in: `suggest` records it as the source of its batch.
+  conversation: ConversationType;
 }
 
 /** The agent under test: the Dust global agent with the conversational-building skill enabled. */

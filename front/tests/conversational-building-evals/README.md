@@ -16,7 +16,8 @@ seed workspace (skills, admin member) from the scenario
 1. **Seeding** (`lib/seed.ts`): each scenario gets its own workspace, an admin member, and the
    skills of its `workspaceSeed`, created through the test factories in a committed transaction
    (`beforeAll` runs before the per-test CLS transaction exists). The run then executes as that
-   member, which the `suggest_*` tools require.
+   member, which the `suggest` tool requires, and a conversation the run happens in (`suggest`
+   records it as the source of its batch).
 2. **Agent config** comes from `_getDustGlobalAgent`: the real instructions and model of the
    `dust` global agent, built on the scenario's workspace.
 3. **Skill state**: the skill is already enabled, so its instructions are injected as the same
@@ -27,14 +28,11 @@ seed workspace (skills, admin member) from the scenario
 4. **Tool calls run for real** (`lib/tool-runner.ts`): the executor validates the arguments
    against the tool schema, calls the production handler with the scenario's authenticator, and
    feeds the text result back. Nothing is mocked: `list_skills` lists the seeded skills,
-   `describe_skill` returns their stored block HTML, `suggest_*` records real suggestions (rolled
-   back with the per-test transaction).
-5. **Assertions**: the *final* tool call (last non-exploratory one, i.e. the last `suggest_*`)
-   must match `expectedFinalToolCall`, the response must mention the entity it acted on as
-   `:build_skill[Name]{sId=...}` / `:build_agent[Name]{sId=...}` (the directives that make the
-   name clickable), and the judge must score the run at or above `PASS_THRESHOLD`. A skill mention
-   is checked against the seeded skill id; `suggestAgentCreation` has no seeded agent, so its
-   mention is checked against the id the `:agent_suggestion[]` directive carries.
+   `describe_skill` returns their stored block HTML, `suggest` records a real batch of
+   suggestions (rolled back with the per-test transaction).
+5. **Assertions**: the *final* tool call (last non-exploratory one, i.e. the last `suggest`) must
+   carry the change `expectedFinalToolCall` describes (e.g. an `edit_skill` suggestion renaming the
+   seeded skill).
 
 ## Test case structure
 
@@ -95,9 +93,9 @@ RUN_CONVERSATIONAL_BUILDING_EVAL=true VERBOSE=true \
 ## Adding tests
 
 1. Create or edit a suite in `test-suites/` and export it from `test-suites/index.ts`.
-2. To assert on another terminal tool (`suggest_agent_deletion`, …), add a
-   `FinalToolCallAssertion` variant in `lib/types.ts` + `lib/assertions.ts`. Tools added to
-   either server are picked up automatically by the tool runner.
+2. To assert on another kind of change, add a `FinalToolCallAssertion` variant
+   in `lib/types.ts` + `lib/assertions.ts`.
+   Tools added to either server are picked up automatically by the tool runner.
 3. Scenarios needing other seeded entities (agents, members, groups) extend `WorkspaceSeed` and
    `lib/seed.ts` with the matching factories.
 
