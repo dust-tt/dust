@@ -108,6 +108,8 @@ interface UseSkillInstructionsEditorProps {
   content: string;
   enableSlashCommands?: boolean;
   htmlContent?: string;
+  // Static: omits the editing extensions and uses compact node views. Changing it recreates the
+  // editor, so toggle editability at runtime with `editor.setEditable` instead.
   isReadOnly: boolean;
   skillReferences?: SkillInstructionsSkillReferencesOptions;
   onUpdate?: (props: { editor: Editor; transaction: Transaction }) => void;
@@ -214,9 +216,11 @@ export function useSkillInstructionsEditor({
     [editableExtensions, isReadOnly, onSkillNodeDetails, onToolDetails]
   );
 
-  // Track if initial content has been set
-  const initialContentSetRef = useRef(false);
-  const [isContentReady, setIsContentReady] = useState(false);
+  // `useEditor` recreates the editor when its deps change, so content is set once per instance.
+  const initializedEditorRef = useRef<Editor | null>(null);
+  const [contentReadyEditor, setContentReadyEditor] = useState<Editor | null>(
+    null
+  );
 
   const editor = useEditor(
     {
@@ -274,29 +278,36 @@ export function useSkillInstructionsEditor({
   useEffect(() => {
     const hasContent = htmlContent || content;
     if (
-      editor &&
-      hasContent &&
-      !initialContentSetRef.current &&
-      !editor.isDestroyed
+      !editor ||
+      editor.isDestroyed ||
+      !hasContent ||
+      initializedEditorRef.current === editor
     ) {
-      // Use requestAnimationFrame to ensure DOM is ready before setting content
-      // This fixes Safari crashes where docView is accessed before render
-      requestAnimationFrame(() => {
-        if (editor && !editor.isDestroyed) {
-          if (htmlContent) {
-            editor.commands.setContent(htmlContent, { emitUpdate: false });
-          } else {
-            editor.commands.setContent(preprocessMarkdownForEditor(content), {
-              emitUpdate: false,
-              contentType: "markdown",
-            });
-          }
-          initialContentSetRef.current = true;
-          setIsContentReady(true);
-        }
-      });
+      return;
     }
+
+    initializedEditorRef.current = editor;
+    // Use requestAnimationFrame to ensure DOM is ready before setting content
+    // This fixes Safari crashes where docView is accessed before render
+    // Callers may also sync content themselves in the meantime; setting it twice is harmless.
+    requestAnimationFrame(() => {
+      if (editor.isDestroyed) {
+        return;
+      }
+
+      if (htmlContent) {
+        editor.commands.setContent(htmlContent, { emitUpdate: false });
+      } else {
+        editor.commands.setContent(preprocessMarkdownForEditor(content), {
+          emitUpdate: false,
+          contentType: "markdown",
+        });
+      }
+      setContentReadyEditor(editor);
+    });
   }, [editor, content, htmlContent]);
+
+  const isContentReady = editor !== null && contentReadyEditor === editor;
 
   return { editor, editorService, isContentReady };
 }

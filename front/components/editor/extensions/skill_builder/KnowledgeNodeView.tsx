@@ -5,6 +5,7 @@ import {
 import type { KnowledgeNodeAttributes } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import { useIsEditorEditable } from "@app/components/editor/lib/useIsEditorEditable";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceView } from "@app/lib/swr/spaces";
@@ -124,6 +125,7 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
   updateAttributes,
 }) => {
   const { workspace } = useAuth();
+  const isEditable = useIsEditorEditable(editor);
   const { selectedItems } = node.attrs as KnowledgeNodeAttributes;
 
   const handleRemove = useCallback(
@@ -138,10 +140,10 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
   // paste): an empty node renders as null and isn't serialized, so drop it from
   // the editable doc rather than leaving an invisible orphan.
   useLayoutEffect(() => {
-    if (selectedItems.length === 0 && editor.isEditable) {
+    if (selectedItems.length === 0 && isEditable) {
       deleteNode();
     }
-  }, [deleteNode, editor.isEditable, selectedItems.length]);
+  }, [deleteNode, isEditable, selectedItems.length]);
 
   if (selectedItems.length === 0) {
     return null;
@@ -152,7 +154,7 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
       <KnowledgeDisplayComponent
         item={selectedItems[0]}
         owner={workspace}
-        onRemove={editor.isEditable ? handleRemove : undefined}
+        onRemove={isEditable ? handleRemove : undefined}
         updateAttributes={updateAttributes}
       />
     </NodeViewWrapper>

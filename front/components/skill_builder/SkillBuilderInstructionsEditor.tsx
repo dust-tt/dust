@@ -535,7 +535,9 @@ export function SkillBuilderInstructionsEditor({
   const { editor, isContentReady } = useSkillInstructionsEditor({
     content: instructionsField.value ?? "",
     htmlContent: instructionsHtmlField.value ?? undefined,
-    isReadOnly: isInstructionsReadOnly,
+    // Editability is toggled below with `setEditable`: `isReadOnly` swaps the extension set and
+    // recreates the editor, and the flag flips at runtime (editors resolving, pending suggestions).
+    isReadOnly: false,
     skillReferences: {
       currentSkillId: skillId,
       onSkillDetails: handleSkillDetails,
@@ -549,6 +551,16 @@ export function SkillBuilderInstructionsEditor({
     onBlur: handleBlur,
     onDelete: handleDelete,
   });
+
+  // Keep the editor read-only for non-editors and pending suggestions. Diff mode manages
+  // editability itself.
+  useEffect(() => {
+    if (!editor || editor.isDestroyed || isDiffMode) {
+      return;
+    }
+
+    editor.setEditable(!isInstructionsReadOnly);
+  }, [editor, isDiffMode, isInstructionsReadOnly]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -758,19 +770,12 @@ export function SkillBuilderInstructionsEditor({
         firstEdit?.scrollIntoView({ behavior: "smooth", block: "center" });
       });
     }
-
-    // Keep the editor read-only for pending suggestions or non-editors.
-    if (!isDiffMode) {
-      editor.setEditable(!isInstructionsReadOnly);
-    }
   }, [
     editor,
     isContentReady,
     suggestions,
     isSuggestionsLoading,
     selectedSuggestionId,
-    isDiffMode,
-    isInstructionsReadOnly,
   ]);
 
   useEffect(() => {
@@ -803,7 +808,12 @@ export function SkillBuilderInstructionsEditor({
 
   // Sync external changes to the editor content
   useEffect(() => {
-    if (!editor || isDiffMode || !instructionsHtmlField.value) {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      isDiffMode ||
+      !instructionsHtmlField.value
+    ) {
       return;
     }
 
