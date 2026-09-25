@@ -50,18 +50,17 @@ async function mockHits(
     ...(await SkillFactory.createSearchDocuments(auth, skills)),
     ...extraDocuments,
   ];
-  mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
-    hits: {
-      hits: documents
-        .filter((document) =>
-          matchesSkillSearchFilters(document, request.query!)
-        )
-        .map((document) => ({
-          _source: document,
-          sort: [1, document.active_users_count, document.skill_id],
-        })),
-    },
-  }));
+  mockSearch.mockImplementation(async (request: estypes.SearchRequest) => {
+    const matching = documents.filter((document) =>
+      matchesSkillSearchFilters(document, request.query!)
+    );
+    return {
+      hits: {
+        hits: matching.map((document) => ({ _source: document })),
+        total: { value: matching.length, relation: "eq" },
+      },
+    };
+  });
   return documents;
 }
 
@@ -398,15 +397,20 @@ describe("custom skill search", () => {
     });
     const documents = await mockHits(auth, [first, second]);
     const expected = await searchListings(auth);
-    const hits = documents.map((document) => ({
-      _source: document,
-      sort: [1, document.active_users_count, document.skill_id],
-    }));
-    mockSearch.mockResolvedValue({
+    const hits = [
+      { _source: documents[0] },
+      { _id: "missing-skill" },
+      { _source: documents[1] },
+    ];
+    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
       hits: {
-        hits: [hits[0], { sort: [1, 0, "missing-skill"] }, hits[1]],
+        hits: hits.slice(
+          request.from ?? 0,
+          (request.from ?? 0) + (request.size ?? hits.length)
+        ),
+        total: { value: hits.length, relation: "eq" },
       },
-    });
+    }));
 
     expect(await searchListings(auth)).toEqual(expected);
 
@@ -417,10 +421,8 @@ describe("custom skill search", () => {
     assert(page.isOk());
     expect(page.value).toEqual({
       skills: [expected[0]],
+      total: 3,
       hasMore: true,
-      nextCursor: Buffer.from(JSON.stringify([1, 0, "missing-skill"])).toString(
-        "base64url"
-      ),
     });
   });
 
@@ -697,7 +699,7 @@ describe("custom skill search", () => {
 
   it.each([
     0, 1, 2, 3,
-  ])("returns page metadata from the last returned hit with %s hits", async (hitCount) => {
+  ])("returns page metadata from the exact total at offset %s", async (offset) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const skills: SkillResource[] = [];
     for (const name of ["ÉclairBot", "ReportBot", "WeatherBot"]) {
@@ -705,38 +707,39 @@ describe("custom skill search", () => {
       skills.push(skill);
     }
     const documents = await SkillFactory.createSearchDocuments(auth, skills);
-    const hits = documents.slice(0, hitCount).map((document, index) => ({
-      _source: document,
-      sort: [3 - index, document.active_users_count, document.skill_id],
+    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
+      hits: {
+        hits: documents
+          .slice(request.from ?? 0, (request.from ?? 0) + (request.size ?? 0))
+          .map((document) => ({ _source: document })),
+        total: { value: documents.length, relation: "eq" },
+      },
     }));
-    mockSearch.mockResolvedValue({ hits: { hits } });
 
     const result = await searchSkills(auth, {
       searchTerm: "",
-      cursor: Buffer.from(JSON.stringify([4, 10, "previous-id"])).toString(
-        "base64url"
-      ),
+      offset,
       limit: 2,
     });
     assert(result.isOk());
 
-    const lastSort = hits[Math.min(hitCount, 2) - 1]?.sort;
+    const pageDocuments = documents.slice(offset, offset + 2);
     expect(result.value).toEqual({
-      skills: hits.slice(0, 2).map((hit) => toSkillListItem(auth, hit._source)),
-      hasMore: hitCount > 2,
-      nextCursor: lastSort
-        ? Buffer.from(JSON.stringify(lastSort)).toString("base64url")
-        : null,
+      skills: pageDocuments.map((document) => toSkillListItem(auth, document)),
+      total: documents.length,
+      hasMore: offset + pageDocuments.length < documents.length,
     });
     expect(mockSearch).toHaveBeenCalledOnce();
     expect(mockSearch.mock.lastCall![0]).toMatchObject({
-      size: 3,
+      from: offset,
+      size: 2,
+      track_total_hits: true,
       sort: [
         { _score: { order: "desc" } },
         { active_users_count: { order: "desc", missing: "_last" } },
         { skill_id: { order: "asc" } },
       ],
-      search_after: [4, 10, "previous-id"],
     });
+    expect(mockSearch.mock.lastCall![0]).not.toHaveProperty("search_after");
   });
 });

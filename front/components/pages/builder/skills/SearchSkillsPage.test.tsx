@@ -106,8 +106,8 @@ async function setup({
     .fn<() => Promise<SearchSkillsResponseBody>>()
     .mockResolvedValue({
       skills: [skill],
+      total: 1,
       hasMore: false,
-      nextCursor: null,
     });
   const fetcherWithBody = vi.fn(async () => search());
   const mutation = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
@@ -192,8 +192,8 @@ describe("search-backed Manage Skills", () => {
         { ...skill, name: "Zebra" },
         { ...skill, sId: "other-skill", name: "Alpha" },
       ],
+      total: 2,
       hasMore: false,
-      nextCursor: null,
     });
     mount();
     await screen.findByRole("button", { name: /Zebra/ });
@@ -212,7 +212,7 @@ describe("search-backed Manage Skills", () => {
         await waitFor(() =>
           expect(fetcherWithBody).toHaveBeenLastCalledWith([
             expect.any(String),
-            expect.objectContaining({ sortBy, sortOrder, cursor: null }),
+            expect.objectContaining({ sortBy, sortOrder, offset: 0 }),
             "POST",
           ])
         );
@@ -231,15 +231,15 @@ describe("search-backed Manage Skills", () => {
     const { skill, search, fetcherWithBody, mount } = await setup();
     search.mockResolvedValueOnce({
       skills: [skill],
+      total: 51,
       hasMore: true,
-      nextCursor: "next-page",
     });
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
     search.mockResolvedValue({
       skills: [{ ...skill, name: "Second page" }],
+      total: 51,
       hasMore: false,
-      nextCursor: null,
     });
     const [, nextButton] = screen
       .getAllByRole("button", { name: "" })
@@ -256,7 +256,7 @@ describe("search-backed Manage Skills", () => {
         expect.objectContaining({
           sortBy: "name",
           sortOrder: "asc",
-          cursor: null,
+          offset: 0,
         }),
         "POST",
       ])
@@ -269,11 +269,11 @@ describe("search-backed Manage Skills", () => {
     ).not.toBeInTheDocument();
     search.mockResolvedValue({
       skills: [skill],
+      total: 1,
       hasMore: false,
-      nextCursor: null,
     });
     await act(async () => {
-      pending.resolve({ skills: [skill], hasMore: false, nextCursor: null });
+      pending.resolve({ skills: [skill], total: 1, hasMore: false });
     });
     await screen.findByRole("button", { name: /Weekly report/ });
 
@@ -297,7 +297,7 @@ describe("search-backed Manage Skills", () => {
         expect.objectContaining({
           query: "report",
           sortBy: "relevance",
-          cursor: null,
+          offset: 0,
         }),
         "POST",
       ])
@@ -334,7 +334,7 @@ describe("search-backed Manage Skills", () => {
           availability: ["workspace_users", "users_and_agents"],
           mcpServerViewIds,
           editedByMe: true,
-          cursor: null,
+          offset: 0,
         }),
         "POST",
       ])
@@ -369,7 +369,7 @@ describe("search-backed Manage Skills", () => {
           editedByMe: true,
           sortBy: "usage",
           limit: 50,
-          cursor: null,
+          offset: 0,
           permissionFiltering: undefined,
         },
         "POST",
@@ -385,7 +385,7 @@ describe("search-backed Manage Skills", () => {
           status: ["archived"],
           sortBy: "usage",
           limit: 50,
-          cursor: null,
+          offset: 0,
           permissionFiltering: undefined,
         },
         "POST",
@@ -420,8 +420,8 @@ describe("search-backed Manage Skills", () => {
     const { skill, search, fetcherWithBody, mount } = await setup();
     search.mockResolvedValue({
       skills: [skill],
+      total: 51,
       hasMore: true,
-      nextCursor: "next-page",
     });
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
@@ -432,7 +432,7 @@ describe("search-backed Manage Skills", () => {
     await waitFor(() =>
       expect(fetcherWithBody).toHaveBeenLastCalledWith([
         expect.any(String),
-        expect.objectContaining({ cursor: "next-page" }),
+        expect.objectContaining({ offset: 50 }),
         "POST",
       ])
     );
@@ -445,7 +445,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         expect.objectContaining({
           availability: ["workspace_users"],
-          cursor: null,
+          offset: 0,
         }),
         "POST",
       ])
@@ -467,7 +467,7 @@ describe("search-backed Manage Skills", () => {
         sortBy: "usage",
         status: ["active"],
         limit: 50,
-        cursor: null,
+        offset: 0,
         permissionFiltering: undefined,
       },
       "POST",
@@ -495,8 +495,8 @@ describe("search-backed Manage Skills", () => {
     await screen.findByRole("button", { name: /Weekly report/ });
     search.mockResolvedValue({
       skills: [],
+      total: 0,
       hasMore: false,
-      nextCursor: null,
     });
     await userEvent.click(screen.getByRole("tab", { name: "Default" }));
     await screen.findByText("No skills to show.");
@@ -506,7 +506,7 @@ describe("search-backed Manage Skills", () => {
         status: ["active"],
         codeDefinedOnly: true,
         sortBy: "usage",
-        cursor: null,
+        offset: 0,
       }),
       "POST",
     ]);
@@ -519,7 +519,7 @@ describe("search-backed Manage Skills", () => {
           status: ["archived"],
           sortBy: "usage",
           limit: 50,
-          cursor: null,
+          offset: 0,
           permissionFiltering: undefined,
         },
         "POST",
@@ -529,12 +529,12 @@ describe("search-backed Manage Skills", () => {
 
   it("refreshes All after importing a skill", async () => {
     const { skill, context, search, mutation, mount } = await setup();
-    search.mockResolvedValue({ skills: [], hasMore: false, nextCursor: null });
+    search.mockResolvedValue({ skills: [], total: 0, hasMore: false });
     mutation.mockImplementation(async () => {
       search.mockResolvedValue({
         skills: [skill],
+        total: 1,
         hasMore: false,
-        nextCursor: null,
       });
     });
     // Test import-driven cache refresh without the dropdown-to-dialog focus transition.
@@ -603,8 +603,8 @@ describe("search-backed Manage Skills", () => {
     mutation.mockImplementation(async () => {
       search.mockResolvedValue({
         skills: [],
+        total: 0,
         hasMore: false,
-        nextCursor: null,
       });
     });
     const ConfirmationDialog =
@@ -649,21 +649,22 @@ describe("search-backed Manage Skills", () => {
     expect(mutation).toHaveBeenCalledOnce();
   });
 
-  it("passes cursors unchanged, preserves server order and resets pagination when searching", async () => {
+  it("requests page offsets from arrows and page numbers, preserves server order and resets pagination when searching", async () => {
     const { skill, search, fetcherWithBody, mount } = await setup();
-    const cursor = "opaque-search-after";
-    search.mockResolvedValueOnce({
+    const firstPage = {
       skills: [{ ...skill, name: "Zebra" }],
+      total: 51,
       hasMore: true,
-      nextCursor: cursor,
-    });
+    };
+    const secondPage = {
+      skills: [{ ...skill, sId: "next", name: "Alpha" }],
+      total: 51,
+      hasMore: false,
+    };
+    search.mockResolvedValueOnce(firstPage);
     mount();
     await screen.findByRole("button", { name: /Zebra/ });
-    search.mockResolvedValue({
-      skills: [{ ...skill, sId: "next", name: "Alpha" }],
-      hasMore: false,
-      nextCursor: "last",
-    });
+    search.mockResolvedValue(secondPage);
     const [, nextPageButton] = screen
       .getAllByRole("button", { name: "" })
       .slice(-2);
@@ -671,43 +672,38 @@ describe("search-backed Manage Skills", () => {
     await screen.findByRole("button", { name: /Alpha/ });
     expect(fetcherWithBody).toHaveBeenLastCalledWith([
       expect.any(String),
-      expect.objectContaining({ cursor, sortBy: "usage" }),
+      expect.objectContaining({ offset: 50, sortBy: "usage" }),
       "POST",
     ]);
     expect(screen.getAllByRole("row")[1]).toHaveTextContent("Alpha");
     expect(
       screen.queryByRole("button", { name: /Zebra/ })
     ).not.toBeInTheDocument();
+    expect(screen.getByText("Showing 51-51 of 51 items")).toBeInTheDocument();
     const [previousPageButton, lastPageButton] = screen
       .getAllByRole("button", { name: "" })
       .slice(-2);
     expect(lastPageButton).toBeDisabled();
 
-    search.mockResolvedValue({
-      skills: [{ ...skill, name: "Zebra" }],
-      hasMore: true,
-      nextCursor: cursor,
-    });
+    search.mockResolvedValue(firstPage);
     await userEvent.click(previousPageButton);
     await screen.findByRole("button", { name: /Zebra/ });
     expect(
       screen.queryByRole("button", { name: /Alpha/ })
     ).not.toBeInTheDocument();
 
-    search.mockResolvedValue({
-      skills: [{ ...skill, sId: "next", name: "Alpha" }],
-      hasMore: false,
-      nextCursor: "last",
-    });
-    const [, nextButton] = screen
-      .getAllByRole("button", { name: "" })
-      .slice(-2);
-    await userEvent.click(nextButton);
+    search.mockResolvedValue(secondPage);
+    await userEvent.click(screen.getByRole("button", { name: "2" }));
     await screen.findByRole("button", { name: /Alpha/ });
+    expect(fetcherWithBody).toHaveBeenLastCalledWith([
+      expect.any(String),
+      expect.objectContaining({ offset: 50 }),
+      "POST",
+    ]);
     search.mockResolvedValue({
       skills: [skill],
+      total: 1,
       hasMore: false,
-      nextCursor: null,
     });
 
     const input = screen.getByLabelText("Search skills");
@@ -718,7 +714,7 @@ describe("search-backed Manage Skills", () => {
         expect.objectContaining({
           query: "report",
           sortBy: "relevance",
-          cursor: null,
+          offset: 0,
         }),
         "POST",
       ])
@@ -726,11 +722,7 @@ describe("search-backed Manage Skills", () => {
     expect(
       screen.queryByRole("button", { name: /Zebra/ })
     ).not.toBeInTheDocument();
-    search.mockResolvedValue({
-      skills: [{ ...skill, name: "Zebra" }],
-      hasMore: true,
-      nextCursor: cursor,
-    });
+    search.mockResolvedValue(firstPage);
     await userEvent.clear(input);
     await screen.findByRole("button", { name: /Zebra/ });
     expect(screen.getAllByRole("row")[1]).toHaveTextContent("Zebra");
@@ -768,8 +760,8 @@ describe("search-backed Manage Skills", () => {
     await act(async () => {
       pending.resolve({
         skills: [{ ...skill, name: "New report" }],
+        total: 1,
         hasMore: false,
-        nextCursor: null,
       });
     });
     await screen.findByRole("button", { name: /New report/ });
@@ -801,8 +793,8 @@ describe("search-backed Manage Skills", () => {
     await screen.findByRole("alert");
     search.mockResolvedValue({
       skills: [],
+      total: 0,
       hasMore: false,
-      nextCursor: null,
     });
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     await screen.findByText("No skills to show.");

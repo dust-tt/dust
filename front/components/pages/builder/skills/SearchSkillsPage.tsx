@@ -118,7 +118,14 @@ function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
           onSelect={onSelect}
           onRefresh={mutate}
           pagination={tablePagination}
-          setPagination={setTablePagination}
+          setPagination={(next) => {
+            if (
+              next.pageIndex !== tablePagination.pageIndex ||
+              next.pageSize !== tablePagination.pageSize
+            ) {
+              setTablePagination(next);
+            }
+          }}
           total={total}
           sorting={
             sortBy === "relevance"
