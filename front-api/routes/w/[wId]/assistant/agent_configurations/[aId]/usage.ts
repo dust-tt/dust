@@ -1,5 +1,5 @@
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_usage";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -23,11 +23,8 @@ app.get(
     const owner = auth.getNonNullableWorkspace();
     const { aId } = ctx.req.valid("param");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (!agentConfiguration) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -38,7 +35,7 @@ app.get(
     }
 
     const agentUsage = await getAgentUsage(auth, {
-      agentConfiguration,
+      agent,
       workspaceId: owner.sId,
     });
 

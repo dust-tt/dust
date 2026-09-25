@@ -1,5 +1,5 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -34,11 +34,8 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (!agentConfiguration || !agentConfiguration.canRead) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent || !auth.can("read", agent)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -53,13 +50,10 @@ app.get(
       return ctx.json({ memories: [] });
     }
 
-    const memories = await AgentMemoryResource.findByAgentConfigurationAndUser(
-      auth,
-      {
-        agentConfiguration,
-        user: user.toJSON(),
-      }
-    );
+    const memories =
+      await AgentMemoryResource.findByAgentConfigurationIdAndUser(auth, {
+        agentConfigurationId: agent.sId,
+      });
 
     return ctx.json({ memories: memories.map((memory) => memory.toJSON()) });
   }
