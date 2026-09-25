@@ -1905,12 +1905,12 @@ describe("agent_sidekick_context tools", () => {
       );
 
       const tool = getToolByName("suggest_model");
-      // claude-sonnet-4-6 does not support reasoningEffort "none".
+      // claude-sonnet-4-6 does not support reasoningEffort "minimal".
       const result = await tool.handler(
         {
           suggestion: {
             modelId: "claude-sonnet-4-6",
-            reasoningEffort: "none",
+            reasoningEffort: "minimal",
           },
         },
         createTestExtra(authenticator)

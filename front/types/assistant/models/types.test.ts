@@ -23,7 +23,6 @@ const MODEL_CONFIG = {
     high: true,
   },
   defaultReasoningEffort: "medium",
-  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "r50k_base" },
@@ -57,19 +56,22 @@ describe("ModelConfigurationSchema", () => {
     });
   });
 
-  it("reads efforts a custom model config does not list as unsupported", () => {
-    const result = ModelConfigurationSchema.parse(MODEL_CONFIG);
+  it("reads a legacy custom model config, with light as low", () => {
+    const result = ModelConfigurationSchema.parse({
+      ...MODEL_CONFIG,
+      defaultReasoningEffort: "light",
+    });
 
     expect(result.supportedReasoningEfforts).toEqual({
       none: true,
       minimal: false,
-      light: true,
-      low: false,
+      low: true,
       medium: true,
       high: true,
       xhigh: false,
       maximal: false,
     });
+    expect(result.defaultReasoningEffort).toBe("low");
   });
 
   it("rejects unknown availability feature flags", () => {

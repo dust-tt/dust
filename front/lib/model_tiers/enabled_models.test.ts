@@ -87,16 +87,15 @@ describe("withModelSelectability", () => {
 
     expect(model.isSelectable).toBe(true);
     expect(model.supportedReasoningEfforts).toEqual({
-      none: false,
+      none: true,
       minimal: false,
-      light: true,
-      low: false,
+      low: true,
       medium: false,
       high: false,
       xhigh: false,
       maximal: false,
     });
-    expect(model.defaultReasoningEffort).toBe("light");
+    expect(model.defaultReasoningEffort).toBe("low");
   });
 
   it("keeps reasoning efforts up to the user's tier cap and drops premium ones", async () => {
@@ -106,14 +105,13 @@ describe("withModelSelectability", () => {
       models: [CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG],
     });
 
-    // Under a balanced cap, Sonnet 4.6's light (cost_efficient) and medium
-    // (balanced) efforts remain, but high (premium) is dropped.
+    // Under a balanced cap, Sonnet 4.6's none/low (cost_efficient) and medium
+    // (balanced) efforts remain, but high/maximal (premium) are dropped.
     expect(model.isSelectable).toBe(true);
     expect(model.supportedReasoningEfforts).toEqual({
-      none: false,
+      none: true,
       minimal: false,
-      light: true,
-      low: false,
+      low: true,
       medium: true,
       high: false,
       xhigh: false,
@@ -147,7 +145,6 @@ describe("withModelSelectability", () => {
     expect(model.supportedReasoningEfforts).toEqual({
       none: false,
       minimal: false,
-      light: false,
       low: false,
       medium: false,
       high: false,
@@ -250,7 +247,7 @@ describe("resolveStreamModel", () => {
     expect(resolved.fromPool).toBe(true);
     // In a full workspace every candidate is available, so the first one wins.
     expect(resolved.model.modelId).toBe(GPT_5_6_LUNA_MODEL_ID);
-    expect(resolved.reasoningEffort).toBe("light");
+    expect(resolved.reasoningEffort).toBe("low");
   });
 
   it("routes the Premium stream to its first available candidate + effort", async () => {
@@ -275,7 +272,7 @@ describe("resolveStreamModel", () => {
     expect(resolved.model.modelId).toBe(
       CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
     );
-    expect(resolved.reasoningEffort).toBe("light");
+    expect(resolved.reasoningEffort).toBe("low");
   });
 
   it("only ever resolves to a candidate declared in the stream", async () => {

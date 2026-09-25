@@ -238,6 +238,25 @@ describe("getAgentConfigurations", () => {
     }
   });
 
+  it("reads a stored legacy light reasoning effort as low", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    await AgentConfigurationModel.update(
+      { reasoningEffort: "light" as never },
+      { where: { workspaceId: workspace.id, sId: agent.sId } }
+    );
+
+    const fetched = await getAgentConfiguration(authenticator, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+
+    expect(fetched?.model.reasoningEffort).toBe("low");
+  });
+
   it("returns only the latest version of each requested agent", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const firstAgent =

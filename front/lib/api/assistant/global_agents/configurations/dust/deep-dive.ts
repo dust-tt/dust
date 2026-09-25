@@ -398,7 +398,7 @@ function getDeepDiveModelConfig(
     shouldUseOpus(auth)
       ? CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG
       : CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
-    "light",
+    "low",
     featureFlags
   );
 
@@ -419,7 +419,7 @@ function getDustTaskModelConfig(
     getEnabledModelConfig(
       auth,
       CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
-      "light",
+      "low",
       featureFlags
     ) ??
     getLargeModelFallback(auth, featureFlags)

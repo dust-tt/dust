@@ -16,12 +16,7 @@ const MAX_OUTPUT_TOKENS = 64_000;
 // Confirmed live through Fireworks on 2026-07-27 with the widest
 // `inputConfigSchema`: `none` returns no reasoning content at all, high and max
 // both reason, and the gateway rejects only `minimal`.
-//
-// The legacy router only ever ran this model at `high` (its one configurable
-// effort was `none`, which omitted `reasoning_effort` and let Fireworks fall
-// back to `high`). That coercion is a Dust product choice, so it lives in the
-// llms layer as the `forceHighReasoningEffort` config parser rather than as a
-// schema transform.
+
 const configSchema = fireworksConfigSchema.extend({
   reasoning: z
     .object({ effort: z.enum(["none", "high", "maximal"]) })

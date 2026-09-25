@@ -21,7 +21,10 @@ import type {
 } from "@app/types/assistant/analytics";
 import { isModelId } from "@app/types/assistant/models/models";
 import { isModelProviderId } from "@app/types/assistant/models/providers";
-import { isReasoningEffort } from "@app/types/assistant/models/reasoning";
+import {
+  isReasoningEffort,
+  normalizeLegacyReasoningEffort,
+} from "@app/types/assistant/models/reasoning";
 import { isModelResolutionMethod } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -273,7 +276,7 @@ function parseAnalyticsModel(
   const modelId = String(bucket.key[0]);
   const providerId = String(bucket.key[1]);
   const resolutionMethod = String(bucket.key[2]);
-  const reasoningEffort = String(bucket.key[3]);
+  const reasoningEffort = normalizeLegacyReasoningEffort(String(bucket.key[3]));
 
   if (
     !isModelId(modelId) ||

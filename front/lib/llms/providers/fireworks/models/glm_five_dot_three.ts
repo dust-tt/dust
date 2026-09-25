@@ -1,4 +1,3 @@
-import { mapReasoningEffortToLowHighMax } from "@app/lib/llms/stream/types/configuration";
 import { FIREWORKS_GLM_5P3_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustZAiGlm53Config<
@@ -20,10 +19,6 @@ export function WithDustZAiGlm53Config<
     // `ModelConfigurationType` off the endpoint without spreading its fields
     // onto the class statics.
     static readonly modelConfig = FIREWORKS_GLM_5P3_MODEL_CONFIG;
-
-    // GLM-5.3 has no `medium`: fold Dust's light/medium/high ladder onto its
-    // native low/high/max efforts.
-    static readonly configParsers = [mapReasoningEffortToLowHighMax];
   }
 
   return DustZAiGlm53;

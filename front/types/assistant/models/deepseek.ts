@@ -18,7 +18,6 @@ export const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
   supportedReasoningEfforts: {
     none: true,
     minimal: false,
-    light: false,
     low: false,
     medium: false,
     high: false,

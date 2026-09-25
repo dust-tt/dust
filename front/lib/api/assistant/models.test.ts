@@ -21,6 +21,7 @@ import {
   GPT_5_4_MINI_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
   GPT_5_6_LUNA_MODEL_CONFIG,
+  GPT_5_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { SIMULATED_FAILURE_MODEL_CONFIG } from "@app/types/assistant/models/simulated_failure_model";
@@ -227,15 +228,15 @@ describe("resolveModel", () => {
 
     const { resolvedModel } = await resolveModel(auth, {
       configuration: makeAgentConfiguration({
-        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: GPT_5_MODEL_CONFIG.providerId,
+        modelId: GPT_5_MODEL_CONFIG.modelId,
         reasoningEffort: "none",
       }),
       featureFlags: [],
     });
 
     expect(resolvedModel.reasoningEffort).toBe(
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort
+      GPT_5_MODEL_CONFIG.defaultReasoningEffort
     );
   });
 
@@ -265,8 +266,8 @@ describe("resolveModel", () => {
 
     const { resolvedModel } = await resolveModel(auth, {
       selection: {
-        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: GPT_5_MODEL_CONFIG.providerId,
+        modelId: GPT_5_MODEL_CONFIG.modelId,
         reasoningEffort: "none",
       },
       configuration: makeAgentConfiguration({
@@ -277,7 +278,7 @@ describe("resolveModel", () => {
     });
 
     expect(resolvedModel.reasoningEffort).toBe(
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort
+      GPT_5_MODEL_CONFIG.defaultReasoningEffort
     );
   });
 
@@ -461,7 +462,7 @@ describe("pickPreferredLargeModel", () => {
   });
 
   it("prefers Sonnet 4.6 as the cost-effective pick under a cost_efficient cap", () => {
-    // Under a cost_efficient tier cap, Sonnet 4.6 (at light reasoning) remains
+    // Under a cost_efficient tier cap, Sonnet 4.6 (at low reasoning) remains
     // the preferred selectable model over other cost-effective options.
     const selected = pickPreferredLargeModel([
       GPT_5_4_MINI_MODEL_CONFIG,

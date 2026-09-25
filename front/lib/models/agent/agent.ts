@@ -14,6 +14,7 @@ import type {
   AgentStatus,
   GlobalAgentStatus,
 } from "@app/types/assistant/agent";
+import { normalizeLegacyReasoningEffort } from "@app/types/assistant/models/reasoning";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -231,6 +232,13 @@ AgentConfigurationModel.init(
     reasoningEffort: {
       type: DataTypes.STRING,
       allowNull: true,
+      // Rows written before "light" was renamed "low" still hold "light" until the reasoning
+      // effort data migration rewrites them.
+      get() {
+        return normalizeLegacyReasoningEffort(
+          this.getDataValue("reasoningEffort")
+        );
+      },
     },
     responseFormat: {
       type: DataTypes.JSONB,

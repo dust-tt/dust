@@ -7680,7 +7680,7 @@ describe("getContextFromLatestNonWakeUpUserMessage", () => {
       requestedModel: {
         providerId: "anthropic",
         modelId: "claude-haiku-4-5-20251001",
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
     });
 
@@ -7691,7 +7691,7 @@ describe("getContextFromLatestNonWakeUpUserMessage", () => {
       clientSideMCPServerIds: ["ims_latest"],
       requestedProviderId: "anthropic",
       requestedModelId: "claude-haiku-4-5-20251001",
-      requestedReasoningEffort: "light",
+      requestedReasoningEffort: "low",
     });
   });
 

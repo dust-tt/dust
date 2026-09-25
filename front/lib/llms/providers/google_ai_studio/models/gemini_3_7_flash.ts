@@ -18,10 +18,7 @@ export function WithDustGoogleGeminiThreeDotSevenFlashConfig<
     // onto the class statics.
     static readonly modelConfig = GEMINI_3_7_FLASH_MODEL_CONFIG;
 
-    // Gemini accepts 0..2, but Google recommends 1 for Gemini 3. Unlike 3.6
-    // Flash there is no `none` to map: the model config does not expose a
-    // thinking-off effort and `minimal` is rejected, so `light` already lands
-    // on the lowest available thinking level (`low`).
+    // Gemini accepts 0..2, but Google recommends 1 for Gemini 3.
     static readonly configParsers = [forceTemperatureToOne];
   }
 

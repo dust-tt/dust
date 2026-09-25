@@ -1380,18 +1380,18 @@ describe("building_agents_and_skills tools", () => {
       const agent =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      // claude-sonnet-4-6 does not support reasoningEffort "none".
+      // claude-sonnet-4-6 does not support reasoningEffort "minimal".
       const result = await getTool(
         SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME
       ).handler(
         {
           agentId: agent.sId,
           modelId: "claude-sonnet-4-6",
-          reasoningEffort: "none",
+          reasoningEffort: "minimal",
         },
         makeExtra(authenticator)
       );
-      expectMcpError(result, 'does not support the "none" reasoning effort');
+      expectMcpError(result, 'does not support the "minimal" reasoning effort');
     });
 
     it("returns an MCPError for a model not available in the workspace", async () => {

@@ -55,7 +55,6 @@ function restrictModelConfigToAllowedTiers(
   const supportedReasoningEfforts: ReasoningEffortSupport = {
     none: false,
     minimal: false,
-    light: false,
     low: false,
     medium: false,
     high: false,
