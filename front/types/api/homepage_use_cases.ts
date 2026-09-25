@@ -17,6 +17,7 @@ export interface HomepageUseCaseType {
   skills: SkillReference[];
   tools: ToolReference[];
   tier: HomepageUseCaseTier;
+  isDismissible: boolean;
 }
 
 export interface GetHomepageUseCasesResponseBody {
