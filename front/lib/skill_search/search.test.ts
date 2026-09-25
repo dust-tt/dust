@@ -91,21 +91,42 @@ describe("custom skill search", () => {
       globalSpace,
       conversationsSpace,
     } = await createResourceTest({ role: "user" });
-    const query = buildSkillSearchQuery(auth, { searchTerm: "  report b  " });
+    const query = buildSkillSearchQuery(auth, {
+      searchTerm: "  report   b  ",
+    });
     expect(query).toEqual({
       bool: {
         must: [
           {
-            multi_match: {
-              query: "report b",
-              type: "bool_prefix",
-              operator: "and",
-              fields: [
-                "name.keyword",
-                "name.autocomplete",
-                "name.autocomplete._2gram",
-                "name.autocomplete_preserved",
-                "name.autocomplete_preserved._2gram",
+            bool: {
+              must: ["report", "b"].map((term) => ({
+                multi_match: {
+                  query: term,
+                  type: "bool_prefix",
+                  operator: "and",
+                  fields: [
+                    "name.autocomplete",
+                    "name.autocomplete._2gram",
+                    "name.autocomplete_preserved",
+                    "name.autocomplete_preserved._2gram",
+                  ],
+                },
+              })),
+              should: [
+                {
+                  multi_match: {
+                    query: "report b",
+                    type: "bool_prefix",
+                    operator: "and",
+                    fields: [
+                      "name.keyword",
+                      "name.autocomplete",
+                      "name.autocomplete._2gram",
+                      "name.autocomplete_preserved",
+                      "name.autocomplete_preserved._2gram",
+                    ],
+                  },
+                },
               ],
             },
           },
