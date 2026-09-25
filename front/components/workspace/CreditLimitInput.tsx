@@ -42,7 +42,7 @@ interface CreditLimitInputProps {
   readOnly: boolean;
   // Shown on hover when the field is read-only, to say why it is locked.
   readOnlyTooltip?: string;
-  isActive: boolean;
+  isActive?: boolean;
   validationMessage: string | null;
   onChange: (cleaned: string) => void;
   // Small text action rendered on the opposite end of the label row (e.g. to
@@ -55,7 +55,7 @@ export function CreditLimitInput({
   value,
   readOnly,
   readOnlyTooltip,
-  isActive,
+  isActive = false,
   validationMessage,
   onChange,
   action,
@@ -94,5 +94,46 @@ export function CreditLimitInput({
         input
       )}
     </Page.Vertical>
+  );
+}
+
+interface PersonalLimitInputProps {
+  value: string;
+  readOnly: boolean;
+  isActive?: boolean;
+  validationMessage: string | null;
+  // Receives "" when the limit is removed, unless a remove handler is given.
+  onChange: (cleaned: string) => void;
+  // For forms where an empty field doesn't already mean "remove": the action
+  // then stays available on an empty field and removal is left to the caller.
+  onRemove?: () => void;
+}
+
+// An empty value means no personal limit, so removing it just clears the field.
+export function PersonalLimitInput({
+  value,
+  readOnly,
+  isActive,
+  validationMessage,
+  onChange,
+  onRemove,
+}: PersonalLimitInputProps) {
+  let action: { label: string; onClick: () => void } | undefined;
+  if (onRemove) {
+    action = { label: "Remove personal limit", onClick: onRemove };
+  } else if (value !== "") {
+    action = { label: "Remove personal limit", onClick: () => onChange("") };
+  }
+
+  return (
+    <CreditLimitInput
+      label="Personal limit"
+      value={value}
+      readOnly={readOnly}
+      isActive={isActive}
+      validationMessage={validationMessage}
+      onChange={onChange}
+      action={action}
+    />
   );
 }

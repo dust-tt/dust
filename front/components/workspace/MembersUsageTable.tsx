@@ -1317,7 +1317,9 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showSpendLimit && hasSeat && m.seatType !== "free"
+            ...(showSpendLimit &&
+            m.seatType !== null &&
+            isPaidSeatType(m.seatType)
               ? [
                   {
                     kind: "item" as const,

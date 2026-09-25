@@ -79,6 +79,7 @@ import {
   useDefaultUserSpendLimit,
   useUsageSettings,
 } from "@app/lib/swr/usage_settings";
+import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { GroupGrantableSeatType } from "@app/types/groups";
 import {
@@ -92,6 +93,7 @@ import type {
 } from "@app/types/memberships";
 import {
   isMembershipSeatType,
+  isPaidSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
@@ -686,10 +688,6 @@ export function UsagePage() {
   });
   const [isBulkSpendLimitOpen, setIsBulkSpendLimitOpen] = useState(false);
 
-  const handleBatchEditSpendLimit = useCallback(() => {
-    setIsBulkSpendLimitOpen(true);
-  }, []);
-
   const { doBulkChangeSeatType } = useBulkChangeSeatType({
     workspaceId: owner.sId,
   });
@@ -698,17 +696,44 @@ export function UsagePage() {
   });
   const [isBulkChangeSeatOpen, setIsBulkChangeSeatOpen] = useState(false);
 
-  const handleBatchChangeSeat = useCallback(() => {
-    setIsBulkChangeSeatOpen(true);
-  }, []);
-
-  // Selected members visible on the current page, for the bulk seat modal's
+  // Selected members visible on the current page, for the bulk modals'
   // avatar row (with an "all across pages" selection this is the visible
-  // subset only).
-  const selectedVisibleMembers = useMemo(
-    () => membersUsage.filter((m) => selection.rowSelection[m.sId]),
-    [membersUsage, selection.rowSelection]
-  );
+  // subset only). Kept in pick order so the first avatars stay put as more
+  // members are added.
+  const selectedVisibleMembers = useMemo(() => {
+    const descriptor = selection.descriptor();
+    if (descriptor.mode === "all") {
+      return membersUsage.filter((m) => selection.rowSelection[m.sId]);
+    }
+    const membersById = new Map(membersUsage.map((m) => [m.sId, m]));
+    return descriptor.ids.flatMap((id) => membersById.get(id) ?? []);
+  }, [membersUsage, selection.descriptor, selection.rowSelection]);
+
+  // A single selected member gets the individual modals rather than the batch
+  // ones, since only that member is concerned.
+  const singleSelectedMember =
+    selection.selectedCount === 1 && selectedVisibleMembers.length === 1
+      ? selectedVisibleMembers[0]
+      : null;
+  const handleBatchChangeSeat = useCallback(() => {
+    if (singleSelectedMember) {
+      handleChangeSeatFromTable(singleSelectedMember);
+      return;
+    }
+    setIsBulkChangeSeatOpen(true);
+  }, [singleSelectedMember, handleChangeSeatFromTable]);
+
+  const handleBatchEditSpendLimit = useCallback(() => {
+    // Same rule as the row menu for opening the individual modal.
+    if (
+      singleSelectedMember?.seatType &&
+      isPaidSeatType(singleSelectedMember.seatType)
+    ) {
+      handleEditSpendLimitFromTable(singleSelectedMember);
+      return;
+    }
+    setIsBulkSpendLimitOpen(true);
+  }, [singleSelectedMember, handleEditSpendLimitFromTable]);
 
   // Translate the cross-page selection into the descriptor the bulk member
   // endpoints expect: explicit ids, or the current filter minus exclusions.
@@ -783,9 +808,7 @@ export function UsagePage() {
   }, [selection, pageItemIds]);
 
   const handleBulkSpendLimitValidate = useCallback(
-    async (
-      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number }
-    ): Promise<boolean> => {
+    async (limit: UserSpendLimit): Promise<boolean> => {
       const pendingMemberIds = getBulkPendingMemberIds();
       setTotalAllowedUsagePendingMemberIds((prev) => {
         const next = new Set(prev);
@@ -1105,6 +1128,7 @@ export function UsagePage() {
   const selectionBanner = (
     <MembersSelectionBanner
       selectedCount={selection.selectedCount}
+      selectedMembers={selectedVisibleMembers}
       totalCount={totalMembersUsage}
       hasMorePagesToSelect={selection.hasMorePagesToSelect}
       onSelectAllAcrossPages={selection.selectAllAcrossPages}
@@ -1468,6 +1492,7 @@ export function UsagePage() {
           isOpen={isBulkSpendLimitOpen}
           onClose={() => setIsBulkSpendLimitOpen(false)}
           memberCount={selection.selectedCount}
+          selectedMembers={selectedVisibleMembers}
           seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
           onValidate={handleBulkSpendLimitValidate}
         />
