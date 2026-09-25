@@ -14,6 +14,7 @@ import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   BatchSuggestionState,
+  BatchSuggestionType,
   LightBatchSuggestionType,
 } from "@app/types/suggestions/batch_suggestion";
 import groupBy from "lodash/groupBy";
@@ -261,6 +262,20 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
       sourceConversationId: this.sourceConversationId,
       agentSuggestionIds: this.agentSuggestions.map((s) => s.sId),
       skillSuggestionIds: this.skillSuggestions.map((s) => s.sId),
+    };
+  }
+
+  toJSONWithSuggestions(): BatchSuggestionType {
+    return {
+      id: this.sId,
+      createdAt: this.createdAt.getTime(),
+      updatedAt: this.updatedAt.getTime(),
+      title: this.title,
+      analysis: this.analysis,
+      state: this.state,
+      sourceConversationId: this.sourceConversationId,
+      agentSuggestions: this.agentSuggestions.map((s) => s.toJSON()),
+      skillSuggestions: this.skillSuggestions.map((s) => s.toJSON()),
     };
   }
 }
