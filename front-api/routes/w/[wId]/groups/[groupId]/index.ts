@@ -4,6 +4,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
+import { getGroupAllowedActions } from "@app/lib/api/groups/management_actions";
 import {
   getGroupManagers,
   replaceGroupManagers,
@@ -88,9 +89,14 @@ app.get(
     }
 
     const members = await group.getActiveMembers(auth);
+    const allowedActions = getGroupAllowedActions(
+      auth,
+      group,
+      await auth.hasFeatureFlag("group_management")
+    );
 
     return ctx.json({
-      group: { ...group.toJSON(), memberCount: members.length },
+      group: { ...group.toJSON(), memberCount: members.length, allowedActions },
       members: members.map((member) => member.toJSON()),
       managers: await getGroupManagers(auth, group),
     });
@@ -156,6 +162,8 @@ app.patch(
     }
 
     const group = groupRes.value;
+    const isGroupManagementEnabled =
+      await auth.hasFeatureFlag("group_management");
 
     if (managerIds !== undefined) {
       // Assignment changes use a separate PATCH so invalid membership/name changes cannot leave
@@ -176,7 +184,7 @@ app.patch(
           api_error: { type: "group_not_found", message: "Group not found." },
         });
       }
-      if (!(await auth.hasFeatureFlag("group_management"))) {
+      if (!isGroupManagementEnabled) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
@@ -224,7 +232,15 @@ app.patch(
 
       const members = await group.getActiveMembers(auth);
       return ctx.json({
-        group: { ...group.toJSON(), memberCount: members.length },
+        group: {
+          ...group.toJSON(),
+          memberCount: members.length,
+          allowedActions: getGroupAllowedActions(
+            auth,
+            group,
+            isGroupManagementEnabled
+          ),
+        },
         members: members.map((member) => member.toJSON()),
         managers: assignment.managers,
       });
@@ -290,7 +306,15 @@ app.patch(
     const members = await group.getActiveMembers(auth);
 
     return ctx.json({
-      group: { ...group.toJSON(), memberCount: members.length },
+      group: {
+        ...group.toJSON(),
+        memberCount: members.length,
+        allowedActions: getGroupAllowedActions(
+          auth,
+          group,
+          isGroupManagementEnabled
+        ),
+      },
       members: members.map((member) => member.toJSON()),
       managers: await getGroupManagers(auth, group),
     });

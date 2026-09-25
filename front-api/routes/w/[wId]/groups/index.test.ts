@@ -1,4 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -67,5 +69,38 @@ describe("GET /api/w/:wId/groups", () => {
         memberIds: [alice.sId],
       }),
     ]);
+  });
+
+  it("advertises delegated actions only while group management is enabled", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const group = await GroupFactory.regularManual(workspace, "Support");
+    const grant = await GroupPermissionResource.grantToUser(adminAuth, {
+      user: user.toJSON(),
+      grantType: "group_manager",
+      resourceType: "group",
+      resourceId: group.id,
+    });
+    expect(grant.isOk()).toBe(true);
+
+    const readActions = async () => {
+      const response = await getGroupsRequest(workspace.sId, {
+        kind: "regular_manual",
+      });
+      expect(response.status).toBe(200);
+      return (await response.json()).groups[0].allowedActions;
+    };
+    expect((await readActions()).canEditMembers).toBe(false);
+
+    await FeatureFlagFactory.basic(auth, "group_management");
+    expect(await readActions()).toEqual({
+      canEditMembers: true,
+      canEditDetails: false,
+      canReadUsage: true,
+      canSetUsageLimits: true,
+      canAssignManagers: false,
+    });
   });
 });

@@ -4,6 +4,7 @@ import {
   devFlagSubscribe,
 } from "@app/components/dev/devFlagOverrideStore";
 import { DEV_MODE_ACTIVE } from "@app/components/dev/devModeConstants";
+import type { GroupManagementAccess } from "@app/types/api/auth_context";
 import type { WorkspacePermissions } from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
@@ -32,6 +33,7 @@ export interface AuthContextValue {
   vizUrl: string;
   providersHealth: ProvidersHealth | null;
   workspacePermissions: WorkspacePermissions;
+  groupManagement?: GroupManagementAccess;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
