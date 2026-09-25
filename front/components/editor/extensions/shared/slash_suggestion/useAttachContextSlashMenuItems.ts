@@ -1,3 +1,4 @@
+import { toDataSourceViewContentNodes } from "@app/components/data_source_view/browser/knowledgeBrowserSearch";
 import type {
   ContextFileSlashSearchItem,
   ContextFileSlashSearchSelection,
@@ -11,7 +12,6 @@ import { getLocationForDataSourceViewContentNodeWithSpace } from "@app/lib/conte
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
-import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
 
@@ -131,32 +131,19 @@ export function useAttachContextSlashMenuItems({
 
   const knowledgeItems = useMemo(
     () =>
-      removeNulls(
-        searchResults.map((node) => {
-          const { dataSourceViews, ...rest } = node;
-          const dataSourceView = dataSourceViews.find(
-            (view) => spacesMap[view.spaceId]
-          );
-
-          if (!dataSourceView) {
-            return null;
-          }
-
-          const knowledgeNode = { ...rest, dataSourceView };
-
-          return {
-            description: getLocationForDataSourceViewContentNodeWithSpace(
-              knowledgeNode,
-              spacesMap
-            ),
-            id: `knowledge-${node.internalId}-${dataSourceView.sId}`,
+      toDataSourceViewContentNodes(searchResults, Object.keys(spacesMap)).map(
+        (knowledgeNode) => ({
+          description: getLocationForDataSourceViewContentNodeWithSpace(
+            knowledgeNode,
+            spacesMap
+          ),
+          id: `knowledge-${knowledgeNode.internalId}-${knowledgeNode.dataSourceView.sId}`,
+          kind: "knowledge" as const,
+          label: knowledgeNode.title,
+          selection: {
             kind: "knowledge" as const,
-            label: node.title,
-            selection: {
-              kind: "knowledge" as const,
-              node: knowledgeNode,
-            },
-          };
+            node: knowledgeNode,
+          },
         })
       ),
     [searchResults, spacesMap]

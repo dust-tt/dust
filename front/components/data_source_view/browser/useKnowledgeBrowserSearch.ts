@@ -97,7 +97,7 @@ export function useKnowledgeBrowserSearch({
   const results = useMemo(
     () =>
       canSearch && scope
-        ? toDataSourceViewContentNodes(searchResultNodes, scope.spaceId)
+        ? toDataSourceViewContentNodes(searchResultNodes, [scope.spaceId])
         : [],
     [canSearch, scope, searchResultNodes]
   );
