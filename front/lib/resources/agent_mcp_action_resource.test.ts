@@ -720,6 +720,60 @@ describe("Output items with GCS storage", () => {
     expect(gcsStore.size).toBe(1);
   });
 
+  it("requires an explicit bypass for Sequelize updates to output items", async () => {
+    const { outputItemRows } = await createActionWithOutputItems([
+      { type: "text", text: "append-only" },
+    ]);
+    const item = outputItemRows[0];
+    const where = { id: item.id, workspaceId: item.workspaceId };
+
+    expect(() =>
+      AgentMCPActionOutputItemModel.update({ citations: null }, { where })
+    ).toThrow("dangerouslyByPassAppendOnlyRule");
+    expect(() => AgentMCPActionOutputItemModel.upsert(item.get())).toThrow(
+      "dangerouslyByPassAppendOnlyRule"
+    );
+    expect(() =>
+      AgentMCPActionOutputItemModel.bulkCreate([item.get()], {
+        updateOnDuplicate: ["content"],
+      })
+    ).toThrow("dangerouslyByPassAppendOnlyRule");
+    expect(() =>
+      AgentMCPActionOutputItemModel.increment("id", { where })
+    ).toThrow("dangerouslyByPassAppendOnlyRule");
+    await expect(
+      AgentMCPActionOutputItemModel.decrement("id", { where })
+    ).rejects.toThrow("dangerouslyByPassAppendOnlyRule");
+    expect(() => AgentMCPActionOutputItemModel.restore({ where })).toThrow(
+      "dangerouslyByPassAppendOnlyRule"
+    );
+    await expect(item.update({ citations: null })).rejects.toThrow(
+      "dangerouslyByPassAppendOnlyRule"
+    );
+    expect(() => item.save()).toThrow("dangerouslyByPassAppendOnlyRule");
+    await expect(item.increment("id")).rejects.toThrow(
+      "dangerouslyByPassAppendOnlyRule"
+    );
+    await expect(item.decrement("id")).rejects.toThrow(
+      "dangerouslyByPassAppendOnlyRule"
+    );
+    expect(() => item.restore()).toThrow("dangerouslyByPassAppendOnlyRule");
+
+    const [affectedCount] = await AgentMCPActionOutputItemModel.update(
+      { citations: {} },
+      { where, dangerouslyByPassAppendOnlyRule: true }
+    );
+    expect(affectedCount).toBe(1);
+
+    const bypassOptions = {
+      silent: true,
+      dangerouslyByPassAppendOnlyRule: true,
+    };
+    await expect(item.update({ citations: {} }, bypassOptions)).resolves.toBe(
+      item
+    );
+  });
+
   it("uses distinct GCS objects across multiple writes for the same action", async () => {
     const action = await createAction();
 
@@ -743,7 +797,7 @@ describe("Output items with GCS storage", () => {
     expect(gcsStore.size).toBe(2);
   });
 
-  it("keeps DB rows and cleans up GCS when a batch GCS write fails", async () => {
+  it("creates no rows and cleans up GCS when a batch GCS write fails", async () => {
     const action = await createAction();
     gcsSaveFailureMarker = "fail-this-write";
 
@@ -756,12 +810,7 @@ describe("Output items with GCS storage", () => {
     const outputItemRows = await AgentMCPActionOutputItemModel.findAll({
       where: { workspaceId: workspace.id, agentMCPActionId: action.id },
     });
-    // Rows are created before GCS (content readable via DB / Redis stage); GCS batch
-    // failure rolls back the objects.
-    expect(outputItemRows).toHaveLength(2);
-    expect(outputItemRows.every((row) => row.contentGcsPath === null)).toBe(
-      true
-    );
+    expect(outputItemRows).toHaveLength(0);
     expect(gcsStore.size).toBe(0);
   });
 
@@ -796,7 +845,6 @@ describe("Output items with GCS storage", () => {
       where: { workspaceId: workspace.id, agentMCPActionId: action.id },
     });
     expect(outputItemRows).toHaveLength(0);
-    // GCS runs only after a successful insert.
     expect(gcsStore.size).toBe(0);
   });
 
@@ -897,7 +945,8 @@ describe("Output items with GCS storage", () => {
     assert(legacyContent);
     gcsStore.delete(outputItemRows[1].contentGcsPath!);
     gcsStore.set(legacyPath, legacyContent);
-    await outputItemRows[1].update({ contentGcsPath: legacyPath });
+    outputItemRows[1].set("contentGcsPath", legacyPath);
+    await outputItemRows[1].save({ dangerouslyByPassAppendOnlyRule: true });
 
     await AgentMCPActionResource.destroyOutputItemsByActionIds(auth, [
       action.id,

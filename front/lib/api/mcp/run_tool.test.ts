@@ -97,6 +97,29 @@ describe("runToolWithStreaming (sandbox function run context)", () => {
     expect(JSON.parse(outputWrite?.content.toString() ?? "")).toEqual(content);
   });
 
+  it("does not mark the action succeeded when durable output persistence fails", async () => {
+    const { auth, action, runContext } = await setupSandboxFunctionRun();
+    mockToolCallResult({
+      isError: false,
+      content: [{ type: "text", text: "42" }],
+    });
+    fileStorageMock.setFileSaveFails((filePath) =>
+      filePath.endsWith(`mcp_output_items/${action.sId}/output.json`)
+    );
+
+    await expect(
+      collectEvents(runToolWithStreaming(auth, { toolContext: { runContext } }))
+    ).rejects.toThrow();
+
+    const refetched =
+      await SandboxFunctionMCPActionResource.fetchByModelIdWithAuth(
+        auth,
+        action.id
+      );
+    expect(refetched?.status).not.toBe("succeeded");
+    expect(refetched?.outputGcsPath).toBeNull();
+  });
+
   it("should mark the action errored and persist the error content on a tool error", async () => {
     const { auth, action, runContext } = await setupSandboxFunctionRun();
 

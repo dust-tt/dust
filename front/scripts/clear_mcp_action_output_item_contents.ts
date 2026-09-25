@@ -59,6 +59,7 @@ makeScript(
               contentGcsPath: { [Op.startsWith]: prefix },
             },
             silent: true,
+            dangerouslyByPassAppendOnlyRule: true,
           }
         );
         updated += affectedCount;
