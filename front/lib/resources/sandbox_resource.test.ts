@@ -1518,11 +1518,15 @@ describe("SandboxResource.ensureActive", () => {
     });
 
     it("recreates a sleeping sandbox on the current image instead of waking it", async () => {
-      const sleeping = await SandboxFactory.create(authenticator, conversation, {
-        status: "sleeping",
-        baseImage: "test-image",
-        version: "0.0.0-old",
-      });
+      const sleeping = await SandboxFactory.create(
+        authenticator,
+        conversation,
+        {
+          status: "sleeping",
+          baseImage: "test-image",
+          version: "0.0.0-old",
+        }
+      );
 
       const result = await ConversationSandboxAdapter.ensureSandboxActive(
         authenticator,
