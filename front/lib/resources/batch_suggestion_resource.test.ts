@@ -180,9 +180,7 @@ describe("BatchSuggestionResource", () => {
     const { batch, agentSuggestion, skillSuggestion } =
       await createBatchWithMembers(authenticator);
 
-    await BatchSuggestionResource.outdateBatchesOf(authenticator, [
-      agentSuggestion,
-    ]);
+    await BatchSuggestionResource.outdateBatchesOf(authenticator, [batch.id]);
 
     const fetched = await BatchSuggestionResource.fetchById(
       authenticator,

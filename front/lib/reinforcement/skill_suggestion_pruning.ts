@@ -7,6 +7,7 @@ import {
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillAvailabilitySuggestionData,
@@ -383,8 +384,7 @@ export async function outdateSkillSuggestions(
     suggestions.filter((s) => s.batchId === null),
     "outdated"
   );
-  await BatchSuggestionResource.outdateBatchesOf(
-    auth,
-    suggestions.filter((s) => s.batchId !== null)
-  );
+  await BatchSuggestionResource.outdateBatchesOf(auth, [
+    ...new Set(removeNulls(suggestions.map((s) => s.batchId))),
+  ]);
 }

@@ -199,12 +199,9 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
    */
   static async outdateBatchesOf(
     auth: Authenticator,
-    members: { batchId: ModelId | null }[],
+    batchModelIds: ModelId[],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    const batchModelIds = [
-      ...new Set(removeNulls(members.map((m) => m.batchId))),
-    ];
     if (batchModelIds.length === 0) {
       return;
     }

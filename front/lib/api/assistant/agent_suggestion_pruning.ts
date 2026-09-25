@@ -9,6 +9,7 @@ import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_res
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
@@ -401,10 +402,9 @@ export async function outdateAgentSuggestions(
     suggestions.filter((s) => s.batchId === null),
     "outdated"
   );
-  await BatchSuggestionResource.outdateBatchesOf(
-    auth,
-    suggestions.filter((s) => s.batchId !== null)
-  );
+  await BatchSuggestionResource.outdateBatchesOf(auth, [
+    ...new Set(removeNulls(suggestions.map((s) => s.batchId))),
+  ]);
 }
 
 /**
