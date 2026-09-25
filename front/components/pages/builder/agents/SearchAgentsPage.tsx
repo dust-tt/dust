@@ -169,7 +169,16 @@ function AgentsList({
           onSelect={onSelect}
           onRefresh={mutate}
           pagination={tablePagination}
-          setPagination={setTablePagination}
+          // The table reports its pagination on every render; storing an unchanged value would
+          // re-render forever.
+          setPagination={(next) => {
+            if (
+              next.pageIndex !== tablePagination.pageIndex ||
+              next.pageSize !== tablePagination.pageSize
+            ) {
+              setTablePagination(next);
+            }
+          }}
           total={total}
           sorting={
             sortBy === "relevance"
