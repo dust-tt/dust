@@ -28,15 +28,17 @@ export function newManagersOutsideGroup({
   );
 }
 
+interface GroupManagerAppointmentWarningProps {
+  group: GroupType;
+  managers: SearchMemberType[];
+  governancePermissions: GovernancePermissionsByKey;
+}
+
 export function GroupManagerAppointmentWarning({
   group,
   managers,
   governancePermissions,
-}: {
-  group: GroupType;
-  managers: SearchMemberType[];
-  governancePermissions: GovernancePermissionsByKey;
-}) {
+}: GroupManagerAppointmentWarningProps) {
   const names = managers.map((manager) => manager.fullName).join(", ");
   const grants: string[] = [];
   if (group.grantedRole === "manager") {
@@ -60,9 +62,9 @@ export function GroupManagerAppointmentWarning({
   return (
     <div className="flex flex-col gap-3">
       <p>
-        {names} {managers.length === 1 ? "is" : "are"} not currently a member of{" "}
-        {group.name}. As group managers, they can add themselves or others. That
-        gives those people access to resources shared with this group.
+        {names} can manage {group.name} even without being a member. They can
+        add themselves or others, giving those people access to resources shared
+        with this group.
       </p>
       {grants.length > 0 ? (
         <div>
