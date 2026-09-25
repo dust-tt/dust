@@ -219,7 +219,7 @@ export async function indexAgentSearchActivity({
     : null;
 
   const document = agent.toSearchDocument(auth, {
-    activeUsersCount: null,
+    activeUsersCount: 0,
     editors: editors ?? [],
     favoriteCount,
     feedbackNegativeCount: feedback.negative,
