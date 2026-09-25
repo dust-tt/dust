@@ -118,9 +118,7 @@ export function useRevalidateBatchTargets({
         ),
       ]);
 
-      void mutate(
-        (key) => isString(key) && targetPaths.has(key.split("?")[0])
-      );
+      void mutate((key) => isString(key) && targetPaths.has(key.split("?")[0]));
     },
     [mutate, workspaceId]
   );
