@@ -5,7 +5,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { GetTableResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
@@ -115,6 +114,7 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetTableResponseType> => {
     const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
     const { dsId, tId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
@@ -171,17 +171,21 @@ app.get(
           },
         });
       }
-      return apiError(
-        ctx,
+      logger.error(
         {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to get table.",
-          },
+          dataSourceId: dataSource.sId,
+          workspaceId: owner.id,
+          error: tableRes.error,
         },
-        normalizeError(tableRes.error)
+        "Failed to get table."
       );
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to get table.",
+        },
+      });
     }
 
     const { table } = tableRes.value;

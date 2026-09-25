@@ -23,11 +23,6 @@ import { routePath } from "hono/route";
 export type HandlerResult<T> = Promise<TypedResponse<T | APIErrorResponse>>;
 
 /**
- * @cc [owner:sfriquet,label:api;logging] api-error-log-workspace-id
- * When `ctx` carries an `auth` with a workspace, the "API Error" log MUST include that workspace's
- * `sId` as `workspaceId`.
- */
-/**
  * Returns a JSON error response from an `APIErrorWithStatusCode` and emits
  * the same logging / tracing / statsd side-effects as `apiError` in
  * `front/logger/withlogging.ts`. Use this for every error path in a Hono

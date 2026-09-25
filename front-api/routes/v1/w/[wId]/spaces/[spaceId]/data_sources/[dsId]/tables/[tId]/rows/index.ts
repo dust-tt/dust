@@ -3,7 +3,6 @@ import { resolveLegacyDataSourceSpaceId } from "@app/lib/api/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isSlugified } from "@app/types/shared/utils/string_utils";
 import type {
   CellValueType,
@@ -185,6 +184,7 @@ app.get(
   validate("query", QuerySchema),
   async (ctx): HandlerResult<ListTableRowsResponseType> => {
     const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
     const { dsId, tId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
@@ -237,17 +237,23 @@ app.get(
     });
 
     if (listRes.isErr()) {
-      return apiError(
-        ctx,
+      logger.error(
         {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to list database rows.",
-          },
+          dataSourceId: dataSource.sId,
+          workspaceId: owner.id,
+          tableId: tId,
+          error: listRes.error,
         },
-        normalizeError(listRes.error)
+        "Failed to list database rows."
       );
+
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to list database rows.",
+        },
+      });
     }
 
     const { rows: rowsList, total } = listRes.value;
@@ -261,6 +267,7 @@ app.post(
   validate("json", UpsertTableRowsRequestSchema),
   async (ctx): HandlerResult<UpsertTableRowsResponseType> => {
     const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
     const { dsId, tId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
@@ -360,17 +367,23 @@ app.post(
         });
       }
 
-      return apiError(
-        ctx,
+      logger.error(
         {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to upsert database rows.",
-          },
+          dataSourceId: dataSource.sId,
+          workspaceId: owner.id,
+          tableId: tId,
+          error: upsertRes.error,
         },
-        normalizeError(upsertRes.error)
+        "Failed to upsert database rows."
       );
+
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to upsert database rows.",
+        },
+      });
     }
 
     // Upsert is succesful, retrieve the updated table.
@@ -380,17 +393,21 @@ app.post(
       tableId: tId,
     });
     if (tableRes.isErr()) {
-      return apiError(
-        ctx,
+      logger.error(
         {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to get table.",
-          },
+          dataSourceId: dataSource.sId,
+          workspaceId: owner.id,
+          error: tableRes.error,
         },
-        normalizeError(tableRes.error)
+        "Failed to retrieve updated table."
       );
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to get table.",
+        },
+      });
     }
 
     const { table } = tableRes.value;

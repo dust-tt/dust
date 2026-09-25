@@ -1,7 +1,6 @@
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { checkRunningUpsertWorkflows } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { CheckUpsertQueueResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
@@ -110,17 +109,22 @@ app.get(
 
       return ctx.json({ running_count: runningCount });
     } catch (error) {
-      return apiError(
-        ctx,
+      logger.error(
         {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to check upsert queue.",
-          },
+          workspaceId: owner.sId,
+          dataSourceId: dataSource.sId,
+          error,
         },
-        normalizeError(error)
+        "[CheckUpsertQueue] Failed to check upsert queue"
       );
+
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to check upsert queue.",
+        },
+      });
     }
   }
 );
