@@ -392,11 +392,13 @@ export async function recordSingletonAgentSuggestions(
   {
     data,
     analysis,
+    title,
     conversation,
     batch,
   }: {
     data: SingletonAgentSuggestionData[];
     analysis: string | null;
+    title: string | null;
     conversation: ConversationType;
     batch: BatchSuggestionResource | null;
   }
@@ -413,6 +415,7 @@ export async function recordSingletonAgentSuggestions(
       data.map((d) => ({
         ...d,
         analysis,
+        title,
         state: "pending" as const,
         conversationId: conversation.id,
         source: "conversational" as const,
@@ -442,11 +445,13 @@ export async function recordSingletonAgentSuggestion(
   {
     data,
     analysis,
+    title,
     conversation,
     batch,
   }: {
     data: SingletonAgentSuggestionData;
     analysis: string | null;
+    title: string | null;
     conversation: ConversationType;
     batch: BatchSuggestionResource | null;
   }
@@ -454,6 +459,7 @@ export async function recordSingletonAgentSuggestion(
   const [suggestion] = await recordSingletonAgentSuggestions(auth, agent, {
     data: [data],
     analysis,
+    title,
     conversation,
     batch,
   });
@@ -474,11 +480,13 @@ export async function recordAgentCreationSuggestion(
   {
     create,
     analysis,
+    title,
     conversation,
     batch,
   }: {
     create: CreateSuggestionType;
     analysis: string | null;
+    title: string | null;
     conversation: ConversationType;
     batch: BatchSuggestionResource | null;
   }
@@ -505,6 +513,7 @@ export async function recordAgentCreationSuggestion(
       kind: "create",
       suggestion: create,
       analysis,
+      title,
       state: "pending",
       conversationId: conversation.id,
       source: "conversational",

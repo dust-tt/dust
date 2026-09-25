@@ -27,7 +27,7 @@ import assert from "assert";
  */
 export async function suggestAgentDeletion(
   auth: Authenticator,
-  { agentId, analysis }: SuggestAgentDeletionArgs,
+  { agentId, analysis, title }: SuggestAgentDeletionArgs,
   runContext: AgentLoopRunContext
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   if (!auth.user()) {
@@ -55,6 +55,7 @@ export async function suggestAgentDeletion(
     await recordSingletonAgentSuggestion(auth, agent, {
       data: { kind: "delete", suggestion: validation.value },
       analysis: analysis ?? null,
+      title: title ?? null,
       conversation: runContext.conversation,
       batch: null,
     })

@@ -28,7 +28,13 @@ import assert from "assert";
  */
 export async function suggestAgentModelChange(
   auth: Authenticator,
-  { agentId, modelId, reasoningEffort, analysis }: SuggestAgentModelChangeArgs,
+  {
+    agentId,
+    modelId,
+    reasoningEffort,
+    analysis,
+    title,
+  }: SuggestAgentModelChangeArgs,
   runContext: AgentLoopRunContext
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   if (!auth.user()) {
@@ -59,6 +65,7 @@ export async function suggestAgentModelChange(
     await recordSingletonAgentSuggestion(auth, agent, {
       data: { kind: "model", suggestion: validation.value },
       analysis: analysis ?? null,
+      title: title ?? null,
       conversation: runContext.conversation,
       batch: null,
     })

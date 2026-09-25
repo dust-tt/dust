@@ -21,7 +21,7 @@ import assert from "assert";
 
 export async function suggestSkillDeletion(
   auth: Authenticator,
-  { skillId, analysis }: SuggestSkillDeletionArgs,
+  { skillId, analysis, title }: SuggestSkillDeletionArgs,
   runContext: AgentLoopRunContext
 ): Promise<Result<SkillSuggestionResource, MCPError>> {
   if (!auth.user()) {
@@ -52,7 +52,7 @@ export async function suggestSkillDeletion(
     await recordSkillSuggestion(auth, skill, {
       data: { kind: "delete", suggestion: validation.value },
       analysis: analysis ?? null,
-      title: null,
+      title: title ?? null,
       conversation: runContext.conversation,
       batch: null,
     })

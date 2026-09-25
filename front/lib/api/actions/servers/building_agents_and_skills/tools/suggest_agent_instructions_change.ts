@@ -23,7 +23,12 @@ export interface SuggestAgentInstructionsChangeResult {
 
 export async function suggestAgentInstructionsChange(
   auth: Authenticator,
-  { agentId, instructionEdit, analysis }: SuggestAgentInstructionsChangeArgs,
+  {
+    agentId,
+    instructionEdit,
+    analysis,
+    title,
+  }: SuggestAgentInstructionsChangeArgs,
   runContext: AgentLoopRunContext
 ): Promise<Result<SuggestAgentInstructionsChangeResult, MCPError>> {
   if (!auth.user()) {
@@ -43,7 +48,7 @@ export async function suggestAgentInstructionsChange(
   }
 
   const validation = await validateAgentInstructionsChange(auth, agent, [
-    { ...instructionEdit, analysis },
+    { ...instructionEdit, analysis, title },
   ]);
   if (validation.isErr()) {
     return validation;

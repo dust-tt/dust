@@ -19,7 +19,13 @@ import assert from "assert";
 
 export async function suggestAgentCreation(
   auth: Authenticator,
-  { name, description, instructions, analysis }: SuggestAgentCreationArgs,
+  {
+    name,
+    description,
+    instructions,
+    analysis,
+    title,
+  }: SuggestAgentCreationArgs,
   runContext: AgentLoopRunContext
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   if (!auth.user()) {
@@ -38,6 +44,7 @@ export async function suggestAgentCreation(
   return recordAgentCreationSuggestion(auth, {
     create: { name: validation.value.name, description, instructions },
     analysis: analysis ?? null,
+    title: title ?? null,
     conversation: runContext.conversation,
     batch: null,
   });

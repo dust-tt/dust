@@ -2,7 +2,10 @@ import type { AgentActionCardSuggestionType } from "@app/components/markdown/sug
 import { getAgentSuggestionLabels } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { AgentSuggestionDetails } from "@app/components/markdown/suggestion/AgentSuggestionDetails";
 import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
-import { PendingSkillSuggestionDetails } from "@app/components/skill_builder/SkillSuggestionCard";
+import {
+  getSkillSuggestionTitle,
+  PendingSkillSuggestionDetails,
+} from "@app/components/skill_builder/SkillSuggestionCard";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -66,7 +69,7 @@ function renderCardContent(target: ConversationalSuggestionTarget) {
     }
     case "skill":
       return {
-        title: target.suggestion.title ?? "Suggestion",
+        title: getSkillSuggestionTitle(target.suggestion),
         analysis: target.suggestion.analysis,
         visual: <SkillAvatarVisual skill={target.skill} />,
         collapsibleContent: (

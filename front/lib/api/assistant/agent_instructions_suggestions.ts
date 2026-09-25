@@ -17,6 +17,7 @@ import { JSDOM } from "jsdom";
 export type InstructionSuggestionEditInput =
   InstructionsSuggestionSchemaType & {
     analysis?: string;
+    title?: string;
   };
 
 export interface CreatedInstructionSuggestion {
@@ -123,10 +124,11 @@ export async function createAgentInstructionSuggestions(
   const suggestions = await AgentSuggestionResource.createSuggestionsForAgent(
     auth,
     agentConfiguration,
-    edits.map(({ analysis, ...suggestionData }) => ({
+    edits.map(({ analysis, title, ...suggestionData }) => ({
       kind: "instructions" as const,
       suggestion: suggestionData,
       analysis: analysis ?? null,
+      title: title ?? null,
       state: "pending" as const,
       source,
       conversationId: conversation?.id ?? null,

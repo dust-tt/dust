@@ -1424,7 +1424,7 @@ describe("building_agents_and_skills tools", () => {
   describe(SUGGEST_AGENT_NAME_TOOL_NAME, () => {
     const suggestName = async (
       auth: Authenticator,
-      args: { agentId: string; name: string; analysis?: string }
+      args: { agentId: string; name: string; analysis?: string; title?: string }
     ) =>
       getTool(SUGGEST_AGENT_NAME_TOOL_NAME).handler(
         args,
@@ -1442,6 +1442,7 @@ describe("building_agents_and_skills tools", () => {
         agentId: agent.sId,
         name: "  IncidentHelper  ",
         analysis: "The agent only handles incidents.",
+        title: "Focus on incidents",
       });
 
       expect(result.isOk()).toBe(true);
@@ -1467,6 +1468,7 @@ describe("building_agents_and_skills tools", () => {
         kind: "name",
         suggestion: { name: "IncidentHelper" },
         analysis: "The agent only handles incidents.",
+        title: "Focus on incidents",
       });
 
       // The agent itself is untouched.

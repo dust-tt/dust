@@ -28,6 +28,39 @@ import type { ComponentType, KeyboardEvent } from "react";
 
 const MAX_VISIBLE_CONVERSATIONS = 3;
 
+function getSkillSuggestionKindTitle(suggestion: SkillSuggestionType): string {
+  switch (suggestion.kind) {
+    case "edit":
+      return "Update skill instructions";
+    case "editors":
+      return "Change skill editors";
+    case "user_facing_description":
+      return "Change skill description";
+    case "create":
+      return `Create "${suggestion.suggestion.name}" skill`;
+    case "name":
+      return `Rename skill to "${suggestion.suggestion.name}"`;
+    case "delete":
+      return "Delete skill";
+    case "availability":
+      return "Change skill availability";
+    default:
+      assertNeverAndIgnore(suggestion);
+      return "Skill suggestion";
+  }
+}
+
+/**
+ * @cc [owner:avervaet,label:product] written-title-first
+ * The returned title MUST be the suggestion's own `title` when set, and a non-empty label derived
+ * from its `kind` otherwise.
+ */
+export function getSkillSuggestionTitle(
+  suggestion: SkillSuggestionType
+): string {
+  return suggestion.title ?? getSkillSuggestionKindTitle(suggestion);
+}
+
 export function getSuggestionStateChip(state: SkillSuggestionState): {
   color: "success" | "warning" | "primary";
   icon: ComponentType;
@@ -351,7 +384,7 @@ export function SkillSuggestionCard({
     return (
       <ReviewedSuggestionCard
         state={suggestion.state}
-        title={suggestion.title ?? "Suggestion"}
+        title={getSkillSuggestionTitle(suggestion)}
         updatedAt={suggestion.updatedAt}
         updatedBy={suggestion.updatedBy}
       />
@@ -379,7 +412,7 @@ export function SkillSuggestionCard({
       <Card variant="primary" size="md" className="flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <span className="heading-base text-foreground">
-            {suggestion.title ?? "Suggestion"}
+            {getSkillSuggestionTitle(suggestion)}
           </span>
           {hasActions && (
             <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>

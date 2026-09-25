@@ -461,6 +461,7 @@ async function recordPlannedChange(
       const res = await recordAgentCreationSuggestion(auth, {
         create: change.create,
         analysis: null,
+        title: null,
         conversation,
         batch,
       });
@@ -471,6 +472,7 @@ async function recordPlannedChange(
       await recordSingletonAgentSuggestions(auth, change.agent, {
         data: change.singletons,
         analysis: null,
+        title: null,
         conversation,
         batch,
       });

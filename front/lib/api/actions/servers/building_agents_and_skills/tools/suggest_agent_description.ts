@@ -20,7 +20,7 @@ import assert from "assert";
 
 export async function suggestAgentDescription(
   auth: Authenticator,
-  { agentId, description, analysis }: SuggestAgentDescriptionArgs,
+  { agentId, description, analysis, title }: SuggestAgentDescriptionArgs,
   runContext: AgentLoopRunContext
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   const agent = await getAgentConfiguration(auth, {
@@ -40,6 +40,7 @@ export async function suggestAgentDescription(
     await recordSingletonAgentSuggestion(auth, agent, {
       data: { kind: "description", suggestion: validation.value },
       analysis: analysis ?? null,
+      title: title ?? null,
       conversation: runContext.conversation,
       batch: null,
     })

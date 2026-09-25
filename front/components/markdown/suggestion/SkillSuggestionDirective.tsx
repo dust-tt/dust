@@ -9,7 +9,10 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationalSuggestionReviewCard } from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
 import { makeSuggestionDirective } from "@app/components/markdown/suggestion/suggestionDirective";
-import { ReviewedSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
+import {
+  getSkillSuggestionTitle,
+  ReviewedSuggestionCard,
+} from "@app/components/skill_builder/SkillSuggestionCard";
 import { useConversationSkillSuggestionReview } from "@app/hooks/useConversationalSuggestionReview";
 import { SKILL_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import type { SkillSuggestionKind } from "@app/types/suggestions/skill_suggestion";
@@ -70,7 +73,7 @@ function ConversationSkillSuggestion({
     return (
       <ReviewedSuggestionCard
         state={suggestion.state}
-        title={suggestion.title ?? "Suggestion"}
+        title={getSkillSuggestionTitle(suggestion)}
         updatedAt={suggestion.updatedAt}
         updatedBy={suggestion.updatedBy}
       />

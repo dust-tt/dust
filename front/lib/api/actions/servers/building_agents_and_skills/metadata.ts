@@ -46,6 +46,14 @@ export const SUGGEST_TOOL_NAME = "suggest" as const;
 // should target the instructions root block instead.
 const MAX_INSTRUCTION_EDITS = 50;
 
+const SUGGESTION_TITLE_SCHEMA = z
+  .string()
+  .max(25)
+  .optional()
+  .describe(
+    "A short, action-oriented user-facing title for this suggestion (at most 25 characters)."
+  );
+
 export const SUGGEST_SKILL_UPDATE_INPUT_SCHEMA = z.object({
   skillId: z.string().describe("The id of the custom skill to update."),
   instructionEdits: z
@@ -73,13 +81,7 @@ export const SUGGEST_SKILL_UPDATE_INPUT_SCHEMA = z.object({
     .string()
     .optional()
     .describe("Why this change improves the skill."),
-  title: z
-    .string()
-    .max(25)
-    .optional()
-    .describe(
-      "A short, action-oriented user-facing title for this suggestion (at most 25 characters)."
-    ),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestSkillUpdateArgs = z.infer<
@@ -102,13 +104,7 @@ export const SUGGEST_SKILL_EDITORS_INPUT_SCHEMA = z.object({
     .string()
     .optional()
     .describe("Why this change to the editors is needed."),
-  title: z
-    .string()
-    .max(25)
-    .optional()
-    .describe(
-      "A short, action-oriented user-facing title for this suggestion (at most 25 characters)."
-    ),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestSkillEditorsArgs = z.infer<
@@ -123,6 +119,7 @@ export const SUGGEST_SKILL_DELETION_DESCRIPTION =
 export const SUGGEST_SKILL_DELETION_INPUT_SCHEMA = z.object({
   skillId: z.string().describe("The id of the custom skill to delete."),
   analysis: z.string().optional().describe("Why this skill should be deleted."),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestSkillDeletionArgs = z.infer<
@@ -153,6 +150,7 @@ export const SUGGEST_AGENT_CREATION_INPUT_SCHEMA = z.object({
     .min(1)
     .describe("The agent's instructions, as HTML."),
   analysis: z.string().optional().describe("Why this agent is needed."),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestAgentCreationArgs = z.infer<
@@ -167,6 +165,7 @@ export const SUGGEST_AGENT_DELETION_DESCRIPTION =
 export const SUGGEST_AGENT_DELETION_INPUT_SCHEMA = z.object({
   agentId: z.string().describe("The id of the agent to delete."),
   analysis: z.string().optional().describe("Why this agent should be deleted."),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestAgentDeletionArgs = z.infer<
@@ -185,6 +184,7 @@ export const SUGGEST_AGENT_DESCRIPTION_INPUT_SCHEMA = z.object({
     .string()
     .optional()
     .describe("Why this description is better than the current one."),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestAgentDescriptionArgs = z.infer<
@@ -210,6 +210,7 @@ export const SUGGEST_AGENT_MODEL_CHANGE_INPUT_SCHEMA = z.object({
     .string()
     .optional()
     .describe("Why this model change improves the agent."),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestAgentModelChangeArgs = z.infer<
@@ -226,6 +227,7 @@ export const SUGGEST_AGENT_NAME_INPUT_SCHEMA = z.object({
     .string()
     .optional()
     .describe("Why this name is clearer than the current one."),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestAgentNameArgs = z.infer<
@@ -247,6 +249,7 @@ export const SUGGEST_AGENT_PUBLISH_STATE_INPUT_SCHEMA = z.object({
     .string()
     .optional()
     .describe("Why the agent should be published or unpublished."),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestAgentPublishStateArgs = z.infer<
@@ -275,6 +278,7 @@ export const SUGGEST_AGENT_INSTRUCTIONS_CHANGE_INPUT_SCHEMA = z.object({
     .string()
     .optional()
     .describe("Why this change improves the agent's instructions."),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestAgentInstructionsChangeArgs = z.infer<
@@ -299,13 +303,7 @@ export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_INPUT_SCHEMA = z.object({
     .string()
     .optional()
     .describe("Why this description is clearer for members."),
-  title: z
-    .string()
-    .max(25)
-    .optional()
-    .describe(
-      "A short, action-oriented user-facing title for this suggestion (at most 25 characters)."
-    ),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestSkillUserFacingDescriptionArgs = z.infer<
@@ -326,13 +324,7 @@ export const SUGGEST_SKILL_NAME_INPUT_SCHEMA = z.object({
     .string()
     .optional()
     .describe("Why this name is clearer than the current one."),
-  title: z
-    .string()
-    .max(25)
-    .optional()
-    .describe(
-      "A short, action-oriented user-facing title for this suggestion (at most 25 characters)."
-    ),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestSkillNameArgs = z.infer<
@@ -354,13 +346,7 @@ export const SUGGEST_SKILL_AVAILABILITY_INPUT_SCHEMA = z.object({
     .string()
     .optional()
     .describe("Why the skill should be available to this audience."),
-  title: z
-    .string()
-    .max(25)
-    .optional()
-    .describe(
-      "A short, action-oriented user-facing title for this suggestion (at most 25 characters)."
-    ),
+  title: SUGGESTION_TITLE_SCHEMA,
 });
 
 export type SuggestSkillAvailabilityArgs = z.infer<

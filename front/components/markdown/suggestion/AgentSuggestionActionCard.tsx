@@ -55,14 +55,29 @@ interface AgentSuggestionActionCardProps {
   pictureUrl?: string;
 }
 
-export function getAgentSuggestionLabels(
-  agentSuggestion: AgentActionCardSuggestionType
-): {
+interface AgentSuggestionLabels {
   title: string;
   acceptedTitle: string;
   rejectedTitle: string;
   description: string | undefined;
-} {
+}
+
+/**
+ * @cc [owner:avervaet,label:product] written-title-first
+ * The returned title MUST be the suggestion's own `title` when set, and a non-empty label derived
+ * from its `kind` otherwise.
+ */
+export function getAgentSuggestionLabels(
+  agentSuggestion: AgentActionCardSuggestionType
+): AgentSuggestionLabels {
+  const labels = getAgentSuggestionKindLabels(agentSuggestion);
+
+  return { ...labels, title: agentSuggestion.title ?? labels.title };
+}
+
+function getAgentSuggestionKindLabels(
+  agentSuggestion: AgentActionCardSuggestionType
+): AgentSuggestionLabels {
   const { analysis } = agentSuggestion;
 
   switch (agentSuggestion.kind) {
