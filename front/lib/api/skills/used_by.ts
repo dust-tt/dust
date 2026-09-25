@@ -65,22 +65,15 @@ export async function fetchSkillsUsedBy(
       { onlyActive: true }
     ),
   ]);
-  const readableAgentsById = new Map(
-    readableAgents.map((agent) => [agent.sId, agent])
-  );
+  const readableAgentIds = new Set(readableAgents.map((agent) => agent.sId));
   const visibleParentSkillIds = new Set(
     visibleParentSkills.map((skill) => skill.sId)
   );
 
   return Object.fromEntries(
     skills.map((skill) => {
-      const agents = (agentsUsage.get(skill.sId)?.agents ?? []).flatMap(
-        ({ sId }) => {
-          const agent = readableAgentsById.get(sId);
-          return agent
-            ? [{ sId, name: agent.name, pictureUrl: agent.pictureUrl }]
-            : [];
-        }
+      const agents = (agentsUsage.get(skill.sId)?.agents ?? []).filter(
+        ({ sId }) => readableAgentIds.has(sId)
       );
       const parentSkills = (usedBySkills.get(skill.sId) ?? []).filter(
         (parent) => visibleParentSkillIds.has(parent.sId)
