@@ -58,9 +58,9 @@ export async function purgeStaleFramePublications(
     "Publication retention requires a Frames v2 file of the auth's workspace."
   );
 
-  const [publications, publicationIdsWithInvocations] = await Promise.all([
+  const [publications, invocationCountsByPublicationId] = await Promise.all([
     FramePublicationResource.listForFrame(auth, frame),
-    SandboxFunctionResource.listFramePublicationIdsWithInvocations(auth, frame),
+    SandboxFunctionResource.countInvocationsByFramePublication(auth, frame),
   ]);
 
   const activePublicationId = frame.useCaseMetadata?.activePublicationId;
@@ -69,7 +69,7 @@ export async function purgeStaleFramePublications(
     ({ createdAt, publicationId }) =>
       publicationId !== activePublicationId &&
       createdAt < cutoffDate &&
-      !publicationIdsWithInvocations.has(publicationId)
+      !invocationCountsByPublicationId.has(publicationId)
   );
   if (stalePublications.length === 0) {
     return { deletedFunctionCount: 0, deletedPublicationCount: 0 };

@@ -1,6 +1,7 @@
 import type {
   PokeGetFrameFunction,
   PokeGetFrameFunctionSource,
+  PokeGetFrameFunctionVersions,
 } from "@app/lib/api/poke/frames";
 import type {
   PokeGetSandboxFunctionInvocation,
@@ -26,6 +27,19 @@ function frameFunctionUrl({ owner, frameId, functionId }: FrameFunctionScope) {
   return `/api/poke/workspaces/${owner.sId}/frames/${frameId}/functions/${functionId}`;
 }
 
+// The invocations of every version of a function name.
+export function frameFunctionNameInvocationsUrl({
+  owner,
+  frameId,
+  slug,
+}: {
+  owner: LightWorkspaceType;
+  frameId: string;
+  slug: string;
+}) {
+  return `/api/poke/workspaces/${owner.sId}/frames/${frameId}/function-names/${slug}/invocations`;
+}
+
 export function usePokeFrameFunctionDetails({
   owner,
   frameId,
@@ -43,6 +57,30 @@ export function usePokeFrameFunctionDetails({
   return {
     frameFunction: data?.frameFunction ?? null,
     isLoading: !error && !data && !disabled,
+    isError: error,
+    mutate,
+  };
+}
+
+export function usePokeFrameFunctionVersions({
+  owner,
+  frameId,
+  slug,
+}: {
+  owner: LightWorkspaceType;
+  frameId: string;
+  slug: string;
+}) {
+  const { fetcher } = useFetcher();
+  const versionsFetcher: Fetcher<PokeGetFrameFunctionVersions> = fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/frames/${frameId}/function-names/${slug}`,
+    versionsFetcher
+  );
+
+  return {
+    versions: data?.versions ?? null,
+    isLoading: !error && !data,
     isError: error,
     mutate,
   };
@@ -71,14 +109,13 @@ export function usePokeFrameFunctionSource({
 }
 
 export function usePokeSandboxFunctionInvocations({
-  owner,
-  frameId,
-  functionId,
+  invocationsUrl,
   limit,
   status,
   origin,
   disabled,
-}: FrameFunctionScope & {
+}: {
+  invocationsUrl: string;
   limit: number;
   status?: SandboxFunctionInvocationStatus;
   origin?: SandboxFunctionInvocationOrigin;
@@ -97,7 +134,7 @@ export function usePokeSandboxFunctionInvocations({
   }
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `${frameFunctionUrl({ owner, frameId, functionId })}/invocations?${params.toString()}`,
+    `${invocationsUrl}?${params.toString()}`,
     invocationsFetcher,
     { disabled }
   );

@@ -1,3 +1,4 @@
+import type { PokeFramePublicationSummary } from "@app/lib/api/poke/frames";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -55,6 +56,9 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
     return new this(this.model, row.get());
   }
 
+  /**
+   * Every publication of `frame`, newest first.
+   */
   static async listForFrame(
     auth: Authenticator,
     frame: FileResource
@@ -66,6 +70,7 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
         workspaceId: auth.getNonNullableWorkspace().id,
         fileId: frame.id,
       },
+      order: [["createdAt", "DESC"]],
     });
 
     return rows.map((row) => new this(this.model, row.get()));
@@ -104,6 +109,27 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
     return this.model.destroy({
       where: { workspaceId: auth.getNonNullableWorkspace().id },
     });
+  }
+
+  toPokeJSON({
+    activePublicationId,
+    functionCount,
+    invocationCount,
+    publisher,
+  }: {
+    activePublicationId: string | null;
+    functionCount: number;
+    invocationCount: number;
+    publisher: string | null;
+  }): PokeFramePublicationSummary {
+    return {
+      publicationId: this.publicationId,
+      publishedAt: this.createdAt.toISOString(),
+      publisher,
+      isActive: this.publicationId === activePublicationId,
+      functionCount,
+      invocationCount,
+    };
   }
 
   /**

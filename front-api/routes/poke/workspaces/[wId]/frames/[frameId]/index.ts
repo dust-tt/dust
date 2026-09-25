@@ -5,7 +5,9 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { withFrame } from "@front-api/middlewares/with_frames";
 
 import databases from "./databases";
+import functionNames from "./function_names";
 import functions from "./functions";
+import publications from "./publications";
 
 // Mounted at /api/poke/workspaces/:wId/frames/:frameId.
 const app = pokeFrameApp();
@@ -13,7 +15,9 @@ const app = pokeFrameApp();
 app.use("*", withFrame());
 
 app.route("/functions", functions);
+app.route("/function-names", functionNames);
 app.route("/databases", databases);
+app.route("/publications", publications);
 
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeFrameDetails> => {

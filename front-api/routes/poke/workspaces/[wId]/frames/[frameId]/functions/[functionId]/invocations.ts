@@ -55,7 +55,7 @@ app.get(
     const { limit, status, origin } = ctx.req.valid("query");
 
     const items = await listSandboxFunctionInvocations(auth, {
-      sandboxFunction: frameFunction,
+      sandboxFunctions: [frameFunction],
       limit,
       statuses: status ? [status] : undefined,
       origins: origin ? [origin] : undefined,
