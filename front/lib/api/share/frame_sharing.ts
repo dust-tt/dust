@@ -54,16 +54,10 @@ export async function listFrameSharing(
     file.getViewerSummaries(),
     frameRequiresMembership(auth, file),
   ]);
-  const blockedGrantIds = new Set<string>();
-  if (membersOnly && grants.length > 0) {
-    const emails = removeNulls(grants.map((grant) => grant.email));
-    const memberEmails = await getFrameWorkspaceMemberEmails(auth, emails);
-    for (const grant of grants) {
-      if (grant.email === null || !memberEmails.has(grant.email)) {
-        blockedGrantIds.add(grant.sId);
-      }
-    }
-  }
+  const externalGrants = membersOnly
+    ? await getExternalFrameGrants(auth, grants)
+    : [];
+  const blockedGrantIds = new Set(externalGrants.map((grant) => grant.sId));
   const canGrantDomains = canGrantFrameDomains(auth, { membersOnly });
   return {
     grants,
@@ -229,22 +223,13 @@ export async function getFrameFunctionSharingConflict(
     return null;
   }
 
-  // Sequential on purpose: most Frames are not shared, so this guard skips the other reads.
   const shareInfo = await file.getShareInfo();
   if (!shareInfo) {
     return null;
   }
 
   const grants = await SharingGrantResource.listForFile(file);
-  const grantEmails = removeNulls(grants.map((grant) => grant.email)).map(
-    (email) => email.toLowerCase()
-  );
-  const memberEmails = await getFrameWorkspaceMemberEmails(auth, grantEmails);
-  // A domain grant carries no email and admits non-members by design.
-  const externalGrants = grants.filter(
-    (grant) =>
-      grant.email === null || !memberEmails.has(grant.email.toLowerCase())
-  );
+  const externalGrants = await getExternalFrameGrants(auth, grants);
 
   const reachesAnyoneWithLink =
     SHARE_SCOPE_AUDIENCE[shareInfo.scope] === "anyone_with_link";
@@ -314,6 +299,21 @@ export async function checkFrameEmailGrantPermission(
     : "You do not have permission to invite people outside the workspace. Only workspace members can be invited.";
 
   return new Err(new DustError("unauthorized", errorMessage));
+}
+
+/**
+ * Grants that let in someone outside the workspace. A domain grant carries no email and admits
+ * non-members by design, so it always counts.
+ */
+async function getExternalFrameGrants(
+  auth: Authenticator,
+  grants: SharingGrantResource[]
+): Promise<SharingGrantResource[]> {
+  const emails = removeNulls(grants.map((grant) => grant.email));
+  const memberEmails = await getFrameWorkspaceMemberEmails(auth, emails);
+  return grants.filter(
+    (grant) => grant.email === null || !memberEmails.has(grant.email)
+  );
 }
 
 async function getFrameWorkspaceMemberEmails(
