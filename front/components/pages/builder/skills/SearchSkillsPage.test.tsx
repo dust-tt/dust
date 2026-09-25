@@ -505,7 +505,7 @@ describe("search-backed Manage Skills", () => {
       expect.objectContaining({
         status: ["active"],
         editedByMe: true,
-        cursor: null,
+        offset: 0,
       }),
       "POST",
     ]);
