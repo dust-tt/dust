@@ -15,11 +15,10 @@ function facetIds(values: SkillSearchFacetValue[] | undefined): string[] {
   return (values ?? []).map(({ value }) => value);
 }
 
-function facetCount(
-  values: SkillSearchFacetValue[] | undefined,
-  id: string
-): number {
-  return values?.find(({ value }) => value === id)?.count ?? 0;
+function facetCountsById(
+  values: SkillSearchFacetValue[] | undefined
+): Map<string, number> {
+  return new Map((values ?? []).map(({ value, count }) => [value, count]));
 }
 
 /**
@@ -64,6 +63,9 @@ export async function searchSkillListings(
       return [sId, { sId, fullName, image }];
     })
   );
+  const usersById = new Map(users.map((user) => [user.sId, user]));
+  const childSkillCounts = facetCountsById(facetValues.childSkills);
+  const spaceCounts = facetCountsById(facetValues.spaces);
 
   return new Ok<SearchSkillsResponseBody>({
     ...result.value,
@@ -84,8 +86,8 @@ export async function searchSkillListings(
         ? {
             editors: facetValues.editors
               .flatMap(({ value, count }) => {
-                const editor = editorsById.get(value);
-                return editor ? [{ ...editor, count }] : [];
+                const editor = usersById.get(value);
+                return editor ? [editor.toSearchFacetJSON(count)] : [];
               })
               .toSorted((a, b) => a.fullName.localeCompare(b.fullName)),
           }
@@ -93,12 +95,9 @@ export async function searchSkillListings(
       ...(facetValues.childSkills
         ? {
             childSkills: childSkills
-              .map((skill) => ({
-                sId: skill.sId,
-                name: skill.name,
-                icon: skill.icon,
-                count: facetCount(facetValues.childSkills, skill.sId),
-              }))
+              .map((skill) =>
+                skill.toSearchFacetJSON(childSkillCounts.get(skill.sId) ?? 0)
+              )
               .toSorted((a, b) => a.name.localeCompare(b.name)),
           }
         : {}),
@@ -107,12 +106,9 @@ export async function searchSkillListings(
             // Unrestricted search can surface spaces the caller cannot read: never name them.
             spaces: spaces
               .filter((space) => auth.can("read", space))
-              .map((space) => ({
-                sId: space.sId,
-                name: space.name,
-                kind: space.kind,
-                count: facetCount(facetValues.spaces, space.sId),
-              }))
+              .map((space) =>
+                space.toSearchFacetJSON(spaceCounts.get(space.sId) ?? 0)
+              )
               .toSorted((a, b) => a.name.localeCompare(b.name)),
           }
         : {}),
