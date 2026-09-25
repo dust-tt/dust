@@ -126,12 +126,7 @@ app.patch(
     // are per-version, so `agent.agentConfigurationModelId` above points at the previous version's
     // row).
     const updatedAgent = await AgentResource.fetchById(auth, aId);
-    const tags = updatedAgent
-      ? await TagResource.listForAgent(
-          auth,
-          updatedAgent.agentConfigurationModelId
-        )
-      : [];
+    const tags = updatedAgent ? await updatedAgent.listTags(auth) : [];
 
     return ctx.json({ tags: tags.map((t) => t.toJSON()) });
   }

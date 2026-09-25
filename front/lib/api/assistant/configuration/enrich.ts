@@ -1,8 +1,7 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentResource } from "@app/lib/resources/agent_resource";
-import { TagResource } from "@app/lib/resources/tags_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { tagsSorter } from "@app/lib/utils";
 import type {
   AgentActionsEnrichment,
@@ -56,17 +55,15 @@ export async function enrichWithTags(
   auth: Authenticator,
   resources: AgentResource[]
 ): Promise<Map<ModelId, AgentTagsEnrichment>> {
-  const configurationModelIds = resources.map(
-    (resource) => resource.agentConfigurationModelId
+  const tagsByConfigurationModelId = await AgentResource.batchListTags(
+    auth,
+    resources
   );
-  const tagsById = await TagResource.listForAgents(auth, configurationModelIds);
 
   return new Map(
-    configurationModelIds.map((id) => [
+    [...tagsByConfigurationModelId].map(([id, tags]) => [
       id,
-      {
-        tags: (tagsById[id] ?? []).map((tag) => tag.toJSON()).sort(tagsSorter),
-      },
+      { tags: tags.map((tag) => tag.toJSON()).sort(tagsSorter) },
     ])
   );
 }

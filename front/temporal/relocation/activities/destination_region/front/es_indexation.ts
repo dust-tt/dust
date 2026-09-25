@@ -7,7 +7,6 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { indexSkillDocument } from "@app/lib/skill_search";
@@ -230,7 +229,7 @@ export async function recreateAgentSearchIndex({
 
   const [
     editorsByAgentId,
-    tagsByConfigurationId,
+    tagsByConfigurationModelId,
     actionsByConfigurationId,
     feedbackCounts,
     lastEditors,
@@ -238,7 +237,7 @@ export async function recreateAgentSearchIndex({
     favoriteCountByAgentId,
   ] = await Promise.all([
     AgentResource.batchListEditors(auth, agents),
-    TagResource.listForAgents(auth, configurationModelIds),
+    AgentResource.batchListTags(auth, agents),
     fetchMCPServerActionConfigurations(auth, {
       configurationModelIds,
       variant: "full",
@@ -318,7 +317,7 @@ export async function recreateAgentSearchIndex({
           skillIdsByConfigurationModelId.get(agent.agentConfigurationModelId) ??
           [],
         tagIds: (
-          tagsByConfigurationId[agent.agentConfigurationModelId] ?? []
+          tagsByConfigurationModelId.get(agent.agentConfigurationModelId) ?? []
         ).map((tag) => tag.sId),
       });
       const result = await indexAgentDocument(document);

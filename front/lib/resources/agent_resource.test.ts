@@ -1304,6 +1304,55 @@ describe("AgentResource", () => {
     });
   });
 
+  describe("batchListTags", () => {
+    it("lists each version's tags, with no tag for untagged and global agents", async () => {
+      const { authenticator, workspace } = testContext;
+      const tagged = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Tagged" }
+      );
+      const untagged = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Untagged" }
+      );
+      const tag = await TagFactory.create(workspace, { name: "tagged" });
+      await TagFactory.addToAgent(authenticator, tag, tagged);
+
+      const agents = await AgentResource.fetchByIds(authenticator, [
+        tagged.sId,
+        untagged.sId,
+        GLOBAL_AGENTS_SID.HELPER,
+      ]);
+      expect(agents).toHaveLength(3);
+      const [taggedAgent, untaggedAgent, globalAgent] = agents;
+
+      const listForAgents = vi.spyOn(TagResource, "listForAgents");
+      try {
+        const tagsByConfigurationModelId = await AgentResource.batchListTags(
+          authenticator,
+          agents
+        );
+
+        expect(
+          [...tagsByConfigurationModelId].map(([id, tags]) => [
+            id,
+            tags.map((t) => t.sId),
+          ])
+        ).toEqual([
+          [taggedAgent.agentConfigurationModelId, [tag.sId]],
+          [untaggedAgent.agentConfigurationModelId, []],
+          [globalAgent.agentConfigurationModelId, []],
+        ]);
+        expect(listForAgents).toHaveBeenCalledWith(authenticator, [
+          taggedAgent.agentConfigurationModelId,
+          untaggedAgent.agentConfigurationModelId,
+        ]);
+      } finally {
+        listForAgents.mockRestore();
+      }
+    });
+  });
+
   describe("bulkUpdate (model)", () => {
     it("saves a new version with the new model, keeping the agent's tools and author", async () => {
       const { authenticator, globalSpace } = testContext;
@@ -1478,10 +1527,7 @@ describe("AgentResource", () => {
     ): Promise<string[]> {
       const agent = await AgentResource.fetchById(auth, agentId);
       assert(agent);
-      const tags = await TagResource.listForAgent(
-        auth,
-        agent.agentConfigurationModelId
-      );
+      const tags = await agent.listTags(auth);
       return tags.map((tag) => tag.sId).sort();
     }
 
