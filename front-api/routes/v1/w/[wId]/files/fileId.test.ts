@@ -24,14 +24,19 @@ vi.mock("@app/lib/resources/conversation_resource", () => ({
   },
 }));
 
-vi.mock("@app/lib/resources/space_resource", () => ({
-  SpaceResource: {
-    fetchById: vi.fn().mockResolvedValue({
-      id: "test-space-id",
-      getAllowedVerbs: vi.fn().mockImplementation(() => new Set(["read"])),
+vi.mock("@app/lib/resources/space_resource", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/resources/space_resource")>();
+  return {
+    ...actual,
+    SpaceResource: Object.assign(actual.SpaceResource, {
+      fetchById: vi.fn().mockResolvedValue({
+        id: "test-space-id",
+        getAllowedVerbs: vi.fn().mockImplementation(() => new Set(["read"])),
+      }),
     }),
-  },
-}));
+  };
+});
 
 const mockDelete = vi.fn().mockResolvedValue({ isErr: () => false });
 const mockGetSignedUrlForDownload = vi

@@ -7,8 +7,8 @@ import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
 describe("GET /api/v1/w/:wId/spaces", () => {
-  it("returns an empty list when no spaces exist", async () => {
-    const { workspace, key } = await createPublicApiMockRequest();
+  it("returns only the global space when no other space exists", async () => {
+    const { workspace, key, globalSpace } = await createPublicApiMockRequest();
 
     const response = await honoApp.request(
       `/api/v1/w/${workspace.sId}/spaces`,
@@ -18,14 +18,16 @@ describe("GET /api/v1/w/:wId/spaces", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ spaces: [] });
+    const { spaces } = await response.json();
+    expect(spaces).toEqual([
+      expect.objectContaining({ name: globalSpace.name, kind: "global" }),
+    ]);
   });
 
   it("returns accessible spaces for the workspace", async () => {
-    const { workspace, globalGroup, key } = await createPublicApiMockRequest();
+    const { workspace, globalGroup, key, globalSpace } =
+      await createPublicApiMockRequest();
 
-    const globalSpace = await SpaceFactory.global(workspace);
-    await SpaceFactory.system(workspace); // Not returned: regular public API keys are not admins.
     const regularSpace1 = await SpaceFactory.regular(workspace);
     const regularSpace2 = await SpaceFactory.regular(workspace);
     await SpaceFactory.regular(workspace); // Distractor: not associated with the global group.
@@ -55,7 +57,6 @@ describe("GET /api/v1/w/:wId/spaces", () => {
   it("filters spaces by kinds when provided", async () => {
     const { workspace, globalGroup, key } = await createPublicApiMockRequest();
 
-    await SpaceFactory.global(workspace);
     const regularSpace = await SpaceFactory.regular(workspace);
     await SpaceFactory.attachGroup(regularSpace, globalGroup);
 
@@ -77,7 +78,6 @@ describe("GET /api/v1/w/:wId/spaces", () => {
   it("omits projects unless they are explicitly requested", async () => {
     const { workspace, globalGroup } = await createPublicApiMockRequest();
 
-    await SpaceFactory.global(workspace);
     const project = await SpaceFactory.project(workspace);
 
     // A key is a workspace member, and the global group only ever reads a project, so the key has

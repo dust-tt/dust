@@ -512,6 +512,9 @@ describe("ConversationResource", () => {
 
     beforeEach(async () => {
       const workspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(workspace.sId)
+      );
       const user = await UserFactory.basic();
       auth = await Authenticator.fromUserIdAndWorkspaceId(
         user.sId,
@@ -546,6 +549,9 @@ describe("ConversationResource", () => {
 
       // Just to make sure we have the filter on workspaceId we also create a very very old convo for another workspace.
       const anotherWorkspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(anotherWorkspace.sId)
+      );
       const anotherUser = await UserFactory.basic();
       anotherAuth = await Authenticator.fromUserIdAndWorkspaceId(
         anotherUser.sId,
@@ -625,6 +631,9 @@ describe("destroyConversation", () => {
 
   beforeEach(async () => {
     const workspace = await WorkspaceFactory.basic();
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
     const user = await UserFactory.basic();
     auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -1097,6 +1106,9 @@ describe("listConversationWithAgentCreatedBeforeDate", () => {
 
   beforeEach(async () => {
     const workspace = await WorkspaceFactory.basic();
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
     const user = await UserFactory.basic();
     auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -1132,6 +1144,9 @@ describe("listConversationWithAgentCreatedBeforeDate", () => {
 
     // Just to make sure we have the filter on workspaceId we also create a very very old convo for another workspace.
     const anotherWorkspace = await WorkspaceFactory.basic();
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(anotherWorkspace.sId)
+    );
     const anotherUser = await UserFactory.basic();
     anotherAuth = await Authenticator.fromUserIdAndWorkspaceId(
       anotherUser.sId,
@@ -4395,6 +4410,9 @@ describe("Space Handling", () => {
     it("should return 'conversation_not_found' when conversation belongs to different workspace", async () => {
       // Create a conversation in a different workspace
       const anotherWorkspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(anotherWorkspace.sId)
+      );
 
       // Create the required default groups for the workspace
       await GroupResource.makeDefaultsForWorkspace(anotherWorkspace);
@@ -4749,6 +4767,9 @@ describe("Space Handling", () => {
 
     beforeEach(async () => {
       const workspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(workspace.sId)
+      );
       const user = await UserFactory.basic();
       auth = await Authenticator.fromUserIdAndWorkspaceId(
         user.sId,
@@ -4992,6 +5013,9 @@ describe("Space Handling", () => {
 
     beforeEach(async () => {
       workspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(workspace.sId)
+      );
       const ownerUser = await UserFactory.basic();
 
       ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -5089,6 +5113,9 @@ describe("Space Handling", () => {
 
     beforeEach(async () => {
       workspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(workspace.sId)
+      );
       const user = await UserFactory.basic();
       auth = await Authenticator.fromUserIdAndWorkspaceId(
         user.sId,
@@ -5225,6 +5252,9 @@ describe("Space Handling", () => {
 
     beforeEach(async () => {
       const workspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(workspace.sId)
+      );
       const user = await UserFactory.basic();
       auth = await Authenticator.fromUserIdAndWorkspaceId(
         user.sId,
@@ -5716,6 +5746,9 @@ describe("markAsActionRequired", () => {
 
   beforeEach(async () => {
     const workspace = await WorkspaceFactory.basic();
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
     const user = await UserFactory.basic();
     auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -6284,6 +6317,9 @@ describe("markAsReadForAuthUser", () => {
 
   beforeEach(async () => {
     const workspace = await WorkspaceFactory.basic();
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
     const user = await UserFactory.basic();
     auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
@@ -6350,6 +6386,9 @@ describe("markAsReadForAllParticipants", () => {
 
   beforeEach(async () => {
     workspace = await WorkspaceFactory.basic();
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
     const user = await UserFactory.basic();
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, otherUser, { role: "user" });
@@ -6432,6 +6471,9 @@ describe("ConversationResource.isConversationCreator", () => {
 
   beforeEach(async () => {
     const workspace = await WorkspaceFactory.basic();
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
     await GroupResource.makeDefaultsForWorkspace(workspace);
 
     const user = await UserFactory.basic();
@@ -7300,6 +7342,9 @@ describe("ConversationResource cleanup on delete", () => {
   describe("fetchSpaceRequirementSourceData", () => {
     it("returns distinct agent configuration ids from agent messages", async () => {
       const workspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(workspace.sId)
+      );
       const user = await UserFactory.basic();
       await MembershipFactory.associate(workspace, user, { role: "admin" });
 
@@ -7365,6 +7410,9 @@ describe("ConversationResource cleanup on delete", () => {
 
     it("returns empty arrays when conversation has no agent or content fragment messages", async () => {
       const workspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(workspace.sId)
+      );
       const user = await UserFactory.basic();
       await MembershipFactory.associate(workspace, user, { role: "admin" });
 

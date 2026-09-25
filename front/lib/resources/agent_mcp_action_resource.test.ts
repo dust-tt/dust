@@ -100,6 +100,13 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
           return async (...args: Args): Promise<T> => fn(...args);
         }
       ),
+    invalidateCacheAfterCommit: vi
+      .fn()
+      .mockImplementation(
+        async (_transaction: unknown, invalidateFn: () => Promise<void>) => {
+          await invalidateFn();
+        }
+      ),
   };
 });
 

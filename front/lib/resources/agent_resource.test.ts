@@ -1098,7 +1098,7 @@ describe("AgentResource", () => {
         picture_url: agent.pictureUrl,
         last_edited_by_user_id: testContext.user.sId,
         editor_ids: [testContext.user.sId],
-        requested_space_ids: [],
+        requested_space_ids: [testContext.globalSpace.sId],
         created_at: resource.createdAt.toISOString(),
         updated_at: resource.updatedAt.toISOString(),
         skill_ids: ["skill-a", "skill-b"],

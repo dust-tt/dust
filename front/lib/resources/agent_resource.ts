@@ -427,6 +427,12 @@ export interface AgentResource
  * API keys are the sole exception: the admin role grants them `write` (see `admin-key-agent-write`),
  * so an admin key may edit an agent it holds no editor grant on.
  */
+/**
+ * @cc [owner:sfriquet,label:backend;security] agent-stored-global-space
+ * Production callers creating a custom agent configuration or recomputing its `requestedSpaceIds`
+ * MUST include the workspace's global space exactly once. Other update callers MUST preserve the
+ * stored ids. Global (code-defined) agents are exempt: they have no requested spaces.
+ */
 export class AgentResource
   extends BaseResource<AgentModel>
   implements WithAccessControl
@@ -2741,6 +2747,7 @@ export class AgentResource
   ): Promise<Result<AgentResource, Error>> {
     const user = auth.getNonNullableUser();
     const { defaultModel } = await getModelsForAuth(auth);
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
     return AgentResource.makeNew(auth, {
       name: PENDING_AGENT_PLACEHOLDER_NAME,
@@ -2757,7 +2764,7 @@ export class AgentResource
         reasoningEffort: defaultModel.defaultReasoningEffort,
       },
       templateId: null,
-      requestedSpaceIds: [],
+      requestedSpaceIds: [globalSpace.id],
       tags: [],
       editors: [user.toJSON()],
       authorId: user.id,

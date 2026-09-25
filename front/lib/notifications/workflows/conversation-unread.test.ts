@@ -666,6 +666,9 @@ describe("conversation-unread workflow business logic", () => {
 
     beforeEach(async () => {
       workspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(workspace.sId)
+      );
       user = await UserFactory.basic();
       nonMemberUser = await UserFactory.basic();
 
@@ -833,6 +836,9 @@ describe("conversation-unread workflow business logic", () => {
       vi.clearAllMocks();
 
       workspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(workspace.sId)
+      );
       user1 = await UserFactory.basic();
       user2 = await UserFactory.basic();
 

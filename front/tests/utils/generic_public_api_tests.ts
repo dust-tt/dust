@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Authenticator } from "@app/lib/auth";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { TestWorkspacePlan } from "@app/tests/utils/WorkspaceFactory";
 import { workspaceForPlan } from "@app/tests/utils/WorkspaceFactory";
 import type { RequestMethod } from "node-mocks-http";
@@ -10,8 +10,8 @@ import { createMocks } from "node-mocks-http";
 /**
  * Creates a mock request with authentication for testing public API endpoints.
  *
- * This helper sets up a test workspace with a global group and API key, then creates
- * a mock request authenticated with that key. Used to simulate authenticated API calls
+ * This helper sets up a test workspace with its default groups and spaces and an API key, then
+ * creates a mock request authenticated with that key. Used to simulate authenticated API calls
  * in tests.
  *
  * @param options Configuration options
@@ -31,7 +31,10 @@ export const createPublicApiMockRequest = async ({
   plan?: TestWorkspacePlan;
 } = {}) => {
   const workspace = await workspaceForPlan(plan);
-  const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
+  const { globalGroup, systemGroup, globalSpace, systemSpace } =
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
   let key;
   if (systemKey) {
     key = await KeyFactory.system(globalGroup);
@@ -57,7 +60,9 @@ export const createPublicApiMockRequest = async ({
     res,
     workspace,
     globalGroup,
+    globalSpace,
     systemGroup,
+    systemSpace,
     key,
   };
 };

@@ -961,7 +961,9 @@ describe("SkillResource", () => {
       const agentBefore = await AgentConfigurationModel.findOne({
         where: { id: agent.id, workspaceId: testContext.workspace.id },
       });
-      expect(agentBefore?.requestedSpaceIds).toEqual([]);
+      expect(agentBefore?.requestedSpaceIds).toEqual([
+        testContext.globalSpace.id,
+      ]);
 
       await skillResource.updateSkill(testContext.authenticator, {
         name: skillResource.name,

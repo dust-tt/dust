@@ -20,9 +20,11 @@ function getDataSources(
 
 describe("GET /api/v1/w/:wId/spaces/:spaceId/data_sources", () => {
   it("returns an empty list when no data sources exist", async () => {
-    const { workspace, key } = await createPublicApiMockRequest();
-
-    const space = await SpaceFactory.global(workspace);
+    const {
+      workspace,
+      key,
+      globalSpace: space,
+    } = await createPublicApiMockRequest();
 
     const response = await getDataSources(workspace, space.sId, key);
 
@@ -31,9 +33,11 @@ describe("GET /api/v1/w/:wId/spaces/:spaceId/data_sources", () => {
   });
 
   it("returns accessible data sources for the space", async () => {
-    const { workspace, key } = await createPublicApiMockRequest();
-
-    const space = await SpaceFactory.global(workspace);
+    const {
+      workspace,
+      key,
+      globalSpace: space,
+    } = await createPublicApiMockRequest();
 
     // Create test data source views to the space
     await DataSourceViewFactory.folder(workspace, space);

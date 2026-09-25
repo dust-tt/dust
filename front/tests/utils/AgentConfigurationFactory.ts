@@ -5,6 +5,7 @@ import {
   AgentModel,
 } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   AgentConfigurationType,
   AgentReinforcementMode,
@@ -43,7 +44,6 @@ export class AgentConfigurationFactory {
     const providerId = overrides.model?.providerId ?? "openai";
     const modelId = overrides.model?.modelId ?? "gpt-5-mini";
     const temperature = overrides.model?.temperature ?? 0.7;
-    const requestedSpaceIds = overrides.requestedSpaceIds ?? [];
 
     const user = auth.user();
     assert(user, "User is required");
@@ -57,6 +57,10 @@ export class AgentConfigurationFactory {
     const internalAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
+
+    const globalSpace =
+      await SpaceResource.fetchWorkspaceGlobalSpace(internalAuth);
+    const requestedSpaceIds = overrides.requestedSpaceIds ?? [globalSpace.id];
 
     const result = await AgentResource.makeNew(internalAuth, {
       name,
@@ -120,6 +124,7 @@ export class AgentConfigurationFactory {
     const user = auth.user();
     assert(user, "User is required");
 
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const agentResource = await AgentResource.fetchById(auth, agentId);
     assert(
       agentResource && auth.can("read", agentResource),
@@ -145,7 +150,7 @@ export class AgentConfigurationFactory {
       tags: [],
       editors: [user.toJSON()],
       authorId: user.id,
-      requestedSpaceIds: overrides.requestedSpaceIds ?? [],
+      requestedSpaceIds: overrides.requestedSpaceIds ?? [globalSpace.id],
       // Explicitly clear tools/skills: `updateConfiguration` is a partial merge (an omitted field
       // keeps its current value), and this helper's contract is to produce a bare updated version.
       actions: [],
