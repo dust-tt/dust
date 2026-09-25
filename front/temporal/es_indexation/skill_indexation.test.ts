@@ -11,6 +11,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { Ok } from "@app/types/shared/result";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("skill search indexing activity", () => {
@@ -192,5 +193,20 @@ describe("skill search indexing activity", () => {
       skillId: suggestion.sId,
     });
     expect(skillIndex.indexSkillDocument).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not index a pending skill", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const result = await SkillResource.createPending(auth);
+    assert(result.isOk());
+
+    await indexSkillSearchActivity({
+      workspaceId: workspace.sId,
+      skillId: result.value.sId,
+    });
+
+    expect(skillIndex.indexSkillDocument).not.toHaveBeenCalled();
   });
 });
