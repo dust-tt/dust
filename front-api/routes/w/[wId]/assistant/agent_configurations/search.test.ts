@@ -151,7 +151,9 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     { tagIds: [""] },
     { editorIds: [""] },
     { modelIds: [""] },
-    { facets: ["usage"] },
+    { facets: ["unknown"] },
+    { activeUsersCount: { min: -1 } },
+    { spaceIds: [""] },
     { limit: -1 },
   ])("rejects invalid input: %s", async (body) => {
     const { workspace } = await setup();
@@ -194,7 +196,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   });
 
   it("returns facet values with counts and editor and tag names", async () => {
-    const { workspace, user } = await setup();
+    const { workspace, user, globalSpace } = await setup();
     const tag = await TagFactory.create(workspace, { name: "Sales" });
     searchAgents.mockResolvedValue(
       new Ok({
@@ -208,13 +210,16 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
           ],
           models: [{ value: "claude-sonnet-5", count: 4 }],
           tags: [{ value: tag.sId, count: 2 }],
+          skills: [{ value: "missing-skill", count: 1 }],
+          spaces: [{ value: globalSpace.sId, count: 5 }],
+          usage: { min: 0, max: 12 },
         },
       })
     );
 
     const response = await searchRequest(workspace.sId, {
       limit: 0,
-      facets: ["editors", "models", "tags"],
+      facets: ["editors", "models", "tags", "skills", "spaces", "usage"],
     });
 
     expect(response.status).toBe(200);
@@ -222,7 +227,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       expect.anything(),
       expect.objectContaining({
         limit: 0,
-        facets: ["editors", "models", "tags"],
+        facets: ["editors", "models", "tags", "skills", "spaces", "usage"],
       })
     );
     expect((await response.json()).facets).toEqual({
@@ -236,6 +241,16 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       ],
       models: [{ modelId: "claude-sonnet-5", count: 4 }],
       tags: [{ sId: tag.sId, name: "Sales", kind: "standard", count: 2 }],
+      skills: [],
+      spaces: [
+        {
+          sId: globalSpace.sId,
+          name: globalSpace.name,
+          kind: "global",
+          count: 5,
+        },
+      ],
+      usage: { min: 0, max: 12 },
     });
   });
 
