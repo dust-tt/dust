@@ -547,8 +547,9 @@ export function Component({ name }: MyComponentProps) { }
 ```
 
 @cc [label:react] network-operations-in-swr-hooks
-All network operations should be abstracted in SWR files; data fetching should use `useSWR` hooks
-in `lib/swr/*`.
+All network operations should be abstracted in SWR hooks; data fetching should use `useSWR` hooks
+in `hooks/*`. Pre-existing hooks in `lib/swr/*` are being migrated to `hooks/*`; new hooks belong in
+`hooks/*`.
 
 When using a disabled param and returning a loading flag, ensure `loading` is `false` if `disabled`
 is `true`.
