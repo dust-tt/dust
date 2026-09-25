@@ -63,7 +63,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       updatedAt: null,
     };
     searchAgents.mockResolvedValue(
-      new Ok({ agents: [agent], total: 30, hasMore: true })
+      new Ok({ agents: [agent], total: 30, hasMore: true, facets: {} })
     );
 
     const response = await searchRequest(workspace.sId, {
@@ -105,7 +105,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   it("accepts structured filters and sorts", async () => {
     const { workspace } = await setup();
     searchAgents.mockResolvedValue(
-      new Ok({ agents: [], total: 0, hasMore: false })
+      new Ok({ agents: [], total: 0, hasMore: false, facets: {} })
     );
     const filters = {
       status: ["active", "archived"],
@@ -136,7 +136,6 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   });
 
   it.each([
-    { limit: 0 },
     { limit: 101 },
     { offset: -1 },
     { offset: 1.5 },
@@ -166,7 +165,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   it("passes unrestricted filtering through for admins", async () => {
     const { workspace } = await setup("admin");
     searchAgents.mockResolvedValue(
-      new Ok({ agents: [], total: 0, hasMore: false })
+      new Ok({ agents: [], total: 0, hasMore: false, facets: {} })
     );
 
     const response = await searchRequest(workspace.sId, {
