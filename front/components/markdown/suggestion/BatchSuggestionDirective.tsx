@@ -8,11 +8,9 @@
  */
 
 import { AgentSuggestionDetails } from "@app/components/markdown/suggestion/AgentSuggestionDetails";
-import {
-  DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS,
-  isAgentActionCardSuggestion,
-} from "@app/components/markdown/suggestion/AgentSuggestionDirective";
+import { isAgentActionCardSuggestion } from "@app/components/markdown/suggestion/AgentSuggestionDirective";
 import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
+import { DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS } from "@app/components/markdown/suggestion/suggestion_directives";
 import { makeDirective } from "@app/components/markdown/suggestion/suggestionDirective";
 import {
   PendingSkillSuggestionDetails,
