@@ -12,14 +12,8 @@ import {
   shouldUseConversationalReviewCard,
 } from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
 import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
-import {
-  usePatchSkillSuggestions,
-  useSkillSuggestions,
-} from "@app/hooks/useSkillSuggestions";
-import { useSuggestionActions } from "@app/hooks/useSuggestionActions";
-import { useSkill } from "@app/lib/swr/skill_configurations";
+import { useConversationSkillSuggestionReview } from "@app/hooks/useConversationalSuggestionReview";
 import { SKILL_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
-import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
 import { useCallback } from "react";
@@ -100,26 +94,18 @@ function ConversationSkillSuggestion({
 }: ConversationSkillSuggestionProps) {
   const { openPanel } = useConversationSidePanelContext();
 
-  const { suggestions, isSuggestionsLoading, mutateSuggestions } =
-    useSkillSuggestions({
-      skillId,
-      workspaceId: owner.sId,
-      sources: ["conversational"],
-      conversationId,
-    });
-
-  const { skill, isSkillLoading, mutateSkillRegardlessOfQueryParams } =
-    useSkill({
-      workspaceId: owner.sId,
-      skillId,
-    });
-
-  const { patchSuggestions } = usePatchSkillSuggestions({
-    skillId,
+  const {
+    suggestions,
+    skill,
+    isLoading,
+    getPendingAction,
+    acceptSuggestions,
+    rejectSuggestions,
+  } = useConversationSkillSuggestionReview({
     workspaceId: owner.sId,
+    skillId,
+    conversationId,
   });
-  const { getPendingAction, acceptSuggestion, rejectSuggestion } =
-    useSuggestionActions({ patchSuggestions, mutateSuggestions });
 
   const getSkillInstructionsHtml = useCallback(
     () => skill?.instructionsHtml ?? "",
@@ -130,13 +116,7 @@ function ConversationSkillSuggestion({
     [skill]
   );
 
-  const handleAccept = async (suggestion: SkillSuggestionType) => {
-    if (await acceptSuggestion(suggestion)) {
-      mutateSkillRegardlessOfQueryParams();
-    }
-  };
-
-  if (isSuggestionsLoading || isSkillLoading) {
+  if (isLoading) {
     return <LoadingBlock className="h-24 w-full" />;
   }
 
@@ -156,8 +136,8 @@ function ConversationSkillSuggestion({
           skill,
           workspaceId: owner.sId,
         }}
-        onAccept={() => void handleAccept(suggestion)}
-        onReject={() => void rejectSuggestion(suggestion)}
+        onAccept={() => void acceptSuggestions([suggestion])}
+        onReject={() => void rejectSuggestions([suggestion])}
         onPreview={() =>
           openPanel({
             type: SKILL_SIDE_PANEL_TYPE,
@@ -174,8 +154,8 @@ function ConversationSkillSuggestion({
   return (
     <SkillSuggestionCard
       suggestion={suggestion}
-      onAccept={(s) => void handleAccept(s)}
-      onDecline={(s) => void rejectSuggestion(s)}
+      onAccept={(s) => void acceptSuggestions([s])}
+      onDecline={(s) => void rejectSuggestions([s])}
       getSkillInstructionsHtml={getSkillInstructionsHtml}
       getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
       workspaceId={owner.sId}
