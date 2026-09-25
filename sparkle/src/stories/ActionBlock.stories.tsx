@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
-import { fn } from "storybook/test";
+import { expect, fn } from "storybook/test";
 
 import {
   ActionCardBlock,
@@ -201,4 +201,31 @@ export const InteractiveLifecycle: Story = {
     onClickReject: fn(),
   },
   render: () => <LifecycleDemo />,
+};
+
+/**
+ * `titleAside` adds short info at the end of the title row. Long titles wrap
+ * next to it instead of pushing it to its own line.
+ *
+ * @summary Position in a series shown next to the title.
+ */
+export const WithTitleAside: Story = {
+  args: {
+    ...renameProposal,
+    title:
+      "Replace Alfred with Nora and Milo as editors of the Support Triage skill",
+    titleAside: "Edit 1 of 4",
+    actionsPosition: "footer",
+    state: "active",
+    onClickAccept: fn(),
+    onClickReject: fn(),
+  },
+  play: async ({ canvas }) => {
+    const aside = canvas.getByText("Edit 1 of 4");
+    const title = canvas.getByText(/Replace Alfred/);
+    // A long title wraps on its own; the aside stays on the first line.
+    await expect(aside.getBoundingClientRect().top).toBeLessThan(
+      title.getBoundingClientRect().top + 24
+    );
+  },
 };

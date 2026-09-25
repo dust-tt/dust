@@ -88,6 +88,8 @@ export interface ActionCardBlockProps {
 
   // Content
   subtitle?: string;
+  /** Short info at the end of the title row; hidden once resolved. */
+  titleAside?: React.ReactNode;
   /** Body text of the proposal; hidden (moved to a tooltip) once the card is resolved. */
   description?: React.ReactNode;
   /** Optional detail tucked behind a Collapsible instead of crowding the description; render rich detail with Markdown. */
@@ -139,6 +141,7 @@ export function ActionCardBlock({
   title,
   visual,
   subtitle,
+  titleAside,
   description,
   collapsibleContent,
   collapsibleLabel,
@@ -220,12 +223,13 @@ export function ActionCardBlock({
 
   const showHeader = resolvedVisual || resolvedTitle;
   const showActionsInHeader = !isResolved && actionsPosition === "header";
+  const showTitleAside = !isResolved && !!titleAside;
   const showActionsInFooter = !isResolved && actionsPosition === "footer";
   const tooltipLabel = isResolved ? description : undefined;
 
   const card = (
     <Card
-      variant="primary"
+      variant={cardVariant ?? "primary"}
       size={isCompact ? "sm" : "md"}
       disabled={isDisabled}
       containerClassName={isResolved ? "max-w-lg w-fit" : "max-w-lg w-full"}
@@ -233,11 +237,23 @@ export function ActionCardBlock({
     >
       {showHeader && (
         <div className="flex min-h-6 flex-wrap items-start justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
+          <div
+            className={cn(
+              "flex min-w-0 items-center gap-2",
+              showTitleAside && "flex-1"
+            )}
+          >
             {resolvedVisual}
-            <div className="flex min-w-0 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col">
               {resolvedTitle && (
-                <div className={titleClasses}>{resolvedTitle}</div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className={titleClasses}>{resolvedTitle}</div>
+                  {showTitleAside && (
+                    <div className="shrink-0 text-xs text-muted-foreground">
+                      {titleAside}
+                    </div>
+                  )}
+                </div>
               )}
               {!isResolved && subtitle && (
                 <div className={subtitleClasses}>{subtitle}</div>
