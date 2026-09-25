@@ -89,7 +89,10 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
         requestedSpaceIds: [restrictedSpace.id],
       }
     );
-    await skill.addToAgent(agentOwnerAuth, agent);
+    await SkillFactory.linkToAgent(agentOwnerAuth, {
+      skillId: skill.id,
+      agentConfigurationId: agent.id,
+    });
 
     const targetModel = await findTargetModel(auth);
     const response = await postBatchUpdateModel(workspace, {

@@ -30,7 +30,6 @@ import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_requested_spaces";
-import type { AgentResource } from "@app/lib/resources/agent_resource";
 import {
   destroyAgentSkillLinksForCustomSkill,
   onCustomSkillStatusChanged,
@@ -1535,9 +1534,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * Returns the fields to identify this skill in related tables (e.g., AgentSkillModel).
    */
-  private get skillReference():
-    | { globalSkillId: string }
-    | { customSkillId: ModelId } {
+  get skillReference(): { globalSkillId: string } | { customSkillId: ModelId } {
     return this.codeDefinedSkillId
       ? { globalSkillId: this.codeDefinedSkillId }
       : { customSkillId: this.id };
@@ -4378,46 +4375,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return new Ok(affectedCount);
-  }
-
-  async addToAgent(
-    auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType
-  ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    await AgentSkillModel.create({
-      ...this.skillReference,
-      workspaceId: workspace.id,
-      agentConfigurationId: agentConfiguration.id,
-    });
-  }
-
-  static async addManyToAgent(
-    auth: Authenticator,
-    {
-      agentResource,
-      skills,
-    }: {
-      agentResource: AgentResource;
-      skills: SkillResource[];
-    },
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    if (skills.length === 0) {
-      return;
-    }
-
-    const workspace = auth.getNonNullableWorkspace();
-
-    await AgentSkillModel.bulkCreate(
-      skills.map((skill) => ({
-        ...skill.skillReference,
-        workspaceId: workspace.id,
-        agentConfigurationId: agentResource.agentConfigurationModelId,
-      })),
-      { transaction }
-    );
   }
 
   async enableForAgent(

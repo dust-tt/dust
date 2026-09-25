@@ -1401,6 +1401,38 @@ export class AgentResource
     return new Ok(undefined);
   }
 
+  /**
+   * @cc [owner:tdraier,label:backend;architecture] agent-skill-links-created-by-agent-save
+   * Runtime code MUST create `AgentSkillModel` rows only through this helper, called by the agent
+   * save to link the given skills to the configuration version it writes. It performs no agent
+   * refresh: the save owns the cache invalidation and search reindex of the saved agent.
+   */
+  private static async createSkillLinks(
+    auth: Authenticator,
+    {
+      agentConfigurationModelId,
+      skills,
+      transaction,
+    }: {
+      agentConfigurationModelId: ModelId;
+      skills: SkillResource[];
+      transaction: Transaction;
+    }
+  ): Promise<void> {
+    if (skills.length === 0) {
+      return;
+    }
+
+    await AgentSkillModel.bulkCreate(
+      skills.map((skill) => ({
+        ...skill.skillReference,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfigurationId: agentConfigurationModelId,
+      })),
+      { transaction }
+    );
+  }
+
   // Delegates to the standalone launcher shared with the write paths that cannot import this
   // resource (see the `agent-search-after-commit` contract).
   static async launchSearchIndexation(
@@ -3209,13 +3241,11 @@ export class AgentResource
             throw actionRes.error;
           }
         }
-        if (skills.length > 0) {
-          await SkillResource.addManyToAgent(
-            auth,
-            { agentResource: savedResource, skills },
-            { transaction: t }
-          );
-        }
+        await AgentResource.createSkillLinks(auth, {
+          agentConfigurationModelId: savedResource.agentConfigurationModelId,
+          skills,
+          transaction: t,
+        });
 
         return agentConfigurationInstance;
       };

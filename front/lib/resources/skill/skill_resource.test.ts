@@ -2905,7 +2905,10 @@ describe("SkillResource", () => {
         authenticator,
         { name: "Pod Agent" }
       );
-      await skill.addToAgent(authenticator, agent);
+      await SkillFactory.linkToAgent(authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agent.id,
+      });
 
       const conversation = await ConversationFactory.create(authenticator, {
         agentConfigurationId: agent.sId,
@@ -2942,7 +2945,10 @@ describe("SkillResource", () => {
         authenticator,
         { name: "Pod Agent" }
       );
-      await agentSkill.addToAgent(authenticator, agent);
+      await SkillFactory.linkToAgent(authenticator, {
+        skillId: agentSkill.id,
+        agentConfigurationId: agent.id,
+      });
 
       const conversation = await ConversationFactory.create(authenticator, {
         agentConfigurationId: agent.sId,
