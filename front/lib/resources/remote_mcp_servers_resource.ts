@@ -683,6 +683,13 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
    * Dynamic Client Registration; else (3) fails with a `DustError` directing the
    * caller to Static OAuth. It never performs DCR when CIMD applies.
    */
+  /**
+   * @cc [owner:tdraier,label:mcp] dcr-requested-token-auth-method
+   * The `token_endpoint_auth_method` requested at Dynamic Client Registration MUST be `none`
+   * when the authorization-server metadata lists it; otherwise the first of `client_secret_basic`
+   * / `client_secret_post` in the server's `token_endpoint_auth_methods_supported` order; otherwise
+   * the provider's default `clientMetadata.token_endpoint_auth_method`.
+   */
   static async discoverOAuthMetadata({
     serverUrl,
     provider,
@@ -806,10 +813,19 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     }
 
     try {
-      clientMetadata.token_endpoint_auth_method =
-        ["none", "client_secret_basic", "client_secret_post"].find((method) =>
-          metadata.token_endpoint_auth_methods_supported?.includes(method)
-        ) ?? clientMetadata.token_endpoint_auth_method;
+      // Some servers advertise both secret methods but only implement one; their own listing
+      // order is the best signal of which one actually works.
+      const serverAuthMethods =
+        metadata.token_endpoint_auth_methods_supported ?? [];
+      clientMetadata.token_endpoint_auth_method = serverAuthMethods.includes(
+        "none"
+      )
+        ? "none"
+        : (serverAuthMethods.find(
+            (method) =>
+              method === "client_secret_basic" ||
+              method === "client_secret_post"
+          ) ?? clientMetadata.token_endpoint_auth_method);
 
       // Try DCR.
       const fullInformation = await registerClient(serverUrl, {
