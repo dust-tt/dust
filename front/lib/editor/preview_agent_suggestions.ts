@@ -100,8 +100,7 @@ export function previewAgentSuggestions({
     return changes;
   }
 
-  const { name, description, scope, instructions, model } =
-    changes.value.fields;
+  const { name, description, scope, instructions, model } = changes.value.edit;
 
   const instructionsRes = previewInstructions(
     agent,

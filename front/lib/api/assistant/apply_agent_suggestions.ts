@@ -3,9 +3,12 @@ import { DROID_AVATAR_URLS } from "@app/lib/agent_builder/avatars";
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
-import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import type {
+  AgentBatchChanges,
+  AgentChange,
+  AgentFieldEdits,
+} from "@app/lib/editor/merge_agent_suggestion_changes";
 import { mergeAgentSuggestionChanges } from "@app/lib/editor/merge_agent_suggestion_changes";
 import {
   applyInstructionEditsToHtml,
@@ -15,9 +18,11 @@ import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/agent_configuration";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   CreateSuggestionType,
   InstructionsSuggestionSchemaType,
@@ -26,6 +31,18 @@ import type {
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 type ApplyAgentSuggestionsError = DustError<"invalid_request_error">;
+
+/**
+ * A change resolved against the current state of its agent: every check has passed and the write
+ * is fully computed.
+ */
+export type ResolvedAgentChange =
+  | {
+      type: "create" | "edit";
+      agentId: string;
+      assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
+    }
+  | { type: "delete"; agentId: string };
 
 function pickDefaultAvatar(): string {
   return DROID_AVATAR_URLS[
@@ -47,11 +64,11 @@ function pickDefaultAvatar(): string {
  * placeholder was created, but `createAgentConfiguration` skips that check for an existing row, so
  * this is the only place it is re-verified against live state.
  */
-async function applyCreateSuggestion(
+async function resolveCreateSuggestion(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentResource,
   { name, description, instructions }: CreateSuggestionType
-): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
   if (agent.status !== "pending") {
     return new Err(
       new DustError(
@@ -86,15 +103,12 @@ async function applyCreateSuggestion(
     return converted;
   }
 
-  const [editorsByAgentId, { defaultModel }] = await Promise.all([
-    getAgentsEditors(auth, [agent]),
-    getModelsForAuth(auth),
-  ]);
-  const editors = editorsByAgentId[agent.sId] ?? [];
+  const editors = (await agent.listEditors(auth)) ?? [];
+  const { defaultModel } = await getModelsForAuth(auth);
 
-  const res = await createOrUpgradeAgentConfiguration({
-    auth,
-    agentConfigurationId: agent.sId,
+  return new Ok({
+    type: "create",
+    agentId: agent.sId,
     assistant: {
       name,
       description,
@@ -115,17 +129,11 @@ async function applyCreateSuggestion(
       editors: editors.map((e) => ({ sId: e.sId })),
     },
   });
-  if (res.isErr()) {
-    return new Err(new DustError("invalid_request_error", res.error.message));
-  }
-
-  return new Ok(undefined);
 }
 
-async function applyDeleteSuggestion(
-  auth: Authenticator,
-  agent: LightAgentConfigurationType
-): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+function resolveDeleteSuggestion(
+  agent: AgentResource
+): Result<ResolvedAgentChange, ApplyAgentSuggestionsError> {
   if (agent.status !== "active") {
     return new Err(
       new DustError(
@@ -135,32 +143,8 @@ async function applyDeleteSuggestion(
     );
   }
 
-  // Editor access is enforced by the route (`agent.canEdit`), matching the manual DELETE route.
-  const agentToArchive = await AgentResource.fetchById(auth, agent.sId);
-  if (!agentToArchive) {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        "The agent this suggestion targets was not found."
-      )
-    );
-  }
-  const archiveResult = await agentToArchive.archive(auth);
-  if (archiveResult.isErr()) {
-    return new Err(
-      new DustError("invalid_request_error", archiveResult.error.message)
-    );
-  }
-  if (!archiveResult.value) {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        "The agent this suggestion targets was not found."
-      )
-    );
-  }
-
-  return new Ok(undefined);
+  // Editor access is enforced by the callers (`agent.canEdit`), matching the manual DELETE route.
+  return new Ok({ type: "delete", agentId: agent.sId });
 }
 
 interface ResolvedInstructions {
@@ -230,11 +214,11 @@ async function resolveModelEdit(
  * touched MUST be carried over from its current version: a batch that only renames the agent
  * leaves everything else as it was.
  */
-async function applyAgentFieldEdits(
+async function resolveAgentFieldEdits(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentResource,
   { name, model, description, scope, instructions }: AgentFieldEdits
-): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
   const contextRes = await getAgentConfigurationContext(auth, agent.sId, {
     requireEditorGroup: true,
   });
@@ -271,9 +255,9 @@ async function applyAgentFieldEdits(
   // Some skills may not be readable by the caller because of their requested spaces,
   // however in that case also the agent would be unreadable as it would request the
   // same spaces.
-  const res = await createOrUpgradeAgentConfiguration({
-    auth,
-    agentConfigurationId: agentConfiguration.sId,
+  return new Ok({
+    type: "edit",
+    agentId: agentConfiguration.sId,
     assistant: {
       name: name ?? agentConfiguration.name,
       description: description ?? agentConfiguration.description,
@@ -293,11 +277,127 @@ async function applyAgentFieldEdits(
       additionalRequestedSpaceIds: agentConfiguration.requestedSpaceIds,
     },
   });
-  if (res.isErr()) {
-    return new Err(new DustError("invalid_request_error", res.error.message));
+}
+
+function getAgentChange(
+  changes: AgentBatchChanges
+): Result<AgentChange, ApplyAgentSuggestionsError> {
+  const hasEdits = Object.keys(changes.edit).length > 0;
+  if (
+    [!!changes.create, hasEdits, !!changes.delete].filter(Boolean).length !== 1
+  ) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Suggestions applied together must all create, all edit, or all delete the agent."
+      )
+    );
+  }
+
+  if (changes.create) {
+    return new Ok({ type: "create", create: changes.create });
+  }
+  if (changes.delete) {
+    return new Ok({ type: "delete" });
+  }
+  return new Ok({ type: "edit", edit: changes.edit });
+}
+
+/**
+ * @cc [owner:matteotrab,label:product] single-action-per-agent
+ * `suggestions` MUST all create, all edit, or all delete `agent`: when they mix these actions, the
+ * resolution fails and no change is returned. Each change is resolved against the current state of
+ * `agent`, so a second change on the same agent would be written from stale state.
+ */
+export async function resolveAgentSuggestions(
+  auth: Authenticator,
+  {
+    agent,
+    suggestions,
+  }: {
+    agent: AgentResource;
+    suggestions: AgentSuggestionResource[];
+  }
+): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
+  const batchChanges = mergeAgentSuggestionChanges(suggestions);
+  if (batchChanges.isErr()) {
+    return batchChanges;
+  }
+
+  const change = getAgentChange(batchChanges.value);
+  if (change.isErr()) {
+    return change;
+  }
+
+  switch (change.value.type) {
+    case "create":
+      return resolveCreateSuggestion(auth, agent, change.value.create);
+    case "edit":
+      return resolveAgentFieldEdits(auth, agent, change.value.edit);
+    case "delete":
+      return resolveDeleteSuggestion(agent);
+    default:
+      return assertNever(change.value);
+  }
+}
+
+async function archiveAgent(
+  auth: Authenticator,
+  agentId: string
+): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+  // Fetched at write time: an earlier write may have saved a newer version of the agent.
+  const agent = await AgentResource.fetchById(auth, agentId);
+  if (!agent) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The agent this suggestion targets was not found."
+      )
+    );
+  }
+
+  const archiveResult = await agent.archive(auth);
+  if (archiveResult.isErr()) {
+    return new Err(
+      new DustError("invalid_request_error", archiveResult.error.message)
+    );
+  }
+  if (!archiveResult.value) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The agent this suggestion targets was not found."
+      )
+    );
   }
 
   return new Ok(undefined);
+}
+
+export async function writeAgentChange(
+  auth: Authenticator,
+  change: ResolvedAgentChange
+): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+  switch (change.type) {
+    case "create":
+    case "edit": {
+      const res = await createOrUpgradeAgentConfiguration({
+        auth,
+        agentConfigurationId: change.agentId,
+        assistant: change.assistant,
+      });
+      if (res.isErr()) {
+        return new Err(
+          new DustError("invalid_request_error", res.error.message)
+        );
+      }
+      return new Ok(undefined);
+    }
+    case "delete":
+      return archiveAgent(auth, change.agentId);
+    default:
+      return assertNever(change);
+  }
 }
 
 /**
@@ -306,44 +406,22 @@ async function applyAgentFieldEdits(
  * a suggestion changes, including `instructions`, is merged into a single
  * `createOrUpgradeAgentConfiguration` call.
  */
+/**
+ * @cc [owner:matteotrab,label:product] resolve-before-writing
+ * The change of `suggestions` MUST be resolved against the current state of `agent` before it is
+ * written: when it fails to resolve, nothing is written.
+ */
 export async function applyAgentSuggestions(
   auth: Authenticator,
-  {
-    agent,
-    suggestions,
-  }: {
-    agent: LightAgentConfigurationType;
+  params: {
+    agent: AgentResource;
     suggestions: AgentSuggestionResource[];
   }
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
-  const batchChanges = mergeAgentSuggestionChanges(suggestions);
-  if (batchChanges.isErr()) {
-    return batchChanges;
+  const change = await resolveAgentSuggestions(auth, params);
+  if (change.isErr()) {
+    return change;
   }
 
-  const { create, archive, fields } = batchChanges.value;
-  const hasFieldEdits = Object.keys(fields).length > 0;
-
-  if (create) {
-    const res = await applyCreateSuggestion(auth, agent, create);
-    if (res.isErr()) {
-      return res;
-    }
-  }
-
-  if (hasFieldEdits) {
-    const res = await applyAgentFieldEdits(auth, agent, fields);
-    if (res.isErr()) {
-      return res;
-    }
-  }
-
-  if (archive) {
-    const res = await applyDeleteSuggestion(auth, agent);
-    if (res.isErr()) {
-      return res;
-    }
-  }
-
-  return new Ok(undefined);
+  return writeAgentChange(auth, change.value);
 }

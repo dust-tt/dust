@@ -18,10 +18,10 @@ export interface AgentFieldEdits {
   instructions?: InstructionsSuggestionSchemaType[];
 }
 
-type AgentChange =
+export type AgentChange =
   | { type: "create"; create: CreateSuggestionType }
-  | { type: "archive" }
-  | { type: "fields"; fields: AgentFieldEdits };
+  | { type: "delete" }
+  | { type: "edit"; edit: AgentFieldEdits };
 
 type AgentSuggestionChangeInput = Pick<
   AgentSuggestionType,
@@ -47,30 +47,30 @@ function changeForSuggestion(
       return new Ok({ type: "create", create: data.suggestion });
 
     case "delete":
-      return new Ok({ type: "archive" });
+      return new Ok({ type: "delete" });
 
     case "model":
-      return new Ok({ type: "fields", fields: { model: data.suggestion } });
+      return new Ok({ type: "edit", edit: { model: data.suggestion } });
 
     case "name":
-      return new Ok({ type: "fields", fields: { name: data.suggestion.name } });
+      return new Ok({ type: "edit", edit: { name: data.suggestion.name } });
 
     case "description":
       return new Ok({
-        type: "fields",
-        fields: { description: data.suggestion.description },
+        type: "edit",
+        edit: { description: data.suggestion.description },
       });
 
     case "scope":
       return new Ok({
-        type: "fields",
-        fields: { scope: data.suggestion.scope },
+        type: "edit",
+        edit: { scope: data.suggestion.scope },
       });
 
     case "instructions":
       return new Ok({
-        type: "fields",
-        fields: { instructions: [data.suggestion] },
+        type: "edit",
+        edit: { instructions: [data.suggestion] },
       });
 
     case "knowledge":
@@ -94,8 +94,8 @@ function changeForSuggestion(
 
 export interface AgentBatchChanges {
   create?: CreateSuggestionType;
-  archive?: true;
-  fields: AgentFieldEdits;
+  delete?: true;
+  edit: AgentFieldEdits;
 }
 
 function mergeFieldEdits(
@@ -118,13 +118,13 @@ function mergeAgentChanges(changes: AgentChange[]): AgentBatchChanges {
   return changes.reduce<AgentBatchChanges>(
     (merged, next) => ({
       create: next.type === "create" ? next.create : merged.create,
-      archive: next.type === "archive" ? true : merged.archive,
-      fields:
-        next.type === "fields"
-          ? mergeFieldEdits(merged.fields, next.fields)
-          : merged.fields,
+      delete: next.type === "delete" ? true : merged.delete,
+      edit:
+        next.type === "edit"
+          ? mergeFieldEdits(merged.edit, next.edit)
+          : merged.edit,
     }),
-    { fields: {} }
+    { edit: {} }
   );
 }
 
