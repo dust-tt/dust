@@ -1,6 +1,7 @@
 import type { PokeGroupPermissionType } from "@app/lib/api/poke/group_permissions";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import {
   deleteGrantsForResources,
@@ -223,6 +224,25 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     );
   }
 
+  private static async lockGroupTargets(
+    auth: Authenticator,
+    groupModelIds: ModelId[],
+    transaction: Transaction
+  ): Promise<void> {
+    const uniqueIds = [...new Set(groupModelIds)];
+    if (uniqueIds.length === 0) {
+      return;
+    }
+    const existingIds = await GroupResource.lockGroupIdsForUpdate(
+      auth,
+      uniqueIds,
+      transaction
+    );
+    if (existingIds.length !== uniqueIds.length) {
+      throw new DustError("group_not_found", "The group no longer exists.");
+    }
+  }
+
   // Grant an instance-level permission (a specific resource). Idempotent: the unique index dedupes,
   // so granting twice is a no-op. Type-wide grants (resourceId = -1) go through dedicated methods.
   // A regular_auto group is the single backing group of its tuple: granting one when a different
@@ -265,6 +285,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
           !existing || existing.id === group.id,
           "Another regular_auto group already holds this grant tuple."
         );
+      } else if (resourceType === "group") {
+        await this.lockGroupTargets(auth, [resourceId], t);
       }
 
       const [row] = await GroupPermissionModel.findOrCreate({
@@ -1071,22 +1093,31 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       assertValidGrant({ grantType, resourceType, resourceId });
     }
 
-    const workspaceId = auth.getNonNullableWorkspace().id;
-    await GroupPermissionModel.bulkCreate(
-      grants.map(({ group, grantType, resourceType, resourceId }) => ({
-        workspaceId,
-        groupId: group.id,
-        grantType,
-        resourceType,
-        resourceId,
-      })),
-      { ignoreDuplicates: true, transaction }
-    );
-    invalidateGroupGrantsAfterCommit(
-      auth,
-      grants.map(({ group }) => group.id),
-      transaction
-    );
+    await withTransaction(async (t) => {
+      await this.lockGroupTargets(
+        auth,
+        grants
+          .filter(({ resourceType }) => resourceType === "group")
+          .map(({ resourceId }) => resourceId),
+        t
+      );
+      const workspaceId = auth.getNonNullableWorkspace().id;
+      await GroupPermissionModel.bulkCreate(
+        grants.map(({ group, grantType, resourceType, resourceId }) => ({
+          workspaceId,
+          groupId: group.id,
+          grantType,
+          resourceType,
+          resourceId,
+        })),
+        { ignoreDuplicates: true, transaction: t }
+      );
+      invalidateGroupGrantsAfterCommit(
+        auth,
+        grants.map(({ group }) => group.id),
+        t
+      );
+    }, transaction);
   }
 
   // ---------------------------------------------------------------------------
@@ -1236,6 +1267,11 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       replacements: { key },
       transaction,
     });
+    if (resourceType === "group" && resourceId > 0) {
+      // Group deletion holds this row lock before discovering grants. It must wait for this
+      // transaction, or this transaction must see that the target was already deleted.
+      await this.lockGroupTargets(auth, [resourceId], transaction);
+    }
   }
 
   // Grant the capability to the whole workspace (the global group), clearing any specific-group rows.

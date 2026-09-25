@@ -12,6 +12,11 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { Transaction, WhereOptions } from "sequelize";
 
+// These model operations are shared only by GroupResource and GroupPermissionResource. Group
+// deletion must revoke grants targeting it, while the permission resource already imports the
+// group resource. Keeping the shared queries and cache invalidation in this resource-layer module
+// avoids a circular import and lets both resources use the same transaction.
+
 // Bump to orphan hashes written under the previous field encoding.
 export const GROUP_PERMISSION_CACHE_SCHEMA_VERSION = 2;
 

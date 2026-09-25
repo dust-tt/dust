@@ -713,6 +713,26 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
+  // Grant creation and deletion lock the same target rows before changing group permissions.
+  // A missing row cannot be locked, so grant creation must also check the returned IDs.
+  static async lockGroupIdsForUpdate(
+    auth: Authenticator,
+    groupModelIds: ModelId[],
+    transaction: Transaction
+  ): Promise<ModelId[]> {
+    const groups = await GroupModel.findAll({
+      attributes: ["id"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: { [Op.in]: groupModelIds },
+      },
+      order: [["id", "ASC"]],
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+    return groups.map((group) => group.id);
+  }
+
   static async fetchById(
     auth: Authenticator,
     id: string
@@ -2374,7 +2394,8 @@ export class GroupResource extends BaseResource<GroupModel> {
    * @cc [owner:philipperolet,label:security;backend] group-deletion-revokes-delegation
    * Deleting a group MUST remove grants targeting it and the automatic groups holding those
    * grants in the same transaction. Affected grant and membership caches MUST be invalidated
-   * after commit so former managers lose the deleted group's authority.
+   * after commit so former managers lose the deleted group's authority. Deletion MUST lock the
+   * target group rows before reading grants, sharing that lock with grant creation.
    */
   static async batchDelete(
     auth: Authenticator,
@@ -2389,6 +2410,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       return await withTransaction(async (t) => {
         const workspaceId = auth.getNonNullableWorkspace().id;
         const deletedGroupIds = [...new Set(groups.map((group) => group.id))];
+        await this.lockGroupIdsForUpdate(auth, deletedGroupIds, t);
         const managerGroupIds = await listRegularAutoGroupIdsForResources(
           auth,
           {
