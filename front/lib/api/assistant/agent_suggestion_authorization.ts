@@ -11,9 +11,8 @@ type AgentSuggestionVerb = "write" | "admin";
  */
 /**
  * @cc [owner:fabiencelier,label:security] agent-suggestion-verbs-match-write-path
- * Each entry MUST be the verbs the `AgentResource` write path that applies the kind accepts (see
- * `agent-verbs`, `agent-edit-in-place`). See `AgentResource` methods `updateConfiguration`,
- * `updateScopeInPlace` and `archive`.
+ * Each entry MUST be the verbs the `AgentResource` write path that applies the kind accepts.
+ * See `AgentResource` methods `updateConfiguration`, `updateScopeInPlace` and `archive`.
  */
 const AGENT_SUGGESTION_KIND_ACCEPTED_VERBS: Record<
   AgentSuggestionKind,
