@@ -363,30 +363,41 @@ interface CatalogRowProps {
 
 export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
   const name = getItemName(item);
-  const avatarSize = useIsMobile() ? "md" : "lg";
+  const isMobile = useIsMobile();
+  const avatar =
+    item.kind === "agent" ? (
+      <Avatar size={isMobile ? "md" : "lg"} visual={item.agent.pictureUrl} />
+    ) : (
+      <SkillCatalogAvatar skill={item.skill} size={isMobile ? "md" : "lg"} />
+    );
+  const avatarClassName = "col-start-1 row-start-1 shrink-0 md:row-span-2";
   return (
     <div
-      onClick={onDetails}
+      onClick={isMobile ? undefined : onDetails}
       className={cn(
-        "group grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2",
-        "border-b border-separator py-4 last:border-b-0 md:gap-y-1"
+        "group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2",
+        "border-b border-separator py-4 last:border-b-0 md:gap-y-1",
+        !isMobile && "cursor-pointer"
       )}
     >
-      <button
-        type="button"
-        aria-label={`Show ${name} details`}
-        onClick={(event) => {
-          event.stopPropagation();
-          onDetails();
-        }}
-        className="col-start-1 row-start-1 shrink-0 rounded-2xl transition duration-200 ease-out hover:brightness-110 active:brightness-90 md:row-span-2"
-      >
-        {item.kind === "agent" ? (
-          <Avatar size={avatarSize} visual={item.agent.pictureUrl} />
-        ) : (
-          <SkillCatalogAvatar skill={item.skill} size={avatarSize} />
-        )}
-      </button>
+      {isMobile ? (
+        <div className={avatarClassName}>{avatar}</div>
+      ) : (
+        <button
+          type="button"
+          aria-label={`Show ${name} details`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDetails();
+          }}
+          className={cn(
+            avatarClassName,
+            "rounded-2xl transition duration-200 ease-out hover:brightness-110 active:brightness-90"
+          )}
+        >
+          {avatar}
+        </button>
+      )}
       <div className="col-start-2 col-end-4 row-start-1 flex min-w-0 items-center gap-2 self-center md:col-end-3 md:self-end">
         <span className="heading-base notranslate truncate text-foreground">
           {name}
