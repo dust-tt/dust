@@ -6,6 +6,8 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 
+import batch from "./[bId]";
+
 // Mounted at /api/w/:wId/assistant/suggestion_batches.
 const app = workspaceApp();
 
@@ -31,5 +33,7 @@ app.get(
     });
   }
 );
+
+app.route("/:bId", batch);
 
 export default app;
