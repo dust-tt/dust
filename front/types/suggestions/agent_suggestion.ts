@@ -246,7 +246,10 @@ const BaseAgentSuggestionSchema = z.object({
   sId: z.string(),
   createdAt: z.number(),
   updatedAt: z.number(),
+  // TODO(conversational-building): drop `agentConfigurationId`, a model id, in favor of `agentId`.
   agentConfigurationId: z.number(),
+  // The sId of the agent the suggestion targets.
+  agentId: z.string(),
   analysis: z.string().nullable(),
   state: z.enum(AGENT_SUGGESTION_STATES),
   source: z.enum(AGENT_SUGGESTION_SOURCES),

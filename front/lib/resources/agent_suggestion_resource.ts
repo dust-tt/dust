@@ -430,6 +430,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       agentConfigurationId: this.agentConfigurationId,
+      agentId: this._agentConfigurationId,
       analysis: this.analysis,
       state: this.state,
       source: this.source,
