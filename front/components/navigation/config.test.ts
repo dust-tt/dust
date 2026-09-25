@@ -80,3 +80,23 @@ describe("subNavigationAdmin analytics entry", () => {
     expect(items.find((item) => item.id === "analytics")?.current).toBe(false);
   });
 });
+
+describe("subNavigationAdmin delegated Usage entry", () => {
+  it("shows Usage but keeps other workspace areas disabled for a group manager", () => {
+    const nav = subNavigationAdmin({
+      owner: ownerWithRole("user"),
+      currentRoute: "/w/ws_1/usage",
+      featureFlags: ["group_management"],
+      subscription: SUBSCRIPTION,
+      hasPermission: () => false,
+      canManageUsage: true,
+    });
+    const items = nav.find((section) => section.id === "workspace")?.menus;
+
+    expect(items?.find((item) => item.id === "usage")?.disabled).toBe(false);
+    expect(items?.find((item) => item.id === "members")?.disabled).toBe(true);
+    expect(items?.find((item) => item.id === "governance")?.disabled).toBe(
+      true
+    );
+  });
+});

@@ -32,6 +32,12 @@ export interface AuthContextValue {
   vizUrl: string;
   providersHealth: ProvidersHealth | null;
   workspacePermissions: WorkspacePermissions;
+  // PR 5 will populate this from the authenticated user's group grants.
+  // Until then, the delegated Usage page remains inaccessible.
+  groupUsageScope?: {
+    readGroupIds: string[];
+    editGroupIds: string[];
+  };
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
