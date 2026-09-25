@@ -1,7 +1,5 @@
-import { getEditors } from "@app/lib/api/assistant/editors";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getMembers } from "@app/lib/api/workspace";
-import { AgentResource } from "@app/lib/resources/agent_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
@@ -37,7 +35,7 @@ export const updateEditorsPlugin = createPlugin({
       activeOnly: true,
     });
 
-    const editors = await getEditors(auth, resource);
+    const editors = (await resource.listEditors(auth)) ?? [];
     const editorIds = new Set(editors.map((editor) => editor.sId));
 
     return new Ok({
@@ -59,7 +57,7 @@ export const updateEditorsPlugin = createPlugin({
     const selectedMemberIds = members || [];
 
     // Get current editors
-    const currentEditors = await getEditors(auth, resource);
+    const currentEditors = (await resource.listEditors(auth)) ?? [];
     const currentEditorIds = new Set(
       currentEditors.map((editor) => editor.sId)
     );
@@ -91,11 +89,7 @@ export const updateEditorsPlugin = createPlugin({
 
     // Editor changes go through the single editor-edit path (`updateConfiguration`, admin-gated and
     // applied in place — see `agent-edit-in-place`), which takes the complete editor set.
-    const agentResource = await AgentResource.fetchById(auth, resource.sId);
-    if (!agentResource) {
-      return new Err(new Error("Agent configuration not found"));
-    }
-    const updateResult = await agentResource.updateConfiguration(auth, {
+    const updateResult = await resource.updateConfiguration(auth, {
       editors: selectedMemberIds
         .map((id) => userMap.get(id))
         .filter((user): user is UserType => user !== undefined),

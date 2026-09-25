@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type {
   EmailReplyContext,
   InboundEmail,
@@ -13,6 +12,7 @@ import {
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
@@ -107,11 +107,11 @@ async function handleBlockedValidation(
     return false;
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: context.agentConfigurationId,
-    variant: "light",
-  });
-  if (!agentConfiguration) {
+  const agent = await AgentResource.fetchById(
+    auth,
+    context.agentConfigurationId
+  );
+  if (!agent) {
     logger.warn(
       {
         agentMessageId,
@@ -126,7 +126,7 @@ async function handleBlockedValidation(
 
   await sendToolValidationEmail({
     email,
-    agentConfiguration,
+    agent,
     blockedActions: validationRequiredActions,
     conversation: { sId: context.conversationId },
     workspace: auth.getNonNullableWorkspace(),
@@ -220,10 +220,10 @@ export async function sendEmailReplyOnCompletion(
   await deleteEmailReplyContext(workspaceId, agentLoopArgs.agentMessageId);
 
   // Get agent configuration for the reply sender name.
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: context.agentConfigurationId,
-    variant: "light",
-  });
+  const agent = await AgentResource.fetchById(
+    auth,
+    context.agentConfigurationId
+  );
 
   // Render the agent message content as HTML.
   const htmlContent = sanitizeHtml(
@@ -240,8 +240,8 @@ export async function sendEmailReplyOnCompletion(
     undefined,
     config.getAppUrl()
   );
-  const agentName = agentConfiguration
-    ? sanitizeHtml(agentConfiguration.name, {
+  const agentName = agent
+    ? sanitizeHtml(agent.name, {
         allowedTags: [],
         allowedAttributes: {},
       })
@@ -258,7 +258,7 @@ export async function sendEmailReplyOnCompletion(
   const email = reconstructEmailFromContext(context);
   await replyToEmail({
     email,
-    agentConfiguration: agentConfiguration ?? undefined,
+    agent: agent ?? undefined,
     htmlContent: fullHtmlContent,
     recipient: context.fromEmail,
   });

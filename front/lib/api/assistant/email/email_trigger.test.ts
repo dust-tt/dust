@@ -10,7 +10,7 @@ import {
   splitThreadContent,
 } from "@app/lib/api/assistant/email/email_trigger";
 import { sendEmail } from "@app/lib/api/email";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -297,9 +297,7 @@ describe("sendToolValidationEmail", () => {
   it("adds cell metadata to approval links", async () => {
     await sendToolValidationEmail({
       email: makeInboundEmail(),
-      agentConfiguration: {
-        name: "approvals",
-      } as LightAgentConfigurationType,
+      agent: { name: "approvals" } as AgentResource,
       blockedActions: [makeBlockedAction()],
       conversation: { sId: "conversation-1" },
       workspace: { sId: "workspace-1" } as LightWorkspaceType,

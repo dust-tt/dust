@@ -1,6 +1,5 @@
 import { isAuthorizedToApplyAgentSuggestions } from "@app/lib/api/assistant/agent_suggestion_authorization";
 import { applyAgentSuggestions } from "@app/lib/api/assistant/apply_agent_suggestions";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -46,10 +45,7 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agent = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, aId);
     if (!agent) {
       return apiError(ctx, {
         status_code: 404,
@@ -60,7 +56,7 @@ app.get(
       });
     }
     // Suggestions carry instruction replacements, so admins get no bypass: they must be editors.
-    if (!agent.canEdit) {
+    if (!auth.can("write", agent)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -119,10 +115,7 @@ app.patch(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agent = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, aId);
     if (!agent) {
       return apiError(ctx, {
         status_code: 404,
@@ -133,7 +126,7 @@ app.patch(
       });
     }
     // Suggestions carry instruction replacements, so admins get no bypass: they must be editors.
-    if (!agent.canEdit) {
+    if (!auth.can("write", agent)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -197,11 +190,7 @@ app.patch(
         });
       }
 
-      const agentResource = await AgentResource.fetchById(auth, agent.sId);
-      if (
-        !agentResource ||
-        !isAuthorizedToApplyAgentSuggestions(auth, agentResource, suggestions)
-      ) {
+      if (!isAuthorizedToApplyAgentSuggestions(auth, agent, suggestions)) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
@@ -213,7 +202,7 @@ app.patch(
       }
 
       const applyRes = await applyAgentSuggestions(auth, {
-        agent: agentResource,
+        agent,
         suggestions,
       });
       if (applyRes.isErr()) {

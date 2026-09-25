@@ -7,7 +7,6 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -79,17 +78,15 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
   static async createSuggestionForAgent(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agent: AgentResource,
     blob: Omit<
       CreationAttributes<AgentSuggestionModel>,
       "workspaceId" | "agentConfigurationId"
     >
   ): Promise<AgentSuggestionResource> {
-    const [suggestion] = await this.createSuggestionsForAgent(
-      auth,
-      agentConfiguration,
-      [blob]
-    );
+    const [suggestion] = await this.createSuggestionsForAgent(auth, agent, [
+      blob,
+    ]);
     return suggestion;
   }
 
@@ -100,12 +97,12 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
    * inserted before this contract, not as a fallback for new call sites.
    */
   /**
-   * Same as `createSuggestionForAgent`, batched: the agent's editor permissions are looked up
-   * once and every suggestion is inserted in a single query, instead of once per suggestion.
+   * Same as `createSuggestionForAgent`, batched: every suggestion is inserted in a single query,
+   * instead of once per suggestion.
    */
   static async createSuggestionsForAgent(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agent: AgentResource,
     blobs: Omit<
       CreationAttributes<AgentSuggestionModel>,
       "workspaceId" | "agentConfigurationId"
@@ -117,36 +114,21 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
     const owner = auth.getNonNullableWorkspace();
 
-    // Look up the agent's editor permissions.
-    const agentAccessById = await this.getAgentAccessById(auth, [
-      agentConfiguration.sId,
-    ]);
-    const agentAccess = agentAccessById.get(agentConfiguration.sId) ?? null;
-
-    // Check permission.
-    const canWrite = this.canEditAgent(auth, agentAccess);
-
-    if (!canWrite) {
+    if (!this.canEditAgent(auth, agent)) {
       throw new Error("User does not have permission to edit this agent");
     }
 
     const suggestions = await AgentSuggestionModel.bulkCreate(
       blobs.map((blob) => ({
         ...blob,
-        agentConfigurationId: agentConfiguration.id,
+        agentConfigurationId: agent.agentConfigurationModelId,
         workspaceId: owner.id,
       }))
     );
 
     return suggestions.map(
       (suggestion) =>
-        new this(
-          AgentSuggestionModel,
-          suggestion.get(),
-          agentAccess,
-          agentConfiguration.sId,
-          null
-        )
+        new this(AgentSuggestionModel, suggestion.get(), agent, agent.sId, null)
     );
   }
 
