@@ -8,6 +8,8 @@ import type {
   SkillWithoutInstructionsAndToolsWithRelationsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import type { SpaceKind } from "@app/types/space";
+import type { UserType } from "@app/types/user";
 
 export type GetSkillsResponseBody = {
   skills: (SkillWithoutInstructionsAndToolsType & {
@@ -29,7 +31,42 @@ export interface SkillSearchFilters {
   editedByMe?: true;
   availability?: SkillAvailability[];
   codeDefinedOnly?: true;
+  editorIds?: string[];
+  childSkillIds?: string[];
+  spaceIds?: string[];
+  // Inclusive bounds; skills without usage never match.
+  activeUsersCount?: { min?: number; max?: number };
 }
+
+export const SKILL_SEARCH_TERMS_FACETS = [
+  "availability",
+  "editors",
+  "childSkills",
+  "spaces",
+] as const;
+export type SkillSearchTermsFacet = (typeof SKILL_SEARCH_TERMS_FACETS)[number];
+
+export const SKILL_SEARCH_FACETS = [
+  ...SKILL_SEARCH_TERMS_FACETS,
+  "usage",
+] as const;
+export type SkillSearchFacet = (typeof SKILL_SEARCH_FACETS)[number];
+
+export interface SkillSearchFacetValue {
+  value: string;
+  count: number;
+}
+
+// Bounds of a numeric facet; null when no matching skill holds a value.
+export interface SkillSearchRangeFacetValue {
+  min: number | null;
+  max: number | null;
+}
+
+// Distinct indexed values of each requested facet, with the number of matching skills holding each.
+export type SkillSearchFacetValues = Partial<
+  Record<SkillSearchTermsFacet, SkillSearchFacetValue[]>
+> & { usage?: SkillSearchRangeFacetValue };
 
 export const SKILL_SEARCH_SORTS = [
   "relevance",
@@ -46,6 +83,20 @@ export type SearchSkillsResponseBody = {
   skills: SkillListItemType[];
   total: number;
   hasMore: boolean;
+  facets: {
+    availability?: { availability: SkillAvailability; count: number }[];
+    editors?: (Pick<UserType, "sId" | "fullName" | "image"> & {
+      count: number;
+    })[];
+    childSkills?: {
+      sId: string;
+      name: string;
+      icon: string | null;
+      count: number;
+    }[];
+    spaces?: { sId: string; name: string; kind: SpaceKind; count: number }[];
+    usage?: SkillSearchRangeFacetValue;
+  };
 };
 
 /**

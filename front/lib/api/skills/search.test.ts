@@ -51,6 +51,7 @@ describe("searchSkills pagination", () => {
       skills: [],
       total: 0,
       hasMore: false,
+      facets: {},
     });
     expect(mockSearch).toHaveBeenCalledOnce();
     expect(mockSearch.mock.calls[0][0]).toMatchObject({
@@ -124,7 +125,12 @@ describe("searchSkills pagination", () => {
 
     const result = await searchSkills(auth, { searchTerm: "", offset: 5 });
     assert(result.isOk());
-    expect(result.value).toEqual({ skills: [], total: 7, hasMore: true });
+    expect(result.value).toEqual({
+      skills: [],
+      total: 7,
+      hasMore: true,
+      facets: {},
+    });
   });
 
   it.each([
@@ -157,6 +163,69 @@ describe("searchSkills pagination", () => {
     expect(mockSearch.mock.calls[0][0]).toMatchObject({
       from: MAX_SKILL_SEARCH_WINDOW - 10,
       size: 10,
+    });
+  });
+});
+
+describe("searchSkills filters and facets", () => {
+  beforeEach(() => {
+    mockSearch.mockReset();
+  });
+
+  it("sends the editor, child skill, space and usage filters", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    mockSearch.mockResolvedValue({ hits: { hits: [] } });
+
+    await searchSkills(auth, {
+      searchTerm: "",
+      filters: {
+        editorIds: ["alice"],
+        childSkillIds: ["child"],
+        spaceIds: ["space"],
+        activeUsersCount: { min: 3 },
+      },
+    });
+
+    const { filter } = mockSearch.mock.calls[0][0].query.bool;
+    expect(filter).toEqual(
+      expect.arrayContaining([
+        { terms: { editor_ids: ["alice"] } },
+        { terms: { child_skill_ids: ["child"] } },
+        { terms: { requested_space_ids: ["space"] } },
+        { range: { active_users_count: { gte: 3, lte: undefined } } },
+      ])
+    );
+  });
+
+  it("returns facet values with counts and the usage range", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    mockSearch.mockResolvedValue({
+      hits: { total: { value: 3, relation: "eq" }, hits: [] },
+      aggregations: {
+        availability: { buckets: [{ key: "workspace_users", doc_count: 3 }] },
+        editors: { buckets: [{ key: "alice", doc_count: 2 }] },
+        usage: { count: 3, min: 0, max: 17 },
+      },
+    });
+
+    const result = await searchSkills(auth, {
+      searchTerm: "",
+      limit: 0,
+      facets: ["availability", "editors", "usage"],
+    });
+    assert(result.isOk());
+    expect(result.value.facets).toEqual({
+      availability: [{ value: "workspace_users", count: 3 }],
+      editors: [{ value: "alice", count: 2 }],
+      usage: { min: 0, max: 17 },
+    });
+    expect(mockSearch.mock.calls[0][0]).toMatchObject({
+      size: 0,
+      aggs: {
+        availability: { terms: { field: "availability" } },
+        editors: { terms: { field: "editor_ids" } },
+        usage: { stats: { field: "active_users_count" } },
+      },
     });
   });
 });
@@ -243,6 +312,7 @@ describe("code-defined skill search", () => {
       skills: [],
       total: 0,
       hasMore: false,
+      facets: {},
     });
   });
 
