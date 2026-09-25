@@ -12,8 +12,6 @@ import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   DEFAULT_NOTIFICATION_CONDITION,
   DEFAULT_NOTIFICATION_DELAY,
-  FOR_YOU_NOTIFICATION_METADATA_KEY,
-  isForYouNotificationsEnabled,
   isNotificationCondition,
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
@@ -65,7 +63,6 @@ const NotificationPreferencesFormSchema = z.object({
   inApp: z.boolean(),
   slack: z.boolean(),
   email: z.boolean(),
-  forYou: z.boolean(),
 });
 
 type NotificationPreferencesFormValues = z.infer<
@@ -75,11 +72,9 @@ type NotificationPreferencesFormValues = z.infer<
 export function useNotificationPreferencesForm({
   owner,
   disabled,
-  displayForYouOption,
 }: {
   owner: LightWorkspaceType;
   disabled: boolean;
-  displayForYouOption: boolean;
 }) {
   const sendNotification = useSendNotification();
   const { hasFeature } = useFeatureFlags();
@@ -104,13 +99,6 @@ export function useNotificationPreferencesForm({
     metadata: notifyConditionMetadata,
     mutateMetadata: mutateNotifyCondition,
   } = useUserMetadata(CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition);
-  const {
-    metadata: forYouMetadata,
-    mutateMetadata: mutateForYou,
-    isMetadataLoading: isForYouLoading,
-  } = useUserMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY, {
-    disabled: disabled || !displayForYouOption,
-  });
 
   const form = useForm<NotificationPreferencesFormValues>({
     resolver: zodResolver(NotificationPreferencesFormSchema),
@@ -120,7 +108,6 @@ export function useNotificationPreferencesForm({
       inApp: false,
       slack: false,
       email: false,
-      forYou: true,
     },
   });
 
@@ -140,13 +127,11 @@ export function useNotificationPreferencesForm({
       inApp: Boolean(conversationPreferences.channels.in_app),
       slack: Boolean(conversationPreferences.channels.chat),
       email: Boolean(conversationPreferences.channels.email),
-      forYou: isForYouNotificationsEnabled(forYouMetadata?.value),
     });
   }, [
     conversationPreferences,
     conversationEmailMetadata,
     notifyConditionMetadata,
-    forYouMetadata,
     form,
   ]);
 
@@ -179,13 +164,6 @@ export function useNotificationPreferencesForm({
           });
           await mutateNotifyCondition();
         }
-        if (displayForYouOption && dirtyFields.forYou) {
-          await setUserMetadataFromClient({
-            key: FOR_YOU_NOTIFICATION_METADATA_KEY,
-            value: String(data.forYou),
-          });
-          await mutateForYou();
-        }
         form.reset(data);
         succeeded = true;
       } catch (error) {
@@ -203,10 +181,7 @@ export function useNotificationPreferencesForm({
     control: form.control,
     displaySlackOption,
     isDirty: form.formState.isDirty,
-    isLoading:
-      status === "loading" ||
-      isSlackSetupLoading ||
-      (displayForYouOption && isForYouLoading),
+    isLoading: status === "loading" || isSlackSetupLoading,
     save,
     status,
     workflowEnabled: Boolean(conversationPreferences?.enabled),
@@ -216,7 +191,6 @@ export function useNotificationPreferencesForm({
 interface NotificationPreferencesProps {
   control: Control<NotificationPreferencesFormValues>;
   displaySlackOption: boolean;
-  displayForYouOption: boolean;
   workflowEnabled: boolean;
   conversationExternalNotificationsEnabled: boolean;
 }
@@ -224,7 +198,6 @@ interface NotificationPreferencesProps {
 export function NotificationPreferences({
   control,
   displaySlackOption,
-  displayForYouOption,
   workflowEnabled,
   conversationExternalNotificationsEnabled,
 }: NotificationPreferencesProps) {
@@ -239,7 +212,6 @@ export function NotificationPreferences({
   const { field: inAppField } = useController({ name: "inApp", control });
   const { field: slackField } = useController({ name: "slack", control });
   const { field: emailField } = useController({ name: "email", control });
-  const { field: forYouField } = useController({ name: "forYou", control });
 
   const [portalContainer] = useState<HTMLElement | undefined>(() =>
     typeof document !== "undefined" ? document.body : undefined
@@ -255,7 +227,6 @@ export function NotificationPreferences({
   const isEmailFrequencyEnabled =
     isEmailEnabled && !notificationsDisabled && !externalChannelsDisabled;
   const slackEmailDisabled = notificationsDisabled || externalChannelsDisabled;
-  const isForYouEnabled = forYouField.value && !externalChannelsDisabled;
 
   return (
     <div className="flex flex-col gap-3">
@@ -366,21 +337,6 @@ export function NotificationPreferences({
             </DropdownMenu>
           }
         />
-
-        {displayForYouOption && (
-          <SettingsList.Row
-            title="For you"
-            description="Email when Dust has a new recommendation for you"
-            action={
-              <SliderToggle
-                selected={isForYouEnabled}
-                disabled={externalChannelsDisabled}
-                icon={externalChannelsDisabled ? Lock01 : undefined}
-                onClick={() => forYouField.onChange(!isForYouEnabled)}
-              />
-            }
-          />
-        )}
       </SettingsList>
     </div>
   );

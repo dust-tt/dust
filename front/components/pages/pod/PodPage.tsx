@@ -10,7 +10,6 @@ import {
   usePodTabs,
 } from "@app/hooks/useSpaceProjectTabs";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { useActivationPod } from "@app/lib/swr/activation";
 import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -59,8 +58,6 @@ export function PodPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
   const podId = useActivePodId();
-  const { podKind } = useActivationPod({ workspaceId: owner.sId, podId });
-  const isGoalPod = podKind === "goal";
 
   const {
     spaceInfo: podInfo,
@@ -241,7 +238,6 @@ export function PodPage() {
 
         <PodPageContent
           podInfo={podInfo}
-          isGoalPod={isGoalPod}
           onTabChange={handleTabChange}
           podUiPreferences={podUiPreferences}
           setPodUiPreferences={setPodUiPreferences}
