@@ -785,6 +785,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(createdSuggestedSkill);
   }
 
+  // Creates a pending skill: an empty placeholder, edited only by the caller, that a conversational
+  // `create` suggestion is recorded on. Accepting the suggestion fills it and makes it `active`.
   static async createPending(
     auth: Authenticator
   ): Promise<Result<SkillResource, Error>> {
