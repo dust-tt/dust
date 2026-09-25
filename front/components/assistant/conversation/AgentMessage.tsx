@@ -1602,6 +1602,7 @@ function AgentMessageContent({
               {answer.pileDirectives.length > 0 && (
                 <ConversationSuggestionPile
                   owner={owner}
+                  conversationId={conversationId}
                   directives={answer.pileDirectives}
                   recap={answer.recap}
                 />
