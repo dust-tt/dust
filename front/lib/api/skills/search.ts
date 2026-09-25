@@ -15,7 +15,7 @@ import type {
   SkillSearchSortOrder,
 } from "@app/types/api/skills";
 import { Err, Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isNumber, removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 
 /**
@@ -83,7 +83,7 @@ export async function searchSkills(
     return result;
   }
   const { hits, total } = result.value.hits;
-  const totalCount = typeof total === "number" ? total : (total?.value ?? 0);
+  const totalCount = isNumber(total) ? total : (total?.value ?? 0);
 
   return new Ok({
     skills: removeNulls(hits.map((hit) => hit._source)).map((document) =>

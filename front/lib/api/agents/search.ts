@@ -17,7 +17,7 @@ import type {
   AgentSearchSortOrder,
 } from "@app/types/agent_search/agent_search";
 import { Err, Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isNumber, removeNulls } from "@app/types/shared/utils/general";
 
 /**
  * @cc [owner:tdraier,label:security;product] searchable-global-agents
@@ -56,7 +56,8 @@ async function listSearchableGlobalAgentIds(
  * @cc [owner:tdraier,label:security;product] agent-search-pagination
  * Custom and global agents share one ES-ranked stream, paginated by offset so any page can be
  * reached directly. `offset + limit` beyond the ES result window MUST fail with
- * `offset_out_of_range` without querying. Every page re-applies the caller's grants to the indexed
+ * `offset_out_of_range` without querying, unless `unrestricted-agent-search-requires-admin`
+ * already failed the request (that check takes precedence). Every page re-applies the caller's grants to the indexed
  * documents. Pagination reads the live index; concurrent index changes may cause skips or
  * duplicates.
  */
@@ -104,7 +105,7 @@ export async function searchAgents(
     return result;
   }
   const { hits, total } = result.value.hits;
-  const totalCount = typeof total === "number" ? total : (total?.value ?? 0);
+  const totalCount = isNumber(total) ? total : (total?.value ?? 0);
 
   return new Ok({
     agents: removeNulls(hits.map((hit) => hit._source)).map(toAgentListItem),
