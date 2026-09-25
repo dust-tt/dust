@@ -29,9 +29,10 @@ const TIER_QUOTAS: [HomepageUseCaseTier, number][] = [
 
 /**
  * @cc [owner:adrsimon,label:react;product] featured-use-cases-come-first
- * Every offered `featured` use case, up to `MAX_FEATURED_USE_CASES`, MUST be in the picked rows and rendered before the
- * others. The remaining rows are drawn from `milestone` (up to 1), then `role` (up to 2), then
- * `general`, and any row still free is filled from what is left, whatever its tier.
+ * Every offered `featured` use case, up to `MAX_FEATURED_USE_CASES`, MUST be in the picked rows
+ * and rendered before the others. The remaining rows are drawn from `milestone` (up to 1), then
+ * `role` (up to 2), then `general`, and any row still free is filled from what is left, whatever
+ * its tier.
  */
 function pickUseCases(useCases: HomepageUseCaseType[]): HomepageUseCaseType[] {
   const picked: HomepageUseCaseType[] = [];
@@ -42,7 +43,8 @@ function pickUseCases(useCases: HomepageUseCaseType[]): HomepageUseCaseType[] {
     );
   }
 
-  const leftovers = useCases.filter((useCase) => !picked.includes(useCase));
+  const pickedIds = new Set(picked.map(({ id }) => id));
+  const leftovers = useCases.filter(({ id }) => !pickedIds.has(id));
 
   return [...picked, ...sampleSize(leftovers, VISIBLE_COUNT - picked.length)];
 }
@@ -57,7 +59,8 @@ interface HomepageUseCasesProps {
  * @cc [owner:adrsimon,label:react;product] rows-track-offered-use-cases
  * The rendered rows MUST always be a subset of the use cases the endpoint currently resolves,
  * so a use case whose requirements stopped resolving can no longer be picked. The sample is
- * kept across revalidations only while every row it holds is still offered.
+ * kept across revalidations only while every row it holds is still offered and it holds every
+ * offered `featured` use case.
  */
 export function HomepageUseCases({
   onPick,
@@ -72,8 +75,16 @@ export function HomepageUseCases({
   const containsUnavailableUseCase = page.some(
     ({ id }) => !stillOffered.has(id)
   );
+  const pageIds = new Set(page.map(({ id }) => id));
+  const missesFeaturedUseCase = useCases.some(
+    ({ id, tier }) => tier === "featured" && !pageIds.has(id)
+  );
 
-  if (needsInitialSample || containsUnavailableUseCase) {
+  if (
+    needsInitialSample ||
+    containsUnavailableUseCase ||
+    missesFeaturedUseCase
+  ) {
     setPage(pickUseCases(useCases));
   }
 

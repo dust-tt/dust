@@ -14,9 +14,9 @@ export type UsageMilestone = "joined_pod";
  * @cc [owner:adrsimon,label:product] audience-decides-who-sees-a-use-case
  * On top of `requires`, a use case MUST be offered to a user only when its audience matches:
  * `everyone` and `featured` to every user, `jobTypes` only to users whose job type is listed,
- * `untilMilestone` only to users who have not reached that milestone yet. A user whose job type
- * or milestone cannot be established MUST NOT be offered a `jobTypes` use case, and MUST be
- * treated as not having reached the milestone.
+ * `untilMilestone` only to users who have not reached that milestone yet. A user with no job type,
+ * or one that is not a known `JobType`, MUST NOT be offered a `jobTypes` use case. A failure to
+ * read the user's job type or milestones MUST fail the listing instead of falling back.
  */
 export type UseCaseAudience =
   | { type: "everyone" }
