@@ -1,5 +1,4 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -12,10 +11,8 @@ vi.mock("@app/lib/api/agents/search", () => ({
   searchAgents,
 }));
 
-async function setup(role: MembershipRoleType = "user") {
-  const context = await createPrivateApiMockRequest({ role });
-  await FeatureFlagFactory.basic(context.auth, "agents_search");
-  return context;
+function setup(role: MembershipRoleType = "user") {
+  return createPrivateApiMockRequest({ role });
 }
 
 function searchRequest(
@@ -44,18 +41,6 @@ const noFilters = {
 describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   beforeEach(() => {
     searchAgents.mockReset();
-  });
-
-  it("rejects search when agents_search is disabled", async () => {
-    const { workspace } = await createPrivateApiMockRequest({ role: "user" });
-
-    const response = await searchRequest(workspace.sId);
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "feature_flag_not_found" },
-    });
-    expect(searchAgents).not.toHaveBeenCalled();
   });
 
   it("routes search results with their deduplicated editors", async () => {

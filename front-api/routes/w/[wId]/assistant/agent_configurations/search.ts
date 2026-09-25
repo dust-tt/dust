@@ -8,7 +8,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/search.
 const app = workspaceApp();
@@ -16,7 +15,6 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  withFeatureFlag("agents_search"),
   validate("json", SearchAgentsQuerySchema),
   async (ctx): HandlerResult<SearchAgentsResponseBody> => {
     const auth = ctx.get("auth");
