@@ -15,6 +15,7 @@ import {
 } from "@app/lib/api/frames/publication_storage";
 import { registerFrameV2FromSourceUsingFileSystem } from "@app/lib/api/frames/register_from_source";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import { getFrameFunctionSharingConflict } from "@app/lib/api/share/frame_sharing";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import {
   parseSourceLocation,
@@ -58,6 +59,27 @@ function frameSourceConflictError() {
     "publish_conflict",
     "Another source operation is in progress for this Frame; retry shortly."
   );
+}
+
+type CheckFrameFunctionSharingParams = {
+  frame: FileResource;
+  manifest: FrameManifest;
+};
+
+/**
+ * Refuses, before the build, a publication with functions that would lock out viewers the Frame is
+ * already shared with. The previous publication stays live.
+ */
+async function checkFrameFunctionSharing(
+  auth: Authenticator,
+  { frame, manifest }: CheckFrameFunctionSharingParams
+): Promise<Result<void, FramePublicationError>> {
+  const conflict = await getFrameFunctionSharingConflict(auth, frame, {
+    declaresFunctions: manifest.functions.length > 0,
+  });
+  return conflict
+    ? frameError("sharing_conflict", conflict)
+    : new Ok(undefined);
 }
 
 export type PublishFrameFromSourceError =
@@ -421,6 +443,14 @@ async function replaceLegacyFrameFromSource(
     }
     const { manifest, sourceFiles } = source.value;
 
+    const sharingCheck = await checkFrameFunctionSharing(auth, {
+      frame: legacyFrame,
+      manifest,
+    });
+    if (sharingCheck.isErr()) {
+      return sharingCheck;
+    }
+
     const build = await buildFramePublication(auth, {
       conversation: params.conversation,
       manifest,
@@ -777,6 +807,14 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
   });
   if (source.isErr()) {
     return source;
+  }
+
+  const sharingCheck = await checkFrameFunctionSharing(auth, {
+    frame,
+    manifest: source.value.manifest,
+  });
+  if (sharingCheck.isErr()) {
+    return sharingCheck;
   }
 
   return buildAndPublishFramePublication(auth, {
