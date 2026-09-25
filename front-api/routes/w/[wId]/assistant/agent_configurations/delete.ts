@@ -35,9 +35,8 @@ app.post(
         },
       });
     }
-    if (
-      toDelete.some((agent) => !auth.can("write", agent) && !auth.isAdmin())
-    ) {
+    // Checked for every agent before archiving any, so a rejected batch archives nothing.
+    if (toDelete.some((agent) => !auth.can("admin", agent))) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

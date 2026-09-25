@@ -148,7 +148,7 @@ app.delete(
     const { aId } = ctx.req.valid("param");
 
     const agent = await AgentResource.fetchById(auth, aId);
-    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -158,7 +158,9 @@ app.delete(
       });
     }
 
-    if (!auth.can("write", agent) && !auth.isAdmin()) {
+    // Archiving needs the agent `admin` verb only, readable or not (see
+    // `agent-archive-restore-requires-admin`); `archive` enforces it too.
+    if (!auth.can("admin", agent)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

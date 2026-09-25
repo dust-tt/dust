@@ -1885,8 +1885,10 @@ export class AgentResource
    * @cc [owner:tdraier,label:security] agent-archive-restore-requires-admin
    * Archiving, restoring, or hard-deleting a custom agent MUST require the agent `admin` verb,
    * checked inside the resource (`auth.can("admin", this)`) and never delegated to the caller: no
-   * caller may archive, restore, or delete an agent it does not hold `admin` on. Editors and
-   * workspace admins hold it; a Poke superuser session holds it through its admin role.
+   * caller may archive, restore, or delete an agent it does not hold `admin` on, and `write` alone
+   * MUST NOT suffice. For a user caller, these methods MUST accept `admin` alone, whether or not the
+   * caller can `read` the agent. Editors and workspace admins hold it; a Poke superuser session
+   * holds it through its admin role.
    */
   /**
    * @cc [owner:tdraier,label:product] archive-disables-triggers
