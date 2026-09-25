@@ -14,6 +14,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 
 /**
  * Poke's view of sandbox function invocations. An invocation belongs to a `SandboxFunctionResource`
@@ -23,6 +24,9 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 export type PokeSandboxFunctionInvocation = {
   sId: string;
+  // The function version the invocation ran against, and its publication.
+  functionId: string;
+  publicationId: string;
   status: SandboxFunctionInvocationStatus;
   origin: SandboxFunctionInvocationOrigin | null;
   user: string | null;
@@ -59,22 +63,26 @@ export type PokeGetSandboxFunctionMCPActionOutput = {
   structuredContent?: CallToolResult["structuredContent"];
 };
 
+/**
+ * The newest invocations across `sandboxFunctions`: one function, or every version of a function
+ * name. Each invocation names the version it ran against.
+ */
 export async function listSandboxFunctionInvocations(
   auth: Authenticator,
   {
-    sandboxFunction,
+    sandboxFunctions,
     limit,
     statuses,
     origins,
   }: {
-    sandboxFunction: SandboxFunctionResource;
+    sandboxFunctions: SandboxFunctionResource[];
     limit: number;
     statuses?: SandboxFunctionInvocationStatus[];
     origins?: SandboxFunctionInvocationOrigin[];
   }
 ): Promise<PokeSandboxFunctionInvocation[]> {
   const rows = await SandboxFunctionInvocationResource.listRows(auth, {
-    sandboxFunction,
+    sandboxFunctions,
     limit,
     statuses,
     origins,
@@ -84,13 +92,25 @@ export async function listSandboxFunctionInvocations(
     removeNulls(rows.map((row) => row.userId))
   );
   const usersByModelId = new Map(users.map((user) => [user.id, user]));
-
-  return rows.map((row) =>
-    SandboxFunctionInvocationResource.rowToPokeJSON(
-      row,
-      row.userId !== null ? (usersByModelId.get(row.userId) ?? null) : null
-    )
+  const sandboxFunctionsByModelId = new Map(
+    sandboxFunctions.map((sandboxFunction) => [
+      sandboxFunction.id,
+      sandboxFunction,
+    ])
   );
+
+  return rows.map((row) => {
+    const sandboxFunction = sandboxFunctionsByModelId.get(
+      row.sandboxFunctionModelId
+    );
+    assert(sandboxFunction, "An invocation's function must be listed.");
+
+    return SandboxFunctionInvocationResource.rowToPokeJSON(row, {
+      sandboxFunction,
+      user:
+        row.userId !== null ? (usersByModelId.get(row.userId) ?? null) : null,
+    });
+  });
 }
 
 async function renderMCPActions(

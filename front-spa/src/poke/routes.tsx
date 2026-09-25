@@ -144,7 +144,7 @@ export const routes: RouteObject[] = [
           { path: "groups/:groupId", element: <GroupPage /> },
           { path: "files/:sId", element: <FramePage /> },
           {
-            path: "files/:sId/functions/:functionId",
+            path: "files/:sId/functions/:functionName",
             element: <FrameFunctionPage />,
           },
           { path: "skills/:sId", element: <SkillDetailsPage /> },

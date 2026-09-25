@@ -66,15 +66,18 @@ function elapsedLabel(
 }
 
 interface FrameFunctionInvocationsProps {
-  functionId: string;
+  // The invocations of every version of a function name.
+  invocationsUrl: string;
   owner: LightWorkspaceType;
   frameId: string;
+  activePublicationId: string | null;
 }
 
 export function FrameFunctionInvocations({
-  functionId,
+  invocationsUrl,
   owner,
   frameId,
+  activePublicationId,
 }: FrameFunctionInvocationsProps) {
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [status, setStatus] = useState<
@@ -86,9 +89,7 @@ export function FrameFunctionInvocations({
 
   const { invocations, isLoading, isError } = usePokeSandboxFunctionInvocations(
     {
-      owner,
-      frameId,
-      functionId,
+      invocationsUrl,
       limit,
       status,
       origin,
@@ -174,7 +175,7 @@ export function FrameFunctionInvocations({
               {invocations.map((invocation, idx) => (
                 <div key={invocation.sId}>
                   <InvocationRow
-                    functionId={functionId}
+                    activePublicationId={activePublicationId}
                     invocation={invocation}
                     owner={owner}
                     frameId={frameId}
@@ -201,19 +202,20 @@ export function FrameFunctionInvocations({
 }
 
 interface InvocationRowProps {
-  functionId: string;
+  activePublicationId: string | null;
   invocation: PokeSandboxFunctionInvocation;
   owner: LightWorkspaceType;
   frameId: string;
 }
 
 function InvocationRow({
-  functionId,
+  activePublicationId,
   invocation,
   owner,
   frameId,
 }: InvocationRowProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { functionId } = invocation;
 
   const {
     invocation: details,
@@ -237,6 +239,12 @@ function InvocationRow({
             {formatCalendarDateTime(new Date(invocation.createdAt))}
           </span>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1 font-mono">
+              {invocation.publicationId}
+              {invocation.publicationId === activePublicationId && (
+                <Chip size="xs" color="success" label="Active" />
+              )}
+            </span>
             <span>{invocation.user ?? "—"}</span>
             <span>{invocation.origin ?? "unknown origin"}</span>
             {elapsed && <span>{elapsed}</span>}

@@ -113,6 +113,7 @@ type SandboxFunctionInvocationReadAccess = "viewer" | "system" | "admin";
 // that invariant. Callers that need a payload fetch the one invocation they care about.
 export type SandboxFunctionInvocationRow = {
   sId: string;
+  sandboxFunctionModelId: ModelId;
   status: SandboxFunctionInvocationStatus;
   origin: SandboxFunctionInvocationOrigin | null;
   userId: ModelId | null;
@@ -1445,24 +1446,32 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   // Newest-first page of listing rows, no GCS read. See `SandboxFunctionInvocationRow`.
+  /**
+   * The newest invocations of any of `sandboxFunctions`, in one query: one function, or every
+   * version of a function name.
+   */
   static async listRows(
     auth: Authenticator,
     {
-      sandboxFunction,
+      sandboxFunctions,
       limit,
       statuses,
       origins,
     }: {
-      sandboxFunction: SandboxFunctionResource;
+      sandboxFunctions: SandboxFunctionResource[];
       limit: number;
       statuses?: SandboxFunctionInvocationStatus[];
       origins?: SandboxFunctionInvocationOrigin[];
     }
   ): Promise<SandboxFunctionInvocationRow[]> {
+    if (sandboxFunctions.length === 0) {
+      return [];
+    }
+
     const invocations = await this.model.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        sandboxFunctionId: sandboxFunction.id,
+        sandboxFunctionId: sandboxFunctions.map(({ id }) => id),
         ...(statuses && statuses.length > 0 ? { status: statuses } : {}),
         ...(origins && origins.length > 0 ? { origin: origins } : {}),
       },
@@ -1484,6 +1493,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         id: invocation.id,
         workspaceId: invocation.workspaceId,
       }),
+      sandboxFunctionModelId: invocation.sandboxFunctionId,
       status: invocation.status,
       origin: invocation.origin,
       userId: invocation.userId,
@@ -1719,10 +1729,15 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   // `SandboxFunctionInvocationRow`), and both entry points must produce the same shape.
   static rowToPokeJSON(
     row: SandboxFunctionInvocationRow,
-    user: UserResource | null
+    {
+      sandboxFunction,
+      user,
+    }: { sandboxFunction: SandboxFunctionResource; user: UserResource | null }
   ): PokeSandboxFunctionInvocation {
     return {
       sId: row.sId,
+      functionId: sandboxFunction.sId,
+      publicationId: sandboxFunction.publicationId,
       status: row.status,
       origin: row.origin,
       user: user ? user.fullName() : null,
@@ -1743,6 +1758,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       ...SandboxFunctionInvocationResource.rowToPokeJSON(
         {
           sId: this.sId,
+          sandboxFunctionModelId: this.sandboxFunctionId,
           status: this.status,
           origin: this.origin,
           userId: this.userId,
@@ -1750,7 +1766,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           updatedAt: this.updatedAt,
           mcpActionCount: mcpActions.length,
         },
-        user
+        { sandboxFunction: this.sandboxFunction, user }
       ),
       input: data.input,
       result: data.result,

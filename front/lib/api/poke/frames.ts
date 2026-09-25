@@ -4,11 +4,14 @@ import {
   loadFramePublicationDescriptor,
   readFramePublicationFunctionBundle,
 } from "@app/lib/api/frames/publication_storage";
+import type { PokeSandboxFunctionInvocation } from "@app/lib/api/poke/sandbox_functions";
+import { listSandboxFunctionInvocations } from "@app/lib/api/poke/sandbox_functions";
 import type { LiveDatabaseEntry } from "@app/lib/api/sandbox_functions/dsbx_db";
 import type { Authenticator } from "@app/lib/auth";
 import filestorageConfig from "@app/lib/file_storage/config";
 import { makeGcsConsoleUrl, makeGcsUri } from "@app/lib/poke/gcs";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
@@ -17,6 +20,8 @@ import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
 import { getFrameBasePath } from "@app/types/api/frame_storage";
 import type {
   SandboxFunctionExecutionMode,
+  SandboxFunctionInvocationOrigin,
+  SandboxFunctionInvocationStatus,
   SandboxFunctionStake,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
@@ -29,6 +34,9 @@ import type { PokeSandboxType } from "@app/types/poke";
 import type { Result } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import countBy from "lodash/countBy";
+import groupBy from "lodash/groupBy";
+import sumBy from "lodash/sumBy";
 
 export type PokeFrameListItem = {
   sId: string;
@@ -289,6 +297,64 @@ export async function getFrameDetails(
   };
 }
 
+export type PokeFramePublicationSummary = {
+  publicationId: string;
+  publishedAt: string;
+  publisher: string | null;
+  isActive: boolean;
+  functionCount: number;
+  invocationCount: number;
+};
+
+export type PokeListFramePublications = {
+  items: PokeFramePublicationSummary[];
+};
+
+/**
+ * Every publication of `frame` still on record, newest first, with the function and invocation
+ * counts that explain why a superseded one has not been purged yet.
+ */
+export async function listFramePublications(
+  auth: Authenticator,
+  frame: FileResource
+): Promise<PokeFramePublicationSummary[]> {
+  const [publications, sandboxFunctions, invocationCountsByPublicationId] =
+    await Promise.all([
+      FramePublicationResource.listForFrame(auth, frame),
+      SandboxFunctionResource.listByFrame(auth, frame),
+      SandboxFunctionResource.countInvocationsByFramePublication(auth, frame),
+    ]);
+  const publishers = await UserResource.fetchByModelIds([
+    ...new Set(
+      removeNulls(
+        publications.map(({ publishedByUserId }) => publishedByUserId)
+      )
+    ),
+  ]);
+  const publisherNamesByModelId = new Map(
+    publishers.map((user) => [user.id, user.fullName()])
+  );
+  const functionCountsByPublicationId = countBy(
+    sandboxFunctions,
+    ({ publicationId }) => publicationId
+  );
+  const activePublicationId =
+    frame.useCaseMetadata?.activePublicationId ?? null;
+
+  return publications.map((publication) =>
+    publication.toPokeJSON({
+      activePublicationId,
+      functionCount:
+        functionCountsByPublicationId[publication.publicationId] ?? 0,
+      invocationCount:
+        invocationCountsByPublicationId.get(publication.publicationId) ?? 0,
+      publisher: publication.publishedByUserId
+        ? (publisherNamesByModelId.get(publication.publishedByUserId) ?? null)
+        : null,
+    })
+  );
+}
+
 /**
  * A Frame function's `fileId` is the Frame manifest rather than its published bundle, which is why
  * the bundle is addressed by `slug` below instead.
@@ -318,6 +384,34 @@ export type PokeListFrameFunctions = {
   items: PokeFrameFunction[];
 };
 
+/**
+ * A Frame function by name: the name is stable across publications, while each publication that
+ * declares it adds a version (its own row and sId).
+ */
+export type PokeFrameFunctionName = {
+  slug: string;
+  // From the latest version.
+  description: string;
+  versionCount: number;
+  invocationCount: number;
+  isInActivePublication: boolean;
+};
+
+export type PokeListFrameFunctionNames = {
+  items: PokeFrameFunctionName[];
+};
+
+export type PokeFrameFunctionVersion = PokeFrameFunction & {
+  bundleSha256: string | null;
+  isActivePublication: boolean;
+  invocationCount: number;
+};
+
+export type PokeGetFrameFunctionVersions = {
+  slug: string;
+  versions: PokeFrameFunctionVersion[];
+};
+
 export type PokeGetFrameFunction = {
   frameFunction: PokeFrameFunctionDetails;
 };
@@ -326,6 +420,7 @@ export type PokeGetFrameFunctionSource = {
   source: string;
 };
 
+// Superseded by `listFrameFunctionNames`; kept until the poke SPA no longer calls it.
 export async function listFrameFunctions(
   auth: Authenticator,
   frame: FileResource
@@ -343,6 +438,98 @@ export async function listFrameFunctions(
   return sandboxFunctions.map((sandboxFunction) =>
     sandboxFunction.toPokeFrameJSON()
   );
+}
+
+/**
+ * Every function name `frame` still has rows for, across all its publications, alphabetically.
+ * Superseded versions stay until retention purges them, so their invocations remain reachable.
+ */
+export async function listFrameFunctionNames(
+  auth: Authenticator,
+  frame: FileResource
+): Promise<PokeFrameFunctionName[]> {
+  const [sandboxFunctions, invocationCountsByFunctionModelId] =
+    await Promise.all([
+      SandboxFunctionResource.listByFrame(auth, frame),
+      SandboxFunctionResource.countInvocationsByFrameFunction(auth, frame),
+    ]);
+  const activePublicationId =
+    frame.useCaseMetadata?.activePublicationId ?? null;
+
+  // listByFrame is newest first, so each group's first version is its latest.
+  return Object.entries(groupBy(sandboxFunctions, ({ slug }) => slug))
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, versions]) =>
+      versions[0].toPokeFrameFunctionNameJSON({
+        invocationCount: sumBy(
+          versions,
+          ({ id }) => invocationCountsByFunctionModelId.get(id) ?? 0
+        ),
+        isInActivePublication: versions.some(
+          ({ publicationId }) => publicationId === activePublicationId
+        ),
+        versionCount: versions.length,
+      })
+    );
+}
+
+/**
+ * Every version of the function named `slug` still on record, newest first. Empty when `frame` has
+ * no function of that name.
+ */
+export async function listFrameFunctionVersions(
+  auth: Authenticator,
+  { frame, slug }: { frame: FileResource; slug: string }
+): Promise<PokeFrameFunctionVersion[]> {
+  const [versions, invocationCountsByFunctionModelId] = await Promise.all([
+    SandboxFunctionResource.listByFrameAndSlug(auth, { frame, slug }),
+    SandboxFunctionResource.countInvocationsByFrameFunction(auth, frame),
+  ]);
+  const activePublicationId =
+    frame.useCaseMetadata?.activePublicationId ?? null;
+
+  return versions.map((version) =>
+    version.toPokeFrameFunctionVersionJSON({
+      activePublicationId,
+      invocationCount: invocationCountsByFunctionModelId.get(version.id) ?? 0,
+    })
+  );
+}
+
+/**
+ * The newest invocations across every version of the function named `slug`, or null when `frame`
+ * has no function of that name.
+ */
+export async function listFrameFunctionNameInvocations(
+  auth: Authenticator,
+  {
+    frame,
+    limit,
+    origins,
+    slug,
+    statuses,
+  }: {
+    frame: FileResource;
+    limit: number;
+    origins?: SandboxFunctionInvocationOrigin[];
+    slug: string;
+    statuses?: SandboxFunctionInvocationStatus[];
+  }
+): Promise<PokeSandboxFunctionInvocation[] | null> {
+  const versions = await SandboxFunctionResource.listByFrameAndSlug(auth, {
+    frame,
+    slug,
+  });
+  if (versions.length === 0) {
+    return null;
+  }
+
+  return listSandboxFunctionInvocations(auth, {
+    sandboxFunctions: versions,
+    limit,
+    statuses,
+    origins,
+  });
 }
 
 export async function getFrameFunctionSource(

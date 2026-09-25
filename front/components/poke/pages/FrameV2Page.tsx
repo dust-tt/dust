@@ -1,6 +1,7 @@
 import { FrameDatabaseDataTable } from "@app/components/poke/frames/databases/table";
 import { FrameFunctionDataTable } from "@app/components/poke/frames/functions/table";
 import { FramePublicationSection } from "@app/components/poke/frames/publication";
+import { FramePublicationDataTable } from "@app/components/poke/frames/publications";
 import { FrameSharingSection } from "@app/components/poke/frames/sharing";
 import { FrameStorageTable } from "@app/components/poke/frames/storage";
 import { ViewFrameTable } from "@app/components/poke/frames/view";
@@ -64,6 +65,7 @@ export function FrameV2Page({ frameId }: FrameV2PageProps) {
         publication={details.publication}
         publicationError={details.publicationError}
       />
+      <FramePublicationDataTable frameId={frameId} owner={owner} />
       <FrameFunctionDataTable frameId={frameId} owner={owner} />
       <FrameDatabaseDataTable frameId={frameId} owner={owner} />
     </div>

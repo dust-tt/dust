@@ -1,6 +1,8 @@
 import type {
   PokeFrameFunction,
   PokeFrameFunctionDetails,
+  PokeFrameFunctionName,
+  PokeFrameFunctionVersion,
 } from "@app/lib/api/poke/frames";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
@@ -69,6 +71,16 @@ export const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
 const FrameFunctionCountRowSchema = z.object({
   fileId: z.number(),
   functionCount: z.coerce.number(),
+});
+
+const FunctionInvocationCountRowSchema = z.object({
+  id: z.number(),
+  invocationCount: z.coerce.number(),
+});
+
+const PublicationInvocationCountRowSchema = z.object({
+  publicationId: z.string(),
+  invocationCount: z.coerce.number(),
 });
 
 /**
@@ -529,19 +541,93 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   }
 
   /**
-   * The publications of `frame` whose functions still have invocations, in one grouped query.
-   * Retention uses this to tell a superseded publication that can be dropped from one whose runs
-   * are still on record.
+   * Every function row of `frame`, across all its publications, newest first.
    */
-  static async listFramePublicationIdsWithInvocations(
+  static async listByFrame(
     auth: Authenticator,
     frame: FileResource
-  ): Promise<Set<string>> {
+  ): Promise<SandboxFunctionResource[]> {
+    assert(frame.isFrameV2, "Frame functions require a Frames v2 file.");
+
+    return this.baseFetch(auth, {
+      where: { fileId: frame.id },
+      order: [["createdAt", "DESC"]],
+    });
+  }
+
+  /**
+   * Every version of the function named `slug` in `frame`, one per publication that declared it,
+   * newest first. The name is what stays stable across publications; each version is its own row.
+   */
+  static async listByFrameAndSlug(
+    auth: Authenticator,
+    { frame, slug }: { frame: FileResource; slug: string }
+  ): Promise<SandboxFunctionResource[]> {
+    if (!frame.isFrameV2 || !isValidSandboxFunctionSlug(slug)) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: { fileId: frame.id, slug },
+      order: [["createdAt", "DESC"]],
+    });
+  }
+
+  /**
+   * The invocation count of each function row of `frame` that still has invocations, in one
+   * grouped query. A row with none is absent from the map.
+   */
+  static async countInvocationsByFrameFunction(
+    auth: Authenticator,
+    frame: FileResource
+  ): Promise<Map<ModelId, number>> {
     assert(frame.isFrameV2, "Frame functions require a Frames v2 file.");
     const workspaceModelId = auth.getNonNullableWorkspace().id;
 
     const rows = await this.model.findAll({
-      attributes: ["publicationId"],
+      attributes: [
+        "id",
+        [fn("COUNT", col("invocations.id")), "invocationCount"],
+      ],
+      where: { workspaceId: workspaceModelId, fileId: frame.id },
+      include: [
+        {
+          model: SandboxFunctionInvocationModel,
+          as: "invocations",
+          attributes: [],
+          required: true,
+          where: { workspaceId: workspaceModelId },
+        },
+      ],
+      group: ["sandbox_function.id"],
+      raw: true,
+    });
+
+    return new Map(
+      rows.map((row) => {
+        const { id, invocationCount } =
+          FunctionInvocationCountRowSchema.parse(row);
+        return [id, invocationCount];
+      })
+    );
+  }
+
+  /**
+   * The invocation count of each publication of `frame` whose functions still have invocations,
+   * in one grouped query. A publication with none is absent from the map.
+   */
+  static async countInvocationsByFramePublication(
+    auth: Authenticator,
+    frame: FileResource
+  ): Promise<Map<string, number>> {
+    assert(frame.isFrameV2, "Frame functions require a Frames v2 file.");
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+
+    const rows = await this.model.findAll({
+      attributes: [
+        "publicationId",
+        [fn("COUNT", col("invocations.id")), "invocationCount"],
+      ],
       where: { workspaceId: workspaceModelId, fileId: frame.id },
       include: [
         {
@@ -556,7 +642,13 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       raw: true,
     });
 
-    return new Set(rows.map(({ publicationId }) => publicationId));
+    return new Map(
+      rows.map((row) => {
+        const { publicationId, invocationCount } =
+          PublicationInvocationCountRowSchema.parse(row);
+        return [publicationId, invocationCount];
+      })
+    );
   }
 
   /**
@@ -733,6 +825,43 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       publicationId: this.publicationId,
       createdAt: this.createdAt.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
+    };
+  }
+
+  /**
+   * This row as the latest version of its function name, with the name-wide figures the caller
+   * aggregated across every version.
+   */
+  toPokeFrameFunctionNameJSON({
+    invocationCount,
+    isInActivePublication,
+    versionCount,
+  }: {
+    invocationCount: number;
+    isInActivePublication: boolean;
+    versionCount: number;
+  }): PokeFrameFunctionName {
+    return {
+      slug: this.slug,
+      description: this.description,
+      versionCount,
+      invocationCount,
+      isInActivePublication,
+    };
+  }
+
+  toPokeFrameFunctionVersionJSON({
+    activePublicationId,
+    invocationCount,
+  }: {
+    activePublicationId: string | null;
+    invocationCount: number;
+  }): PokeFrameFunctionVersion {
+    return {
+      ...this.toPokeFrameJSON(),
+      bundleSha256: this.bundleSha256,
+      isActivePublication: this.publicationId === activePublicationId,
+      invocationCount,
     };
   }
 

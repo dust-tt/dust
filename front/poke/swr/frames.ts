@@ -1,10 +1,12 @@
 import type {
   PokeFrameDatabase,
   PokeFrameDetails,
-  PokeFrameFunction,
+  PokeFrameFunctionName,
   PokeFrameListItem,
+  PokeFramePublicationSummary,
   PokeListFrameDatabases,
-  PokeListFrameFunctions,
+  PokeListFrameFunctionNames,
+  PokeListFramePublications,
   PokeListFrames,
 } from "@app/lib/api/poke/frames";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -84,21 +86,42 @@ interface UsePokeFrameSubResourceProps {
   owner: LightWorkspaceType;
 }
 
-export function usePokeFrameFunctions({
+export function usePokeFramePublications({
   disabled,
   frameId,
   owner,
 }: UsePokeFrameSubResourceProps) {
   const { fetcher } = useFetcher();
-  const functionsFetcher: Fetcher<PokeListFrameFunctions> = fetcher;
+  const publicationsFetcher: Fetcher<PokeListFramePublications> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/frames/${frameId}/functions`,
-    functionsFetcher,
+    `/api/poke/workspaces/${owner.sId}/frames/${frameId}/publications`,
+    publicationsFetcher,
     { disabled }
   );
 
   return {
-    data: data?.items ?? emptyArray<PokeFrameFunction>(),
+    data: data?.items ?? emptyArray<PokeFramePublicationSummary>(),
+    isLoading: !error && !data && !disabled,
+    isError: error,
+    mutate,
+  };
+}
+
+export function usePokeFrameFunctionNames({
+  disabled,
+  frameId,
+  owner,
+}: UsePokeFrameSubResourceProps) {
+  const { fetcher } = useFetcher();
+  const functionNamesFetcher: Fetcher<PokeListFrameFunctionNames> = fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/frames/${frameId}/function-names`,
+    functionNamesFetcher,
+    { disabled }
+  );
+
+  return {
+    data: data?.items ?? emptyArray<PokeFrameFunctionName>(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,

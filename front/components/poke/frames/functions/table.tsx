@@ -1,21 +1,20 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { PokeFrameFunction } from "@app/lib/api/poke/frames";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { usePokeFrameFunctions } from "@app/poke/swr/frames";
+import type { PokeFrameFunctionName } from "@app/lib/api/poke/frames";
+import { usePokeFrameFunctionNames } from "@app/poke/swr/frames";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { LinkWrapper } from "@dust-tt/sparkle";
+import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
-function makeColumnsForFrameFunction({
+function makeColumnsForFrameFunctionName({
   frameId,
   owner,
 }: {
   frameId: string;
   owner: LightWorkspaceType;
-}): ColumnDef<PokeFrameFunction>[] {
+}): ColumnDef<PokeFrameFunctionName>[] {
   return [
     {
       accessorKey: "slug",
@@ -23,12 +22,17 @@ function makeColumnsForFrameFunction({
         <PokeColumnSortableHeader column={column} label="Name" />
       ),
       cell: ({ row }) => (
-        <LinkWrapper
-          href={`/poke/${owner.sId}/files/${frameId}/functions/${row.original.sId}`}
-          className="text-highlight-500"
-        >
-          {row.original.slug}
-        </LinkWrapper>
+        <span className="flex items-center gap-2">
+          <LinkWrapper
+            href={`/poke/${owner.sId}/files/${frameId}/functions/${row.original.slug}`}
+            className="text-highlight-500"
+          >
+            {row.original.slug}
+          </LinkWrapper>
+          {!row.original.isInActivePublication && (
+            <Chip size="xs" color="warning" label="Not in active publication" />
+          )}
+        </span>
       ),
     },
     {
@@ -36,24 +40,18 @@ function makeColumnsForFrameFunction({
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Description" />
       ),
-      cell: ({ row }) => row.original.description,
     },
     {
-      accessorKey: "sId",
+      accessorKey: "versionCount",
       header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="sId" />
+        <PokeColumnSortableHeader column={column} label="Versions" />
       ),
-      cell: ({ row }) => row.original.sId,
     },
     {
-      accessorKey: "updatedAt",
+      accessorKey: "invocationCount",
       header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Updated" />
+        <PokeColumnSortableHeader column={column} label="Invocations" />
       ),
-      cell: ({ row }) =>
-        formatTimestampToFriendlyDate(
-          new Date(row.original.updatedAt).getTime()
-        ),
     },
   ];
 }
@@ -67,19 +65,19 @@ export function FrameFunctionDataTable({
   frameId,
   owner,
 }: FrameFunctionDataTableProps) {
-  const useFunctionsForFrame = (props: PokeConditionalFetchProps) =>
-    usePokeFrameFunctions({ ...props, frameId });
+  const useFunctionNamesForFrame = (props: PokeConditionalFetchProps) =>
+    usePokeFrameFunctionNames({ ...props, frameId });
 
   return (
     <PokeDataTableConditionalFetch
       header="Functions"
       loadOnInit
       owner={owner}
-      useSWRHook={useFunctionsForFrame}
+      useSWRHook={useFunctionNamesForFrame}
     >
       {(items) => (
         <PokeDataTable
-          columns={makeColumnsForFrameFunction({ frameId, owner })}
+          columns={makeColumnsForFrameFunctionName({ frameId, owner })}
           data={items}
         />
       )}
