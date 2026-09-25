@@ -1,11 +1,21 @@
 import { SKIP, visit } from "unist-util-visit";
 
 export function makeSuggestionDirective(name: string, targetAttribute: string) {
-  const toSuggestionProperties = (attributes: Record<string, string>) => ({
+  return makeDirective(name, (attributes) => ({
     suggestionId: attributes.sId,
     kind: attributes.kind,
     [targetAttribute]: attributes[targetAttribute],
-  });
+  }));
+}
+
+/**
+ * Builds the remark plugin of a directive: it renders `:<name>[]{key=value ...}` as a `<name>`
+ * element whose properties are built from the directive attributes by `toProperties`.
+ */
+export function makeDirective(
+  name: string,
+  toProperties: (attributes: Record<string, string>) => Record<string, string>
+) {
   const leakedPrefixPattern = new RegExp(`::${name}\\[\\]\\{([^}]*)\\}`);
 
   return () => (tree: any) => {
@@ -14,7 +24,7 @@ export function makeSuggestionDirective(name: string, targetAttribute: string) {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const data = node.data || (node.data = {});
         data.hName = name;
-        data.hProperties = toSuggestionProperties(node.attributes);
+        data.hProperties = toProperties(node.attributes);
       }
     });
 
@@ -41,7 +51,7 @@ export function makeSuggestionDirective(name: string, targetAttribute: string) {
           children: [],
           data: {
             hName: name,
-            hProperties: toSuggestionProperties(attrs),
+            hProperties: toProperties(attrs),
           },
         },
         ...parent.children.slice(index + 1),
