@@ -11,7 +11,7 @@ import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-const GMAIL_USE_CASE_ID = "unanswered-messages";
+const EMAIL_USE_CASE_ID = "unanswered-messages";
 const SALES_USE_CASE_ID = "account-research";
 const POD_USE_CASE_ID = "create-pod";
 
@@ -94,7 +94,7 @@ describe("GET /api/w/[wId]/assistant/homepage_use_cases", () => {
 
     expect(status).toBe(200);
     expect(useCases.map((useCase) => useCase.id)).not.toContain(
-      GMAIL_USE_CASE_ID
+      EMAIL_USE_CASE_ID
     );
   });
 
@@ -112,7 +112,7 @@ describe("GET /api/w/[wId]/assistant/homepage_use_cases", () => {
 
     expect(status).toBe(200);
     expect(
-      useCases.find((useCase) => useCase.id === GMAIL_USE_CASE_ID)
+      useCases.find((useCase) => useCase.id === EMAIL_USE_CASE_ID)
     ).toMatchObject({
       skills: [],
       tools: [{ id: view.sId, name: view.getDisplayName() }],
@@ -128,7 +128,7 @@ describe("GET /api/w/[wId]/assistant/homepage_use_cases", () => {
 
     expect(status).toBe(200);
     expect(useCases.map((useCase) => useCase.id)).not.toContain(
-      GMAIL_USE_CASE_ID
+      EMAIL_USE_CASE_ID
     );
   });
 
@@ -141,7 +141,7 @@ describe("GET /api/w/[wId]/assistant/homepage_use_cases", () => {
 
     expect(status).toBe(200);
     expect(useCases.map((useCase) => useCase.id)).not.toContain(
-      GMAIL_USE_CASE_ID
+      EMAIL_USE_CASE_ID
     );
   });
 
@@ -187,6 +187,41 @@ describe("GET /api/w/[wId]/assistant/homepage_use_cases", () => {
     expect(afterPod.useCases.map((useCase) => useCase.id)).not.toContain(
       POD_USE_CASE_ID
     );
+  });
+
+  it("attaches the favorite platform when several alternatives resolve", async () => {
+    const { adminAuth, user, workspace } = await setupWorkspace();
+    const globalSpace =
+      await SpaceResource.fetchWorkspaceGlobalSpace(adminAuth);
+    const gmailView = await MCPServerViewFactory.internal(
+      workspace,
+      "gmail",
+      globalSpace
+    );
+    const outlookView = await MCPServerViewFactory.internal(
+      workspace,
+      "outlook",
+      globalSpace
+    );
+
+    const withoutFavorites = await getUseCases(workspace.sId);
+    expect(
+      withoutFavorites.useCases.find(
+        (useCase) => useCase.id === EMAIL_USE_CASE_ID
+      )?.tools
+    ).toEqual([{ id: gmailView.sId, name: gmailView.getDisplayName() }]);
+
+    await user.setMetadata(
+      "favorite_platforms",
+      JSON.stringify(["outlook"]),
+      workspace.id
+    );
+    const withOutlookFavorite = await getUseCases(workspace.sId);
+    expect(
+      withOutlookFavorite.useCases.find(
+        (useCase) => useCase.id === EMAIL_USE_CASE_ID
+      )?.tools
+    ).toEqual([{ id: outlookView.sId, name: outlookView.getDisplayName() }]);
   });
 
   it("features at most MAX_FEATURED_USE_CASES use cases", () => {

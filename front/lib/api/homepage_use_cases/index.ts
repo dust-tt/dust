@@ -1,6 +1,7 @@
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type {
+  ToolRequirement,
   UsageMilestone,
   UseCaseAudience,
   UseCaseRequirement,
@@ -16,11 +17,11 @@ import type {
   HomepageUseCaseTier,
   HomepageUseCaseType,
 } from "@app/types/api/homepage_use_cases";
+import type { FavoritePlatform } from "@app/types/favorite_platforms";
+import { parseFavoritePlatforms } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import { isJobType } from "@app/types/job_type";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
-type ToolRequirement = Exclude<UseCaseRequirement, { type: "skill" }>;
 
 function toolKey(requirement: ToolRequirement): string {
   return `${requirement.type}:${requirement.name}`;
@@ -36,10 +37,26 @@ const REQUIRED_SKILL_IDS = [
   ),
 ];
 
+function getToolAlternatives(
+  requirement: UseCaseRequirement
+): ToolRequirement[] {
+  switch (requirement.type) {
+    case "skill":
+      return [];
+    case "anyOf":
+      return requirement.of;
+    case "internalServer":
+    case "remoteServer":
+      return [requirement];
+    default:
+      assertNever(requirement);
+  }
+}
+
 const REQUIRED_TOOL_KEYS = new Set(
   HOMEPAGE_USE_CASES.flatMap((useCase) =>
     useCase.requires.flatMap((requirement) =>
-      requirement.type === "skill" ? [] : [toolKey(requirement)]
+      getToolAlternatives(requirement).map(toolKey)
     )
   )
 );
@@ -100,10 +117,23 @@ async function getSkillsById(
   return new Map(skills.map((skill) => [skill.sId, skill.toRefJSON()]));
 }
 
-async function getJobType(auth: Authenticator): Promise<JobType | null> {
-  const metadata = await auth.user()?.getMetadata("job_type");
+async function getUserPreferences(
+  auth: Authenticator
+): Promise<Pick<UserProfile, "favoritePlatforms" | "jobType">> {
+  const user = auth.user();
+  if (!user) {
+    return { jobType: null, favoritePlatforms: [] };
+  }
 
-  return isJobType(metadata?.value) ? metadata.value : null;
+  const [jobTypeMetadata, favoritePlatformsMetadata] = await Promise.all([
+    user.getMetadata("job_type"),
+    user.getMetadata("favorite_platforms", auth.getNonNullableWorkspace().id),
+  ]);
+
+  return {
+    jobType: isJobType(jobTypeMetadata?.value) ? jobTypeMetadata.value : null,
+    favoritePlatforms: parseFavoritePlatforms(favoritePlatformsMetadata?.value),
+  };
 }
 
 async function getReachedMilestones(
@@ -120,8 +150,32 @@ async function getReachedMilestones(
 }
 
 interface UserProfile {
+  favoritePlatforms: FavoritePlatform[];
   jobType: JobType | null;
   reachedMilestones: Set<UsageMilestone>;
+}
+
+function resolveTool(
+  alternatives: ToolRequirement[],
+  {
+    favoritePlatforms,
+    toolsByKey,
+  }: {
+    favoritePlatforms: FavoritePlatform[];
+    toolsByKey: Map<string, ToolReference>;
+  }
+): ToolReference | null {
+  const resolving = alternatives.filter((alternative) =>
+    toolsByKey.has(toolKey(alternative))
+  );
+  const chosen =
+    resolving.find(
+      (alternative) =>
+        alternative.type === "internalServer" &&
+        favoritePlatforms.some((platform) => platform === alternative.name)
+    ) ?? resolving[0];
+
+  return chosen ? (toolsByKey.get(toolKey(chosen)) ?? null) : null;
 }
 
 function getAudienceTier(
@@ -168,7 +222,10 @@ function selectSatisfiedUseCases({
         }
         skills.push(skill);
       } else {
-        const tool = toolsByKey.get(toolKey(requirement));
+        const tool = resolveTool(getToolAlternatives(requirement), {
+          favoritePlatforms: profile.favoritePlatforms,
+          toolsByKey,
+        });
         if (!tool) {
           return [];
         }
@@ -183,16 +240,16 @@ function selectSatisfiedUseCases({
 export async function listHomepageUseCases(
   auth: Authenticator
 ): Promise<HomepageUseCaseType[]> {
-  const [skillsById, toolsByKey, jobType, reachedMilestones] =
+  const [skillsById, toolsByKey, preferences, reachedMilestones] =
     await Promise.all([
       getSkillsById(auth),
       getToolsByKey(auth),
-      getJobType(auth),
+      getUserPreferences(auth),
       getReachedMilestones(auth),
     ]);
 
   return selectSatisfiedUseCases({
-    profile: { jobType, reachedMilestones },
+    profile: { ...preferences, reachedMilestones },
     skillsById,
     toolsByKey,
   });
