@@ -5,9 +5,11 @@ import {
   instructionBlockSetsConflict,
 } from "@app/lib/editor/instructions_block_conflict";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
@@ -144,8 +146,7 @@ async function pruneSuggestions(
     ),
   ]);
 
-  const allOutdated = outdatedByKind.flat();
-  await AgentSuggestionResource.bulkUpdateState(auth, allOutdated, "outdated");
+  await outdateAgentSuggestions(auth, outdatedByKind.flat());
 }
 
 /** Outdated if tool to add already exists or tool to remove no longer exists. */
@@ -365,13 +366,7 @@ export async function pruneConflictingInstructionSuggestions(
     )
   );
 
-  if (toMarkOutdated.length > 0) {
-    await AgentSuggestionResource.bulkUpdateState(
-      auth,
-      toMarkOutdated,
-      "outdated"
-    );
-  }
+  await outdateAgentSuggestions(auth, toMarkOutdated);
 }
 
 export async function pruneSuggestionsForAgent(
@@ -386,4 +381,66 @@ export async function pruneSuggestionsForAgent(
     );
 
   await pruneSuggestions(auth, agentConfiguration, pendingSuggestions);
+}
+
+/**
+ * @cc [owner:fabiencelier,label:product] outdate-through-batch
+ * Every agent suggestion pruning outdates MUST go through `outdateAgentSuggestions`: a suggestion
+ * that belongs to a batch outdates its whole batch (see `batch-outdated-as-a-whole`), the others
+ * are outdated on their own.
+ */
+export async function outdateAgentSuggestions(
+  auth: Authenticator,
+  suggestions: AgentSuggestionResource[]
+): Promise<void> {
+  if (suggestions.length === 0) {
+    return;
+  }
+
+  await AgentSuggestionResource.bulkUpdateState(
+    auth,
+    suggestions.filter((s) => s.batchId === null),
+    "outdated"
+  );
+  await BatchSuggestionResource.outdateBatchesOf(auth, [
+    ...new Set(removeNulls(suggestions.map((s) => s.batchId))),
+  ]);
+}
+
+/**
+ * Marks as outdated the pending suggestions that match the predicate, and returns the other ones.
+ */
+export async function markDuplicateSuggestionsAsOutdated(
+  auth: Authenticator,
+  pendingSuggestions: AgentSuggestionResource[],
+  isDuplicate: (suggestion: AgentSuggestionResource) => boolean
+): Promise<AgentSuggestionResource[]> {
+  const duplicates = pendingSuggestions.filter(isDuplicate);
+  await outdateAgentSuggestions(auth, duplicates);
+
+  return pendingSuggestions.filter((s) => !isDuplicate(s));
+}
+
+/**
+ * Outdates the pending suggestions superseded by newly recorded ones of singleton kinds: at most one
+ * suggestion of such a kind stays pending per agent.
+ * `pending` may or may not contain the recorded suggestions, they are never outdated.
+ */
+export async function pruneSupersededSingletonSuggestions(
+  auth: Authenticator,
+  {
+    pending,
+    recorded,
+  }: {
+    pending: AgentSuggestionResource[];
+    recorded: AgentSuggestionResource[];
+  }
+): Promise<void> {
+  const recordedKinds = new Set(recorded.map((s) => s.kind));
+  const recordedIds = new Set(recorded.map((s) => s.id));
+
+  await outdateAgentSuggestions(
+    auth,
+    pending.filter((s) => recordedKinds.has(s.kind) && !recordedIds.has(s.id))
+  );
 }

@@ -6,6 +6,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
@@ -178,6 +179,32 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions", ()
     expect(data.error.message).toContain(
       "do not belong to the specified agent configuration"
     );
+  });
+
+  it("returns 400 for a suggestion that belongs to a batch", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const batch = await BatchSuggestionFactory.createEmpty(auth);
+    const suggestion = await AgentSuggestionFactory.createInstructions(
+      auth,
+      agent,
+      { source: "conversational", state: "pending", batchModelId: batch.id }
+    );
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "rejected",
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.message).toContain("belong to a batch");
+
+    const fetchedSuggestion = await AgentSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(fetchedSuggestion?.state).toBe("pending");
   });
 
   it.each<Exclude<AgentSuggestionState, "pending">>([

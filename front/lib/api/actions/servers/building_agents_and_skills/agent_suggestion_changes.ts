@@ -2,6 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { validateInstructionEdits } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
+import { pruneSupersededSingletonSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
 import type { Authenticator } from "@app/lib/auth";
@@ -25,7 +26,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
   AgentSuggestionData,
-  AgentSuggestionKind,
   CreateSuggestionType,
   DeleteSuggestionType,
   DescriptionSuggestionType,
@@ -424,14 +424,10 @@ export async function recordSingletonAgentSuggestions(
     }),
   ]);
 
-  const recordedKinds = new Set<AgentSuggestionKind>(data.map((d) => d.kind));
-  const recordedIds = new Set(suggestions.map((s) => s.id));
-  // TODO(conversational-building): prune conflicting suggestions across batches.
-  await AgentSuggestionResource.bulkUpdateState(
-    auth,
-    pending.filter((s) => recordedKinds.has(s.kind) && !recordedIds.has(s.id)),
-    "outdated"
-  );
+  await pruneSupersededSingletonSuggestions(auth, {
+    pending,
+    recorded: suggestions,
+  });
 
   return suggestions;
 }

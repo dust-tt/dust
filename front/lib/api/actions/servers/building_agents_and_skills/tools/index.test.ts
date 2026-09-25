@@ -2730,6 +2730,54 @@ describe("building_agents_and_skills tools", () => {
       expect(pending).toHaveLength(0);
     });
 
+    it("outdates a whole batch when one of its suggestions is superseded", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "OldHelper" }
+      );
+      const skill = await seedSkill(authenticator, { name: "Old Skill" });
+
+      const firstBatchId = extractBatchId(
+        await runSuggest(authenticator, {
+          title: "Rename both",
+          analysis: "Naming convention.",
+          suggestions: [
+            { kind: "edit_agent", agentId: agent.sId, name: "FirstName" },
+            { kind: "edit_skill", skillId: skill.sId, name: "Renamed Skill" },
+          ],
+        })
+      );
+      // A later rename of the same agent supersedes the first batch's agent rename.
+      const secondBatchId = extractBatchId(
+        await runSuggest(authenticator, {
+          title: "Rename agent",
+          analysis: "Better name.",
+          suggestions: [
+            { kind: "edit_agent", agentId: agent.sId, name: "SecondName" },
+          ],
+        })
+      );
+
+      const first = await BatchSuggestionResource.fetchById(
+        authenticator,
+        firstBatchId
+      );
+      expect(first?.state).toBe("outdated");
+      for (const suggestion of [
+        ...(first?.agentSuggestions ?? []),
+        ...(first?.skillSuggestions ?? []),
+      ]) {
+        expect(suggestion.state).toBe("outdated");
+      }
+
+      const second = await BatchSuggestionResource.fetchById(
+        authenticator,
+        secondBatchId
+      );
+      expect(second?.state).toBe("pending");
+    });
+
     it("refuses two suggestions targeting the same agent", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       const agent =
