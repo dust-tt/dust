@@ -1,4 +1,13 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
+import {
+  getGroupManagers,
+  replaceGroupManagers,
+} from "@app/lib/api/groups/manager_assignments";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type {
   DeleteGroupResponseBody,
@@ -83,6 +92,7 @@ app.get(
     return ctx.json({
       group: { ...group.toJSON(), memberCount: members.length },
       members: members.map((member) => member.toJSON()),
+      managers: await getGroupManagers(auth, group),
     });
   }
 );
@@ -96,14 +106,19 @@ app.patch(
   async (ctx): HandlerResult<PatchGroupResponseBody> => {
     const auth = ctx.get("auth");
     const { groupId } = ctx.req.valid("param");
-    const { name, memberIds } = ctx.req.valid("json");
+    const { name, memberIds, managerIds } = ctx.req.valid("json");
 
-    if (name === undefined && memberIds === undefined) {
+    if (
+      name === undefined &&
+      memberIds === undefined &&
+      managerIds === undefined
+    ) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "At least one of `name` or `memberIds` must be provided.",
+          message:
+            "At least one of `name`, `memberIds`, or `managerIds` must be provided.",
         },
       });
     }
@@ -141,6 +156,79 @@ app.patch(
     }
 
     const group = groupRes.value;
+
+    if (managerIds !== undefined) {
+      // Assignment changes use a separate PATCH so invalid membership/name changes cannot leave
+      // a partially applied manager change (or vice versa).
+      if (name !== undefined || memberIds !== undefined) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Update group managers separately from the name and members.",
+          },
+        });
+      }
+      if (!isManageableGroupKind(group.kind)) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: { type: "group_not_found", message: "Group not found." },
+        });
+      }
+      if (!(await auth.hasFeatureFlag("group_management"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Group management is not enabled for this workspace.",
+          },
+        });
+      }
+      const assignment = await replaceGroupManagers(auth, group, managerIds);
+      if (assignment.kind !== "ok") {
+        return apiError(ctx, {
+          status_code: assignment.kind === "unauthorized" ? 403 : 400,
+          api_error: {
+            type:
+              assignment.kind === "unauthorized"
+                ? "workspace_auth_error"
+                : "invalid_request_error",
+            message:
+              assignment.kind === "unauthorized"
+                ? "Only workspace admins can appoint group managers."
+                : "All group managers must be active workspace members.",
+          },
+        });
+      }
+
+      if (assignment.addedUsers.length || assignment.removedUsers.length) {
+        void emitAuditLogEvent({
+          auth,
+          action: "group.managers_updated",
+          targets: [
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            buildAuditLogTarget("group", group),
+          ],
+          context: getAuditLogContext(auth),
+          metadata: {
+            added_manager_ids: assignment.addedUsers
+              .map((u) => u.sId)
+              .join(","),
+            removed_manager_ids: assignment.removedUsers
+              .map((u) => u.sId)
+              .join(","),
+          },
+        });
+      }
+
+      const members = await group.getActiveMembers(auth);
+      return ctx.json({
+        group: { ...group.toJSON(), memberCount: members.length },
+        members: members.map((member) => member.toJSON()),
+        managers: assignment.managers,
+      });
+    }
 
     const updateRes = await group.updateRegularManualGroup(auth, {
       name,
@@ -204,6 +292,7 @@ app.patch(
     return ctx.json({
       group: { ...group.toJSON(), memberCount: members.length },
       members: members.map((member) => member.toJSON()),
+      managers: await getGroupManagers(auth, group),
     });
   }
 );

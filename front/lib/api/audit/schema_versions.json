@@ -40,6 +40,7 @@
   "frame.share_scope_updated": 2,
   "group.advanced_model_access_updated": 1,
   "group.granted_seat_type_updated": 1,
+  "group.managers_updated": 1,
   "group.member_added": 1,
   "group.member_removed": 1,
   "group.spend_limit_updated": 1,
