@@ -93,24 +93,49 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       "workspaceId" | "skillConfigurationId"
     >
   ): Promise<SkillSuggestionResource> {
+    const [suggestion] = await this.createSuggestionsForSkill(auth, skill, [
+      blob,
+    ]);
+    return suggestion;
+  }
+
+  /**
+   * Same as `createSuggestionForSkill`, batched: every suggestion is inserted in a single query.
+   * Throws, without inserting anything, if the caller lacks the verb any of the kinds requires.
+   */
+  static async createSuggestionsForSkill(
+    auth: Authenticator,
+    skill: SkillResource,
+    blobs: Omit<
+      CreationAttributes<SkillSuggestionModel>,
+      "workspaceId" | "skillConfigurationId"
+    >[]
+  ): Promise<SkillSuggestionResource[]> {
+    if (blobs.length === 0) {
+      return [];
+    }
+
     const owner = auth.getNonNullableWorkspace();
 
-    if (!isAuthorizedForSkillSuggestionKind(auth, skill, blob.kind)) {
+    if (
+      !blobs.every((blob) =>
+        isAuthorizedForSkillSuggestionKind(auth, skill, blob.kind)
+      )
+    ) {
       throw new Error("User does not have permission to edit this skill");
     }
 
-    const suggestion = await SkillSuggestionModel.create({
-      ...blob,
-      skillConfigurationId: skill.id,
-      workspaceId: owner.id,
-    });
+    const suggestions = await SkillSuggestionModel.bulkCreate(
+      blobs.map((blob) => ({
+        ...blob,
+        skillConfigurationId: skill.id,
+        workspaceId: owner.id,
+      }))
+    );
 
-    return new this(
-      SkillSuggestionModel,
-      suggestion.get(),
-      skill.sId,
-      null,
-      null
+    return suggestions.map(
+      (suggestion) =>
+        new this(SkillSuggestionModel, suggestion.get(), skill.sId, null, null)
     );
   }
 

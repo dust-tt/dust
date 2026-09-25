@@ -7,7 +7,7 @@ import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import type { SingletonAgentSuggestionData } from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import {
   recordAgentCreationSuggestion,
-  recordSingletonAgentSuggestion,
+  recordSingletonAgentSuggestions,
   validateAgentCreation,
   validateAgentDeletion,
   validateAgentDescriptionChange,
@@ -28,7 +28,7 @@ import type {
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import {
   checkSkillSuggestionKindAuthorized,
-  recordSkillSuggestion,
+  recordSkillSuggestions,
   validateSkillAvailabilitySuggestion,
   validateSkillDeletionSuggestion,
   validateSkillEditorsSuggestion,
@@ -439,14 +439,12 @@ async function recordPlannedChange(
     }
 
     case "agent": {
-      for (const data of change.singletons) {
-        await recordSingletonAgentSuggestion(auth, change.agent, {
-          data,
-          analysis: null,
-          conversation,
-          batch,
-        });
-      }
+      await recordSingletonAgentSuggestions(auth, change.agent, {
+        data: change.singletons,
+        analysis: null,
+        conversation,
+        batch,
+      });
 
       if (change.instructions) {
         const res = await createAgentInstructionSuggestions(auth, {
@@ -464,15 +462,13 @@ async function recordPlannedChange(
     }
 
     case "skill": {
-      for (const data of change.rows) {
-        await recordSkillSuggestion(auth, change.skill, {
-          data,
-          analysis: null,
-          title: null,
-          conversation,
-          batch,
-        });
-      }
+      await recordSkillSuggestions(auth, change.skill, {
+        data: change.rows,
+        analysis: null,
+        title: null,
+        conversation,
+        batch,
+      });
       return new Ok(undefined);
     }
 
