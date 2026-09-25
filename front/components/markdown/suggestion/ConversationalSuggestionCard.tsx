@@ -23,7 +23,6 @@ export const DEFAULT_SUGGESTION_VISUAL = (
 
 interface ConversationalSuggestionCardProps {
   title: string;
-  /** Short info at the end of the title row, e.g. "Edit 1 of 4". */
   titleAside?: ReactNode;
   analysis?: string | null;
   /** Overrides the default icon chip, e.g. to show the agent's picture. */
@@ -33,7 +32,6 @@ interface ConversationalSuggestionCardProps {
   onAccept?: () => void;
   onReject?: () => void;
   onPreview?: () => void;
-  /** Extra action shown at the start of the action row, opposite to accept/reject. */
   secondaryAction?: ReactNode;
   acceptLabel?: string;
   rejectLabel?: string;

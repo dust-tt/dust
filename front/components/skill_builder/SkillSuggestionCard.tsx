@@ -49,11 +49,19 @@ export function getSuggestionStateChip(state: SkillSuggestionState): {
 }
 
 interface ReviewedSuggestionCardProps {
-  suggestion: SkillSuggestionType;
+  state: SkillSuggestionState;
+  title: string;
+  updatedAt: number;
+  /** Named in the tooltip when known. */
+  updatedBy?: { sId: string; fullName: string } | null;
 }
 
-function ReviewedSuggestionCard({ suggestion }: ReviewedSuggestionCardProps) {
-  const { state, title, updatedAt, updatedBy } = suggestion;
+export function ReviewedSuggestionCard({
+  state,
+  title,
+  updatedAt,
+  updatedBy,
+}: ReviewedSuggestionCardProps) {
   const { user } = useAuth();
 
   const isCurrentUser = !!updatedBy && updatedBy.sId === user?.sId;
@@ -82,9 +90,7 @@ function ReviewedSuggestionCard({ suggestion }: ReviewedSuggestionCardProps) {
             }
           />
         )}
-        <span className="truncate text-sm text-muted-foreground">
-          {title ?? "Suggestion"}
-        </span>
+        <span className="truncate text-sm text-muted-foreground">{title}</span>
       </div>
     </Card>
   );
@@ -342,7 +348,14 @@ export function SkillSuggestionCard({
   const hasActions = !!onAccept && !!onDecline;
 
   if (suggestion.state !== "pending") {
-    return <ReviewedSuggestionCard suggestion={suggestion} />;
+    return (
+      <ReviewedSuggestionCard
+        state={suggestion.state}
+        title={suggestion.title ?? "Suggestion"}
+        updatedAt={suggestion.updatedAt}
+        updatedBy={suggestion.updatedBy}
+      />
+    );
   }
 
   const wrapperClassName = `rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300" : ""}`;

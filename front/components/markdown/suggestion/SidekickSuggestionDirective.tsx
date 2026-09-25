@@ -8,7 +8,10 @@
 
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { AgentSuggestionActionCard } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
+import {
+  AgentSuggestionActionCard,
+  getAgentSuggestionLabels,
+} from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import {
   ConversationalSuggestionReviewCard,
   shouldUseConversationalReviewCard,
@@ -17,6 +20,7 @@ import {
   SidekickSuggestionCard,
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/SidekickSuggestionCard";
+import { ReviewedSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import { useSuggestionActions } from "@app/hooks/useSuggestionActions";
 import {
   useAgentSuggestions,
@@ -230,6 +234,16 @@ function ConversationAgentSuggestion({
   const suggestion = suggestions.find((s) => s.sId === suggestionId);
   if (!suggestion || suggestion.kind !== kind) {
     return null;
+  }
+
+  if (suggestion.state !== "pending") {
+    return (
+      <ReviewedSuggestionCard
+        state={suggestion.state}
+        title={getAgentSuggestionLabels(suggestion).title}
+        updatedAt={suggestion.updatedAt}
+      />
+    );
   }
 
   const pendingAction = getPendingAction(suggestion);
