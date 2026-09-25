@@ -6,15 +6,25 @@ import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/Cap
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
-import { SearchInput, Spinner } from "@dust-tt/sparkle";
+import type {
+  SkillListItemType,
+  SkillWithoutInstructionsAndToolsType,
+} from "@app/types/assistant/skill_configuration";
+import { Button, SearchInput, Spinner } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
 
-type CapabilitiesSelectionPageProps = {
+interface CapabilitiesSelectionPageProps {
   onStateChange: (state: SheetState) => void;
-  handleSkillToggle: (skill: SkillWithoutInstructionsAndToolsType) => void;
-  filteredSkills: SkillWithoutInstructionsAndToolsType[];
+  handleSkillToggle: (skillId: string) => void;
+  filteredSkills: (SkillListItemType | SkillWithoutInstructionsAndToolsType)[];
+  isSelectingSkill: boolean;
+  skillPagination: {
+    hasPrevious: boolean;
+    hasMore: boolean;
+    previous: () => void;
+    next: () => void;
+  } | null;
   searchQuery: string;
   selectedSkillIds: Set<string>;
   setSearchQuery: (query: string) => void;
@@ -26,7 +36,7 @@ type CapabilitiesSelectionPageProps = {
   selectedMCPServerViewIds: Set<string>;
   handleToolToggle: (view: MCPServerViewTypeWithLabel) => void;
   handleToolInfoClick: (view: MCPServerViewTypeWithLabel) => void;
-};
+}
 
 export function CapabilitiesSelectionPageContent({
   handleSkillToggle,
@@ -35,6 +45,8 @@ export function CapabilitiesSelectionPageContent({
   selectedSkillIds,
   setSearchQuery,
   isCapabilitiesLoading,
+  isSelectingSkill,
+  skillPagination,
   filteredMCPServerViews,
   selectedMCPServerViewIds,
   handleToolToggle,
@@ -84,11 +96,18 @@ export function CapabilitiesSelectionPageContent({
 
       <CapabilityFilterButtons filter={filter} setFilter={setFilter} />
 
-      {isCapabilitiesLoading ? (
+      {isSelectingSkill && <Spinner size="sm" />}
+
+      {/* Keep the displayed results while the next search is loading. */}
+      {isCapabilitiesLoading && !hasAnyResults ? (
         <div className="flex h-40 items-center justify-center">
           <Spinner />
         </div>
-      ) : !hasAnyResults ? (
+      ) : !hasAnyResults &&
+        !(
+          showSkillsSection &&
+          (skillPagination?.hasMore || skillPagination?.hasPrevious)
+        ) ? (
         <div className="flex flex-1 items-center justify-center py-12">
           <div className="px-4 text-center">
             <div className="mb-2 text-lg font-medium text-foreground">
@@ -120,13 +139,37 @@ export function CapabilitiesSelectionPageContent({
                     key={skill.sId}
                     skill={skill}
                     isSelected={selectedSkillIds.has(skill.sId)}
-                    onClick={() => handleSkillToggle(skill)}
+                    onClick={() => handleSkillToggle(skill.sId)}
                     onMoreInfoClick={() => fetchSkillWithRelations(skill.sId)}
                   />
                 ))}
               </div>
             </>
           )}
+
+          {showSkillsSection &&
+            skillPagination &&
+            (skillPagination.hasPrevious || skillPagination.hasMore) && (
+              <div className="flex items-center gap-2">
+                <Button
+                  label="Previous skills"
+                  variant="outline"
+                  size="sm"
+                  disabled={
+                    !skillPagination.hasPrevious || isCapabilitiesLoading
+                  }
+                  onClick={skillPagination.previous}
+                />
+                <Button
+                  label="Next skills"
+                  variant="outline"
+                  size="sm"
+                  disabled={!skillPagination.hasMore || isCapabilitiesLoading}
+                  isLoading={isCapabilitiesLoading}
+                  onClick={skillPagination.next}
+                />
+              </div>
+            )}
 
           {showToolsSection && hasTools && (
             <>

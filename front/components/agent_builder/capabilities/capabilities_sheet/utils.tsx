@@ -34,6 +34,7 @@ import type { UseFormReturn } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
 export function useCapabilitiesPageAndFooter({
+  isOpen,
   sheetState,
   onStateChange,
   onClose,
@@ -51,13 +52,16 @@ export function useCapabilitiesPageAndFooter({
   const [searchQuery, setSearchQuery] = useState("");
 
   const skillSelection = useSkillSelection({
+    owner,
+    disabled: !isOpen || sheetState.state !== "selection",
     alreadyAddedSkillIds,
     searchQuery,
   });
   const toolSelection = useToolSelection({
     selectedActions,
     onStateChange,
-    searchQuery,
+    // Filter local tools with the query belonging to the displayed skills.
+    searchQuery: skillSelection.resolvedSearchQuery,
   });
 
   const resetSheetState = useCallback(() => {
@@ -157,7 +161,10 @@ export function useCapabilitiesPageAndFooter({
                 toolSelection.isMCPServerViewsLoading
               }
               searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
+              setSearchQuery={(query) => {
+                setSearchQuery(query);
+                skillSelection.resetSearchPagination();
+              }}
               {...skillSelection}
               {...toolSelection}
               onStateChange={onStateChange}
@@ -183,7 +190,8 @@ export function useCapabilitiesPageAndFooter({
             selectedCapabilitiesCount > 0
               ? `Add ${selectedCapabilitiesCount} ${selectedCapabilitiesCount === 1 ? "capability" : "capabilities"}`
               : "Add capabilities",
-          disabled: selectedCapabilitiesCount === 0,
+          disabled:
+            selectedCapabilitiesCount === 0 || skillSelection.isSelectingSkill,
           onClick: handleCapabilitiesSelectionSave,
           variant: "primary",
         },

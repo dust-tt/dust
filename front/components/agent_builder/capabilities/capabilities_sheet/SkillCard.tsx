@@ -9,7 +9,10 @@ import { ActionCard } from "@dust-tt/sparkle";
 import React from "react";
 
 interface SkillCardProps {
-  skill: SkillWithoutInstructionsAndToolsType;
+  skill: Pick<
+    SkillWithoutInstructionsAndToolsType,
+    "name" | "icon" | "userFacingDescription"
+  >;
   isSelected: boolean;
   onClick: () => void;
   onMoreInfoClick: () => void;
