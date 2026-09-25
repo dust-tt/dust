@@ -93,6 +93,7 @@ export function useTableRowsSelection({
     setSelection(EMPTY_SELECTION);
   }, []);
 
+  // Explicit ids come back in the order they were selected.
   const descriptor = useCallback((): TableRowsSelectionDescriptor => {
     if (selection.mode === "all") {
       return { mode: "all", excludedIds: [...selection.excludedIds] };

@@ -1,4 +1,5 @@
 import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
+import { BulkMembersModalHeader } from "@app/components/workspace/BulkMembersModalHeader";
 import {
   formatPriceCents,
   getAvailableFrequencies,
@@ -23,20 +24,15 @@ import { isMembershipSeatType, isPaidSeatType } from "@app/types/memberships";
 import { isSubscriptionCancellationScheduled } from "@app/types/plan";
 import {
   ArrowRight,
-  Avatar,
   Button,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Icon,
   Spinner,
 } from "@dust-tt/sparkle";
 import { Fragment, useEffect, useRef, useState } from "react";
-
-const MAX_HEADER_AVATARS = 3;
 
 interface BulkChangeSeatModalProps {
   isOpen: boolean;
@@ -304,52 +300,6 @@ function getBadge(info: SeatTypeInfo): React.ReactNode {
   );
 }
 
-interface BulkChangeSeatModalHeaderProps {
-  // Selected members visible on the current page, for the avatar row.
-  selectedMembers: MemberUsageType[];
-  memberCount: number;
-  title: string;
-  subtitle: string;
-}
-
-function BulkChangeSeatModalHeader({
-  selectedMembers,
-  memberCount,
-  title,
-  subtitle,
-}: BulkChangeSeatModalHeaderProps) {
-  return (
-    <DialogHeader>
-      <div className="flex flex-col gap-2">
-        {selectedMembers.length > 0 && (
-          <div className="flex flex-row items-center gap-2">
-            <Avatar.Stack
-              avatars={selectedMembers
-                .slice(0, MAX_HEADER_AVATARS)
-                .map((member) => ({
-                  name: member.name,
-                  visual: member.image ?? undefined,
-                  isRounded: true,
-                }))}
-              nbVisibleItems={MAX_HEADER_AVATARS}
-              size="md"
-            />
-            {memberCount > MAX_HEADER_AVATARS && (
-              <span className="flex h-8 min-w-8 items-center justify-center rounded-full bg-highlight-100 px-2 text-sm font-medium text-highlight-600">
-                {memberCount}
-              </span>
-            )}
-          </div>
-        )}
-        <div className="flex flex-col gap-1">
-          <DialogTitle>{title}</DialogTitle>
-          <p className="text-sm text-muted-foreground">{subtitle}</p>
-        </div>
-      </div>
-    </DialogHeader>
-  );
-}
-
 interface BulkChangeSeatModalPickSeatDialogContentProps {
   seatPlans: SeatPlanResponseBody;
   selectedSeat: PaidSeatType | null;
@@ -594,7 +544,7 @@ function BulkChangeSeatForm({
 
   return (
     <>
-      <BulkChangeSeatModalHeader
+      <BulkMembersModalHeader
         selectedMembers={selectedMembers}
         memberCount={preview?.memberCount ?? memberCount}
         title={

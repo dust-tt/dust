@@ -1,54 +1,55 @@
+import { BulkMembersModalHeader } from "@app/components/workspace/BulkMembersModalHeader";
+import { CreditLimitInput } from "@app/components/workspace/CreditLimitInput";
+import {
+  parseCreditsInput,
+  toSpendLimit,
+} from "@app/components/workspace/member_spend_limit_helpers";
+import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
 import {
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  RadioGroup,
-  RadioGroupItem,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-const MIN_AWU_CREDITS = 0;
-const MAX_AWU_CREDITS = 2_000_000;
-
-type SpendLimitKind = "default" | "override";
-
-function isSpendLimitKind(value: string): value is SpendLimitKind {
-  return value === "default" || value === "override";
-}
-
-type SpendLimit =
-  | { kind: "unlimited" }
-  | { kind: "limited"; awuCredits: number };
 
 interface BulkEditSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
   memberCount: number;
+  // Selected members visible on the current page, for the header avatar row.
+  // With an "all across pages" selection this is only the visible subset.
+  selectedMembers: MemberUsageType[];
   // Whether any seat on the workspace's contract carries a built-in credit
   // allowance. When it doesn't (e.g. pooled plans with no per-seat allowance),
   // the pool limit is the member's whole monthly budget rather than a top-up.
   seatsHaveBuiltInAllowance: boolean;
-  onValidate: (limit: SpendLimit) => Promise<boolean>;
+  onValidate: (limit: UserSpendLimit) => Promise<boolean>;
 }
 
 export function BulkEditSpendLimitModal({
   isOpen,
   onClose,
   memberCount,
+  selectedMembers,
   seatsHaveBuiltInAllowance,
   onValidate,
 }: BulkEditSpendLimitModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent size="md">
+      {/* Without this, the dialog auto-focuses the avatar stack's tooltip
+          trigger, which opens the members tooltip as soon as it appears. */}
+      <DialogContent
+        size="md"
+        className="font-sans"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         {isOpen && (
           <BulkEditSpendLimitForm
             onClose={onClose}
             memberCount={memberCount}
+            selectedMembers={selectedMembers}
             seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
             onValidate={onValidate}
           />
@@ -61,56 +62,35 @@ export function BulkEditSpendLimitModal({
 interface BulkEditSpendLimitFormProps {
   onClose: () => void;
   memberCount: number;
+  selectedMembers: MemberUsageType[];
   seatsHaveBuiltInAllowance: boolean;
-  onValidate: (limit: SpendLimit) => Promise<boolean>;
+  onValidate: (limit: UserSpendLimit) => Promise<boolean>;
 }
 
 function BulkEditSpendLimitForm({
   onClose,
   memberCount,
+  selectedMembers,
   seatsHaveBuiltInAllowance,
   onValidate,
 }: BulkEditSpendLimitFormProps) {
-  const [kind, setKind] = useState<SpendLimitKind>("override");
-  const [creditsInput, setCreditsInput] = useState<string>("");
+  const [personalLimitInput, setPersonalLimitInput] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null
   );
 
-  function handleCreditsChange(value: string) {
-    setCreditsInput(value.replace(/[^\d]/g, ""));
-    setValidationMessage(null);
-  }
-
-  function validate(): SpendLimit | null {
-    if (kind === "default") {
-      return { kind: "unlimited" };
-    }
-    const parsed = Number(creditsInput);
-    if (!Number.isInteger(parsed) || parsed < MIN_AWU_CREDITS) {
-      setValidationMessage(
-        `Enter a whole number of credits between ${MIN_AWU_CREDITS.toLocaleString("en-US")} and ${MAX_AWU_CREDITS.toLocaleString("en-US")}.`
-      );
-      return null;
-    }
-    if (parsed > MAX_AWU_CREDITS) {
-      setValidationMessage(
-        `Credits cannot exceed ${MAX_AWU_CREDITS.toLocaleString("en-US")}.`
-      );
-      return null;
-    }
-    return { kind: "limited", awuCredits: parsed };
-  }
-
   async function handleValidate() {
-    const limit = validate();
-    if (!limit) {
+    const result = parseCreditsInput(personalLimitInput);
+    if (!result.ok) {
+      setValidationMessage(result.message);
       return;
     }
     setIsSaving(true);
     try {
-      const ok = await onValidate(limit);
+      // An empty field removes the personal limit, falling back to the
+      // workspace default.
+      const ok = await onValidate(toSpendLimit(result.awuCredits));
       if (ok) {
         onClose();
       }
@@ -119,75 +99,44 @@ function BulkEditSpendLimitForm({
     }
   }
 
-  const validateDisabled =
-    isSaving || (kind === "override" && creditsInput.length === 0);
-
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>
-          Edit spend limit for {memberCount.toLocaleString("en-US")} members
-        </DialogTitle>
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {seatsHaveBuiltInAllowance
+      <BulkMembersModalHeader
+        selectedMembers={selectedMembers}
+        memberCount={memberCount}
+        title={`Edit personal limit for ${memberCount.toLocaleString("en-US")} members`}
+        subtitle={
+          seatsHaveBuiltInAllowance
             ? "They will be able to consume this amount from the pool after " +
               "reaching their plan usage limit. This limit is added on top of " +
               "each seat's built-in allowance."
             : "This is the total amount of credits each member will be able to " +
-              "consume from the workspace credit pool per month."}
-        </p>
-      </DialogHeader>
+              "consume from the workspace credit pool per month."
+        }
+      />
       <DialogContainer>
-        <RadioGroup
-          value={kind}
-          onValueChange={(v) => {
-            if (isSpendLimitKind(v)) {
-              setKind(v);
-              setValidationMessage(null);
-            }
+        <CreditLimitInput
+          label="Personal limit"
+          value={personalLimitInput}
+          readOnly={false}
+          isActive={false}
+          validationMessage={validationMessage}
+          onChange={(cleaned) => {
+            setPersonalLimitInput(cleaned);
+            setValidationMessage(null);
           }}
-          className="flex flex-col gap-3"
-        >
-          <RadioGroupItem
-            value="default"
-            id="bulk-spend-limit-default"
-            label="Use workspace default"
-          />
-          <RadioGroupItem
-            value="override"
-            id="bulk-spend-limit-override"
-            label="Use custom monthly limit"
-          />
-
-          {kind === "override" && (
-            <div className="flex flex-col gap-1.5 pl-6">
-              <div className="relative">
-                <Input
-                  id="bulk-spend-credit-limit-input"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="1,000"
-                  value={
-                    creditsInput !== ""
-                      ? Number(creditsInput).toLocaleString()
-                      : ""
-                  }
-                  onChange={(e) => handleCreditsChange(e.target.value)}
-                  isError={validationMessage !== null}
-                  message={validationMessage ?? undefined}
-                  messageStatus={
-                    validationMessage !== null ? "error" : undefined
-                  }
-                  className="pr-28 text-right"
-                />
-                <span className="copy-sm pointer-events-none absolute right-3 top-0 flex h-9 items-center text-muted-foreground dark:text-muted-foreground-night">
-                  credits/month
-                </span>
-              </div>
-            </div>
-          )}
-        </RadioGroup>
+          action={
+            personalLimitInput !== ""
+              ? {
+                  label: "Remove personal limit",
+                  onClick: () => {
+                    setPersonalLimitInput("");
+                    setValidationMessage(null);
+                  },
+                }
+              : undefined
+          }
+        />
       </DialogContainer>
       <DialogFooter
         leftButtonProps={{
@@ -197,8 +146,9 @@ function BulkEditSpendLimitForm({
         }}
         rightButtonProps={{
           label: "Validate",
-          variant: "primary",
-          disabled: validateDisabled,
+          variant: "highlight",
+          disabled: isSaving,
+          isLoading: isSaving,
           onClick: handleValidate,
         }}
       />

@@ -686,10 +686,6 @@ export function UsagePage() {
   });
   const [isBulkSpendLimitOpen, setIsBulkSpendLimitOpen] = useState(false);
 
-  const handleBatchEditSpendLimit = useCallback(() => {
-    setIsBulkSpendLimitOpen(true);
-  }, []);
-
   const { doBulkChangeSeatType } = useBulkChangeSeatType({
     workspaceId: owner.sId,
   });
@@ -702,13 +698,32 @@ export function UsagePage() {
     setIsBulkChangeSeatOpen(true);
   }, []);
 
-  // Selected members visible on the current page, for the bulk seat modal's
+  // Selected members visible on the current page, for the bulk modals'
   // avatar row (with an "all across pages" selection this is the visible
-  // subset only).
-  const selectedVisibleMembers = useMemo(
-    () => membersUsage.filter((m) => selection.rowSelection[m.sId]),
-    [membersUsage, selection.rowSelection]
-  );
+  // subset only). Kept in pick order so the first avatars stay put as more
+  // members are added.
+  const selectedVisibleMembers = useMemo(() => {
+    const descriptor = selection.descriptor();
+    if (descriptor.mode === "all") {
+      return membersUsage.filter((m) => selection.rowSelection[m.sId]);
+    }
+    const membersById = new Map(membersUsage.map((m) => [m.sId, m]));
+    return descriptor.ids.flatMap((id) => membersById.get(id) ?? []);
+  }, [membersUsage, selection.descriptor, selection.rowSelection]);
+
+  // A single selected member gets the individual modal, which shows their
+  // current limits instead of a blank batch form.
+  const handleBatchEditSpendLimit = useCallback(() => {
+    if (selection.selectedCount === 1 && selectedVisibleMembers.length === 1) {
+      handleEditSpendLimitFromTable(selectedVisibleMembers[0]);
+      return;
+    }
+    setIsBulkSpendLimitOpen(true);
+  }, [
+    selection.selectedCount,
+    selectedVisibleMembers,
+    handleEditSpendLimitFromTable,
+  ]);
 
   // Translate the cross-page selection into the descriptor the bulk member
   // endpoints expect: explicit ids, or the current filter minus exclusions.
@@ -1105,6 +1120,7 @@ export function UsagePage() {
   const selectionBanner = (
     <MembersSelectionBanner
       selectedCount={selection.selectedCount}
+      selectedMembers={selectedVisibleMembers}
       totalCount={totalMembersUsage}
       hasMorePagesToSelect={selection.hasMorePagesToSelect}
       onSelectAllAcrossPages={selection.selectAllAcrossPages}
@@ -1468,6 +1484,7 @@ export function UsagePage() {
           isOpen={isBulkSpendLimitOpen}
           onClose={() => setIsBulkSpendLimitOpen(false)}
           memberCount={selection.selectedCount}
+          selectedMembers={selectedVisibleMembers}
           seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
           onValidate={handleBulkSpendLimitValidate}
         />
