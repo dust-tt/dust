@@ -215,6 +215,71 @@ describe("searchAgents", () => {
     expect(mockSearch.mock.lastCall?.[0].aggs).not.toHaveProperty("tags");
   });
 
+  it("filters on usage and spaces and returns the usage range", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    mockHits([
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: "busy",
+        active_users_count: 40,
+        requested_space_ids: [],
+      }),
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: "quiet",
+        active_users_count: 2,
+      }),
+      makeDocument({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: GLOBAL_AGENTS_SID.HELPER,
+        scope: "global",
+        active_users_count: null,
+      }),
+    ]);
+
+    expect(
+      await searchAgentIds(auth, {
+        filters: { activeUsersCount: { min: 10 } },
+      })
+    ).toEqual(["busy"]);
+    expect(
+      await searchAgentIds(auth, {
+        filters: { activeUsersCount: { min: 0, max: 5 } },
+      })
+    ).toEqual(["quiet"]);
+    expect(mockSearch.mock.lastCall?.[0].query.bool.filter).toContainEqual({
+      range: { active_users_count: { gte: 0, lte: 5 } },
+    });
+
+    await searchAgentIds(auth, { filters: { spaceIds: ["space-a"] } });
+    expect(mockSearch.mock.lastCall?.[0].query.bool.filter).toContainEqual({
+      terms: { requested_space_ids: ["space-a"] },
+    });
+
+    mockSearch.mockResolvedValueOnce({
+      hits: { total: { value: 2, relation: "eq" }, hits: [] },
+      aggregations: { usage: { count: 2, min: 2, max: 40 } },
+    });
+    const result = await searchAgents(auth, {
+      searchTerm: "",
+      limit: 0,
+      facets: ["usage", "spaces"],
+    });
+    assert(result.isOk());
+    expect(result.value.facets).toEqual({
+      usage: { min: 2, max: 40 },
+      spaces: [],
+    });
+    expect(mockSearch.mock.lastCall?.[0].aggs).toEqual({
+      usage: { stats: { field: "active_users_count" } },
+      spaces: {
+        terms: { field: "requested_space_ids", size: 1000 },
+      },
+    });
+  });
+
   it("rejects offsets past the result window without querying", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
 

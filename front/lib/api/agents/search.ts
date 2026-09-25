@@ -22,16 +22,40 @@ import type {
   AgentSearchPermissionFiltering,
   AgentSearchSort,
   AgentSearchSortOrder,
+  AgentSearchTermsFacet,
 } from "@app/types/agent_search/agent_search";
 import { Err, Ok } from "@app/types/shared/result";
 import { isNumber, removeNulls } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
 
-const AGENT_SEARCH_FACET_FIELDS: Record<AgentSearchFacet, string> = {
+const AGENT_SEARCH_TERMS_FACET_FIELDS: Record<AgentSearchTermsFacet, string> = {
   editors: "editor_ids",
   models: "model.model_id",
   tags: "tag_ids",
+  skills: "skill_ids",
+  spaces: "requested_space_ids",
 };
+
+type AgentSearchAggregations = Partial<
+  Record<AgentSearchTermsFacet, estypes.AggregationsStringTermsAggregate>
+> & { usage?: estypes.AggregationsStatsAggregate };
+
+function isTermsFacet(facet: AgentSearchFacet): facet is AgentSearchTermsFacet {
+  return facet !== "usage";
+}
+
+function buildFacetAggregation(
+  facet: AgentSearchFacet
+): estypes.AggregationsAggregationContainer {
+  return isTermsFacet(facet)
+    ? {
+        terms: {
+          field: AGENT_SEARCH_TERMS_FACET_FIELDS[facet],
+          size: MAX_AGENT_SEARCH_FACET_VALUES,
+        },
+      }
+    : { stats: { field: "active_users_count" } };
+}
 
 /**
  * @cc [owner:tdraier,label:security;product] searchable-global-agents
@@ -70,8 +94,9 @@ async function listSearchableGlobalAgentIds(
  * @cc [owner:tdraier,label:security] agent-search-facets
  * Facet values MUST come from the same authorized query as the returned page (including the
  * caller's filters), so they never reveal values held only by agents the caller cannot list.
- * Facets return distinct values, at most MAX_AGENT_SEARCH_FACET_VALUES each, with the number of
- * agents matching that query (every filter included) that hold each value.
+ * Terms facets return distinct values, at most MAX_AGENT_SEARCH_FACET_VALUES each, with the number
+ * of agents matching that query (every filter included) that hold each value. The `usage` facet
+ * returns the min and max `active_users_count` of those agents, null when none has one.
  */
 /**
  * @cc [owner:tdraier,label:security;product] agent-search-pagination
@@ -114,12 +139,7 @@ export async function searchAgents(
   const query = buildAgentSearchQuery(auth, { ...options, globalAgentIds });
 
   const result = await withEs((client) =>
-    client.search<
-      AgentSearchDocument,
-      Partial<
-        Record<AgentSearchFacet, estypes.AggregationsStringTermsAggregate>
-      >
-    >({
+    client.search<AgentSearchDocument, AgentSearchAggregations>({
       index: AGENT_SEARCH_ALIAS_NAME,
       _source: true,
       query,
@@ -130,15 +150,7 @@ export async function searchAgents(
       ...(facets.length > 0
         ? {
             aggs: Object.fromEntries(
-              facets.map((facet) => [
-                facet,
-                {
-                  terms: {
-                    field: AGENT_SEARCH_FACET_FIELDS[facet],
-                    size: MAX_AGENT_SEARCH_FACET_VALUES,
-                  },
-                },
-              ])
+              facets.map((facet) => [facet, buildFacetAggregation(facet)])
             ),
           }
         : {}),
@@ -149,14 +161,22 @@ export async function searchAgents(
   }
   const { hits, total } = result.value.hits;
   const totalCount = isNumber(total) ? total : (total?.value ?? 0);
+  const { aggregations } = result.value;
   const facetValues: AgentSearchFacetValues = Object.fromEntries(
-    facets.map((facet) => [
+    facets.filter(isTermsFacet).map((facet) => [
       facet,
-      bucketsToArray(result.value.aggregations?.[facet]?.buckets).map(
-        (bucket) => ({ value: String(bucket.key), count: bucket.doc_count })
-      ),
+      bucketsToArray(aggregations?.[facet]?.buckets).map((bucket) => ({
+        value: String(bucket.key),
+        count: bucket.doc_count,
+      })),
     ])
   );
+  if (facets.includes("usage")) {
+    facetValues.usage = {
+      min: aggregations?.usage?.min ?? null,
+      max: aggregations?.usage?.max ?? null,
+    };
+  }
 
   return new Ok({
     agents: removeNulls(hits.map((hit) => hit._source)).map(toAgentListItem),

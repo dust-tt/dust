@@ -59,6 +59,18 @@ export function matchesAgentSearchFilters(
       );
     });
   }
+  if (query.range) {
+    return Object.entries(query.range).every(([field, bounds]) => {
+      assert(bounds && "gte" in bounds);
+      const { gte, lte } = bounds;
+      return values(field).some(
+        (value) =>
+          typeof value === "number" &&
+          (gte === undefined || value >= Number(gte)) &&
+          (lte === undefined || value <= Number(lte))
+      );
+    });
+  }
   if (query.exists) {
     return values(query.exists.field).some(
       (value) => value !== null && value !== undefined

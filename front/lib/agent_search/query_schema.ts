@@ -28,6 +28,13 @@ export const SearchAgentsQuerySchema = z.object({
   mcpServerViewIds: z.array(z.string().min(1)).max(100).optional(),
   editorIds: z.array(z.string().min(1)).max(100).optional(),
   modelIds: z.array(z.string().min(1)).max(100).optional(),
+  spaceIds: z.array(z.string().min(1)).max(100).optional(),
+  activeUsersCount: z
+    .object({
+      min: z.number().int().min(0).optional(),
+      max: z.number().int().min(0).optional(),
+    })
+    .optional(),
   editedByMe: z.literal(true).optional(),
   facets: z
     .array(z.enum(AGENT_SEARCH_FACETS))

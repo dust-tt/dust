@@ -103,6 +103,7 @@ function buildSelectionFilters(
     ["mcp_server_view_ids", filters.mcpServerViewIds],
     ["editor_ids", filters.editorIds],
     ["model.model_id", filters.modelIds],
+    ["requested_space_ids", filters.spaceIds],
   ] as const) {
     if (values?.length) {
       selected.push({ terms: { [field]: values } });
@@ -110,6 +111,10 @@ function buildSelectionFilters(
   }
   if (filters.editedByMe) {
     selected.push(buildEditorFilter(auth));
+  }
+  const { min, max } = filters.activeUsersCount ?? {};
+  if (min !== undefined || max !== undefined) {
+    selected.push({ range: { active_users_count: { gte: min, lte: max } } });
   }
   return selected;
 }

@@ -1,5 +1,7 @@
 import { SearchAgentsQuerySchema } from "@app/lib/agent_search/query_schema";
 import { searchAgents } from "@app/lib/api/agents/search";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
@@ -31,6 +33,8 @@ app.post(
       mcpServerViewIds,
       editorIds: editorIdsFilter,
       modelIds,
+      spaceIds,
+      activeUsersCount,
       editedByMe,
       facets,
       sortBy,
@@ -52,6 +56,8 @@ app.post(
         mcpServerViewIds,
         editorIds: editorIdsFilter,
         modelIds,
+        spaceIds,
+        activeUsersCount,
         editedByMe,
       },
     });
@@ -102,13 +108,26 @@ app.post(
         ...(facetValues.editors ?? []).map(({ value }) => value),
       ]),
     ];
-    const [users, tags] = await Promise.all([
+    const facetIds = (values: { value: string }[] | undefined) =>
+      (values ?? []).map(({ value }) => value);
+    const facetCount = (
+      values: { value: string; count: number }[] | undefined,
+      id: string
+    ) => values?.find(({ value }) => value === id)?.count ?? 0;
+    const [users, tags, skills, spaces] = await Promise.all([
       UserResource.fetchByIds(editorIds),
       facetValues.tags?.length
-        ? TagResource.fetchByIds(
-            auth,
-            facetValues.tags.map(({ value }) => value)
-          )
+        ? TagResource.fetchByIds(auth, facetIds(facetValues.tags))
+        : [],
+      facetValues.skills?.length
+        ? SkillResource.fetchByIds(auth, facetIds(facetValues.skills), {
+            withInstructions: false,
+            withTools: false,
+            withFileAttachments: false,
+          })
+        : [],
+      facetValues.spaces?.length
+        ? SpaceResource.fetchByIds(auth, facetIds(facetValues.spaces))
         : [],
     ]);
 
@@ -145,13 +164,38 @@ app.post(
               tags: tags
                 .map((tag) => ({
                   ...tag.toJSON(),
-                  count:
-                    facetValues.tags?.find(({ value }) => value === tag.sId)
-                      ?.count ?? 0,
+                  count: facetCount(facetValues.tags, tag.sId),
                 }))
                 .toSorted((a, b) => a.name.localeCompare(b.name)),
             }
           : {}),
+        ...(facetValues.skills
+          ? {
+              skills: skills
+                .map((skill) => ({
+                  sId: skill.sId,
+                  name: skill.name,
+                  icon: skill.icon,
+                  count: facetCount(facetValues.skills, skill.sId),
+                }))
+                .toSorted((a, b) => a.name.localeCompare(b.name)),
+            }
+          : {}),
+        ...(facetValues.spaces
+          ? {
+              // Unrestricted search can surface spaces the caller cannot read: never name them.
+              spaces: spaces
+                .filter((space) => auth.can("read", space))
+                .map((space) => ({
+                  sId: space.sId,
+                  name: space.name,
+                  kind: space.kind,
+                  count: facetCount(facetValues.spaces, space.sId),
+                }))
+                .toSorted((a, b) => a.name.localeCompare(b.name)),
+            }
+          : {}),
+        ...(facetValues.usage ? { usage: facetValues.usage } : {}),
       },
       agents: result.value.agents.map((agent) => ({
         ...agent,
