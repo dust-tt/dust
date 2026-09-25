@@ -1,7 +1,9 @@
+import { GroupManagersField } from "@app/components/groups/GroupManagersField";
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useCreateGroup, useGroup, useUpdateGroup } from "@app/lib/swr/groups";
+import type { GroupWithAllowedActions } from "@app/types/api/groups";
 import type { GroupType } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -38,7 +40,7 @@ export function GroupDialog({
   const isEdit = groupId !== null;
 
   const { isAdmin } = useAuth();
-  const { group, members, isGroupLoading } = useGroup({
+  const { group, members, managers, isGroupLoading } = useGroup({
     owner,
     groupId,
     disabled: !isOpen,
@@ -64,8 +66,10 @@ export function GroupDialog({
             key={groupId ?? "new"}
             owner={owner}
             groupId={groupId}
+            group={group}
             initialName={group?.name ?? ""}
             initialMembers={members}
+            initialManagers={managers}
             readOnly={isReadOnlyForManager}
             onCreated={onCreated}
             onClose={() => onOpenChange(false)}
@@ -85,8 +89,10 @@ export function GroupDialog({
 interface GroupFormProps {
   owner: LightWorkspaceType;
   groupId: string | null;
+  group: GroupWithAllowedActions | null;
   initialName: string;
   initialMembers: SearchMemberType[];
+  initialManagers: SearchMemberType[];
   // When true, the group grants the admin role and the current user is not an
   // admin: membership is read-only (see the admin-only membership contract).
   readOnly?: boolean;
@@ -97,8 +103,10 @@ interface GroupFormProps {
 function GroupForm({
   owner,
   groupId,
+  group,
   initialName,
   initialMembers,
+  initialManagers,
   readOnly = false,
   onCreated,
   onClose,
@@ -107,10 +115,25 @@ function GroupForm({
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(
     () => new Set(initialMembers.map((m) => m.sId))
   );
+  const [selectedManagers, setSelectedManagers] =
+    useState<SearchMemberType[]>(initialManagers);
 
   const { doCreateGroup, isCreating } = useCreateGroup({ owner });
   const { doUpdateGroup, isUpdating } = useUpdateGroup({ owner, groupId });
   const isSubmitting = isCreating || isUpdating;
+  const canManageManagers = group?.allowedActions?.canAssignManagers === true;
+  const initialMemberIds = new Set(initialMembers.map((member) => member.sId));
+  const hasGroupChanges =
+    name.trim() !== initialName ||
+    selectedMemberIds.size !== initialMemberIds.size ||
+    [...selectedMemberIds].some((id) => !initialMemberIds.has(id));
+  const initialManagerIds = new Set(
+    initialManagers.map((manager) => manager.sId)
+  );
+  const hasManagerChanges =
+    canManageManagers &&
+    (selectedManagers.length !== initialManagerIds.size ||
+      selectedManagers.some((manager) => !initialManagerIds.has(manager.sId)));
 
   const handleSubmit = async (e: MouseEvent) => {
     // Prevent DialogClose from auto-closing so we only close on success.
@@ -118,10 +141,21 @@ function GroupForm({
     const trimmedName = name.trim();
     const memberIds = Array.from(selectedMemberIds);
     if (groupId) {
-      const result = await doUpdateGroup({ name: trimmedName, memberIds });
-      if (result) {
-        onClose();
+      if (hasGroupChanges) {
+        const result = await doUpdateGroup({ name: trimmedName, memberIds });
+        if (!result) {
+          return;
+        }
       }
+      if (hasManagerChanges) {
+        const result = await doUpdateGroup({
+          managerIds: selectedManagers.map((manager) => manager.sId),
+        });
+        if (!result) {
+          return;
+        }
+      }
+      onClose();
       return;
     }
 
@@ -136,7 +170,8 @@ function GroupForm({
     readOnly ||
     isSubmitting ||
     name.trim().length === 0 ||
-    selectedMemberIds.size === 0;
+    (!groupId && selectedMemberIds.size === 0) ||
+    (hasGroupChanges && selectedMemberIds.size === 0);
 
   return (
     <>
@@ -173,6 +208,15 @@ function GroupForm({
             }}
             initialMembers={initialMembers}
           />
+          {group && canManageManagers && (
+            <GroupManagersField
+              owner={owner}
+              group={group}
+              managers={selectedManagers}
+              onChange={setSelectedManagers}
+              disabled={isSubmitting}
+            />
+          )}
         </div>
       </DialogContainer>
       <DialogFooter
