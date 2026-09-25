@@ -8,13 +8,7 @@ import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import {
-  SearchInput,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@dust-tt/sparkle";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import { forwardRef, useState } from "react";
 
 const DISCOVER_TABS = ["Discover", "Agents & Skills"] as const;
@@ -36,7 +30,6 @@ export const DiscoverContainer = forwardRef<
   ref
 ) {
   const [tab, setTab] = useState<DiscoverTab>("Discover");
-  const [search, setSearch] = useState("");
   const [pinTarget, setPinTarget] = useState<CatalogItem | null>(null);
   const onPin = isAdmin(owner) ? setPinTarget : undefined;
   const [detailsTarget, setDetailsTarget] = useState<CatalogItem | null>(null);
@@ -44,26 +37,11 @@ export const DiscoverContainer = forwardRef<
   return (
     <div
       ref={ref}
-      className="flex min-h-panel w-full shrink-0 flex-col items-center pb-16 pt-10"
+      className="flex min-h-panel w-full shrink-0 flex-col items-center pb-16"
     >
-      <Tabs value={tab} className="flex w-full max-w-4xl flex-col gap-12">
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h1 className="heading-2xl text-foreground">Discover</h1>
-            {tab === "Agents & Skills" && (
-              <div className="w-full sm:w-80">
-                <SearchInput
-                  name="discover-search"
-                  placeholder="Search for agents or skills"
-                  value={search}
-                  onChange={(value) => {
-                    setSearch(value);
-                    onFiltersChange();
-                  }}
-                />
-              </div>
-            )}
-          </div>
+      <Tabs value={tab} className="flex w-full max-w-4xl flex-col gap-8">
+        <div className="sticky top-0 z-30 flex flex-col gap-6 bg-panel-background pt-10">
+          <h1 className="heading-2xl text-foreground">Discover</h1>
           <TabsList>
             {DISCOVER_TABS.map((t) => (
               <TabsTrigger
@@ -88,8 +66,6 @@ export const DiscoverContainer = forwardRef<
         <TabsContent value="Agents & Skills">
           <DiscoverCatalog
             owner={owner}
-            search={search}
-            onClearSearch={() => setSearch("")}
             onAgentClick={onAgentConfigurationClick}
             onSkillClick={onSkillClick}
             onPin={onPin}

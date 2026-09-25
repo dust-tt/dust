@@ -357,11 +357,11 @@ export function ConversationContainerVirtuoso({
   const {
     alignDiscover,
     discoverRef,
-    fillProgress,
     goToDiscover,
     goToHome,
+    isOpeningDiscover,
     scrollerRef,
-  } = useDiscoverScroll({ isFillEnabled: isDiscoveryHomepage && !isMobile });
+  } = useDiscoverScroll({ isLockEnabled: isDiscoveryHomepage && !isMobile });
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
@@ -487,7 +487,7 @@ export function ConversationContainerVirtuoso({
               >
                 <DiscoverButton
                   onClick={goToDiscover}
-                  progress={fillProgress}
+                  isOpening={isOpeningDiscover}
                 />
               </div>
             </div>
