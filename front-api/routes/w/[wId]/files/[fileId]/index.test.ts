@@ -1,3 +1,4 @@
+import { prewarmFrameSandbox } from "@app/lib/api/frames/prewarm_frame_sandbox";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -26,6 +27,10 @@ vi.mock("@app/lib/api/files/processing", async (importOriginal) => {
     }),
   };
 });
+
+vi.mock(import("@app/lib/api/frames/prewarm_frame_sandbox"), () => ({
+  prewarmFrameSandbox: vi.fn().mockResolvedValue(undefined),
+}));
 
 function fileUrl(workspace: { sId: string }, fileId: string, query = "") {
   return `/api/w/${workspace.sId}/files/${fileId}${query}`;
@@ -223,6 +228,10 @@ describe("GET /api/w/:wId/files/:fileId", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe(frameContentType);
     expect(await response.text()).toBe(uiBundle);
+    expect(prewarmFrameSandbox).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ sId: frame.sId })
+    );
   });
 
   it("returns 404 for an unpublished Frames v2 file", async () => {
@@ -285,6 +294,7 @@ describe("GET /api/w/:wId/files/:fileId", () => {
     );
 
     expect(response.status).toBe(302);
+    expect(prewarmFrameSandbox).not.toHaveBeenCalled();
     const location = response.headers.get("location");
     expect(location).toBe(
       `/api/w/${workspace.sId}/files/path/conversation-${conversation.sId}/My%20Frame?archive=zip`

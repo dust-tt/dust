@@ -714,7 +714,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       };
       const runEnsure = async (): Promise<
         Result<EnsureSandboxReadyResult & { scope?: FrameSandboxScope }, Error>
-      > => ensureFrameSandboxReady(auth, frame, { requireRunning: inline });
+      > =>
+        ensureFrameSandboxReady(
+          auth,
+          frame,
+          inline ? { requireRunning: true } : {}
+        );
 
       let functionCheck;
       let ensureResult;

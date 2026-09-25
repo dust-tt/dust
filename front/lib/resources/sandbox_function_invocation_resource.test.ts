@@ -809,9 +809,11 @@ describe("SandboxFunctionInvocationResource", () => {
     // ensureActive already writes it under the lifecycle lock, and a second
     // write per invocation was pure hot-row churn on the sandbox row.
     expect(updateLastActivityAtSpy).not.toHaveBeenCalled();
-    expect(ensureFrameSandboxReady).toHaveBeenCalledWith(authenticator, frame, {
-      requireRunning: false,
-    });
+    expect(ensureFrameSandboxReady).toHaveBeenCalledWith(
+      authenticator,
+      frame,
+      {}
+    );
     expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
       authenticator,
       expect.objectContaining({

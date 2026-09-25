@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { prewarmFrameSandbox } from "@app/lib/api/frames/prewarm_frame_sandbox";
 import {
   FRAME_SESSION_COOKIE_NAME,
   getFrameSessionEmail,
@@ -189,6 +190,11 @@ app.get(
 
         await recordFrameView(file, grant, verifiedEmail);
       }
+    }
+
+    // Start waking the Frame's sandbox while its UI loads; the pre-warm gates itself.
+    if (auth && hasFunctions) {
+      void prewarmFrameSandbox(auth, file);
     }
 
     const conversationId = file.useCaseMetadata?.conversationId;
