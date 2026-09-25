@@ -35,12 +35,24 @@ export type UseCaseAudience =
   | { type: "untilMilestone"; milestone: UsageMilestone };
 
 /**
+ * @cc [owner:adrsimon,label:product] featured-use-cases-cannot-be-dismissed
+ * A `featured` use case MUST NOT be dismissible, and MUST be offered even to a user who dismissed
+ * it before it was featured. Every other use case is dismissible.
+ */
+export function isDismissibleAudience(audience: UseCaseAudience): boolean {
+  return audience.type !== "featured";
+}
+
+/**
  * @cc [owner:adrsimon,label:product] requirements-are-conjunctive
  * A use case MUST be offered only when every requirement in `requires` resolves in the
  * workspace. An empty list imposes no requirement.
  */
 export interface HomepageUseCaseDefinition
-  extends Omit<HomepageUseCaseType, "skills" | "tools" | "tier"> {
+  extends Omit<
+    HomepageUseCaseType,
+    "skills" | "tools" | "tier" | "isDismissible"
+  > {
   audience: UseCaseAudience;
   requires: UseCaseRequirement[];
 }

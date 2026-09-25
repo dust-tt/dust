@@ -6,7 +6,10 @@ import type {
   UseCaseAudience,
   UseCaseRequirement,
 } from "@app/lib/api/homepage_use_cases/registry";
-import { HOMEPAGE_USE_CASES } from "@app/lib/api/homepage_use_cases/registry";
+import {
+  HOMEPAGE_USE_CASES,
+  isDismissibleAudience,
+} from "@app/lib/api/homepage_use_cases/registry";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -21,7 +24,11 @@ import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { parseFavoritePlatforms } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import { isJobType } from "@app/types/job_type";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+
+const DISMISSED_USE_CASES_METADATA_KEY = "homepage_use_cases_dismissed";
 
 function toolKey(requirement: ToolRequirement): string {
   return `${requirement.type}:${requirement.name}`;
@@ -119,20 +126,29 @@ async function getSkillsById(
 
 async function getUserPreferences(
   auth: Authenticator
-): Promise<Pick<UserProfile, "favoritePlatforms" | "jobType">> {
+): Promise<
+  Pick<UserProfile, "dismissedUseCaseIds" | "favoritePlatforms" | "jobType">
+> {
   const user = auth.user();
   if (!user) {
-    return { jobType: null, favoritePlatforms: [] };
+    return {
+      dismissedUseCaseIds: new Set(),
+      favoritePlatforms: [],
+      jobType: null,
+    };
   }
 
-  const [jobTypeMetadata, favoritePlatformsMetadata] = await Promise.all([
-    user.getMetadata("job_type"),
-    user.getMetadata("favorite_platforms", auth.getNonNullableWorkspace().id),
-  ]);
+  const [jobTypeMetadata, favoritePlatformsMetadata, dismissedUseCaseIds] =
+    await Promise.all([
+      user.getMetadata("job_type"),
+      user.getMetadata("favorite_platforms", auth.getNonNullableWorkspace().id),
+      user.getMetadataAsArray(DISMISSED_USE_CASES_METADATA_KEY),
+    ]);
 
   return {
-    jobType: isJobType(jobTypeMetadata?.value) ? jobTypeMetadata.value : null,
+    dismissedUseCaseIds: new Set(dismissedUseCaseIds),
     favoritePlatforms: parseFavoritePlatforms(favoritePlatformsMetadata?.value),
+    jobType: isJobType(jobTypeMetadata?.value) ? jobTypeMetadata.value : null,
   };
 }
 
@@ -150,6 +166,7 @@ async function getReachedMilestones(
 }
 
 interface UserProfile {
+  dismissedUseCaseIds: Set<string>;
   favoritePlatforms: FavoritePlatform[];
   jobType: JobType | null;
   reachedMilestones: Set<UsageMilestone>;
@@ -211,6 +228,11 @@ function selectSatisfiedUseCases({
       return [];
     }
 
+    const isDismissible = isDismissibleAudience(audience);
+    if (isDismissible && profile.dismissedUseCaseIds.has(useCase.id)) {
+      return [];
+    }
+
     const skills: SkillReference[] = [];
     const tools: ToolReference[] = [];
 
@@ -233,7 +255,7 @@ function selectSatisfiedUseCases({
       }
     }
 
-    return [{ ...useCase, skills, tools, tier }];
+    return [{ ...useCase, skills, tools, tier, isDismissible }];
   });
 }
 
@@ -253,4 +275,36 @@ export async function listHomepageUseCases(
     skillsById,
     toolsByKey,
   });
+}
+
+export class DismissHomepageUseCaseError extends Error {
+  constructor(
+    readonly type: "use_case_not_found" | "use_case_not_dismissible"
+  ) {
+    super(type);
+  }
+}
+
+/**
+ * @cc [owner:adrsimon,label:product] dismissal-is-per-user
+ * A dismissal MUST hide the use case for the calling user only, in every workspace, and MUST fail
+ * without writing anything when the id is unknown or the use case is not dismissible.
+ */
+export async function dismissHomepageUseCase(
+  auth: Authenticator,
+  useCaseId: string
+): Promise<Result<undefined, DismissHomepageUseCaseError>> {
+  const useCase = HOMEPAGE_USE_CASES.find(({ id }) => id === useCaseId);
+  if (!useCase) {
+    return new Err(new DismissHomepageUseCaseError("use_case_not_found"));
+  }
+  if (!isDismissibleAudience(useCase.audience)) {
+    return new Err(new DismissHomepageUseCaseError("use_case_not_dismissible"));
+  }
+
+  await auth
+    .getNonNullableUser()
+    .upsertMetadataArray(DISMISSED_USE_CASES_METADATA_KEY, useCaseId);
+
+  return new Ok(undefined);
 }
