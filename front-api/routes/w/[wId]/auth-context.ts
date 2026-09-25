@@ -2,7 +2,11 @@ import { getWorkspaceCellRedirect } from "@app/lib/api/cells/lookup";
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
-import type { GetWorkspaceAuthContextResponseType } from "@app/types/api/auth_context";
+import { listGroupsWithVerb } from "@app/lib/resources/group_management_access";
+import type {
+  GetWorkspaceAuthContextResponseType,
+  GroupManagementAccess,
+} from "@app/types/api/auth_context";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -70,6 +74,33 @@ app.get(
     const featureFlags = await getFeatureFlags(auth);
 
     const workspacePermissions = await auth.getWorkspacePermissions();
+    let groupManagement: GroupManagementAccess | undefined;
+    if (featureFlags.includes("group_management")) {
+      if (auth.isManager() || auth.isAdmin()) {
+        groupManagement = {
+          write: { kind: "all" },
+          read_usage: { kind: "all" },
+          set_usage_limits: { kind: "all" },
+        };
+      } else {
+        const [write, readUsage, setUsageLimits] = await Promise.all([
+          listGroupsWithVerb(auth, "write"),
+          listGroupsWithVerb(auth, "read_usage"),
+          listGroupsWithVerb(auth, "set_usage_limits"),
+        ]);
+        groupManagement = {
+          write: { kind: "ids", groupIds: write.map((group) => group.sId) },
+          read_usage: {
+            kind: "ids",
+            groupIds: readUsage.map((group) => group.sId),
+          },
+          set_usage_limits: {
+            kind: "ids",
+            groupIds: setUsageLimits.map((group) => group.sId),
+          },
+        };
+      }
+    }
 
     return ctx.json({
       user: user.toJSON(),
@@ -82,6 +113,7 @@ app.get(
       vizUrl: config.getVizPublicUrl(),
       providersHealth: auth.providersHealth(),
       workspacePermissions,
+      ...(groupManagement && { groupManagement }),
     });
   }
 );

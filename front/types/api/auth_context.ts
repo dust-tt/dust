@@ -4,6 +4,16 @@ import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
+export type GroupManagementScope =
+  | { kind: "all" }
+  | { kind: "ids"; groupIds: string[] };
+
+export type GroupManagementAccess = {
+  write: GroupManagementScope;
+  read_usage: GroupManagementScope;
+  set_usage_limits: GroupManagementScope;
+};
+
 export type GetNoWorkspaceAuthContextResponseType = {
   user: UserType;
   defaultWorkspaceId: string | null;
@@ -20,4 +30,5 @@ export type GetWorkspaceAuthContextResponseType = {
   vizUrl: string;
   providersHealth: ProvidersHealth | null;
   workspacePermissions: WorkspacePermissions;
+  groupManagement?: GroupManagementAccess;
 };
