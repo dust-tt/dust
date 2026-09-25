@@ -1,3 +1,4 @@
+import { makeContentNodeFixture } from "@app/tests/utils/content_node_test_fixtures";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { describe, expect, it } from "vitest";
@@ -337,46 +338,6 @@ describe("extractFromString", () => {
   });
 });
 
-function makeContentNode(internalId: string): DataSourceViewContentNode {
-  return {
-    childrenCount: 0,
-    expandable: false,
-    internalId,
-    lastUpdatedAt: null,
-    mimeType: "text/plain",
-    parentInternalId: null,
-    parentInternalIds: null,
-    parentTitle: null,
-    permission: "read",
-    providerVisibility: null,
-    sourceUrl: null,
-    title: "My doc",
-    type: "document",
-    dataSourceView: {
-      category: "managed",
-      createdAt: 0,
-      dataSource: {
-        id: 1,
-        sId: "ds1",
-        createdAt: 0,
-        name: "ds",
-        description: null,
-        assistantDefaultSelected: false,
-        dustAPIProjectId: "p1",
-        dustAPIDataSourceId: "d1",
-        connectorId: null,
-        connectorProvider: null,
-      },
-      id: 1,
-      kind: "default",
-      parentsIn: null,
-      sId: "dsv1",
-      spaceId: "space1",
-      updatedAt: 0,
-    },
-  };
-}
-
 function makeKnowledgeNodeJSON(node?: DataSourceViewContentNode) {
   return {
     type: "knowledgeNode",
@@ -398,7 +359,7 @@ function makeKnowledgeNodeJSON(node?: DataSourceViewContentNode) {
 describe("extractFromEditorJSON", () => {
   describe("knowledge nodes", () => {
     it("extracts the full content node and serializes the knowledge tag", () => {
-      const node = makeContentNode("n1");
+      const node = makeContentNodeFixture("n1", { title: "My doc" });
       const result = extractFromEditorJSON({
         type: "doc",
         content: [

@@ -101,11 +101,34 @@ describe("toDataSourceViewContentNodes", () => {
       },
     ];
 
-    const result = toDataSourceViewContentNodes(nodes, "space1");
+    const result = toDataSourceViewContentNodes(nodes, ["space1"]);
 
     expect(
       result.map((node) => [node.internalId, node.dataSourceView.sId])
     ).toEqual([["doc", "dsv-github"]]);
     expect(getSearchResultKey(result[0])).toBe("ds-dsv-github:doc");
+  });
+
+  it("keeps the first view whose space is visible, in the hit's own order", () => {
+    const space2View = { ...notion, sId: "dsv-notion-2", spaceId: "space2" };
+    const { dataSourceView: _ignored, ...doc } = makeContentNodeFixture("doc");
+    const nodes = [
+      {
+        ...doc,
+        dataSource: notion.dataSource,
+        dataSourceViews: [space2View, notion],
+      },
+    ];
+
+    expect(
+      toDataSourceViewContentNodes(nodes, ["space1", "space2"]).map(
+        (node) => node.dataSourceView.sId
+      )
+    ).toEqual(["dsv-notion-2"]);
+    expect(
+      toDataSourceViewContentNodes(nodes, ["space1"]).map(
+        (node) => node.dataSourceView.sId
+      )
+    ).toEqual(["dsv-notion"]);
   });
 });
