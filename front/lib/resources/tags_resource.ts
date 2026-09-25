@@ -332,4 +332,8 @@ export class TagResource extends BaseResource<TagModel> {
       kind: this.kind,
     };
   }
+
+  toSearchFacetJSON(count: number) {
+    return { ...this.toJSON(), count };
+  }
 }

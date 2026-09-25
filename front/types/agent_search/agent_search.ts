@@ -113,7 +113,7 @@ export interface AgentSearchListItemType {
   name: string;
   description: string;
   pictureUrl: string;
-  // Null for default agents, which resolve their model per caller.
+  // Default agents report the model they resolve to for the workspace; null only if unknown.
   model: {
     providerId: ModelProviderIdType;
     modelId: ModelIdType;

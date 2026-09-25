@@ -59,7 +59,7 @@ export function useSearchAgents({
   const agentsFetcher: () => Promise<SearchAgentsResponseBody> = () =>
     fetcherWithBody([url, body, "POST"]);
 
-  const { data, error, isLoading, mutate } = useSWRWithDefaults(
+  const { data, error, isLoading, isValidating, mutate } = useSWRWithDefaults(
     [url, body],
     agentsFetcher,
     {
@@ -82,6 +82,7 @@ export function useSearchAgents({
       emptyArray<SearchAgentsResponseBody["agents"][number]>(),
     total: data?.total ?? 0,
     isAgentsError: !!error,
+    isAgentsValidating: !disabled && isValidating,
     isAgentsLoading: !disabled && (isDebouncing || isLoading),
     mutate,
     mutateRegardlessOfQueryParams,

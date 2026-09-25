@@ -45,13 +45,17 @@ vi.mock("@app/lib/platform", () => ({
   }),
 }));
 
+interface AgentDetailsSheetMockProps {
+  agentId: string | null;
+}
+
 vi.mock("@app/components/assistant/details/AgentDetailsSheet", async () => {
   const actual = await vi.importActual<
     typeof import("@app/components/assistant/details/AgentDetailsSheet")
   >("@app/components/assistant/details/AgentDetailsSheet");
   return {
     ...actual,
-    AgentDetailsSheet: ({ agentId }: { agentId: string | null }) =>
+    AgentDetailsSheet: ({ agentId }: AgentDetailsSheetMockProps) =>
       agentId ? <div>Details of {agentId}</div> : null,
   };
 });

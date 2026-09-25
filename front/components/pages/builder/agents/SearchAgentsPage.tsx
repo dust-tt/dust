@@ -104,17 +104,23 @@ function AgentsList({
     setSelectedAgents([]);
   }
 
-  const { agents, total, isAgentsLoading, isAgentsError, mutate } =
-    useSearchAgents({
-      owner,
-      searchTerm,
-      filters,
-      permissionFiltering,
-      offset: tablePagination.pageIndex * AGENT_SEARCH_PAGE_SIZE,
-      limit: AGENT_SEARCH_PAGE_SIZE,
-      sortBy,
-      sortOrder,
-    });
+  const {
+    agents,
+    total,
+    isAgentsLoading,
+    isAgentsError,
+    isAgentsValidating,
+    mutate,
+  } = useSearchAgents({
+    owner,
+    searchTerm,
+    filters,
+    permissionFiltering,
+    offset: tablePagination.pageIndex * AGENT_SEARCH_PAGE_SIZE,
+    limit: AGENT_SEARCH_PAGE_SIZE,
+    sortBy,
+    sortOrder,
+  });
 
   // Batch edits are reserved to the agent's editors and to workspace admins, as on the legacy page.
   const canSelect = (agent: AgentSearchItem) =>
@@ -152,6 +158,8 @@ function AgentsList({
           <Button
             label="Retry"
             variant="outline"
+            isLoading={isAgentsValidating}
+            disabled={isAgentsValidating}
             onClick={() => void mutate()}
           />
         </div>

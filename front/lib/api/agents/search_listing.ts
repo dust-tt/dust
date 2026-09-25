@@ -65,7 +65,8 @@ export async function searchAgentListings(
     })
   );
 
-  const tagsById = new Map(tags.map((tag) => [tag.sId, tag.toJSON()]));
+  const usersById = new Map(users.map((user) => [user.sId, user]));
+  const tagsById = new Map(tags.map((tag) => [tag.sId, tag]));
 
   return new Ok<SearchAgentsResponseBody>({
     ...result.value,
@@ -74,8 +75,8 @@ export async function searchAgentListings(
         ? {
             editors: facetValues.editors
               .flatMap(({ value, count }) => {
-                const editor = editorsById.get(value);
-                return editor ? [{ ...editor, count }] : [];
+                const editor = usersById.get(value);
+                return editor ? [editor.toSearchFacetJSON(count)] : [];
               })
               .toSorted((a, b) => a.fullName.localeCompare(b.fullName)),
           }
@@ -93,7 +94,7 @@ export async function searchAgentListings(
             tags: facetValues.tags
               .flatMap(({ value, count }) => {
                 const tag = tagsById.get(value);
-                return tag ? [{ ...tag, count }] : [];
+                return tag ? [tag.toSearchFacetJSON(count)] : [];
               })
               .toSorted((a, b) => a.name.localeCompare(b.name)),
           }
@@ -101,12 +102,11 @@ export async function searchAgentListings(
       ...(facetValues.skills
         ? {
             skills: skills
-              .map((skill) => ({
-                sId: skill.sId,
-                name: skill.name,
-                icon: skill.icon,
-                count: facetCount(facetValues.skills, skill.sId),
-              }))
+              .map((skill) =>
+                skill.toSearchFacetJSON(
+                  facetCount(facetValues.skills, skill.sId)
+                )
+              )
               .toSorted((a, b) => a.name.localeCompare(b.name)),
           }
         : {}),
@@ -115,12 +115,11 @@ export async function searchAgentListings(
             // Unrestricted search can surface spaces the caller cannot read: never name them.
             spaces: spaces
               .filter((space) => auth.can("read", space))
-              .map((space) => ({
-                sId: space.sId,
-                name: space.name,
-                kind: space.kind,
-                count: facetCount(facetValues.spaces, space.sId),
-              }))
+              .map((space) =>
+                space.toSearchFacetJSON(
+                  facetCount(facetValues.spaces, space.sId)
+                )
+              )
               .toSorted((a, b) => a.name.localeCompare(b.name)),
           }
         : {}),
@@ -131,9 +130,9 @@ export async function searchAgentListings(
       editors: removeNulls(
         [...new Set(agent.editorIds)].map((id) => editorsById.get(id))
       ),
-      tags: removeNulls(agent.tagIds.map((id) => tagsById.get(id))).toSorted(
-        (a, b) => a.name.localeCompare(b.name)
-      ),
+      tags: removeNulls(
+        agent.tagIds.map((id) => tagsById.get(id)?.toJSON())
+      ).toSorted((a, b) => a.name.localeCompare(b.name)),
     })),
   });
 }

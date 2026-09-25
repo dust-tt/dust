@@ -28,6 +28,7 @@ import {
   DataTableSkeleton,
   Label,
   LoadingBlock,
+  Spinner,
   TextCellSkeleton,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -129,7 +130,7 @@ export function AgentSearchTable({
   canSelect,
 }: AgentSearchTableProps) {
   const { isDark } = useTheme();
-  const { tags } = useTags({ owner });
+  const { tags, isTagsLoading } = useTags({ owner });
   const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
   const columns = useMemo(
     () =>
@@ -281,7 +282,8 @@ export function AgentSearchTable({
                       trigger={<span>{tagNames}</span>}
                     />
                   </div>
-                  {canSelect(agent) && (
+                  {canSelect(agent) && isTagsLoading && <Spinner size="xs" />}
+                  {canSelect(agent) && !isTagsLoading && (
                     <TableTagSelector
                       tags={sortedTags}
                       agentTags={agent.tags}
@@ -360,7 +362,7 @@ export function AgentSearchTable({
           meta: { className: "hidden @md:table-cell @md:w-14" },
         },
       ] satisfies ColumnDef<AgentSearchRow>[],
-    [canSelect, isDark, onRefresh, onSelect, owner, sortedTags]
+    [canSelect, isDark, isTagsLoading, onRefresh, onSelect, owner, sortedTags]
   );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.

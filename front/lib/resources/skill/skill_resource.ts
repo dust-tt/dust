@@ -4882,6 +4882,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return { icon: this.icon, id: this.sId, name: this.name };
   }
 
+  toSearchFacetJSON(count: number) {
+    return { sId: this.sId, name: this.name, icon: this.icon, count };
+  }
+
   toDiscoveryJSON(): DiscoverySkillType {
     return {
       sId: this.sId,

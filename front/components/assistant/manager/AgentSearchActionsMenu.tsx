@@ -46,6 +46,7 @@ export function AgentSearchActionsMenu({
     agentConfiguration,
     isAgentConfigurationLoading,
     isAgentConfigurationError,
+    isAgentConfigurationValidating,
     mutateAgentConfiguration,
   } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -67,7 +68,13 @@ export function AgentSearchActionsMenu({
   if (isCustomAgent && isAgentConfigurationLoading) {
     menuItems.push({ kind: "item", label: "Loading actions…", disabled: true });
   }
-  if (isCustomAgent && isAgentConfigurationError) {
+  if (
+    isCustomAgent &&
+    isAgentConfigurationError &&
+    isAgentConfigurationValidating
+  ) {
+    menuItems.push({ kind: "item", label: "Retrying…", disabled: true });
+  } else if (isCustomAgent && isAgentConfigurationError) {
     menuItems.push({
       kind: "item",
       label: "Could not load actions. Retry",
