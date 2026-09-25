@@ -117,6 +117,19 @@ app.patch(
       }
     }
 
+    const nonAdministrableSkillNames = skills
+      .filter((skill) => !auth.can("admin", skill))
+      .map((skill) => skill.name);
+    if (nonAdministrableSkillNames.length > 0) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: `Only editors of these skills or workspace admins can change their availability: ${nonAdministrableSkillNames.join(", ")}.`,
+        },
+      });
+    }
+
     await SkillResource.updateAvailabilities(auth, skills, availability);
 
     // Re-fetch: the bulk update does not refresh the in-memory resources.

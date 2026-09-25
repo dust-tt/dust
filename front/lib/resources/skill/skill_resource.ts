@@ -3651,9 +3651,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Update only the availability of the skill. Requires the workspace-level "publish"
-   * permission on skills — being an editor is neither required nor sufficient. Does not
-   * touch editedBy.
+   * Update only the availability of the skills. Does not touch the other fields.
+   */
+  /**
+   * @cc [owner:fabiencelier,label:security] availability-change-requires-admin-and-publish
+   * Changing the availability of skills MUST require both the workspace-level `publish` capability
+   * on skills and the `admin` verb on every one of the skills (`write` is not needed).
    */
   static async updateAvailabilities(
     auth: Authenticator,
@@ -3663,6 +3666,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     assert(
       auth.hasWorkspacePermission("publish", "skill"),
       "User is not authorized to update skill availability"
+    );
+    assert(
+      skills.every((skill) => auth.can("admin", skill)),
+      "User is not authorized to update the availability of these skills"
     );
 
     // Making skills auto-discoverable, or changing an already auto-discoverable skill's
