@@ -53,11 +53,11 @@ function pollMessageEvents({
 }) {
   const query = lastEventId ? `?lastEventId=${lastEventId}` : "";
   return honoApp.request(
-    `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/events/poll${query}`
+    `/api/sse/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/events/poll${query}`
   );
 }
 
-describe("GET /api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events/poll", () => {
+describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events/poll", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

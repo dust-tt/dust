@@ -8,6 +8,8 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { streamingTag } from "@front-api/middlewares/streaming";
 import { validate } from "@front-api/middlewares/validator";
 
+import poll from "./poll";
+
 // Mounted at /api/sse/w/:wId/assistant/conversations/:cId/messages/:mId/events.
 // Handler logic lives in `@front-api/lib/api/sse/message_events`.
 
@@ -34,5 +36,6 @@ app.get(
     );
   }
 );
+app.route("/poll", poll);
 
 export default app;
