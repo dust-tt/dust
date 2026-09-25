@@ -186,6 +186,61 @@ impl TryFrom<QueryResult> for SnowflakeQueryPlanEntry {
     }
 }
 
+/// Quotes a single Snowflake identifier component (database, schema, or table name) so
+/// that it resolves case-sensitively instead of being folded to uppercase, doubling any
+/// embedded double-quote characters per Snowflake's escaping rule.
+fn quote_snowflake_identifier(identifier: &str) -> String {
+    format!("\"{}\"", identifier.replace('"', "\"\""))
+}
+
+/// Builds a `DESCRIBE TABLE` query for an opaque `database.schema.table` ID (see the
+/// `opaque-id-case-sensitive-resolution` contract on `RemoteDatabase::get_tables_schema`),
+/// quoting each component so the exact case of the underlying identifier is preserved.
+fn build_describe_table_query(opaque_id: &str) -> Result<String> {
+    let parts: Vec<&str> = opaque_id.split('.').collect();
+    if parts.len() != 3 {
+        Err(anyhow!("Invalid opaque ID: {}", opaque_id))?
+    }
+    let quoted = parts
+        .iter()
+        .map(|part| quote_snowflake_identifier(&part.replace("__DUST_DOT__", ".")))
+        .collect::<Vec<_>>()
+        .join(".");
+    Ok(format!("DESCRIBE TABLE {}", quoted))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_describe_table_query_quotes_each_component() {
+        let query = build_describe_table_query("SJDATASTORE.VIF_PROD.zart").unwrap();
+        assert_eq!(
+            query,
+            "DESCRIBE TABLE \"SJDATASTORE\".\"VIF_PROD\".\"zart\""
+        );
+    }
+
+    #[test]
+    fn test_build_describe_table_query_unescapes_dust_dot() {
+        let query = build_describe_table_query("db.sch.a__DUST_DOT__b").unwrap();
+        assert_eq!(query, "DESCRIBE TABLE \"db\".\"sch\".\"a.b\"");
+    }
+
+    #[test]
+    fn test_build_describe_table_query_escapes_embedded_quotes() {
+        let query = build_describe_table_query("db.sch.wei\"rd").unwrap();
+        assert_eq!(query, "DESCRIBE TABLE \"db\".\"sch\".\"wei\"\"rd\"");
+    }
+
+    #[test]
+    fn test_build_describe_table_query_rejects_malformed_opaque_id() {
+        assert!(build_describe_table_query("db.sch").is_err());
+        assert!(build_describe_table_query("db.sch.tbl.extra").is_err());
+    }
+}
+
 impl SnowflakeRemoteDatabase {
     pub fn new(
         credentials: serde_json::Map<String, serde_json::Value>,
@@ -504,11 +559,13 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         &self,
         opaque_ids: &Vec<&str>,
     ) -> Result<Vec<Option<RemoteTableSchema>>> {
-        // Construct a "DESCRIBE TABLE" query for each opaque table ID.
+        // Construct a "DESCRIBE TABLE" query for each opaque table ID, quoting the
+        // database/schema/table components individually so that case-sensitive
+        // (quoted-identifier) names are not folded to uppercase by Snowflake.
         let queries: Vec<String> = opaque_ids
             .iter()
-            .map(|opaque_id| format!("DESCRIBE TABLE {}", opaque_id))
-            .collect();
+            .map(|opaque_id| build_describe_table_query(opaque_id))
+            .collect::<Result<Vec<_>>>()?;
 
         let session = self.get_session().await?;
 
