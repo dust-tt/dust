@@ -199,3 +199,6 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = z.object({
 export type PostOrPatchAgentConfigurationRequestBody = z.infer<
   typeof PostOrPatchAgentConfigurationRequestBodySchema
 >;
+
+export type AgentConfigurationAssistantPayload =
+  PostOrPatchAgentConfigurationRequestBody["assistant"];

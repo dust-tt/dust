@@ -14,7 +14,7 @@ import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
-import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/agent_configuration";
+import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -40,7 +40,7 @@ export type ResolvedAgentChange =
   | {
       type: "create" | "edit";
       agentId: string;
-      assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
+      assistant: AgentConfigurationAssistantPayload;
     }
   | { type: "delete"; agentId: string };
 
@@ -103,8 +103,10 @@ async function resolveCreateSuggestion(
     return converted;
   }
 
-  const editors = (await agent.listEditors(auth)) ?? [];
-  const { defaultModel } = await getModelsForAuth(auth);
+  const [editors, { defaultModel }] = await Promise.all([
+    agent.listEditors(auth).then((editors) => editors ?? []),
+    getModelsForAuth(auth),
+  ]);
 
   return new Ok({
     type: "create",

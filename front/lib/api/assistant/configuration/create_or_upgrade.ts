@@ -15,7 +15,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
-import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/agent_configuration";
+import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -53,7 +53,7 @@ export async function createOrUpgradeAgentConfiguration({
   dangerouslySkipPermissionFiltering,
 }: {
   auth: Authenticator;
-  assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
+  assistant: AgentConfigurationAssistantPayload;
   agentConfigurationId?: string;
   authorId?: ModelId;
   // Keeps the requested spaces and the skills of an agent being re-saved even when the caller
