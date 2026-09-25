@@ -214,6 +214,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "GithubLogo",
   "GitlabLogo",
   "GmailLogo",
+  "GojiberryLogo",
   "GongLogo",
   "GoogleSpreadsheetLogo",
   "GranolaLogo",

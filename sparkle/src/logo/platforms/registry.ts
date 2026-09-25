@@ -39,6 +39,7 @@ import GeminiLogo from "./Gemini";
 import GithubLogo from "./Github";
 import GitlabLogo from "./Gitlab";
 import GmailLogo from "./Gmail";
+import GojiberryLogo from "./Gojiberry";
 import GongLogo from "./Gong";
 import GoogleLogo from "./Google";
 import GoogleCloudLogo from "./GoogleCloud";
@@ -158,6 +159,7 @@ export const PLATFORM_LOGOS = {
   GithubLogo,
   GitlabLogo,
   GmailLogo,
+  GojiberryLogo,
   GongLogo,
   GoogleLogo,
   GoogleCloudLogo,
