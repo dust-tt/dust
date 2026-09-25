@@ -40,6 +40,7 @@ import {
   cacheWithRedis,
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
+  REDIS_BATCH_COMMAND_CHUNK_SIZE,
   warmCacheWithRedis,
 } from "@app/lib/utils/cache";
 
@@ -123,6 +124,40 @@ describe("cacheManyWithRedis", () => {
     expect(load).toHaveBeenCalledOnce();
     await expect(fetch(["a"])).resolves.toEqual([{ id: "a" }]);
     expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("splits Redis reads and writes into bounded commands while loading misses once", async () => {
+    const ids = Array.from(
+      { length: REDIS_BATCH_COMMAND_CHUNK_SIZE * 2 + 1 },
+      (_, i) => `id-${i}`
+    );
+    mockRedisClient.mGet.mockImplementation(async (keys: string[]) =>
+      keys.map(() => null)
+    );
+    mockRedisClient.mSet.mockResolvedValue("OK");
+    const load = vi.fn(async (inputs: readonly string[]) =>
+      inputs.map((id) => ({ id }))
+    );
+    const fetch = cacheManyWithRedis(load, (id) => id, { cacheId: "batch" });
+
+    const results = await fetch(ids);
+
+    expect(results.map((result) => result?.id)).toEqual(ids);
+    expect(load).toHaveBeenCalledExactlyOnceWith(ids);
+    expect(
+      mockRedisClient.mGet.mock.calls.map(([keys]) => keys.length)
+    ).toEqual([
+      REDIS_BATCH_COMMAND_CHUNK_SIZE,
+      REDIS_BATCH_COMMAND_CHUNK_SIZE,
+      1,
+    ]);
+    expect(
+      mockRedisClient.mSet.mock.calls.map(([entries]) => entries.length)
+    ).toEqual([
+      REDIS_BATCH_COMMAND_CHUNK_SIZE,
+      REDIS_BATCH_COMMAND_CHUNK_SIZE,
+      1,
+    ]);
   });
 
   it("loads overlapping batches independently", async () => {
