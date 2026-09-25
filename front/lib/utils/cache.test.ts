@@ -9,6 +9,7 @@ const mockRedisClient = vi.hoisted(() => ({
   del: vi.fn(),
 }));
 
+const mockStatsDIncrement = vi.hoisted(() => vi.fn());
 const mockDistributedLock = vi.hoisted(() => vi.fn());
 const mockDistributedUnlock = vi.hoisted(() => vi.fn());
 
@@ -21,6 +22,10 @@ vi.mock("@app/logger/logger", () => ({
 
 vi.mock("@app/lib/api/redis", () => ({
   getRedisCacheClient: vi.fn().mockResolvedValue(mockRedisClient),
+}));
+
+vi.mock("@app/lib/utils/statsd", () => ({
+  statsDMetrics: { increment: mockStatsDIncrement },
 }));
 
 vi.mock("@app/lib/lock", () => ({
@@ -123,6 +128,56 @@ describe("cacheManyWithRedis", () => {
     expect(load).toHaveBeenCalledOnce();
     await expect(fetch(["a"])).resolves.toEqual([{ id: "a" }]);
     expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("counts hits, misses and Redis errors per cache", async () => {
+    const load = vi.fn(async (ids: readonly string[]) =>
+      ids.map((id) => ({ id }))
+    );
+    const fetch = cacheManyWithRedis(load, (id) => id, { cacheId: "batch" });
+    const readsFor = (result: string) =>
+      mockStatsDIncrement.mock.calls
+        .filter(
+          ([name, , tags]) =>
+            name === "resource_cache.read" &&
+            tags.includes("cache_id:batch") &&
+            tags.includes(`result:${result}`)
+        )
+        .map(([, count]) => count);
+    const writesFor = (result: string) =>
+      mockStatsDIncrement.mock.calls
+        .filter(
+          ([name, , tags]) =>
+            name === "resource_cache.write" && tags.includes(`result:${result}`)
+        )
+        .map(([, count]) => count);
+
+    // One hit and two misses, both written. Every result is reported, zeros included.
+    mockRedisClient.mGet.mockResolvedValueOnce([
+      JSON.stringify({ id: "a" }),
+      null,
+      null,
+    ]);
+    mockRedisClient.mSet.mockResolvedValueOnce("OK");
+    await fetch(["a", "b", "c"]);
+    expect(readsFor("hit")).toEqual([1]);
+    expect(readsFor("miss")).toEqual([2]);
+    expect(readsFor("error")).toEqual([0]);
+    expect(writesFor("ok")).toEqual([2]);
+
+    // Redis read failure: the whole batch is an error, with explicit zero hits and misses.
+    mockRedisClient.mGet.mockRejectedValueOnce(new Error("Redis unavailable"));
+    await fetch(["d", "e"]);
+    expect(readsFor("hit")).toEqual([1, 0]);
+    expect(readsFor("miss")).toEqual([2, 0]);
+    expect(readsFor("error")).toEqual([0, 2]);
+
+    // Redis write failure after a successful load.
+    mockRedisClient.mGet.mockResolvedValueOnce([null]);
+    mockRedisClient.mSet.mockRejectedValueOnce(new Error("Redis unavailable"));
+    await fetch(["f"]);
+    expect(readsFor("hit")).toEqual([1, 0, 0]);
+    expect(writesFor("error")).toEqual([1]);
   });
 
   it("loads overlapping batches independently", async () => {
