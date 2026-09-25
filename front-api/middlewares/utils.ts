@@ -1,3 +1,4 @@
+import type { Authenticator } from "@app/lib/auth";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -21,6 +22,11 @@ import { routePath } from "hono/route";
  */
 export type HandlerResult<T> = Promise<TypedResponse<T | APIErrorResponse>>;
 
+/**
+ * @cc [owner:sfriquet,label:api;logging] api-error-log-workspace-id
+ * When `ctx` carries an `auth` with a workspace, the "API Error" log MUST include that workspace's
+ * `sId` as `workspaceId`.
+ */
 /**
  * Returns a JSON error response from an `APIErrorWithStatusCode` and emits
  * the same logging / tracing / statsd side-effects as `apiError` in
@@ -50,6 +56,8 @@ export function apiError(
     ? "info"
     : "error";
 
+  const auth: Authenticator | undefined = ctx.get("auth");
+
   logger[logLevel](
     {
       method: ctx.req.method,
@@ -57,6 +65,10 @@ export function apiError(
       statusCode: err.status_code,
       apiError: { ...err, callstack },
       error: errorAttrs,
+      workspaceId:
+        auth && typeof auth.workspace === "function"
+          ? auth.workspace()?.sId
+          : undefined,
     },
     "API Error"
   );

@@ -32,17 +32,17 @@ app.post("/", async (ctx): HandlerResult<GetSimilarAgentsResponseBody> => {
   const result = await getSimilarAgents(auth, { naturalDescription });
 
   if (result.isErr()) {
-    logger.error(
-      { error: result.error, workspaceId: owner.sId },
-      "Error fetching similar agents"
-    );
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: result.error.message,
+    return apiError(
+      ctx,
+      {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: result.error.message,
+        },
       },
-    });
+      result.error
+    );
   }
   const similarAgents = result.value.similar_agents;
   if (similarAgents.length > 0) {

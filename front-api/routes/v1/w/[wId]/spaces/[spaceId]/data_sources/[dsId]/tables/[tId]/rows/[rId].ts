@@ -3,6 +3,7 @@ import { resolveLegacyDataSourceSpaceId } from "@app/lib/api/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { GetTableRowsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -120,7 +121,6 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetTableRowsResponseType> => {
     const auth = ctx.get("auth");
-    const owner = auth.getNonNullableWorkspace();
 
     const { dsId, tId, rId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
@@ -170,24 +170,17 @@ app.get(
     });
 
     if (rowRes.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          dataSourceId: dataSource.sId,
-          workspaceId: owner.id,
-          tableId: tId,
-          rowId: rId,
-          error: rowRes.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to get row.",
+          },
         },
-        "Failed to get row."
+        normalizeError(rowRes.error)
       );
-
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to get row.",
-        },
-      });
     }
 
     const { row } = rowRes.value;
@@ -200,7 +193,6 @@ app.delete(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<{ success: boolean }> => {
     const auth = ctx.get("auth");
-    const owner = auth.getNonNullableWorkspace();
 
     const { dsId, tId, rId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
@@ -284,24 +276,17 @@ app.delete(
         });
       }
 
-      logger.error(
+      return apiError(
+        ctx,
         {
-          dataSourceId: dataSource.sId,
-          workspaceId: owner.id,
-          tableId: tId,
-          rowId: rId,
-          error: deleteRes.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to delete row.",
+          },
         },
-        "Failed to delete row."
+        normalizeError(deleteRes.error)
       );
-
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to delete row.",
-        },
-      });
     }
 
     return ctx.json({ success: true });

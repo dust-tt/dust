@@ -14,6 +14,7 @@ import { WorkspaceSensitivityLabelConfigResource } from "@app/lib/resources/work
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -172,17 +173,17 @@ app.get(
       try {
         labels = await getMicrosoftSensitivityLabels(accessToken);
       } catch (e) {
-        logger.warn(
-          { error: e },
-          "Error fetching Microsoft sensitivity labels"
-        );
-        return apiError(ctx, {
-          status_code: 502,
-          api_error: {
-            type: "connector_update_error",
-            message: "Failed to fetch Microsoft Purview sensitivity labels.",
+        return apiError(
+          ctx,
+          {
+            status_code: 502,
+            api_error: {
+              type: "connector_update_error",
+              message: "Failed to fetch Microsoft Purview sensitivity labels.",
+            },
           },
-        });
+          normalizeError(e)
+        );
       }
     }
 

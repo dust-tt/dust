@@ -12,7 +12,6 @@ import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource"
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
-import logger from "@app/logger/logger";
 import {
   isFrameContentType,
   isWorkspaceVisibleShareScope,
@@ -50,22 +49,17 @@ app.get(
 
     const result = await FileResource.fetchByShareToken(token);
     if (result.isErr()) {
-      logger.info(
+      return apiError(
+        ctx,
         {
-          token,
-          errorCode: result.error.code,
-          errorMessage: result.error.message,
+          status_code: 404,
+          api_error: {
+            type: "file_not_found",
+            message: "File not found.",
+          },
         },
-        "Public frame fetch failed"
+        result.error
       );
-
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
-      });
     }
 
     const { file, shareScope } = result.value;

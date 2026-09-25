@@ -4,7 +4,6 @@ import {
   ConsumptionBodySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
-import logger from "@app/logger/logger";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { consumptionAnalyticsApp } from "./context";
@@ -34,20 +33,17 @@ app.post(
       includeWorkspaceContext: userId === undefined && agentId === undefined,
     });
     if (result.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          err: result.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve overview.",
+          },
         },
-        "[ConsumptionAnalytics] Failed to retrieve consumption overview."
+        result.error
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to retrieve overview.",
-        },
-      });
     }
 
     return ctx.json(result.value);

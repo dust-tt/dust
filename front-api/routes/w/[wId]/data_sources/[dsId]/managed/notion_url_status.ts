@@ -3,6 +3,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -46,7 +47,6 @@ app.post(
   validate("json", PostNotionUrlStatusBodySchema),
   async (ctx): HandlerResult<PostNotionUrlStatusResponseBody> => {
     const auth = ctx.get("auth");
-    const owner = auth.getNonNullableWorkspace();
 
     const { dsId } = ctx.req.valid("param");
 
@@ -104,21 +104,17 @@ app.post(
     });
 
     if (statusRes.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: owner.sId,
-          dataSourceId: dataSource.sId,
-          error: statusRes.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to check URL status",
+          },
         },
-        "Failed to get Notion URL status"
+        normalizeError(statusRes.error)
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to check URL status",
-        },
-      });
     }
 
     return ctx.json(statusRes.value);

@@ -335,18 +335,18 @@ async function handleDataSourceWithProvider({
 
   const systemAPIKeyRes = await getOrCreateSystemApiKey(owner);
   if (systemAPIKeyRes.isErr()) {
-    logger.error(
-      { error: systemAPIKeyRes.error },
-      "Could not create the system API key"
-    );
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message:
-          "Could not create a system API key for the managed data source.",
+    return apiError(
+      ctx,
+      {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message:
+            "Could not create a system API key for the managed data source.",
+        },
       },
-    });
+      systemAPIKeyRes.error
+    );
   }
 
   const dataSourceEmbedder =
@@ -370,17 +370,17 @@ async function handleDataSourceWithProvider({
   try {
     credentials = await getLlmCredentials(auth);
   } catch (err) {
-    logger.error(
-      { error: normalizeError(err) },
-      "Failed to get LLM credentials to create data source"
-    );
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+    return apiError(
+      ctx,
+      {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+        },
       },
-    });
+      normalizeError(err)
+    );
   }
 
   const dustDataSource = await coreAPI.createDataSource({

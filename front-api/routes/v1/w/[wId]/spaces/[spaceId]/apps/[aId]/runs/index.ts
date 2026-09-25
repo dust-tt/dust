@@ -15,6 +15,7 @@ import { CoreAPI } from "@app/types/core/core_api";
 import type { CredentialsType } from "@app/types/provider";
 import type { RunType } from "@app/types/run";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { setSSEHeaders } from "@front-api/middlewares/streaming";
 import { apiError } from "@front-api/middlewares/utils";
@@ -379,17 +380,17 @@ app.post(
         try {
           dustRunId = await runRes.value.dustRunId;
         } catch (err) {
-          logger.error(
-            { error: err, workspaceId: owner.sId },
-            "Run failed to produce a run ID"
-          );
-          return apiError(ctx, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "The run failed to initialize (no run ID received).",
+          return apiError(
+            ctx,
+            {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "The run failed to initialize (no run ID received).",
+              },
             },
-          });
+            normalizeError(err)
+          );
         }
 
         const statusRunRes = await coreAPI.getRunStatus({

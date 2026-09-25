@@ -6,6 +6,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   ListTablesResponseType,
   UpsertTableResponseType,
@@ -152,7 +153,6 @@ app.get(
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<ListTablesResponseType> => {
     const auth = ctx.get("auth");
-    const owner = auth.getNonNullableWorkspace();
 
     const { dsId, spaceId: spaceIdParam } = ctx.req.valid("param");
 
@@ -201,22 +201,18 @@ app.get(
     });
 
     if (tablesRes.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: owner.id,
-          dataSourceId: dataSource.sId,
-          error: tablesRes.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve tables.",
+            data_source_error: tablesRes.error,
+          },
         },
-        "Failed to get tables."
+        normalizeError(tablesRes.error)
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to retrieve tables.",
-          data_source_error: tablesRes.error,
-        },
-      });
     }
 
     const { tables } = tablesRes.value;

@@ -1,6 +1,6 @@
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { fetchRecentWebhookRequestTriggersWithPayload } from "@app/lib/triggers/webhook";
-import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -36,20 +36,17 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
     return ctx.json({ requests: r });
   } catch (error) {
-    logger.error(
+    return apiError(
+      ctx,
       {
-        error: error instanceof Error ? error.message : String(error),
-        tId,
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to fetch webhook requests.",
+        },
       },
-      "Error fetching webhook requests"
+      normalizeError(error)
     );
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to fetch webhook requests.",
-      },
-    });
   }
 });
 

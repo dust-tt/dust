@@ -3,13 +3,13 @@ import {
   PostSubscriptionRequestBody,
 } from "@app/lib/api/subscription/checkout_url";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import logger from "@app/logger/logger";
 import type {
   GetSubscriptionsResponseBody,
   PostSubscriptionResponseBody,
 } from "@app/types/api/subscription";
 import { PatchSubscriptionRequestBody } from "@app/types/api/subscription";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import {
   ensureHasWorkspacePermission,
@@ -47,14 +47,17 @@ app.get(
       const fetched = await SubscriptionResource.fetchByAuthenticator(auth);
       return ctx.json({ subscriptions: fetched.map((s) => s.toJSON()) });
     } catch (error) {
-      logger.error({ error }, "Error while subscribing workspace to plan");
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Error while subscribing workspace to plan",
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Error while subscribing workspace to plan",
+          },
         },
-      });
+        normalizeError(error)
+      );
     }
   }
 );
@@ -94,14 +97,17 @@ app.post(
 
       return ctx.json(result.value);
     } catch (error) {
-      logger.error({ error }, "Error while subscribing workspace to plan");
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Error while subscribing workspace to plan",
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Error while subscribing workspace to plan",
+          },
         },
-      });
+        normalizeError(error)
+      );
     }
   }
 );
@@ -137,17 +143,17 @@ app.patch(
 
         const result = await subscriptionResource.upgradeToBusinessPlan(owner);
         if (result.isErr()) {
-          logger.error(
-            { error: result.error },
-            "Error while upgrading to business plan"
-          );
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "subscription_state_invalid",
-              message: result.error.message,
+          return apiError(
+            ctx,
+            {
+              status_code: 400,
+              api_error: {
+                type: "subscription_state_invalid",
+                message: result.error.message,
+              },
             },
-          });
+            result.error
+          );
         }
         break;
       }

@@ -3,7 +3,6 @@ import { fetchAutomationTriggerBreakdown } from "@app/lib/api/analytics/automati
 import { AutomationTriggerBreakdownBodySchema } from "@app/lib/api/analytics/automations/schema";
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/schema";
-import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -40,21 +39,17 @@ app.post(
       period,
     });
     if (result.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          triggerId: tId,
-          err: result.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve trigger breakdown.",
+          },
         },
-        "[AutomationsAnalytics] Failed to retrieve trigger breakdown."
+        result.error
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to retrieve trigger breakdown.",
-        },
-      });
     }
 
     return ctx.json(result.value);
