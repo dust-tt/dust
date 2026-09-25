@@ -1,13 +1,13 @@
 import type {
   CategoryFilter,
   FilterOptionBase,
-} from "@app/components/workspace/analytics/filterPanel/filterState";
+} from "@app/components/shared/filter_panel/filterState";
 import {
   clearFilterCategory,
   removeFilterOption,
   selectAllFilterOptions,
   toggleFilterOption,
-} from "@app/components/workspace/analytics/filterPanel/filterState";
+} from "@app/components/shared/filter_panel/filterState";
 import { useCallback, useState } from "react";
 
 // Selections are staged in a local draft while a filter panel is open and

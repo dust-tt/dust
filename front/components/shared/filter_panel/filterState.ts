@@ -1,5 +1,5 @@
-// Generic filter-selection state, shared by every analytics filter panel
-// (consumption, automations, ...). Each panel picks its own category union
+// Generic filter-selection state, shared by every filter panel
+// (analytics, skills, ...). Each panel picks its own category union
 // and option shape; these helpers only assume `{id}`-shaped options keyed by
 // a category.
 

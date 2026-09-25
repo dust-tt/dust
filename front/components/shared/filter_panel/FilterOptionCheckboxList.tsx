@@ -1,7 +1,7 @@
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { FILTER_PICKER_PAGE_SIZE } from "@app/components/workspace/analytics/filterPanel/constants";
-import { FilterAvailabilityStatus } from "@app/components/workspace/analytics/filterPanel/FilterAvailabilityStatus";
-import type { FilterOptionBase } from "@app/components/workspace/analytics/filterPanel/filterState";
+import { FILTER_PICKER_PAGE_SIZE } from "@app/components/shared/filter_panel/constants";
+import { FilterAvailabilityStatus } from "@app/components/shared/filter_panel/FilterAvailabilityStatus";
+import type { FilterOptionBase } from "@app/components/shared/filter_panel/filterState";
 import {
   Button,
   Checkbox,

@@ -1,8 +1,9 @@
-import { FilterCategoryNav } from "@app/components/workspace/analytics/filterPanel/FilterCategoryNav";
-import { FilterFooter } from "@app/components/workspace/analytics/filterPanel/FilterFooter";
-import { FilterOptionCheckboxList } from "@app/components/workspace/analytics/filterPanel/FilterOptionCheckboxList";
-import { FilterSelectionSummary } from "@app/components/workspace/analytics/filterPanel/FilterSelectionSummary";
-import { filterOptionMatchesSearch } from "@app/components/workspace/analytics/filterPanel/filterState";
+import { FilterCategoryNav } from "@app/components/shared/filter_panel/FilterCategoryNav";
+import { FilterFooter } from "@app/components/shared/filter_panel/FilterFooter";
+import { FilterOptionCheckboxList } from "@app/components/shared/filter_panel/FilterOptionCheckboxList";
+import { FilterSection } from "@app/components/shared/filter_panel/FilterSection";
+import { FilterSelectionSummary } from "@app/components/shared/filter_panel/FilterSelectionSummary";
+import { filterOptionMatchesSearch } from "@app/components/shared/filter_panel/filterState";
 import type {
   ConsumptionFacetOptions,
   UsageFilter,
@@ -21,7 +22,6 @@ import {
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
 import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
 import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
-import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
@@ -338,7 +338,7 @@ export function UsageFilterPanelView({
             onCategoryChange={handleCategoryChange}
           />
           <div className="flex h-full w-80 flex-col gap-2 p-2">
-            <UsageFilterSection
+            <FilterSection
               title={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
               action={
                 <Button
@@ -359,7 +359,7 @@ export function UsageFilterPanelView({
                 onChange={handleSearchChange}
                 placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
               />
-            </UsageFilterSection>
+            </FilterSection>
             <div
               ref={setContentScrollContainer}
               className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"

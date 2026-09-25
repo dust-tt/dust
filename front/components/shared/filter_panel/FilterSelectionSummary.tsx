@@ -1,7 +1,7 @@
 import type {
   CategoryFilter,
   FilterOptionBase,
-} from "@app/components/workspace/analytics/filterPanel/filterState";
+} from "@app/components/shared/filter_panel/filterState";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,

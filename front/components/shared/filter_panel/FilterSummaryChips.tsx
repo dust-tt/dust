@@ -1,4 +1,4 @@
-import type { FilterSummary } from "@app/components/workspace/analytics/filterPanel/filterState";
+import type { FilterSummary } from "@app/components/shared/filter_panel/filterState";
 import { Button, Chip } from "@dust-tt/sparkle";
 import {
   AnimatePresence,
