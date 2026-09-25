@@ -17,12 +17,47 @@ import type {
   HomepageUseCaseType,
 } from "@app/types/api/homepage_use_cases";
 import { MAX_FEATURED_USE_CASES } from "@app/types/api/homepage_use_cases";
-import { Button, cn, LoadingBlock, XClose } from "@dust-tt/sparkle";
+import {
+  Button,
+  cn,
+  LoadingBlock,
+  MOTION_EASINGS,
+  XClose,
+} from "@dust-tt/sparkle";
+import type { TargetAndTransition, Variants } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import sampleSize from "lodash/sampleSize";
-import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 
 const VISIBLE_COUNT = 4;
+
+const ROW_OFFSET_PX = 12;
+const ROW_STAGGER_SECONDS = 0.05;
+
+const rowVariants: Variants = {
+  hidden: { opacity: 0, x: -ROW_OFFSET_PX, filter: "blur(2px)" },
+  visible: {
+    opacity: 1,
+    x: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.28, ease: MOTION_EASINGS.emphasized },
+  },
+};
+
+const ROW_LAYOUT_TRANSITION = {
+  duration: 0.28,
+  ease: MOTION_EASINGS.move,
+};
+
+// An object rather than a variant label: a label would make the row control its own variants and
+// skip the list's staggered entrance.
+const ROW_EXIT: TargetAndTransition = {
+  pointerEvents: "none",
+  opacity: 0,
+  x: ROW_OFFSET_PX,
+  filter: "blur(2px)",
+  transition: { duration: 0.2, ease: MOTION_EASINGS.enter },
+};
 
 const TIER_QUOTAS: [HomepageUseCaseTier, number][] = [
   ["featured", MAX_FEATURED_USE_CASES],
@@ -74,8 +109,8 @@ function refillPage(
 }
 
 interface HomepageUseCasesProps {
+  enterDelaySeconds: number;
   onPick: (useCase: HomepageUseCaseType) => void;
-  style?: CSSProperties;
   workspaceId: string;
 }
 
@@ -88,11 +123,16 @@ interface HomepageUseCasesProps {
  * keep its position.
  */
 export function HomepageUseCases({
+  enterDelaySeconds,
   onPick,
-  style,
   workspaceId,
 }: HomepageUseCasesProps) {
   const { useCases, isUseCasesLoading } = useHomepageUseCases({ workspaceId });
+  const shouldReduceMotion = useReducedMotion();
+  // Rows that replace the skeleton follow it straight away; rows shown on mount wait for the hero.
+  const [rowsDelaySeconds] = useState(
+    isUseCasesLoading ? 0 : enterDelaySeconds
+  );
   const dismissUseCase = useDismissHomepageUseCase({ workspaceId });
 
   const [page, setPage] = useState<HomepageUseCaseType[]>([]);
@@ -141,7 +181,16 @@ export function HomepageUseCases({
 
   if (isPreparing) {
     return (
-      <div className="mt-4 w-full max-w-conversation" style={style}>
+      <motion.div
+        className="mt-4 w-full max-w-conversation"
+        initial={shouldReduceMotion ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{
+          duration: 0.28,
+          ease: MOTION_EASINGS.emphasized,
+          delay: enterDelaySeconds,
+        }}
+      >
         <ul className="flex flex-col gap-1">
           {Array.from({ length: VISIBLE_COUNT }, (_, index) => (
             <li key={index} className="flex h-12 items-center gap-3 px-2">
@@ -150,7 +199,7 @@ export function HomepageUseCases({
             </li>
           ))}
         </ul>
-      </div>
+      </motion.div>
     );
   }
 
@@ -159,83 +208,107 @@ export function HomepageUseCases({
   }
 
   return (
-    <div className="mt-4 w-full max-w-conversation" style={style}>
-      <ul className="flex flex-col gap-1">
-        {page.map((useCase) => (
-          <UseCaseRow
-            key={useCase.id}
-            isDisabled={isTyping}
-            onDismiss={() => {
-              trackHomepageUseCaseDismiss({ useCaseId: useCase.id });
-              return dismissUseCase(useCase.id);
-            }}
-            onPick={() => {
-              trackHomepageUseCaseClick({ useCaseId: useCase.id });
-              setIsTyping(true);
-              onPick(useCase);
-            }}
-            useCase={useCase}
-          />
-        ))}
-      </ul>
+    <div className="mt-4 w-full max-w-conversation">
+      <motion.ul
+        className="relative flex flex-col gap-1"
+        initial={shouldReduceMotion ? false : "hidden"}
+        animate="visible"
+        variants={{
+          visible: {
+            transition: {
+              delayChildren: rowsDelaySeconds,
+              staggerChildren: ROW_STAGGER_SECONDS,
+            },
+          },
+        }}
+      >
+        <AnimatePresence mode="popLayout">
+          {page.map((useCase) => (
+            <UseCaseRow
+              key={useCase.id}
+              isMotionReduced={!!shouldReduceMotion}
+              isDisabled={isTyping}
+              onDismiss={() => {
+                trackHomepageUseCaseDismiss({ useCaseId: useCase.id });
+                return dismissUseCase(useCase.id);
+              }}
+              onPick={() => {
+                trackHomepageUseCaseClick({ useCaseId: useCase.id });
+                setIsTyping(true);
+                onPick(useCase);
+              }}
+              useCase={useCase}
+            />
+          ))}
+        </AnimatePresence>
+      </motion.ul>
     </div>
   );
 }
 
 interface UseCaseRowProps {
   isDisabled: boolean;
+  isMotionReduced: boolean;
   onDismiss: () => Promise<void>;
   onPick: () => void;
   useCase: HomepageUseCaseType;
 }
 
-function UseCaseRow({
-  isDisabled,
-  onDismiss,
-  onPick,
-  useCase,
-}: UseCaseRowProps) {
-  const [isDismissing, setIsDismissing] = useState(false);
+const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
+  function UseCaseRow(
+    { isDisabled, isMotionReduced, onDismiss, onPick, useCase },
+    ref
+  ) {
+    const [isDismissing, setIsDismissing] = useState(false);
 
-  return (
-    <li
-      className={cn(
-        "group flex h-12 items-center gap-1 rounded-xl pr-2",
-        "transition-[colors,opacity] duration-150 motion-reduce:transition-none",
-        isDisabled ? "opacity-50" : "hover:bg-hover"
-      )}
-    >
-      <button
-        type="button"
-        disabled={isDisabled || isDismissing}
-        onClick={onPick}
-        className="flex h-full min-w-0 flex-1 items-center gap-3 px-2 text-left"
+    return (
+      <motion.li
+        ref={ref}
+        layout={!isMotionReduced}
+        variants={isMotionReduced ? undefined : rowVariants}
+        exit={isMotionReduced ? undefined : ROW_EXIT}
+        transition={{ layout: ROW_LAYOUT_TRANSITION }}
       >
-        <ResourceAvatar icon={getIcon(useCase.icon)} size="sm" />
-        <span className="copy-base truncate text-foreground">
-          {useCase.label}
-        </span>
-      </button>
-      {useCase.isDismissible && (
-        <Button
-          variant="ghost-secondary"
-          size="xs"
-          icon={XClose}
-          tooltip="Hide this suggestion"
-          aria-label="Hide this suggestion"
+        <div
           className={cn(
-            "group-hover:opacity-100 focus-visible:opacity-100",
-            !isDismissing && "opacity-0"
+            "group flex h-12 items-center gap-1 rounded-xl pr-2",
+            "transition-[colors,opacity] duration-150 motion-reduce:transition-none",
+            isDisabled ? "opacity-50" : "hover:bg-hover"
           )}
-          isLoading={isDismissing}
-          disabled={isDisabled || isDismissing}
-          onClick={async () => {
-            setIsDismissing(true);
-            await onDismiss();
-            setIsDismissing(false);
-          }}
-        />
-      )}
-    </li>
-  );
-}
+        >
+          <button
+            type="button"
+            disabled={isDisabled || isDismissing}
+            onClick={onPick}
+            className="flex h-full min-w-0 flex-1 items-center gap-3 px-2 text-left"
+          >
+            <ResourceAvatar icon={getIcon(useCase.icon)} size="sm" />
+            <span className="copy-base truncate text-foreground">
+              {useCase.label}
+            </span>
+          </button>
+          {useCase.isDismissible && (
+            <Button
+              variant="ghost-secondary"
+              size="xs"
+              icon={XClose}
+              tooltip="Hide this suggestion"
+              aria-label="Hide this suggestion"
+              className={cn(
+                "group-hover:opacity-100 focus-visible:opacity-100",
+                !isDismissing && "opacity-0"
+              )}
+              isLoading={isDismissing}
+              disabled={isDisabled || isDismissing}
+              onClick={async () => {
+                setIsDismissing(true);
+                await onDismiss();
+                setIsDismissing(false);
+              }}
+            />
+          )}
+        </div>
+      </motion.li>
+    );
+  }
+);
