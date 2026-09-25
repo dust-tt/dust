@@ -13,10 +13,8 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_define
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
-import { isFavoritePlatform } from "@app/types/favorite_platforms";
+import { parseFavoritePlatforms } from "@app/types/favorite_platforms";
 import { isJobType, JOB_TYPE_LABELS } from "@app/types/job_type";
-import { isStringArray } from "@app/types/shared/utils/general";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const ACTIVATION_BEHAVIOR = `
 # Overview
@@ -366,18 +364,9 @@ async function buildActivationContext(
       parts.push(`The user's job function is: ${JOB_TYPE_LABELS[jobType]}`);
     }
 
-    if (platformsMeta?.value) {
-      const parsed = safeParseJSON(platformsMeta.value);
-      if (
-        parsed.isOk() &&
-        isStringArray(parsed.value) &&
-        parsed.value.every(isFavoritePlatform)
-      ) {
-        const platforms = parsed.value;
-        if (platforms.length > 0) {
-          parts.push(`Preferred tools: ${platforms.join(", ")}`);
-        }
-      }
+    const platforms = parseFavoritePlatforms(platformsMeta?.value);
+    if (platforms.length > 0) {
+      parts.push(`Preferred tools: ${platforms.join(", ")}`);
     }
   }
 

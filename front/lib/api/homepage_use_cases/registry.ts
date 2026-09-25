@@ -3,10 +3,20 @@ import type { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global
 import type { HomepageUseCaseType } from "@app/types/api/homepage_use_cases";
 import type { JobType } from "@app/types/job_type";
 
-export type UseCaseRequirement =
-  | { type: "skill"; id: GlobalSkillId }
+export type ToolRequirement =
   | { type: "internalServer"; name: InternalMCPServerNameType }
   | { type: "remoteServer"; name: string };
+
+/**
+ * @cc [owner:adrsimon,label:product] any-of-attaches-one-tool
+ * An `anyOf` requirement resolves when at least one alternative resolves, and MUST attach exactly
+ * one tool: the first resolving alternative listed in the user's favorite platforms, else the
+ * first resolving alternative in declared order.
+ */
+export type UseCaseRequirement =
+  | { type: "skill"; id: GlobalSkillId }
+  | ToolRequirement
+  | { type: "anyOf"; of: ToolRequirement[] };
 
 export type UsageMilestone = "joined_pod";
 
@@ -45,18 +55,34 @@ export const HOMEPAGE_USE_CASES: HomepageUseCaseDefinition[] = [
     label: "Find important emails I haven't replied to",
     prompt:
       "Go through my inbox from the last 7 days and list the emails I have not replied to that need an answer from me. Group them by urgency, say who is waiting and since when, and suggest a one-line reply for each.",
-    icon: "GmailLogo",
+    icon: "ActionMailIcon",
     audience: { type: "everyone" },
-    requires: [{ type: "internalServer", name: "gmail" }],
+    requires: [
+      {
+        type: "anyOf",
+        of: [
+          { type: "internalServer", name: "gmail" },
+          { type: "internalServer", name: "outlook" },
+        ],
+      },
+    ],
   },
   {
     id: "unanswered-dms",
     label: "Find important DMs I haven't replied to",
     prompt:
-      "Go through my Slack direct messages from the last 7 days and list the ones I have not replied to that need an answer from me. Group them by urgency, say who is waiting and since when, and suggest a one-line reply for each.",
-    icon: "SlackLogo",
+      "Go through my direct messages from the last 7 days and list the ones I have not replied to that need an answer from me. Group them by urgency, say who is waiting and since when, and suggest a one-line reply for each.",
+    icon: "ActionChatBubbleBottomCenterTextIcon",
     audience: { type: "everyone" },
-    requires: [{ type: "internalServer", name: "slack" }],
+    requires: [
+      {
+        type: "anyOf",
+        of: [
+          { type: "internalServer", name: "slack" },
+          { type: "internalServer", name: "microsoft_teams" },
+        ],
+      },
+    ],
   },
   {
     id: "industry-news",
