@@ -307,17 +307,17 @@ export function DiscoverCatalog({
   }, [searchTerm, setSearchTerm]);
 
   const { hasFeature } = useFeatureFlags();
-  // Search endpoints 403 without their flags. Favorites stay hydrated because
-  // search results have no favorite flag.
+  // Skill search 403s without its flag. Favorites stay hydrated because search
+  // results have no favorite flag.
+  const skillsSearchEnabled = hasFeature("skills_search");
   const useSearch =
-    hasFeature("agents_search") &&
-    hasFeature("skills_search") &&
-    filters.view !== "favorites";
+    filters.view !== "favorites" &&
+    (filters.kind !== "skill" || skillsSearchEnabled);
   const effectiveSearchTerm = useSearch ? debouncedSearchTerm : searchTerm;
-  const query = useMemo(
-    () => buildCatalogQuery(filters, effectiveSearchTerm),
-    [effectiveSearchTerm, filters]
-  );
+  const query = useMemo(() => {
+    const built = buildCatalogQuery(filters, effectiveSearchTerm);
+    return skillsSearchEnabled ? built : { ...built, showSkills: false };
+  }, [effectiveSearchTerm, filters, skillsSearchEnabled]);
   const updateFilters = (update: Partial<CatalogFilters>) => {
     setFilters((current) => ({ ...current, ...update }));
     onFiltersChange();

@@ -17,13 +17,13 @@ import { useCallback, useMemo } from "react";
 interface CatalogPage {
   items: CatalogItem[];
   next: {
-    agents: string | null;
-    skills: string | null;
+    agents: number | null;
+    skills: number | null;
   };
 }
 
 interface SourceRequest {
-  cursor: string | null;
+  offset: number;
 }
 
 export interface CatalogPageRequest {
@@ -45,17 +45,17 @@ export function getCatalogPageRequest(
   const firstPage = previousPage === null;
   const agents = firstPage
     ? query.showAgents
-      ? { cursor: null }
+      ? { offset: 0 }
       : null
-    : previousPage.next.agents
-      ? { cursor: previousPage.next.agents }
+    : previousPage.next.agents !== null
+      ? { offset: previousPage.next.agents }
       : null;
   const skills = firstPage
     ? query.showSkills
-      ? { cursor: null }
+      ? { offset: 0 }
       : null
-    : previousPage.next.skills
-      ? { cursor: previousPage.next.skills }
+    : previousPage.next.skills !== null
+      ? { offset: previousPage.next.skills }
       : null;
 
   return agents || skills ? { query, agents, skills } : null;
@@ -63,8 +63,8 @@ export function getCatalogPageRequest(
 
 /**
  * @cc [owner:frankaloia,label:react;product] catalog-search-pagination
- * Agent and skill cursors MUST advance independently within one catalog page. A source with no
- * next cursor MUST NOT be fetched again, while pages already returned by SWR remain visible.
+ * Agent and skill offsets MUST advance independently within one catalog page. A source with
+ * no next offset MUST NOT be fetched again, while pages already returned by SWR remain visible.
  */
 export function useCatalogSearch({
   owner,
@@ -87,36 +87,38 @@ export function useCatalogSearch({
 
   const fetchPage = useCallback(
     async ([, workspaceId, request]: CatalogPageKey): Promise<CatalogPage> => {
+      const agentOffset = request.agents?.offset;
+      const skillOffset = request.skills?.offset;
       const agentsPromise: Promise<SearchAgentsResponseBody | null> =
-        request.agents
-          ? fetcherWithBody([
+        agentOffset === undefined
+          ? Promise.resolve(null)
+          : fetcherWithBody([
               `/api/w/${workspaceId}/assistant/agent_configurations/search`,
               {
                 ...request.query.agentFilters,
                 query: request.query.searchTerm,
-                cursor: request.agents.cursor,
+                offset: agentOffset,
                 limit: request.query.limit,
                 sortBy: request.query.sortBy,
                 sortOrder: request.query.sortOrder,
               },
               "POST",
-            ])
-          : Promise.resolve(null);
+            ]);
       const skillsPromise: Promise<SearchSkillsResponseBody | null> =
-        request.skills
-          ? fetcherWithBody([
+        skillOffset === undefined
+          ? Promise.resolve(null)
+          : fetcherWithBody([
               `/api/w/${workspaceId}/skills/search`,
               {
                 ...request.query.skillFilters,
                 query: request.query.searchTerm,
-                cursor: request.skills.cursor,
+                offset: skillOffset,
                 limit: request.query.limit,
                 sortBy: request.query.sortBy,
                 sortOrder: request.query.sortOrder,
               },
               "POST",
-            ])
-          : Promise.resolve(null);
+            ]);
 
       const [agents, skills] = await Promise.all([
         agentsPromise,
@@ -130,9 +132,13 @@ export function useCatalogSearch({
         ),
         next: {
           agents:
-            agents?.hasMore && agents.nextCursor ? agents.nextCursor : null,
+            agents?.hasMore && agentOffset !== undefined
+              ? agentOffset + agents.agents.length
+              : null,
           skills:
-            skills?.hasMore && skills.nextCursor ? skills.nextCursor : null,
+            skills?.hasMore && skillOffset !== undefined
+              ? skillOffset + skills.skills.length
+              : null,
         },
       };
     },

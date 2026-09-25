@@ -24,8 +24,8 @@ describe("DiscoverCatalog", () => {
     expect(query.showSkills).toBe(true);
     expect(query.limit).toBe(25);
     expect(getCatalogPageRequest(query, null)).toMatchObject({
-      agents: { cursor: null },
-      skills: { cursor: null },
+      agents: { offset: 0 },
+      skills: { offset: 0 },
     });
   });
 
@@ -38,7 +38,7 @@ describe("DiscoverCatalog", () => {
     expect(query.agentFilters).toEqual({ tagIds: ["tag-1"] });
     expect(query.limit).toBe(50);
     expect(getCatalogPageRequest(query, null)).toMatchObject({
-      agents: { cursor: null },
+      agents: { offset: 0 },
       skills: null,
     });
   });
@@ -55,18 +55,18 @@ describe("DiscoverCatalog", () => {
     expect(buildCatalogQuery(base, "sales").key).not.toBe(keyOf(base));
   });
 
-  it("stops fetching a source after its cursor is exhausted", () => {
+  it("stops fetching a source after its offset is exhausted", () => {
     const query = buildCatalogQuery(
       { view: "all", kind: "all", tagId: null },
       ""
     );
     const request = getCatalogPageRequest(query, {
       items: [],
-      next: { agents: null, skills: "next-skill" },
+      next: { agents: null, skills: 25 },
     });
 
     expect(request?.agents).toBeNull();
-    expect(request?.skills).toEqual({ cursor: "next-skill" });
+    expect(request?.skills).toEqual({ offset: 25 });
     expect(
       getCatalogPageRequest(query, {
         items: [],
