@@ -309,7 +309,6 @@ export async function purgeStaleFramePublicationsActivity({
   const result: PurgeStaleFramePublicationsActivityResult = {
     deletedFunctionCount: sumBy(results, "deletedFunctionCount"),
     deletedPublicationCount: sumBy(results, "deletedPublicationCount"),
-    unreadablePublicationCount: sumBy(results, "unreadablePublicationCount"),
     nextAfterModelId:
       frames.length < FRAME_PUBLICATION_BATCH_SIZE
         ? null
@@ -324,7 +323,6 @@ export async function purgeStaleFramePublicationsActivity({
       deletedPublicationCount: result.deletedPublicationCount,
       hasMore: result.nextAfterModelId !== null,
       scannedFrameCount: result.scannedFrameCount,
-      unreadablePublicationCount: result.unreadablePublicationCount,
     },
     "[Frames Retention] Swept a batch of Frames for superseded publications."
   );

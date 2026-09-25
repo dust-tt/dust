@@ -9,19 +9,14 @@ import { storeTestFramePublication } from "@app/tests/utils/FramePublicationFact
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import {
-  getFramePublicationDescriptorPath,
-  getFramePublicationsBasePath,
-  getFramePublicationUiBundlePath,
-} from "@app/types/api/frame_storage";
+import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const RETENTION_MS = 7 * ONE_DAY_MS;
 
 /**
- * A frame whose active publication was published `activePublishedDaysAgo` ago, with the storage
- * listing wired to return the active publication plus `otherPublicationIds`.
+ * A frame whose active publication was published `activePublishedDaysAgo` ago.
  */
 async function setupFrame({
   activePublishedDaysAgo = 30,
@@ -41,17 +36,7 @@ async function setupFrame({
     description: "Track tasks.",
   });
 
-  const listPublications = (otherPublicationIds: string[]) => {
-    const publicationsPrefix = getFramePublicationsBasePath({
-      workspaceId: workspace.sId,
-      frameId: frame.sId,
-    });
-    fileStorageMock.setSubdirectoryNames((prefix) =>
-      prefix === publicationsPrefix ? [...otherPublicationIds, active] : null
-    );
-  };
-
-  return { active, auth, frame, listPublications, workspaceId: workspace.sId };
+  return { active, auth, frame, workspaceId: workspace.sId };
 }
 
 async function functionRowCount(
@@ -98,12 +83,10 @@ describe("purgeStaleFramePublications", () => {
   });
 
   it("deletes a superseded publication past the retention window", async () => {
-    const { active, auth, frame, listPublications, workspaceId } =
-      await setupFrame();
+    const { active, auth, frame, workspaceId } = await setupFrame();
     const stale = await storeTestFramePublication(auth, frame, {
       publishedDaysAgo: 30,
     });
-    listPublications([stale]);
 
     const result = await purgeStaleFramePublications(auth, {
       frame,
@@ -113,7 +96,6 @@ describe("purgeStaleFramePublications", () => {
     expect(result).toEqual({
       deletedFunctionCount: 1,
       deletedPublicationCount: 1,
-      unreadablePublicationCount: 0,
     });
     expect(await functionRowCount(auth, frame, stale)).toBe(0);
     expect(await functionRowCount(auth, frame, active)).toBe(1);
@@ -123,13 +105,11 @@ describe("purgeStaleFramePublications", () => {
   });
 
   it("deletes every stale publication of the Frame in one sweep", async () => {
-    const { active, auth, frame, listPublications, workspaceId } =
-      await setupFrame();
+    const { active, auth, frame, workspaceId } = await setupFrame();
     const stale = [
       await storeTestFramePublication(auth, frame, { publishedDaysAgo: 30 }),
       await storeTestFramePublication(auth, frame, { publishedDaysAgo: 20 }),
     ];
-    listPublications(stale);
 
     const result = await purgeStaleFramePublications(auth, {
       frame,
@@ -139,7 +119,6 @@ describe("purgeStaleFramePublications", () => {
     expect(result).toEqual({
       deletedFunctionCount: 2,
       deletedPublicationCount: 2,
-      unreadablePublicationCount: 0,
     });
     for (const publicationId of stale) {
       expect(await functionRowCount(auth, frame, publicationId)).toBe(0);
@@ -149,13 +128,12 @@ describe("purgeStaleFramePublications", () => {
   });
 
   it("keeps a superseded publication published inside the retention window", async () => {
-    const { auth, frame, listPublications } = await setupFrame({
+    const { auth, frame } = await setupFrame({
       activePublishedDaysAgo: 0,
     });
     const recent = await storeTestFramePublication(auth, frame, {
       publishedDaysAgo: 1,
     });
-    listPublications([recent]);
 
     const result = await purgeStaleFramePublications(auth, {
       frame,
@@ -167,7 +145,7 @@ describe("purgeStaleFramePublications", () => {
   });
 
   it("keeps a superseded publication whose functions still have invocations", async () => {
-    const { auth, frame, listPublications } = await setupFrame();
+    const { auth, frame } = await setupFrame();
     const stale = await storeTestFramePublication(auth, frame, {
       publishedDaysAgo: 30,
     });
@@ -180,7 +158,6 @@ describe("purgeStaleFramePublications", () => {
       sandboxFunction,
       input: { message: "hello" },
     });
-    listPublications([stale]);
 
     const result = await purgeStaleFramePublications(auth, {
       frame,
@@ -191,11 +168,41 @@ describe("purgeStaleFramePublications", () => {
     expect(await functionRowCount(auth, frame, stale)).toBe(1);
   });
 
+  it("keeps only the stale publications that still have invocations", async () => {
+    const { active, auth, frame } = await setupFrame();
+    const withRuns = await storeTestFramePublication(auth, frame, {
+      publishedDaysAgo: 30,
+    });
+    const withoutRuns = await storeTestFramePublication(auth, frame, {
+      publishedDaysAgo: 30,
+    });
+    const [sandboxFunction] =
+      await SandboxFunctionResource.listByFramePublication(auth, {
+        frame,
+        publicationId: withRuns,
+      });
+    await SandboxFunctionInvocationResource.makeNew(auth, {
+      sandboxFunction,
+      input: { message: "hello" },
+    });
+
+    const result = await purgeStaleFramePublications(auth, {
+      frame,
+      retentionMs: RETENTION_MS,
+    });
+
+    expect(result.deletedPublicationCount).toBe(1);
+    expect(await functionRowCount(auth, frame, withRuns)).toBe(1);
+    expect(await functionRowCount(auth, frame, withoutRuns)).toBe(0);
+    expect((await publicationRowIds(frame)).sort()).toEqual(
+      [active, withRuns].sort()
+    );
+  });
+
   it("keeps the active publication however old it is", async () => {
-    const { active, auth, frame, listPublications } = await setupFrame({
+    const { active, auth, frame } = await setupFrame({
       activePublishedDaysAgo: 365,
     });
-    listPublications([]);
 
     const result = await purgeStaleFramePublications(auth, {
       frame,
@@ -206,30 +213,56 @@ describe("purgeStaleFramePublications", () => {
     expect(await functionRowCount(auth, frame, active)).toBe(1);
   });
 
-  it("reports, without deleting, a publication whose descriptor cannot be read", async () => {
-    const { auth, frame, listPublications, workspaceId } = await setupFrame();
-    const stale = await storeTestFramePublication(auth, frame, {
-      publishedDaysAgo: 30,
-      withFunctionRows: false,
-    });
-    // Stands in for a publish that wrote its bundles and never committed its descriptor.
-    fileStorageMock.setObject(
-      getFramePublicationDescriptorPath({
-        workspaceId,
-        frameId: frame.sId,
-        publicationId: stale,
-      }),
-      ""
+  it("purges a stale publish that failed before writing any object", async () => {
+    const { active, auth, frame } = await setupFrame();
+    fileStorageMock.setFileSaveFails(() => true);
+    await expect(
+      storeTestFramePublication(auth, frame, { publishedDaysAgo: 30 })
+    ).rejects.toThrow("Simulated GCS write failure");
+    fileStorageMock.setFileSaveFails(() => false);
+    // The failed publish left its row, stamped now: age every row past the retention window
+    // (the active one is kept regardless of age).
+    await FramePublicationModel.update(
+      { createdAt: new Date(Date.now() - 30 * ONE_DAY_MS) },
+      { where: { workspaceId: frame.workspaceId, fileId: frame.id } }
     );
-    listPublications([stale]);
 
     const result = await purgeStaleFramePublications(auth, {
       frame,
       retentionMs: RETENTION_MS,
     });
 
-    expect(result.unreadablePublicationCount).toBe(1);
-    expect(result.deletedPublicationCount).toBe(0);
-    expect(hasUiBundle(workspaceId, frame, stale)).toBe(true);
+    expect(result).toEqual({
+      deletedFunctionCount: 0,
+      deletedPublicationCount: 1,
+    });
+    expect(await publicationRowIds(frame)).toEqual([active]);
+  });
+
+  it("keeps the publication row when its GCS delete fails, for the next sweep to finish", async () => {
+    const { active, auth, frame, workspaceId } = await setupFrame();
+    const stale = await storeTestFramePublication(auth, frame, {
+      publishedDaysAgo: 30,
+    });
+    fileStorageMock.setOnDeleteByPrefix(() => {
+      throw new Error("Simulated GCS delete failure");
+    });
+
+    await expect(
+      purgeStaleFramePublications(auth, { frame, retentionMs: RETENTION_MS })
+    ).rejects.toThrow("Simulated GCS delete failure");
+    expect((await publicationRowIds(frame)).sort()).toEqual(
+      [active, stale].sort()
+    );
+
+    fileStorageMock.setOnDeleteByPrefix(() => {});
+    const retried = await purgeStaleFramePublications(auth, {
+      frame,
+      retentionMs: RETENTION_MS,
+    });
+
+    expect(retried.deletedPublicationCount).toBe(1);
+    expect(await publicationRowIds(frame)).toEqual([active]);
+    expect(hasUiBundle(workspaceId, frame, stale)).toBe(false);
   });
 });
