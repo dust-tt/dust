@@ -5,14 +5,7 @@ import {
   BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
   DESCRIBE_AGENT_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
-  SUGGEST_AGENT_CREATION_TOOL_NAME,
-  SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME,
-  SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
-  SUGGEST_SKILL_DELETION_TOOL_NAME,
-  SUGGEST_SKILL_EDITORS_TOOL_NAME,
-  SUGGEST_SKILL_NAME_TOOL_NAME,
-  SUGGEST_SKILL_UPDATE_TOOL_NAME,
-  SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
+  SUGGEST_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { TOOLS as BUILDING_TOOLS } from "@app/lib/api/actions/servers/building_agents_and_skills/tools";
 import {
@@ -21,6 +14,9 @@ import {
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import { TOOLS as WORKSPACE_MANAGEMENT_TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
 import type { Authenticator } from "@app/lib/auth";
+import { frontSequelize } from "@app/lib/resources/storage";
+import type { SeededScenario } from "@app/tests/conversational-building-evals/lib/types";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -36,37 +32,9 @@ export const TOOL = {
     BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
     DESCRIBE_AGENT_TOOL_NAME
   ),
-  suggestSkillUpdate: getPrefixedToolName(
+  suggest: getPrefixedToolName(
     BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
-    SUGGEST_SKILL_UPDATE_TOOL_NAME
-  ),
-  suggestSkillEditors: getPrefixedToolName(
-    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
-    SUGGEST_SKILL_EDITORS_TOOL_NAME
-  ),
-  suggestSkillDeletion: getPrefixedToolName(
-    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
-    SUGGEST_SKILL_DELETION_TOOL_NAME
-  ),
-  suggestSkillName: getPrefixedToolName(
-    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
-    SUGGEST_SKILL_NAME_TOOL_NAME
-  ),
-  suggestSkillAvailability: getPrefixedToolName(
-    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
-    SUGGEST_SKILL_AVAILABILITY_TOOL_NAME
-  ),
-  suggestSkillUserFacingDescription: getPrefixedToolName(
-    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
-    SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
-  ),
-  suggestAgentCreation: getPrefixedToolName(
-    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
-    SUGGEST_AGENT_CREATION_TOOL_NAME
-  ),
-  suggestAgentInstructionsChange: getPrefixedToolName(
-    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
-    SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+    SUGGEST_TOOL_NAME
   ),
   getAgentDetails: getPrefixedToolName(
     WORKSPACE_MANAGEMENT_SERVER_NAME,
@@ -80,11 +48,16 @@ type AnyToolDefinition =
 
 // The two servers the conversational-building skill equips. `stake: "high"` tools are left out:
 // production asks the user before running them, and there is no user to answer during an eval.
+// The single-change `suggest_*` tools are left out too: they are superseded by `suggest`, which the
+// skill instructions exclusively reference.
+// TODO(conversational-building): drop this filter once the `suggest_*` tools are deleted.
 const TOOL_DEFINITIONS = new Map<string, AnyToolDefinition>([
-  ...BUILDING_TOOLS.map((tool): [string, AnyToolDefinition] => [
-    getPrefixedToolName(BUILDING_AGENTS_AND_SKILLS_SERVER_NAME, tool.name),
-    tool,
-  ]),
+  ...BUILDING_TOOLS.filter((tool) => !tool.name.startsWith("suggest_")).map(
+    (tool): [string, AnyToolDefinition] => [
+      getPrefixedToolName(BUILDING_AGENTS_AND_SKILLS_SERVER_NAME, tool.name),
+      tool,
+    ]
+  ),
   ...WORKSPACE_MANAGEMENT_TOOLS.filter((tool) => tool.stake !== "high").map(
     (tool): [string, AnyToolDefinition] => [
       getPrefixedToolName(WORKSPACE_MANAGEMENT_SERVER_NAME, tool.name),
@@ -102,22 +75,25 @@ export function getToolSpecifications(): AgentActionSpecification[] {
 }
 
 /**
- * Exploratory calls read state and never end a run; every `suggest_*` tool records a suggestion
- * and is a candidate final call.
+ * Exploratory calls read state and never end a run; `suggest` records suggestions and is the only
+ * candidate final call.
  */
 export function isExploratoryToolName(name: string): boolean {
-  const tool = TOOL_DEFINITIONS.get(name);
-  return tool !== undefined && !tool.name.startsWith("suggest_");
+  return TOOL_DEFINITIONS.has(name) && name !== TOOL.suggest;
 }
 
-// The handlers only read `auth` from the extra (see the servers' unit tests, which build the
-// same partial). `runContext` is absent because there is no agent loop here.
-function makeExtra(auth: Authenticator): ToolHandlerExtra {
+// The handlers only read `auth` and the conversation of the agent loop from the extra (see the
+// servers' unit tests, which build the same partial).
+function makeExtra(
+  auth: Authenticator,
+  conversation: ConversationType
+): ToolHandlerExtra {
   const extra: Pick<
     ToolHandlerExtra,
     "auth" | "requestId" | "sendNotification" | "sendRequest" | "signal"
-  > = {
+  > & { runContext: unknown } = {
     auth,
+    runContext: { contextType: "agent_loop", conversation },
     requestId: "eval-request",
     sendNotification: async () => {},
     sendRequest: async () => {
@@ -134,7 +110,7 @@ function makeExtra(auth: Authenticator): ToolHandlerExtra {
  * error message.
  */
 export async function runTool(
-  auth: Authenticator,
+  { auth, conversation }: SeededScenario,
   toolName: string,
   toolArguments: Record<string, unknown>
 ): Promise<string> {
@@ -155,7 +131,13 @@ export async function runTool(
     args: Record<string, unknown>,
     extra: ToolHandlerExtra
   ) => ReturnType<AnyToolDefinition["handler"]>;
-  const result = await handler(parsed.data, makeExtra(auth));
+  // Scenarios run concurrently, and each test's `beforeEach` replaces the global Sequelize CLS
+  // namespace, so a running scenario loses its per-test transaction and `withTransaction` (e.g.
+  // agent creation) refuses to run. Each tool call gets its own transaction instead: its writes
+  // are committed, in the scenario's own seeded workspace.
+  const result = await frontSequelize.transaction(() =>
+    handler(parsed.data, makeExtra(auth, conversation))
+  );
 
   if (result.isErr()) {
     return `Error: ${result.error.message}`;

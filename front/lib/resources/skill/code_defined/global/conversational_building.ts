@@ -3,19 +3,7 @@ import {
   BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
   DESCRIBE_AGENT_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
-  SUGGEST_AGENT_CREATION_TOOL_NAME,
-  SUGGEST_AGENT_DELETION_TOOL_NAME,
-  SUGGEST_AGENT_DESCRIPTION_TOOL_NAME,
-  SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME,
-  SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME,
-  SUGGEST_AGENT_NAME_TOOL_NAME,
-  SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME,
-  SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
-  SUGGEST_SKILL_DELETION_TOOL_NAME,
-  SUGGEST_SKILL_EDITORS_TOOL_NAME,
-  SUGGEST_SKILL_NAME_TOOL_NAME,
-  SUGGEST_SKILL_UPDATE_TOOL_NAME,
-  SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
+  SUGGEST_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import {
   GET_TOOL_DETAILS_TOOL_NAME,
@@ -50,8 +38,6 @@ import {
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
 const NOUN = "entity";
-const EDIT_TOOLS =
-  "`suggest_agent_instructions_change` / `suggest_skill_update`";
 
 function managementToolName(toolName: string): string {
   return getPrefixedToolName(WORKSPACE_MANAGEMENT_SERVER_NAME, toolName);
@@ -60,6 +46,8 @@ function managementToolName(toolName: string): string {
 function buildingToolName(toolName: string): string {
   return getPrefixedToolName(BUILDING_AGENTS_AND_SKILLS_SERVER_NAME, toolName);
 }
+
+const SUGGEST = buildingToolName(SUGGEST_TOOL_NAME);
 
 const SECTIONS = {
   primaryGoal: `<primary_goal>
@@ -75,7 +63,7 @@ You have access to:
 
 Your users are building entities for their teams. They are a mix of technical and non-technical personas (some prompting experts, most learning).
 
-Changes are never applied directly: every \`suggest_*\` tool records a suggestion that the entity's editors review, accept, or reject.
+Changes are never applied directly: \`${SUGGEST}\` records suggestions that the entity's editors review, accept, or reject.
 
 Understand the need of the user first, then apply the relevant steps of <general_workflow> to match the request.
 </primary_goal>`,
@@ -93,14 +81,14 @@ Step 3: Understand the target of the user
 Determine what the user wants to achieve with this interaction. If it is not clear, ask for clarification following <asking_questions>. NEVER start building a plan until the goal is clearly defined.
 
 Step 4: Plan the change
-Build a plan from the retrieved configuration and the user's intent. Do not call \`suggest_*\` tools yet.
+Build a plan from the retrieved configuration and the user's intent. Do not call \`${SUGGEST}\` yet.
 Apply <good_entity>, <preserve_entity_goals> and, depending on the entity, <agent_guidance> or <skill_guidance>.
 Determine which research is required (see <company_data_guidance>).
 It is acceptable to change the plan mid-execution based on findings.
 
 Step 5: Make the suggestions
 Lead with the changes that will most affect entity behavior. Skip cosmetic fixes until fundamentals are solid.
-You MUST follow <block_aware_editing> and <suggestion_context>.
+You MUST follow <block_aware_editing>, <suggestion_context> and <batching>.
 
 Step 6: Return the suggestions to the user
 Respond following <response_style>, including every suggestion directive verbatim.
@@ -125,17 +113,25 @@ The only exception is a turn where you make no suggestion.
 </discovery_step>`,
 
   suggestionContext: `<suggestion_context>
-Each call to a \`suggest_*\` tool returns a directive that you MUST include verbatim in your response so the suggestion card renders, e.g.:
+Every change to an agent or a skill goes through \`${SUGGEST}\` (see <tools>): it records pending suggestions that the editors review, nothing is applied until they accept.
+Each call returns one directive that you MUST include verbatim in your response so the review card renders:
 \`\`\`
-:skill_suggestion[]{sId=[id] kind=[kind] skillId=[skillId]}
-:agent_suggestion[]{sId=[id] kind=[kind] agentId=[agentId]}
+:batch_edit[]{sId=[id]}
 \`\`\`
-Do not describe the suggestion in prose instead of the directive, and do not paraphrase or omit it: the directive is what renders the reviewable card.
-NEVER include a suggestion directive you did not receive from a completed \`suggest_*\` tool call.
-In the same message, name the entity the suggestion targets with its mention directive, so the user can click it to open the entity (see <entity_mentions>).
+Do not describe the suggestions in prose instead of the directive, and do not paraphrase or omit it: the directive is what renders the reviewable card.
+NEVER include a directive you did not receive from a completed \`${SUGGEST}\` call.
+In the same message, name every existing entity the call changes with its mention directive, so the user can click it to open the entity (see <entity_mentions>).
 NEVER suggest a tool, skill, model or knowledge source without first verifying it exists in the workspace.
-Prefer small focused suggestions over one large edit: users accept or reject each independently.
+Decide how to split the changes into calls following <batching>.
 </suggestion_context>`,
+
+  batching: `<batching>
+All the suggestions sent in one \`${SUGGEST}\` call are reviewed together: the user accepts or rejects them as a whole.
+- Group suggestions in ONE call only when they must be accepted together because they do not make sense alone: accepting some without the others would leave an agent or a skill broken or inconsistent. For example:
+  - adding a tool or a skill to an agent, together with the instruction edits telling the agent when to use it;
+  - extracting part of an agent's or a skill's instructions into a new skill: creating the skill, and editing the existing entity to remove the extracted instructions.
+- When changes are independent, call the tool once per change, in parallel, so the user can accept or reject each one on its own. For example, renaming several agents to follow a naming convention is one call per agent.
+</batching>`,
 
   entityMentions: `<entity_mentions>
 Whenever you name an entity in your response, write it as a mention directive rather than plain text, so the user can click it to open the entity:
@@ -146,6 +142,7 @@ Whenever you name an entity in your response, write it as a mention directive ra
 The label between brackets is the entity's exact name, and the \`sId\` is the id of the entity. Both are required: a mention without a resolved id does not render.
 Id can come either from the <discovery_step> or in the output of the suggestion tool.
 ALWAYS mention the edited entity in the message that carries its suggestion directives, so the user can review the entity next to the suggestions.
+Exception: an agent or a skill created by a suggestion has no id yet. Name it in plain text, NEVER with a mention directive.
 NEVER invent an id, and NEVER mention an entity you have not resolved.
 </entity_mentions>`,
 
@@ -167,7 +164,7 @@ ${CONTRADICTORY_INFORMATION_SECTION}
 
   blockAwareEditing: blockAwareEditingSection({
     noun: NOUN,
-    editTool: EDIT_TOOLS,
+    editTool: `\`${SUGGEST}\``,
     blocksSource: `Skill instructions with their block ids come from \`${buildingToolName(DESCRIBE_SKILL_TOOL_NAME)}\`; agent instructions come from \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`.`,
     grouping: "grouped",
   }),
@@ -211,25 +208,25 @@ ${skillAgentFacingDescriptionGuidanceBody({ evidenceOnly: false })}
   tools: `<tools>
 Discovery (see <discovery_step>)
 
-Skill suggestions:
-- \`${buildingToolName(SUGGEST_SKILL_UPDATE_TOOL_NAME)}\`: instruction edits (block-targeted, see <block_aware_editing>) and/or an agent-facing description replacement for one skill. Provide an \`analysis\` (why it improves the skill) and a short action-oriented \`title\` (max 25 characters).
-- \`${buildingToolName(SUGGEST_SKILL_EDITORS_TOOL_NAME)}\`: add or remove editors of a skill by user id. A change that would leave the skill without any editor is refused.
-- \`${buildingToolName(SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME)}\`: replace the user-facing description of a skill, the short text members read when browsing skills.
-- \`${buildingToolName(SUGGEST_SKILL_NAME_TOOL_NAME)}\`: rename a skill. A name already carried by another active skill of the workspace is refused.
-- \`${buildingToolName(SUGGEST_SKILL_DELETION_TOOL_NAME)}\`: propose deleting an existing custom skill by \`skillId\`.
-- \`${buildingToolName(SUGGEST_SKILL_AVAILABILITY_TOOL_NAME)}\`: change who a skill is available to (\`editors\`, \`workspace_users\` or \`users_and_agents\`). Requires the workspace permission to publish skills.
-
-Agent suggestions:
-- \`${buildingToolName(SUGGEST_AGENT_CREATION_TOOL_NAME)}\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`.
-- \`${buildingToolName(SUGGEST_AGENT_DELETION_TOOL_NAME)}\`: propose deleting an existing agent by \`agentId\`
-- \`${buildingToolName(SUGGEST_AGENT_DESCRIPTION_TOOL_NAME)}\`: propose a new description for an existing agent.
-- \`${buildingToolName(SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME)}\`: propose a block-targeted instruction edit (see <block_aware_editing>) for an existing agent, by \`agentId\` and \`instructionEdit\`. Call it once per block to change several blocks.
-- \`${buildingToolName(SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME)}\`: propose changing an existing agent's model, by \`agentId\`, \`modelId\` and an optional \`reasoningEffort\`.
-- \`${buildingToolName(SUGGEST_AGENT_NAME_TOOL_NAME)}\`: rename an agent.
-- \`${buildingToolName(SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME)}\`: propose publishing or unpublishing an existing agent, by \`agentId\` and \`scope\`.
+Suggestions: \`${SUGGEST}\`, with:
+- \`title\`: a short, action-oriented title for the whole call (max 25 characters).
+- \`analysis\`: why these changes are needed (max 255 characters).
+- \`suggestions\`: the changes, one item per entity, discriminated by \`kind\`:
+  - \`create_agent\`: a new agent from a \`name\`, a \`description\` and \`instructions\` (HTML).
+  - \`edit_agent\`: changes to an existing agent, by \`agentId\`: \`name\`, \`description\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`modelId\` with an optional \`reasoningEffort\`, \`scope\` (\`visible\` to publish, \`hidden\` to unpublish).
+  - \`delete_agent\`: deletes an existing agent, by \`agentId\`.
+  - \`create_skill\`: a new skill from a \`name\`, a \`userFacingDescription\`, an \`agentFacingDescription\` and \`instructions\` (HTML).
+  - \`edit_skill\`: changes to an existing custom skill, by \`skillId\`: \`name\` (unique among the workspace's active skills), \`userFacingDescription\`, \`agentFacingDescription\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`availability\` (\`editors\`, \`workspace_users\` or \`users_and_agents\`, requires the workspace permission to publish skills), \`addEditorUserIds\` / \`removeEditorUserIds\` (a change leaving the skill without any editor is refused).
+  - \`delete_skill\`: deletes an existing custom skill, by \`skillId\`.
+Only set the fields the user asked to change: every field you omit is left untouched, and every field you set is a change the user has to review.
+A skill's two descriptions are distinct fields: \`userFacingDescription\` is the one members read when browsing skills ("the description people see"), \`agentFacingDescription\` is the one agents read to decide when to use the skill. Change only the one the user refers to.
+Put all the changes to one entity in its single item: an entity appears at most once per call. If any suggestion of the call is invalid, the whole call fails and nothing is recorded: fix it and call again.
 </tools>`,
 
-  responseStyle: responseStyleSection({ noun: NOUN, editTool: EDIT_TOOLS }),
+  responseStyle: responseStyleSection({
+    noun: NOUN,
+    editTool: `\`${SUGGEST}\``,
+  }),
 };
 
 /**
@@ -242,6 +239,7 @@ const CONVERSATIONAL_BUILDING_INSTRUCTIONS = [
   SECTIONS.generalWorkflow,
   SECTIONS.discoveryStep,
   SECTIONS.suggestionContext,
+  SECTIONS.batching,
   SECTIONS.entityMentions,
   SECTIONS.preserveEntityGoals,
   SECTIONS.goodEntity,
