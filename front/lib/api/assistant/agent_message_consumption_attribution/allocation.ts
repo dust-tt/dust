@@ -6,6 +6,8 @@ import type {
   RunResource,
   RunUsageWithRunKeyType,
 } from "@app/lib/resources/run_resource";
+import type { ConsumptionReconciliationSource } from "@app/types/assistant/agent_message_consumption_analytics";
+import { CONSUMPTION_RECONCILIATION_SOURCE } from "@app/types/assistant/agent_message_consumption_analytics";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -35,14 +37,39 @@ export type AllocationSkipReason = {
   context: Record<string, number | boolean>;
 };
 
+type MessageConsumptionAllocationInput<TUsage extends RunUsageWithRunKeyType> =
+  {
+    actions: AgentMCPActionResource[];
+    billedCredits: number | null;
+    dustRunIds: string[];
+    items: AgentMessageConsumptionItemResource[];
+    reconciliationSource: ConsumptionReconciliationSource;
+    runs: RunResource[];
+    usages: TUsage[];
+  };
+
+type MessageConsumptionAllocationForVersionInput<
+  TUsage extends RunUsageWithRunKeyType,
+> = Omit<MessageConsumptionAllocationInput<TUsage>, "billedCredits"> & {
+  attributionVersion: number;
+  billedCredits: number;
+};
+
+type PublicMessageConsumptionAllocationInput<
+  TUsage extends RunUsageWithRunKeyType,
+> = Omit<MessageConsumptionAllocationInput<TUsage>, "reconciliationSource">;
+
 /**
- * Makes the attribution additive with the authoritative bill without changing stored evidence.
- *
- * Tool rows already represent the causal first-use cost of emitting a tool call and carrying its
- * new result into the next model input. We keep every non-input attribution unchanged. The model's
- * ordinary `input` bucket contains reused conversation context, so it is the single explicit
- * reconciliation seam. Input rows share the reconciled remainder in proportion to their gross
- * cost, using deterministic integer microcredit rounding.
+ * @cc [owner:id13,label:backend;data-integrity] derived-credit-conservation
+ * A successful reconciliation MUST preserve every non-input gross credit amount and allocate the
+ * remaining billed credits across input items so all returned amounts sum exactly to the bill. It
+ * MUST return `null` when the fixed non-input amounts exceed the bill or when a non-zero remainder
+ * cannot be allocated to input items.
+ */
+/**
+ * @cc [owner:id13,label:backend;data-integrity] deterministic-input-allocation
+ * Input credits MUST be allocated proportionally to gross input credits in integer microcredits.
+ * Rounding remainders MUST go to the largest fractional shares, using source order to break ties.
  */
 function reconcileInputCredits({
   items,
@@ -128,6 +155,47 @@ function reconcileInputCredits({
   };
 }
 
+/**
+ * @cc [owner:id13,label:backend;data-integrity] stored-credit-completeness
+ * Reconciliation MUST return `null` unless every item has a stored reconciled credit amount.
+ */
+/**
+ * @cc [owner:id13,label:backend;data-integrity] stored-credit-conservation
+ * Reconciliation MUST return an allocation only when the stored item amounts sum exactly to the
+ * expected billed credits in integer microcredits. A mismatch MUST return `null` so the caller
+ * rejects the inconsistent attribution version.
+ */
+function reconcileStoredCredits({
+  items,
+  billedCredits,
+}: {
+  items: AgentMessageConsumptionItemResource[];
+  billedCredits: number;
+}): ReconciledCreditAmounts | null {
+  const byItem = new Map<AgentMessageConsumptionItemResource, number>();
+  for (const item of items) {
+    if (item.reconciledCreditAmountMicro === null) {
+      return null;
+    }
+    byItem.set(item, item.reconciledCreditAmountMicro);
+  }
+
+  const storedTotalCreditAmountMicro = [...byItem.values()].reduce(
+    (total, amount) => total + amount,
+    0
+  );
+  const expectedTotalCreditAmountMicro =
+    roundCreditsToMicroCredits(billedCredits);
+  return storedTotalCreditAmountMicro === expectedTotalCreditAmountMicro
+    ? { byItem }
+    : null;
+}
+
+/**
+ * @cc [owner:id13,label:backend;data-integrity] complete-model-attribution
+ * Model attribution MUST be complete only when every message usage has input and output items, plus
+ * a reasoning item whenever that usage reports reasoning tokens.
+ */
 function hasCompleteModelAttribution(
   items: AgentMessageConsumptionItemResource[],
   usages: RunUsageWithRunKeyType[]
@@ -155,6 +223,12 @@ function hasCompleteModelAttribution(
   });
 }
 
+/**
+ * @cc [owner:id13,label:backend;data-integrity] complete-tool-attribution
+ * Tool attribution MUST be complete only when every action attached to a run with message usage has
+ * an item, every item that names an action refers to a supplied action, and every such final action
+ * has a completed item.
+ */
 function hasCompleteToolAttribution({
   actions,
   items,
@@ -202,6 +276,12 @@ function hasCompleteToolAttribution({
   return true;
 }
 
+/**
+ * @cc [owner:id13,label:backend;data-integrity] version-allocation-acceptance
+ * An attribution version MUST be accepted only when it has message items and run IDs, at least one
+ * matching message usage, complete model and tool attribution, and a successful credit
+ * reconciliation.
+ */
 function buildMessageConsumptionAllocationForVersion<
   TUsage extends RunUsageWithRunKeyType,
 >({
@@ -210,17 +290,13 @@ function buildMessageConsumptionAllocationForVersion<
   billedCredits,
   dustRunIds,
   items,
+  reconciliationSource,
   runs,
   usages,
-}: {
-  actions: AgentMCPActionResource[];
-  attributionVersion: number;
-  billedCredits: number;
-  dustRunIds: string[];
-  items: AgentMessageConsumptionItemResource[];
-  runs: RunResource[];
-  usages: TUsage[];
-}): Result<MessageConsumptionAllocation<TUsage>, AllocationSkipReason> {
+}: MessageConsumptionAllocationForVersionInput<TUsage>): Result<
+  MessageConsumptionAllocation<TUsage>,
+  AllocationSkipReason
+> {
   if (items.length === 0 || dustRunIds.length === 0) {
     return new Err({
       code: "no_items_or_dust_run_ids",
@@ -285,10 +361,10 @@ function buildMessageConsumptionAllocationForVersion<
     });
   }
 
-  const reconciledCreditAmounts = reconcileInputCredits({
-    items,
-    billedCredits,
-  });
+  const reconciledCreditAmounts =
+    reconciliationSource === CONSUMPTION_RECONCILIATION_SOURCE.Stored
+      ? reconcileStoredCredits({ items, billedCredits })
+      : reconcileInputCredits({ items, billedCredits });
   if (!reconciledCreditAmounts) {
     const billedCreditAmountMicro = roundCreditsToMicroCredits(billedCredits);
     const nonInputCreditAmountMicro = items.reduce(
@@ -318,24 +394,25 @@ function buildMessageConsumptionAllocationForVersion<
   });
 }
 
-/** Selects and allocates the newest self-consistent attribution stored for a message. */
-export function buildLatestMessageConsumptionAllocation<
+/**
+ * @cc [owner:id13,label:backend;data-integrity] newest-consistent-attribution
+ * Attribution versions MUST be evaluated from newest to oldest. The first complete, reconciled
+ * version MUST be returned; a rejected newer version MUST NOT prevent fallback to an older one.
+ */
+function buildMessageConsumptionAllocation<
   TUsage extends RunUsageWithRunKeyType,
 >({
   actions,
   billedCredits,
   dustRunIds,
   items,
+  reconciliationSource,
   runs,
   usages,
-}: {
-  actions: AgentMCPActionResource[];
-  billedCredits: number | null;
-  dustRunIds: string[];
-  items: AgentMessageConsumptionItemResource[];
-  runs: RunResource[];
-  usages: TUsage[];
-}): Result<MessageConsumptionAllocation<TUsage>, AllocationSkipReason> {
+}: MessageConsumptionAllocationInput<TUsage>): Result<
+  MessageConsumptionAllocation<TUsage>,
+  AllocationSkipReason
+> {
   if (billedCredits === null) {
     return new Err({ code: "no_billed_credits", context: {} });
   }
@@ -362,6 +439,7 @@ export function buildLatestMessageConsumptionAllocation<
       billedCredits,
       dustRunIds,
       items: itemsByAttributionVersion.get(attributionVersion) ?? [],
+      reconciliationSource,
       runs,
       usages,
     });
@@ -377,4 +455,58 @@ export function buildLatestMessageConsumptionAllocation<
       context: { itemCount: 0, dustRunIdCount: dustRunIds.length },
     }
   );
+}
+
+/** Selects and allocates the newest self-consistent attribution stored for a message. */
+export function buildLatestMessageConsumptionAllocation<
+  TUsage extends RunUsageWithRunKeyType,
+>({
+  actions,
+  billedCredits,
+  dustRunIds,
+  items,
+  runs,
+  usages,
+}: PublicMessageConsumptionAllocationInput<TUsage>): Result<
+  MessageConsumptionAllocation<TUsage>,
+  AllocationSkipReason
+> {
+  return buildMessageConsumptionAllocation({
+    actions,
+    billedCredits,
+    dustRunIds,
+    items,
+    reconciliationSource: CONSUMPTION_RECONCILIATION_SOURCE.Derived,
+    runs,
+    usages,
+  });
+}
+
+/**
+ * @cc [owner:id13,label:backend;data-integrity] stored-consumption-reconciliation
+ * Every item in a stored consumption allocation MUST have a reconciled credit amount, and those
+ * amounts MUST sum exactly to the authoritative billed credits.
+ */
+export function buildStoredMessageConsumptionAllocation<
+  TUsage extends RunUsageWithRunKeyType,
+>({
+  actions,
+  billedCredits,
+  dustRunIds,
+  items,
+  runs,
+  usages,
+}: PublicMessageConsumptionAllocationInput<TUsage>): Result<
+  MessageConsumptionAllocation<TUsage>,
+  AllocationSkipReason
+> {
+  return buildMessageConsumptionAllocation({
+    actions,
+    billedCredits,
+    dustRunIds,
+    items,
+    reconciliationSource: CONSUMPTION_RECONCILIATION_SOURCE.Stored,
+    runs,
+    usages,
+  });
 }

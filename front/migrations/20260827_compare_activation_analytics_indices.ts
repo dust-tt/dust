@@ -664,7 +664,7 @@ function consumptionEvidenceSummary({
     consumptionKey: source.consumption_key,
     consumptionType: source.consumption_type,
     completedAt: source.completed_at,
-    date: source.completed_at.slice(0, 10),
+    date: source.completed_at?.slice(0, 10) ?? null,
     userId: source.user?.id ?? null,
     contextOrigin: source.context_origin,
     usageType: source.usage_type,
@@ -723,7 +723,9 @@ function evidenceObservations({
     legacyDocuments.map(({ source }) => source.timestamp.slice(0, 10))
   );
   const consumptionDates = new Set(
-    consumptionDocuments.map(({ source }) => source.completed_at.slice(0, 10))
+    consumptionDocuments.flatMap(({ source }) =>
+      source.completed_at ? [source.completed_at.slice(0, 10)] : []
+    )
   );
   if (![...legacyDates].some((date) => consumptionDates.has(date))) {
     observations.push("created_day_differs_from_completed_day");
@@ -876,7 +878,7 @@ makeScript(
     const consumptionEvidenceByCell = groupEvidence(
       consumptionCellEvidence.documents,
       (document) =>
-        document.user
+        document.user && document.completed_at
           ? cellKey({
               dayMs: utcDayMs(document.completed_at),
               userId: document.user.id,

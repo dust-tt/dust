@@ -1,4 +1,7 @@
-import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
+import {
+  loadConsumptionAnalyticsInput,
+  loadLegacySettledConsumptionAnalyticsInput,
+} from "@app/lib/analytics/agent_message_consumption/load";
 import type { Authenticator } from "@app/lib/auth";
 import {
   USAGE_TYPE_FREE,
@@ -7,6 +10,7 @@ import {
 } from "@app/lib/metronome/constants";
 import type { UsageType } from "@app/lib/metronome/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -154,7 +158,7 @@ async function setupSettledMessage({
       authorless,
       agentName,
     });
-  const { run } = await RunFactory.createWithUsage(auth, {
+  const { run, runUsageModelId } = await RunFactory.createWithUsage(auth, {
     inputTokens: 100,
     outputTokens: 20,
     modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
@@ -177,19 +181,66 @@ async function setupSettledMessage({
   return {
     agent,
     agentMessage,
+    agentMessageModelId,
     auth,
     completedAt,
     conversation,
     run,
+    runUsageModelId,
     workspace,
   };
 }
 
-describe("loadAgentMessageConsumptionAnalyticsInput", () => {
+describe("loadConsumptionAnalyticsInput", () => {
+  it("loads incremental consumption by agent message model ID", async () => {
+    const context = await setupSettledMessage();
+    await AgentMessageModel.update(
+      { completedAt: null, costCredits: null, status: "created" },
+      {
+        where: {
+          id: context.agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+    await AgentMessageConsumptionItemResource.insertConsumptionRows(
+      context.auth,
+      {
+        conversationModelId: context.conversation.id,
+        agentMessageModelId: context.agentMessageModelId,
+        runKey: "analytics-projection",
+        modelRows: [
+          {
+            itemType: "input",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: 100,
+            outputTokensCount: null,
+            grossAttributedCreditAmountMicro: 1_500_000,
+            reconciledCreditAmountMicro: 1_500_000,
+          },
+        ],
+        pendingToolRows: [],
+      }
+    );
+
+    const input = await loadConsumptionAnalyticsInput(context.auth, {
+      agentMessageModelId: context.agentMessageModelId,
+    });
+
+    expect(input).toMatchObject({
+      agentMessageId: context.agentMessage.sId,
+      billedCredits: 1.5,
+      completedAt: null,
+      messageStatus: "created",
+    });
+  });
+});
+
+describe("loadLegacySettledConsumptionAnalyticsInput", () => {
   it("returns null when the message context no longer exists", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(
+    const input = await loadLegacySettledConsumptionAnalyticsInput(
       authenticator,
       { agentMessageId: "missing-agent-message" }
     );
@@ -200,7 +251,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
   it("loads the authoritative inputs for billed user usage", async () => {
     const context = await setupSettledMessage();
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(
+    const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
       { agentMessageId: context.agentMessage.sId }
     );
@@ -247,7 +298,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
       testContext,
     });
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(
+    const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
       { agentMessageId: context.agentMessage.sId }
     );
@@ -306,7 +357,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
       agentName: "Child agent",
     });
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(child.auth, {
+    const input = await loadLegacySettledConsumptionAnalyticsInput(child.auth, {
       agentMessageId: child.agentMessage.sId,
     });
 
@@ -342,7 +393,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
       testContext.authenticator
     );
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(child.auth, {
+    const input = await loadLegacySettledConsumptionAnalyticsInput(child.auth, {
       agentMessageId: child.agentMessage.sId,
     });
 
@@ -385,7 +436,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
       }
     );
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(child.auth, {
+    const input = await loadLegacySettledConsumptionAnalyticsInput(child.auth, {
       agentMessageId: child.agentMessage.sId,
     });
 
@@ -406,7 +457,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
       usageType: USAGE_TYPE_PROGRAMMATIC,
     });
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(
+    const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
       { agentMessageId: context.agentMessage.sId }
     );
@@ -419,7 +470,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
   it("keeps the user null when the triggering message is authorless", async () => {
     const context = await setupSettledMessage({ authorless: true });
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(
+    const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
       { agentMessageId: context.agentMessage.sId }
     );
@@ -430,7 +481,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
   it("returns null when every usage is explicitly free", async () => {
     const context = await setupSettledMessage({ usageType: USAGE_TYPE_FREE });
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(
+    const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
       { agentMessageId: context.agentMessage.sId }
     );
@@ -442,7 +493,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     const context = await setupSettledMessage();
     await context.conversation.updateVisibilityToDeleted(context.auth);
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(
+    const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
       { agentMessageId: context.agentMessage.sId }
     );
@@ -457,7 +508,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     const context = await setupSettledMessage({ usageType: null });
 
     await expect(
-      loadAgentMessageConsumptionAnalyticsInput(context.auth, {
+      loadLegacySettledConsumptionAnalyticsInput(context.auth, {
         agentMessageId: context.agentMessage.sId,
       })
     ).rejects.toThrow("Run usage billing classification is incomplete");
@@ -471,7 +522,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     });
 
     await expect(
-      loadAgentMessageConsumptionAnalyticsInput(context.auth, {
+      loadLegacySettledConsumptionAnalyticsInput(context.auth, {
         agentMessageId: context.agentMessage.sId,
       })
     ).rejects.toThrow("Billed agent message is missing costCredits");
@@ -489,7 +540,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
       }
     );
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(
+    const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
       { agentMessageId: context.agentMessage.sId }
     );
