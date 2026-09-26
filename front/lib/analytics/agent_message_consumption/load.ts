@@ -318,14 +318,18 @@ async function loadAnalyticsInputFromSource(
     agentMessage.agentMessageModelId,
     { withToolMetadata: true }
   );
-  const ancestorAgentIds = (
+  const ancestors = (
     await listAgenticAncestors(auth, messageConversation, {
       agentMessageId,
       includeDeleted: true,
     })
-  )
-    .map((ancestor) => ancestor.agentConfigurationId)
-    .reverse();
+  ).reverse();
+  const ancestorAgentIds = ancestors.map(
+    (ancestor) => ancestor.agentConfigurationId
+  );
+  const ancestorAgentMessageIds = ancestors.map(
+    (ancestor) => ancestor.agentMessageId
+  );
   const attributedAgentId = getAgentUsageAttributedId({
     agentId: agentMessage.agentConfigurationId,
     parentAgentId: ancestorAgentIds.at(-1),
@@ -356,6 +360,8 @@ async function loadAnalyticsInputFromSource(
       depth: conversation.depth,
     },
     agentMessageId,
+    parentAgentMessageId: ancestorAgentMessageIds.at(-1) ?? null,
+    rootAgentMessageId: ancestorAgentMessageIds[0] ?? agentMessageId,
     apiKeyName,
     billedCredits,
     completedAt,

@@ -217,7 +217,7 @@ describe("AgentMessageConsumptionItemResource", () => {
     });
 
     await expect(item.validate()).rejects.toThrow(
-      "Only tool attribution items may be pending"
+      "Only legacy tool attribution items may be pending"
     );
 
     item.set({
@@ -318,55 +318,66 @@ describe("AgentMessageConsumptionItemResource", () => {
     });
   });
 
-  it("adds distinct reconciled credit amounts through the model", async () => {
+  it("zeros only the selected reconciled credit amounts", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const context = await setupMessageWithEvidence(auth, workspace);
 
-    const insertedRows =
-      await AgentMessageConsumptionItemResource.insertConsumptionRows(auth, {
-        conversationModelId: context.conversation.id,
+    await AgentMessageConsumptionItemResource.insertConsumptionRows(auth, {
+      conversationModelId: context.conversation.id,
+      agentMessageModelId: context.agentMessageModelId,
+      runKey: "run",
+      modelRows: [
+        {
+          itemType: "input",
+          runUsageModelId: context.runUsageModelId,
+          inputTokensCount: 100,
+          outputTokensCount: null,
+          grossAttributedCreditAmountMicro: 100,
+          reconciledCreditAmountMicro: 80,
+        },
+      ],
+      toolCallRows: [],
+      toolResultRows: [],
+    });
+    await AgentMessageConsumptionItemResource.insertConsumptionToolDirectRow(
+      auth,
+      {
+        agentMCPActionModelId: context.action.id,
         agentMessageModelId: context.agentMessageModelId,
+        chargeAmountMicro: 1_000_000,
+        conversationModelId: context.conversation.id,
+        inputTokensCount: 12,
         runKey: "run",
-        modelRows: [
-          {
-            itemType: "input",
-            runUsageModelId: context.runUsageModelId,
-            inputTokensCount: 100,
-            outputTokensCount: null,
-            grossAttributedCreditAmountMicro: 100,
-            reconciledCreditAmountMicro: 80,
-          },
-        ],
-        pendingToolRows: [
-          {
-            agentMCPActionModelId: context.action.id,
-            runUsageModelId: context.runUsageModelId,
-            outputTokensCount: 12,
-            grossAttributedCreditAmountMicro: 200,
-            reconciledCreditAmountMicro: 150,
-          },
-        ],
-      });
-    const creditAmountMicroDeltaByConsumptionItemId = new Map(
-      insertedRows.map((row, index) => [row.consumptionItemId, index + 10])
+        runUsageModelId: context.runUsageModelId,
+      }
     );
+    const rowsToSettle =
+      await AgentMessageConsumptionItemResource.listConsumptionRowsByRunKey(
+        auth,
+        { runKey: "run" }
+      );
+    const inputItem = rowsToSettle.find((row) => row.itemType === "input");
+    if (!inputItem) {
+      throw new Error("Input consumption item was not inserted");
+    }
 
     await withTransaction((transaction) =>
-      AgentMessageConsumptionItemResource.addReconciledCreditAmounts(auth, {
-        creditAmountMicroDeltaByConsumptionItemId,
+      AgentMessageConsumptionItemResource.zeroReconciledCreditAmounts(auth, {
+        items: [inputItem],
         transaction,
       })
     );
 
-    const rows = await AgentMessageConsumptionItemModel.findAll({
-      where: {
-        id: insertedRows.map((row) => row.consumptionItemId),
-        workspaceId: workspace.id,
-      },
-      order: [["id", "ASC"]],
-    });
-    expect(rows.map((row) => row.reconciledCreditAmountMicro)).toEqual([
-      90, 161,
+    const rows =
+      await AgentMessageConsumptionItemResource.listConsumptionRowsByRunKey(
+        auth,
+        { runKey: "run" }
+      );
+    expect(
+      rows.map((row) => [row.itemType, row.reconciledCreditAmountMicro])
+    ).toEqual([
+      ["input", 0],
+      ["tool_direct", 1_000_000],
     ]);
   });
 

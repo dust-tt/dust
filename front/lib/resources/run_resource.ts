@@ -92,6 +92,7 @@ function runUsageAttributes(usage: RunUsageModel): RunUsageType {
     cacheCreationTokens: usage.cacheCreationTokens,
     costMicroUsd: usage.costMicroUsd,
     isBatch: usage.isBatch,
+    serviceTier: usage.serviceTier,
   };
 }
 
@@ -322,7 +323,10 @@ export class RunResource extends BaseResource<RunModel> {
 
   static async listRunUsagesByModelIds(
     auth: Authenticator,
-    { runUsageModelIds }: { runUsageModelIds: ModelId[] }
+    {
+      runUsageModelIds,
+      transaction,
+    }: { runUsageModelIds: ModelId[]; transaction?: Transaction }
   ): Promise<RunUsageWithRunKeyType[]> {
     if (runUsageModelIds.length === 0) {
       return [];
@@ -333,6 +337,7 @@ export class RunResource extends BaseResource<RunModel> {
         id: { [Op.in]: runUsageModelIds },
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+      transaction,
     });
     const runs = await RunModel.findAll({
       attributes: ["id", "runKey"],
@@ -340,6 +345,7 @@ export class RunResource extends BaseResource<RunModel> {
         id: { [Op.in]: usages.map((usage) => usage.runId) },
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+      transaction,
     });
     const runKeyByModelId = new Map<ModelId, string | null>(
       runs.map((run) => [run.id, run.runKey])
@@ -353,6 +359,37 @@ export class RunResource extends BaseResource<RunModel> {
       inferenceProvider: usage.inferenceProvider,
       region: usage.region,
       usageType: usage.usageType,
+    }));
+  }
+
+  static async listRunUsageGroupsByModelIds(
+    auth: Authenticator,
+    {
+      runUsageModelIds,
+      transaction,
+    }: { runUsageModelIds: ModelId[]; transaction?: Transaction }
+  ): Promise<
+    Array<{
+      runUsageModelId: ModelId;
+      providerId: string;
+      modelId: string;
+    }>
+  > {
+    if (runUsageModelIds.length === 0) {
+      return [];
+    }
+    const usages = await RunUsageModel.findAll({
+      attributes: ["id", "modelId", "providerId"],
+      where: {
+        id: { [Op.in]: runUsageModelIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+    return usages.map((usage) => ({
+      runUsageModelId: usage.id,
+      modelId: usage.modelId,
+      providerId: usage.providerId,
     }));
   }
 
@@ -384,6 +421,7 @@ export class RunResource extends BaseResource<RunModel> {
         // billable usage. Null supports rows written during rolling deploys.
         [Op.or]: [{ usageState: "reported" }, { usageState: null }],
       },
+      order: [["id", "ASC"]],
     });
 
     return usages.map((usage) => ({

@@ -165,6 +165,12 @@ function reconcileInputCredits({
  * expected billed credits in integer microcredits. A mismatch MUST return `null` so the caller
  * rejects the inconsistent attribution version.
  */
+/**
+ * @cc [owner:id13,label:backend;data-integrity] stored-rounding-projection
+ * Rounding items MUST NOT produce document allocations. Each non-zero rounding amount MUST be
+ * added to the input item with the same run key; reconciliation MUST return `null` when that input
+ * item does not exist.
+ */
 function reconcileStoredCredits({
   items,
   billedCredits,
@@ -172,21 +178,41 @@ function reconcileStoredCredits({
   items: AgentMessageConsumptionItemResource[];
   billedCredits: number;
 }): ReconciledCreditAmounts | null {
+  const documentItems = items.filter((item) => item.itemType !== "rounding");
   const byItem = new Map<AgentMessageConsumptionItemResource, number>();
-  for (const item of items) {
+  for (const item of documentItems) {
     if (item.reconciledCreditAmountMicro === null) {
       return null;
     }
     byItem.set(item, item.reconciledCreditAmountMicro);
   }
 
-  const storedTotalCreditAmountMicro = [...byItem.values()].reduce(
+  for (const roundingItem of items.filter(
+    (item) => item.itemType === "rounding"
+  )) {
+    const roundingAmount = roundingItem.reconciledCreditAmountMicro;
+    if (roundingAmount === null) {
+      return null;
+    }
+    if (roundingAmount === 0) {
+      continue;
+    }
+    const targetInput = documentItems.find(
+      (item) => item.runKey === roundingItem.runKey && item.itemType === "input"
+    );
+    if (!targetInput) {
+      return null;
+    }
+    byItem.set(targetInput, (byItem.get(targetInput) ?? 0) + roundingAmount);
+  }
+
+  const allocatedTotalCreditAmountMicro = [...byItem.values()].reduce(
     (total, amount) => total + amount,
     0
   );
   const expectedTotalCreditAmountMicro =
     roundCreditsToMicroCredits(billedCredits);
-  return storedTotalCreditAmountMicro === expectedTotalCreditAmountMicro
+  return allocatedTotalCreditAmountMicro === expectedTotalCreditAmountMicro
     ? { byItem }
     : null;
 }
@@ -203,7 +229,7 @@ function hasCompleteModelAttribution(
   const itemTypesByRunUsageModelId = new Map<ModelId, Set<string>>();
 
   for (const item of items) {
-    if (item.itemType === "tool" || item.runUsageId === null) {
+    if (item.isToolItem() || item.runUsageId === null) {
       continue;
     }
 
@@ -238,18 +264,21 @@ function hasCompleteToolAttribution({
   items: AgentMessageConsumptionItemResource[];
   dustRunIdsWithUsage: Set<string>;
 }): boolean {
-  const toolItemByActionModelId = new Map<
+  const toolItemsByActionModelId = new Map<
     ModelId,
-    AgentMessageConsumptionItemResource
+    AgentMessageConsumptionItemResource[]
   >();
   for (const item of items) {
-    if (item.itemType === "tool" && item.agentMCPActionId !== null) {
-      toolItemByActionModelId.set(item.agentMCPActionId, item);
+    if (item.isToolItem()) {
+      const actionItems =
+        toolItemsByActionModelId.get(item.agentMCPActionId) ?? [];
+      actionItems.push(item);
+      toolItemsByActionModelId.set(item.agentMCPActionId, actionItems);
     }
   }
   const actionModelIds = new Set(actions.map((action) => action.id));
 
-  for (const actionModelId of toolItemByActionModelId.keys()) {
+  for (const actionModelId of toolItemsByActionModelId.keys()) {
     if (!actionModelIds.has(actionModelId)) {
       return false;
     }
@@ -261,13 +290,13 @@ function hasCompleteToolAttribution({
       continue;
     }
 
-    const item = toolItemByActionModelId.get(action.id);
-    if (!item) {
+    const actionItems = toolItemsByActionModelId.get(action.id);
+    if (!actionItems) {
       return false;
     }
     if (
       isToolExecutionStatusFinal(action.status) &&
-      item.completedAt === null
+      actionItems.some((item) => item.completedAt === null)
     ) {
       return false;
     }
@@ -484,8 +513,8 @@ export function buildLatestMessageConsumptionAllocation<
 
 /**
  * @cc [owner:id13,label:backend;data-integrity] stored-consumption-reconciliation
- * Every item in a stored consumption allocation MUST have a reconciled credit amount, and those
- * amounts MUST sum exactly to the authoritative billed credits.
+ * Every stored item MUST have a reconciled credit amount. Rounding postings MUST be folded into
+ * their run's input document, and the resulting allocation MUST equal the authoritative bill.
  */
 export function buildStoredMessageConsumptionAllocation<
   TUsage extends RunUsageWithRunKeyType,
