@@ -10,18 +10,15 @@ import type {
   ConsumptionToolResultRow,
 } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { signalConsumptionEventsAppended } from "@app/temporal/credit_consumption/client";
-import type {
-  AgentLoopArgsWithTiming,
-  AgentLoopRuntimeData,
-} from "@app/types/assistant/agent_run";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { AgentMessageConsumptionExecutionContext } from "@app/types/assistant/agent_message_consumption";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 type ModelCallConsumptionContext = {
   agentMessageModelId: ModelId;
@@ -33,51 +30,37 @@ type ModelCallConsumptionContext = {
 export async function recordModelCallConsumptionItems(
   auth: Authenticator,
   {
+    agentMessageModelId,
+    consumptionContext,
+    conversationModelId,
+    dustRunId,
     emittedActionModelIds,
-    featureFlags,
-    runAgentArgs,
-    runAgentData,
-    runId,
   }: {
+    agentMessageModelId: ModelId;
+    consumptionContext: AgentMessageConsumptionExecutionContext;
+    conversationModelId: ModelId;
+    dustRunId: string;
     emittedActionModelIds: ModelId[];
-    featureFlags: WhitelistableFeature[];
-    runAgentArgs: AgentLoopArgsWithTiming;
-    runAgentData: AgentLoopRuntimeData;
-    runId: string | null;
   }
 ): Promise<void> {
-  const { rootAgentMessageId, runKey } = runAgentArgs;
-  if (
-    !featureFlags.includes("agent_message_consumption_writes") ||
-    runId === null ||
-    !runKey ||
-    !rootAgentMessageId
-  ) {
-    return;
-  }
-  const rootAgentMessage =
-    await ConversationResource.fetchAgentMessageCreditContext(auth, {
-      agentMessageId: rootAgentMessageId,
-    });
-  if (!rootAgentMessage) {
-    return;
-  }
-
   const emittedActions = await AgentMCPActionResource.fetchByModelIds(
     auth,
     emittedActionModelIds
   );
 
-  await recordModelCallConsumption(auth, {
+  const result = await recordModelCallConsumption(auth, {
     context: {
-      agentMessageModelId: runAgentData.agentMessage.agentMessageId,
-      conversationModelId: runAgentData.conversation.id,
-      rootAgentMessageId: rootAgentMessage.agentMessageModelId,
-      runKey,
+      agentMessageModelId,
+      conversationModelId,
+      rootAgentMessageId: consumptionContext.rootAgentMessageModelId,
+      runKey: consumptionContext.runKey,
     },
-    dustRunId: runId,
+    dustRunId,
     emittedActions,
   });
+  if (result.isErr()) {
+    throw result.error;
+  }
 }
 
 /**
@@ -96,7 +79,7 @@ export async function recordModelCallConsumption(
     dustRunId: string;
     emittedActions: AgentMCPActionResource[];
   }
-): Promise<void> {
+): Promise<Result<void, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const [run] = await RunResource.listByDustRunIds(auth, {
@@ -107,25 +90,27 @@ export async function recordModelCallConsumption(
       { workspaceId, dustRunId },
       "[Consumption] Reported model call has no run."
     );
-    return;
+    return new Err(new Error(`Run ${dustRunId} was not found`));
   }
 
   const usages = await RunResource.listRunUsagesForRuns(auth, { runs: [run] });
+  if (usages.length === 0) {
+    return new Err(new Error(`Run ${dustRunId} has no reported usage`));
+  }
   for (const [index, usage] of usages.entries()) {
-    await recordRunUsageConsumption(auth, {
+    const result = await recordRunUsageConsumption(auth, {
       context,
       emittedActions: index === 0 ? emittedActions : [],
       usage,
     });
-  }
-  if (usages.length > 0) {
-    const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
-      runKey: context.runKey,
-    });
-    if (signalRes.isErr()) {
-      throw signalRes.error;
+    if (result.isErr()) {
+      return result;
     }
   }
+  await signalConsumptionEventsAppended(auth.toJSON(), {
+    runKey: context.runKey,
+  });
+  return new Ok(undefined);
 }
 
 async function recordRunUsageConsumption(
@@ -139,17 +124,21 @@ async function recordRunUsageConsumption(
     emittedActions: AgentMCPActionResource[];
     usage: RunUsageWithRunKeyType;
   }
-): Promise<void> {
+): Promise<Result<void, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const modelVisibleActions = emittedActions.filter(
     (action) =>
       !isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
   );
-  const callFootprints = await measureCallFootprints(auth, {
+  const callFootprintsRes = await measureCallFootprints(auth, {
     actions: modelVisibleActions,
     modelId: usage.modelId,
   });
+  if (callFootprintsRes.isErr()) {
+    return callFootprintsRes;
+  }
+  const callFootprints = callFootprintsRes.value;
 
   await withTransaction(async (transaction) => {
     const consumedToolRows =
@@ -260,6 +249,7 @@ async function recordRunUsageConsumption(
       );
     }
   });
+  return new Ok(undefined);
 }
 
 async function measureCallFootprints(
@@ -271,9 +261,9 @@ async function measureCallFootprints(
     actions: AgentMCPActionResource[];
     modelId: string;
   }
-): Promise<number[]> {
+): Promise<Result<number[], Error>> {
   if (actions.length === 0) {
-    return [];
+    return new Ok([]);
   }
 
   const footprintsRes = await measureToolCallOutputFootprints(auth, {
@@ -283,9 +273,5 @@ async function measureCallFootprints(
       functionCallArguments: action.functionCallArguments,
     })),
   });
-  if (footprintsRes.isErr()) {
-    throw footprintsRes.error;
-  }
-
-  return footprintsRes.value;
+  return footprintsRes;
 }

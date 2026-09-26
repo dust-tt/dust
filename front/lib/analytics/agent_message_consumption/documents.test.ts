@@ -402,13 +402,14 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     if (!input) {
       throw new Error("Consumption analytics input was not loaded");
     }
-    const documents = buildAgentMessageConsumptionAnalyticsDocuments(input);
-    if (documents.isErr()) {
+    const documentsResult =
+      buildAgentMessageConsumptionAnalyticsDocuments(input);
+    if (documentsResult.isErr()) {
       throw new Error(
-        `Consumption documents were not built: ${documents.error.code}`
+        `Consumption documents were not built: ${documentsResult.error.code}`
       );
     }
-    const toolDocuments = documents.value.filter(
+    const toolDocuments = documentsResult.value.filter(
       (document) => document.consumption_type === "tool"
     );
 

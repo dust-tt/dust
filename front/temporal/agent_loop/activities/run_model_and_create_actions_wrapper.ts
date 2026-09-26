@@ -1,5 +1,4 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
-import { usesAgentMessageConsumption } from "@app/lib/api/assistant/consumption/gate";
 import { recordModelCallConsumptionItems } from "@app/lib/api/assistant/consumption/model_call_writer";
 import {
   getCreditSpendCheckpointEnabled,
@@ -22,7 +21,10 @@ import {
   finalizeUnavailableAgentLoop,
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
-import { recordExecutionStarted } from "@app/temporal/agent_loop/activities/consumption";
+import {
+  recordExecutionStarted,
+  resolveLegacyConsumptionExecutionContext,
+} from "@app/temporal/agent_loop/activities/consumption";
 import {
   AGENT_LOOP_COST_HARD_CAP_USD,
   AGENT_LOOP_SUBAGENT_HARD_CAP,
@@ -38,6 +40,7 @@ import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_t
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
 import { runModel } from "@app/temporal/agent_loop/lib/run_model";
 import { getMaxActionsPerStep } from "@app/types/assistant/agent";
+import type { AgentMessageConsumptionExecutionContext } from "@app/types/assistant/agent_message_consumption";
 import type {
   AgentLoopArgs,
   AgentLoopArgsWithTiming,
@@ -45,8 +48,6 @@ import type {
 } from "@app/types/assistant/agent_run";
 import { isAgentLoopDataSoftDeleteError } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 
@@ -85,7 +86,9 @@ function getActivityTimeoutDeadlineMs(): number {
 export async function runModelAndCreateActionsActivity({
   authType,
   checkForResume = true,
-  canInitializeConsumption,
+  consumptionContext,
+  canInitializeConsumption = false,
+  recordConsumptionInline = true,
   runAgentArgs,
   runIds,
   step,
@@ -93,8 +96,10 @@ export async function runModelAndCreateActionsActivity({
 }: {
   authType: AuthenticatorType;
   checkForResume?: boolean;
+  consumptionContext?: AgentMessageConsumptionExecutionContext | null;
   // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
-  canInitializeConsumption: boolean;
+  canInitializeConsumption?: boolean;
+  recordConsumptionInline?: boolean;
   runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
@@ -105,13 +110,15 @@ export async function runModelAndCreateActionsActivity({
   // immediately and periodically for the whole activity. The LLM stream adds its own heartbeats.
   heartbeat();
 
-  const result = await withPeriodicHeartbeat(
+  return withPeriodicHeartbeat(
     () =>
       tracer.trace("runModelAndCreateActionsActivity", async () =>
         _runModelAndCreateActionsActivity({
           authType,
           checkForResume,
+          consumptionContext,
           canInitializeConsumption,
+          recordConsumptionInline,
           runAgentArgs,
           runIds,
           step,
@@ -123,16 +130,14 @@ export async function runModelAndCreateActionsActivity({
       heartbeatFn: () => heartbeat(),
     }
   );
-  if (result.isErr()) {
-    throw result.error;
-  }
-  return result.value;
 }
 
 async function _runModelAndCreateActionsActivity({
   authType,
   checkForResume,
+  consumptionContext,
   canInitializeConsumption,
+  recordConsumptionInline,
   runAgentArgs,
   runIds,
   step,
@@ -140,13 +145,15 @@ async function _runModelAndCreateActionsActivity({
 }: {
   authType: AuthenticatorType;
   checkForResume: boolean;
+  consumptionContext?: AgentMessageConsumptionExecutionContext | null;
   // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
   canInitializeConsumption: boolean;
+  recordConsumptionInline: boolean;
   runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
   forceDisableToolUse: boolean;
-}): Promise<Result<RunModelAndCreateActionsResult | null, Error>> {
+}): Promise<RunModelAndCreateActionsResult | null> {
   const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
   const durationRecorder = DurationRecorder.create([]);
 
@@ -171,7 +178,7 @@ async function _runModelAndCreateActionsActivity({
         },
         "Message or conversation was deleted, exiting"
       );
-      return new Ok(null);
+      return null;
     }
     throw contextProviderRes.error;
   }
@@ -181,21 +188,20 @@ async function _runModelAndCreateActionsActivity({
   const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
 
   let executionUsesConsumption: boolean;
-  if (step === (runAgentArgs.startStep ?? 0)) {
-    const result = await recordExecutionStarted(auth, runAgentArgs, {
-      canInitializeConsumption,
-    });
-    if (result.isErr()) {
-      return new Err(result.error);
-    }
-    executionUsesConsumption = result.value;
+  if (consumptionContext !== undefined) {
+    executionUsesConsumption = consumptionContext !== null;
+  } else if (step === (runAgentArgs.startStep ?? 0)) {
+    executionUsesConsumption = await recordExecutionStarted(
+      auth,
+      runAgentArgs,
+      {
+        canInitializeConsumption,
+      }
+    );
   } else {
     executionUsesConsumption =
-      !!runAgentArgs.runKey &&
-      !!runAgentArgs.rootAgentMessageId &&
-      (await usesAgentMessageConsumption(auth, {
-        rootAgentMessageId: runAgentArgs.rootAgentMessageId,
-      }));
+      (await resolveLegacyConsumptionExecutionContext(auth, runAgentArgs)) !==
+      null;
   }
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
@@ -258,7 +264,7 @@ async function _runModelAndCreateActionsActivity({
       },
     });
 
-    return new Ok(null);
+    return null;
   }
 
   if (hardCapCheckResult?.subagentHardCapExceeded) {
@@ -285,7 +291,7 @@ async function _runModelAndCreateActionsActivity({
       },
     });
 
-    return new Ok(null);
+    return null;
   }
 
   const creditSpendCheckpointCrossed = await getCreditSpendCheckpointCrossed(
@@ -302,7 +308,7 @@ async function _runModelAndCreateActionsActivity({
   if (featureFlags.includes("run_tools_from_prompt")) {
     const result = await handlePromptCommand(auth, runAgentData, step, runIds);
     if (result !== "not_a_command") {
-      return new Ok(result);
+      return result;
     }
   }
 
@@ -315,11 +321,11 @@ async function _runModelAndCreateActionsActivity({
     );
 
     if (existingData) {
-      return new Ok({
+      return {
         actionBlobs: existingData.actionBlobs,
         runId: null,
         creditSpendCheckpointCrossed,
-      });
+      };
     }
   }
 
@@ -340,7 +346,7 @@ async function _runModelAndCreateActionsActivity({
   });
 
   if (!modelResult) {
-    return new Ok(null);
+    return null;
   }
 
   const {
@@ -354,20 +360,29 @@ async function _runModelAndCreateActionsActivity({
   // Generation completed (text response, no tool calls) — runModel returns
   // { actions: [], runId } so we still capture the runId for tracking.
   if (actions.length === 0) {
-    await recordModelCallConsumptionItems(auth, {
-      featureFlags,
-      runAgentArgs,
-      runAgentData,
-      runId,
-      emittedActionModelIds: [],
-    });
+    const resolvedConsumptionContext =
+      recordConsumptionInline &&
+      executionUsesConsumption &&
+      consumptionContext !== null
+        ? (consumptionContext ??
+          (await resolveLegacyConsumptionExecutionContext(auth, runAgentArgs)))
+        : null;
+    if (runId !== null && resolvedConsumptionContext) {
+      await recordModelCallConsumptionItems(auth, {
+        agentMessageModelId: runAgentData.agentMessage.agentMessageId,
+        consumptionContext: resolvedConsumptionContext,
+        conversationModelId: runAgentData.conversation.id,
+        dustRunId: runId,
+        emittedActionModelIds: [],
+      });
+    }
 
-    return new Ok({
+    return {
       runId,
       actionBlobs: [],
       retryWithoutTools,
       creditSpendCheckpointCrossed,
-    });
+    };
   }
 
   // Enforce a limit on actions per step, reducing by depth (8/8/4/2)
@@ -391,15 +406,24 @@ async function _runModelAndCreateActionsActivity({
     })
   );
 
-  await recordModelCallConsumptionItems(auth, {
-    featureFlags,
-    runAgentArgs,
-    runAgentData,
-    runId,
-    emittedActionModelIds: createResult.actionBlobs.map(
-      (actionBlob) => actionBlob.actionId
-    ),
-  });
+  const resolvedConsumptionContext =
+    recordConsumptionInline &&
+    executionUsesConsumption &&
+    consumptionContext !== null
+      ? (consumptionContext ??
+        (await resolveLegacyConsumptionExecutionContext(auth, runAgentArgs)))
+      : null;
+  if (runId !== null && resolvedConsumptionContext) {
+    await recordModelCallConsumptionItems(auth, {
+      agentMessageModelId: runAgentData.agentMessage.agentMessageId,
+      consumptionContext: resolvedConsumptionContext,
+      conversationModelId: runAgentData.conversation.id,
+      dustRunId: runId,
+      emittedActionModelIds: createResult.actionBlobs.map(
+        (actionBlob) => actionBlob.actionId
+      ),
+    });
+  }
 
   const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
   if (needsApproval) {
@@ -414,11 +438,11 @@ async function _runModelAndCreateActionsActivity({
     }
   }
 
-  return new Ok({
+  return {
     runId,
     actionBlobs: createResult.actionBlobs,
     creditSpendCheckpointCrossed,
-  });
+  };
 }
 
 /**

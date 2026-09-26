@@ -2,6 +2,7 @@ import { creditAmountMicroFromCostMicroUsd } from "@app/lib/api/assistant/agent_
 import { recordModelCallConsumption } from "@app/lib/api/assistant/consumption/model_call_writer";
 import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -13,6 +14,7 @@ import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
+import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -181,6 +183,46 @@ describe("recordModelCallConsumption", () => {
     expect(
       items.find((item) => item.itemType === "output")?.outputTokensCount
     ).toBe(OUTPUT_TOKENS_COUNT - TOKENS_PER_FOOTPRINT);
+  });
+
+  it("attaches emitted tools to the primary usage of a multi-usage run", async () => {
+    const {
+      auth,
+      context,
+      conversation,
+      run,
+      runUsageModelId,
+      workspace,
+      agentMessageModelId,
+    } = await setupExecution();
+    await run.recordTokenUsage(
+      auth,
+      {
+        inputTokens: 10,
+        totalOutputTokens: 5,
+        totalTokens: 15,
+      },
+      GPT_5_MINI_MODEL_CONFIG.modelId,
+      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: false }
+    );
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      dustRunId: run.dustRunId,
+    });
+
+    const result = await recordModelCallConsumption(auth, {
+      context,
+      dustRunId: run.dustRunId,
+      emittedActions: [action],
+    });
+
+    expect(result.isOk()).toBe(true);
+    const items = await listConsumptionItems(auth, agentMessageModelId);
+    expect(
+      items.find((item) => item.itemType === "tool_call")?.runUsageId
+    ).toBe(runUsageModelId);
   });
 
   it("records one model call once, however often the writer retries", async () => {

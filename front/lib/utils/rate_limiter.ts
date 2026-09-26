@@ -34,6 +34,34 @@ const RATE_LIMITER_COUNTS_BATCH_SIZE = 300;
 // agnostic of window semantics.
 export type FixedWindowBounds = { label: string; windowEndMs: number };
 
+/**
+ * KEYS:
+ * - KEYS[1]: Fixed-window counter key.
+ * - KEYS[2]: Fixed-window idempotency hash key.
+ *
+ * ARGV:
+ * - ARGV[1]: Positive integer increment.
+ * - ARGV[2]: Absolute expiry time in Unix milliseconds.
+ * - ARGV[3]: Idempotency field, or empty when deduplication is disabled.
+ */
+const ADD_FIXED_WINDOW_COUNT_SCRIPT = `
+local increment_by = tonumber(ARGV[1])
+local expire_at_ms = tonumber(ARGV[2])
+local idempotency_field = ARGV[3]
+
+if idempotency_field ~= "" then
+  local first_write = redis.call("HSETNX", KEYS[2], idempotency_field, "1")
+  redis.call("PEXPIREAT", KEYS[2], expire_at_ms)
+  if first_write == 0 then
+    return redis.call("GET", KEYS[1]) or "0"
+  end
+end
+
+local total = redis.call("INCRBY", KEYS[1], increment_by)
+redis.call("PEXPIREAT", KEYS[1], expire_at_ms)
+return total
+`;
+
 const makeRateLimiterKey = (key: string) => `${RATE_LIMITER_PREFIX}:${key}`;
 
 type RateLimiterArgs = {
@@ -152,11 +180,15 @@ export async function addRateLimiterCount({
   key,
   timeframeSeconds,
   incrementBy,
+  idempotencyKey,
+  throwOnError = false,
   logger,
 }: {
   key: string;
   timeframeSeconds: number;
   incrementBy: number;
+  idempotencyKey?: string;
+  throwOnError?: boolean;
   logger: LoggerInterface;
 }): Promise<void> {
   // Fail open on a non-positive/non-integer amount: recording runs on the
@@ -172,10 +204,21 @@ export async function addRateLimiterCount({
   const redisKey = makeRateLimiterKey(key);
   const windowMs = timeframeSeconds * 1000;
 
+  /**
+   * KEYS:
+   * - KEYS[1]: Rolling-window sorted-set key.
+   * - KEYS[2]: Rolling-window idempotency hash key.
+   *
+   * ARGV:
+   * - ARGV[1]: Window duration in milliseconds.
+   * - ARGV[2]: Sorted-set member carrying the microcredit amount.
+   * - ARGV[3]: Idempotency field, or empty when deduplication is disabled.
+   */
   const luaScript = `
     local key = KEYS[1]
     local window_ms = tonumber(ARGV[1])
     local member = ARGV[2]
+    local idempotency_field = ARGV[3]
 
     -- Use Redis server time to avoid client clock skew
     local t = redis.call('TIME') -- { seconds, microseconds }
@@ -184,6 +227,15 @@ export async function addRateLimiterCount({
     -- Always record unconditionally: no limit check, no dropped writes. A single
     -- entry carries the amount (amount prefix + uuid for uniqueness); the
     -- reader sums the prefixes via getWeightedRateLimiterCount.
+
+    if idempotency_field ~= '' then
+      local first_write = redis.call('HSETNX', KEYS[2], idempotency_field, '1')
+      redis.call('PEXPIRE', KEYS[2], window_ms + 60000)
+      if first_write == 0 then
+        return
+      end
+    end
+
     redis.call('ZADD', key, now_ms, member)
 
     -- Keep the key around a bit longer than the window to allow trims
@@ -194,12 +246,15 @@ export async function addRateLimiterCount({
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
     const member = `${incrementBy}:${uuidv4()}`;
     await redis.eval(luaScript, {
-      keys: [redisKey],
-      arguments: [windowMs.toString(), member],
+      keys: [redisKey, `${redisKey}:idempotency`],
+      arguments: [windowMs.toString(), member, idempotencyKey ?? ""],
     });
   } catch (e) {
     statsDMetrics.increment("ratelimiter.error.count", 1, ["operation:add"]);
     logger.error({ key, incrementBy, error: e }, "addRateLimiterCount error");
+    if (throwOnError) {
+      throw normalizeError(e);
+    }
   }
 }
 
@@ -587,11 +642,15 @@ export async function addFixedWindowCount({
   key,
   bounds,
   incrementBy,
+  idempotencyKey,
+  throwOnError = false,
   logger,
 }: {
   key: string;
   bounds: FixedWindowBounds;
   incrementBy: number;
+  idempotencyKey?: string;
+  throwOnError?: boolean;
   logger: LoggerInterface;
 }): Promise<void> {
   // Fail open on invalid input, matching the Redis-error path below: recording
@@ -609,23 +668,18 @@ export async function addFixedWindowCount({
   }
 
   const redisKey = makeRateLimiterKey(`${key}:${bounds.label}`);
+  const idempotencyRedisKey = `${redisKey}:idempotency`;
   const expireAtMs = bounds.windowEndMs + FIXED_WINDOW_EXPIRE_GRACE_MS;
-
-  const luaScript = `
-    local key = KEYS[1]
-    local increment_by = tonumber(ARGV[1])
-    local expire_at_ms = tonumber(ARGV[2])
-
-    local total = redis.call('INCRBY', key, increment_by)
-    redis.call('PEXPIREAT', key, expire_at_ms)
-    return total
-  `;
 
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
-    await redis.eval(luaScript, {
-      keys: [redisKey],
-      arguments: [incrementBy.toString(), expireAtMs.toString()],
+    await redis.eval(ADD_FIXED_WINDOW_COUNT_SCRIPT, {
+      keys: [redisKey, idempotencyRedisKey],
+      arguments: [
+        incrementBy.toString(),
+        expireAtMs.toString(),
+        idempotencyKey ?? "",
+      ],
     });
   } catch (e) {
     statsDMetrics.increment("ratelimiter.error.count", 1, [
@@ -635,6 +689,9 @@ export async function addFixedWindowCount({
       { key, label: bounds.label, incrementBy, error: e },
       "addFixedWindowCount error"
     );
+    if (throwOnError) {
+      throw normalizeError(e);
+    }
   }
 }
 
