@@ -1,4 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { recordModelCallConsumptionItems } from "@app/lib/api/assistant/consumption/model_call_writer";
 import {
   getCreditSpendCheckpointEnabled,
   hasCrossedCreditSpendCheckpoint,
@@ -341,6 +342,14 @@ async function _runModelAndCreateActionsActivity({
   // Generation completed (text response, no tool calls) — runModel returns
   // { actions: [], runId } so we still capture the runId for tracking.
   if (actions.length === 0) {
+    await recordModelCallConsumptionItems(auth, {
+      featureFlags,
+      runAgentArgs,
+      runAgentData,
+      runId,
+      emittedActionModelIds: [],
+    });
+
     return new Ok({
       runId,
       actionBlobs: [],
@@ -369,6 +378,16 @@ async function _runModelAndCreateActionsActivity({
       runIds: currentRunIds,
     })
   );
+
+  await recordModelCallConsumptionItems(auth, {
+    featureFlags,
+    runAgentArgs,
+    runAgentData,
+    runId,
+    emittedActionModelIds: createResult.actionBlobs.map(
+      (actionBlob) => actionBlob.actionId
+    ),
+  });
 
   const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
   if (needsApproval) {
