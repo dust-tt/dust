@@ -1,8 +1,10 @@
 import type { RunUsageForAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import {
+  AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
   buildRunUsageAttribution,
   buildToolAttribution,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
+import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
 import { GPT_5_MINI_MODEL_ID } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 
@@ -28,6 +30,12 @@ const usage = (
 });
 
 describe("agent message consumption attribution domain", () => {
+  it("keeps the legacy version below the incremental pipeline version", () => {
+    expect(AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION).toBeLessThan(
+      INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION
+    );
+  });
+
   it("attributes provider totals without inventing reasoning", () => {
     const attribution = buildRunUsageAttribution({
       usage: usage(),

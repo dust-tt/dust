@@ -8,6 +8,7 @@ import type {
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -315,6 +316,58 @@ describe("AgentMessageConsumptionItemResource", () => {
       attributedSkillIds: ["skill-completed"],
       completedAt: expect.any(Date),
     });
+  });
+
+  it("adds distinct reconciled credit amounts through the model", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const context = await setupMessageWithEvidence(auth, workspace);
+
+    const insertedRows =
+      await AgentMessageConsumptionItemResource.insertConsumptionRows(auth, {
+        conversationModelId: context.conversation.id,
+        agentMessageModelId: context.agentMessageModelId,
+        runKey: "run",
+        modelRows: [
+          {
+            itemType: "input",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: 100,
+            outputTokensCount: null,
+            grossAttributedCreditAmountMicro: 100,
+            reconciledCreditAmountMicro: 80,
+          },
+        ],
+        pendingToolRows: [
+          {
+            agentMCPActionModelId: context.action.id,
+            runUsageModelId: context.runUsageModelId,
+            outputTokensCount: 12,
+            grossAttributedCreditAmountMicro: 200,
+            reconciledCreditAmountMicro: 150,
+          },
+        ],
+      });
+    const creditAmountMicroDeltaByConsumptionItemId = new Map(
+      insertedRows.map((row, index) => [row.consumptionItemId, index + 10])
+    );
+
+    await withTransaction((transaction) =>
+      AgentMessageConsumptionItemResource.addReconciledCreditAmounts(auth, {
+        creditAmountMicroDeltaByConsumptionItemId,
+        transaction,
+      })
+    );
+
+    const rows = await AgentMessageConsumptionItemModel.findAll({
+      where: {
+        id: insertedRows.map((row) => row.consumptionItemId),
+        workspaceId: workspace.id,
+      },
+      order: [["id", "ASC"]],
+    });
+    expect(rows.map((row) => row.reconciledCreditAmountMicro)).toEqual([
+      90, 161,
+    ]);
   });
 
   it("completes a tool that an earlier pass left pending, in place", async () => {
