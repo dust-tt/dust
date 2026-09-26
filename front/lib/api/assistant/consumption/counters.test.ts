@@ -1,6 +1,4 @@
 import {
-  CONSUMPTION_ROOT_SUBAGENTS_FIELD,
-  CONSUMPTION_ROOT_TOTAL_FIELD,
   makeConsumptionRootAgentMessageField,
   makeConsumptionRootKey,
 } from "@app/lib/api/assistant/consumption/keys";
@@ -108,20 +106,14 @@ describe("agent-message consumption root counters", () => {
       });
     }
 
-    const [total, subagents] = await runOnRedisCache(
-      { origin: "consumption" },
-      (redis) =>
-        redis.hmGet(
-          makeConsumptionRootKey({
-            workspaceId: WORKSPACE_ID,
-            rootAgentMessageId: ROOT_AGENT_MESSAGE_ID,
-          }),
-          [CONSUMPTION_ROOT_TOTAL_FIELD, CONSUMPTION_ROOT_SUBAGENTS_FIELD]
-        )
-    );
-    expect({ total, subagents }).toEqual({
-      total: "3500000",
-      subagents: "1",
+    await expect(
+      consumptionCounters.readRootTotals({
+        workspaceId: WORKSPACE_ID,
+        rootAgentMessageId: ROOT_AGENT_MESSAGE_ID,
+      })
+    ).resolves.toEqual({
+      totalCreditAmountMicro: 3_500_000,
+      subagentCount: 1,
     });
   });
 
