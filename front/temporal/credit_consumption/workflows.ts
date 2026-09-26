@@ -14,11 +14,23 @@ const {
   applyConsumptionEventsActivity,
   billExecutionActivity,
   markConsumptionEventsProcessedActivity,
-} = proxyActivities<typeof activities>({ startToCloseTimeout: "2 minutes" });
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "2 minutes",
+  retry: { maximumAttempts: 5 },
+});
 const {
   cleanupConsumptionEventsActivity,
   recoverPendingConsumptionWorkflowsActivity,
-} = proxyActivities<typeof activities>({ startToCloseTimeout: "10 minutes" });
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minutes",
+  retry: { maximumAttempts: 3 },
+});
+const { reportConsumptionActivityFailureActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "1 minute",
+  retry: { maximumAttempts: 1 },
+});
 
 const MAX_BATCHES_BEFORE_CONTINUE_AS_NEW = 200;
 const ELASTICSEARCH_RETRY_DELAY_MS = 60_000;
@@ -53,22 +65,51 @@ export async function creditConsumptionWorkflow(
 
     let hasMore = true;
     while (hasMore) {
-      const result = await applyConsumptionEventsActivity(authType, { runKey });
+      let result: Awaited<ReturnType<typeof applyConsumptionEventsActivity>>;
+      try {
+        result = await applyConsumptionEventsActivity(authType, { runKey });
+      } catch (error) {
+        await reportConsumptionActivityFailureActivity(authType, {
+          errorMessage: error instanceof Error ? error.message : String(error),
+          operation: "apply_events",
+          runKey,
+        });
+        throw error;
+      }
       esPending = result.esPending;
       finalizedExecution ??= result.finalizedExecution;
       let billedThisBatch = false;
       if (result.finalizedExecution !== null && !billed) {
-        await billExecutionActivity(authType, {
-          ...result.finalizedExecution,
-          runKey,
-        });
+        try {
+          await billExecutionActivity(authType, {
+            ...result.finalizedExecution,
+            runKey,
+          });
+        } catch (error) {
+          await reportConsumptionActivityFailureActivity(authType, {
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
+            operation: "bill_execution",
+            runKey,
+          });
+          throw error;
+        }
         billed = true;
         billedThisBatch = true;
       }
-      await markConsumptionEventsProcessedActivity(authType, {
-        runKey,
-        eventModelIds: result.eventModelIds,
-      });
+      try {
+        await markConsumptionEventsProcessedActivity(authType, {
+          runKey,
+          eventModelIds: result.eventModelIds,
+        });
+      } catch (error) {
+        await reportConsumptionActivityFailureActivity(authType, {
+          errorMessage: error instanceof Error ? error.message : String(error),
+          operation: "mark_processed",
+          runKey,
+        });
+        throw error;
+      }
       hasMore = !result.esPending && (result.hasMore || billedThisBatch);
 
       batchCount += 1;

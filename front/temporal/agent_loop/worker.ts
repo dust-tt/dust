@@ -11,7 +11,11 @@ import {
   compactionActivity,
   compactionCleanupActivity,
 } from "@app/temporal/agent_loop/activities/compaction";
-import { initializeConsumptionExecutionActivity } from "@app/temporal/agent_loop/activities/consumption";
+import {
+  initializeConsumptionExecutionActivity,
+  recordModelCallConsumptionActivity,
+  recordToolCompletionConsumptionActivity,
+} from "@app/temporal/agent_loop/activities/consumption";
 import { checkCreditsActivity } from "@app/temporal/agent_loop/activities/credit_check";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import {
@@ -124,6 +128,8 @@ async function runAgentLoopWorkerForQueue({
       upsertOngoingAgentLoopActivity,
       deleteOngoingAgentLoopActivity,
       initializeConsumptionExecutionActivity,
+      recordModelCallConsumptionActivity,
+      recordToolCompletionConsumptionActivity,
       checkCreditsActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
