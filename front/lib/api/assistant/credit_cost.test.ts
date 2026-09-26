@@ -1,4 +1,13 @@
-import { computeAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
+import {
+  CONSUMPTION_ROOT_SUBAGENTS_FIELD,
+  CONSUMPTION_ROOT_TOTAL_FIELD,
+  makeConsumptionRootKey,
+} from "@app/lib/api/assistant/consumption/keys";
+import {
+  computeAgentMessageCredits,
+  computeAndStoreAgentMessageCredits,
+} from "@app/lib/api/assistant/credit_cost";
+import { runOnRedisCache } from "@app/lib/api/redis";
 import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import {
   intelligenceAwuFromRunUsages,
@@ -6,8 +15,13 @@ import {
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.unmock("@app/lib/api/redis");
 
 const TEST_CONTEXT_ORIGIN: UserMessageOrigin = "api";
 
@@ -336,5 +350,44 @@ describe("computeAgentMessageCredits", () => {
       contextOrigin: "system_activation",
     });
     expect(credits).toBe(0);
+  });
+});
+
+describe("computeAndStoreAgentMessageCredits", () => {
+  it("shadow-writes the message total to its root hash", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfiguration =
+      await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfiguration.sId,
+      messagesCreatedAt: [],
+    });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig: agentConfiguration,
+        runIds: [],
+      }
+    );
+
+    await computeAndStoreAgentMessageCredits(auth, {
+      agentMessageId: agentMessage.sId,
+      rootAgentMessageId: agentMessage.sId,
+    });
+
+    const [total, subagents] = await runOnRedisCache(
+      { origin: "consumption" },
+      (redis) =>
+        redis.hmGet(
+          makeConsumptionRootKey({
+            workspaceId: workspace.sId,
+            rootAgentMessageId: agentMessage.agentMessageId,
+          }),
+          [CONSUMPTION_ROOT_TOTAL_FIELD, CONSUMPTION_ROOT_SUBAGENTS_FIELD]
+        )
+    );
+    expect({ total, subagents }).toEqual({ total: "0", subagents: null });
   });
 });

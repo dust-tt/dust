@@ -1,6 +1,7 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
+import { recordAgentMessageTotal } from "@app/lib/api/assistant/consumption/counters";
 import {
   makeFairUseAwuCreditsRateLimitKeyForUser,
   makeFairUseFixedWindowBounds,
@@ -99,11 +100,17 @@ export async function computeAndStoreAgentMessageCredits(
   {
     agentMessageId,
     dustRunIds,
-  }: { agentMessageId: string; dustRunIds?: string[] }
+    rootAgentMessageId,
+  }: {
+    agentMessageId: string;
+    dustRunIds?: string[];
+    rootAgentMessageId?: string;
+  }
 ): Promise<number | null> {
   const creditContext =
     await ConversationResource.fetchAgentMessageCreditContext(auth, {
       agentMessageId,
+      rootAgentMessageId,
     });
 
   if (!creditContext) {
@@ -116,6 +123,7 @@ export async function computeAndStoreAgentMessageCredits(
 
   const {
     agentMessageModelId,
+    rootAgentMessageModelId,
     status,
     runIds,
     triggeringUserMessageOrigin,
@@ -179,6 +187,24 @@ export async function computeAndStoreAgentMessageCredits(
     agentMessageModelId,
     costCredits,
   });
+
+  if (rootAgentMessageModelId !== null) {
+    await recordAgentMessageTotal({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      rootAgentMessageId: rootAgentMessageModelId,
+      agentMessageId: agentMessageModelId,
+      totalCreditAmountMicro: roundCreditsToMicroCredits(costCredits ?? 0),
+    });
+  } else if (rootAgentMessageId) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        rootAgentMessageId,
+        agentMessageId,
+      },
+      "[Consumption] Root agent message not found for shadow write."
+    );
+  }
 
   // `costCredits` is the message-level running total (recomputed from all
   // accumulated runIds + actions), and a message can be finalized multiple
