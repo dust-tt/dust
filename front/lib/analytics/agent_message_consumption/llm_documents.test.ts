@@ -1,5 +1,5 @@
 import { buildLlmConsumptionDocuments } from "@app/lib/analytics/agent_message_consumption/llm_documents";
-import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
+import { loadLegacySettledConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
@@ -105,7 +105,7 @@ describe("buildLlmConsumptionDocuments", () => {
       pendingToolItems: [],
     });
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(auth, {
+    const input = await loadLegacySettledConsumptionAnalyticsInput(auth, {
       agentMessageId: agentMessage.sId,
     });
     if (!input) {

@@ -123,8 +123,10 @@ export type RunningAgentMessageContext = {
 
 export type AgentMessageConsumptionAnalyticsContext = {
   agentMessage: {
+    agentMessageId: string;
     agentConfigurationId: string;
     agentConfigurationVersion: number;
+    createdAt: Date;
     completedAt: Date | null;
     costCredits: number | null;
     agentMessageModelId: ModelId;
@@ -922,11 +924,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    */
   static async fetchAgentMessageConsumptionAnalyticsContext(
     auth: Authenticator,
-    { agentMessageId }: { agentMessageId: string }
+    identity:
+      | { agentMessageId: string; agentMessageModelId?: never }
+      | { agentMessageId?: never; agentMessageModelId: ModelId }
   ): Promise<AgentMessageConsumptionAnalyticsContext | null> {
     const workspaceId = auth.getNonNullableWorkspace().id;
     const messageRow = await MessageModel.findOne({
-      where: { sId: agentMessageId, workspaceId },
+      where: {
+        workspaceId,
+        ...(identity.agentMessageId
+          ? { sId: identity.agentMessageId }
+          : { agentMessageId: identity.agentMessageModelId }),
+      },
       include: [
         { model: AgentMessageModel, as: "agentMessage", required: true },
         { model: ConversationModel, as: "conversation", required: true },
@@ -969,8 +978,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return {
       agentMessage: {
+        agentMessageId: messageRow.sId,
         agentConfigurationId: agentMessage.agentConfigurationId,
         agentConfigurationVersion: agentMessage.agentConfigurationVersion,
+        createdAt: agentMessage.createdAt,
         completedAt: agentMessage.completedAt,
         costCredits: agentMessage.costCredits,
         agentMessageModelId: agentMessage.id,

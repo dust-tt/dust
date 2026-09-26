@@ -3,15 +3,15 @@ import {
   modelForUsage,
   reconciledCreditMicroForItem,
 } from "@app/lib/analytics/agent_message_consumption/document_common";
-import type {
-  AgentMessageConsumptionAnalyticsInput,
-  BilledRunUsage,
-} from "@app/lib/analytics/agent_message_consumption/load";
 import type { MessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import type {
   AgentMessageConsumptionItemResource,
   AgentMessageModelConsumptionItemResource,
 } from "@app/lib/resources/agent_message_consumption_item_resource";
+import type {
+  AgentMessageConsumptionAnalyticsInput,
+  BilledRunUsage,
+} from "@app/types/assistant/agent_message_consumption_analytics";
 import type {
   AgentMessageConsumptionAnalyticsLlmData,
   AgentMessageConsumptionAnalyticsLlmGrossCreditMicro,
