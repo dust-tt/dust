@@ -41,16 +41,13 @@ export function formatRowTime(date: Date, now: Date = new Date()): string {
     return timeOfDay(date);
   }
 
-  const yesterday = new Date(now.getTime() - DAY_MS);
-  if (isSameDay(date, yesterday)) {
-    return `Yesterday at ${timeOfDay(date)}`;
-  }
-
-  // A weekday still places a row inside the past week; beyond it, the name
-  // comes back around and only a date says which one it was.
+  // A weekday still places a row inside the past week — yesterday included,
+  // since its name says where it was as well as the word did, and the column
+  // reads the same all the way down. Beyond the week the name comes back
+  // around and only a date says which one it was.
   const day =
     now.getTime() - date.getTime() < 7 * DAY_MS
-      ? date.toLocaleDateString("en-US", { weekday: "long" })
+      ? date.toLocaleDateString("en-US", { weekday: "short" })
       : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   return `${day}, ${timeOfDay(date)}`;

@@ -4,6 +4,8 @@ import type {
   Conversation,
   ConversationItem,
   ConversationMessage,
+  ConversationSpeaker,
+  ConversationWorkState,
 } from "./types";
 import { mockUsers } from "./users";
 
@@ -128,6 +130,171 @@ function getRandomSpaceId(): string {
   return mockSpaces[randomIndex].id;
 }
 
+/** How much of a recent week's work is your own rather than a pod's. */
+const PERSONAL_CONVERSATION_ODDS = 0.5;
+
+/**
+ * Where a recent conversation happened. Half of a week is work of your own,
+ * which is also the half that survives every reader: a pod conversation only
+ * reaches the Inbox of the people in that pod, so a week made of nothing but
+ * pods leaves most Inboxes with a handful of rows in them.
+ */
+function pickRecentSpaceId(): string | undefined {
+  return Math.random() < PERSONAL_CONVERSATION_ODDS
+    ? undefined
+    : getRandomSpaceId();
+}
+
+type WorkStateOdds = {
+  thinking: number;
+  pending: number;
+  unread: number;
+};
+
+// An agent only works and waits on work you started recently, so the odds of
+// thinking and pending fall away as a conversation ages. Whatever is left over
+// is read.
+const TODAY_WORK_STATE_ODDS: WorkStateOdds = {
+  thinking: 0.2,
+  pending: 0.2,
+  unread: 0.4,
+};
+
+const RECENT_WORK_STATE_ODDS: WorkStateOdds = {
+  thinking: 0.05,
+  pending: 0.1,
+  unread: 0.4,
+};
+
+/** A state and, if anything is waiting, how much of it. */
+function withWorkState(
+  workState: ConversationWorkState
+): Pick<Conversation, "workState" | "unreadCount"> {
+  return workState === "unread"
+    ? { workState, unreadCount: Math.floor(Math.random() * 8) + 1 }
+    : { workState };
+}
+
+/**
+ * Where a conversation stands, drawn once at generation time. The unread count
+ * is drawn with it so a row keeps the same number for as long as it is listed.
+ */
+function pickWorkState(
+  odds: WorkStateOdds
+): Pick<Conversation, "workState" | "unreadCount"> {
+  const roll = Math.random();
+  if (roll < odds.thinking) {
+    return withWorkState("thinking");
+  }
+  if (roll < odds.thinking + odds.pending) {
+    return withWorkState("pending");
+  }
+  if (roll < odds.thinking + odds.pending + odds.unread) {
+    return withWorkState("unread");
+  }
+  return {};
+}
+
+/**
+ * The conversations you started yourself belong to no pod, so nothing filters
+ * them out of the Inbox — which makes them the one place a state is certain to
+ * be seen. They take one each, in order, so the draws above cannot leave the
+ * Inbox without a state to show.
+ */
+const MY_CONVERSATION_WORK_STATES: ConversationWorkState[] = [
+  "pending",
+  "unread",
+  "thinking",
+];
+
+/**
+ * How often a conversation with other members in it ends on one of them rather
+ * than on the agent's answer.
+ */
+const MEMBER_LAST_WORD_ODDS = 0.5;
+
+/**
+ * Whose turn a conversation stopped on, which follows from where it stands.
+ * Work you run with an agent mostly ends on the agent, since answering is what
+ * it is there for — but one still at work has not answered yet, so whoever
+ * asked holds the floor, and a room with other members in it has their last
+ * words in it too. A conversation with no agent can only end on a person.
+ */
+function pickLastSpeaker({
+  userParticipants,
+  agentParticipants,
+  workState,
+}: {
+  userParticipants: string[];
+  agentParticipants: string[];
+  workState?: ConversationWorkState;
+}): ConversationSpeaker | undefined {
+  const [agentId] = agentParticipants;
+  const memberId =
+    userParticipants[Math.floor(Math.random() * userParticipants.length)];
+  const member: ConversationSpeaker | undefined = memberId
+    ? { id: memberId, type: "user" }
+    : undefined;
+
+  if (!agentId) {
+    return member;
+  }
+  if (workState === "thinking") {
+    return member ?? { id: agentId, type: "agent" };
+  }
+  // A conversation waiting on you is the agent having just asked, so it is the
+  // one place another member cannot have spoken last.
+  if (
+    workState !== "pending" &&
+    userParticipants.length > 1 &&
+    Math.random() < MEMBER_LAST_WORD_ODDS
+  ) {
+    return member;
+  }
+  return { id: agentId, type: "agent" };
+}
+
+/**
+ * When a thread last moved: the last thing said in it, whatever the thread
+ * ends on. A conversation can close on an agent still typing, which is not
+ * something that has been said yet.
+ */
+function getLastActivityAt(items: ConversationItem[], fallback: Date): Date {
+  for (let index = items.length - 1; index >= 0; index--) {
+    const item = items[index];
+    if (item.kind === "message") {
+      return item.timestamp;
+    }
+    if (item.kind === "pendingValidation") {
+      return item.agentMessage.timestamp;
+    }
+  }
+  return fallback;
+}
+
+/**
+ * Who spoke last in a conversation. The messages are the truth wherever they
+ * are written out; the rest of the mocks say it themselves.
+ */
+export function getLastSpeaker(
+  conversation: Conversation
+): ConversationSpeaker | undefined {
+  const items = conversation.messages ?? [];
+
+  for (let index = items.length - 1; index >= 0; index--) {
+    const item = items[index];
+    if (item.kind === "message") {
+      return { id: item.ownerId, type: item.ownerType };
+    }
+    if (item.kind === "pendingValidation") {
+      const { ownerId, ownerType } = item.agentMessage;
+      return { id: ownerId, type: ownerType };
+    }
+  }
+
+  return conversation.lastSpeaker;
+}
+
 // Realistic conversation titles
 const conversationTitles = [
   "Project Kickoff Meeting",
@@ -248,6 +415,7 @@ for (let i = 0; i < 10; i++) {
   );
   const title =
     conversationTitles[Math.floor(Math.random() * conversationTitles.length)];
+  const state = pickWorkState(TODAY_WORK_STATE_ODDS);
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
     title,
@@ -256,7 +424,13 @@ for (let i = 0; i < 10; i++) {
     userParticipants,
     agentParticipants,
     description: generateDescription(title),
-    spaceId: getRandomSpaceId(),
+    spaceId: pickRecentSpaceId(),
+    ...state,
+    lastSpeaker: pickLastSpeaker({
+      userParticipants,
+      agentParticipants,
+      workState: state.workState,
+    }),
   });
 }
 
@@ -271,6 +445,9 @@ for (let i = 0; i < myConversationsCount; i++) {
   );
   const title =
     conversationTitles[Math.floor(Math.random() * conversationTitles.length)];
+  const state = withWorkState(
+    MY_CONVERSATION_WORK_STATES[i % MY_CONVERSATION_WORK_STATES.length]
+  );
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
     title,
@@ -280,6 +457,12 @@ for (let i = 0; i < myConversationsCount; i++) {
     agentParticipants,
     description: generateDescription(title),
     // No spaceId - these are "My conversations"
+    ...state,
+    lastSpeaker: pickLastSpeaker({
+      userParticipants,
+      agentParticipants,
+      workState: state.workState,
+    }),
   });
 }
 
@@ -294,6 +477,7 @@ for (let i = 0; i < 15; i++) {
   );
   const title =
     conversationTitles[Math.floor(Math.random() * conversationTitles.length)];
+  const state = pickWorkState(RECENT_WORK_STATE_ODDS);
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
     title,
@@ -305,7 +489,13 @@ for (let i = 0; i < 15; i++) {
     userParticipants,
     agentParticipants,
     description: generateDescription(title),
-    spaceId: getRandomSpaceId(),
+    spaceId: pickRecentSpaceId(),
+    ...state,
+    lastSpeaker: pickLastSpeaker({
+      userParticipants,
+      agentParticipants,
+      workState: state.workState,
+    }),
   });
 }
 
@@ -321,6 +511,7 @@ for (let i = 0; i < 20; i++) {
   );
   const title =
     conversationTitles[Math.floor(Math.random() * conversationTitles.length)];
+  const state = pickWorkState(RECENT_WORK_STATE_ODDS);
   mockConversations.push({
     id: `conv-${mockConversations.length + 1}`,
     title,
@@ -332,7 +523,13 @@ for (let i = 0; i < 20; i++) {
     userParticipants,
     agentParticipants,
     description: generateDescription(title),
-    spaceId: getRandomSpaceId(),
+    spaceId: pickRecentSpaceId(),
+    ...state,
+    lastSpeaker: pickLastSpeaker({
+      userParticipants,
+      agentParticipants,
+      workState: state.workState,
+    }),
   });
 }
 
@@ -360,6 +557,7 @@ for (let i = 0; i < 30; i++) {
     agentParticipants,
     description: generateDescription(title),
     spaceId: getRandomSpaceId(),
+    lastSpeaker: pickLastSpeaker({ userParticipants, agentParticipants }),
   });
 }
 
@@ -387,6 +585,7 @@ for (let i = 0; i < 25; i++) {
     agentParticipants,
     description: generateDescription(title),
     spaceId: getRandomSpaceId(),
+    lastSpeaker: pickLastSpeaker({ userParticipants, agentParticipants }),
   });
 }
 
@@ -498,7 +697,6 @@ export function createConversationsWithMessages(
   locutorId: string
 ): Conversation[] {
   const now = new Date();
-  const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
   // Get some users and agents for the conversations
@@ -606,8 +804,10 @@ I packaged everything from the search redesign review into three files:
 I also dropped the annotated mockup :file[top-nav-search.png]{type=image id=topnav-mockup} so you can reference it while reviewing. The full rationale lives in the proposal.
 `;
 
-  // Conversation 1: Story-like assets
-  const conv1Start = new Date(twoHoursAgo.getTime() - 3 * 60 * 60 * 1000);
+  // Conversation 1: Story-like assets. Its agent is still typing at the end of
+  // the thread, so the whole exchange sits in the last half hour: work in
+  // flight belongs at the top of the Inbox, not halfway down this morning.
+  const conv1Start = new Date(now.getTime() - 35 * 60 * 1000);
   const conv1Messages: ConversationItem[] = [
     { kind: "section", id: "section-monday", label: "Monday" },
     {
@@ -1059,22 +1259,17 @@ I also dropped the annotated mockup :file[top-nav-search.png]{type=image id=topn
     id: "conv-with-msgs-1",
     title: "Finale Rewrite Thread",
     createdAt: conv1Start,
-    updatedAt: (() => {
-      const last = conv1Messages[conv1Messages.length - 1];
-      if (last.kind === "pendingValidation") {
-        return last.agentMessage.timestamp;
-      }
-      if (last.kind === "message") {
-        return last.timestamp;
-      }
-      return conv1Start;
-    })(),
+    updatedAt: getLastActivityAt(conv1Messages, conv1Start),
     userParticipants: [locutorId, user1.id, user2.id],
     agentParticipants: [agent1.id],
     messages: conv1Messages,
     description:
       "Collaborative scene pass with attachments, citations, and action cards",
-    spaceId: getRandomSpaceId(),
+    // Work of your own rather than a pod's, so the one thread that shows an
+    // agent mid-answer reaches every Inbox instead of only the Inboxes of
+    // whoever happens to be in the pod it was drawn into.
+    // The thread ends on an active indicator, so the agent is still at it.
+    workState: "thinking",
   };
 
   // Conversation 2: Product Feature Review
@@ -1284,22 +1479,16 @@ I also dropped the annotated mockup :file[top-nav-search.png]{type=image id=topn
     id: "conv-with-msgs-2",
     title: "Product Feature Review",
     createdAt: conv2Start,
-    updatedAt: (() => {
-      const last = conv2Messages[conv2Messages.length - 1];
-      if (last.kind === "pendingValidation") {
-        return last.agentMessage.timestamp;
-      }
-      if (last.kind === "message") {
-        return last.timestamp;
-      }
-      return conv2Start;
-    })(),
+    updatedAt: getLastActivityAt(conv2Messages, conv2Start),
     userParticipants: [locutorId, user3.id],
     agentParticipants: [agent2.id],
     messages: conv2Messages,
     description:
       "Reviewing user feedback on the new search feature and planning improvements",
     spaceId: getRandomSpaceId(),
+    // It ends on a completed agent answer nobody has read yet.
+    workState: "unread",
+    unreadCount: 2,
   };
 
   return [conversation1, conversation2];

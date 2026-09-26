@@ -4,7 +4,6 @@ import {
   Bell01,
   Breadcrumbs,
   Button,
-  CheckDone01,
   ChevronDown,
   Clock,
   Cube01,
@@ -31,6 +30,7 @@ import {
   Icon,
   Inbox01,
   IntersectDust,
+  LayersThree01,
   Lightbulb04,
   Link01,
   LogOut01,
@@ -40,13 +40,11 @@ import {
   MessageQuestionCircle,
   NavigationList,
   NavigationListCollapsibleSection,
-  NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
   NavTabPill,
   NavTabPillList,
   NavTabPillTrigger,
-  Planet,
   Plus,
   PopoverContent,
   PopoverRoot,
@@ -60,13 +58,11 @@ import {
   ShapesPlus,
   SlackLogo,
   Star01,
-  Trash01,
   User01,
   Users01,
   UserSquare,
   XClose,
   Zap,
-  ZapOff,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
 import {
@@ -134,7 +130,6 @@ import {
   type DataSource,
   type DataSourceFileType,
   DEFAULT_POD_NOTIFICATION_CONDITION,
-  getAgentById,
   getMembersBySpaceId,
   getRandomAgents,
   getRandomSpaces,
@@ -191,27 +186,6 @@ type PodTabsState = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function getRandomParticipants(conversation: Conversation) {
-  const all = [
-    ...conversation.userParticipants.map((id) => ({
-      type: "user" as const,
-      data: getUserById(id),
-    })),
-    ...conversation.agentParticipants.map((id) => ({
-      type: "agent" as const,
-      data: getAgentById(id),
-    })),
-  ].filter((p) => p.data != null) as (
-    | { type: "user"; data: User }
-    | { type: "agent"; data: Agent }
-  )[];
-  const shuffled = [...all].sort(() => Math.random() - 0.5);
-  return shuffled.slice(
-    0,
-    Math.min(Math.max(1, Math.floor(Math.random() * 6) + 1), shuffled.length)
-  );
-}
-
 function getSpaceActivity(space: Space) {
   const c = space.id.charCodeAt(space.id.length - 1);
   const count = c % 3 === 0 ? (c % 9) + 1 : undefined;
@@ -220,7 +194,7 @@ function getSpaceActivity(space: Space) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-function Inbox() {
+function NewNavigation() {
   // ── Bootstrap state ───────────────────────────────────────────────────────
   const [user, setUser] = useState<User | null>(null);
   const [greeting, setGreeting] = useState<string>("");
@@ -374,9 +348,6 @@ function Inbox() {
   const [starredSpaceIds, setStarredSpaceIds] = useState<Set<string>>(
     new Set()
   );
-  const [hideTriggeredConversations, setHideTriggeredConversations] =
-    useState(false);
-
   // ── Space management state ────────────────────────────────────────────────
   const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
     new Map()
@@ -437,45 +408,6 @@ function Inbox() {
       return conv.updatedAt >= twoDaysAgo;
     }).length;
   }, [allConversations]);
-
-  const filteredConversations = useMemo(() => {
-    if (!searchText.trim()) return allConversations;
-    const lower = searchText.toLowerCase();
-    return allConversations.filter((c) =>
-      c.title.toLowerCase().includes(lower)
-    );
-  }, [searchText, allConversations]);
-
-  const recentConversations = useMemo(() => {
-    return [...filteredConversations]
-      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-      .slice(0, 30);
-  }, [filteredConversations]);
-
-  const groupedConversations = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const lastWeek = new Date(today);
-    lastWeek.setDate(today.getDate() - 7);
-    const lastMonth = new Date(today);
-    lastMonth.setDate(today.getDate() - 30);
-    const groups = {
-      today: [] as Conversation[],
-      yesterday: [] as Conversation[],
-      lastWeek: [] as Conversation[],
-      lastMonth: [] as Conversation[],
-    };
-    recentConversations.forEach((c) => {
-      if (c.updatedAt >= today) groups.today.push(c);
-      else if (c.updatedAt >= yesterday) groups.yesterday.push(c);
-      else if (c.updatedAt >= lastWeek) groups.lastWeek.push(c);
-      else if (c.updatedAt >= lastMonth) groups.lastMonth.push(c);
-    });
-    return groups;
-  }, [recentConversations]);
 
   const sortedSpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {
@@ -1030,84 +962,6 @@ function Inbox() {
     );
   };
 
-  const getConversationMoreMenu = (conversation: Conversation) => {
-    const participants = getRandomParticipants(conversation);
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <NavigationListItemAction />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem
-            label="Rename"
-            icon={Edit04}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          />
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger
-              icon={UserSquare}
-              label="Participant list"
-            />
-            <DropdownMenuPortal>
-              <DropdownMenuSubContent>
-                {participants.length > 0 ? (
-                  participants.map((p) => (
-                    <DropdownMenuItem
-                      key={
-                        p.type === "user"
-                          ? `user-${p.data.id}`
-                          : `agent-${p.data.id}`
-                      }
-                      label={p.type === "user" ? p.data.fullName : p.data.name}
-                      icon={
-                        p.type === "user" ? (
-                          <Avatar
-                            size="xxs"
-                            name={p.data.fullName}
-                            visual={p.data.portrait}
-                            isRounded
-                          />
-                        ) : (
-                          <Avatar
-                            size="xxs"
-                            name={p.data.name}
-                            emoji={p.data.emoji}
-                            backgroundColor={p.data.backgroundColor}
-                            isRounded={false}
-                          />
-                        )
-                      }
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    />
-                  ))
-                ) : (
-                  <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-                    No participants
-                  </div>
-                )}
-              </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
-          <DropdownMenuItem
-            label="Delete"
-            icon={Trash01}
-            variant="warning"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          />
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
-
   const renderPodNavItem = (space: Space) => {
     const isStarred = starredSpaceIds.has(space.id);
     const isRestricted = space.id.charCodeAt(space.id.length - 1) % 2 === 0;
@@ -1299,6 +1153,7 @@ function Inbox() {
           requests={requests}
           triggers={triggers}
           currentUserId={user.id}
+          showComposer
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
           }
@@ -1934,8 +1789,8 @@ function Inbox() {
         <NavTabPillTrigger value="chat" icon={IntersectDust}>
           Work
         </NavTabPillTrigger>
-        <NavTabPillTrigger value="build" icon={Planet}>
-          Spaces
+        <NavTabPillTrigger value="build" icon={LayersThree01}>
+          Build
         </NavTabPillTrigger>
         <NavTabPillTrigger value="admin" icon={Settings01}>
           Admin
@@ -2002,6 +1857,26 @@ function Inbox() {
                   setP4View(null);
                 }}
               />
+              <NavigationListItem
+                label="Conversations"
+                icon={MessageChatSquare}
+                selected={p2View.kind === "conversations"}
+                onClick={() => {
+                  setP2View({ kind: "conversations" });
+                  setP3View(null);
+                  setP4View(null);
+                }}
+              />
+              <NavigationListItem
+                label="Automated work"
+                icon={Zap}
+                selected={p2View.kind === "automations"}
+                onClick={() => {
+                  setP2View({ kind: "automations" });
+                  setP3View(null);
+                  setP4View(null);
+                }}
+              />
             </NavigationList>
 
             {starredSpaces.length > 0 && (
@@ -2010,7 +1885,6 @@ function Inbox() {
                   label="Starred"
                   type="collapse"
                   defaultOpen={true}
-                  visibleItems={5}
                 >
                   {starredSpaces.map(renderPodNavItem)}
                 </NavigationListCollapsibleSection>
@@ -2022,7 +1896,6 @@ function Inbox() {
                 label="Pods"
                 type="collapse"
                 defaultOpen={true}
-                visibleItems={4}
                 action={
                   <>
                     {unstarredSpaces.length > 0 && (
@@ -2116,149 +1989,6 @@ function Inbox() {
                   />
                 )}
               </NavigationListCollapsibleSection>
-            </NavigationList>
-
-            <NavigationList className="mx-sidebar-side-spacing mt-2">
-              {(recentConversations.length > 0 || !searchText.trim()) && (
-                <NavigationListCollapsibleSection
-                  label="Conversations"
-                  type="collapse"
-                  defaultOpen={true}
-                  action={
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xmini"
-                          icon={DotsHorizontal}
-                          variant="ghost"
-                          aria-label="Conversations options"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuLabel label="Conversations" />
-                        <DropdownMenuItem
-                          label={
-                            hideTriggeredConversations
-                              ? "Show triggered"
-                              : "Hide triggered"
-                          }
-                          icon={hideTriggeredConversations ? Zap : ZapOff}
-                          onClick={() =>
-                            setHideTriggeredConversations(
-                              !hideTriggeredConversations
-                            )
-                          }
-                        />
-                        <DropdownMenuItem
-                          label="Edit history"
-                          icon={CheckDone01}
-                        />
-                        <DropdownMenuItem
-                          label="Clear history"
-                          variant="warning"
-                          icon={Trash01}
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  }
-                >
-                  {groupedConversations.today.map((c) => (
-                    <NavigationListItem
-                      key={c.id}
-                      label={c.title}
-                      selected={
-                        p2View.kind === "conversation" &&
-                        p2View.conversationId === c.id
-                      }
-                      moreMenu={getConversationMoreMenu(c)}
-                      onClick={() => {
-                        setP2View({
-                          kind: "conversation",
-                          conversationId: c.id,
-                        });
-                        setP3View(null);
-                        setP4View(null);
-                      }}
-                    />
-                  ))}
-                  {groupedConversations.yesterday.length > 0 && (
-                    <>
-                      <NavigationListCompactLabel label="Yesterday" isSticky />
-                      {groupedConversations.yesterday.map((c) => (
-                        <NavigationListItem
-                          key={c.id}
-                          label={c.title}
-                          selected={
-                            p2View.kind === "conversation" &&
-                            p2View.conversationId === c.id
-                          }
-                          moreMenu={getConversationMoreMenu(c)}
-                          onClick={() => {
-                            setP2View({
-                              kind: "conversation",
-                              conversationId: c.id,
-                            });
-                            setP3View(null);
-                            setP4View(null);
-                          }}
-                        />
-                      ))}
-                    </>
-                  )}
-                  {groupedConversations.lastWeek.length > 0 && (
-                    <>
-                      <NavigationListCompactLabel label="Last week" isSticky />
-                      {groupedConversations.lastWeek.map((c) => (
-                        <NavigationListItem
-                          key={c.id}
-                          label={c.title}
-                          selected={
-                            p2View.kind === "conversation" &&
-                            p2View.conversationId === c.id
-                          }
-                          moreMenu={getConversationMoreMenu(c)}
-                          onClick={() => {
-                            setP2View({
-                              kind: "conversation",
-                              conversationId: c.id,
-                            });
-                            setP3View(null);
-                            setP4View(null);
-                          }}
-                        />
-                      ))}
-                    </>
-                  )}
-                  {groupedConversations.lastMonth.length > 0 && (
-                    <>
-                      <NavigationListCompactLabel label="Last month" />
-                      {groupedConversations.lastMonth.map((c) => (
-                        <NavigationListItem
-                          key={c.id}
-                          label={c.title}
-                          selected={
-                            p2View.kind === "conversation" &&
-                            p2View.conversationId === c.id
-                          }
-                          moreMenu={getConversationMoreMenu(c)}
-                          onClick={() => {
-                            setP2View({
-                              kind: "conversation",
-                              conversationId: c.id,
-                            });
-                            setP3View(null);
-                            setP4View(null);
-                          }}
-                        />
-                      ))}
-                    </>
-                  )}
-                </NavigationListCollapsibleSection>
-              )}
             </NavigationList>
           </ScrollArea>
         </div>
@@ -2478,4 +2208,4 @@ function Inbox() {
   );
 }
 
-export default Inbox;
+export default NewNavigation;

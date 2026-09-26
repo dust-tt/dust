@@ -1,6 +1,8 @@
-import { AnimatedText, Avatar, cn, Icon, ListItem } from "@dust-tt/sparkle";
+import { AnimatedText, cn, Icon, ListItem } from "@dust-tt/sparkle";
 import React, { type ReactNode } from "react";
 
+import type { RowBadge } from "../data/rowBadges";
+import { AvatarCounter } from "./AvatarCounter";
 import { type MenuItem, useRowContextMenu } from "./RowContextMenu";
 
 export interface ConversationListItemProps {
@@ -27,17 +29,44 @@ export interface ConversationListItemProps {
     portrait?: string;
   };
   /**
+   * The name beside the title, for a row that goes by someone other than its
+   * creator — whoever spoke last, say, or the agent behind an automated run.
+   * Rows that say nothing about it are still their creator's.
+   */
+  byline?: string;
+  /**
    * Leading visual rendered instead of the avatar, for an avatar that carries a
-   * badge or an overlay. Pass `creator` alongside it to keep the name by the title.
+   * badge or an overlay. Pass `creator` or `byline` alongside it to keep the
+   * name by the title.
    */
   leadingVisual?: ReactNode;
+  /**
+   * Marks the avatar with what the list this row sits in leaves open — which
+   * kind of work it is, in a list that mixes them. Rows that need no
+   * explaining go without.
+   */
+  badge?: RowBadge;
+  /**
+   * Breathes the leading avatar, for a conversation something is still
+   * happening in. A `leadingVisual` carries its own busy state instead.
+   */
+  busy?: boolean;
   /** Icon shown before the title, for lists whose rows are labelled by a category. */
   titleIcon?: React.ComponentType<{ className?: string }>;
   /**
-   * Content flowing at the start of the description, for a label the whole row
-   * answers to — a chip saying which list it came from, say.
+   * A lead-in run into the start of the description, in bold, for a row whose
+   * description needs placing — "In Privacy" on a pod conversation, "Request"
+   * on a request. The colon and the space after it are the row's, not the
+   * caller's.
    */
-  label?: ReactNode;
+  descriptionPrefix?: ReactNode;
+  /**
+   * A glyph run into the description, for a row whose description is a step
+   * being taken rather than something that was said — the tool the step reaches
+   * for. It comes after the descriptionPrefix, so the sentence still opens with
+   * what places the row.
+   */
+  descriptionIcon?: React.ComponentType<{ className?: string }>;
   /** Formatted timestamp displayed on the right of the title. */
   time?: string;
   /**
@@ -67,20 +96,32 @@ export interface ConversationListItemProps {
  * leadingVisual, with an optional titleIcon before the title and an optional
  * replySection for reply/unread/mention counts. The timestamp gives way to a
  * trailing node when the right side carries its own state and actions instead,
- * and a label flows into the description when the row has to be labelled as a
- * whole. Rows given menuItems answer to a right-click with them. Use it to
- * render an inbox or activity feed of conversations, grouping rows inside
+ * and a descriptionPrefix opens the description when what places the row — the
+ * pod it happened in, the kind of work it is — belongs in the sentence rather
+ * than beside it. Rows given menuItems answer to a right-click with them. Use
+ * it to render an inbox or activity feed of conversations, grouping rows inside
  * ListGroup so dividers and spacing stay consistent.
  * @summary Conversation summary row for inbox lists.
+ */
+/**
+ * @cc [owner:Duncid,label:product] description-prefix-inline
+ * `descriptionPrefix` MUST be drawn inside the description line, as a bold
+ * lead-in the description continues from on the same line and under the same
+ * truncation. It MUST NOT become a chip, a badge or a line of its own: what it
+ * says belongs to the sentence, not beside it.
  */
 export function ConversationListItem({
   conversation,
   unread,
   avatar,
   creator,
+  byline,
   leadingVisual,
+  badge,
+  busy = false,
   titleIcon,
-  label,
+  descriptionPrefix,
+  descriptionIcon,
   time,
   trailing,
   replySection,
@@ -93,6 +134,7 @@ export function ConversationListItem({
   const [isFocusVisible, setIsFocusVisible] = React.useState(false);
   const hasPlayedFocusForCurrentTriggerRef = React.useRef(false);
   const { onContextMenu, contextMenu } = useRowContextMenu(menuItems);
+  const rowByline = byline ?? creator?.fullName;
 
   React.useEffect(() => {
     if (!showFocus) {
@@ -132,20 +174,26 @@ export function ConversationListItem({
         {leadingVisual ? (
           leadingVisual
         ) : creator ? (
-          <Avatar
+          <AvatarCounter
             name={creator.fullName}
             visual={creator.portrait}
             size="sm"
             isRounded={true}
+            busy={busy}
+            badgeIcon={badge?.icon}
+            badgeLabel={badge?.label}
           />
         ) : avatar ? (
-          <Avatar
+          <AvatarCounter
             name={avatar.name}
             emoji={avatar.emoji}
             visual={avatar.visual}
             size="sm"
             isRounded={avatar.isRounded}
             backgroundColor={avatar.backgroundColor}
+            busy={busy}
+            badgeIcon={badge?.icon}
+            badgeLabel={badge?.label}
           />
         ) : null}
         <div className="mb-0.5 flex min-w-0 grow flex-col gap-1">
@@ -163,9 +211,9 @@ export function ConversationListItem({
                   conversation.title
                 )}
               </span>
-              {creator && (
+              {rowByline && (
                 <span className="hidden shrink-0 text-muted-foreground sm:inline">
-                  {creator.fullName}
+                  {rowByline}
                 </span>
               )}
             </div>
@@ -176,9 +224,21 @@ export function ConversationListItem({
               )}
             </div>
           </div>
-          {(label || conversation.description) && (
+          {(descriptionPrefix || conversation.description) && (
             <div className="line-clamp-2 text-sm font-normal text-muted-foreground">
-              {label && <span className="mr-1 align-middle">{label}</span>}
+              {descriptionPrefix && (
+                <span className="heading-sm">{descriptionPrefix}: </span>
+              )}
+              {descriptionIcon && (
+                <Icon
+                  visual={descriptionIcon}
+                  size="xs"
+                  // A 16px glyph beside 14px text hangs a hair low on the
+                  // baseline it is centred against, so it is lifted back onto
+                  // the line the words sit on.
+                  className="mr-1 inline-block -translate-y-px align-middle text-faint"
+                />
+              )}
               {textAnimation === "streaming" ? (
                 <AnimatedText variant="muted">
                   {conversation.description}
