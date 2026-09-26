@@ -1,7 +1,7 @@
 import {
   loadConsumptionAnalyticsInput,
   loadLegacySettledConsumptionAnalyticsInput,
-} from "@app/lib/analytics/agent_message_consumption/load";
+} from "@app/lib/api/analytics/agent_message_consumption/load";
 import type { Authenticator } from "@app/lib/auth";
 import {
   USAGE_TYPE_FREE,
@@ -48,7 +48,7 @@ async function createAgenticMessage({
   });
   const conversation = await ConversationResource.fetchById(
     auth,
-    conversationType.sId
+    conversationType.sId,
   );
   if (!conversation) {
     throw new Error("Conversation was not created");
@@ -176,7 +176,7 @@ async function setupSettledMessage({
         id: agentMessageModelId,
         workspaceId: workspace.id,
       },
-    }
+    },
   );
   return {
     agent,
@@ -201,7 +201,7 @@ describe("loadConsumptionAnalyticsInput", () => {
           id: context.agentMessageModelId,
           workspaceId: context.workspace.id,
         },
-      }
+      },
     );
     await AgentMessageConsumptionItemResource.insertConsumptionRows(
       context.auth,
@@ -221,7 +221,7 @@ describe("loadConsumptionAnalyticsInput", () => {
         ],
         toolCallRows: [],
         toolResultRows: [],
-      }
+      },
     );
 
     const input = await loadConsumptionAnalyticsInput(context.auth, {
@@ -243,7 +243,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
 
     const input = await loadLegacySettledConsumptionAnalyticsInput(
       authenticator,
-      { agentMessageId: "missing-agent-message" }
+      { agentMessageId: "missing-agent-message" },
     );
 
     expect(input).toBeNull();
@@ -254,7 +254,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
 
     const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
-      { agentMessageId: context.agentMessage.sId }
+      { agentMessageId: context.agentMessage.sId },
     );
 
     expect(input).toMatchObject({
@@ -289,7 +289,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
     const testContext = await createResourceTest({ role: "admin" });
     const group = await GroupFactory.regularManual(
       testContext.workspace,
-      "Analytics group"
+      "Analytics group",
     );
     await GroupFactory.withMembers(testContext.authenticator, group, [
       testContext.authenticator.getNonNullableUser(),
@@ -301,7 +301,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
 
     const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
-      { agentMessageId: context.agentMessage.sId }
+      { agentMessageId: context.agentMessage.sId },
     );
 
     expect(input?.user).toEqual({
@@ -391,7 +391,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
       agentName: "Child agent",
     });
     await parent.conversation.updateVisibilityToDeleted(
-      testContext.authenticator
+      testContext.authenticator,
     );
 
     const input = await loadLegacySettledConsumptionAnalyticsInput(child.auth, {
@@ -422,7 +422,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
     });
     assert(
       child.agentMessage.agentMessageId,
-      "Hidden helper agent message was not created"
+      "Hidden helper agent message was not created",
     );
     await AgentMessageModel.update(
       {
@@ -434,7 +434,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
           id: child.agentMessage.agentMessageId,
           workspaceId: child.workspace.id,
         },
-      }
+      },
     );
 
     const input = await loadLegacySettledConsumptionAnalyticsInput(child.auth, {
@@ -460,7 +460,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
 
     const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
-      { agentMessageId: context.agentMessage.sId }
+      { agentMessageId: context.agentMessage.sId },
     );
 
     expect(input?.usages).toEqual([
@@ -473,7 +473,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
 
     const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
-      { agentMessageId: context.agentMessage.sId }
+      { agentMessageId: context.agentMessage.sId },
     );
 
     expect(input?.user).toBeNull();
@@ -484,7 +484,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
 
     const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
-      { agentMessageId: context.agentMessage.sId }
+      { agentMessageId: context.agentMessage.sId },
     );
 
     expect(input).toBeNull();
@@ -496,7 +496,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
 
     const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
-      { agentMessageId: context.agentMessage.sId }
+      { agentMessageId: context.agentMessage.sId },
     );
 
     expect(input).toMatchObject({
@@ -511,7 +511,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
     await expect(
       loadLegacySettledConsumptionAnalyticsInput(context.auth, {
         agentMessageId: context.agentMessage.sId,
-      })
+      }),
     ).rejects.toThrow("Run usage billing classification is incomplete");
   });
 
@@ -525,7 +525,7 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
     await expect(
       loadLegacySettledConsumptionAnalyticsInput(context.auth, {
         agentMessageId: context.agentMessage.sId,
-      })
+      }),
     ).rejects.toThrow("Billed agent message is missing costCredits");
   });
 
@@ -538,12 +538,12 @@ describe("loadLegacySettledConsumptionAnalyticsInput", () => {
           id: context.agentMessage.agentMessageId!,
           workspaceId: context.workspace.id,
         },
-      }
+      },
     );
 
     const input = await loadLegacySettledConsumptionAnalyticsInput(
       context.auth,
-      { agentMessageId: context.agentMessage.sId }
+      { agentMessageId: context.agentMessage.sId },
     );
 
     expect(input).toBeNull();

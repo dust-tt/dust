@@ -2,7 +2,7 @@ import {
   makeBaseDocument,
   modelForUsage,
   reconciledCreditMicroForItem,
-} from "@app/lib/analytics/agent_message_consumption/document_common";
+} from "@app/lib/api/analytics/agent_message_consumption/document_common";
 import type { MessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { skillIdsAttributedToAction } from "@app/lib/api/assistant/agent_message_consumption_attribution/skill_attribution";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";

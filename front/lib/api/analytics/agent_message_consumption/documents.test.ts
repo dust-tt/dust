@@ -1,8 +1,8 @@
-import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/documents";
+import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/api/analytics/agent_message_consumption/documents";
 import {
   loadConsumptionAnalyticsInput,
   loadLegacySettledConsumptionAnalyticsInput,
-} from "@app/lib/analytics/agent_message_consumption/load";
+} from "@app/lib/api/analytics/agent_message_consumption/load";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
@@ -59,7 +59,7 @@ async function setupSettledMessage({
   });
   const conversation = await ConversationResource.fetchById(
     auth,
-    conversationType.sId
+    conversationType.sId,
   );
   if (!conversation) {
     throw new Error("Conversation was not created");
@@ -121,7 +121,7 @@ async function setupSettledMessage({
         id: agentMessageModelId,
         workspaceId: workspace.id,
       },
-    }
+    },
   );
 
   return {
@@ -143,7 +143,7 @@ async function setupSettledMessage({
 type SettledMessageContext = Awaited<ReturnType<typeof setupSettledMessage>>;
 
 async function setupLlmAndToolConsumptionScenario(
-  options?: SettledMessageOptions
+  options?: SettledMessageOptions,
 ): Promise<{
   action: Awaited<ReturnType<typeof AgentMCPActionFactory.create>>["action"];
   billedMessageCreditMicro: number;
@@ -189,7 +189,7 @@ async function setupLlmAndToolConsumptionScenario(
         },
       ],
       pendingToolItems: [],
-    }
+    },
   );
 
   const runUsages = await RunResource.listRunUsagesForRuns(context.auth, {
@@ -197,7 +197,7 @@ async function setupLlmAndToolConsumptionScenario(
   });
   const billedLlmCredits = intelligenceAwuFromRunUsagesGroupedByRunKey(
     runUsages,
-    "web"
+    "web",
   );
   const billedCredits = billedLlmCredits + 3;
   await ConversationResource.updateAgentMessageCostCredits(context.auth, {
@@ -213,7 +213,7 @@ async function setupLlmAndToolConsumptionScenario(
 }
 
 async function buildDocuments(
-  context: SettledMessageContext
+  context: SettledMessageContext,
 ): Promise<AgentMessageConsumptionAnalyticsData[] | null> {
   const input = await loadLegacySettledConsumptionAnalyticsInput(context.auth, {
     agentMessageId: context.agentMessage.sId,
@@ -224,7 +224,7 @@ async function buildDocuments(
   const result = buildAgentMessageConsumptionAnalyticsDocuments(input);
   if (result.isErr()) {
     throw new Error(
-      `Consumption documents were not built: ${result.error.code}`
+      `Consumption documents were not built: ${result.error.code}`,
     );
   }
   return result.value;
@@ -240,7 +240,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
           id: context.agentMessageModelId,
           workspaceId: context.workspace.id,
         },
-      }
+      },
     );
     const { action } = await AgentMCPActionFactory.create(context.auth, {
       workspace: context.workspace,
@@ -250,41 +250,41 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       status: "running",
     });
     await AgentMessageConsumptionItemResource.insertConsumptionRows(
-      context.auth,
-      {
-        conversationModelId: context.conversation.id,
-        agentMessageModelId: context.agentMessageModelId,
-        runKey: "stored-reconciliation",
-        modelRows: [
-          {
-            itemType: "input",
-            runUsageModelId: context.runUsageModelId,
-            inputTokensCount: 100,
-            outputTokensCount: null,
-            grossAttributedCreditAmountMicro: 1_200_000,
-            reconciledCreditAmountMicro: 1_000_000,
-          },
-          {
-            itemType: "output",
-            runUsageModelId: context.runUsageModelId,
-            inputTokensCount: null,
-            outputTokensCount: 20,
-            grossAttributedCreditAmountMicro: 500_000,
-            reconciledCreditAmountMicro: 500_000,
-          },
-        ],
-        toolCallRows: [
-          {
-            agentMCPActionModelId: action.id,
-            runUsageModelId: context.runUsageModelId,
-            outputTokensCount: 2,
-            grossAttributedCreditAmountMicro: 300_000,
-            reconciledCreditAmountMicro: 500_000,
-          },
-        ],
-        toolResultRows: [],
-      }
-    );
+        context.auth,
+        {
+          conversationModelId: context.conversation.id,
+          agentMessageModelId: context.agentMessageModelId,
+          runKey: "stored-reconciliation",
+          modelRows: [
+            {
+              itemType: "input",
+              runUsageModelId: context.runUsageModelId,
+              inputTokensCount: 100,
+              outputTokensCount: null,
+              grossAttributedCreditAmountMicro: 1_200_000,
+              reconciledCreditAmountMicro: 1_000_000,
+            },
+            {
+              itemType: "output",
+              runUsageModelId: context.runUsageModelId,
+              inputTokensCount: null,
+              outputTokensCount: 20,
+              grossAttributedCreditAmountMicro: 500_000,
+              reconciledCreditAmountMicro: 500_000,
+            },
+          ],
+          toolCallRows: [
+            {
+              agentMCPActionModelId: action.id,
+              runUsageModelId: context.runUsageModelId,
+              outputTokensCount: 2,
+              grossAttributedCreditAmountMicro: 300_000,
+              reconciledCreditAmountMicro: 500_000,
+            },
+          ],
+          toolResultRows: [],
+        },
+      );
     const input = await loadConsumptionAnalyticsInput(context.auth, {
       agentMessageModelId: context.agentMessageModelId,
     });
@@ -294,24 +294,24 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     const result = buildAgentMessageConsumptionAnalyticsDocuments(input);
     if (result.isErr()) {
       throw new Error(
-        `Consumption documents were not built: ${result.error.code}`
+        `Consumption documents were not built: ${result.error.code}`,
       );
     }
 
     expect(input.reconciliationSource).toBe(
-      CONSUMPTION_RECONCILIATION_SOURCE.Stored
+      CONSUMPTION_RECONCILIATION_SOURCE.Stored,
     );
     expect(
-      result.value.every((document) => document.completed_at === null)
+      result.value.every((document) => document.completed_at === null),
     ).toBe(true);
     expect(
-      result.value.find((document) => document.consumption_type === "tool")
+      result.value.find((document) => document.consumption_type === "tool"),
     ).toMatchObject({
       attribution_version: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
       credit_micro: 500_000,
     });
     expect(
-      result.value.find((document) => document.consumption_type === "llm")
+      result.value.find((document) => document.consumption_type === "llm"),
     ).toMatchObject({ credit_micro: 1_500_000 });
   });
 
@@ -366,7 +366,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             reconciledCreditAmountMicro: 200_000,
           },
         ],
-      }
+      },
     );
     await AgentMessageConsumptionItemResource.insertConsumptionToolDirectRow(
       context.auth,
@@ -378,7 +378,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
         inputTokensCount: 3,
         runKey: "execution-x",
         runUsageModelId: context.runUsageModelId,
-      }
+      },
     );
     await AgentMessageConsumptionItemResource.insertConsumptionToolAdjustmentRows(
       context.auth,
@@ -393,7 +393,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             runUsageModelId: context.runUsageModelId,
           },
         ],
-      }
+      },
     );
 
     const input = await loadConsumptionAnalyticsInput(context.auth, {
@@ -406,11 +406,11 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       buildAgentMessageConsumptionAnalyticsDocuments(input);
     if (documentsResult.isErr()) {
       throw new Error(
-        `Consumption documents were not built: ${documentsResult.error.code}`
+        `Consumption documents were not built: ${documentsResult.error.code}`,
       );
     }
     const toolDocuments = documentsResult.value.filter(
-      (document) => document.consumption_type === "tool"
+      (document) => document.consumption_type === "tool",
     );
 
     expect(toolDocuments).toHaveLength(1);
@@ -499,11 +499,11 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       },
     });
     expect(
-      (llmDocument?.credit_micro ?? 0) + (toolDocument?.credit_micro ?? 0)
+      (llmDocument?.credit_micro ?? 0) + (toolDocument?.credit_micro ?? 0),
     ).toBe(billedMessageCreditMicro);
     expect(
       (llmDocument?.gross_credit_micro.total ?? 0) +
-        (toolDocument?.gross_credit_micro.total ?? 0)
+        (toolDocument?.gross_credit_micro.total ?? 0),
     ).toBe(billedMessageCreditMicro);
   });
 
@@ -542,10 +542,10 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       depth: 1,
     };
     const llmDocument = documents.find(
-      (document) => document.consumption_type === "llm"
+      (document) => document.consumption_type === "llm",
     );
     const toolDocument = documents.find(
-      (document) => document.consumption_type === "tool"
+      (document) => document.consumption_type === "tool",
     );
 
     expect(llmDocument?.agent).toMatchObject(expectedAncestry);
@@ -571,7 +571,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
         status: "succeeded",
         mcpServerName: "sandbox",
         toolName: "bash",
-      }
+      },
     );
     const { action: frameAction } = await AgentMCPActionFactory.create(
       context.auth,
@@ -585,7 +585,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
         toolName: "create_interactive_content_file",
         sandboxChildActionInfo: { parentActionId: computerAction.sId },
         parentAction: computerAction,
-      }
+      },
     );
 
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(
@@ -629,7 +629,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
           },
         ],
         pendingToolItems: [],
-      }
+      },
     );
 
     const documents = await buildDocuments(context);
@@ -638,10 +638,10 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     }
 
     const computerDocument = documents.find(
-      (document) => document.tool?.action_id === computerAction.sId
+      (document) => document.tool?.action_id === computerAction.sId,
     );
     const frameDocument = documents.find(
-      (document) => document.tool?.action_id === frameAction.sId
+      (document) => document.tool?.action_id === frameAction.sId,
     );
 
     expect(computerDocument?.tool).toMatchObject({
@@ -663,7 +663,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       },
     });
     expect(
-      documents.reduce((total, document) => total + document.credit_micro, 0)
+      documents.reduce((total, document) => total + document.credit_micro, 0),
     ).toBe(5_000_000);
   });
 
@@ -677,7 +677,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
         agentMessageModelId: context.agentMessage.agentMessageId!,
         dustRunId: context.run.dustRunId,
         status: "succeeded",
-      }
+      },
     );
     const { action: chargedToolAction } = await AgentMCPActionFactory.create(
       context.auth,
@@ -687,7 +687,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
         agentMessageModelId: context.agentMessage.agentMessageId!,
         dustRunId: context.run.dustRunId,
         status: "succeeded",
-      }
+      },
     );
 
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(
@@ -731,7 +731,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
           },
         ],
         pendingToolItems: [],
-      }
+      },
     );
 
     const documents = await buildDocuments(context);
@@ -739,13 +739,13 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       throw new Error("Consumption documents were not built");
     }
     const llmDocument = documents.find(
-      (document) => document.consumption_type === "llm"
+      (document) => document.consumption_type === "llm",
     );
     const freeToolDocument = documents.find(
-      (document) => document.tool?.action_id === freeToolAction.sId
+      (document) => document.tool?.action_id === freeToolAction.sId,
     );
     const chargedToolDocument = documents.find(
-      (document) => document.tool?.action_id === chargedToolAction.sId
+      (document) => document.tool?.action_id === chargedToolAction.sId,
     );
 
     expect(documents).toHaveLength(3);
@@ -777,11 +777,11 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     expect(
       documents.every(
         (document) =>
-          document.credit_micro === document.gross_credit_micro.total
-      )
+          document.credit_micro === document.gross_credit_micro.total,
+      ),
     ).toBe(true);
     expect(
-      documents.reduce((total, document) => total + document.credit_micro, 0)
+      documents.reduce((total, document) => total + document.credit_micro, 0),
     ).toBe(5_000_000);
   });
 
@@ -801,7 +801,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     const serverView = await MCPServerViewFactory.create(
       context.workspace,
       server.sId,
-      context.globalSpace
+      context.globalSpace,
     );
     const skillA = await SkillFactory.create(context.auth, {
       name: "Skill A",
@@ -868,14 +868,14 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
           },
         ],
         pendingToolItems: [],
-      }
+      },
     );
 
     // Rows written before attributedSkillIds was added remain nullable. Keep their Elasticsearch
     // projection stable by recomputing from the message snapshot.
     await AgentMessageConsumptionItemModel.update(
       { attributedSkillIds: null },
-      { validate: false, where: { agentMCPActionId: action.id } }
+      { validate: false, where: { agentMCPActionId: action.id } },
     );
 
     const documents = await buildDocuments(context);
@@ -883,7 +883,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       throw new Error("Consumption documents were not built");
     }
     const toolDocuments = documents.filter(
-      (document) => document.consumption_type === "tool"
+      (document) => document.consumption_type === "tool",
     );
 
     expect(toolDocuments).toHaveLength(1);
@@ -896,7 +896,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     });
     expect(toolDocuments[0]?.tool?.attributed_skill_ids).toHaveLength(2);
     expect(
-      documents.reduce((total, document) => total + document.credit_micro, 0)
+      documents.reduce((total, document) => total + document.credit_micro, 0),
     ).toBe(5_000_000);
   });
 
@@ -920,12 +920,12 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
         toolName: "disabled_tool",
         permission: "low",
         enabled: false,
-      }
+      },
     );
     const serverView = await MCPServerViewFactory.create(
       context.workspace,
       server.sId,
-      context.globalSpace
+      context.globalSpace,
     );
     const skill = await SkillFactory.create(context.auth, {
       name: "Skill with disabled tool",
@@ -985,7 +985,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
           },
         ],
         pendingToolItems: [],
-      }
+      },
     );
 
     const documents = await buildDocuments(context);
@@ -993,12 +993,12 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       throw new Error("Consumption documents were not built");
     }
     const toolDocument = documents.find(
-      (document) => document.tool?.action_id === action.sId
+      (document) => document.tool?.action_id === action.sId,
     );
 
     expect(toolDocument?.tool?.attributed_skill_ids).toEqual([]);
     expect(
-      documents.reduce((total, document) => total + document.credit_micro, 0)
+      documents.reduce((total, document) => total + document.credit_micro, 0),
     ).toBe(5_000_000);
   });
 
@@ -1054,7 +1054,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
           },
         ],
         pendingToolItems: [],
-      }
+      },
     );
 
     const documents = await buildDocuments(context);
@@ -1062,12 +1062,12 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       throw new Error("Consumption documents were not built");
     }
     const toolDocument = documents.find(
-      (document) => document.tool?.action_id === action.sId
+      (document) => document.tool?.action_id === action.sId,
     );
 
     expect(toolDocument?.tool?.attributed_skill_ids).toEqual([skill.sId]);
     expect(
-      documents.reduce((total, document) => total + document.credit_micro, 0)
+      documents.reduce((total, document) => total + document.credit_micro, 0),
     ).toBe(5_000_000);
   });
 });

@@ -1,0 +1,4 @@
+@cc [owner:id13,label:architecture;backend] browser-safe-analytics-modules
+Files under `lib/analytics` MUST be safe to import into browser bundles. Code that depends on
+authentication, Resources, Sequelize models, Elasticsearch, Temporal, the filesystem, or another
+server-only dependency MUST live under `lib/api/analytics`.
