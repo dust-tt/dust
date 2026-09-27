@@ -7,6 +7,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -620,7 +621,7 @@ export async function getAssistantUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType,
-  agentId: string
+  agent: AgentResource
 ): Promise<number> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
@@ -640,7 +641,7 @@ export async function getAssistantUsageData(
       replacements: {
         startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"),
         endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"),
-        agentConfigurationId: agentId,
+        agentConfigurationId: agent.sId,
         wId,
       },
     }

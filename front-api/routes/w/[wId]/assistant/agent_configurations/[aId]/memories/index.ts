@@ -50,10 +50,9 @@ app.get(
       return ctx.json({ memories: [] });
     }
 
-    const memories =
-      await AgentMemoryResource.findByAgentConfigurationIdAndUser(auth, {
-        agentConfigurationId: agent.sId,
-      });
+    const memories = await AgentMemoryResource.findByAgentForCurrentUser(auth, {
+      agent,
+    });
 
     return ctx.json({ memories: memories.map((memory) => memory.toJSON()) });
   }

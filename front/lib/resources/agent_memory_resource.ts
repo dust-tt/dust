@@ -170,13 +170,9 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     );
   }
 
-  static async findByAgentConfigurationIdAndUser(
+  static async findByAgentForCurrentUser(
     auth: Authenticator,
-    {
-      agentConfigurationId,
-    }: {
-      agentConfigurationId: string;
-    },
+    { agent }: { agent: AgentResource },
     transaction?: Transaction
   ): Promise<AgentMemoryResource[]> {
     const userId = auth.user()?.id ?? null;
@@ -189,7 +185,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       {
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
-          agentConfigurationId,
+          agentConfigurationId: agent.sId,
           userId,
         },
         order: [

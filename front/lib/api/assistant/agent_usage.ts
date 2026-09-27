@@ -129,7 +129,7 @@ export async function getAgentUsage(
   const start = new Date();
   start.setDate(end.getDate() - rankingUsageDays);
 
-  const agentUsage = await getAssistantUsageData(start, end, owner, agent.sId);
+  const agentUsage = await getAssistantUsageData(start, end, owner, agent);
 
   return agentUsage
     ? {
