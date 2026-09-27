@@ -68,9 +68,9 @@ export async function getCronTimezoneGeneration(
   const owner = auth.getNonNullableWorkspace();
 
   const providers = getWhitelistedProviders(auth);
-  const model = providers.has("openai")
-    ? GPT_5_4_MINI_MODEL_CONFIG
-    : getSmallWhitelistedModel(auth);
+  const { model, reasoningEffort } = providers.has("openai")
+    ? { model: GPT_5_4_MINI_MODEL_CONFIG, reasoningEffort: "none" as const }
+    : { model: getSmallWhitelistedModel(auth), reasoningEffort: undefined };
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate cron rule")
@@ -82,6 +82,7 @@ export async function getCronTimezoneGeneration(
     {
       modelId: model.modelId,
       providerId: model.providerId,
+      reasoningEffort,
       temperature: 0.7,
       useCache: false,
     },
