@@ -23,8 +23,10 @@ app.get(
     const owner = auth.getNonNullableWorkspace();
     const { aId } = ctx.req.valid("param");
 
+    // Readers, and anyone who may archive the agent (the delete dialog shows its usage), including
+    // `admin` holders who cannot read it.
     const agent = await AgentResource.fetchById(auth, aId);
-    if (!agent) {
+    if (!agent || (!auth.can("read", agent) && !auth.can("admin", agent))) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
