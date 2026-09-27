@@ -62,7 +62,9 @@ const NAME_AUTOCOMPLETE_FIELDS = [
  * Whole-name prefix matches on name.keyword contribute additional relevance.
  * Name matching uses both autocomplete fields and Elasticsearch relevance, without
  * description matching or usage boosts. Usage breaks relevance ties, then skill ID.
- * Every whitespace-separated search term must prefix-match a word of the name, in any order.
+ * Every whitespace-separated search term MUST match the name autocomplete fields as a
+ * `bool_prefix` query, in any order. Terms are analyzed like the name (case-change and punctuation
+ * splits), so only a term's last token is prefix-matched (`ReportB` matches "Report Builder").
  */
 export function buildSkillNameAutocompleteQuery(
   searchTerm: string
