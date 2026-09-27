@@ -613,7 +613,9 @@ export async function migrateReasoningEfforts({
   // One batched UPDATE per target effort and page of ids.
   const idsByEffort = new Map<ReasoningEffort, number[]>();
   for (const { id, to } of agentChanges) {
-    idsByEffort.set(to, [...(idsByEffort.get(to) ?? []), id]);
+    const ids = idsByEffort.get(to) ?? [];
+    ids.push(id);
+    idsByEffort.set(to, ids);
   }
   const agentUpdates = [...idsByEffort].flatMap(([reasoningEffort, ids]) =>
     chunk(ids, PAGE_SIZE).map((pageIds) => ({ reasoningEffort, ids: pageIds }))
