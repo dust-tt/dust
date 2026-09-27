@@ -10,6 +10,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { AUTO_MODEL_ID, MODEL_STREAMS } from "@app/types/assistant/models/auto";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
@@ -93,6 +94,24 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
     const error = await accessErrorFor(auth);
 
     expect(error?.code).toBe("model_tier_not_enabled");
+  });
+
+  // Claude Sonnet 5 is `balanced` at medium and `premium` from high up, its default.
+  it.each([
+    ["medium", null],
+    ["high", "model_tier_not_enabled"],
+    ["maximal", "model_tier_not_enabled"],
+    [undefined, "model_tier_not_enabled"],
+  ] as const)("tier-checks Claude Sonnet 5 at %s for a Standard-capped member", async (reasoningEffort, expectedCode) => {
+    const auth = await restrictedUserAuth({ tierName: "balanced" });
+
+    const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
+      agentName: "test-agent",
+      model: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
+      reasoningEffort,
+    });
+
+    expect(error?.code ?? null).toBe(expectedCode);
   });
 
   // A stream only ever resolves to a candidate within the member's cap, so
