@@ -43,27 +43,25 @@ export interface AgentSuggestionResource
 export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> {
   static model: ModelStatic<AgentSuggestionModel> = AgentSuggestionModel;
 
-  private readonly agentAccess: AgentResource | null;
-  readonly _agentConfigurationId: string;
+  private readonly agent: AgentResource;
   readonly _conversationId: string | null;
 
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
     blob: Attributes<AgentSuggestionModel>,
-    agentAccess: AgentResource | null,
-    agentConfigurationId: string,
+    agent: AgentResource,
     conversationId: string | null
   ) {
     super(AgentSuggestionModel, blob);
-    this.agentAccess = agentAccess;
-    this._agentConfigurationId = agentConfigurationId;
+    this.agent = agent;
     this._conversationId = conversationId;
   }
 
-  /**
-   * Fetches permissions for agent suggestions using the selected agent read source.
-   */
-  private static async getAgentAccessById(
+  get _agentConfigurationId(): string {
+    return this.agent.sId;
+  }
+
+  private static async getAgentById(
     auth: Authenticator,
     agentIds: string[]
   ): Promise<Map<string, AgentResource>> {
@@ -128,7 +126,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
     return suggestions.map(
       (suggestion) =>
-        new this(AgentSuggestionModel, suggestion.get(), agent, agent.sId, null)
+        new this(AgentSuggestionModel, suggestion.get(), agent, null)
     );
   }
 
@@ -172,14 +170,13 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       ...new Set(suggestions.map((s) => s.agentConfiguration?.sId ?? "")),
     ].filter((sId) => sId !== "");
 
-    const agentAccessById = await this.getAgentAccessById(auth, agentIds);
+    const agentById = await this.getAgentById(auth, agentIds);
 
     // Filter suggestions to only include those for agents the user can edit.
     return removeNulls(
       suggestions.map((suggestion) => {
-        const agentConfig = suggestion.agentConfiguration;
-        const agentAccess = agentAccessById.get(agentConfig.sId) ?? null;
-        if (!this.canEditAgent(auth, agentAccess)) {
+        const agent = agentById.get(suggestion.agentConfiguration.sId);
+        if (!agent || !this.canEditAgent(auth, agent)) {
           if (throwOnInaccessible) {
             throw new Error(
               "User does not have permission to access every requested agent suggestion"
@@ -190,8 +187,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
         return new this(
           AgentSuggestionModel,
           suggestion.get(),
-          agentAccess,
-          agentConfig.sId,
+          agent,
           suggestion.conversation?.sId ?? null
         );
       })
@@ -200,13 +196,13 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
   private static canEditAgent(
     auth: Authenticator,
-    access: AgentResource | null
+    agent: AgentResource
   ): boolean {
     if (auth.isAdmin()) {
       return true;
     }
 
-    return access !== null && auth.can("write", access);
+    return auth.can("write", agent);
   }
 
   static async fetchByIds(
@@ -283,7 +279,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    if (!AgentSuggestionResource.canEditAgent(auth, this.agentAccess)) {
+    if (!AgentSuggestionResource.canEditAgent(auth, this.agent)) {
       return new Err(
         new Error("User does not have permission to edit this agent")
       );
@@ -381,7 +377,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
     assert(
       suggestions.every((s) =>
-        AgentSuggestionResource.canEditAgent(auth, s.agentAccess)
+        AgentSuggestionResource.canEditAgent(auth, s.agent)
       ),
       "User does not have permission to edit this agent"
     );
