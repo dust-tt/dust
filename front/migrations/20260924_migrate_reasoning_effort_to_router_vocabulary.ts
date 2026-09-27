@@ -474,6 +474,18 @@ function countChanges(
   );
 }
 
+function logChanges(
+  changes: ReasoningEffortChange[],
+  table: string,
+  logger: Logger
+): void {
+  changes
+    .filter(({ from, to }) => !(from === "light" && to === "low"))
+    .forEach(({ id, modelId, from, to }) =>
+      logger.info({ table, id, modelId, from, to }, "Reasoning effort change.")
+    );
+}
+
 const AgentConfigurationModelWithBypass: ModelStaticWorkspaceAware<AgentConfigurationModel> =
   AgentConfigurationModel;
 const AgentSuggestionModelWithBypass: ModelStaticWorkspaceAware<AgentSuggestionModel> =
@@ -589,6 +601,10 @@ export async function migrateReasoningEfforts({
     },
     "Pending model suggestion reasoning efforts to rewrite."
   );
+
+  // One line per change, the plain `light` -> `low` rename aside, so the run can be reverted.
+  logChanges(agentChanges, "agent_configurations", logger);
+  logChanges(suggestionChanges, "agent_suggestions", logger);
 
   if (!execute) {
     return;
