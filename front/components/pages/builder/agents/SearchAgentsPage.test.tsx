@@ -363,20 +363,23 @@ describe("search-backed Manage Agents", () => {
       expect.stringContaining(`/agent_configurations/${agent.sId}`)
     );
 
-    const moreButton = screen
-      .getAllByRole("button")
-      .filter((button) => button.getAttribute("aria-haspopup") === "menu")
-      .at(-1);
-    assert(moreButton);
-    await userEvent.click(moreButton);
-
-    expect(
-      await screen.findByRole(
-        "menuitem",
-        { name: "Loading actions…" },
-        { timeout: CI_RENDER_TIMEOUT_MS }
-      )
-    ).toBeInTheDocument();
+    // Rows re-render once workspace tags load, closing the menu; reopen it until it sticks.
+    await waitFor(
+      async () => {
+        const moreButton = screen
+          .getAllByRole("button")
+          .filter((button) => button.getAttribute("aria-haspopup") === "menu")
+          .at(-1);
+        assert(moreButton);
+        if (moreButton.getAttribute("aria-expanded") !== "true") {
+          await userEvent.click(moreButton);
+        }
+        expect(
+          screen.getByRole("menuitem", { name: "Loading actions…" })
+        ).toBeInTheDocument();
+      },
+      { timeout: CI_RENDER_TIMEOUT_MS }
+    );
     await act(async () => {
       pendingAgent.resolve({ agentConfiguration });
     });
