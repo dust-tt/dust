@@ -48,6 +48,10 @@ export interface DataTableSkeletonProps<
   density?: DataTableDensity;
 }
 
+// A new `data` array on every render makes TanStack auto-reset the page index in a microtask, whose
+// state update re-renders the skeleton with yet another array: an endless loop that freezes the page.
+const NO_ROWS: never[] = [];
+
 /**
  * A loading table that reuses the loaded table's column definitions and requires
  * a custom SkeletonCell renderer. Keep that renderer alongside the table's columns
@@ -68,7 +72,7 @@ export function DataTableSkeleton<
   rowHeight = DATA_TABLE_ROW_HEIGHT_PX[density],
 }: DataTableSkeletonProps<TData, TValue, TColumnId>) {
   const table = useReactTable({
-    data: [],
+    data: NO_ROWS,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
