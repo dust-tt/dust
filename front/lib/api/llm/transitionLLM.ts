@@ -77,7 +77,6 @@ import type { Region } from "@app/lib/model_constructors/types/regions";
 import { EUROPE, GLOBAL, US } from "@app/lib/model_constructors/types/regions";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
-import logger from "@app/logger/logger";
 import type {
   AgentFunctionCallContentType,
   AgentProviderPassthroughContentType,
@@ -113,28 +112,21 @@ export function inferenceRegionForEndpointRegion(
 }
 
 /**
- * The effort sent to the provider: the requested one when the model supports it, else the model's
- * default. Write paths reject unsupported efforts, so the fallback only covers values stored before
- * a model's support changed.
+ * The effort sent to the provider, a missing one reading as `none`. An effort the model does not
+ * support is an error, never remapped: write paths reject it and the reasoning effort migration
+ * fixed the stored ones.
  */
-export function resolveReasoningEffortForModel(
+export function assertSupportedReasoningEffort(
   modelConfig: ModelConfigurationType,
   requestedEffort: ReasoningEffort | null
 ): ReasoningEffort {
   const effort = requestedEffort ?? "none";
-  if (modelConfig.supportedReasoningEfforts[effort]) {
-    return effort;
+  if (!modelConfig.supportedReasoningEfforts[effort]) {
+    throw new Error(
+      `Reasoning effort "${effort}" is not supported by ${modelConfig.modelId}.`
+    );
   }
-
-  logger.warn(
-    {
-      modelId: modelConfig.modelId,
-      requestedEffort: effort,
-      defaultEffort: modelConfig.defaultReasoningEffort,
-    },
-    "[LLM] Unsupported reasoning effort, falling back to the model default"
-  );
-  return modelConfig.defaultReasoningEffort;
+  return effort;
 }
 
 // The persisted passthrough `provider` uses the legacy provider-id vocabulary
@@ -813,7 +805,7 @@ abstract class BaseTransition extends LLM {
       tools: specifications as ToolSpecification[],
       temperature: this.temperature ?? undefined,
       reasoning: {
-        effort: resolveReasoningEffortForModel(
+        effort: assertSupportedReasoningEffort(
           this.modelConfig,
           this.reasoningEffort
         ),
