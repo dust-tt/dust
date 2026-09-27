@@ -130,6 +130,8 @@ export async function resolveModel(
   // A stream tier dictates the effort of its resolved model. Otherwise honor the
   // selected or agent-configured effort only if the resolved model supports it
   // (raw API clients can send an unsupported effort); fall back to its default.
+  // TODO(reasoning-effort): return an error instead of falling back once the
+  // reasoning effort migration has fixed the stored efforts.
   const requestedReasoningEffort =
     streamEffort ??
     (selection
