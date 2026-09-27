@@ -98,7 +98,7 @@ async function fetchAgentForSuggestion(
   agentId: string
 ): Promise<Result<AgentResource, MCPError>> {
   const agent = await AgentResource.fetchById(auth, agentId);
-  if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
+  if (!agent || (!auth.can("read", agent) && !auth.can("admin", agent))) {
     return new Err(new MCPError(`Agent "${agentId}" not found.`));
   }
 

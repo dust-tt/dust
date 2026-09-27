@@ -35,7 +35,7 @@ export async function suggestAgentInstructionsChange(
   }
 
   const agent = await AgentResource.fetchById(auth, agentId);
-  if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
+  if (!agent || (!auth.can("read", agent) && !auth.can("admin", agent))) {
     return new Err(new MCPError("Agent not found."));
   }
 
