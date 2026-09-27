@@ -4,7 +4,12 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { ORDERED_REASONING_EFFORTS } from "@app/lib/model_constructors/types/reasoning_efforts";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import type {
+  ReasoningEffort,
+  ReasoningEffortSupport,
+} from "@app/types/assistant/models/types";
 import type {
   ModelSuggestionType,
   SuggestionPayload,
@@ -389,21 +394,61 @@ function isStoredEffort(effort: string): effort is StoredEffort {
   return STORED_EFFORTS.some((storedEffort) => storedEffort === effort);
 }
 
-// The effort to store for an agent on `modelId` whose stored effort is `storedEffort`, or
-// `undefined` to leave it as is. Models the router does not serve cannot run, so only the rename of
-// `light` to `low` applies to them.
-export function getMigratedReasoningEffort(
+function isReasoningEffort(effort: string): effort is ReasoningEffort {
+  return ORDERED_REASONING_EFFORTS.some((known) => known === effort);
+}
+
+// The effort an agent on `modelId` whose stored effort is `storedEffort` ran at. Models the router
+// does not serve cannot run, so only the rename of `light` to `low` applies to them.
+function getEffortItRanAt(
   modelId: string,
   storedEffort: string | null
-): ReasoningEffort | undefined {
+): string | null {
   const efforts = EFFECTIVE_REASONING_EFFORT_BY_MODEL[modelId];
   if (!efforts) {
-    return storedEffort === "light" ? "low" : undefined;
+    return storedEffort === "light" ? "low" : storedEffort;
   }
   if (storedEffort === null) {
     return efforts.unset;
   }
-  return isStoredEffort(storedEffort) ? efforts[storedEffort] : undefined;
+  return isStoredEffort(storedEffort) ? efforts[storedEffort] : storedEffort;
+}
+
+// The agent loop rejects an effort the model does not support, so a misconfigured agent moves to
+// the closest supported effort, the lower one first: an unsupported `none` becomes the minimum.
+function getClosestSupportedEffort(
+  effort: ReasoningEffort,
+  support: ReasoningEffortSupport
+): ReasoningEffort {
+  const index = ORDERED_REASONING_EFFORTS.indexOf(effort);
+  const lower = ORDERED_REASONING_EFFORTS.slice(0, index).findLast(
+    (candidate) => support[candidate]
+  );
+  const higher = ORDERED_REASONING_EFFORTS.slice(index + 1).find(
+    (candidate) => support[candidate]
+  );
+  return lower ?? higher ?? effort;
+}
+
+// The effort to store for an agent on `modelId` whose stored effort is `storedEffort`, or
+// `undefined` to leave it as is. Unlike the frozen snapshot above, support is read from the model
+// configs at run time: the script runs once, right after the deploy.
+export function getMigratedReasoningEffort(
+  modelId: string,
+  storedEffort: string | null
+): ReasoningEffort | undefined {
+  const ranAt = getEffortItRanAt(modelId, storedEffort);
+  if (ranAt === null || !isReasoningEffort(ranAt)) {
+    return undefined;
+  }
+  const support = SUPPORTED_MODEL_CONFIGS.find(
+    (config) => config.modelId === modelId
+  )?.supportedReasoningEfforts;
+  const migrated =
+    support && !support[ranAt]
+      ? getClosestSupportedEffort(ranAt, support)
+      : ranAt;
+  return migrated === storedEffort ? undefined : migrated;
 }
 
 type ReasoningEffortChange = {

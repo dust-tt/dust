@@ -17,7 +17,6 @@ describe("getMigratedReasoningEffort", () => {
     ["claude-sonnet-5", null, "medium"],
     ["claude-haiku-4-5-20251001", "light", "low"],
     ["claude-haiku-4-5-20251001", null, "low"],
-    ["claude-haiku-4-5-20251001", "none", "none"],
     ["accounts/fireworks/models/kimi-k3", "medium", "high"],
     ["accounts/fireworks/models/kimi-k3", "high", "maximal"],
     ["accounts/fireworks/models/deepseek-v4-pro", "none", "high"],
@@ -28,8 +27,11 @@ describe("getMigratedReasoningEffort", () => {
     expect(getMigratedReasoningEffort(modelId, storedEffort)).toBe(expected);
   });
 
-  it("keeps a supported effort that already ran as stored", () => {
-    expect(getMigratedReasoningEffort("gpt-5.5", "medium")).toBe("medium");
+  it("leaves a supported effort that already ran as stored", () => {
+    expect(getMigratedReasoningEffort("gpt-5.5", "medium")).toBeUndefined();
+    expect(
+      getMigratedReasoningEffort("claude-haiku-4-5-20251001", "none")
+    ).toBeUndefined();
   });
 
   it("only renames light on models the router does not serve", () => {
@@ -41,10 +43,18 @@ describe("getMigratedReasoningEffort", () => {
     ).toBeUndefined();
   });
 
-  it("leaves efforts outside the legacy vocabulary alone", () => {
+  it("leaves supported efforts outside the legacy vocabulary alone", () => {
     expect(
       getMigratedReasoningEffort("accounts/fireworks/models/kimi-k3", "maximal")
     ).toBeUndefined();
+  });
+
+  it.each([
+    ["mistral-small-latest", "low", "none"],
+    ["gpt-5.4", "maximal", "xhigh"],
+    ["gemini-3.1-pro-preview", "minimal", "low"],
+  ] as const)("moves %s at an unsupported %s to %s", (modelId, storedEffort, expected) => {
+    expect(getMigratedReasoningEffort(modelId, storedEffort)).toBe(expected);
   });
 });
 
