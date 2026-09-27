@@ -95,6 +95,8 @@ import { AgentStepContentModel } from "../models/agent/agent_step_content";
 
 type ConversationGeneratedFileType = ActionGeneratedDBFileType & {
   creator: AttachmentCreator | null;
+  // sId of the conversation whose file mount owns this file, when known.
+  fileConversationId: string | null;
 };
 
 // Batch size for fetching output items to avoid loading too many large rows at once.
@@ -939,6 +941,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         updatedAt: file.updatedAt.getTime(),
         isInProjectContext: file.useCase === "project_context",
         hidden: file.useCaseMetadata?.hideFromUser ?? false,
+        fileConversationId: file.useCaseMetadata?.conversationId ?? null,
         creator,
         rank: agentMessageIdToRank.get(agentMessage.id) ?? 0,
       });
@@ -1912,4 +1915,4 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   get functionCallArguments(): string {
     return this.stepContent.value.value.arguments;
   }
-}
+          }
