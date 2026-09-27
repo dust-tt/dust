@@ -16,6 +16,7 @@ import {
   MessageChatSquare,
   MessageQuestionCircle,
   PauseFill,
+  Plus,
   Robot,
   SearchInput,
   Spinner,
@@ -34,11 +35,7 @@ import {
   useState,
 } from "react";
 
-import {
-  AGENT_ACTION_TICK_MS,
-  getAgentAction,
-  getPendingAction,
-} from "../data/agentActions";
+import { type AgentAction, getPendingAction } from "../data/agentActions";
 import { getAgentById } from "../data/agents";
 import { getLastSpeaker } from "../data/conversations";
 import {
@@ -75,7 +72,6 @@ import {
   type FilterGroup,
   type FilterSelection,
 } from "./FilterMenu";
-import { InputBar } from "./InputBar";
 import { RequestListItem } from "./RequestListItem";
 import { TriggerRunAvatar } from "./TriggerRunAvatar";
 import {
@@ -164,8 +160,8 @@ interface InboxAltViewProps {
   onLeaveConversation?: (conversationId: string) => void;
   onConversationClick?: (conversation: Conversation) => void;
   onRequestClick?: (request: AdminRequest) => void;
-  /** Opens the list with a composer, so new work starts where you triage it. */
-  showComposer?: boolean;
+  /** Shows a "New" button in the toolbar, next to the clear menu. */
+  onNewConversation?: () => void;
 }
 
 /** A restricted pod is drawn with the outlined cube, as in the Inbox. */
@@ -314,12 +310,14 @@ function getConversationDescriptionPrefix(
   return space ? `In ${space.name}` : undefined;
 }
 
+/** Often enough that a finished agent lands within a second of its time. */
+const WORKING_CLOCK_TICK_MS = 1000;
+
 /**
  * How long the Inbox has been open, which is the only clock the list needs:
- * the working rows read their action off it, and each of them comes back with
- * an answer once its own stretch of work has run out. One interval drives the
- * whole list, and it stops as soon as the last agent is done, so an Inbox with
- * nothing in flight ticks nothing.
+ * each working row comes back with an answer once its own stretch of work has
+ * run out. One interval drives the whole list, and it stops as soon as the
+ * last agent is done, so an Inbox with nothing in flight ticks nothing.
  */
 function useElapsedWhileWorking(thinkingRowIds: string[]): number {
   const [openedAt] = useState(() => Date.now());
@@ -338,7 +336,7 @@ function useElapsedWhileWorking(thinkingRowIds: string[]): number {
 
     const interval = setInterval(
       () => setElapsedMs(Date.now() - openedAt),
-      AGENT_ACTION_TICK_MS
+      WORKING_CLOCK_TICK_MS
     );
     return () => clearInterval(interval);
   }, [isAnyRowWorking, openedAt]);
@@ -414,7 +412,7 @@ export function InboxAltView({
   onLeaveConversation,
   onConversationClick,
   onRequestClick,
-  showComposer = false,
+  onNewConversation,
 }: InboxAltViewProps) {
   const [searchText, setSearchText] = useState("");
   const [filter, setFilter] = useState<FilterSelection>(null);
@@ -680,9 +678,9 @@ export function InboxAltView({
   // row, calls it off.
   const selectedRowId = selectedConversationId ?? selectedRequestId;
   // Both sets are asked about the row rather than watched: an agent at work
-  // rebuilds them every time its action line ticks over, and a dependency that
-  // changes every 600ms restarts a three-second timer for as long as the agent
-  // keeps working.
+  // rebuilds them on every tick of the working clock, and a dependency that
+  // changes every second restarts a three-second timer for as long as the
+  // agent keeps working.
   const isSelectedRowListed = selectedRowId
     ? visibleRowIds.has(selectedRowId)
     : false;
@@ -790,15 +788,15 @@ export function InboxAltView({
       ? (composition.unreadCounts.get(row.id) ?? 1)
       : composition.unreadCounts.get(row.id);
     // Something is still moving in the conversation, by the agent or waiting on
-    // you, so whoever is in it breathes.
-    const isBusy = isInFlight(state);
+    // you, so it is not yours to clear yet.
+    const isRowInFlight = isInFlight(state);
     // A row still moving has nothing to summarise yet: the description is the
-    // last thing that happened, and something is happening now. So it reports
-    // the step instead — the one being taken, or the one being waited on, tool
-    // and all — and keeps the pod that places it.
-    const action =
+    // last thing that happened, and something is happening now. A working row
+    // just says so; a row waiting on you names the step it is waiting on, tool
+    // and all. Both keep the pod that places them.
+    const action: AgentAction | undefined =
       state === "thinking"
-        ? getAgentAction(row.id, Math.floor(elapsedMs / AGENT_ACTION_TICK_MS))
+        ? { label: "Working…" }
         : state === "pending"
           ? getPendingAction(row.id)
           : undefined;
@@ -810,14 +808,12 @@ export function InboxAltView({
           ...row.conversation,
           description: action?.label ?? row.conversation.description,
         }}
+        textAnimation={state === "thinking" ? "description" : "none"}
         {...getRowSpeakerProps(row.conversation)}
         badge={getConversationBadge(row.conversation)}
         leadingVisual={
-          trigger ? (
-            <TriggerRunAvatar trigger={trigger} busy={isBusy} />
-          ) : undefined
+          trigger ? <TriggerRunAvatar trigger={trigger} /> : undefined
         }
-        busy={isBusy}
         className={cn(
           "px-3 rounded-2xl border-transparent!",
           selectedConversationId === row.id && "bg-highlight-50"
@@ -838,7 +834,7 @@ export function InboxAltView({
           isUnread: state === "unread",
           onMarkRead: () => onRowsRead?.([row.id]),
           onMarkUnread: () => onRowsUnread?.([row.id]),
-          onClear: isBusy ? undefined : () => clear([row.id]),
+          onClear: isRowInFlight ? undefined : () => clear([row.id]),
           onLeave: () => onLeaveConversation?.(row.id),
         })}
         onClick={() => onConversationClick?.(row.conversation)}
@@ -913,6 +909,15 @@ export function InboxAltView({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            {onNewConversation && (
+              <Button
+                variant="highlight"
+                size="sm"
+                icon={Plus}
+                label="New"
+                onClick={() => onNewConversation()}
+              />
+            )}
           </div>
         </div>
         {visibleRows.length === 0 ? (
@@ -949,9 +954,6 @@ export function InboxAltView({
   return (
     <div className="flex h-full w-full flex-col overflow-x-clip overflow-y-auto bg-background">
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 pt-6 pb-8">
-        {showComposer && (
-          <InputBar placeholder="What are we working on?" className="mb-2" />
-        )}
         {renderContent()}
       </div>
     </div>

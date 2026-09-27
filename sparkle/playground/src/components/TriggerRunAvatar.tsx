@@ -6,8 +6,6 @@ import type { AvatarCounterSizeType } from "./AvatarCounter";
 interface TriggerRunAvatarProps {
   trigger: Trigger;
   size?: AvatarCounterSizeType;
-  /** Breathes the avatar, for a run that is still going. */
-  busy?: boolean;
 }
 
 /**
@@ -18,7 +16,6 @@ interface TriggerRunAvatarProps {
 export function TriggerRunAvatar({
   trigger,
   size = "sm",
-  busy = false,
 }: TriggerRunAvatarProps) {
   return (
     <AgentBadgeAvatar
@@ -27,7 +24,6 @@ export function TriggerRunAvatar({
       badgeIcon={INBOX_ROW_BADGES.automated.icon}
       badgeLabel={INBOX_ROW_BADGES.automated.label}
       size={size}
-      busy={busy}
     />
   );
 }

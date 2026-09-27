@@ -78,6 +78,7 @@ export { default as Dataflow01 } from "./Dataflow01";
 export { default as Dataflow02 } from "./Dataflow02";
 export { default as DocumentPile } from "./DocumentPile";
 export { default as Dot } from "./Dot";
+export { default as DotStroke } from "./DotStroke";
 export { default as DotsHorizontal } from "./DotsHorizontal";
 export { default as DoubleQuotes } from "./DoubleQuotes";
 export { default as Download01 } from "./Download01";

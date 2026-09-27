@@ -46,11 +46,6 @@ export interface ConversationListItemProps {
    * explaining go without.
    */
   badge?: RowBadge;
-  /**
-   * Breathes the leading avatar, for a conversation something is still
-   * happening in. A `leadingVisual` carries its own busy state instead.
-   */
-  busy?: boolean;
   /** Icon shown before the title, for lists whose rows are labelled by a category. */
   titleIcon?: React.ComponentType<{ className?: string }>;
   /**
@@ -85,8 +80,11 @@ export interface ConversationListItemProps {
   menuItems?: MenuItem[];
   /** Briefly flashes a highlight background on the row when it becomes true. */
   showFocus?: boolean;
-  /** "streaming" animates the title and description as if being generated. */
-  textAnimation?: "none" | "streaming";
+  /**
+   * "streaming" animates the title and description as if being generated;
+   * "description" shimmers the description alone, for a row still at work.
+   */
+  textAnimation?: "none" | "streaming" | "description";
   className?: string;
 }
 
@@ -118,7 +116,6 @@ export function ConversationListItem({
   byline,
   leadingVisual,
   badge,
-  busy = false,
   titleIcon,
   descriptionPrefix,
   descriptionIcon,
@@ -179,7 +176,6 @@ export function ConversationListItem({
             visual={creator.portrait}
             size="sm"
             isRounded={true}
-            busy={busy}
             badgeIcon={badge?.icon}
             badgeLabel={badge?.label}
           />
@@ -191,7 +187,6 @@ export function ConversationListItem({
             size="sm"
             isRounded={avatar.isRounded}
             backgroundColor={avatar.backgroundColor}
-            busy={busy}
             badgeIcon={badge?.icon}
             badgeLabel={badge?.label}
           />
@@ -239,7 +234,7 @@ export function ConversationListItem({
                   className="mr-1 inline-block -translate-y-px align-middle text-faint"
                 />
               )}
-              {textAnimation === "streaming" ? (
+              {textAnimation !== "none" ? (
                 <AnimatedText variant="muted">
                   {conversation.description}
                 </AnimatedText>

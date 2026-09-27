@@ -89,13 +89,7 @@ import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxView } from "../components/InboxView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import { PersonAgentView } from "../components/PersonAgentView";
-import {
-  type AgentSort,
-  type AgentType,
-  NewConversation,
-  NewConversationActionBar,
-  type WelcomeAgentTab,
-} from "../components/NewConversation";
+import { NewConversation } from "../components/NewConversation";
 import {
   PanelLayout,
   PanelLayoutNav,
@@ -355,14 +349,6 @@ function PeopleAgent() {
   const [agentSearchText, setAgentSearchText] = useState("");
   const [peopleSearchText, setPeopleSearchText] = useState("");
   const [isCollaboratorAboutOpen, setIsCollaboratorAboutOpen] = useState(false);
-  const [welcomeAgentTab, setWelcomeAgentTab] =
-    useState<WelcomeAgentTab>("favorites");
-  const [welcomeAgentSort, setWelcomeAgentSort] = useState<AgentSort>("custom");
-  const [welcomeAgentType, setWelcomeAgentType] = useState<AgentType>("all");
-  const [welcomeAgentCategory, setWelcomeAgentCategory] = useState<
-    string | null
-  >(null);
-  const [isWelcomeToolbarPinned, setIsWelcomeToolbarPinned] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
     useState<Map<string, PodNotificationCondition>>(new Map());
 
@@ -1467,21 +1453,7 @@ function PeopleAgent() {
         />
       );
     // welcome
-    return (
-      <NewConversation
-        greeting={greeting}
-        spaces={spaces}
-        agentTab={welcomeAgentTab}
-        onAgentTabChange={setWelcomeAgentTab}
-        agentSort={welcomeAgentSort}
-        onAgentSortChange={setWelcomeAgentSort}
-        agentType={welcomeAgentType}
-        onAgentTypeChange={setWelcomeAgentType}
-        agentCategory={welcomeAgentCategory}
-        onAgentCategoryChange={setWelcomeAgentCategory}
-        onToolbarPinnedChange={setIsWelcomeToolbarPinned}
-      />
-    );
+    return <NewConversation greeting={greeting} />;
   })();
 
   // ── P3 / P4 content ───────────────────────────────────────────────────────
@@ -1781,29 +1753,6 @@ function PeopleAgent() {
           size="sm"
           hasLighterFont
         />
-      );
-    if (p2View.kind === "welcome")
-      return (
-        <div
-          className={
-            "w-full transition-opacity duration-200 " +
-            (isWelcomeToolbarPinned
-              ? "opacity-100"
-              : "opacity-0 pointer-events-none")
-          }
-          aria-hidden={!isWelcomeToolbarPinned}
-        >
-          <NewConversationActionBar
-            value={welcomeAgentTab}
-            onValueChange={setWelcomeAgentTab}
-            agentSort={welcomeAgentSort}
-            onAgentSortChange={setWelcomeAgentSort}
-            agentType={welcomeAgentType}
-            onAgentTypeChange={setWelcomeAgentType}
-            agentCategory={welcomeAgentCategory}
-            onAgentCategoryChange={setWelcomeAgentCategory}
-          />
-        </div>
       );
     return null;
   })();

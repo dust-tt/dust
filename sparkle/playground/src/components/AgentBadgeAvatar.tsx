@@ -12,8 +12,6 @@ interface AgentBadgeAvatarProps {
   /** Accessible name for the badge — what kind of automation this is. */
   badgeLabel: string;
   size?: AvatarCounterSizeType;
-  /** Breathes the avatar, for a run that is still going. */
-  busy?: boolean;
 }
 
 /**
@@ -27,7 +25,6 @@ export function AgentBadgeAvatar({
   badgeIcon,
   badgeLabel,
   size = "sm",
-  busy = false,
 }: AgentBadgeAvatarProps) {
   const agent = getAgentById(agentId);
 
@@ -40,7 +37,6 @@ export function AgentBadgeAvatar({
       badgeIcon={badgeIcon}
       badgeLabel={badgeLabel}
       variant={ROW_BADGE_VARIANT}
-      busy={busy}
     />
   );
 }

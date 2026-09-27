@@ -1,7 +1,7 @@
 import {
   Check,
-  CheckDouble,
   Dot,
+  DotStroke,
   LogOut01,
   type MenuItem,
 } from "@dust-tt/sparkle";
@@ -33,11 +33,13 @@ export function buildConversationRowMenuItems({
   onLeave,
 }: ConversationRowMenuArgs): MenuItem[] {
   return [
+    // One dot either way round: filled is unread, hollow is read, so the
+    // toggle shows the state it leaves the row in.
     isUnread
       ? {
           kind: "item",
           label: "Mark as read",
-          icon: CheckDouble,
+          icon: DotStroke,
           onClick: onMarkRead,
         }
       : {

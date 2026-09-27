@@ -1,901 +1,691 @@
 import {
-  ArrowRight,
   Avatar,
-  BookOpen01,
+  BarChart12,
   Button,
-  Card,
+  Calendar,
+  CheckVerified01,
+  ChevronLeft,
+  ChevronRight,
   Chip,
-  Code01,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  FilterFunnel01,
-  Monitor01,
-  InfoCircle,
-  MessageChatSquare,
+  cn,
+  EmptyCTA,
+  File02,
+  Folder,
+  Globe01,
+  Icon,
+  Mail01,
+  MessageChatCircle,
   MessageCircle01,
-  Plus,
+  NavigationList,
+  NavigationListItem,
+  Pin02,
   SearchInput,
-  Settings01,
   Stars02,
-  Terminal,
-  Tooltip,
-  User01,
+  Table,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Users01,
+  XClose,
 } from "@dust-tt/sparkle";
-import {
-  ChromeLogo,
-  DriveLogo,
-  GithubLogo,
-  IntercomLogo,
-  LinearLogo,
-  NotionLogo,
-  SlackLogo,
-} from "@dust-tt/sparkle/logo/platforms";
-import { type ComponentType, useEffect, useRef, useState } from "react";
+import { type ComponentType, useRef, useState } from "react";
 
 import { mockAgents, mockSkills, mockUsers, type Skill } from "../data";
-import type { Agent, Space } from "../data/types";
-import { ConversationTopSection } from "./ConversationTopSection";
-import type { FreeButtonSwitchOption } from "./FreeButtonSwitch";
-import { FreeButtonSwitch } from "./FreeButtonSwitch";
+import type { Agent } from "../data/types";
 import { InputBar } from "./InputBar";
 
-// "browse" and "category" are only ids of dropdown options in the switch; they
-// are never active tab values.
-export type WelcomeAgentTab =
-  | "favorites"
-  | "discover"
-  | "my_agents"
-  | "about_dust"
-  | "browse"
-  | "category";
+// Mirrors front's new-conversation screen behind `discovery_homepage`: a home
+// band with the composer and a few use cases, and a Discover page below it,
+// reached from the button at the bottom of the band.
 
-export type AgentSort =
-  | "popularity"
-  | "usage"
-  | "alpha_asc"
-  | "alpha_desc"
-  | "custom";
+type CatalogItem = ({ kind: "agent" } & Agent) | ({ kind: "skill" } & Skill);
 
-const AGENT_SORT_LABELS: Record<AgentSort, string> = {
-  popularity: "By popularity",
-  usage: "By usage",
-  alpha_asc: "Alphabetical (A→Z)",
-  alpha_desc: "Alphabetical (Z→A)",
-  custom: "Custom",
-};
+const ALL_ITEMS: CatalogItem[] = [
+  ...mockAgents.map((agent) => ({ kind: "agent" as const, ...agent })),
+  ...mockSkills.map((skill) => ({ kind: "skill" as const, ...skill })),
+];
 
-export type AgentType = "all" | "agents" | "skills";
+// ── Fake catalog facts ──────────────────────────────────────────────────────
+// Everything below is derived from the item id, so a card reads the same on
+// every render.
 
-const AGENT_TYPE_LABELS: Record<AgentType, string> = {
-  all: "All",
-  agents: "Agents",
-  skills: "Skills",
-};
-
-// Order options available per tab. Favorites supports a manual "custom" order
-// (and no popularity/usage); the other tabs expose popularity/usage instead.
-const ORDER_OPTIONS_BY_TAB: Record<
-  "favorites" | "discover" | "my_agents",
-  AgentSort[]
-> = {
-  favorites: ["alpha_asc", "alpha_desc", "custom"],
-  discover: ["alpha_asc", "alpha_desc", "popularity", "usage"],
-  my_agents: ["alpha_asc", "alpha_desc", "popularity", "usage"],
-};
-
-const DEFAULT_SORT_BY_TAB: Record<
-  "favorites" | "discover" | "my_agents",
-  AgentSort
-> = {
-  favorites: "custom",
-  discover: "popularity",
-  my_agents: "popularity",
-};
-
-function getOrderOptionsForTab(tab: WelcomeAgentTab): AgentSort[] {
-  if (tab === "favorites" || tab === "discover" || tab === "my_agents") {
-    return ORDER_OPTIONS_BY_TAB[tab];
-  }
-  return ORDER_OPTIONS_BY_TAB.discover;
+function hashId(id: string): number {
+  return id
+    .split("")
+    .reduce((acc, char, i) => acc + char.charCodeAt(0) * (i + 1), 0);
 }
 
-function getDefaultSortForTab(tab: WelcomeAgentTab): AgentSort {
-  if (tab === "favorites" || tab === "discover" || tab === "my_agents") {
-    return DEFAULT_SORT_BY_TAB[tab];
-  }
-  return DEFAULT_SORT_BY_TAB.discover;
+const isDustProvided = (item: CatalogItem) => hashId(item.id) % 3 === 0;
+const isFavorite = (item: CatalogItem) => hashId(item.id) % 4 === 1;
+const isMine = (item: CatalogItem) => hashId(item.id) % 5 === 2;
+const getMessageCount = (item: CatalogItem) => (hashId(item.id) % 4800) + 48;
+const getUserCount = (item: CatalogItem) => (hashId(item.id) % 420) + 12;
+
+function getAuthors(item: CatalogItem): string {
+  const hash = hashId(item.id);
+  const author = mockUsers[hash % mockUsers.length].fullName;
+  const others = hash % 3;
+  return others === 0
+    ? author
+    : `${author} and ${others} other${others > 1 ? "s" : ""}`;
 }
 
-type BrowserItem = ({ kind: "agent" } & Agent) | ({ kind: "skill" } & Skill);
+const byUsage = (a: CatalogItem, b: CatalogItem) =>
+  getMessageCount(b) - getMessageCount(a);
 
-// Fake themed categories. These act as the tags applied to each skill / agent:
-// an item "has" a category when its id is listed here. Used both for the
-// Discover groupings and for the Category filter in the FreeButtonSwitch.
-const DISCOVER_CATEGORY_DEFS: {
+// A pod only sees a slice of the catalog, the same slice on every render but a
+// different one per pod.
+const isInPod = (item: CatalogItem, podName: string) =>
+  (hashId(item.id) + hashId(podName)) % 3 === 0;
+
+function getPodItems(podName: string): CatalogItem[] {
+  const inPod = ALL_ITEMS.filter((item) => isInPod(item, podName));
+  return inPod.length >= 4 ? inPod : ALL_ITEMS.slice(0, 8);
+}
+
+// Usage inside the pod, which ranks differently from usage across the
+// workspace, so the two Discover sections don't line up.
+const getPodMessageCount = (item: CatalogItem, podName: string) =>
+  ((hashId(item.id) * 7 + hashId(podName)) % 940) + 12;
+
+const byPodUsage = (podName: string) => (a: CatalogItem, b: CatalogItem) =>
+  getPodMessageCount(b, podName) - getPodMessageCount(a, podName);
+
+const FEATURED = ALL_ITEMS.filter((item) => hashId(item.id) % 7 === 0).slice(
+  0,
+  5
+);
+const FOR_YOU = [...ALL_ITEMS]
+  .sort((a, b) => (hashId(a.id) % 31) - (hashId(b.id) % 31))
+  .slice(0, 4);
+const TRENDING = [...ALL_ITEMS].sort(byUsage).slice(0, 4);
+
+// ── Use cases ───────────────────────────────────────────────────────────────
+
+type UseCase = {
   id: string;
-  title: string;
-  itemIds: string[];
-}[] = [
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+};
+
+const USE_CASES: UseCase[] = [
   {
-    id: "eng-data",
-    title: "Engineering & Data",
-    itemIds: [
-      "agent-14",
-      "agent-13",
-      "skill-code",
-      "skill-tables",
-      "agent-16",
-      "agent-6",
-    ],
+    id: "emails",
+    label: "Find important emails I haven't replied to",
+    icon: Mail01,
   },
   {
-    id: "marketing",
-    title: "Marketing & Content",
-    itemIds: ["agent-15", "agent-9", "skill-image", "agent-7", "agent-4"],
+    id: "dms",
+    label: "Find important DMs I haven't replied to",
+    icon: MessageChatCircle,
   },
   {
-    id: "operations",
-    title: "Operations",
-    itemIds: ["agent-3", "agent-17", "skill-summarize", "agent-12", "agent-11"],
+    id: "news",
+    label: "Catch me up on the most important news in my industry",
+    icon: Globe01,
+  },
+  { id: "usage", label: "Show me how my team is using Dust", icon: BarChart12 },
+  {
+    id: "meeting",
+    label: "Get me ready for my next customer meeting",
+    icon: Calendar,
+  },
+  { id: "pod", label: "Create a Pod for my team project", icon: Folder },
+  {
+    id: "spreadsheet",
+    label: "Turn a spreadsheet into an analysis",
+    icon: Table,
   },
   {
-    id: "people",
-    title: "People & Support",
-    itemIds: [
-      "agent-18",
-      "skill-translate",
-      "agent-1",
-      "skill-web-search",
-      "agent-2",
-    ],
+    id: "document",
+    label: "Draft a document from our own knowledge",
+    icon: File02,
   },
 ];
 
-// Flat list of categories for the Category filter section.
-export const CATEGORIES = DISCOVER_CATEGORY_DEFS.map(({ id, title }) => ({
-  id,
-  title,
-}));
-
-function itemMatchesCategory(itemId: string, categoryId: string): boolean {
-  const def = DISCOVER_CATEGORY_DEFS.find((d) => d.id === categoryId);
-  return def ? def.itemIds.includes(itemId) : false;
-}
-
-function getCategoryTitle(categoryId: string): string {
-  return CATEGORIES.find((c) => c.id === categoryId)?.title ?? "Category";
-}
-
-// ── About Dust tab ──────────────────────────────────────────────────────────
-// A static, document-style tab modeled after product "download / do more"
-// pages: get the apps, connect your tools, build with the API, and find help.
-// Items use either a Sparkle icon (rendered in a highlight-tinted avatar) or a
-// brand logo (rendered as-is to preserve its colors).
-
-type AboutDustItem = {
-  id: string;
-  name: string;
-  description: string;
-  action: string;
-  icon?: ComponentType<{ className?: string }>;
-  logo?: ComponentType<{ className?: string }>;
-};
-
-type AboutDustSection = {
-  id: string;
-  title: string;
-  description?: string;
-  layout: "feature" | "compact";
-  items: AboutDustItem[];
-};
-
-const ABOUT_DUST_SECTIONS: AboutDustSection[] = [
+const podUseCases = (podName: string): UseCase[] => [
   {
-    id: "apps",
-    title: "Get Dust everywhere",
-    description: "Bring Dust to your desktop, your phone, and your browser.",
-    layout: "feature",
-    items: [
-      {
-        id: "desktop",
-        name: "Desktop app",
-        description:
-          "Quick access from anywhere on your machine. Works with your local files and apps.",
-        action: "Download for macOS",
-        icon: Monitor01,
-      },
-      {
-        id: "mobile",
-        name: "Mobile app",
-        description:
-          "Take Dust anywhere. Start conversations and pick up tasks on the go.",
-        action: "Get the app",
-        icon: MessageCircle01,
-      },
-      {
-        id: "extension",
-        name: "Browser extension",
-        description:
-          "Bring Dust into any tab to summarize, draft, and search as you browse.",
-        action: "Add to Chrome",
-        logo: ChromeLogo,
-      },
-    ],
+    id: "pod-catch-up",
+    label: `Catch me up on what happened in ${podName} this week`,
+    icon: Calendar,
   },
   {
-    id: "connectors",
-    title: "Connect your tools",
-    description: "Let Dust work with the data and apps your team already uses.",
-    layout: "compact",
-    items: [
-      {
-        id: "slack",
-        name: "Slack",
-        description: "Chat with Dust and sync conversations.",
-        action: "Connect",
-        logo: SlackLogo,
-      },
-      {
-        id: "notion",
-        name: "Notion",
-        description: "Search and reason over your workspace.",
-        action: "Connect",
-        logo: NotionLogo,
-      },
-      {
-        id: "drive",
-        name: "Google Drive",
-        description: "Bring in docs, sheets, and slides.",
-        action: "Connect",
-        logo: DriveLogo,
-      },
-      {
-        id: "github",
-        name: "GitHub",
-        description: "Give Dust context on your codebase.",
-        action: "Connect",
-        logo: GithubLogo,
-      },
-      {
-        id: "linear",
-        name: "Linear",
-        description: "Track issues and project status.",
-        action: "Connect",
-        logo: LinearLogo,
-      },
-      {
-        id: "intercom",
-        name: "Intercom",
-        description: "Ground answers in support history.",
-        action: "Connect",
-        logo: IntercomLogo,
-      },
-    ],
+    id: "pod-decisions",
+    label: `Summarize the latest decisions in ${podName}`,
+    icon: File02,
   },
   {
-    id: "build",
-    title: "Build with Dust",
-    description: "Automate and extend Dust from your own tools.",
-    layout: "feature",
-    items: [
-      {
-        id: "api",
-        name: "API & SDK",
-        description:
-          "Call agents and run workflows programmatically from your stack.",
-        action: "Read the docs",
-        icon: Code01,
-      },
-      {
-        id: "docs",
-        name: "Documentation",
-        description: "Guides, references, and best practices to go further.",
-        action: "Browse docs",
-        icon: BookOpen01,
-      },
-      {
-        id: "cli",
-        name: "Dust CLI",
-        description:
-          "Manage spaces, agents, and data sources from the terminal.",
-        action: "Install CLI",
-        icon: Terminal,
-      },
-    ],
+    id: "pod-update",
+    label: `Draft an update for the ${podName} team`,
+    icon: Mail01,
   },
   {
-    id: "resources",
-    title: "Learn & get help",
-    layout: "compact",
-    items: [
-      {
-        id: "help",
-        name: "Help center",
-        description: "Setup guides and troubleshooting.",
-        action: "Open",
-        icon: InfoCircle,
-      },
-      {
-        id: "academy",
-        name: "Dust Academy",
-        description: "Courses to master agents and skills.",
-        action: "Open",
-        icon: BookOpen01,
-      },
-      {
-        id: "community",
-        name: "Community",
-        description: "Share workflows and ask questions.",
-        action: "Open",
-        icon: Users01,
-      },
-      {
-        id: "whats-new",
-        name: "What's new",
-        description: "Latest features and updates.",
-        action: "Open",
-        icon: Stars02,
-      },
-    ],
+    id: "pod-work",
+    label: `Show me what the ${podName} team is working on`,
+    icon: BarChart12,
+  },
+  {
+    id: "pod-files",
+    label: `Find the documents shared in ${podName}`,
+    icon: Folder,
   },
 ];
 
-// The tab switch + Create / Manage buttons. Rendered both in-content and,
-// when scrolled out of view, in the panel topbar.
-export function NewConversationActionBar({
-  value,
-  onValueChange,
-  agentSort,
-  onAgentSortChange,
-  agentType,
-  onAgentTypeChange,
-  agentCategory,
-  onAgentCategoryChange,
-}: {
-  value: WelcomeAgentTab;
-  onValueChange: (v: WelcomeAgentTab) => void;
-  agentSort: AgentSort;
-  onAgentSortChange: (sort: AgentSort) => void;
-  agentType: AgentType;
-  onAgentTypeChange: (type: AgentType) => void;
-  agentCategory: string | null;
-  onAgentCategoryChange: (category: string | null) => void;
-}) {
-  const categoryLabel =
-    agentCategory != null ? getCategoryTitle(agentCategory) : "All categories";
+const VISIBLE_USE_CASES = 4;
 
-  // Category control, pinned at the end right before the sort/filter button.
-  // Only shown while the Discover tab is active; it animates in on mount.
-  const categoryOption: FreeButtonSwitchOption<WelcomeAgentTab> = {
-    value: "category",
-    pinned: "end",
-    variant: "ghost-secondary",
-    defaultLabel: categoryLabel,
-    tooltip: "Filter by category",
-    className: "animate-in fade-in-0 slide-in-from-left-2 duration-200",
-    dropdownSections: [
-      {
-        label: "Category",
-        kind: "radio",
-        value: agentCategory ?? "all",
-        onValueChange: (v) => onAgentCategoryChange(v === "all" ? null : v),
-        items: [
-          { value: "all", label: "All categories" },
-          ...CATEGORIES.map((c) => ({ value: c.id, label: c.title })),
-        ],
-      },
-    ],
-  };
-
-  // Type/order filtering only makes sense while browsing agents and skills,
-  // not on the static "About Dust" tab.
-  const isAgentTab = value !== "about_dust";
+function HomepageUseCases({ podName }: { podName?: string }) {
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const useCases = podName ? podUseCases(podName) : USE_CASES;
+  const visible = useCases
+    .filter(({ id }) => !dismissedIds.has(id))
+    .slice(0, VISIBLE_USE_CASES);
 
   return (
-    <div className="flex w-full items-center gap-2">
-      <FreeButtonSwitch<WelcomeAgentTab>
-        value={value}
-        onValueChange={onValueChange}
-        options={[
-          { value: "favorites", label: "Favorites" },
-          { value: "discover", label: "Discover" },
-          { value: "my_agents", label: "Mine" },
-          { value: "about_dust", label: "More with Dust" },
-          ...(value === "discover" ? [categoryOption] : []),
-          ...(isAgentTab
-            ? [
-                {
-                  value: "browse" as WelcomeAgentTab,
-                  pinned: "end" as const,
-                  icon: FilterFunnel01,
-                  tooltip: "Type and order",
-                  dropdownSections: [
-                    {
-                      label: "Type",
-                      kind: "radio" as const,
-                      value: agentType,
-                      onValueChange: (v: string) =>
-                        onAgentTypeChange(v as AgentType),
-                      items: [
-                        { value: "all", label: AGENT_TYPE_LABELS.all },
-                        { value: "agents", label: AGENT_TYPE_LABELS.agents },
-                        { value: "skills", label: AGENT_TYPE_LABELS.skills },
-                      ],
-                    },
-                    {
-                      label: "Order",
-                      kind: "radio" as const,
-                      value: agentSort,
-                      onValueChange: (v: string) =>
-                        onAgentSortChange(v as AgentSort),
-                      items: getOrderOptionsForTab(value).map((sort) => ({
-                        value: sort,
-                        label: AGENT_SORT_LABELS[sort],
-                      })),
-                    },
-                  ],
-                },
-              ]
-            : []),
-        ]}
-      />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+    <ul className="mt-4 flex w-full max-w-4xl flex-col gap-1">
+      {visible.map((useCase) => (
+        <li
+          key={useCase.id}
+          className="group flex h-12 items-center gap-1 rounded-xl pr-2 transition-colors duration-150 hover:bg-hover"
+        >
+          <button
+            type="button"
+            className="flex h-full min-w-0 flex-1 items-center gap-3 px-2 text-left"
+          >
+            <Avatar
+              size="sm"
+              icon={useCase.icon}
+              backgroundColor="bg-muted-background"
+              iconColor="text-foreground"
+            />
+            <span className="copy-base truncate text-foreground">
+              {useCase.label}
+            </span>
+          </button>
           <Button
-            variant="highlight"
-            size="sm"
-            isSelect
-            label="Create and Manage"
-            tooltip="Create and manage agents and skills"
-            className="ml-auto"
+            variant="ghost-secondary"
+            size="xs"
+            icon={XClose}
+            tooltip="Hide this suggestion"
+            aria-label="Hide this suggestion"
+            className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+            onClick={() =>
+              setDismissedIds((current) => new Set(current).add(useCase.id))
+            }
           />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuLabel label="Agents" />
-          <DropdownMenuItem icon={Plus} label="Create agent" />
-          <DropdownMenuItem icon={Settings01} label="Manage agents" />
-          <DropdownMenuSeparator />
-          <DropdownMenuLabel label="Skills" />
-          <DropdownMenuItem icon={Plus} label="Create skill" />
-          <DropdownMenuItem icon={Settings01} label="Manage skills" />
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function DiscoverButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "group inline-flex h-9 items-center gap-2 rounded-full pl-3 pr-4",
+        "border border-border bg-background text-foreground",
+        "shadow-[0px_1px_1px_-0.5px_rgba(0,0,0,0.05),0px_2px_4px_-2px_rgba(0,0,0,0.06)]",
+        "transition-[box-shadow,translate] duration-150 ease-emphasized hover:-translate-y-px"
+      )}
+    >
+      <span className="text-muted-foreground transition-colors group-hover:text-highlight-500">
+        <Icon visual={Stars02} size="xs" />
+      </span>
+      <span className="heading-sm">{label}</span>
+    </button>
+  );
+}
+
+// ── Catalog pieces ──────────────────────────────────────────────────────────
+
+function ItemAvatar({ item, size }: { item: CatalogItem; size: "md" | "lg" }) {
+  return item.kind === "agent" ? (
+    <Avatar
+      size={size}
+      emoji={item.emoji}
+      backgroundColor={item.backgroundColor}
+    />
+  ) : (
+    <Avatar
+      size={size}
+      icon={item.icon}
+      backgroundColor="bg-highlight-50"
+      iconColor="text-highlight-700"
+    />
+  );
+}
+
+function ItemAuthor({ item }: { item: CatalogItem }) {
+  if (isDustProvided(item)) {
+    return (
+      <span className="flex shrink-0 items-center gap-1 text-highlight">
+        <Icon visual={CheckVerified01} size="xs" />
+        Dust
+      </span>
+    );
+  }
+  return <span className="truncate text-foreground">{getAuthors(item)}</span>;
+}
+
+function CatalogRow({
+  item,
+  podName,
+}: {
+  item: CatalogItem;
+  /** When set, the message count is the one for that pod. */
+  podName?: string;
+}) {
+  return (
+    <div className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 border-b border-separator py-4 last:border-b-0">
+      <div className="row-span-2 shrink-0">
+        <ItemAvatar item={item} size="lg" />
+      </div>
+      <div className="flex min-w-0 items-center gap-2 self-end">
+        <span className="heading-base truncate text-foreground">
+          {item.name}
+        </span>
+        <Chip
+          size="xs"
+          label={item.kind === "agent" ? `@${item.name}` : `/${item.name}`}
+          className="shrink-0 font-mono"
+        />
+      </div>
+      <div className="row-span-2 flex shrink-0 items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={Pin02}
+          tooltip="Pin to Featured"
+          aria-label={`Pin ${item.name} to Featured`}
+          className="opacity-0 transition-opacity duration-150 focus-visible:opacity-100 group-hover:opacity-100"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          label={item.kind === "agent" ? "Chat" : "Use"}
+        />
+      </div>
+      <div className="flex min-w-0 flex-col gap-1 self-start">
+        <div className="copy-sm flex h-5 items-center gap-4">
+          <ItemAuthor item={item} />
+          <span className="flex items-center gap-1 text-muted-foreground">
+            <Icon visual={MessageCircle01} size="xs" />
+            {(podName
+              ? getPodMessageCount(item, podName)
+              : getMessageCount(item)
+            ).toLocaleString()}
+          </span>
+          {item.kind === "agent" && (
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <Icon visual={Users01} size="xs" />
+              {getUserCount(item).toLocaleString()}
+            </span>
+          )}
+        </div>
+        <p className="copy-sm line-clamp-2 text-muted-foreground">
+          {item.description}
+        </p>
+      </div>
     </div>
   );
 }
+
+function FeaturedCard({ item }: { item: CatalogItem }) {
+  return (
+    <button
+      type="button"
+      className="flex h-56 w-full flex-col overflow-hidden rounded-2xl border border-border bg-background text-left transition-transform duration-200 ease-emphasized hover:-translate-y-0.5"
+    >
+      <div className="relative flex h-32 w-full shrink-0 items-center justify-center overflow-hidden bg-muted-background">
+        {item.kind === "agent" ? (
+          <span
+            aria-hidden
+            className={cn(
+              "absolute inset-0 scale-110 opacity-40 blur-xl",
+              item.backgroundColor
+            )}
+          />
+        ) : (
+          <span
+            aria-hidden
+            className="absolute inset-0 flex items-center justify-center text-highlight-300"
+          >
+            <item.icon className="h-full w-full scale-150 opacity-30 blur-xl" />
+          </span>
+        )}
+        <span className="relative">
+          <ItemAvatar item={item} size="md" />
+        </span>
+      </div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 px-4 py-3">
+        <span className="copy-sm flex min-w-0 items-center gap-2">
+          <span className="heading-base truncate text-foreground">
+            {item.name}
+          </span>
+          <ItemAuthor item={item} />
+        </span>
+        <span className="copy-sm line-clamp-2 text-muted-foreground">
+          {item.description}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function FeaturedCarousel({
+  title,
+  items,
+}: {
+  title: string;
+  items: CatalogItem[];
+}) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const scrollByPage = (direction: -1 | 1) => {
+    const scroller = scrollerRef.current;
+    scroller?.scrollBy({
+      left: direction * scroller.clientWidth,
+      behavior: "smooth",
+    });
+  };
+
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h2 className="heading-lg text-foreground">{title}</h2>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="xs"
+            icon={ChevronLeft}
+            aria-label="Previous featured"
+            onClick={() => scrollByPage(-1)}
+          />
+          <Button
+            variant="ghost"
+            size="xs"
+            icon={ChevronRight}
+            aria-label="Next featured"
+            onClick={() => scrollByPage(1)}
+          />
+        </div>
+      </div>
+      <div
+        ref={scrollerRef}
+        className="scrollbar-hide flex snap-x snap-mandatory gap-4 overflow-x-auto"
+      >
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="w-full shrink-0 snap-start md:w-[calc((100%-2rem)/3)]"
+          >
+            <FeaturedCard item={item} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DiscoverSection({
+  title,
+  items,
+  podName,
+  onFindMore,
+}: {
+  title: string;
+  items: CatalogItem[];
+  podName?: string;
+  onFindMore: () => void;
+}) {
+  return (
+    <section className="flex min-w-0 flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h2 className="heading-lg text-foreground">{title}</h2>
+        <Button
+          variant="ghost"
+          size="xs"
+          label="Find more"
+          onClick={onFindMore}
+        />
+      </div>
+      <div className="flex flex-col">
+        {items.map((item) => (
+          <CatalogRow key={item.id} item={item} podName={podName} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── Agents & Skills tab ─────────────────────────────────────────────────────
+
+type CatalogView = "pod" | "favorites" | "popular" | "all" | "mine";
+type CatalogKind = "all" | CatalogItem["kind"];
+
+const CATALOG_VIEWS: { id: CatalogView; label: string }[] = [
+  { id: "favorites", label: "Favorites" },
+  { id: "popular", label: "Most Popular" },
+  { id: "all", label: "All" },
+  { id: "mine", label: "Mine" },
+];
+
+const CATALOG_KINDS: { id: CatalogKind; label: string }[] = [
+  { id: "all", label: "Agents & Skills" },
+  { id: "agent", label: "Agents" },
+  { id: "skill", label: "Skills" },
+];
+
+function DiscoverCatalog({ podName }: { podName?: string }) {
+  // In a pod, the pod's own agents and skills come first and lead the list.
+  const defaultView: CatalogView = podName ? "pod" : "all";
+  const [view, setView] = useState<CatalogView>(defaultView);
+  const [kind, setKind] = useState<CatalogKind>("all");
+  const [search, setSearch] = useState("");
+
+  const views = podName
+    ? [{ id: "pod" as const, label: `In ${podName}` }, ...CATALOG_VIEWS]
+    : CATALOG_VIEWS;
+
+  const needle = search.trim().toLowerCase().replace(/^[@/]/, "");
+  const items = ALL_ITEMS.filter(
+    (item) =>
+      (kind === "all" || item.kind === kind) &&
+      (view !== "favorites" || isFavorite(item)) &&
+      (view !== "mine" || isMine(item)) &&
+      (view !== "pod" || !podName || isInPod(item, podName)) &&
+      (!needle || item.name.toLowerCase().includes(needle))
+  ).sort((a, b) =>
+    view === "popular" ? byUsage(a, b) : a.name.localeCompare(b.name)
+  );
+
+  const hasActiveFilters =
+    view !== defaultView || kind !== "all" || needle !== "";
+
+  return (
+    <div className="flex flex-col gap-8">
+      <SearchInput
+        name="discover-search"
+        placeholder="Search for agents or skills"
+        value={search}
+        onChange={setSearch}
+      />
+      <div className="grid grid-cols-1 gap-10 md:grid-cols-[12rem_1fr]">
+        <nav aria-label="Filter" className="flex flex-col gap-6 self-start">
+          <NavigationList>
+            {views.map((v) => (
+              <NavigationListItem
+                key={v.id}
+                label={v.label}
+                selected={view === v.id}
+                onClick={() => setView(v.id)}
+              />
+            ))}
+          </NavigationList>
+          <NavigationList>
+            {CATALOG_KINDS.map((k) => (
+              <NavigationListItem
+                key={k.id}
+                label={k.label}
+                selected={kind === k.id}
+                onClick={() => setKind(k.id)}
+              />
+            ))}
+          </NavigationList>
+        </nav>
+        <section className="flex min-w-0 flex-col">
+          {items.length === 0 ? (
+            <EmptyCTA
+              title="No agents or skills found"
+              message="Try another search or different filters."
+              action={
+                hasActiveFilters && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    label="Clear filters"
+                    onClick={() => {
+                      setView(defaultView);
+                      setKind("all");
+                      setSearch("");
+                    }}
+                  />
+                )
+              }
+            />
+          ) : (
+            items.map((item) => (
+              <CatalogRow
+                key={item.id}
+                item={item}
+                podName={view === "pod" ? podName : undefined}
+              />
+            ))
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+// ── Screen ──────────────────────────────────────────────────────────────────
+
+const DISCOVER_TABS = ["Discover", "Agents & Skills"] as const;
+type DiscoverTab = (typeof DISCOVER_TABS)[number];
 
 interface NewConversationProps {
   greeting: string;
-  spaces: Space[];
-  agentTab: WelcomeAgentTab;
-  onAgentTabChange: (tab: WelcomeAgentTab) => void;
-  agentSort: AgentSort;
-  onAgentSortChange: (sort: AgentSort) => void;
-  agentType: AgentType;
-  onAgentTypeChange: (type: AgentType) => void;
-  agentCategory: string | null;
-  onAgentCategoryChange: (category: string | null) => void;
-  onToolbarPinnedChange: (pinned: boolean) => void;
+  /** Inside a pod, Discover leads with what that pod uses. */
+  podName?: string;
 }
 
-export function NewConversation({
-  greeting,
-  agentTab,
-  onAgentTabChange,
-  agentSort,
-  onAgentSortChange,
-  agentType,
-  onAgentTypeChange,
-  agentCategory,
-  onAgentCategoryChange,
-  onToolbarPinnedChange,
-}: NewConversationProps) {
-  const [agentSearch, setAgentSearch] = useState("");
-  // The tab whose content is currently rendered. It lags behind `agentTab`
-  // while we smooth-scroll the (taller) current content to the top, so the
-  // scroll animation is visible even when switching to a shorter tab.
-  const [displayTab, setDisplayTab] = useState<WelcomeAgentTab>(agentTab);
+export function NewConversation({ greeting, podName }: NewConversationProps) {
+  const [tab, setTab] = useState<DiscoverTab>("Discover");
+  const discoverRef = useRef<HTMLDivElement>(null);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  // Tell the parent when the in-content action bar scrolls out of the top of
-  // the viewport, so it can mirror the bar in the panel topbar.
-  useEffect(() => {
-    const root = scrollRef.current;
-    const sentinel = sentinelRef.current;
-    if (!root || !sentinel) {
-      return;
-    }
-    const obs = new IntersectionObserver(
-      ([entry]) => onToolbarPinnedChange(!entry.isIntersecting),
-      { root, threshold: 0 }
-    );
-    obs.observe(sentinel);
-    return () => obs.disconnect();
-  }, [onToolbarPinnedChange]);
-
-  // Reset scroll to top when switching tabs (the tab heights differ, so the
-  // kept scroll position would otherwise feel disorienting). When scrolled
-  // down (and motion isn't reduced), keep the current content mounted, smooth
-  // scroll it to the top, then swap in the new tab once we arrive. Otherwise
-  // swap instantly.
-  useEffect(() => {
-    if (agentTab === displayTab) {
-      return;
-    }
-    const root = scrollRef.current;
-    const prefersReduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-    if (root && !prefersReduced && root.scrollTop > 200) {
-      root.scrollTo({ top: 0, behavior: "smooth" });
-      const timer = window.setTimeout(() => setDisplayTab(agentTab), 350);
-      return () => window.clearTimeout(timer);
-    }
-    root?.scrollTo({ top: 0, behavior: "auto" });
-    setDisplayTab(agentTab);
-  }, [agentTab, displayTab]);
-
-  // Keep the active order valid for the current tab (e.g. "custom" is only
-  // offered on Favorites, popularity/usage only on the other tabs).
-  useEffect(() => {
-    if (!getOrderOptionsForTab(agentTab).includes(agentSort)) {
-      onAgentSortChange(getDefaultSortForTab(agentTab));
-    }
-  }, [agentTab, agentSort, onAgentSortChange]);
-
-  const itemHash = (id: string) =>
-    id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const recencyScore = (id: string) =>
-    id
-      .split("")
-      .reduce((acc, char, i) => acc + char.charCodeAt(0) * (i + 1), 0);
-
-  const allItems: BrowserItem[] = [
-    ...mockAgents.map((a) => ({ kind: "agent" as const, ...a })),
-    ...mockSkills.map((s) => ({ kind: "skill" as const, ...s })),
-  ];
-
-  const itemsByTab = {
-    favorites: allItems.filter((i) => itemHash(i.id) % 3 === 0),
-    discover: allItems,
-    my_agents: allItems.filter((i) => itemHash(i.id) % 2 === 0),
-  } as const;
-
-  const query = agentSearch.trim().toLowerCase();
-  const matchesQuery = (i: BrowserItem) =>
-    !query ||
-    i.name.toLowerCase().includes(query) ||
-    i.description.toLowerCase().includes(query);
-
-  const matchesType = (i: BrowserItem) =>
-    agentType === "all" ||
-    (agentType === "agents" && i.kind === "agent") ||
-    (agentType === "skills" && i.kind === "skill");
-
-  const usageMessages = (id: string) => (itemHash(id) % 4800) + 48;
-
-  const compareItems = (a: BrowserItem, b: BrowserItem) => {
-    if (agentSort === "alpha_asc") {
-      return a.name.localeCompare(b.name);
-    }
-    if (agentSort === "alpha_desc") {
-      return b.name.localeCompare(a.name);
-    }
-    if (agentSort === "usage") {
-      return usageMessages(b.id) - usageMessages(a.id);
-    }
-    if (agentSort === "custom") {
-      // Keep the underlying insertion order.
-      return 0;
-    }
-    return itemHash(b.id) - itemHash(a.id);
-  };
-
-  // Flat, sorted list for the Favorites / Mine tabs.
-  const displayedItems =
-    displayTab === "favorites" || displayTab === "my_agents"
-      ? [...itemsByTab[displayTab]]
-          .filter(matchesType)
-          .filter(matchesQuery)
-          .sort(compareItems)
-      : [];
-
-  // Active category on Discover: a flat, filtered, ordered list.
-  const activeCategoryId = displayTab === "discover" ? agentCategory : null;
-  const categoryItems = activeCategoryId
-    ? allItems
-        .filter((i) => itemMatchesCategory(i.id, activeCategoryId))
-        .filter(matchesType)
-        .filter(matchesQuery)
-        .sort(compareItems)
+  const podItems = podName ? getPodItems(podName) : [];
+  const featured = podName ? podItems.slice(0, 5) : FEATURED;
+  const podTrending = podName
+    ? [...podItems].sort(byPodUsage(podName)).slice(0, 4)
     : [];
+  const sections: {
+    title: string;
+    items: CatalogItem[];
+    podName?: string;
+  }[] = podName
+    ? [
+        { title: `Trending in ${podName}`, items: podTrending, podName },
+        {
+          // What the rest of the workspace uses, minus what the pod already has.
+          title: "Popular in the workspace",
+          items: [...ALL_ITEMS]
+            .filter((item) => !podTrending.includes(item))
+            .sort(byUsage)
+            .slice(0, 4),
+        },
+      ]
+    : [
+        { title: "Agent & Skill for you", items: FOR_YOU },
+        { title: "Trending in the workspace", items: TRENDING },
+      ];
 
-  // Categorized list for the Discover tab (search filtered).
-  const mostPopular = [...allItems]
-    .sort((a, b) => itemHash(b.id) - itemHash(a.id))
-    .slice(0, 6);
-  const newItems = [...allItems]
-    .sort((a, b) => recencyScore(b.id) - recencyScore(a.id))
-    .slice(0, 6);
-  const forYouItems = [...allItems]
-    .sort((a, b) => (recencyScore(b.id) % 50) - (recencyScore(a.id) % 50))
-    .slice(0, 6);
-  const findItem = (id: string) => allItems.find((i) => i.id === id);
-  const discoverCategories = [
-    { title: "For you", items: forYouItems },
-    { title: "Top 9", items: mostPopular },
-    { title: "New skills and agents", items: newItems },
-    ...DISCOVER_CATEGORY_DEFS.map((def) => ({
-      title: def.title,
-      items: def.itemIds
-        .map(findItem)
-        .filter((i): i is BrowserItem => i != null),
-    })),
-  ]
-    .map((category) => ({
-      ...category,
-      items: category.items
-        .filter(matchesType)
-        .filter(matchesQuery)
-        .sort(compareItems),
-    }))
-    .filter((category) => category.items.length > 0);
-
-  const getItemUsageStats = (id: string) => {
-    const hash = itemHash(id);
-    const users = (hash % 420) + 12;
-    const messages = (hash % 4800) + 48;
-    return { users, messages };
-  };
-
-  const getEditorNameForItem = (id: string) =>
-    mockUsers[itemHash(id) % mockUsers.length].fullName;
-
-  const renderItemCard = (item: BrowserItem, showDiscoverStats = false) => {
-    const usageStats = showDiscoverStats ? getItemUsageStats(item.id) : null;
-    return (
-      <Card
-        key={item.id}
-        size="md"
-        variant="primary"
-        className={
-          usageStats ? "flex h-full flex-col gap-3" : "flex flex-col gap-3"
-        }
-      >
-        <div className="flex gap-3">
-          {item.kind === "skill" ? (
-            <Avatar
-              size="sm"
-              icon={item.icon}
-              backgroundColor="bg-highlight-50"
-              iconColor="text-highlight-700"
-            />
-          ) : (
-            <Avatar
-              size="sm"
-              emoji={item.emoji}
-              backgroundColor={item.backgroundColor}
-            />
-          )}
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="heading-base truncate">{item.name}</span>
-            <span className="line-clamp-1 text-xs text-muted-foreground">
-              by: {getEditorNameForItem(item.id)}
-            </span>
-          </div>
-        </div>
-        <p
-          className={
-            usageStats
-              ? "line-clamp-2 min-h-0 flex-1 text-sm text-muted-foreground"
-              : "line-clamp-2 text-sm text-muted-foreground"
-          }
-        >
-          {item.description}
-        </p>
-        {usageStats && (
-          <div className="flex items-center gap-2">
-            <Tooltip
-              tooltipTriggerAsChild
-              trigger={
-                <span className="inline-flex">
-                  <Chip
-                    size="xs"
-                    color="warning"
-                    icon={User01}
-                    label={String(usageStats.users)}
-                  />
-                </span>
-              }
-              label={`Used by ${usageStats.users} members on the last 30 days`}
-            />
-            <Tooltip
-              tooltipTriggerAsChild
-              trigger={
-                <span className="inline-flex">
-                  <Chip
-                    size="xs"
-                    color="warning"
-                    icon={MessageChatSquare}
-                    label={String(usageStats.messages)}
-                  />
-                </span>
-              }
-              label={`Used in ${usageStats.messages} messages on the last 30 days`}
-            />
-          </div>
-        )}
-      </Card>
-    );
-  };
-
-  // Visual for an About Dust item: brand logos keep their own colors inside a
-  // bordered tile; Sparkle icons use a highlight-tinted avatar (like skills).
-  const renderAboutVisual = (item: AboutDustItem) => {
-    if (item.logo) {
-      const Logo = item.logo;
-      return (
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border bg-background">
-          <Logo className="h-5 w-5" />
-        </div>
-      );
-    }
-    return (
-      <Avatar
-        size="sm"
-        icon={item.icon}
-        backgroundColor="bg-highlight-50"
-        iconColor="text-highlight-700"
-      />
-    );
-  };
-
-  const renderAboutCard = (
-    item: AboutDustItem,
-    layout: "feature" | "compact"
-  ) =>
-    layout === "feature" ? (
-      <Card
-        key={item.id}
-        size="md"
-        variant="primary"
-        className="flex h-full flex-col gap-3"
-      >
-        {renderAboutVisual(item)}
-        <div className="flex flex-col gap-1">
-          <span className="heading-base">{item.name}</span>
-          <p className="text-sm text-muted-foreground">{item.description}</p>
-        </div>
-        <div className="mt-auto">
-          <Button variant="outline" size="sm" label={item.action} />
-        </div>
-      </Card>
-    ) : (
-      <Card
-        key={item.id}
-        size="md"
-        variant="primary"
-        className="flex h-full flex-col gap-3"
-      >
-        <div className="flex items-start gap-3">
-          {renderAboutVisual(item)}
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="heading-base truncate">{item.name}</span>
-            <p className="line-clamp-2 text-xs text-muted-foreground">
-              {item.description}
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="ghost-secondary"
-          size="xs"
-          label={item.action}
-          icon={ArrowRight}
-          className="mt-auto self-start"
-        />
-      </Card>
-    );
-
-  const renderAboutDust = () => (
-    <div className="flex flex-col gap-8">
-      {ABOUT_DUST_SECTIONS.map((section) => (
-        <div key={section.id} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-0.5">
-            <div className="heading-lg text-foreground">{section.title}</div>
-            {section.description && (
-              <p className="text-sm text-muted-foreground">
-                {section.description}
-              </p>
-            )}
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-            {section.items.map((item) => renderAboutCard(item, section.layout))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  const isAboutDust = displayTab === "about_dust";
+  const goToDiscover = () =>
+    discoverRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const findMore = () => setTab("Agents & Skills");
 
   return (
-    <div
-      ref={scrollRef}
-      className="flex h-full w-full flex-col overflow-y-auto bg-background"
-    >
-      <ConversationTopSection>
-        <div className="heading-2xl text-foreground">{greeting}</div>
+    <div className="flex h-full w-full flex-col overflow-y-auto bg-background">
+      <div className="flex h-full min-h-[560px] w-full shrink-0 flex-col items-center px-4">
+        <div className="flex w-full max-w-4xl basis-[36%] flex-col items-center justify-end gap-4 pb-8 pt-4">
+          <h3 className="heading-3xl font-medium text-foreground">
+            {greeting}
+          </h3>
+        </div>
         <InputBar
           placeholder="What are we working on?"
           className="w-full max-w-4xl"
           isFloating={false}
         />
-      </ConversationTopSection>
-      {/* Bottom portion: grows with its content; the page scrolls as a whole. */}
-      <div className="flex flex-none justify-center px-4 pb-8">
-        <div className="flex w-full max-w-4xl flex-col gap-3">
-          <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-4 pb-8 text-center">
-            <div className="heading-2xl text-foreground">
-              {isAboutDust ? "About Dust" : "Agents & Skills"}
-            </div>
-            <SearchInput
-              name="new-conversation-agent-search"
-              value={agentSearch}
-              onChange={setAgentSearch}
-              placeholder={
-                isAboutDust ? "Search Dust" : "Search skills and agents"
-              }
-              className="w-full"
-            />
-          </div>
-          <div ref={sentinelRef} />
-          <NewConversationActionBar
-            value={agentTab}
-            onValueChange={onAgentTabChange}
-            agentSort={agentSort}
-            onAgentSortChange={onAgentSortChange}
-            agentType={agentType}
-            onAgentTypeChange={onAgentTypeChange}
-            agentCategory={agentCategory}
-            onAgentCategoryChange={onAgentCategoryChange}
+        <HomepageUseCases podName={podName} />
+        <div className="flex flex-1 items-end justify-center pb-6 pt-4">
+          <DiscoverButton
+            label={
+              podName
+                ? `Discover Skills and agents in ${podName}`
+                : "Discover Skills and agents"
+            }
+            onClick={goToDiscover}
           />
-          {isAboutDust ? (
-            renderAboutDust()
-          ) : displayTab === "discover" && !activeCategoryId ? (
-            <div className="flex flex-col gap-6">
-              {discoverCategories.map((category) => (
-                <div key={category.title} className="flex flex-col gap-3">
-                  <div className="heading-lg text-foreground">
-                    {category.title}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                    {category.items.map((item) => renderItemCard(item, true))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : activeCategoryId ? (
-            <div className="flex flex-col gap-3">
-              <div className="heading-lg text-foreground">
-                {getCategoryTitle(activeCategoryId)}
-              </div>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                {categoryItems.map((item) => renderItemCard(item, true))}
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              {displayedItems.map((item) => renderItemCard(item))}
-            </div>
-          )}
         </div>
+      </div>
+
+      <div
+        ref={discoverRef}
+        className="flex min-h-full w-full shrink-0 flex-col items-center px-4 pb-16"
+      >
+        <Tabs value={tab} className="flex w-full max-w-4xl flex-col gap-8">
+          <div className="sticky top-0 z-30 flex flex-col gap-6 bg-background pt-10">
+            <h1 className="heading-2xl text-foreground">
+              {podName ? `Discover in ${podName}` : "Discover"}
+            </h1>
+            <TabsList>
+              {DISCOVER_TABS.map((t) => (
+                <TabsTrigger
+                  key={t}
+                  value={t}
+                  label={t}
+                  onClick={() => setTab(t)}
+                />
+              ))}
+            </TabsList>
+          </div>
+          <TabsContent value="Discover" className="flex flex-col gap-12">
+            <FeaturedCarousel
+              title={podName ? `Featured in ${podName}` : "Featured"}
+              items={featured}
+            />
+            {sections.map((section) => (
+              <DiscoverSection
+                key={section.title}
+                title={section.title}
+                items={section.items}
+                podName={section.podName}
+                onFindMore={findMore}
+              />
+            ))}
+          </TabsContent>
+          <TabsContent value="Agents & Skills">
+            <DiscoverCatalog podName={podName} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

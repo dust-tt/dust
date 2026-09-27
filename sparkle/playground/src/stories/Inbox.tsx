@@ -102,13 +102,7 @@ import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import { ManageAgentsView } from "../components/ManageAgentsView";
 import { ManageSkillsView } from "../components/ManageSkillsView";
 import { ManageToolsView } from "../components/ManageToolsView";
-import {
-  type AgentSort,
-  type AgentType,
-  NewConversation,
-  NewConversationActionBar,
-  type WelcomeAgentTab,
-} from "../components/NewConversation";
+import { NewConversation } from "../components/NewConversation";
 import {
   PanelLayout,
   PanelLayoutNav,
@@ -288,12 +282,18 @@ function Inbox() {
   type P3View =
     | { kind: "conversation"; conversationId: string }
     | { kind: "request"; requestId: string }
+    | { kind: "newConversation"; podName?: string }
     | SidePanelView;
 
   const [p3View, setP3View] = useState<P3View | null>(null);
 
   // P4: side panel opened from a level-2 conversation.
   const [p4View, setP4View] = useState<SidePanelView | null>(null);
+
+  const openNewConversation = (podName?: string) => {
+    setP3View({ kind: "newConversation", podName });
+    setP4View(null);
+  };
 
   // ── Space panel tab state (lifted from GroupConversationView) ────────────
   const [spaceActiveTab, setSpaceActiveTab] = useState("conversations");
@@ -352,14 +352,6 @@ function Inbox() {
   // outlives `p2View` — a Space stays lit without the panel changing.
   const [buildNavItem, setBuildNavItem] = useState("agents");
   const [searchText, setSearchText] = useState("");
-  const [welcomeAgentTab, setWelcomeAgentTab] =
-    useState<WelcomeAgentTab>("favorites");
-  const [welcomeAgentSort, setWelcomeAgentSort] = useState<AgentSort>("custom");
-  const [welcomeAgentType, setWelcomeAgentType] = useState<AgentType>("all");
-  const [welcomeAgentCategory, setWelcomeAgentCategory] = useState<
-    string | null
-  >(null);
-  const [isWelcomeToolbarPinned, setIsWelcomeToolbarPinned] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
     useState<Map<string, PodNotificationCondition>>(new Map());
 
@@ -1295,6 +1287,7 @@ function Inbox() {
       return (
         <InboxAltView
           spaces={spaces}
+          onNewConversation={openNewConversation}
           conversations={allConversations}
           requests={requests}
           triggers={triggers}
@@ -1482,7 +1475,8 @@ function Inbox() {
             setFileToRevealInKnowledge(null)
           }
           podVariant={podContext.variant}
-          showComposer
+          showComposer={false}
+          onNewConversation={() => openNewConversation(podContext.space.name)}
           currentUserId={user.id}
           readRowIds={readRowIds}
           onRowsRead={handleRowsRead}
@@ -1510,21 +1504,7 @@ function Inbox() {
         />
       );
     // welcome
-    return (
-      <NewConversation
-        greeting={greeting}
-        spaces={spaces}
-        agentTab={welcomeAgentTab}
-        onAgentTabChange={setWelcomeAgentTab}
-        agentSort={welcomeAgentSort}
-        onAgentSortChange={setWelcomeAgentSort}
-        agentType={welcomeAgentType}
-        onAgentTypeChange={setWelcomeAgentType}
-        agentCategory={welcomeAgentCategory}
-        onAgentCategoryChange={setWelcomeAgentCategory}
-        onToolbarPinnedChange={setIsWelcomeToolbarPinned}
-      />
-    );
+    return <NewConversation greeting={greeting} />;
   })();
 
   // ── P3 / P4 content ───────────────────────────────────────────────────────
@@ -1549,17 +1529,23 @@ function Inbox() {
         ? (p3Conversation?.title ?? "Conversation")
         : p3View.kind === "request"
           ? (p3Request?.title ?? "Request")
-          : sidePanelLabel(p3View);
+          : p3View.kind === "newConversation"
+            ? "New conversation"
+            : sidePanelLabel(p3View);
 
   const p3SizingType: PanelSizingType =
     p3View === null
       ? "secondary"
-      : p3View.kind === "conversation" || p3View.kind === "request"
+      : p3View.kind === "conversation" ||
+          p3View.kind === "request" ||
+          p3View.kind === "newConversation"
         ? "default"
         : sidePanelSizing(p3View);
 
   const p3Content = (() => {
     if (!p3View) return null;
+    if (p3View.kind === "newConversation")
+      return <NewConversation greeting={greeting} podName={p3View.podName} />;
     if (p3View.kind === "request") {
       if (!p3Request) return null;
       return (
@@ -1864,29 +1850,6 @@ function Inbox() {
           size="sm"
           hasLighterFont
         />
-      );
-    if (p2View.kind === "welcome")
-      return (
-        <div
-          className={
-            "w-full transition-opacity duration-200 " +
-            (isWelcomeToolbarPinned
-              ? "opacity-100"
-              : "opacity-0 pointer-events-none")
-          }
-          aria-hidden={!isWelcomeToolbarPinned}
-        >
-          <NewConversationActionBar
-            value={welcomeAgentTab}
-            onValueChange={setWelcomeAgentTab}
-            agentSort={welcomeAgentSort}
-            onAgentSortChange={setWelcomeAgentSort}
-            agentType={welcomeAgentType}
-            onAgentTypeChange={setWelcomeAgentType}
-            agentCategory={welcomeAgentCategory}
-            onAgentCategoryChange={setWelcomeAgentCategory}
-          />
-        </div>
       );
     return null;
   })();
