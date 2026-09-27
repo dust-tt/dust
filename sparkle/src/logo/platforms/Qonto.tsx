@@ -10,11 +10,7 @@ const SvgQonto = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 400 400"
     {...props}
   >
-    <g
-      transform="translate(0 400) scale(0.1 -0.1)"
-      fill="#000"
-      stroke="none"
-    >
+    <g transform="translate(0 400) scale(0.1 -0.1)" fill="#000" stroke="none">
       <path
         d="M0 2000 l0 -2000 2000 0 2000 0 0 2000 0 2000 -2000 0 0
 -2000z m980 1115 c418 -63 772 -363 903 -765 22 -66 57 -238 57 -277 0 -19
