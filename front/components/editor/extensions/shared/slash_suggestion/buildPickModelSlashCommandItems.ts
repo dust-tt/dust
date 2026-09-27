@@ -139,7 +139,7 @@ function filterAndRankByQuery(
     return (
       display.kind === "model" &&
       display.effort === effort &&
-      !nameMatches.includes(item) &&
+      !queryMatchesAsName(item, queryWords) &&
       subFilter(nameQuery, getCompactSearchName(item))
     );
   });
