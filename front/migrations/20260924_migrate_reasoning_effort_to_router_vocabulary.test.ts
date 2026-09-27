@@ -1,3 +1,5 @@
+import assert from "node:assert";
+
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import baseLogger from "@app/logger/logger";
 import {
@@ -119,6 +121,35 @@ describe("migrateReasoningEfforts", () => {
     expect(await storedEffortOf(workspace, beforeCutoff)).toBe("high");
     expect(await storedEffortOf(workspace, legacyLight)).toBe("low");
     expect(await storedEffortOf(workspace, afterCutoff)).toBe("high");
+  });
+
+  it("keeps the updatedAt of the agents it rewrites", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const sId = await createAgentOnModel(authenticator, workspace, {
+      modelId: "accounts/fireworks/models/kimi-k3",
+      reasoningEffort: "medium",
+    });
+    const updatedAtOf = async () => {
+      const [row] = await AgentConfigurationModel.findAll({
+        attributes: ["updatedAt"],
+        where: { workspaceId: workspace.id, sId },
+        raw: true,
+      });
+      assert(row, `Agent ${sId} not found`);
+      return row.updatedAt.getTime();
+    };
+    const updatedAtBefore = await updatedAtOf();
+
+    await migrateReasoningEfforts({
+      cutoff: new Date(),
+      execute: true,
+      logger: baseLogger,
+    });
+
+    expect(await storedEffortOf(workspace, sId)).toBe("high");
+    expect(await updatedAtOf()).toBe(updatedAtBefore);
   });
 
   it("writes nothing on a dry run", async () => {

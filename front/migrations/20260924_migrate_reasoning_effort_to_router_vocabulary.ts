@@ -625,7 +625,8 @@ export async function migrateReasoningEfforts({
     ({ reasoningEffort, ids }) =>
       AgentConfigurationModelWithBypass.update(
         { reasoningEffort },
-        { where: { id: ids } }
+        // `silent` keeps `updatedAt`: rewriting the effort is not an edit of the agent.
+        { where: { id: ids }, silent: true }
       ),
     { concurrency: UPDATE_CONCURRENCY }
   );
@@ -635,7 +636,7 @@ export async function migrateReasoningEfforts({
     ({ id, suggestion, to }) =>
       AgentSuggestionModelWithBypass.update(
         { suggestion: { ...suggestion, reasoningEffort: to } },
-        { where: { id } }
+        { where: { id }, silent: true }
       ),
     { concurrency: UPDATE_CONCURRENCY }
   );
