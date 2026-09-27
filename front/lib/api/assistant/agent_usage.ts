@@ -10,7 +10,7 @@ import { getRedisStreamClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { getAssistantUsageData } from "@app/lib/workspace_usage";
+import { getAgentUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
@@ -129,7 +129,7 @@ export async function getAgentUsage(
   const start = new Date();
   start.setDate(end.getDate() - rankingUsageDays);
 
-  const agentUsage = await getAssistantUsageData(start, end, owner, agent);
+  const agentUsage = await getAgentUsageData(start, end, owner, agent);
 
   return agentUsage
     ? {
