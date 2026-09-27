@@ -56,6 +56,11 @@ describe("getMigratedReasoningEffort", () => {
   ] as const)("moves %s at an unsupported %s to %s", (modelId, storedEffort, expected) => {
     expect(getMigratedReasoningEffort(modelId, storedEffort)).toBe(expected);
   });
+
+  it("leaves the efforts of auto meta-models alone", () => {
+    expect(getMigratedReasoningEffort("auto", "medium")).toBeUndefined();
+    expect(getMigratedReasoningEffort("auto_complex", "light")).toBe("low");
+  });
 });
 
 type StoredModel = { modelId: string; reasoningEffort: string };

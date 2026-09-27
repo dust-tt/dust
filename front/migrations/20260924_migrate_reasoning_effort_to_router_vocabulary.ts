@@ -5,6 +5,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { ORDERED_REASONING_EFFORTS } from "@app/lib/model_constructors/types/reasoning_efforts";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type {
   ReasoningEffort,
@@ -441,9 +442,11 @@ export function getMigratedReasoningEffort(
   if (ranAt === null || !isReasoningEffort(ranAt)) {
     return undefined;
   }
-  const support = SUPPORTED_MODEL_CONFIGS.find(
-    (config) => config.modelId === modelId
-  )?.supportedReasoningEfforts;
+  // The auto meta-models only list `none`, but they run the effort of the model they pick.
+  const support = isModelStreamId(modelId)
+    ? undefined
+    : SUPPORTED_MODEL_CONFIGS.find((config) => config.modelId === modelId)
+        ?.supportedReasoningEfforts;
   const migrated =
     support && !support[ranAt]
       ? getClosestSupportedEffort(ranAt, support)
