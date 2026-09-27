@@ -2,7 +2,7 @@ import type {
   AdditionalConfigurationInBuilderType,
   MCPServerConfigurationType,
 } from "@app/components/shared/tools_picker/types";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getDefaultAdditionalConfiguration } from "@app/lib/actions/default_mcp_action";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import set from "lodash/set";
 
@@ -32,46 +32,12 @@ export function getDefaultConfiguration(
     return defaults;
   }
 
-  const {
-    requiredLists,
-    requiredEnums,
-    requiredBooleans,
-    requiredStrings,
-    requiredNumbers,
-  } = getMCPServerRequirements(mcpServerView);
-
+  // The builder form nests the inputs along their dot-separated paths.
   const additionalConfig: AdditionalConfigurationInBuilderType = {};
-
-  for (const { key, default: defaultValue } of requiredBooleans) {
-    set(additionalConfig, key, defaultValue ?? false);
-  }
-
-  for (const [key, { options, default: defaultValue }] of Object.entries(
-    requiredEnums
+  for (const [key, value] of Object.entries(
+    getDefaultAdditionalConfiguration(mcpServerView)
   )) {
-    if (defaultValue !== null) {
-      set(additionalConfig, key, defaultValue);
-    } else if (options.length > 0) {
-      set(additionalConfig, key, options[0].value);
-    }
-  }
-
-  for (const [key, { default: defaultValue }] of Object.entries(
-    requiredLists
-  )) {
-    set(additionalConfig, key, defaultValue !== null ? [defaultValue] : []);
-  }
-
-  for (const { key, default: defaultValue } of requiredStrings) {
-    if (defaultValue !== null) {
-      set(additionalConfig, key, defaultValue);
-    }
-  }
-
-  for (const { key, default: defaultValue } of requiredNumbers) {
-    if (defaultValue !== null) {
-      set(additionalConfig, key, defaultValue);
-    }
+    set(additionalConfig, key, value);
   }
 
   defaults.additionalConfiguration = additionalConfig;

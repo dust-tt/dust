@@ -1,9 +1,11 @@
-import { nameToStorageFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { mcpServerConfigurationSchema } from "@app/components/shared/tools_picker/types";
-import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
+import {
+  getDefaultMCPActionDescription,
+  getDefaultMCPActionName,
+} from "@app/lib/actions/default_mcp_action";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
@@ -123,29 +125,15 @@ export const capabilityFormSchema = z
 export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType
 ): BuilderAction {
-  const {
-    requiresDataSourceConfiguration,
-    requiresDataWarehouseConfiguration,
-    requiresTableConfiguration,
-    noRequirement,
-  } = getMCPServerRequirements(mcpServerView);
-  const configuration = getDefaultConfiguration(mcpServerView);
-  const rawName = mcpServerView?.name ?? mcpServerView?.server.name ?? "";
-  const sanitizedName = rawName ? nameToStorageFormat(rawName) : "";
+  const { noRequirement } = getMCPServerRequirements(mcpServerView);
 
   return {
     id: uniqueId(),
-    configuration,
-    // Ensure default name always matches validation regex (^[a-z0-9_]+$)
-    name: sanitizedName,
-    description:
-      requiresDataSourceConfiguration ||
-      requiresDataWarehouseConfiguration ||
-      requiresTableConfiguration
-        ? ""
-        : mcpServerView
-          ? getMcpServerViewDescription(mcpServerView)
-          : "",
+    configuration: getDefaultConfiguration(mcpServerView),
+    name: mcpServerView ? getDefaultMCPActionName(mcpServerView) : "",
+    description: mcpServerView
+      ? getDefaultMCPActionDescription(mcpServerView)
+      : "",
     configurationRequired: !noRequirement,
   };
 }
