@@ -79,6 +79,13 @@ export function dropReasoning<C extends InputConfig>(config: C): C {
   return { ...config, reasoning: undefined };
 }
 
+// `configParsers` helper: some models reject a forced tool call outright (e.g. Claude Opus 5.5
+// returns a 400 for a `tool_choice` of "any" or "tool"), so drop it and let the model choose among
+// the tools it is given.
+export function dropForceTool<C extends InputConfig>(config: C): C {
+  return { ...config, forceTool: undefined };
+}
+
 // `configParsers` helper: some providers (Anthropic) reject a forced tool call
 // while extended thinking is active, so disable reasoning when a tool is forced.
 // Apply before `dropTemperatureWhenReasoning` so the now-disabled reasoning keeps

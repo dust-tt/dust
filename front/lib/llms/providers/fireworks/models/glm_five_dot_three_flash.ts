@@ -1,3 +1,4 @@
+import { dropForceTool } from "@app/lib/llms/stream/types/configuration";
 import { FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustZAiGlm53FlashConfig<
@@ -15,6 +16,7 @@ export function WithDustZAiGlm53FlashConfig<
     static readonly maxOutputTokens = 64_000;
     static readonly byok = false;
 
+    static readonly configParsers = [dropForceTool];
     static readonly modelConfig = FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG;
   }
 

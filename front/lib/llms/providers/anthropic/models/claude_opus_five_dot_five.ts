@@ -1,4 +1,7 @@
-import { dropTemperature } from "@app/lib/llms/stream/types/configuration";
+import {
+  dropForceTool,
+  dropTemperature,
+} from "@app/lib/llms/stream/types/configuration";
 import { CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 
 export function WithDustClaudeOpusFiveDotFiveConfig<
@@ -19,7 +22,7 @@ export function WithDustClaudeOpusFiveDotFiveConfig<
     // `disableReasoningWhenForcingTool` unlike Opus 5: Opus 5.5 rejects a
     // forced `tool_choice` outright, so there is no reasoning setting that
     // would make one work.
-    static readonly configParsers = [dropTemperature];
+    static readonly configParsers = [dropTemperature, dropForceTool];
 
     // Nest the legacy model config under a single `modelConfig` static (see
     // `DustStreamEndpointConfiguration`) so consumers can retrieve the full

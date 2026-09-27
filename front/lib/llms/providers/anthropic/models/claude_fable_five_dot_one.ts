@@ -1,4 +1,7 @@
-import { dropTemperature } from "@app/lib/llms/stream/types/configuration";
+import {
+  dropForceTool,
+  dropTemperature,
+} from "@app/lib/llms/stream/types/configuration";
 import { CLAUDE_FABLE_5_1_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 
 export function WithDustClaudeFableFiveDotOneConfig<
@@ -16,7 +19,7 @@ export function WithDustClaudeFableFiveDotOneConfig<
     static readonly maxOutputTokens = 64_000;
     static readonly byok = true;
     // Anthropic rejects an explicit temperature for this model.
-    static readonly configParsers = [dropTemperature];
+    static readonly configParsers = [dropTemperature, dropForceTool];
 
     // Nest the legacy model config under a single `modelConfig` static (see
     // `DustStreamEndpointConfiguration`) so consumers can retrieve the full
