@@ -7,6 +7,7 @@ import {
   AGENT_ACCESS_FILTER_OPTIONS,
   AGENT_FILTER_CATEGORY_LABEL,
   getAgentModelDisplayName,
+  toAgentSearchFilters,
 } from "@app/components/assistant/manager/agentFilter";
 import { FilterCategoryNav } from "@app/components/shared/filter_panel/FilterCategoryNav";
 import { FilterFooter } from "@app/components/shared/filter_panel/FilterFooter";
@@ -14,12 +15,14 @@ import { FilterOptionCheckboxList } from "@app/components/shared/filter_panel/Fi
 import { FilterSection } from "@app/components/shared/filter_panel/FilterSection";
 import { FilterSelectionSummary } from "@app/components/shared/filter_panel/FilterSelectionSummary";
 import {
+  clearFilterCategory,
   filterOptionMatchesSearch,
   filterSelectionCount,
 } from "@app/components/shared/filter_panel/filterState";
 import { useFilterDraft } from "@app/components/shared/filter_panel/useFilterDraft";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import type {
+  AgentSearchFacet,
   AgentSearchFilters,
   AgentSearchPermissionFiltering,
 } from "@app/types/agent_search/agent_search";
@@ -38,12 +41,22 @@ import { useState } from "react";
 interface AgentFilterPanelProps {
   owner: LightWorkspaceType;
   categories: readonly AgentFilterCategory[];
+  searchTerm: string;
   // The tab's own filters: options are the values held by the agents the tab lists.
   tabFilters: AgentSearchFilters;
   permissionFiltering: AgentSearchPermissionFiltering;
   filter: AgentFilter;
   onFilterChange: (filter: AgentFilter) => void;
 }
+
+const AGENT_FILTER_CATEGORY_FACET: Record<
+  Exclude<AgentFilterCategory, "access">,
+  AgentSearchFacet
+> = {
+  editor: "editors",
+  model: "models",
+  tag: "tags",
+};
 
 function renderOptionIcon(option: AgentFilterOption) {
   return option.category === "editor" ? (
@@ -54,6 +67,7 @@ function renderOptionIcon(option: AgentFilterOption) {
 export function AgentFilterPanel({
   owner,
   categories,
+  searchTerm,
   tabFilters,
   permissionFiltering,
   filter,
@@ -77,14 +91,23 @@ export function AgentFilterPanel({
     removeOption,
     selectAllFiltered,
   } = useFilterDraft<AgentFilterCategory, AgentFilterOption>(filter);
+  const isFacetCategory = activeCategory !== "access";
+  // Options are the values held by the agents matching the search and the draft selections of the
+  // other categories: the active category ignores its own selection so that its options stay
+  // selectable together.
   const { facets, isAgentsLoading, isAgentsError } = useSearchAgents({
     owner,
-    searchTerm: "",
+    searchTerm,
     limit: 0,
-    filters: tabFilters,
+    filters: toAgentSearchFilters(
+      clearFilterCategory(draftFilter, activeCategory),
+      tabFilters
+    ),
     permissionFiltering,
-    facets: ["editors", "models", "tags"],
-    disabled: !isOpen,
+    facets: isFacetCategory
+      ? [AGENT_FILTER_CATEGORY_FACET[activeCategory]]
+      : [],
+    disabled: !isOpen || !isFacetCategory,
   });
 
   const categoryOptions: Record<AgentFilterCategory, AgentFilterOption[]> = {
@@ -133,7 +156,6 @@ export function AgentFilterPanel({
     tag: draftFilter.tag?.length ?? 0,
   };
   const activeCategorySelectionCount = categorySelectionCounts[activeCategory];
-  const isFacetCategory = activeCategory !== "access";
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
