@@ -323,7 +323,7 @@ export type AgentResourceSnapshot = {
 // Rollout mode for the agent read cache. Progression: "dryRun" (wired end to end but touching no
 // Redis) -> "compare" (warm the cache and log any divergence from the database, which stays
 // authoritative) -> "live" (serve from the cache).
-const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "compare";
+const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "live";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentResource
