@@ -57,6 +57,21 @@ describe("ModelConfigurationSchema", () => {
     });
   });
 
+  it("reads efforts a custom model config does not list as unsupported", () => {
+    const result = ModelConfigurationSchema.parse(MODEL_CONFIG);
+
+    expect(result.supportedReasoningEfforts).toEqual({
+      none: true,
+      minimal: false,
+      light: true,
+      low: false,
+      medium: true,
+      high: true,
+      xhigh: false,
+      maximal: false,
+    });
+  });
+
   it("rejects unknown availability feature flags", () => {
     expect(() =>
       ModelConfigurationSchema.parse({
