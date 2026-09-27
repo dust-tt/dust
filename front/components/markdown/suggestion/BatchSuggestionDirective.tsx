@@ -29,6 +29,7 @@ import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestio
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
+import partition from "lodash/partition";
 import { useCallback, useState } from "react";
 
 function toBatchProperties(attributes: Record<string, string>) {
@@ -56,6 +57,11 @@ function AgentSuggestionsDiff({
   suggestions,
 }: AgentSuggestionsDiffProps) {
   const displayable = suggestions.filter(isAgentActionCardSuggestion);
+  // Each skill is its own suggestion: they are listed together, under a single heading.
+  const [skillSuggestions, fieldSuggestions] = partition(
+    displayable,
+    (s) => s.kind === "skills"
+  );
   const { agentConfiguration, isAgentConfigurationLoading } =
     useAgentConfiguration({
       workspaceId: owner.sId,
@@ -80,13 +86,29 @@ function AgentSuggestionsDiff({
   return (
     <div className="flex flex-col gap-3">
       <span className="heading-sm text-foreground">@{name}</span>
-      {displayable.map((suggestion) => (
+      {fieldSuggestions.map((suggestion) => (
         <AgentSuggestionDetails
           key={suggestion.sId}
+          owner={owner}
           suggestion={suggestion}
           agentConfiguration={agentConfiguration}
         />
       ))}
+      {skillSuggestions.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm text-muted-foreground">Skills</span>
+          <div className="divide-y divide-border">
+            {skillSuggestions.map((suggestion) => (
+              <AgentSuggestionDetails
+                key={suggestion.sId}
+                owner={owner}
+                suggestion={suggestion}
+                agentConfiguration={agentConfiguration}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import type { LightWorkspaceType } from "@app/types/user";
 import { Avatar } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
@@ -15,6 +16,7 @@ import { useMemo } from "react";
 type ConversationalSuggestionTarget =
   | {
       type: "agent";
+      owner: LightWorkspaceType;
       suggestion: AgentActionCardSuggestionType;
       agentConfiguration: AgentConfigurationType | null;
     }
@@ -58,6 +60,7 @@ function renderCardContent(target: ConversationalSuggestionTarget) {
         ) : undefined,
         collapsibleContent: (
           <AgentSuggestionDetails
+            owner={target.owner}
             suggestion={target.suggestion}
             agentConfiguration={target.agentConfiguration}
           />
