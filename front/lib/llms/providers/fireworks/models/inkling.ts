@@ -1,3 +1,4 @@
+import { dropForceTool } from "@app/lib/llms/stream/types/configuration";
 import { FIREWORKS_INKLING_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustThinkingMachinesInklingConfig<
@@ -12,6 +13,7 @@ export function WithDustThinkingMachinesInklingConfig<
     // Dust caps output at 64k; Fireworks supports up to 1M completion tokens.
     static readonly maxOutputTokens = 64_000;
     static readonly byok = false;
+    static readonly configParsers = [dropForceTool];
     static readonly modelConfig = FIREWORKS_INKLING_MODEL_CONFIG;
   }
 

@@ -12,7 +12,6 @@ import type {
   ModelResolutionMethodType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
 import { areRestrictedModelsAllowedForPublishedAgents } from "@app/types/user";
 
 const MODEL_TIER_NOT_ENABLED_ERROR_CODE = "model_tier_not_enabled";
@@ -67,10 +66,10 @@ export async function getModelTierAccessErrorForAgentConfiguration(
   const tierName =
     modelResolutionMethod && isModelStreamId(modelResolutionMethod)
       ? getTierForModel(modelResolutionMethod, "none")
-      : getTierForModel(
+      : // An agent saved without an effort runs at its model's default.
+        getTierForModel(
           model.modelId,
-          reasoningEffort ??
-            getMinimumReasoningEffort(model.supportedReasoningEfforts)
+          reasoningEffort ?? model.defaultReasoningEffort
         );
 
   if (!tierName) {

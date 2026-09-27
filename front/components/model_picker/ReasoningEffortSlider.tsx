@@ -16,11 +16,10 @@ interface ReasoningEffortSliderProps {
   onChange: (effort: ReasoningEffort) => void;
 }
 
-// A stepped slider for reasoning effort. It always shows the three canonical
-// levels (Light/Medium/High). Unsupported efforts render with a slash; efforts
-// outside the member's access render with a padlock. Both are skipped when
-// snapping. When at most one level is selectable there is nothing to choose,
-// so the whole slider is disabled.
+// A stepped slider over the efforts a model supports. Efforts outside the
+// member's access render with a padlock and are skipped when snapping. When at
+// most one level is selectable there is nothing to choose, so the whole slider
+// is disabled.
 export function ReasoningEffortSlider({
   stops,
   value,
@@ -31,13 +30,7 @@ export function ReasoningEffortSlider({
     0
   );
   const lockedSteps = stops.flatMap((stop, index) =>
-    stop.unavailabilityReason !== null &&
-    stop.unavailabilityReason !== "unsupported"
-      ? [index]
-      : []
-  );
-  const unavailableSteps = stops.flatMap((stop, index) =>
-    stop.unavailabilityReason === "unsupported" ? [index] : []
+    stop.unavailabilityReason !== null ? [index] : []
   );
   const lastIndex = Math.max(stops.length - 1, 1);
   const availableStops = stops.filter(
@@ -68,7 +61,6 @@ export function ReasoningEffortSlider({
         stepCount={stops.length}
         value={valueIndex}
         lockedSteps={lockedSteps}
-        unavailableSteps={unavailableSteps}
         disabled={isDisabled}
         stepTooltips={stops.map(
           (stop) =>

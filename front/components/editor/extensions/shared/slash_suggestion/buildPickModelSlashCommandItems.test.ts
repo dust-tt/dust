@@ -22,12 +22,26 @@ import {
   GPT_4_1_MODEL_CONFIG,
   GPT_5_4_MINI_MODEL_CONFIG,
   GPT_5_6_LUNA_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
+  GPT_5_MODEL_CONFIG,
   GPT_6_ASTRA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { describe, expect, it } from "vitest";
 
 const Icon = () => null;
+
+const SONNET_5_EFFORT_LABELS = ["", "Low", "Medium", "High", "XHigh", "Max"];
+
+// Row labels of a model at the given effort labels; the `none` row has no suffix.
+function rowLabels(
+  model: ModelConfigurationType,
+  effortLabels: string[]
+): string[] {
+  return effortLabels.map((label) =>
+    label ? `${model.displayName} ${label}` : model.displayName
+  );
+}
 
 function asSelectable(
   model: ModelConfigurationType
@@ -49,15 +63,18 @@ describe("buildPickModelSlashCommandItems", () => {
       "Basic",
       "Standard",
       "Premium",
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
+      CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Low`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} XHigh`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Max`,
     ]);
     expect(
       items
         .filter((item) => item.data.selection.display.kind === "model")
         .map((item) => item.data.selection.toSend?.reasoningEffort)
-    ).toEqual(["light", "medium", "high"]);
+    ).toEqual(["none", "low", "medium", "high", "xhigh", "maximal"]);
   });
 
   it("uses a single row for non-reasoning models", () => {
@@ -110,11 +127,11 @@ describe("buildPickModelSlashCommandItems", () => {
         query: "claude",
         streams: null,
       }).map((item) => item.data.selection.toSend?.modelId)
-    ).toEqual([
-      CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId,
-      CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId,
-      CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId,
-    ]);
+    ).toEqual(
+      SONNET_5_EFFORT_LABELS.map(
+        () => CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId
+      )
+    );
   });
 
   it("matches the name as a subsequence and ranks tighter matches first", () => {
@@ -132,20 +149,20 @@ describe("buildPickModelSlashCommandItems", () => {
       }).map((item) => item.label);
 
     // "gpt6" is a substring of "gpt6astra" and only a subsequence of "gpt5.6luna". Within a
-    // model, efforts keep their light, medium, high order.
+    // model, efforts keep their slider order.
     expect(labelsFor("gpt6")).toEqual([
-      `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Light`,
-      `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Medium`,
-      `${GPT_6_ASTRA_MODEL_CONFIG.displayName} High`,
-      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Light`,
-      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Medium`,
-      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} High`,
+      ...rowLabels(GPT_6_ASTRA_MODEL_CONFIG, [
+        "Low",
+        "Medium",
+        "High",
+        "XHigh",
+        "Max",
+      ]),
+      ...rowLabels(GPT_5_6_LUNA_MODEL_CONFIG, SONNET_5_EFFORT_LABELS),
     ]);
-    expect(labelsFor("laude")).toEqual([
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
-    ]);
+    expect(labelsFor("laude")).toEqual(
+      rowLabels(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, SONNET_5_EFFORT_LABELS)
+    );
     // Provider names are never searched.
     expect(labelsFor("anthropic")).toEqual([]);
   });
@@ -170,7 +187,7 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(labelsFor("claudehaiku h")).toEqual([haikuHigh]);
     expect(labelsFor("HAIKU High")).toEqual([haikuHigh]);
     expect(labelsFor("gptluna l")).toEqual([
-      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Light`,
+      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Low`,
     ]);
     // A displayed name can be typed as is, hyphen included.
     expect(labelsFor(`${GPT_5_4_MINI_MODEL_CONFIG.displayName} h`)).toEqual([
@@ -202,10 +219,17 @@ describe("buildPickModelSlashCommandItems", () => {
         streams: null,
       }).map((item) => item.label);
 
-    // Mistral Medium 3.5 only offers the high effort, so its single row is "High".
+    // Mistral Medium 3.5 only offers the none and high efforts.
+    const mistralMediumNone = MISTRAL_MEDIUM_3_5_MODEL_CONFIG.displayName;
     const mistralMediumHigh = `${MISTRAL_MEDIUM_3_5_MODEL_CONFIG.displayName} High`;
-    expect(labelsFor("mistral medium")).toEqual([mistralMediumHigh]);
-    expect(labelsFor("mistral me")).toEqual([mistralMediumHigh]);
+    expect(labelsFor("mistral medium")).toEqual([
+      mistralMediumNone,
+      mistralMediumHigh,
+    ]);
+    expect(labelsFor("mistral me")).toEqual([
+      mistralMediumNone,
+      mistralMediumHigh,
+    ]);
     expect(labelsFor("mistral medium h")).toEqual([mistralMediumHigh]);
     expect(labelsFor("mistral h")).toEqual([mistralMediumHigh]);
     // Other models still read the trailing word as the effort.
@@ -218,6 +242,70 @@ describe("buildPickModelSlashCommandItems", () => {
         `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
       ]);
     }
+  });
+
+  it("selects every effort on a prefix, medium winning on m", () => {
+    const labelsFor = (query: string) =>
+      buildPickModelSlashCommandItems({
+        getModelIcon: () => Icon,
+        lockPremiumEfforts: false,
+        models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
+        query,
+        streams: null,
+      }).map((item) => item.label);
+
+    const sonnet = CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName;
+    expect(labelsFor("sonnet m")).toEqual([`${sonnet} Medium`]);
+    expect(labelsFor("sonnet ma")).toEqual([`${sonnet} Max`]);
+    expect(labelsFor("sonnet maximal")).toEqual([`${sonnet} Max`]);
+    expect(labelsFor("sonnet x")).toEqual([`${sonnet} XHigh`]);
+    expect(labelsFor("sonnet n")).toEqual([sonnet]);
+    expect(labelsFor("sonnet mi")).toEqual([]);
+  });
+
+  it("lists a model named by the last word at every effort, then others at that effort", () => {
+    const labelsFor = (query: string) =>
+      buildPickModelSlashCommandItems({
+        getModelIcon: () => Icon,
+        lockPremiumEfforts: false,
+        models: [
+          asSelectable(GPT_5_MODEL_CONFIG),
+          asSelectable(GPT_5_MINI_MODEL_CONFIG),
+          asSelectable(GPT_5_4_MINI_MODEL_CONFIG),
+          asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
+        ],
+        query,
+        streams: null,
+      }).map((item) => item.label);
+
+    const gpt5MiniRows = rowLabels(GPT_5_MINI_MODEL_CONFIG, [
+      "Min",
+      "Low",
+      "Medium",
+      "High",
+    ]);
+    const gpt54MiniRows = rowLabels(GPT_5_4_MINI_MODEL_CONFIG, [
+      "",
+      "Low",
+      "Medium",
+      "High",
+      "XHigh",
+    ]);
+    const gpt5Min = `${GPT_5_MODEL_CONFIG.displayName} Min`;
+    expect(labelsFor("gpt mini")).toEqual([
+      ...gpt5MiniRows,
+      ...gpt54MiniRows,
+      gpt5Min,
+    ]);
+    expect(labelsFor("gpt mi")).toEqual([
+      ...gpt5MiniRows,
+      ...gpt54MiniRows,
+      gpt5Min,
+    ]);
+    expect(labelsFor("mini")).toEqual([
+      gpt5Min,
+      `${GPT_5_MINI_MODEL_CONFIG.displayName} Min`,
+    ]);
   });
 
   it("matches tier rows on their name and never on an effort", () => {
@@ -281,8 +369,7 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(items.map((item) => item.label)).toEqual([
       "Basic",
       "Standard",
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
+      ...rowLabels(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, ["", "Low", "Medium"]),
     ]);
   });
 });
@@ -314,7 +401,7 @@ describe("getDefaultPickModelSlashCommandItemId", () => {
       })
     ).toBeNull();
     expect(
-      getDefaultPickModelSlashCommandItemId(itemsFor("claude h"), {
+      getDefaultPickModelSlashCommandItemId(itemsFor("claude me"), {
         lockPremiumEfforts: false,
       })
     ).toBeNull();

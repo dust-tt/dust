@@ -7055,11 +7055,15 @@
             "type": "string",
             "enum": [
               "none",
-              "light",
+              "minimal",
+              "low",
               "medium",
-              "high"
+              "high",
+              "xhigh",
+              "maximal",
+              "light"
             ],
-            "description": "Optional reasoning effort. Honored only if the resolved model supports it.",
+            "description": "Optional reasoning effort. Honored only if the resolved model supports it. `light` is a deprecated alias of `low`.",
             "example": "medium"
           }
         }

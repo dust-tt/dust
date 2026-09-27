@@ -486,8 +486,8 @@
  *           example: "claude-sonnet-4-20250514"
  *         reasoningEffort:
  *           type: string
- *           enum: [none, light, medium, high]
- *           description: Optional reasoning effort. Honored only if the resolved model supports it.
+ *           enum: [none, minimal, low, medium, high, xhigh, maximal, light]
+ *           description: Optional reasoning effort. Honored only if the resolved model supports it. `light` is a deprecated alias of `low`.
  *           example: "medium"
  *     ContentFragment:
  *       type: object

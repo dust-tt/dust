@@ -33,7 +33,10 @@ import {
 import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
-import { O1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import {
+  GPT_5_4_MINI_MODEL_CONFIG,
+  O1_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
   ModelIdType,
@@ -47,7 +50,7 @@ describe("getPinnedModelRetryTier", () => {
   const sonnetLight = {
     providerId: "anthropic" as const,
     modelId: CLAUDE_SONNET_5_MODEL_ID,
-    reasoningEffort: "light" as const,
+    reasoningEffort: "low" as const,
   };
 
   for (const errorCategory of [
@@ -142,10 +145,8 @@ const unavailabilityReasonByEffort = (
 describe("modelPickerUtils premium gating", () => {
   describe("getTierForModel", () => {
     it("mirrors the static tier table", () => {
-      expect(getTierForModel(CLAUDE_OPUS_4_8_MODEL_ID, "light")).toBe(
-        "premium"
-      );
-      expect(getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "light")).toBe(
+      expect(getTierForModel(CLAUDE_OPUS_4_8_MODEL_ID, "low")).toBe("premium");
+      expect(getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "low")).toBe(
         "cost_efficient"
       );
       expect(getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "medium")).toBe(
@@ -162,29 +163,34 @@ describe("modelPickerUtils premium gating", () => {
 
   describe("getEffortStops", () => {
     it("locks premium efforts with reason 'premium' when gated (mixed model)", () => {
-      // Sonnet 5: light=cost_efficient, medium=balanced, high=premium.
+      // Sonnet 5: none/low=cost_efficient, medium=balanced, high and up=premium.
       const stops = getEffortStops(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, GATED);
       expect(unavailabilityReasonByEffort(stops)).toEqual({
-        light: null,
+        none: null,
+        low: null,
         medium: null,
         high: "premium",
+        xhigh: "premium",
+        maximal: "premium",
       });
     });
 
     it("locks every effort of an ultra-tier model when gated", () => {
       const stops = getEffortStops(CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG, GATED);
       expect(unavailabilityReasonByEffort(stops)).toEqual({
-        light: "premium",
+        low: "premium",
         medium: "premium",
         high: "premium",
+        xhigh: "premium",
+        maximal: "premium",
       });
     });
 
     it("locks every premium effort of a mid-tier reasoning model", () => {
-      // Gemini 2.5 Pro: light=balanced, medium=premium, high=premium.
+      // Gemini 2.5 Pro: low=balanced, medium=premium, high=premium.
       const stops = getEffortStops(GEMINI_2_5_PRO_MODEL_CONFIG, GATED);
       expect(unavailabilityReasonByEffort(stops)).toEqual({
-        light: null,
+        low: null,
         medium: "premium",
         high: "premium",
       });
@@ -203,22 +209,39 @@ describe("modelPickerUtils premium gating", () => {
     it("has no stops for a model without reasoning", () => {
       expect(getEffortStops(MISTRAL_SMALL_MODEL_CONFIG, UNGATED)).toEqual([]);
     });
+
+    it("only offers the efforts the model supports", () => {
+      const stops = getEffortStops(
+        {
+          ...MISTRAL_SMALL_MODEL_CONFIG,
+          modelId: "my-custom-model-from-eap" as ModelIdType,
+          supportedReasoningEfforts: {
+            none: true,
+            minimal: false,
+            low: false,
+            medium: false,
+            high: true,
+            xhigh: false,
+            maximal: false,
+          },
+        },
+        UNGATED
+      );
+      expect(unavailabilityReasonByEffort(stops)).toEqual({
+        none: null,
+        high: null,
+      });
+    });
   });
 
   describe("getEffortStopTooltip", () => {
     it("explains why an effort is unselectable", () => {
       expect(
         getEffortStopTooltip({
-          effort: "light",
+          effort: "low",
           unavailabilityReason: null,
         })
       ).toBeNull();
-      expect(
-        getEffortStopTooltip({
-          effort: "high",
-          unavailabilityReason: "unsupported",
-        })
-      ).toBe("This model doesn't support High reasoning.");
       expect(
         getEffortStopTooltip({
           effort: "high",
@@ -271,7 +294,6 @@ describe("modelPickerUtils premium gating", () => {
         supportedReasoningEfforts: {
           none: false,
           minimal: false,
-          light: false,
           low: false,
           medium: false,
           high: false,
@@ -352,6 +374,10 @@ describe("modelPickerUtils premium gating", () => {
   });
 
   describe("getInitialEffort", () => {
+    it("starts a model on its default none effort", () => {
+      expect(getInitialEffort(GPT_5_4_MINI_MODEL_CONFIG, UNGATED)).toBe("none");
+    });
+
     it("never returns a premium effort when gated (mixed models)", () => {
       expect(
         getTierForModel(

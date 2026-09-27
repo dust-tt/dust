@@ -24,7 +24,10 @@ import type { ModelConversationTypeMultiActions } from "@app/types/assistant/gen
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { GEMINI_3_8_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_5_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type {
+  ModelConfigurationType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { getLightConversation } from "./fetch";
@@ -188,12 +191,13 @@ async function generateConversationTitle(
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getFastModelConfig(auth);
-  if (!model) {
+  const fastModel = getFastModelConfig(auth);
+  if (!fastModel) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate title")
     );
   }
+  const { model, reasoningEffort } = fastModel;
 
   let prompt =
     "Generate a concise conversation title (3-8 words) based on the user's message and context. " +
@@ -235,6 +239,7 @@ async function generateConversationTitle(
     {
       providerId: model.providerId,
       modelId: model.modelId,
+      reasoningEffort,
       functionCall: FUNCTION_NAME,
       useCache: false,
     },
@@ -267,20 +272,28 @@ async function generateConversationTitle(
   return new Err(new Error("No title found in LLM response"));
 }
 
-function getFastModelConfig(
-  auth: Authenticator
-): ModelConfigurationType | null {
+type FastModel = {
+  model: ModelConfigurationType;
+  // Unset for the whitelisted fallback, which then runs at its lowest effort.
+  reasoningEffort?: ReasoningEffort;
+};
+
+function getFastModelConfig(auth: Authenticator): FastModel | null {
   const providers = getWhitelistedProviders(auth);
 
   if (providers.has("openai")) {
-    return GPT_5_1_MODEL_CONFIG;
+    return { model: GPT_5_1_MODEL_CONFIG, reasoningEffort: "none" };
   }
   if (providers.has("anthropic")) {
-    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
+    return {
+      model: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+      reasoningEffort: "none",
+    };
   }
   if (providers.has("google_ai_studio")) {
-    return GEMINI_3_8_FLASH_MODEL_CONFIG;
+    return { model: GEMINI_3_8_FLASH_MODEL_CONFIG, reasoningEffort: "low" };
   }
 
-  return getSmallWhitelistedModel(auth);
+  const model = getSmallWhitelistedModel(auth);
+  return model ? { model } : null;
 }

@@ -73,7 +73,6 @@ import type {
   NonDeltaResponseEvent,
   PassthroughLab,
 } from "@app/lib/model_constructors/types/output/events";
-import type { ReasoningEffort as RouterReasoningEffort } from "@app/lib/model_constructors/types/reasoning_efforts";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { EUROPE, GLOBAL, US } from "@app/lib/model_constructors/types/regions";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
@@ -91,7 +90,6 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -114,54 +112,21 @@ export function inferenceRegionForEndpointRegion(
 }
 
 /**
- * The router effort a model is asked to run at for a requested product effort, before the endpoint's
- * `configParsers` run. An effort the model does not support is clamped to its minimum supported
- * one: some callers default to "none" when no effort is set, but models like GPT-5 reject "none"
- * (mirrors the legacy Anthropic client).
- * TODO(new_llm_router): this reliance on the legacy `supportedReasoningEfforts` is temporary.
+ * The effort sent to the provider, a missing one reading as `none`. An effort the model does not
+ * support is an error, never remapped: write paths reject it and the reasoning effort migration
+ * fixed the stored ones.
  */
-export function toRouterReasoningEffort(
+export function assertSupportedReasoningEffort(
   modelConfig: ModelConfigurationType,
   requestedEffort: ReasoningEffort | null
-): RouterReasoningEffort {
-  const supportedEfforts = modelConfig.supportedReasoningEfforts;
-  const clampedEffort =
-    requestedEffort !== null && !supportedEfforts[requestedEffort]
-      ? getMinimumReasoningEffort(supportedEfforts)
-      : requestedEffort;
-
-  return mapReasoningEffort(
-    clampedEffort,
-    modelConfig.useNativeLightReasoning ?? false
-  );
-}
-
-function mapReasoningEffort(
-  effort: ReasoningEffort | null,
-  useNativeLightReasoning: boolean
-): RouterReasoningEffort {
-  switch (effort) {
-    case null:
-    case "none":
-      return "none";
-    case "minimal":
-    case "low":
-    case "xhigh":
-    case "maximal":
-      return effort;
-    case "light":
-      // Models without native light reasoning rely on the chain-of-thought meta
-      // prompt instead of native thinking. Enabling native thinking while that
-      // meta prompt is injected makes the <thinking>/<response> tags leak, so
-      // keep thinking disabled for them.
-      return useNativeLightReasoning ? "low" : "none";
-    case "medium":
-      return "medium";
-    case "high":
-      return "high";
-    default:
-      assertNever(effort);
+): ReasoningEffort {
+  const effort = requestedEffort ?? "none";
+  if (!modelConfig.supportedReasoningEfforts[effort]) {
+    throw new Error(
+      `Reasoning effort "${effort}" is not supported by ${modelConfig.modelId}.`
+    );
   }
+  return effort;
 }
 
 // The persisted passthrough `provider` uses the legacy provider-id vocabulary
@@ -840,7 +805,10 @@ abstract class BaseTransition extends LLM {
       tools: specifications as ToolSpecification[],
       temperature: this.temperature ?? undefined,
       reasoning: {
-        effort: toRouterReasoningEffort(this.modelConfig, this.reasoningEffort),
+        effort: assertSupportedReasoningEffort(
+          this.modelConfig,
+          this.reasoningEffort
+        ),
       },
       forceTool: forceToolCall,
       disableToolUse,

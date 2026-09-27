@@ -21,7 +21,10 @@ import {
   STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
 } from "@app/types/assistant/models/model_tiers";
 import { isStaticModelId } from "@app/types/assistant/models/models";
-import { REASONING_EFFORT_LABELS } from "@app/types/assistant/models/reasoning";
+import {
+  ORDERED_REASONING_EFFORTS,
+  REASONING_EFFORT_LABELS,
+} from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
   ModelIdType,
@@ -326,20 +329,13 @@ export interface ModelPickerSelectionModel {
 }
 
 export type ModelLockReason = "premium" | "model_tier";
-export type EffortUnavailabilityReason = "unsupported" | ModelLockReason;
 
-// One stop of the reasoning-effort slider. A null reason means it is available.
-// Unsupported efforts are unavailable; premium and model-tier efforts are
-// locked behind access controls.
+// One stop of the reasoning-effort slider. A null reason means it is available;
+// otherwise the effort is locked behind access controls.
 export interface EffortStop {
   effort: ReasoningEffort;
-  unavailabilityReason: EffortUnavailabilityReason | null;
+  unavailabilityReason: ModelLockReason | null;
 }
-
-// The reasoning-effort slider always presents these three canonical levels so
-// its shape stays consistent across models. "none" is not a level here: it
-// means "no reasoning" and is never a selectable slider position.
-export const SLIDER_EFFORTS: ReasoningEffort[] = ["light", "medium", "high"];
 
 export function buildTierSelection(tierId: ModelTierId): ModelSelectionType {
   const { metaModelId } = getModelTier(tierId);
@@ -451,7 +447,8 @@ function modelSupportsEffortStatically(
   return STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[modelId][effort];
 }
 
-// The single authority for whether a reasoning-effort level is selectable. A
+// The single authority for whether a reasoning-effort level is selectable. The
+// stops are the efforts the model supports, so efforts it lacks never show. A
 // static model without reasoning has no slider, hence no stops.
 export function getEffortStops(
   enabledModel: ModelConfigurationType,
@@ -468,25 +465,19 @@ export function getEffortStops(
     getAvailableReasoningEfforts(enabledModel.supportedReasoningEfforts)
   );
 
-  return SLIDER_EFFORTS.map((effort) => {
+  return ORDERED_REASONING_EFFORTS.flatMap((effort): EffortStop[] => {
     if (!allowed.has(effort)) {
-      return {
-        effort,
-        unavailabilityReason: modelSupportsEffortStatically(
-          enabledModel.modelId,
-          effort
-        )
-          ? "model_tier"
-          : "unsupported",
-      };
+      return modelSupportsEffortStatically(enabledModel.modelId, effort)
+        ? [{ effort, unavailabilityReason: "model_tier" }]
+        : [];
     }
     if (
       lockPremiumEfforts &&
       isPremiumOrAboveTier(getTierForModel(enabledModel.modelId, effort))
     ) {
-      return { effort, unavailabilityReason: "premium" };
+      return [{ effort, unavailabilityReason: "premium" }];
     }
-    return { effort, unavailabilityReason: null };
+    return [{ effort, unavailabilityReason: null }];
   });
 }
 
@@ -515,7 +506,9 @@ function isReasoningModel(modelId: ModelIdType): boolean {
     return false;
   }
   const support = STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[modelId];
-  return SLIDER_EFFORTS.some((effort) => support[effort]);
+  return ORDERED_REASONING_EFFORTS.some(
+    (effort) => effort !== "none" && support[effort]
+  );
 }
 
 // Whether a whole model row must be locked, and why: a reasoning model left
@@ -537,13 +530,8 @@ export function isModelLocked(
   if (!lockPremiumEfforts) {
     return false;
   }
-  const supportedSlider = stops.filter(
-    (stop) => stop.unavailabilityReason !== "unsupported"
-  );
-  if (supportedSlider.length > 0) {
-    return supportedSlider.every(
-      (stop) => stop.unavailabilityReason === "premium"
-    );
+  if (stops.length > 0) {
+    return stops.every((stop) => stop.unavailabilityReason === "premium");
   }
   return isPremiumOrAboveTier(getTierForModel(enabledModel.modelId, "none"));
 }
@@ -576,8 +564,6 @@ export function getEffortStopTooltip(stop: EffortStop): string | null {
       return PREMIUM_MODEL_LOCKED_TOOLTIP;
     case "model_tier":
       return MODEL_TIER_LOCKED_TOOLTIP;
-    case "unsupported":
-      return `This model doesn't support ${REASONING_EFFORT_LABELS[stop.effort]} reasoning.`;
     case null:
       return null;
     default:

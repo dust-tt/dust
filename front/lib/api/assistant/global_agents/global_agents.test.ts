@@ -181,7 +181,7 @@ describe("getGlobalAgents custom model agents", () => {
         sId: GLOBAL_AGENTS_SID.DUST_NEXT,
         providerId: "openai",
         modelId: CUSTOM_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
       {
         sId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
@@ -223,7 +223,7 @@ describe("getGlobalAgents custom model agents", () => {
       {
         sId: GLOBAL_AGENTS_SID.DUST_CHAWI,
         modelId: GPT_5_5_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
       {
         sId: GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
@@ -264,7 +264,7 @@ describe("getGlobalAgents custom model agents", () => {
       {
         sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU,
         modelId: GPT_5_5_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
       {
         sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
@@ -364,7 +364,7 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
     expect(agents).toEqual([]);
   });
 
-  it("resolves Sol and Luna variants with light, medium, and high reasoning", async () => {
+  it("resolves Sol and Luna variants with low, medium, and high reasoning", async () => {
     const auth = await createAuthenticatorWithFlags(
       ["dust_internal_global_agents"],
       // Sol is premium: entitlement now comes from the plan.
@@ -394,7 +394,7 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
       {
         sId: GLOBAL_AGENTS_SID.DUST_OAI,
         modelId: GPT_5_6_SOL_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
       {
         sId: GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
@@ -409,7 +409,7 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
       {
         sId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA,
         modelId: GPT_5_6_LUNA_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
       {
         sId: GLOBAL_AGENTS_SID.DUST_OAI_LUNA_MEDIUM,
@@ -512,12 +512,12 @@ describe("getGlobalAgents Deep Dive model routing", () => {
       {
         sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
         modelId: CLAUDE_OPUS_5_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
       {
         sId: GLOBAL_AGENTS_SID.DUST_TASK,
         modelId: CLAUDE_SONNET_5_MODEL_ID,
-        reasoningEffort: "light",
+        reasoningEffort: "low",
       },
       {
         sId: GLOBAL_AGENTS_SID.DUST_PLANNING,
@@ -542,7 +542,7 @@ describe("getGlobalAgents Deep Dive model routing", () => {
     expect(agents).toHaveLength(1);
     expect(agents[0].model).toMatchObject({
       modelId: CLAUDE_SONNET_5_MODEL_ID,
-      reasoningEffort: "light",
+      reasoningEffort: "low",
     });
   });
 
@@ -561,7 +561,7 @@ describe("getGlobalAgents Deep Dive model routing", () => {
     expect(agents).toHaveLength(1);
     expect(agents[0].model).toMatchObject({
       modelId: GEMINI_3_1_PRO_MODEL_ID,
-      reasoningEffort: "light",
+      reasoningEffort: "high",
     });
   });
 });
