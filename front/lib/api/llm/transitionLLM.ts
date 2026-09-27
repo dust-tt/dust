@@ -87,6 +87,7 @@ import type {
 import { isAgentMessagePhase } from "@app/types/assistant/agent_message_content";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import type {
+  ModelConfigurationType,
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
@@ -113,8 +114,28 @@ export function inferenceRegionForEndpointRegion(
 }
 
 /**
- * Maps a reasoning effort to the model constructor's effort values.
+ * The router effort a model is asked to run at for a requested product effort, before the endpoint's
+ * `configParsers` run. An effort the model does not support is clamped to its minimum supported
+ * one: some callers default to "none" when no effort is set, but models like GPT-5 reject "none"
+ * (mirrors the legacy Anthropic client).
+ * TODO(new_llm_router): this reliance on the legacy `supportedReasoningEfforts` is temporary.
  */
+export function toRouterReasoningEffort(
+  modelConfig: ModelConfigurationType,
+  requestedEffort: ReasoningEffort | null
+): RouterReasoningEffort {
+  const supportedEfforts = modelConfig.supportedReasoningEfforts;
+  const clampedEffort =
+    requestedEffort !== null && !supportedEfforts[requestedEffort]
+      ? getMinimumReasoningEffort(supportedEfforts)
+      : requestedEffort;
+
+  return mapReasoningEffort(
+    clampedEffort,
+    modelConfig.useNativeLightReasoning ?? false
+  );
+}
+
 function mapReasoningEffort(
   effort: ReasoningEffort | null,
   useNativeLightReasoning: boolean
@@ -815,27 +836,11 @@ abstract class BaseTransition extends LLM {
       previousMessageId,
     } = streamParameters;
 
-    // Clamp the reasoning effort to the model's supported range. Some callers
-    // default to "none" when no effort is set, but models like GPT-5 reject the
-    // "none" effort their schema drops, so an unsupported effort falls back to
-    // the model's minimum supported one (mirrors the legacy Anthropic client).
-    // TODO(new_llm_router): this reliance on the legacy `supportedReasoningEfforts` is temporary.
-    // Once the new router is fully rolled out, drop this clamp and rely on each
-    // model constructor's own default reasoning effort instead.
-    const supportedEfforts = this.modelConfig.supportedReasoningEfforts;
-    const clampedReasoningEffort: ReasoningEffort | null =
-      this.reasoningEffort !== null && !supportedEfforts[this.reasoningEffort]
-        ? getMinimumReasoningEffort(supportedEfforts)
-        : this.reasoningEffort;
-
     const config: InputConfig = {
       tools: specifications as ToolSpecification[],
       temperature: this.temperature ?? undefined,
       reasoning: {
-        effort: mapReasoningEffort(
-          clampedReasoningEffort,
-          this.modelConfig.useNativeLightReasoning ?? false
-        ),
+        effort: toRouterReasoningEffort(this.modelConfig, this.reasoningEffort),
       },
       forceTool: forceToolCall,
       disableToolUse,

@@ -9,7 +9,7 @@ import type { SUPPORTED_MODEL_CONFIGS } from "./models";
 import { MODEL_IDS } from "./models";
 import type { BYOK_MODEL_PROVIDER_IDS } from "./providers";
 import { MODEL_MAKER_IDS, MODEL_PROVIDER_IDS } from "./providers";
-import { ORDERED_REASONING_EFFORTS } from "./reasoning";
+import { ORDERED_REASONING_EFFORTS, ReasoningEffortSchema } from "./reasoning";
 
 export type ModelIdType = (typeof MODEL_IDS)[number];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
@@ -24,7 +24,7 @@ export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];
 export const ModelSelectionSchema = z.object({
   providerId: z.enum(MODEL_PROVIDER_IDS),
   modelId: z.enum(MODEL_IDS),
-  reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
+  reasoningEffort: ReasoningEffortSchema.optional(),
 });
 export type ModelSelectionType = z.infer<typeof ModelSelectionSchema>;
 

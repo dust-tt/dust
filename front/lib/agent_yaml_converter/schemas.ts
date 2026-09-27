@@ -1,7 +1,7 @@
 import { additionalConfigurationSchema } from "@app/lib/actions/additional_configuration";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import { ReasoningEffortSchema } from "@app/types/assistant/models/reasoning";
 import { z } from "zod";
 
 export const agentYAMLBasicInfoSchema = z.object({
@@ -17,7 +17,7 @@ export const agentYAMLGenerationSettingsSchema = z.object({
   model_id: z.enum(MODEL_IDS),
   provider_id: z.enum(MODEL_PROVIDER_IDS),
   temperature: z.number().min(0).max(1, "Temperature must be between 0 and 1"),
-  reasoning_effort: z.enum(ORDERED_REASONING_EFFORTS),
+  reasoning_effort: ReasoningEffortSchema,
   response_format: z.string().optional(),
 });
 
