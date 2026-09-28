@@ -215,9 +215,12 @@ function SkillSuggestionsDiff({
   suggestions,
 }: SkillSuggestionsDiffProps) {
   const { openPanel } = useConversationSidePanelContext();
+  // A created skill is a pending placeholder: its name is the suggested one.
+  const creation = suggestions.find((s) => s.kind === "create");
   const { skill, isSkillLoading } = useSkill({
     workspaceId: owner.sId,
     skillId,
+    disabled: !!creation,
   });
 
   const getSkillInstructionsHtml = useCallback(
@@ -237,7 +240,11 @@ function SkillSuggestionsDiff({
   return (
     <SuggestionTargetSection
       targetLabel="Skill"
-      name={skill?.name ?? "Skill"}
+      name={
+        creation?.kind === "create"
+          ? creation.suggestion.name
+          : (skill?.name ?? "Skill")
+      }
       visual={<SkillAvatar size="3xs" />}
       onOpen={() =>
         openPanel({
