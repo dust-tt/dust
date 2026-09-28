@@ -250,6 +250,7 @@ export function AgentSearchTable({
           cell: ({ row: { original: agent } }) => (
             <DataTable.CellContent>
               <Tooltip
+                align="start"
                 label={
                   <div className="py-1.5">
                     <EntityTooltipCard
