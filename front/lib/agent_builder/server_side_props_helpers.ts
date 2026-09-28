@@ -19,10 +19,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
 import type {
-  AgentConfigurationType,
-  TemplateAgentConfigurationType,
-} from "@app/types/assistant/agent";
-import type {
   DataSourceViewContentNode,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
@@ -78,7 +74,7 @@ export async function buildInitialActions({
   mcpServerViews = [],
 }: {
   dataSourceViews: DataSourceViewResource[];
-  actions: (AgentConfigurationType | TemplateAgentConfigurationType)["actions"];
+  actions: MCPServerConfigurationType[];
   mcpServerViews?: MCPServerViewType[];
 }): Promise<AgentBuilderMCPConfiguration[]> {
   const builderActions: AgentBuilderMCPConfiguration[] = [];
