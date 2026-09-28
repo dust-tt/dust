@@ -1,7 +1,6 @@
 import { filterEditableAgents } from "@app/lib/api/assistant/agent_permissions";
 import {
   enrichAgentConfigurations,
-  getModelForAgentConfiguration,
   redactPrivateAgentConfigurationFields,
 } from "@app/lib/api/assistant/configuration/helpers";
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
@@ -16,7 +15,6 @@ import type {
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentFetchVariant,
-  AgentModelConfigurationType,
   GlobalAgentContext,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
@@ -24,7 +22,6 @@ import {
   GLOBAL_AGENTS_SID,
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -337,39 +334,6 @@ export async function getAgentConfigurationForDetails(
   return restrictedAgent
     ? redactPrivateAgentConfigurationFields(restrictedAgent)
     : null;
-}
-
-type AgentLabel = {
-  sId: string;
-  authorModelId: ModelId;
-  name: string;
-  pictureUrl: string | null;
-  model: AgentModelConfigurationType;
-  scope: Exclude<AgentConfigurationScope, "global">;
-};
-
-export async function getAgentLabelsByIds(
-  auth: Authenticator,
-  agentIds: string[]
-): Promise<AgentLabel[]> {
-  if (!auth.isManager()) {
-    return [];
-  }
-
-  const workspaceAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
-  const agentModels = await fetchLatestWorkspaceAgentModels(
-    auth,
-    workspaceAgentIds
-  );
-
-  return agentModels.map((agent) => ({
-    sId: agent.sId,
-    name: agent.name,
-    authorModelId: agent.authorId,
-    pictureUrl: agent.pictureUrl,
-    model: getModelForAgentConfiguration(agent),
-    scope: agent.scope,
-  }));
 }
 
 /**
