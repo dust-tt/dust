@@ -14,7 +14,6 @@ import type useCustomEditor from "@app/components/editor/input_bar/useCustomEdit
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { setQueryParam } from "@app/lib/utils/router";
@@ -131,10 +130,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   const router = useAppRouter();
   const isMobile = useIsMobile();
   const isWidthConstrained = useIsWidthConstrained();
-  const { featureFlags } = useFeatureFlags();
-  const shouldPlusOpenSlashCommand =
-    featureFlags.includes("knowledge_browser") &&
-    actions.includes("capabilities");
+  // With capabilities available the "+" opens the slash menu, which carries attach, model and
+  // capability commands; composers without them keep the plus menu and its pickers.
+  const shouldPlusOpenSlashCommand = actions.includes("capabilities");
   const [serverToSetup, setServerToSetup] =
     React.useState<MCPServerType | null>(null);
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
