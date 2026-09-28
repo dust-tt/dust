@@ -526,6 +526,13 @@ export function isUserMessageContextValid(
   }
 }
 
+/**
+ * @cc [owner:frankaloia,label:security;api] authenticated-message-user-attribution
+ * A posted message MUST use the authenticated user as its author when one exists. A caller-supplied
+ * `context.email` MAY resolve a workspace user only for a system API key. Regular API keys and
+ * other userless authenticators MUST remain unattributed, and `doNotAssociateUser` MUST always
+ * produce an unattributed message.
+ */
 export async function postUserMessage(
   auth: Authenticator,
   {
@@ -812,12 +819,13 @@ export async function postUserMessage(
     }
   }
 
-  // TODO(2026-07-31 SEC): this allow spoofing as we trust blindly the user email from the metadata.
   let messageUser = doNotAssociateUser ? null : (user?.toJSON() ?? null);
-  messageUser ??= await attributeUserFromWorkspaceAndEmail(
-    owner,
-    context.email
-  );
+  if (!doNotAssociateUser && !messageUser && auth.isSystemKey()) {
+    messageUser = await attributeUserFromWorkspaceAndEmail(
+      owner,
+      context.email
+    );
+  }
 
   const resolvedUserMentions = await resolveUserMentions(auth, {
     mentions,

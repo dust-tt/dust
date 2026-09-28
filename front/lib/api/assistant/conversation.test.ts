@@ -1604,6 +1604,64 @@ describe("postUserMessage", () => {
     vi.clearAllMocks();
   });
 
+  it("does not attribute a regular API key message from context.email", async () => {
+    const key = await KeyFactory.regular(globalGroup);
+    const keyAuth = await Authenticator.fromKey(key, workspace.sId);
+    const authenticatedUser = auth.getNonNullableUser().toJSON();
+
+    const result = await postUserMessage(keyAuth, {
+      conversationResource: await fetchConversationResource(
+        keyAuth,
+        conversation.sId
+      ),
+      content: "API key message",
+      mentions: [],
+      context: {
+        username: authenticatedUser.username,
+        timezone: "UTC",
+        fullName: authenticatedUser.fullName,
+        email: authenticatedUser.email,
+        profilePictureUrl: authenticatedUser.image,
+        origin: "api",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.userMessage.user).toBeNull();
+    }
+  });
+
+  it("allows a system API key to attribute a message from context.email", async () => {
+    const key = await KeyFactory.system(globalGroup);
+    const keyAuth = await Authenticator.fromKey(key, workspace.sId);
+    const authenticatedUser = auth.getNonNullableUser().toJSON();
+
+    const result = await postUserMessage(keyAuth, {
+      conversationResource: await fetchConversationResource(
+        keyAuth,
+        conversation.sId
+      ),
+      content: "System API key message",
+      mentions: [],
+      context: {
+        username: authenticatedUser.username,
+        timezone: "UTC",
+        fullName: authenticatedUser.fullName,
+        email: authenticatedUser.email,
+        profilePictureUrl: authenticatedUser.image,
+        origin: "api",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.userMessage.user?.sId).toBe(authenticatedUser.sId);
+    }
+  });
+
   it("should reject programmatic messages when programmatic credits are exhausted", async () => {
     const setup = await createResourceTest({});
     const noCreditAuth = setup.authenticator;
