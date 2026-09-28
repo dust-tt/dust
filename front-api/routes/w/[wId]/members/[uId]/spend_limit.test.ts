@@ -84,6 +84,34 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       });
     });
 
+    it("does not let a manager edit a former member's limit", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+      await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "manager",
+        workspace,
+      });
+      const revoked = await MembershipResource.revokeMembership({
+        user: targetUser,
+        workspace,
+      });
+      expect(revoked.isOk()).toBe(true);
+
+      const response = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: "limited", awuCredits: 1500 }),
+        }
+      );
+      expect(response.status).toBe(404);
+    });
+
     it("returns 403 when workspace is not on Metronome billing", async () => {
       const { workspace, user } = await createPrivateApiMockRequest({
         method: "GET",

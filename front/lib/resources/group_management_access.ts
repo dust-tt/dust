@@ -109,8 +109,9 @@ export type MemberVerbAuthority =
 
 /**
  * @cc [owner:philipperolet,label:security;backend] current-member-authority
- * A member MUST have an active membership in the caller's workspace. Non-workspace managers
- * MUST also have a current active membership in a group on which the caller holds `verb`.
+ * Callers MUST check the member's active workspace membership before using workspace-role
+ * authority. Non-workspace managers MUST have a current active workspace membership and group
+ * membership on which the caller holds `verb`.
  * Use at action time for one member. The returned group identifies the grant used for an audit
  * event; workspace managers/admins have no authorizing group.
  */
@@ -119,6 +120,10 @@ export async function getMemberVerbAuthority(
   member: UserResource,
   verb: GroupMemberVerb
 ): Promise<MemberVerbAuthority> {
+  if (auth.isManager() || auth.isAdmin()) {
+    return { kind: "workspace" };
+  }
+
   const workspace = auth.getNonNullableWorkspace();
   const { memberships } = await MembershipResource.getActiveMemberships({
     users: [member],
@@ -127,10 +132,6 @@ export async function getMemberVerbAuthority(
   if (memberships.length === 0) {
     return { kind: "none" };
   }
-  if (auth.isManager() || auth.isAdmin()) {
-    return { kind: "workspace" };
-  }
-
   const groups = await GroupResource.listUserGroupsInWorkspace({
     auth,
     user: member,
@@ -145,5 +146,12 @@ export async function hasGroupVerbForMember(
   member: UserResource,
   verb: GroupMemberVerb
 ): Promise<boolean> {
+  if (auth.isManager() || auth.isAdmin()) {
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      users: [member],
+      workspace: auth.getNonNullableWorkspace(),
+    });
+    return memberships.length > 0;
+  }
   return (await getMemberVerbAuthority(auth, member, verb)).kind !== "none";
 }
