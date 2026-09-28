@@ -574,34 +574,52 @@ export class AgentResource
     } satisfies Pick<AgentResource, "scope" | "status" | "versionAuthorId">);
     resource.codeDefinedSkillIds = configuration.codeDefinedSkillIds ?? [];
 
-    return this.materializeResource(auth, resource as FullAgentResource);
+    return resource.materialize(auth);
   }
 
-  private static materializeResource(
+  // Binds a freshly built (never shared) resource to its caller: their verbs, and the content only
+  // if they may view it. Every factory and resolver builds a new instance per read before calling it.
+  private materialize(
     auth: Authenticator,
-    cachedResource: FullAgentResource,
     {
       adminCanSeePrivateEntities = false,
     }: { adminCanSeePrivateEntities?: boolean } = {}
   ): AgentResource {
-    const verbs = cachedResource.getAllowedVerbs(auth);
-    cachedResource._verbs = verbs;
-    cachedResource._isRegularApiKey = auth.isKey() && !auth.isSystemKey();
-    cachedResource._adminCanSeePrivateEntities = adminCanSeePrivateEntities;
+    this._verbs = this.getAllowedVerbs(auth);
+    this._isRegularApiKey = auth.isKey() && !auth.isSystemKey();
+    this._adminCanSeePrivateEntities = adminCanSeePrivateEntities;
 
-    if (!cachedResource.canViewContent(auth)) {
-      cachedResource._content = null;
+    if (!this.canViewContent(auth)) {
+      this._content = null;
     }
 
-    return cachedResource;
+    return this;
+  }
+
+  // The feature flag is only looked up when it can change the outcome: an admin materializing a
+  // custom agent they cannot read.
+  private static async resolveAdminCanSeePrivateEntities(
+    auth: Authenticator,
+    resources: AgentResource[]
+  ): Promise<boolean> {
+    return (
+      auth.isAdmin() &&
+      resources.some(
+        (resource) => !resource.getAllowedVerbs(auth).has("read")
+      ) &&
+      (await canAdminSeePrivateEntities(auth))
+    );
   }
 
   /**
    * @cc [owner:tdraier,label:security] agent-content-visibility
    * The private content (instructions, tools) is visible to a caller who holds `read`, and to a
-   * workspace admin of a workspace with the `admin_can_see_private_entities` feature flag. The flag
-   * MUST NOT grant any verb: such an admin still cannot mention, run or edit an agent they cannot
-   * `read`.
+   * workspace admin of a workspace with the `admin_can_see_private_entities` feature flag, whichever
+   * resolver or factory built the resource they are handed (`fetch*`,
+   * `dangerouslyFromConfigurationModels`). The flag MUST NOT grant any verb: what such an admin may
+   * do with the agent is decided by their verbs alone (see `agent-verbs`) — without `read` they
+   * cannot mention or run it, and the definition edits their `admin` verb allows (model, tags) are
+   * unchanged.
    */
   canViewContent(auth: Authenticator): boolean {
     return (
@@ -613,14 +631,12 @@ export class AgentResource
   private static fromModels(
     auth: Authenticator,
     agent: AgentModel,
-    agentConfiguration: AgentConfigurationModel
+    agentConfiguration: AgentConfigurationModel,
+    options: { adminCanSeePrivateEntities?: boolean } = {}
   ): AgentResource {
-    return this.materializeResource(
+    return new AgentResource(agent.get(), agentConfiguration.get()).materialize(
       auth,
-      new AgentResource(
-        agent.get(),
-        agentConfiguration.get()
-      ) as FullAgentResource
+      options
     );
   }
 
@@ -645,14 +661,20 @@ export class AgentResource
     });
     const agentById = new Map(agents.map((agent) => [agent.id, agent]));
 
-    return agentConfigurations.map((configuration) => {
+    const resources = agentConfigurations.map((configuration) => {
       const agent = agentById.get(configuration.agentId);
       assert(
         agent,
         `Unexpected: missing agent ${configuration.agentId} for configuration ${configuration.id}`
       );
-      return this.fromModels(auth, agent, configuration);
+      return new AgentResource(agent.get(), configuration.get());
     });
+    const adminCanSeePrivateEntities =
+      await this.resolveAdminCanSeePrivateEntities(auth, resources);
+
+    return resources.map((resource) =>
+      resource.materialize(auth, { adminCanSeePrivateEntities })
+    );
   }
 
   // -- Resolvers: current version, full when readable, light otherwise --
@@ -661,8 +683,9 @@ export class AgentResource
    * @cc [owner:tdraier,label:backend] fetch-current-version
    * Resolves each requested custom agent to its current configuration version — the row whose
    * `version` equals the agent's `currentVersion` pointer (see `agent-current-version-pointer`) —
-   * scoped to the authed workspace. Each is returned as a `full` resource when the caller can read
-   * it, otherwise a `light` resource; a resource the caller cannot fetch at all (holds no verb on,
+   * scoped to the authed workspace. Each is returned as a `full` resource when the caller can view
+   * its content (see `agent-content-visibility`), otherwise a `light` resource; a resource the caller
+   * cannot fetch at all (holds no verb on,
    * per `canFetch`) is dropped. An agent with no configuration yields no resource, and at most one
    * resource is returned per `agentModelId`. `fetchById(s)` additionally resolve global agents by
    * `sId` (they have no configuration rows) via `getGlobalAgents`, gated by the same `canFetch`
@@ -723,21 +746,13 @@ export class AgentResource
       this.fetchGlobalAgents(auth, globalAgentIds),
     ]);
 
-    // The feature flag is only looked up when it can change the outcome: an admin fetching a custom
-    // agent they cannot read.
     const adminCanSeePrivateEntities =
-      auth.isAdmin() &&
-      customResources.some(
-        (resource) => !resource.getAllowedVerbs(auth).has("read")
-      ) &&
-      (await canAdminSeePrivateEntities(auth));
+      await this.resolveAdminCanSeePrivateEntities(auth, customResources);
 
     const resourcesById = new Map(
       [
         ...customResources.map((resource) =>
-          this.materializeResource(auth, resource, {
-            adminCanSeePrivateEntities,
-          })
+          resource.materialize(auth, { adminCanSeePrivateEntities })
         ),
         ...globalResources,
       ]
@@ -1049,7 +1064,7 @@ export class AgentResource
   /**
    * @cc [owner:tdraier,label:backend;performance] agent-resource-cache
    * The cache holds the caller-independent full resource; the caller-dependent `canFetch` and
-   * `materializeResource` gates MUST run on every read and MUST NOT be cached. Entries have no TTL, so
+   * `materialize` gates MUST run on every read and MUST NOT be cached. Entries have no TTL, so
    * every write that changes or deletes an agent's cached version MUST invalidate its entry — via
    * `AgentResource.invalidateCache` here, or the leaf `invalidateAgentResourceCache`/
    * `invalidateAgentResourceCaches` helpers that lower-level write and deletion paths can import
@@ -2807,6 +2822,28 @@ export class AgentResource
       canEdit:
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
+    };
+  }
+
+  // What the sidekick's `inspect_available_agent` tool exposes; the instructions make it full-only.
+  toInspectionJSON(
+    this: FullAgentResource,
+    { toolIds, skillIds }: { toolIds: string[]; skillIds: string[] }
+  ): {
+    sId: string;
+    name: string;
+    description: string;
+    instructions: string | null;
+    toolIds: string[];
+    skillIds: string[];
+  } {
+    return {
+      sId: this.sId,
+      name: this.name,
+      description: this.description,
+      instructions: this.content.instructions,
+      toolIds,
+      skillIds,
     };
   }
 

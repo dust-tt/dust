@@ -496,16 +496,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
           "mcpServerViewId" in action
       )
       .map((action) => action.mcpServerViewId);
-    const skillIds = skills.map((skill) => skill.sId);
-
-    const agentDetails = {
-      sId: agent.sId,
-      name: agent.name,
-      description: agent.description,
-      instructions: agent.content.instructions,
+    const agentDetails = agent.toInspectionJSON({
       toolIds,
-      skillIds,
-    };
+      skillIds: skills.map((skill) => skill.sId),
+    });
 
     return new Ok([
       {
