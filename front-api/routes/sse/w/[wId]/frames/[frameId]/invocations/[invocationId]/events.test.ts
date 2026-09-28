@@ -88,9 +88,9 @@ describe("GET /api/sse/w/:wId/frames/:frameId/invocations/:invocationId/events",
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
   });
 
-  it("is available only behind frames_v2", async () => {
+  it("is available only behind frames_v2_functions", async () => {
     const { frame, invocation, workspace } = await makeTestFrameInvocation({
-      enableFramesV2: false,
+      enableFramesV2Functions: false,
     });
 
     const response = await getEvents({

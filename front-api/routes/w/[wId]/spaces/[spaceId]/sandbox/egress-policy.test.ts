@@ -33,6 +33,7 @@ async function setupTest({
 
   if (enableSandboxFunctions) {
     await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
   }
 
   return { workspace, auth, ...rest };
@@ -268,7 +269,7 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     ).toBeUndefined();
   });
 
-  it("rejects workspaces without the frames_v2 flag with a 403", async () => {
+  it("rejects workspaces without Frame functions with a 403", async () => {
     const { workspace } = await setupTest({ enableSandboxFunctions: false });
     const pod = await SpaceFactory.project(workspace);
 

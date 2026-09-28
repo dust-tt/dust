@@ -123,7 +123,7 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
     expect(await response.json()).toMatchObject({
       error: {
         type: "feature_flag_not_found",
-        message: "Frames are not enabled for this workspace.",
+        message: "Frame functions are not enabled for this workspace.",
       },
     });
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();

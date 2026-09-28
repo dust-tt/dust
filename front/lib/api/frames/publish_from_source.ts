@@ -24,6 +24,7 @@ import {
 import type { PublishFrameError } from "@app/lib/api/viz/publish_frame";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -43,6 +44,7 @@ import {
   normalizeMimeType,
 } from "@app/types/files";
 import { splitFrameEntryScopedPath } from "@app/types/mount_path";
+import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -58,6 +60,30 @@ function frameSourceConflictError() {
   return new SandboxFunctionError(
     "publish_conflict",
     "Another source operation is in progress for this Frame; retry shortly."
+  );
+}
+
+/**
+ * @cc [owner:davidebbo,label:product] frame-functions-publish-gate
+ * Publishing a manifest that declares functions or databases MUST fail with `invalid_manifest`,
+ * before any build, unless Frame functions are enabled (see isFramesV2FunctionsEnabled). The
+ * previous publication stays live.
+ */
+async function checkFrameFunctionsFeature(
+  auth: Authenticator,
+  manifest: FrameManifest
+): Promise<Result<void, FramePublicationError>> {
+  if (manifest.functions.length === 0 && manifest.databases.length === 0) {
+    return new Ok(undefined);
+  }
+  const featureFlags = await getFeatureFlags(auth);
+  if (isFramesV2FunctionsEnabled(featureFlags)) {
+    return new Ok(undefined);
+  }
+  return frameError(
+    "invalid_manifest",
+    "Frame functions and databases are not enabled for this workspace. Remove `functions` and " +
+      "`databases` from the manifest and keep the Frame client-only."
   );
 }
 
@@ -443,6 +469,11 @@ async function replaceLegacyFrameFromSource(
     }
     const { manifest, sourceFiles } = source.value;
 
+    const featureCheck = await checkFrameFunctionsFeature(auth, manifest);
+    if (featureCheck.isErr()) {
+      return featureCheck;
+    }
+
     const sharingCheck = await checkFrameFunctionSharing(auth, {
       frame: legacyFrame,
       manifest,
@@ -807,6 +838,14 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
   });
   if (source.isErr()) {
     return source;
+  }
+
+  const featureCheck = await checkFrameFunctionsFeature(
+    auth,
+    source.value.manifest
+  );
+  if (featureCheck.isErr()) {
+    return featureCheck;
   }
 
   const sharingCheck = await checkFrameFunctionSharing(auth, {

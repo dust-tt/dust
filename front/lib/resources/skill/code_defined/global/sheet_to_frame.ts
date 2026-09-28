@@ -2,9 +2,10 @@ import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 
 const ENABLE_SKILL_TOOL = getPrefixedToolName(
   SKILL_MANAGEMENT_SERVER_NAME,
@@ -155,9 +156,9 @@ your final message that it was not modified, and leave archiving to the user.
 `;
 
 /**
- * @cc [owner:davidebbo,label:product] sheet-to-frame-follows-frames-v2
- * Sheet-to-frame availability MUST follow the frames_v2 workspace feature: the whole workflow is
- * expressed in Frames v2 mechanics that do not exist without it.
+ * @cc [owner:davidebbo,label:product] sheet-to-frame-follows-frames-v2-functions
+ * Sheet-to-frame availability MUST follow Frame functions (see isFramesV2FunctionsEnabled): the
+ * whole workflow is expressed in Frame functions and databases that do not exist without it.
  */
 export const sheetToFrameSkill = {
   sId: "sheet-to-frame",
@@ -174,10 +175,14 @@ export const sheetToFrameSkill = {
   // first step of the workflow is enabling it rather than duplicating half of it here.
   mcpServers: [],
   // The workflow is Computer-driven from the moment the sheet has been read.
-  warmsConversationSandbox: (auth: Authenticator) =>
-    hasFeatureFlag(auth, "frames_v2"),
+  warmsConversationSandbox: async (auth: Authenticator) => {
+    const featureFlags = await getFeatureFlags(auth);
+    return isFramesV2FunctionsEnabled(featureFlags);
+  },
   version: 1,
   icon: "ActionTableIcon",
-  isRestricted: async (auth: Authenticator) =>
-    !(await hasFeatureFlag(auth, "frames_v2")),
+  isRestricted: async (auth: Authenticator) => {
+    const featureFlags = await getFeatureFlags(auth);
+    return !isFramesV2FunctionsEnabled(featureFlags);
+  },
 } as const satisfies GlobalSkillDefinition;

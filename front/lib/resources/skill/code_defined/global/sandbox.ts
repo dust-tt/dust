@@ -16,15 +16,20 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
+import {
+  isComputerFeatureEnabled,
+  isFramesV2FunctionsEnabled,
+} from "@app/types/shared/feature_flags";
 import { Ok } from "@app/types/shared/result";
 
 function buildSandboxInstructionProse({
   hasDsbxTools,
   hasFramesV2,
+  hasFramesV2Functions,
 }: {
   hasDsbxTools: boolean;
   hasFramesV2: boolean;
+  hasFramesV2Functions: boolean;
 }): string {
   const instructions = [
     'The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. Always call this environment "the Computer" in any text you send to the user.',
@@ -41,11 +46,11 @@ function buildSandboxInstructionProse({
       "Pass `--json` (before the server and tool names, e.g. `dsbx tools --json [SERVER_NAME] [TOOL_NAME] [ARGS]...`) to get the tool result as structured JSON (`{ content, isError }`) instead of plain text, which is easier to parse programmatically. Placed after the positional arguments it is treated as a tool argument instead."
     );
 
-    if (hasFramesV2) {
+    if (hasFramesV2Functions) {
       instructions.push(
         "The `dsbx tools` CLI is for the Computer (this bash session) only. Inside Frame function source, call Dust tools with `tools.call` from `@dust/pod` — see the Create Frames skill. Do not shell out to `dsbx tools` from a Frame function's `fetch()`."
       );
-    } else {
+    } else if (!hasFramesV2) {
       instructions.push(
         "For any Frame task, enable the `Create Frames` skill and use its interactive-content tools; publish or republish with `publish_interactive_content_file`. Never use `dsbx frame`."
       );
@@ -342,10 +347,12 @@ async function buildSandboxInstructions(
   {
     hasDsbxTools,
     hasFramesV2,
+    hasFramesV2Functions,
     isProject,
   }: {
     hasDsbxTools: boolean;
     hasFramesV2: boolean;
+    hasFramesV2Functions: boolean;
     isProject: boolean;
   }
 ): Promise<string> {
@@ -355,6 +362,7 @@ async function buildSandboxInstructions(
   const sandboxInstructions = buildSandboxInstructionProse({
     hasDsbxTools,
     hasFramesV2,
+    hasFramesV2Functions,
   });
 
   let toolsResult;
@@ -433,6 +441,7 @@ export const sandboxSkill = {
     const flags = await getFeatureFlags(auth);
     const hasDsbxTools = isComputerFeatureEnabled(flags);
     const hasFramesV2 = flags.includes("frames_v2");
+    const hasFramesV2Functions = isFramesV2FunctionsEnabled(flags);
     const isProject = agentLoopData?.conversation
       ? isPodConversation(agentLoopData.conversation)
       : false;
@@ -440,6 +449,7 @@ export const sandboxSkill = {
     return buildSandboxInstructions(auth, providerId, {
       hasDsbxTools,
       hasFramesV2,
+      hasFramesV2Functions,
       isProject,
     });
   },

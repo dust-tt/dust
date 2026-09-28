@@ -21,6 +21,7 @@ async function setupTest({
 
   if (enableSandboxFunctions) {
     await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
   }
 
   const podA = await SpaceFactory.project(workspace, user.id);
@@ -92,7 +93,7 @@ describe("GET /api/w/:wId/sandbox/egress-policy/pods", () => {
     expect(await response.json()).toEqual({ pods: [] });
   });
 
-  it("returns 403 when frames_v2 is disabled", async () => {
+  it("returns 403 when Frame functions are disabled", async () => {
     const { workspace } = await setupTest({ enableSandboxFunctions: false });
 
     const response = await getPods(workspace.sId);

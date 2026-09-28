@@ -109,6 +109,7 @@ describe("conversation sandbox Frame database access", () => {
   it("lists databases for a Frame whose source the caller can write", async () => {
     const context = await createSandboxTokenTestContext();
     await FeatureFlagFactory.basic(context.auth, "frames_v2");
+    await FeatureFlagFactory.basic(context.auth, "frames_v2_functions");
     const frame = await makeConversationFrame({
       auth: context.auth,
       workspaceId: context.workspace.sId,
@@ -148,6 +149,7 @@ describe("conversation sandbox Frame database access", () => {
   it("runs data-changing SQL for an authorized Frame", async () => {
     const context = await createSandboxTokenTestContext();
     await FeatureFlagFactory.basic(context.auth, "frames_v2");
+    await FeatureFlagFactory.basic(context.auth, "frames_v2_functions");
     const frame = await makeConversationFrame({
       auth: context.auth,
       workspaceId: context.workspace.sId,
@@ -205,6 +207,7 @@ describe("conversation sandbox Frame database access", () => {
   it("denies a same-workspace Frame whose source the caller cannot write", async () => {
     const context = await createSandboxTokenTestContext();
     await FeatureFlagFactory.basic(context.auth, "frames_v2");
+    await FeatureFlagFactory.basic(context.auth, "frames_v2_functions");
     const metadataResult = await WorkspaceResource.updateMetadata(
       context.workspace.id,
       { privateConversationUrlsByDefault: true }
@@ -245,6 +248,7 @@ describe("conversation sandbox Frame database access", () => {
   it("does not resolve a Frame from another workspace", async () => {
     const context = await createSandboxTokenTestContext();
     await FeatureFlagFactory.basic(context.auth, "frames_v2");
+    await FeatureFlagFactory.basic(context.auth, "frames_v2_functions");
     const { authenticator: otherAuth, workspace: otherWorkspace } =
       await createResourceTest({ role: "admin" });
     const otherConversation = await ConversationFactory.create(otherAuth, {

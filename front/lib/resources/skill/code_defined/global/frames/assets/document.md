@@ -57,8 +57,7 @@ Pass the matching React content through `visuals={{ revenue: <RevenueChart /> }}
 
 The name connects the text file to your TSX. Build visuals with the usual Frame components,
 React hooks, Recharts and Tailwind. Their buttons and charts remain interactive. Users edit the
-surrounding text. Keep any durable state inside a visual in a Frame database, as with other
-interactive applications.
+surrounding text.
 
 ## Layout and theme
 

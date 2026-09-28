@@ -10,6 +10,7 @@ import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -25,6 +26,7 @@ import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
 } from "@app/types/mount_path";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,11 +36,26 @@ const manifest = JSON.stringify({
   description: "Show the current status.",
 });
 const uiSource = "export default function Status() { return <p>Ready</p>; }";
+const functionManifest = JSON.stringify({
+  version: 1,
+  description: "Run a function.",
+  functions: [
+    { name: "run", description: "Run it.", entryPoint: "functions/run.ts" },
+  ],
+});
+const functionSources = {
+  "functions/run.ts":
+    "export default { fetch: async () => Response.json({}) };",
+};
 
 async function setup({
   uiContentType = "text/typescript",
+  manifestContent = manifest,
+  extraSources = {},
 }: {
   uiContentType?: string;
+  manifestContent?: string;
+  extraSources?: Record<string, string>;
 } = {}) {
   const { authenticator: auth, workspace } = await createResourceTest({
     role: "admin",
@@ -56,7 +73,7 @@ async function setup({
   const frame = await FileFactory.create(auth, null, {
     contentType: frameV2ContentType,
     fileName: FRAME_MANIFEST_FILE,
-    fileSize: Buffer.byteLength(manifest),
+    fileSize: Buffer.byteLength(manifestContent),
     status: "created",
     useCase: "conversation",
     useCaseMetadata: { conversationId: conversation.sId },
@@ -64,8 +81,14 @@ async function setup({
   });
 
   const sourceByPath = new Map([
-    [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
+    [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifestContent],
     [`${gcsSourceDirectoryPath}/index.tsx`, uiSource],
+    ...Object.entries(extraSources).map(
+      ([relativePath, content]): [string, string] => [
+        `${gcsSourceDirectoryPath}/${relativePath}`,
+        content,
+      ]
+    ),
   ]);
   fileStorageMock.setFilesByPrefix((prefix) =>
     prefix === `${gcsSourceDirectoryPath}/`
@@ -494,6 +517,62 @@ describe("publishFrameV2FromSource", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       result.value.publicationId
     );
+  });
+
+  it.each<{
+    declares: string;
+    flags: WhitelistableFeature[];
+    manifestContent: string;
+    extraSources: Record<string, string>;
+  }>([
+    {
+      declares: "functions",
+      flags: [],
+      manifestContent: functionManifest,
+      extraSources: functionSources,
+    },
+    {
+      declares: "databases",
+      flags: ["frames_v2"],
+      manifestContent: JSON.stringify({
+        version: 1,
+        description: "Store items.",
+        databases: [{ name: "items", schema: "databases/items.db.ts" }],
+      }),
+      extraSources: { "databases/items.db.ts": "export {};" },
+    },
+    {
+      declares: "functions",
+      flags: ["frames_v2_functions"],
+      manifestContent: functionManifest,
+      extraSources: functionSources,
+    },
+  ])("rejects a manifest declaring $declares with flags $flags", async ({
+    flags,
+    manifestContent,
+    extraSources,
+  }) => {
+    const { auth, conversation, frame, manifestPath } = await setup({
+      manifestContent,
+      extraSources,
+    });
+    for (const flag of flags) {
+      await FeatureFlagFactory.basic(auth, flag);
+    }
+
+    const result = await publishFrameV2FromSource(auth, {
+      conversation,
+      frame,
+      manifestPath,
+    });
+
+    assert(result.isErr());
+    expect(result.error).toMatchObject({ code: "invalid_manifest" });
+    expect(result.error.message).toContain(
+      "Frame functions and databases are not enabled"
+    );
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBeUndefined();
   });
 
   it("infers TSX source content type from its extension", async () => {

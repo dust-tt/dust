@@ -1,170 +1,14 @@
 import { buildInteractiveContentAuthoringProseV2 } from "@app/lib/api/actions/servers/interactive_content/instructions_v2";
 import { MAX_FRAME_DATABASE_COUNT } from "@app/types/api/frame_manifest";
 
-/**
- * @cc [owner:flvndvd,label:product] frame-document-selection
- * Document guidance MUST select narrative deliverables by their primary purpose, not editability
- * or page count. Existing formats MUST be preserved unless the user requests a format change.
- */
-export const buildFramesV2Instructions = ({
-  hasDocuments,
-}: {
-  hasDocuments: boolean;
-}) => `\
-# Frames v2
+const NO_BROWSER_DOWNLOADS = `\
+A Frame cannot make the browser download a file. Its UI runs in a sandboxed iframe that does not
+allow downloads, so building an anchor with a \`download\` attribute and clicking it silently does
+nothing — no error to catch. Do not offer a download button. Render the contents in the UI
+instead: an \`<img>\` for an image, formatted text for data, a table for rows.
+`;
 
-Frames are interactive React applications. Use the Computer to create and edit their source, and
-the \`dsbx frame\` CLI for their lifecycle.
-
-## Frames v2 vs legacy Frames
-
-- A Frames v2 source is a package-like folder anchored by \`manifest.json\`. The published
-  manifest is the canonical Frame resource; its folder contains the UI source, assets, and
-  function source. The manifest declares one UI entry point (\`index.tsx\` by default) and every
-  server function. Publishing snapshots the whole folder, builds every declared function, and
-  atomically activates the publication. The first publish also assigns the Frame's stable identity.
-- A legacy (v1) Frame is anchored by a single \`.tsx\` entry file. Publishing resolves that entry
-  file and its local imports, then updates the existing Frame through the legacy bundle pipeline.
-- Edit a legacy Frame in place, unless the change needs server functions or a Frame database:
-  then migrate it to Frames v2 first, see "Migrating a legacy Frame" below.
-
-## Before authoring
-
-${
-  hasDocuments
-    ? `Choose the format around the user's main task. Use Document for narrative deliverables such as
-one-pagers, briefs, memos and written reports, where the text carries the explanation. Supporting
-charts and interactive visuals can sit within that narrative. The user need not ask for editing.
-Use ordinary Frame UI for dashboards and applications centered on exploring data or managing
-records and workflows. Editable fields or a one-page layout alone do not make an app a document.
-Follow explicit format requests. When editing an existing Frame, preserve its format unless the
-user asks to change it.
-
-`
-    : ""
-}
-Decide whether the Frame is a throwaway visualization or an application with durable state before
-writing source. Chat apps, task lists, trackers, forms, CRUD apps, and ${hasDocuments ? "other editable applications" : "anything users can change"}
-default to durable: declare the database plus the read and mutation functions in the
-manifest. Do not store durable application state in memory; use a Frame database.
-${hasDocuments ? "\nDocument includes selected-text comments and saves its text and discussion in one JSON file. Durable records inside its custom visuals still need a Frame database.\n" : ""}
-
-## Create a Frame
-
-Every Computer command is a round trip of several seconds. When possible, write the real source
-and publish a new Frame in one Computer command. There is no scaffold step: create the folder,
-write \`manifest.json\` and \`index.tsx\` (plus any functions or databases), lint, then publish.
-The first \`dsbx frame publish\` mints the Frame's stable identity from the manifest path and
-activates the publication.
-
-\`\`\`bash
-FRAME=/files/conversation-<conversationId>/<frame-folder>
-mkdir -p "$FRAME" &&
-cat > "$FRAME/manifest.json" <<'EOF'
-{
-  "version": 1,
-  "description": "..."
-}
-EOF
-cat > "$FRAME/index.tsx" <<'EOF'
-export default function App() {
-  return <main>...</main>;
-}
-EOF
-bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME" &&
-dsbx frame publish "$FRAME/manifest.json"
-\`\`\`
-
-In a Pod, write it under \`/files/pod-<podId>/...\` instead. The folder name is the Frame's name.
-Only use separate Computer commands when a step needs the previous one's output.
-
-Always pass canonical \`/files/conversation-<conversationId>/...\` or
-\`/files/pod-<podId>/...\` paths to \`dsbx frame\`. Do not pass the convenience aliases
-\`/files/conversation\` or \`/files/pod\`.
-
-## Art direction and shared theme
-
-You own the Frame's visual direction. Derive it from the audience, subject, supplied brand assets
-and approved references. Choose the typography, color, density and bespoke visuals that communicate
-the material. There is no preset catalog or fixed font list.
-
-Copy the attached \`skills/Create Frames/theme.ts\` into the Frame folder as \`theme.ts\`, then edit
-its values for this Frame. Pass \`theme\` to the content's root: \`FrameRoot\` from \`@dust/frame\` for
-pages and dashboards, or \`Slideshow\` from \`@dust/slideshow/v2\` for presentations. Both use the same
-theme file and scope the existing Tailwind variables to their contents. Author ordinary React and SVG
-using the existing classes. Omit \`theme\` to keep the host's light or dark appearance.
-Name the entry component \`App\` and import the root component rather than declaring it locally.
-
-For a page or dashboard:
-
-\`\`\`tsx
-import { FrameRoot } from "@dust/frame";
-import { theme } from "./theme";
-
-export default function App() {
-  return (
-    <FrameRoot theme={theme} className="space-y-6 p-8">
-      <h1 className="font-serif text-4xl font-semibold">...</h1>
-      <svg
-        className="h-12 w-full"
-        viewBox="0 0 120 24"
-        role="img"
-        aria-label="Illustrative chart"
-      >
-        <rect width="96" height="24" className="fill-primary" />
-      </svg>
-    </FrameRoot>
-  );
-}
-\`\`\`
-
-Use the existing semantic variables: \`--background\` and \`--foreground\`, \`--primary\` and
-\`--primary-foreground\`, \`--card\` and \`--card-foreground\`, \`--muted\` and \`--muted-foreground\`,
-\`--border\` and \`--radius\`. Set \`--font-sans\`, \`--font-serif\` or \`--font-mono\` for the corresponding
-font classes. Values are ordinary CSS strings. Fonts must be available in the browser or loaded by
-the Frame. Keep related foreground and background colors legible together.
-
-Keep shared values in \`theme.ts\` so custom visuals and components using those semantic classes
-follow the same direction. Extend the theme with normal object spreads. A nested FrameRoot inherits
-omitted variables and can override a section:
-
-\`\`\`tsx
-<FrameRoot
-  theme={{ "--primary": "rebeccapurple" }}
-  className="rounded-lg bg-card p-4 text-card-foreground"
->
-  ...
-</FrameRoot>
-\`\`\`
-
-The theme does not choose heading sizes or add page padding. Use existing utilities for layout,
-spacing and typography. Setting a variable does not generate new Tailwind classes. Custom \`--*\`
-variables are also allowed, but your code must consume them explicitly through CSS or \`style\`.
-Components rendered in a portal outside the themed root do not inherit its scoped variables.
-
-Use relative imports for source and theme files, not \`useFile\`. The attached linter checks missing
-imports and type errors. Keep \`satisfies FrameTheme\` in the theme file to catch keys without a
-\`--\` prefix and values that are not strings or numbers. A misspelled semantic variable is still
-a valid custom variable, so inspect the rendered result to verify it takes effect.
-
-For a substantial Frame, keep \`direction.md\` beside the source. Record audience, purpose, visual
-premise, typography hierarchy, density, color logic, reference material and what later edits must
-preserve. Create bespoke visuals when they explain the material better than generic cards. Small
-Frames do not need empty files or wrappers merely to match a folder layout.
-
-## Retrieve a Frame's share link
-
-Frame sharing and use rights are configured by the user in the Dust UI. Agents must not change
-the share scope or grant access to recipients. The CLI can only retrieve an existing share link:
-
-\`\`\`bash
-dsbx frame share-link /files/<scope>/<frame-folder>
-\`\`\`
-
-This command is read-only. It never creates sharing state, changes the scope, or adds or removes
-recipients. It returns the stable Frame ID, current share scope, and existing share URL. If no share
-link exists, ask the user to configure sharing in the Dust UI.
-
+const FUNCTIONS_SOURCE_LAYOUT = `\
 ## Frames v2 source layout
 
 Keep one Frame and everything it owns in one folder:
@@ -232,7 +76,40 @@ The manifest declares the UI entry point, every server function, and every datab
   always approved, and \`high\` asks on every call when the function is exposed as a tool.
 - Input, output, and caller-identity schemas belong in the function's TypeScript \`schema\` export,
   not in \`manifest.json\`. The build extracts them from source.
+`;
 
+const CLIENT_ONLY_SOURCE_LAYOUT = `\
+## Frames v2 source layout
+
+Keep one Frame and everything it owns in one folder:
+
+\`\`\`
+MyFrame/
+  manifest.json
+  index.tsx
+  theme.ts
+\`\`\`
+
+The manifest declares the UI entry point:
+
+\`\`\`json
+{
+  "version": 1,
+  "description": "Explore quarterly sales.",
+  "uiEntryPoint": "index.tsx"
+}
+\`\`\`
+
+- A Frame is named by its folder, and \`manifest.json\` carries no name. Choose the folder name
+  carefully at creation: it is the name users see. To rename a Frame, move its folder — the Frame
+  keeps its ID, its active publication and its share link, so there is nothing to republish. The
+  user can rename it the same way from the Pod UI, so refer to a Frame by its stable ID whenever
+  you need an identifier that survives a rename.
+- \`uiEntryPoint\` defaults to \`index.tsx\` when omitted.
+- Do not declare \`functions\` or \`databases\`: this workspace rejects them at publish.
+`;
+
+const FUNCTIONS_AUTHORING = `\
 ## When to add a server function
 
 Use a Frame function when the UI needs server-side behavior it cannot safely or technically run in
@@ -526,77 +403,9 @@ for every call. Function failures are
 \`SandboxFunctionCallError\` instances with \`message\`, optional HTTP \`status\`, and an open-string
 \`code\`; handle known codes and provide a generic fallback.
 
-A Frame cannot make the browser download a file. Its UI runs in a sandboxed iframe that does not
-allow downloads, so building an anchor with a \`download\` attribute and clicking it silently does
-nothing — no error to catch. Do not offer a download button. Render the contents in the UI
-instead: an \`<img>\` for an image, formatted text for data, a table for rows.
+${NO_BROWSER_DOWNLOADS}`;
 
-## Check the Frame UI
-
-For a v2 Frame, run the attached linter on its folder before publishing:
-
-\`\`\`bash
-bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME"
-\`\`\`
-
-The skill files stay in the conversation even when the Frame lives in a Pod. The script fetches
-the Viz types and reports type and lint errors with file, line and column. Fix those errors before
-publishing. A failed check returns a nonzero exit code.
-
-It keeps generated configs on local sandbox disk and leaves the Frame source and existing
-configs untouched. Keep server functions in
-\`functions/\` and database schemas in \`databases/\`, which are excluded from UI linting.
-The linter also checks UI and backend source for absolute scoped paths to files inside the Frame.
-Use the suggested \`./…\` path so those references still work when the Frame moves.
-
-A literal function name passed to \`useFrameFunction\` or \`useFrameFunctionMutation\` must be
-declared in \`manifest.functions\`. The linter also checks their legacy Pod aliases and reports
-the call's file, line, column and the declared names. Fix a typo in the call or add the new
-function to the manifest. Names computed at run time are not checked.
-
-## Publish a Frame
-
-There is no separate v2 function publish. Publish the manifest once; the UI source, all declared
-functions, and all declared database schemas are built or reconciled, stored, and activated
-atomically:
-
-\`\`\`bash
-dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
-\`\`\`
-
-Publishing runs the manifest, UI, function-build, database-contract and Tailwind checks.
-If any fails, no partial publication
-becomes active: fix the reported error and rerun. Tailwind arbitrary values such as \`h-[600px]\`
-are errors, not warnings: use predefined classes or the \`style\` prop. Run the attached linter
-before publishing to check in-package file paths and function names. For a brand-new folder,
-publish also assigns the Frame identity; republishing the same path updates that Frame in place.
-
-Use \`dsbx frame publish\` instead of \`bun build\` or an ad hoc regex scan: those do not use the
-Frame build context and report unrelated or noisy failures.
-
-After a successful publish, call \`conversation_side_panel.open_frame\` exactly once with \`path\`
-set to the same canonical \`/files/...\` manifest path. This opens the Frame for the user and adds
-the Frame card to the answer. Do not parse the Frame ID from the CLI output for this step.
-
-Call a function from the active publication by its stable Frame ID and bare manifest name:
-
-\`\`\`bash
-dsbx frame call <frame-id> <function-name> --input '<json>'
-\`\`\`
-
-During authoring, the mounted Frame folder or manifest path is also accepted in place of the ID.
-The ID form requires Frame use rights; the path form additionally requires read access to the
-mounted source. Use this to exercise published server behavior directly; it does not test the Frame
-UI.
-
-The only interactive-content MCP tool available under Frames v2 is
-\`export_interactive_content_file\`: use it to export a Frame as a PNG screenshot or PDF document.
-Use the Computer and CLI for all other Frame operations. Use \`dsbx frame --help\` as the authority
-for available operations.
-
-Do not use \`mv\` or \`cp\` on a Frame folder: move and clone are not supported in this
-initial scope.
-
+const MIGRATING_LEGACY_FRAME = `\
 ## Migrating a legacy Frame
 
 Migrate a legacy Frame to Frames v2 only when the requested change needs server functions or a
@@ -639,14 +448,289 @@ If you cannot get the replacement to publish, for example an error you cannot fi
 rewriting the Frame, abandon the migration: delete the new folder, apply the requested change to
 the legacy entry in place, and publish it with \`dsbx frame publish /files/<scope>/<frame>.tsx\`.
 Tell the user the Frame stayed a legacy Frame and why.
+`;
 
-## Editing
+/**
+ * @cc [owner:flvndvd,label:product] frame-document-selection
+ * Document guidance MUST select narrative deliverables by their primary purpose, not editability
+ * or page count. Existing formats MUST be preserved unless the user requests a format change.
+ */
+export const buildFramesV2Instructions = ({
+  hasDocuments,
+  hasFunctions,
+}: {
+  hasDocuments: boolean;
+  hasFunctions: boolean;
+}) => `\
+# Frames v2
+
+Frames are interactive React applications. Use the Computer to create and edit their source, and
+the \`dsbx frame\` CLI for their lifecycle.
+
+## Frames v2 vs legacy Frames
+
+${
+  hasFunctions
+    ? `- A Frames v2 source is a package-like folder anchored by \`manifest.json\`. The published
+  manifest is the canonical Frame resource; its folder contains the UI source, assets, and
+  function source. The manifest declares one UI entry point (\`index.tsx\` by default) and every
+  server function. Publishing snapshots the whole folder, builds every declared function, and
+  atomically activates the publication. The first publish also assigns the Frame's stable identity.
+`
+    : `- A Frames v2 source is a package-like folder anchored by \`manifest.json\`. The published
+  manifest is the canonical Frame resource; its folder contains the UI source and assets. The
+  manifest declares one UI entry point (\`index.tsx\` by default). Publishing snapshots the whole
+  folder and atomically activates the publication. The first publish also assigns the Frame's
+  stable identity.
+`
+}- A legacy (v1) Frame is anchored by a single \`.tsx\` entry file. Publishing resolves that entry
+  file and its local imports, then updates the existing Frame through the legacy bundle pipeline.
+${
+  hasFunctions
+    ? `- Edit a legacy Frame in place, unless the change needs server functions or a Frame database:
+  then migrate it to Frames v2 first, see "Migrating a legacy Frame" below.
+`
+    : `- Edit a legacy Frame in place.
+`
+}
+## Before authoring
+
+${
+  hasDocuments
+    ? `Choose the format around the user's main task. Use Document for narrative deliverables such as
+one-pagers, briefs, memos and written reports, where the text carries the explanation. Supporting
+charts and interactive visuals can sit within that narrative. The user need not ask for editing.
+Use ordinary Frame UI for dashboards and applications centered on exploring data or managing
+records and workflows. Editable fields or a one-page layout alone do not make an app a document.
+Follow explicit format requests. When editing an existing Frame, preserve its format unless the
+user asks to change it.
+
+`
+    : ""
+}
+${
+  hasFunctions
+    ? `Decide whether the Frame is a throwaway visualization or an application with durable state before
+writing source. Chat apps, task lists, trackers, forms, CRUD apps, and ${hasDocuments ? "other editable applications" : "anything users can change"}
+default to durable: declare the database plus the read and mutation functions in the
+manifest. Do not store durable application state in memory; use a Frame database.
+${hasDocuments ? "\nDocument includes selected-text comments and saves its text and discussion in one JSON file. Durable records inside its custom visuals still need a Frame database.\n" : ""}
+`
+    : `Frames in this workspace are client-only: they cannot declare server functions, databases, or
+persistent files, so nothing a viewer changes survives a reload. Embed the data the Frame needs in
+its source or in files inside its folder. When the user asks for an application with durable
+state, such as a chat app, task list, tracker, form, or CRUD app, tell them saved state is not
+available for Frames in this workspace and offer a client-only version.
+${hasDocuments ? "\nDocument includes selected-text comments and saves its text and discussion in one JSON file.\n" : ""}
+`
+}
+## Create a Frame
+
+Every Computer command is a round trip of several seconds. When possible, write the real source
+and publish a new Frame in one Computer command. There is no scaffold step: create the folder,
+write \`manifest.json\` and \`index.tsx\`${hasFunctions ? " (plus any functions or databases)" : ""}, lint, then publish.
+The first \`dsbx frame publish\` mints the Frame's stable identity from the manifest path and
+activates the publication.
+
+\`\`\`bash
+FRAME=/files/conversation-<conversationId>/<frame-folder>
+mkdir -p "$FRAME" &&
+cat > "$FRAME/manifest.json" <<'EOF'
+{
+  "version": 1,
+  "description": "..."
+}
+EOF
+cat > "$FRAME/index.tsx" <<'EOF'
+export default function App() {
+  return <main>...</main>;
+}
+EOF
+bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME" &&
+dsbx frame publish "$FRAME/manifest.json"
+\`\`\`
+
+In a Pod, write it under \`/files/pod-<podId>/...\` instead. The folder name is the Frame's name.
+Only use separate Computer commands when a step needs the previous one's output.
+
+Always pass canonical \`/files/conversation-<conversationId>/...\` or
+\`/files/pod-<podId>/...\` paths to \`dsbx frame\`. Do not pass the convenience aliases
+\`/files/conversation\` or \`/files/pod\`.
+
+## Art direction and shared theme
+
+You own the Frame's visual direction. Derive it from the audience, subject, supplied brand assets
+and approved references. Choose the typography, color, density and bespoke visuals that communicate
+the material. There is no preset catalog or fixed font list.
+
+Copy the attached \`skills/Create Frames/theme.ts\` into the Frame folder as \`theme.ts\`, then edit
+its values for this Frame. Pass \`theme\` to the content's root: \`FrameRoot\` from \`@dust/frame\` for
+pages and dashboards, or \`Slideshow\` from \`@dust/slideshow/v2\` for presentations. Both use the same
+theme file and scope the existing Tailwind variables to their contents. Author ordinary React and SVG
+using the existing classes. Omit \`theme\` to keep the host's light or dark appearance.
+Name the entry component \`App\` and import the root component rather than declaring it locally.
+
+For a page or dashboard:
+
+\`\`\`tsx
+import { FrameRoot } from "@dust/frame";
+import { theme } from "./theme";
+
+export default function App() {
+  return (
+    <FrameRoot theme={theme} className="space-y-6 p-8">
+      <h1 className="font-serif text-4xl font-semibold">...</h1>
+      <svg
+        className="h-12 w-full"
+        viewBox="0 0 120 24"
+        role="img"
+        aria-label="Illustrative chart"
+      >
+        <rect width="96" height="24" className="fill-primary" />
+      </svg>
+    </FrameRoot>
+  );
+}
+\`\`\`
+
+Use the existing semantic variables: \`--background\` and \`--foreground\`, \`--primary\` and
+\`--primary-foreground\`, \`--card\` and \`--card-foreground\`, \`--muted\` and \`--muted-foreground\`,
+\`--border\` and \`--radius\`. Set \`--font-sans\`, \`--font-serif\` or \`--font-mono\` for the corresponding
+font classes. Values are ordinary CSS strings. Fonts must be available in the browser or loaded by
+the Frame. Keep related foreground and background colors legible together.
+
+Keep shared values in \`theme.ts\` so custom visuals and components using those semantic classes
+follow the same direction. Extend the theme with normal object spreads. A nested FrameRoot inherits
+omitted variables and can override a section:
+
+\`\`\`tsx
+<FrameRoot
+  theme={{ "--primary": "rebeccapurple" }}
+  className="rounded-lg bg-card p-4 text-card-foreground"
+>
+  ...
+</FrameRoot>
+\`\`\`
+
+The theme does not choose heading sizes or add page padding. Use existing utilities for layout,
+spacing and typography. Setting a variable does not generate new Tailwind classes. Custom \`--*\`
+variables are also allowed, but your code must consume them explicitly through CSS or \`style\`.
+Components rendered in a portal outside the themed root do not inherit its scoped variables.
+
+Use relative imports for source and theme files, not \`useFile\`. The attached linter checks missing
+imports and type errors. Keep \`satisfies FrameTheme\` in the theme file to catch keys without a
+\`--\` prefix and values that are not strings or numbers. A misspelled semantic variable is still
+a valid custom variable, so inspect the rendered result to verify it takes effect.
+
+For a substantial Frame, keep \`direction.md\` beside the source. Record audience, purpose, visual
+premise, typography hierarchy, density, color logic, reference material and what later edits must
+preserve. Create bespoke visuals when they explain the material better than generic cards. Small
+Frames do not need empty files or wrappers merely to match a folder layout.
+
+## Retrieve a Frame's share link
+
+Frame sharing and use rights are configured by the user in the Dust UI. Agents must not change
+the share scope or grant access to recipients. The CLI can only retrieve an existing share link:
+
+\`\`\`bash
+dsbx frame share-link /files/<scope>/<frame-folder>
+\`\`\`
+
+This command is read-only. It never creates sharing state, changes the scope, or adds or removes
+recipients. It returns the stable Frame ID, current share scope, and existing share URL. If no share
+link exists, ask the user to configure sharing in the Dust UI.
+
+${hasFunctions ? FUNCTIONS_SOURCE_LAYOUT : CLIENT_ONLY_SOURCE_LAYOUT}
+${hasFunctions ? FUNCTIONS_AUTHORING : `${NO_BROWSER_DOWNLOADS}\n`}
+## Check the Frame UI
+
+For a v2 Frame, run the attached linter on its folder before publishing:
+
+\`\`\`bash
+bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME"
+\`\`\`
+
+The skill files stay in the conversation even when the Frame lives in a Pod. The script fetches
+the Viz types and reports type and lint errors with file, line and column. Fix those errors before
+publishing. A failed check returns a nonzero exit code.
+
+${
+  hasFunctions
+    ? `It keeps generated configs on local sandbox disk and leaves the Frame source and existing
+configs untouched. Keep server functions in
+\`functions/\` and database schemas in \`databases/\`, which are excluded from UI linting.
+The linter also checks UI and backend source for absolute scoped paths to files inside the Frame.
+Use the suggested \`./…\` path so those references still work when the Frame moves.
+
+A literal function name passed to \`useFrameFunction\` or \`useFrameFunctionMutation\` must be
+declared in \`manifest.functions\`. The linter also checks their legacy Pod aliases and reports
+the call's file, line, column and the declared names. Fix a typo in the call or add the new
+function to the manifest. Names computed at run time are not checked.
+`
+    : `It keeps generated configs on local sandbox disk and leaves the Frame source and existing
+configs untouched. The linter also checks the UI source for absolute scoped paths to files inside
+the Frame. Use the suggested \`./…\` path so those references still work when the Frame moves.
+`
+}
+## Publish a Frame
+
+${
+  hasFunctions
+    ? `There is no separate v2 function publish. Publish the manifest once; the UI source, all declared
+functions, and all declared database schemas are built or reconciled, stored, and activated
+atomically:
+`
+    : `Publish the manifest once; the UI source is built, stored, and activated atomically:
+`
+}
+\`\`\`bash
+dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
+\`\`\`
+
+Publishing runs the manifest, UI, ${hasFunctions ? "function-build, database-contract " : ""}and Tailwind checks.
+If any fails, no partial publication
+becomes active: fix the reported error and rerun. Tailwind arbitrary values such as \`h-[600px]\`
+are errors, not warnings: use predefined classes or the \`style\` prop. Run the attached linter
+before publishing to check in-package file paths${hasFunctions ? " and function names" : ""}. For a brand-new folder,
+publish also assigns the Frame identity; republishing the same path updates that Frame in place.
+
+Use \`dsbx frame publish\` instead of \`bun build\` or an ad hoc regex scan: those do not use the
+Frame build context and report unrelated or noisy failures.
+
+After a successful publish, call \`conversation_side_panel.open_frame\` exactly once with \`path\`
+set to the same canonical \`/files/...\` manifest path. This opens the Frame for the user and adds
+the Frame card to the answer. Do not parse the Frame ID from the CLI output for this step.
+
+${
+  hasFunctions
+    ? `Call a function from the active publication by its stable Frame ID and bare manifest name:
+
+\`\`\`bash
+dsbx frame call <frame-id> <function-name> --input '<json>'
+\`\`\`
+
+During authoring, the mounted Frame folder or manifest path is also accepted in place of the ID.
+The ID form requires Frame use rights; the path form additionally requires read access to the
+mounted source. Use this to exercise published server behavior directly; it does not test the Frame
+UI.
+
+`
+    : ""
+}The only interactive-content MCP tool available under Frames v2 is
+\`export_interactive_content_file\`: use it to export a Frame as a PNG screenshot or PDF document.
+Use the Computer and CLI for all other Frame operations. Use \`dsbx frame --help\` as the authority
+for available operations.
+
+Do not use \`mv\` or \`cp\` on a Frame folder: move and clone are not supported in this
+initial scope.
+
+${hasFunctions ? `${MIGRATING_LEGACY_FRAME}\n` : ""}## Editing
 
 Use the Computer to edit Frame source. Never run concurrent file mutations against the same path:
 read the current file, apply one edit, then start the next edit to that file. Apply the edit, run
 the UI linter for v2 Frames, and run \`dsbx frame publish\` in the same Computer command.
 
 When fixing a validation or runtime problem, preserve working structure and make the smallest
-targeted edit. Do not replace an entire UI or function for a localized state, schema, or styling bug.
+targeted edit. ${hasFunctions ? "Do not replace an entire UI or function for a localized state, schema, or styling bug." : "Do not replace an entire UI for a localized state or styling bug."}
 
-${buildInteractiveContentAuthoringProseV2({ hasDocuments })}`;
+${buildInteractiveContentAuthoringProseV2({ hasDocuments, hasFunctions })}`;

@@ -14,17 +14,17 @@ import type {
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
+import { withSandboxFunctionInvocationFeature } from "@front-api/middlewares/with_sandbox_functions_feature";
 import { z } from "zod";
 
 // Mounted at /api/w/:wId/sandbox/egress-policy/bulk. Multi-pod read (GET) and
 // add/remove write (POST) for the central Computer admin page. The parent
 // sub-app applies the workspace-admin + Computer gates; the multi-Pod feature
-// is gated on the frames_v2 flag. Only Pods with their own policy are
+// is gated on Frame functions (frames_v2 + frames_v2_functions). Only Pods with their own policy are
 // surfaced.
 const app = workspaceApp();
 
-app.use("*", withFeatureFlag("frames_v2"));
+app.use("*", withSandboxFunctionInvocationFeature());
 
 const PostBulkEgressPolicyBodySchema = z
   .object({

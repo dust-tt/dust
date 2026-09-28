@@ -149,6 +149,7 @@ async function createFramePublicationFunction({
 async function setupFrameV2Function({
   shareScope = "workspace_and_emails",
   withFramesV2FeatureFlag = true,
+  withSandboxFunctionInvocationFeatureFlag = true,
   standalone = false,
   userIdentity = "optional",
   addCallerToSpace = false,
@@ -156,6 +157,7 @@ async function setupFrameV2Function({
 }: {
   shareScope?: FileShareScope;
   withFramesV2FeatureFlag?: boolean;
+  withSandboxFunctionInvocationFeatureFlag?: boolean;
   standalone?: boolean;
   userIdentity?: SandboxFunctionUserIdentityPolicy;
   addCallerToSpace?: boolean;
@@ -166,6 +168,9 @@ async function setupFrameV2Function({
   });
   if (withFramesV2FeatureFlag) {
     await FeatureFlagFactory.basic(adminAuth, "frames_v2");
+  }
+  if (withSandboxFunctionInvocationFeatureFlag) {
+    await FeatureFlagFactory.basic(adminAuth, "frames_v2_functions");
   }
   const space = await SpaceFactory.project(workspace);
   const conversation = standalone
@@ -405,7 +410,22 @@ function mockInvocationEventStream(events: SandboxFunctionInvocationEvent[]) {
 }
 
 describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () => {
-  it("invokes the active Frame publication with only frames_v2 enabled", async () => {
+  it("rejects invocations without frames_v2_functions", async () => {
+    const { workspace, frame } = await setupFrameV2Function({
+      withSandboxFunctionInvocationFeatureFlag: false,
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+      body: { input: { message: "hello" } },
+    });
+
+    expect(response.status).toBe(403);
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("invokes the active Frame publication with frames_v2 and frames_v2_functions enabled", async () => {
     const { workspace, frame, sandboxFunction } = await setupFrameV2Function();
 
     const response = await postInvocation({
@@ -601,7 +621,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(await response.json()).toMatchObject({
       error: {
         type: "feature_flag_not_found",
-        message: "Frames are not enabled for this workspace.",
+        message: "Frame functions are not enabled for this workspace.",
       },
     });
   });

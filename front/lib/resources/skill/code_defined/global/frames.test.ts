@@ -54,6 +54,7 @@ describe("framesSkill.fetchInstructions", () => {
   it("uses the dsbx lifecycle and keeps MCP export under Frames v2", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
 
     const instructions = await framesSkill.fetchInstructions(auth, {
       spaceIds: [],
@@ -150,6 +151,31 @@ describe("framesSkill.fetchInstructions", () => {
         "interactive_content"
       )
     ).resolves.toBe(false);
+  });
+
+  it("teaches client-only Frames under Frames v2 without Frame functions", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).toContain("dsbx frame publish");
+    expect(instructions).toContain("Frames in this workspace are client-only");
+    expect(instructions).toContain("this workspace rejects them at publish");
+    expect(instructions).toContain("does not\nallow downloads");
+    expect(instructions).not.toContain("## Authoring a function");
+    expect(instructions).not.toContain(
+      "## Persisting state in a Frame database"
+    );
+    expect(instructions).not.toContain("## Storing files in a Frame");
+    expect(instructions).not.toContain("## Migrating a legacy Frame");
+    expect(instructions).not.toContain("useFrameFunction");
+    expect(instructions).not.toContain("tools.call");
+    expect(instructions).not.toContain("dsbx frame call");
+    expect(instructions).not.toContain("frame_author_required");
+    expect(instructions).not.toContain("--replaces");
   });
 
   it("teaches the computer-first flow when the Computer is enabled", async () => {
