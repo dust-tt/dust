@@ -5,17 +5,21 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -457,5 +461,106 @@ describe("applyBatchSuggestions", () => {
     expect(res.isErr()).toBe(true);
     expect(await fetchAgentName(agent.sId)).toBe(agent.name);
     expect(await fetchSkillName(skill.sId)).toBe(skill.name);
+  });
+
+  it("edits a skill to reference a skill created in the same batch", async () => {
+    await grantSkillCreation();
+    const pendingRes = await SkillResource.createPending(auth);
+    assert(pendingRes.isOk());
+    const pending = pendingRes.value;
+    const skill = await SkillFactory.create(auth);
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await SkillSuggestionFactory.create(auth, pending, {
+      kind: "create",
+      suggestion: SKILL_CREATION,
+      batchModelId,
+    });
+    const reference = serializeSkillTag(
+      { icon: null, id: pending.sId, name: SKILL_CREATION.name },
+      { html: true }
+    );
+    await SkillSuggestionFactory.create(auth, skill, {
+      suggestion: {
+        instructionEdits: [
+          {
+            targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+            content: `<p>Start with ${reference}.</p>`,
+            type: "replace",
+          },
+        ],
+      },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const created = await SkillResource.fetchById(auth, pending.sId);
+    expect(created?.status).toBe("active");
+    // The reference is normalized against the skill once it is created, so it keeps its name.
+    const edited = await SkillResource.fetchById(auth, skill.sId);
+    expect(edited?.instructions).toContain(pending.sId);
+    expect(edited?.instructions).toContain(SKILL_CREATION.name);
+  });
+
+  it.skip("requests the restricted spaces of a skill created in the same batch", async () => {
+    await grantSkillCreation();
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      { userIds: [user.sId] }
+    );
+    await auth.refresh();
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "GitHub",
+    });
+    const view = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      restrictedSpace
+    );
+    const pendingRes = await SkillResource.createPending(auth);
+    assert(pendingRes.isOk());
+    const pending = pendingRes.value;
+    const skill = await SkillFactory.create(auth);
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    // The created skill uses a tool of the restricted space, so it requests that space.
+    await SkillSuggestionFactory.create(auth, pending, {
+      kind: "create",
+      suggestion: {
+        ...SKILL_CREATION,
+        instructions: `<p>Use <tool id="${view.sId}" name="GitHub"></tool> then summarize.</p>`,
+      },
+      batchModelId,
+    });
+    const reference = serializeSkillTag(
+      { icon: null, id: pending.sId, name: SKILL_CREATION.name },
+      { html: true }
+    );
+    await SkillSuggestionFactory.create(auth, skill, {
+      suggestion: {
+        instructionEdits: [
+          {
+            targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+            content: `<p>Start with ${reference}.</p>`,
+            type: "replace",
+          },
+        ],
+      },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const created = await SkillResource.fetchById(auth, pending.sId);
+    expect(created?.requestedSpaceIds).toContain(restrictedSpace.id);
+    // The skill referencing it inherits its spaces.
+    const edited = await SkillResource.fetchById(auth, skill.sId);
+    expect(edited?.requestedSpaceIds).toContain(restrictedSpace.id);
   });
 });
