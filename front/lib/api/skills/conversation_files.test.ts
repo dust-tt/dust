@@ -153,8 +153,8 @@ describe("upsertSkillFilesToConversation", () => {
 
     const attachments = await Promise.all(
       [
-        { fileName: "templates/a.txt", content: "content-a" },
-        { fileName: "templates/nested/a.txt", content: "content-b" },
+        { fileName: "a.txt", content: "content-a" },
+        { fileName: "b.txt", content: "content-b" },
       ].map((spec) => createSkillFileAttachment(auth, user, spec))
     );
 
@@ -199,11 +199,11 @@ describe("upsertSkillFilesToConversation", () => {
       [
         conversationScopedPath({
           conversationId: conversation.sId,
-          rel: `skills/${skill.name}/templates/a.txt`,
+          rel: `skills/${skill.name}/a.txt`,
         }),
         conversationScopedPath({
           conversationId: conversation.sId,
-          rel: `skills/${skill.name}/templates/nested/a.txt`,
+          rel: `skills/${skill.name}/b.txt`,
         }),
       ].sort()
     );

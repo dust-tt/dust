@@ -111,42 +111,6 @@ describe("FileResource", () => {
     vi.clearAllMocks();
   });
 
-  describe("makeNew attachment names", () => {
-    it.each([
-      ["templates/nested/report.txt", "templates/nested/report.txt"],
-      [" templates / cafe\u0301.txt ", "templates/café.txt"],
-      ["/../ . /\u0000/report.txt", "_/_/_/_/report.txt"],
-    ])("preserves safe skill paths for %s", async (fileName, expected) => {
-      const { authenticator: auth, user } = await createResourceTest({
-        role: "admin",
-      });
-      const file = await FileFactory.create(auth, user, {
-        contentType: "text/plain",
-        fileName,
-        fileSize: 1,
-        status: "created",
-        useCase: "skill_attachment",
-      });
-
-      expect(file.fileName).toBe(expected);
-    });
-
-    it("keeps path separators sanitized for conversation attachments", async () => {
-      const { authenticator: auth, user } = await createResourceTest({
-        role: "admin",
-      });
-      const file = await FileFactory.create(auth, user, {
-        contentType: "text/plain",
-        fileName: "templates/report.txt",
-        fileSize: 1,
-        status: "created",
-        useCase: "conversation",
-      });
-
-      expect(file.fileName).toBe("templates_report.txt");
-    });
-  });
-
   it("allows a workspace member to use an invite-only Frame through a domain grant", async () => {
     const {
       authenticator: auth,

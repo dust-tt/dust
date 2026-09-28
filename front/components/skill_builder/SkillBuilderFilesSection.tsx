@@ -25,9 +25,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useFormContext, useFormState } from "react-hook-form";
 
 /**
- * @cc [owner:aubin-tchoi,label:product] preserve-folder-attachment-paths
- * Folder uploads MUST retain the selected folder and nested paths in attachment names.
- * Duplicate detection MUST compare full paths, so equal basenames in different folders coexist.
+ * @cc [owner:aubin-tchoi,label:product] flatten-folder-attachment-paths
+ * Folder uploads MUST replace path separators with underscores in attachment names.
+ * Duplicate names MUST be skipped against both existing attachments and the current selection.
  */
 export function SkillBuilderFilesSection() {
   const { owner, skillId } = useSkillBuilderContext();
@@ -144,20 +144,29 @@ export function SkillBuilderFilesSection() {
 
       const allFiles = Array.from(files, (file) =>
         file.webkitRelativePath
-          ? new File([file], file.webkitRelativePath, {
+          ? new File([file], file.webkitRelativePath.replaceAll("/", "_"), {
               type: file.type,
               lastModified: file.lastModified,
             })
           : file
       );
-      const newFiles = allFiles.filter((f) => !existingFileNames.has(f.name));
-      const duplicates = allFiles.filter((f) => existingFileNames.has(f.name));
+      const seenFileNames = new Set(existingFileNames);
+      const newFiles: File[] = [];
+      const duplicates: File[] = [];
+      for (const file of allFiles) {
+        if (seenFileNames.has(file.name)) {
+          duplicates.push(file);
+        } else {
+          seenFileNames.add(file.name);
+          newFiles.push(file);
+        }
+      }
 
       if (duplicates.length > 0) {
         sendNotification({
           type: "error",
           title: "Duplicate files skipped.",
-          description: `Already attached: ${duplicates.map((f) => f.name).join(", ")}`,
+          description: `Duplicate names: ${duplicates.map((f) => f.name).join(", ")}`,
         });
       }
 

@@ -226,31 +226,14 @@ export class FileResource extends BaseResource<FileModel> {
     return getFileViewerSummaries(this);
   }
 
-  /**
-   * @cc [owner:aubin-tchoi,label:product;security] skill-attachment-relative-paths
-   * Skill attachment names MUST preserve folder separators while sanitizing each segment.
-   * Empty, dot, and parent segments MUST become inert names so attachments cannot escape
-   * their skill directory. Other use cases MUST keep single-segment file names.
-   */
   static async makeNew(
     blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">,
     { transaction }: { transaction?: Transaction } = {}
   ) {
-    const fileName =
-      blob.useCase === "skill_attachment"
-        ? blob.fileName
-            .split("/")
-            .map((segment) => {
-              const name = sanitizeFileSystemName(segment);
-              return name && name !== "." && name !== ".." ? name : "_";
-            })
-            .join("/")
-        : sanitizeFileSystemName(blob.fileName);
-
     const key = await FileResource.model.create(
       {
         ...blob,
-        fileName,
+        fileName: sanitizeFileSystemName(blob.fileName),
         status: "created",
         version: 0,
       },

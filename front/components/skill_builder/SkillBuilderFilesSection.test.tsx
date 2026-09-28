@@ -86,19 +86,21 @@ describe("SkillBuilderFilesSection", () => {
     expect(click).toHaveBeenCalledTimes(2);
   });
 
-  it("preserves folder paths and only skips attachments with the same full path", async () => {
+  it("flattens folder paths and skips existing and selected duplicate names", async () => {
     const input = renderSection([
-      { fileId: "existing", fileName: "templates/old/report.txt" },
+      { fileId: "existing", fileName: "templates_old_report.txt" },
     ]);
     const files = [
       "templates/old/report.txt",
       "templates/new/report.txt",
       "templates/report.txt",
+      "templates/new_report.txt",
     ].map((relativePath) => {
-      const file = new File([relativePath], "report.txt", {
-        type: "text/plain",
-        lastModified: 1234,
-      });
+      const file = new File(
+        [relativePath],
+        relativePath.slice(relativePath.lastIndexOf("/") + 1),
+        { type: "text/plain", lastModified: 1234 }
+      );
       Object.defineProperty(file, "webkitRelativePath", {
         value: relativePath,
       });
@@ -107,19 +109,20 @@ describe("SkillBuilderFilesSection", () => {
 
     fireEvent.change(input, { target: { files } });
 
-    await screen.findByText("templates/new/report.txt");
-    expect(screen.getByText("templates/report.txt")).toBeInTheDocument();
+    await screen.findByText("templates_new_report.txt");
+    expect(screen.getByText("templates_report.txt")).toBeInTheDocument();
     expect(handleFilesUpload).toHaveBeenCalledWith([
       expect.objectContaining({
-        name: "templates/new/report.txt",
+        name: "templates_new_report.txt",
         type: "text/plain",
         lastModified: 1234,
       }),
-      expect.objectContaining({ name: "templates/report.txt" }),
+      expect.objectContaining({ name: "templates_report.txt" }),
     ]);
     expect(sendNotification).toHaveBeenCalledWith(
       expect.objectContaining({
-        description: "Already attached: templates/old/report.txt",
+        description:
+          "Duplicate names: templates_old_report.txt, templates_new_report.txt",
       })
     );
     expect(input.value).toBe("");
