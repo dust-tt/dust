@@ -197,6 +197,10 @@ function isDeltaMetadata(
   );
 }
 
+// The read heartbeats at most this often while items keep arriving. Well under
+// the 5 minute heartbeatTimeout of processDeltaChangesFromGCS.
+const DELTA_READ_HEARTBEAT_INTERVAL_MS = 30_000;
+
 // Reads only the [startIndex, startIndex + batchSize) window of
 // `sortedChangedItems` from a GCS delta file, plus the (small) metadata fields.
 //
@@ -209,10 +213,21 @@ function isDeltaMetadata(
 //
 // `sortedChangedItems` is written pre-sorted, so windowing by array index is
 // stable across successive batches of the same file.
+/**
+ * @cc [owner:tdraier,label:performance] delta-read-heartbeats
+ * The read MUST call `heartbeat` before consuming the file and then at least
+ * once per `DELTA_READ_HEARTBEAT_INTERVAL_MS` of wall-clock time while array
+ * items keep arriving, so a read that outlasts the activity's heartbeatTimeout
+ * is not timed out while it is making progress. A stalled source MUST NOT be
+ * kept alive by heartbeats. When `heartbeat` rejects, the read MUST stop and
+ * destroy its streams, and the rejection MUST be returned as the `Err` value
+ * unchanged so the activity boundary rethrows Temporal's cancellation as is.
+ */
 async function readDeltaBatchFromGCSStream(
   file: ReturnType<Bucket["file"]>,
   startIndex: number,
-  batchSize: number
+  batchSize: number,
+  heartbeat: () => Promise<void>
 ): Promise<Result<DeltaBatchFromGCS, Error>> {
   const readStream = file.createReadStream();
   const jsonParser = parser();
@@ -228,29 +243,36 @@ async function readDeltaBatchFromGCSStream(
   const batch: DriveItem[] = [];
 
   try {
+    await heartbeat();
+    let lastHeartbeatAt = Date.now();
+
     const metaDone = new Promise<unknown>((resolve, reject) => {
       metaAssembler.on("done", (asm: Assembler) => resolve(asm.current));
       ignore.on("error", reject);
     });
 
-    const itemsDone = new Promise<void>((resolve, reject) => {
-      streamArray.on(
-        "data",
-        ({ key, value }: { key: number; value: DriveItem }) => {
-          if (key >= startIndex && key < endIndex) {
-            batch.push(value);
-          }
+    // Async iteration (rather than a "data" listener) so the heartbeat can be
+    // awaited inline: the array stream is not read while a heartbeat is in
+    // flight, which keeps backpressure on the GCS stream and lets the
+    // heartbeat's rejection (activity cancelled or timed out) abort the read.
+    const itemsDone = (async () => {
+      for await (const chunk of streamArray) {
+        const { key, value }: { key: number; value: DriveItem } = chunk;
+        if (key >= startIndex && key < endIndex) {
+          batch.push(value);
         }
-      );
-      streamArray.on("end", () => resolve());
-      streamArray.on("error", reject);
-      pick.on("error", reject);
-    });
+        if (Date.now() - lastHeartbeatAt >= DELTA_READ_HEARTBEAT_INTERVAL_MS) {
+          await heartbeat();
+          lastHeartbeatAt = Date.now();
+        }
+      }
+    })();
 
     // Reject if the source or parser fails; never resolves on its own.
     const sourceError = new Promise<never>((_resolve, reject) => {
       readStream.on("error", reject);
       jsonParser.on("error", reject);
+      pick.on("error", reject);
     });
 
     readStream.pipe(jsonParser);
@@ -274,8 +296,9 @@ async function readDeltaBatchFromGCSStream(
     });
   } catch (error) {
     // The failures here come from the GCS read stream and the stream-json
-    // parser (external libraries). Return them as an Err so the activity
-    // entrypoint reports the failure at the boundary, per the
+    // parser (external libraries), or from `heartbeat` (Temporal SDK). Return
+    // them as an Err (a CancelledFailure passes through unchanged) so the
+    // activity entrypoint reports the failure at the boundary, per the
     // temporal-activity-failure-boundary contract.
     return new Err(normalizeError(error));
   } finally {
@@ -2695,12 +2718,14 @@ export async function processDeltaChangesFromGCS({
   const file = getDeltaSyncBucket().file(gcsFilePath);
 
   // Stream only the current batch window out of the (potentially huge) delta
-  // file to avoid materializing all changed items in memory.
+  // file to avoid materializing all changed items in memory. The read
+  // heartbeats itself: it can outlast the activity's heartbeatTimeout.
   const startIndex = cursor;
   const deltaBatchRes = await readDeltaBatchFromGCSStream(
     file,
     startIndex,
-    batchSize
+    batchSize,
+    heartbeat
   );
   if (deltaBatchRes.isErr()) {
     // Convert the helper failure into a thrown activity failure at this
