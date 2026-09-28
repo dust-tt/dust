@@ -9,8 +9,13 @@ import {
   Button,
   ContextItem,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyCTA,
   File02,
+  Folder,
   Plus,
   ReverseLeft,
   Spinner,
@@ -19,6 +24,11 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useFormContext, useFormState } from "react-hook-form";
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] preserve-folder-attachment-paths
+ * Folder uploads MUST retain the selected folder and nested paths in attachment names.
+ * Duplicate detection MUST compare full paths, so equal basenames in different folders coexist.
+ */
 export function SkillBuilderFilesSection() {
   const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
@@ -111,12 +121,13 @@ export function SkillBuilderFilesSection() {
     });
   };
 
-  const onUploadClick = () => {
-    if (disableUpload) {
+  const onUploadClick = (directory: boolean) => {
+    if (disableUpload || isProcessingFiles || !fileInputRef.current) {
       return;
     }
 
-    fileInputRef.current?.click();
+    fileInputRef.current.webkitdirectory = directory;
+    fileInputRef.current.click();
   };
 
   const onFileInputChange = useCallback(
@@ -131,7 +142,14 @@ export function SkillBuilderFilesSection() {
         return;
       }
 
-      const allFiles = Array.from(files);
+      const allFiles = Array.from(files, (file) =>
+        file.webkitRelativePath
+          ? new File([file], file.webkitRelativePath, {
+              type: file.type,
+              lastModified: file.lastModified,
+            })
+          : file
+      );
       const newFiles = allFiles.filter((f) => !existingFileNames.has(f.name));
       const duplicates = allFiles.filter((f) => existingFileNames.has(f.name));
 
@@ -166,15 +184,31 @@ export function SkillBuilderFilesSection() {
     ]
   );
 
-  const headerActions = !isDiffMode && hasFileAttachments && (
-    <Button
-      type="button"
-      onClick={onUploadClick}
-      label="Upload files"
-      icon={isProcessingFiles ? Spinner : Plus}
-      variant="outline"
-      disabled={disableUpload || isProcessingFiles}
-    />
+  const uploadButton = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          label="Upload files"
+          icon={isProcessingFiles ? Spinner : Plus}
+          variant="outline"
+          disabled={disableUpload || isProcessingFiles}
+          isSelect
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem
+          label="Upload files"
+          icon={File02}
+          onClick={() => onUploadClick(false)}
+        />
+        <DropdownMenuItem
+          label="Upload folder"
+          icon={Folder}
+          onClick={() => onUploadClick(true)}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 
   return (
@@ -198,7 +232,7 @@ export function SkillBuilderFilesSection() {
               disabled={disableUpload}
             />
           )}
-          {headerActions}
+          {!isDiffMode && hasFileAttachments && uploadButton}
         </div>
       </div>
 
@@ -218,19 +252,7 @@ export function SkillBuilderFilesSection() {
             <Spinner />
           </div>
         ) : (
-          <EmptyCTA
-            action={
-              <Button
-                type="button"
-                onClick={onUploadClick}
-                label="Upload files"
-                icon={Plus}
-                variant="outline"
-                disabled={disableUpload || isProcessingFiles}
-              />
-            }
-            className="py-8"
-          />
+          <EmptyCTA action={uploadButton} className="py-8" />
         )
       ) : (
         <div className="relative">
