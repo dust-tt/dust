@@ -561,33 +561,31 @@ async function createPendingSkills(
     MCPError
   >
 > {
+  const skillCreations = changes.filter(
+    (change): change is Extract<PlannedChange, { type: "skill_creation" }> =>
+      change.type === "skill_creation"
+  );
+  const pendingSkills = await SkillResource.createPendings(
+    auth,
+    skillCreations.length
+  );
+  if (pendingSkills.isErr()) {
+    return new Err(new MCPError(pendingSkills.error.message));
+  }
+
   const pendingSkillByChange = new Map<PlannedChange, SkillResource>();
   const skillReferenceByRef = new Map<string, SkillReference>();
-  for (const change of changes) {
-    switch (change.type) {
-      case "skill_creation": {
-        const pendingSkill = await SkillResource.createPending(auth);
-        if (pendingSkill.isErr()) {
-          return new Err(new MCPError(pendingSkill.error.message));
-        }
-        pendingSkillByChange.set(change, pendingSkill.value);
-        if (change.ref) {
-          skillReferenceByRef.set(change.ref, {
-            id: pendingSkill.value.sId,
-            name: change.create.name,
-            icon: null,
-          });
-        }
-        break;
-      }
-      case "agent_creation":
-      case "agent":
-      case "skill":
-        break;
-      default:
-        assertNever(change);
+  skillCreations.forEach((change, i) => {
+    const pendingSkill = pendingSkills.value[i];
+    pendingSkillByChange.set(change, pendingSkill);
+    if (change.ref) {
+      skillReferenceByRef.set(change.ref, {
+        id: pendingSkill.sId,
+        name: change.create.name,
+        icon: null,
+      });
     }
-  }
+  });
 
   return new Ok({ pendingSkillByChange, skillReferenceByRef });
 }

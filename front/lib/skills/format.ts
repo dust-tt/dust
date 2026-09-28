@@ -114,8 +114,14 @@ export function extractSkillRefs(content: string): string[] {
 }
 
 export function hasUnparsableSkillRefTag(content: string): boolean {
-  return [...content.matchAll(SKILL_TAG_REGEX)].some(
-    (m) => /\bref\s*=/.test(m[1]) && parseSkillRef(m[1]) === null
+  const refTags = [...content.matchAll(SKILL_TAG_REGEX)].filter((m) =>
+    /\bref\s*=/.test(m[1])
+  );
+  const refOpeningTags = content.match(/<skill\b[^>]*\bref\s*=/g) ?? [];
+
+  return (
+    refOpeningTags.length !== refTags.length ||
+    refTags.some((m) => parseSkillRef(m[1]) === null)
   );
 }
 
