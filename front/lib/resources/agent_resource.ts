@@ -447,7 +447,13 @@ export class AgentResource
   implements WithAccessControl
 {
   private readonly requestedSpaceIds: ModelId[];
-  private codeDefinedSkillIds: string[] = [];
+  private _codeDefinedSkillIds: string[] = [];
+  // The configuration version's metadata: not private, so kept on `light` resources too (only the
+  // instructions are private, see `unreadable-agent-is-light`).
+  private readonly versionInfo: Omit<
+    AgentResourceContent,
+    "instructions" | "instructionsHtml"
+  >;
   private _content: AgentResourceContent | null;
 
   private _verbs: Set<GrantVerb> = new Set();
@@ -494,6 +500,14 @@ export class AgentResource
       | "modelConfiguration"
     >);
     this.requestedSpaceIds = agentConfiguration.requestedSpaceIds;
+    this.versionInfo = {
+      version: agentConfiguration.version,
+      maxStepsPerRun: agentConfiguration.maxStepsPerRun,
+      creditSpendCheckpointThresholdAwuCredits:
+        agentConfiguration.creditSpendCheckpointThresholdAwuCredits,
+      createdAt: agentConfiguration.createdAt,
+      updatedAt: agentConfiguration.updatedAt,
+    };
     this._content = {
       version: agentConfiguration.version,
       instructions: agentConfiguration.instructions,
@@ -582,7 +596,7 @@ export class AgentResource
       status: configuration.status,
       versionAuthorId: null,
     } satisfies Pick<AgentResource, "scope" | "status" | "versionAuthorId">);
-    resource.codeDefinedSkillIds = configuration.codeDefinedSkillIds ?? [];
+    resource._codeDefinedSkillIds = configuration.codeDefinedSkillIds ?? [];
 
     return resource.materialize(auth);
   }
@@ -2714,7 +2728,7 @@ export class AgentResource
     if (this.scope === "global") {
       return SkillResource.fetchByIds(
         auth,
-        this.codeDefinedSkillIds,
+        this._codeDefinedSkillIds,
         fetchContext
       );
     }
@@ -2804,28 +2818,43 @@ export class AgentResource
     };
   }
 
+  // The code-defined skills a global agent declares; always empty for custom agents.
+  get codeDefinedSkillIds(): string[] {
+    return [...this._codeDefinedSkillIds];
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security;backend] agent-json-redaction
+   * `toJSON` serializes every resource, custom or global, `full` or `light`. A `light` resource MUST
+   * serialize with `instructions: null`, and the configuration builders built on it
+   * (`toAgentConfigurations`) MUST also give it no `instructionsHtml`, no `actions` and no
+   * `codeDefinedSkillIds`: the head fields and the version metadata are not private and are always
+   * carried.
+   */
   toJSON(): AgentConfigurationBaseType {
-    assert(
-      this.scope !== "global",
-      "Unexpected: `toJSON` called on a global AgentResource"
-    );
-    const content = this.content;
+    const isGlobal = this.scope === "global";
+    const {
+      version,
+      maxStepsPerRun,
+      createdAt,
+      creditSpendCheckpointThresholdAwuCredits,
+    } = this.versionInfo;
 
     return {
       id: this.agentConfigurationModelId,
-      agentModelId: this.id,
-      versionCreatedAt: content.createdAt.toISOString(),
+      agentModelId: isGlobal ? null : this.id,
+      versionCreatedAt: isGlobal ? null : createdAt.toISOString(),
       sId: this.sId,
-      version: content.version,
+      version,
       versionAuthorId: this.versionAuthorId,
-      instructions: content.instructions,
+      instructions: this._content?.instructions ?? null,
       model: this.modelConfiguration,
       status: this.status,
       scope: this.scope,
       name: this.name,
       description: this.description,
       pictureUrl: this.pictureUrl,
-      maxStepsPerRun: content.maxStepsPerRun,
+      maxStepsPerRun,
       templateId: this.templateId
         ? TemplateResource.modelIdToSId({ id: this.templateId })
         : null,
@@ -2843,7 +2872,7 @@ export class AgentResource
       lastReinforcementAnalysisAt:
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
       ignoreCreditSpendThresholdAlert:
-        content.creditSpendCheckpointThresholdAwuCredits === null,
+        creditSpendCheckpointThresholdAwuCredits === null,
       canRead: this._verbs.has("read"),
       // Regular API keys hold `write` from the admin role but may only edit an active version
       // (see the `regular-key-agent-editability` contract on `enrichAgentConfigurations`).

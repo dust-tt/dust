@@ -11,6 +11,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { honoApp } from "@front-api/app";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -801,5 +802,28 @@ describe("DELETE /api/w/:wId/assistant/agent_configurations/:aId", () => {
     expect(response.status).toBe(404);
     const unchanged = await AgentResource.fetchById(agentOwnerAuth, agent.sId);
     expect(unchanged?.status).toBe("active");
+  });
+});
+
+describe("GET /api/w/:wId/assistant/agent_configurations/:aId - global agents", () => {
+  it("returns a global agent with its instructions", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "GET",
+    });
+
+    const response = await get(workspace, GLOBAL_AGENTS_SID.HELPER);
+
+    expect(response.status).toBe(200);
+    const { agentConfiguration } = await response.json();
+    expect(agentConfiguration).toMatchObject({
+      sId: GLOBAL_AGENTS_SID.HELPER,
+      scope: "global",
+      agentModelId: null,
+      canRead: true,
+      canEdit: false,
+    });
+    expect(agentConfiguration.instructions).toContain("@help");
+    expect(Array.isArray(agentConfiguration.actions)).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
-import { getAgentConfigurationForDetails } from "@app/lib/api/assistant/configuration/agent";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
+import { toAgentConfigurations } from "@app/lib/api/assistant/configuration/enrich";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/agent_configuration";
@@ -57,10 +57,11 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agent = await getAgentConfigurationForDetails(auth, {
-      agentId: aId,
-    });
-    if (!agent) {
+    // Readers get the agent in full. Admins also get the agents they cannot read: redacted, or in
+    // full in a workspace with the `admin_can_see_private_entities` feature flag, where `canRead`
+    // reports that the details are complete (see `agent-content-visibility`).
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent || (!agent.canViewContent(auth) && !auth.isAdmin())) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -70,10 +71,19 @@ app.get(
       });
     }
 
+    const [serialized] = await toAgentConfigurations(auth, [agent]);
+    const agentConfiguration = {
+      ...serialized,
+      canRead: agent.canViewContent(auth),
+    };
+
     return ctx.json({
       agentConfiguration: {
-        ...agent,
-        lastAuthors: await getAgentRecentAuthors({ agent, auth }),
+        ...agentConfiguration,
+        lastAuthors: await getAgentRecentAuthors({
+          agent: agentConfiguration,
+          auth,
+        }),
       },
     });
   }

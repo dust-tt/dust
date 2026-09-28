@@ -18,9 +18,9 @@ import type { ModelId } from "@app/types/shared/model_id";
 // `toAgentConfigurations` fan them out in parallel and shallow-merge by a documented key —
 // composition is parallel + merge, not a pipe.
 //
-// Precondition for every step and both builders: `resources` are readable custom agents rendered as
-// `full` resources (`toJSON`/`content` throw otherwise). Global agents are synthesized elsewhere
-// (`getGlobalAgents`) and must not be passed here.
+// Both builders accept any resource, custom or global, `full` or `light`: a `light` one serializes
+// redacted (no instructions, no tools; see `agent-json-redaction`). `enrichWithActions` takes custom
+// agents only (see `actions-require-read`); the builders resolve global agents' tools themselves.
 
 /**
  * @cc [owner:tdraier,label:backend] enrich-favorites-key-per-agent
@@ -120,20 +120,41 @@ export async function toAgentConfigurations(
 ): Promise<AgentConfigurationType[]> {
   const bases = resources.map((resource) => resource.toJSON());
 
-  const [favorites, tags, actions] = await Promise.all([
+  // Global agents share a sentinel configuration id, so their tools are resolved per resource
+  // rather than keyed by id.
+  const [favorites, tags, customActions, globalActions] = await Promise.all([
     enrichWithFavorites(auth, resources),
     enrichWithTags(auth, resources),
-    enrichWithActions(auth, resources),
+    enrichWithActions(
+      auth,
+      resources.filter((resource) => resource.scope !== "global")
+    ),
+    Promise.all(
+      resources.map((resource) =>
+        resource.scope === "global" ? resource.listActions(auth) : null
+      )
+    ),
   ]);
 
   return resources.map((resource, index) => {
     const base = bases[index];
+    const isGlobal = resource.scope === "global";
     return {
       ...base,
       ...(favorites.get(base.sId) ?? { userFavorite: false }),
       ...(tags.get(base.id) ?? { tags: [] }),
-      instructionsHtml: resource.content.instructionsHtml,
-      ...(actions.get(base.id) ?? { actions: [] }),
+      instructionsHtml: resource.isFull()
+        ? resource.content.instructionsHtml
+        : null,
+      actions: isGlobal
+        ? (globalActions[index] ?? [])
+        : (customActions.get(base.id)?.actions ?? []),
+      // A redacted agent exposes no skills (see `agent-json-redaction`).
+      ...(!resource.isFull()
+        ? { codeDefinedSkillIds: [] }
+        : isGlobal
+          ? { codeDefinedSkillIds: resource.codeDefinedSkillIds }
+          : {}),
     };
   });
 }
