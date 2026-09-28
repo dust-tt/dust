@@ -362,7 +362,7 @@ export function UsageFilterPanelView({
             </FilterSection>
             <div
               ref={setContentScrollContainer}
-              className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto"
+              className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
             >
               {activeCategory === "member" && showMemberGroupFilter && (
                 <UsageFilterMemberGroupsControls
@@ -373,14 +373,16 @@ export function UsageFilterPanelView({
                 />
               )}
               {activeCategory === "agent" && (
-                <UsageFilterAgentScopeControls
-                  scopes={USAGE_FILTER_AGENT_SCOPES}
-                  activeScope={activeScope}
-                  onScopeChange={(scope) => {
-                    setActiveScope(scope);
-                    resetContentScroll();
-                  }}
-                />
+                <div className="mb-1">
+                  <UsageFilterAgentScopeControls
+                    scopes={USAGE_FILTER_AGENT_SCOPES}
+                    activeScope={activeScope}
+                    onScopeChange={(scope) => {
+                      setActiveScope(scope);
+                      resetContentScroll();
+                    }}
+                  />
+                </div>
               )}
               {isFacetsError ? (
                 <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
