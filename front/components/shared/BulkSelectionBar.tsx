@@ -1,6 +1,6 @@
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import { Button, cn, Hoverable, Spinner } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
+import { Avatar, Button, cn, Hoverable, Spinner } from "@dust-tt/sparkle";
+import type { ComponentProps, ReactNode } from "react";
 
 interface BulkSelectionBarProps {
   selectedCount: number;
@@ -11,7 +11,7 @@ interface BulkSelectionBarProps {
   onClear: () => void;
   disabled?: boolean;
   isLoading?: boolean;
-  selectionPreview?: ReactNode;
+  selectedAvatars?: ComponentProps<typeof Avatar>[];
   // Action buttons, rendered after "Clear all". Use `size="sm"`.
   children: ReactNode;
 }
@@ -25,7 +25,7 @@ export function BulkSelectionBar({
   onClear,
   disabled = false,
   isLoading = false,
-  selectionPreview,
+  selectedAvatars,
   children,
 }: BulkSelectionBarProps) {
   if (selectedCount === 0) {
@@ -44,7 +44,9 @@ export function BulkSelectionBar({
         )}
       >
         <div className="flex items-center gap-2 text-xs">
-          {selectionPreview}
+          {selectedAvatars && selectedAvatars.length > 0 && (
+            <Avatar.Stack avatars={selectedAvatars} size="xs" />
+          )}
           <span>{selectedCount} selected</span>
           {canSelectAll && (
             <Hoverable variant="highlight" onClick={onSelectAll}>
