@@ -691,7 +691,7 @@ describe("PATCH with applyToAgent", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.message).toContain(
-      "cannot be exported or updated"
+      "cannot be updated"
     );
     const fetched = await AgentSuggestionResource.fetchById(
       auth,
@@ -758,7 +758,7 @@ describe("PATCH with applyToAgent", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.message).toContain(
-      "cannot be exported or updated"
+      "cannot be updated"
     );
     const fetched = await AgentSuggestionResource.fetchById(
       auth,
@@ -970,7 +970,7 @@ describe("PATCH with applyToAgent", () => {
       description: agent.description,
       scope: "visible",
       instructions: agent.instructions,
-      version: agent.version + 1,
+      version: agent.version,
     });
   });
 

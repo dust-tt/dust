@@ -945,4 +945,31 @@ describe("applyBatchSuggestions", () => {
     const editors = (await unchanged?.listEditors(auth)) ?? [];
     expect(editors.map((user) => user.sId)).not.toContain(newEditor.sId);
   });
+
+  it("changes the scope of an agent without creating a version", async () => {
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "publish",
+      resourceType: "agent",
+    });
+    await auth.refresh();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      scope: "visible",
+    });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createScope(auth, agent, {
+      suggestion: { scope: "hidden" },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(updated?.scope).toBe("hidden");
+    expect(updated?.version).toBe(agent.version);
+  });
 });
