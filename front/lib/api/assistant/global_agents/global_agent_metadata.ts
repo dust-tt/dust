@@ -369,7 +369,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
     case GLOBAL_AGENTS_SID.DUST_NEXT:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_NEXT,
-        name: "dust-next",
+        name: "dust-next-low",
         description:
           "Same as dust but running a custom model for internal testing, with low reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,

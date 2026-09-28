@@ -1215,7 +1215,8 @@ const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   [
     GLOBAL_AGENTS_SID.DUST_NEXT,
     {
-      name: "dust-next",
+      // The sId stays "dust-next": past conversations reference it.
+      name: "dust-next-low",
       customModelIndex: 0,
       preferredReasoningEffort: "low",
     },
