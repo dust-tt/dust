@@ -91,6 +91,21 @@ describe("moving onto a path a FileResource still claims", () => {
     expect(copyFile).not.toHaveBeenCalled();
   });
 
+  it("moveCanonicalFile rejects a destination escaping the namespace", async () => {
+    const { auth, dustFs, projectId, copyFile } = await setup();
+
+    const result = await moveCanonicalFile(
+      auth,
+      dustFs,
+      `pod-${projectId}/a.txt`,
+      `../pod-${projectId}/a.txt`
+    );
+
+    assert(result.isErr());
+    expect(result.error.code).toBe("invalid_path");
+    expect(copyFile).not.toHaveBeenCalled();
+  });
+
   it("renameCanonicalFile refuses with already_exists and moves nothing", async () => {
     const { auth, dustFs, projectId, basePath, moved, copyFile } =
       await setup();

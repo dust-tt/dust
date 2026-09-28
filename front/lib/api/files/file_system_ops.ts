@@ -417,11 +417,18 @@ async function moveFrameV2PackageFolder(
 export async function renameCanonicalFile(
   auth: Authenticator,
   dustFs: DustFileSystem,
-  scopedPath: string,
+  requestedScopedPath: string,
   newFileName: string
 ): Promise<
   Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
 > {
+  const resolvedScopedPath =
+    DustFileSystem.resolveScopedPath(requestedScopedPath);
+  if (resolvedScopedPath.isErr()) {
+    return resolvedScopedPath;
+  }
+  const scopedPath = resolvedScopedPath.value;
+
   // A Frames v2 package is a folder whose registered resource is the manifest inside it, so a
   // plain folder rename would move the bytes and leave that resource pointing at nothing.
   if (await fetchFrameV2PackageAt(auth, dustFs, scopedPath)) {
@@ -493,20 +500,19 @@ export async function renameCanonicalFile(
 export async function moveCanonicalFile(
   auth: Authenticator,
   dustFs: DustFileSystem,
-  src: string,
+  requestedSrc: string,
   requestedDest: string
 ): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
-  // The file system normalizes paths before touching bytes; the registration lookup and the row
-  // update below must see the same path it does.
-  const dest = DustFileSystem.normalizeScopedPath(requestedDest);
-  if (!dest) {
-    return new Err(
-      new DustFileSystemError(
-        "invalid_path",
-        `Path traversal detected: \`${requestedDest}\` is not allowed.`
-      )
-    );
+  const resolvedSrc = DustFileSystem.resolveScopedPath(requestedSrc);
+  if (resolvedSrc.isErr()) {
+    return resolvedSrc;
   }
+  const resolvedDest = DustFileSystem.resolveScopedPath(requestedDest);
+  if (resolvedDest.isErr()) {
+    return resolvedDest;
+  }
+  const src = resolvedSrc.value;
+  const dest = resolvedDest.value;
 
   if (await fetchFrameV2PackageAt(auth, dustFs, src)) {
     return moveFrameV2PackageFolder(auth, dustFs, {

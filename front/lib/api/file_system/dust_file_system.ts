@@ -684,9 +684,10 @@ export class DustFileSystem {
     return normalized;
   }
 
-  private requireReadMount(
+  /** `normalizeScopedPath` as a Result, with the error every path check reports for traversal. */
+  static resolveScopedPath(
     scopedPath: string
-  ): Result<{ mount: FileSystemMount; path: string }, DustFileSystemError> {
+  ): Result<string, DustFileSystemError> {
     const normalized = DustFileSystem.normalizeScopedPath(scopedPath);
     if (!normalized) {
       return new Err(
@@ -696,6 +697,17 @@ export class DustFileSystem {
         )
       );
     }
+    return new Ok(normalized);
+  }
+
+  private requireReadMount(
+    scopedPath: string
+  ): Result<{ mount: FileSystemMount; path: string }, DustFileSystemError> {
+    const resolved = DustFileSystem.resolveScopedPath(scopedPath);
+    if (resolved.isErr()) {
+      return resolved;
+    }
+    const normalized = resolved.value;
 
     const mount = this.findMount(normalized);
     if (!mount) {
@@ -731,15 +743,11 @@ export class DustFileSystem {
   private requireWriteMount(
     scopedPath: string
   ): Result<{ mount: FileSystemMount; path: string }, DustFileSystemError> {
-    const normalized = DustFileSystem.normalizeScopedPath(scopedPath);
-    if (!normalized) {
-      return new Err(
-        new DustFileSystemError(
-          "invalid_path",
-          `Path traversal detected: \`${scopedPath}\` is not allowed.`
-        )
-      );
+    const resolved = DustFileSystem.resolveScopedPath(scopedPath);
+    if (resolved.isErr()) {
+      return resolved;
     }
+    const normalized = resolved.value;
 
     const mount = this.findMount(normalized);
     if (!mount) {
