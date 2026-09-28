@@ -200,11 +200,7 @@ async function initElasticsearchRust(
   return { success: true, usedCache };
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:backend] hive-code-defined-search-seeding
- * After creating the front search indices, run each available code-defined skill and global agent
- * reindex script. A failed reindex MUST fail Elasticsearch initialization.
- */
+// Initialize Elasticsearch indices (TypeScript scripts)
 async function initElasticsearchTS(
   worktreePath: string,
   envVars: Record<string, string>
