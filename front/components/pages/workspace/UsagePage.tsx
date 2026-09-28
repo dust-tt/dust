@@ -702,13 +702,40 @@ export function UsagePage() {
     setIsBulkChangeSeatOpen(true);
   }, []);
 
-  // Selected members visible on the current page, for the bulk seat modal's
-  // avatar row (with an "all across pages" selection this is the visible
-  // subset only).
-  const selectedVisibleMembers = useMemo(
-    () => membersUsage.filter((m) => selection.rowSelection[m.sId]),
-    [membersUsage, selection.rowSelection]
+  // The selection only holds ids and a page only loads its own rows: remember
+  // every loaded member so picks from other pages keep their avatar. Updated
+  // during render (the React-recommended alternative to an effect).
+  const [loadedMembersById, setLoadedMembersById] = useState(
+    () => new Map(membersUsage.map((m) => [m.sId, m]))
   );
+  const [prevMembersUsage, setPrevMembersUsage] = useState(membersUsage);
+  if (membersUsage !== prevMembersUsage) {
+    setPrevMembersUsage(membersUsage);
+    setLoadedMembersById((prev) => {
+      const next = new Map(prev);
+      for (const m of membersUsage) {
+        next.set(m.sId, m);
+      }
+      return next;
+    });
+  }
+
+  // Selected members, for the avatar rows of the selection bar and bulk modals.
+  // Remembered members may predate the current filter, so an "all across
+  // pages" selection only shows the current page. Kept in pick order so the
+  // first avatars stay put as more members are added.
+  const selectedVisibleMembers = useMemo(() => {
+    const descriptor = selection.descriptor();
+    if (descriptor.mode === "all") {
+      return membersUsage.filter((m) => selection.rowSelection[m.sId]);
+    }
+    return descriptor.ids.flatMap((id) => loadedMembersById.get(id) ?? []);
+  }, [
+    loadedMembersById,
+    membersUsage,
+    selection.descriptor,
+    selection.rowSelection,
+  ]);
 
   // Translate the cross-page selection into the descriptor the bulk member
   // endpoints expect: explicit ids, or the current filter minus exclusions.
@@ -1105,6 +1132,7 @@ export function UsagePage() {
   const selectionBanner = (
     <MembersSelectionBanner
       selectedCount={selection.selectedCount}
+      selectedMembers={selectedVisibleMembers}
       totalCount={totalMembersUsage}
       hasMorePagesToSelect={selection.hasMorePagesToSelect}
       onSelectAllAcrossPages={selection.selectAllAcrossPages}

@@ -1,8 +1,12 @@
 import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
+import { SelectedMembersAvatarStack } from "@app/components/workspace/BulkMembersModalHeader";
+import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { Button } from "@dust-tt/sparkle";
 
 interface MembersSelectionBannerProps {
   selectedCount: number;
+  // Selected members visible on the current page, for the avatar preview.
+  selectedMembers: MemberUsageType[];
   totalCount: number;
   hasMorePagesToSelect: boolean;
   onSelectAllAcrossPages: () => void;
@@ -15,6 +19,7 @@ interface MembersSelectionBannerProps {
 
 export function MembersSelectionBanner({
   selectedCount,
+  selectedMembers,
   totalCount,
   hasMorePagesToSelect,
   onSelectAllAcrossPages,
@@ -32,12 +37,20 @@ export function MembersSelectionBanner({
       onSelectAll={onSelectAllAcrossPages}
       onClear={onClear}
       disabled={disabled}
+      selectionPreview={
+        selectedMembers.length > 0 && (
+          <SelectedMembersAvatarStack
+            selectedMembers={selectedMembers}
+            size="xs"
+          />
+        )
+      }
     >
       {onBatchChangeSeat && (
         <Button
           size="sm"
           variant="primary"
-          label="Batch change seat"
+          label="Change seat"
           onClick={onBatchChangeSeat}
           disabled={disabled}
         />
@@ -45,7 +58,7 @@ export function MembersSelectionBanner({
       <Button
         size="sm"
         variant="primary"
-        label="Batch edit spend limit"
+        label="Edit spend limit"
         onClick={onBatchEditSpendLimit}
         disabled={disabled}
       />

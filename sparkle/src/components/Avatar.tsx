@@ -345,6 +345,9 @@ Avatar.Stack = function ({
   const remainingCount =
     shouldShowAll || isFirstOnTop ? 0 : avatars.length - maxVisible;
 
+  // The counter matches the shape of the avatars it stands for.
+  const isCounterRounded = visibleAvatars.every((avatar) => avatar.isRounded);
+
   // Get all names for tooltip
   const avatarNames = avatars
     .filter((avatar) => avatar.name)
@@ -481,6 +484,7 @@ Avatar.Stack = function ({
                   >
                     <Avatar
                       size={size}
+                      isRounded={isCounterRounded}
                       name={
                         Number(remainingCount) < 10
                           ? `+${remainingCount}`
@@ -491,6 +495,7 @@ Avatar.Stack = function ({
                 ) : (
                   <Avatar
                     size={size}
+                    isRounded={isCounterRounded}
                     name={
                       Number(remainingCount) < 10 ? `+${remainingCount}` : "9+"
                     }

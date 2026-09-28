@@ -11,6 +11,8 @@ interface BulkSelectionBarProps {
   onClear: () => void;
   disabled?: boolean;
   isLoading?: boolean;
+  // Rendered before the selected count, e.g. a preview of the selected items.
+  selectionPreview?: ReactNode;
   // Action buttons, rendered after "Clear all". Use `size="sm"`.
   children: ReactNode;
 }
@@ -24,6 +26,7 @@ export function BulkSelectionBar({
   onClear,
   disabled = false,
   isLoading = false,
+  selectionPreview,
   children,
 }: BulkSelectionBarProps) {
   if (selectedCount === 0) {
@@ -42,6 +45,7 @@ export function BulkSelectionBar({
         )}
       >
         <div className="flex items-center gap-2 text-xs">
+          {selectionPreview}
           <span>{selectedCount} selected.</span>
           {canSelectAll && (
             <Hoverable variant="highlight" onClick={onSelectAll}>
