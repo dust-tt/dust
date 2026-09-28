@@ -1,5 +1,6 @@
 import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
 import { getGroupAllowedActions } from "@app/lib/api/groups/management_actions";
+import { getGroupManagersForGroups } from "@app/lib/api/groups/manager_assignments";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { GetGroupsResponseBody } from "@app/types/api/groups";
 import {
@@ -30,6 +31,7 @@ const GetGroupsQuerySchema = z.object({
   // When "true", each group also carries its member sIds (one extra batched
   // query) instead of just memberCount.
   withMembers: z.enum(["true", "false"]).optional(),
+  withManagers: z.enum(["true", "false"]).optional(),
 });
 
 // Mounted at /api/w/:wId/groups.
@@ -41,7 +43,7 @@ app.get(
   validate("query", GetGroupsQuerySchema),
   async (ctx): HandlerResult<GetGroupsResponseBody> => {
     const auth = ctx.get("auth");
-    const { kind, withMembers } = ctx.req.valid("query");
+    const { kind, withMembers, withManagers } = ctx.req.valid("query");
 
     const requestedKinds: GroupKind[] = kind
       ? Array.isArray(kind)
@@ -62,15 +64,24 @@ app.get(
       withMembers === "true"
         ? await GroupResource.fetchJSONWithMembers(auth, groups)
         : await GroupResource.toJSONWithMemberCounts(auth, groups);
-    const groupsById = new Map(groups.map((group) => [group.sId, group]));
     const isGroupManagementEnabled =
       await auth.hasFeatureFlag("group_management");
+    const managersByGroup =
+      withManagers === "true" && isGroupManagementEnabled
+        ? await getGroupManagersForGroups(auth, groups)
+        : null;
+    const groupsById = new Map(groups.map((group) => [group.sId, group]));
     return ctx.json({
       groups: serializedGroups.map((serialized) => {
         const group = groupsById.get(serialized.sId);
         assert(group);
         return {
           ...serialized,
+          ...(managersByGroup && {
+            managers: (managersByGroup.get(serialized.sId) ?? []).map(
+              ({ sId, fullName, image }) => ({ sId, fullName, image })
+            ),
+          }),
           allowedActions: getGroupAllowedActions(
             auth,
             group,

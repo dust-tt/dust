@@ -308,13 +308,11 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
     featureFlag: "premium_model_access",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
@@ -354,13 +352,11 @@ export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
     featureFlag: "premium_model_access",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
@@ -401,13 +397,11 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
     featureFlag: "premium_model_access",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
@@ -449,13 +443,11 @@ export const CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
     featureFlag: "premium_model_access",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
@@ -499,13 +491,11 @@ export const CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
     featureFlag: "premium_model_access",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
@@ -549,14 +539,9 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     featureFlag: "claude_fable_5_feature",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
-  // Fable 5's safety classifiers can decline a request; retry server-side on
-  // Opus 4.8 so the user still gets an answer in one round trip.
-  fallbackModels: [CLAUDE_OPUS_4_8_MODEL_ID],
   // Served from a separate Anthropic workspace (EAP) whose org has the 30-day
   // data retention Fable 5 requires; the Dust-managed org does not, and returns
   // 400 `model_not_available` for this model.
@@ -607,12 +592,9 @@ export const CLAUDE_FABLE_5_1_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     featureFlag: "claude_fable_5_feature",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
-  fallbackModels: [CLAUDE_OPUS_4_8_MODEL_ID],
   // Fable 5.1 carries the same 30-day data retention requirement as Fable 5
   // and is not available under zero data retention, so it is served from the
   // separate Anthropic workspace (EAP) whose org has that retention.
@@ -655,8 +637,6 @@ export const CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: false,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
@@ -694,8 +674,6 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,

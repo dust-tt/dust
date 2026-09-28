@@ -72,8 +72,7 @@ vi.mock("@app/types/assistant/models/custom_models.generated", async () => {
   return {
     CUSTOM_MODEL_CONFIGS: mockCustomModels.configs,
     CUSTOM_MODEL_IDS: [CUSTOM_MODEL_ID, UNBOUND_CUSTOM_MODEL_ID],
-    CUSTOM_OPENAI_MODEL_IDS: [CUSTOM_MODEL_ID, UNBOUND_CUSTOM_MODEL_ID],
-    CUSTOM_ANTHROPIC_MODEL_IDS: [],
+    CUSTOM_MODELS: [],
   };
 });
 
@@ -165,6 +164,8 @@ describe("getGlobalAgents custom model agents", () => {
         GLOBAL_AGENTS_SID.DUST_NEXT,
         GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
         GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+        GLOBAL_AGENTS_SID.DUST_NEXT_NONE,
+        GLOBAL_AGENTS_SID.DUST_NEXT_XHIGH,
       ],
       "light"
     );
@@ -195,7 +196,35 @@ describe("getGlobalAgents custom model agents", () => {
         modelId: CUSTOM_MODEL_ID,
         reasoningEffort: "high",
       },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_NONE,
+        providerId: "openai",
+        modelId: CUSTOM_MODEL_ID,
+        reasoningEffort: "none",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_XHIGH,
+        providerId: "openai",
+        modelId: CUSTOM_MODEL_ID,
+        reasoningEffort: "xhigh",
+      },
     ]);
+  });
+
+  it("hides a custom Dust agent variant whose effort the custom model does not support", async () => {
+    const auth = await createAuthenticatorWithFlags([
+      "dust_internal_global_agents",
+      "custom_model_feature",
+    ]);
+
+    // The mocked custom model (GPT-5.5) has no "maximal" effort.
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DUST_NEXT_MAX],
+      "light"
+    );
+
+    expect(agents).toEqual([]);
   });
 
   it("resolves retired chawi agent variants to the GPT-5.5 fallback", async () => {
@@ -282,6 +311,16 @@ describe("getGlobalAgents custom model agents", () => {
         reasoningEffort: "none",
       },
     ]);
+  });
+
+  it("keeps custom Dust agents invocable rather than retired", () => {
+    expect(
+      [
+        GLOBAL_AGENTS_SID.DUST_NEXT,
+        GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+        GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+      ].filter(isRetiredGlobalAgent)
+    ).toEqual([]);
   });
 
   it("hides agents whose model index is missing from the generated config", async () => {

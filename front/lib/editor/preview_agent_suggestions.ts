@@ -1,4 +1,4 @@
-import { mergeAgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import { mergeAgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
 import type { MarkdownPipeline } from "@app/lib/editor/skill_instructions_html";
 import { applyInstructionEditsToHtml } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
@@ -109,7 +109,7 @@ export function previewAgentSuggestions({
     });
   }
 
-  const edits = mergeAgentFieldEdits(suggestions);
+  const edits = mergeAgentEdits(suggestions);
   if (edits.isErr()) {
     return edits;
   }

@@ -369,23 +369,49 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
     case GLOBAL_AGENTS_SID.DUST_NEXT:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_NEXT,
-        name: "dust-next",
+        name: "dust-next-low",
         description:
-          "Same as dust but running a custom model for internal testing.",
+          "Same as dust but running a custom model for internal testing, with low reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
         name: "dust-next-medium",
-        description: "Same as dust-next but with medium reasoning effort.",
+        description:
+          "Same as dust but running a custom model for internal testing, with medium reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_NEXT_HIGH:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
         name: "dust-next-high",
-        description: "Same as dust-next but with high reasoning effort.",
+        description:
+          "Same as dust but running a custom model for internal testing, with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_NEXT_NONE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_NONE,
+        name: "dust-next-none",
+        description:
+          "Same as dust but running a custom model for internal testing, without reasoning.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_NEXT_XHIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_XHIGH,
+        name: "dust-next-xhigh",
+        description:
+          "Same as dust but running a custom model for internal testing, with extra-high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_NEXT_MAX:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_MAX,
+        name: "dust-next-max",
+        description:
+          "Same as dust but running a custom model for internal testing, with maximal reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_CHAWI:

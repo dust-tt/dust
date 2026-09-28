@@ -39,6 +39,7 @@ export function useGroups({
   owner,
   kinds,
   withMembers,
+  withManagers,
   disabled,
 }: {
   owner: LightWorkspaceType;
@@ -46,6 +47,7 @@ export function useGroups({
   // Also resolves each group's member sIds (one extra batched query
   // server-side) instead of just its memberCount.
   withMembers?: boolean;
+  withManagers?: boolean;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -57,9 +59,12 @@ export function useGroups({
     if (withMembers) {
       params.append("withMembers", "true");
     }
+    if (withManagers) {
+      params.append("withManagers", "true");
+    }
     const queryString = params.toString();
     return `/api/w/${owner.sId}/groups${queryString ? `?${queryString}` : ""}`;
-  }, [owner.sId, kinds, withMembers]);
+  }, [owner.sId, kinds, withMembers, withManagers]);
 
   const groupsFetcher: Fetcher<GetGroupsResponseBody> = fetcher;
 
@@ -441,6 +446,8 @@ export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
           { revalidate: false }
         );
 
+        await invalidateWorkspaceGroups(owner.sId);
+
         return body;
       } finally {
         setIsCreating(false);
@@ -522,6 +529,8 @@ export function useUpdateGroup({
           { revalidate: false }
         );
 
+        await invalidateWorkspaceGroups(owner.sId);
+
         return body;
       } finally {
         setIsUpdating(false);
@@ -583,6 +592,8 @@ export function useDeleteGroup({ owner }: { owner: LightWorkspaceType }) {
               : previous,
           { revalidate: false }
         );
+
+        await invalidateWorkspaceGroups(owner.sId);
 
         return true;
       } finally {

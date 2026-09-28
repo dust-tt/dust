@@ -7,7 +7,7 @@ export const FIREWORKS_HOST = "fireworks" as const;
 export const XAI_HOST = "xai" as const;
 export const NOOP_HOST = "noop" as const;
 
-const HOSTS = [
+export const HOSTS = [
   OPENAI_RESPONSES_HOST,
   ANTHROPIC_HOST,
   GOOGLE_AI_STUDIO_HOST,

@@ -1,3 +1,4 @@
+import { createCustomStreamEndpoint } from "@app/lib/llms/stream/custom_endpoints";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { DustAnthropicClaudeFableFiveDotOneGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_fable_five_dot_one_global_anthropic";
 import { DustAnthropicClaudeFableFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_fable_five_global_anthropic";
@@ -88,6 +89,7 @@ import type {
   WorkspaceConfig,
 } from "@app/lib/llms/types/filter";
 import type { StreamEndpointId } from "@app/lib/model_constructors/stream";
+import { CUSTOM_MODELS } from "@app/types/assistant/models/custom_models.generated";
 
 export const DUST_STREAM_ENDPOINTS = {
   [DustAnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream.id]:
@@ -264,11 +266,20 @@ export const DUST_STREAM_ENDPOINTS = {
     DustXaiGrokFourDotSevenGlobalXaiStream,
 } as const satisfies Record<StreamEndpointId, DustStreamEndpointConstructor>;
 
+const CUSTOM_DUST_STREAM_ENDPOINTS = CUSTOM_MODELS.map(
+  createCustomStreamEndpoint
+);
+
 export function getStreamEndpoints(
   workspaceConfiguration: WorkspaceConfig,
   inputCondition: Where<EndpointConfig>
 ) {
-  return Object.values(DUST_STREAM_ENDPOINTS).filter((constructor) =>
+  const endpoints: DustStreamEndpointConstructor[] = [
+    ...Object.values(DUST_STREAM_ENDPOINTS),
+    ...CUSTOM_DUST_STREAM_ENDPOINTS,
+  ];
+
+  return endpoints.filter((constructor) =>
     isEndpointAvailable(constructor, workspaceConfiguration, inputCondition)
   );
 }

@@ -972,4 +972,57 @@ describe("applyBatchSuggestions", () => {
     expect(updated?.scope).toBe("hidden");
     expect(updated?.version).toBe(agent.version);
   });
+
+  it("lets a workspace admin change the scope of an agent they cannot read", async () => {
+    // The agent lives behind a restricted space the admin is not a member of: they hold only its
+    // `admin` verb, which is enough to change its scope.
+    const { restrictedSpace } = await createToolViewInRestrictedSpace();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      scope: "visible",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(adminAuth);
+    await AgentSuggestionFactory.createScope(adminAuth, agent, {
+      suggestion: { scope: "hidden" },
+      batchModelId,
+    });
+    const batch = await BatchSuggestionResource.fetchById(adminAuth, sId);
+    assert(batch);
+
+    const res = await applyBatchSuggestions(adminAuth, batch);
+
+    expect(res.isOk()).toBe(true);
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(updated?.scope).toBe("hidden");
+  });
+
+  it("leaves the batch pending once applied", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const newSkill = await SkillFactory.create(auth, { name: "New Skill" });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    // Once saved, the agent holds the skill: pruning its pending suggestions sees this one as done.
+    await AgentSuggestionFactory.createSkills(auth, agent, {
+      suggestion: { action: "add", skillId: newSkill.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const batch = await fetchBatch(sId);
+    expect(batch.state).toBe("pending");
+    expect(batch.agentSuggestions.map((s) => s.state)).toEqual(["pending"]);
+  });
 });

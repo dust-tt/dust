@@ -1,3 +1,5 @@
+import { CUSTOM_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
+
 export const GPT_6_ASTRA = "gpt-6-astra" as const;
 export const GPT_6_LUNA = "gpt-6-luna" as const;
 export const GPT_6_SOL = "gpt-6-sol" as const;
@@ -115,6 +117,8 @@ export const MODELS = [
   GROK_4_7,
   SIMULATED_FAILURE_MODEL,
   NOOP_MODEL,
+  // Custom models, generated at build time from the infra custom-models config.
+  ...CUSTOM_MODEL_IDS,
 ] as const;
 
 export type Model = (typeof MODELS)[number];

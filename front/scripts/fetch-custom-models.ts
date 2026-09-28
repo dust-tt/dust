@@ -5,13 +5,15 @@
  * Priority:
  * 1. Local JSON file (downloaded by CI before Docker build)
  * 2. GCS bucket (for local dev with credentials)
- * 3. Committed empty file (fallback)
+ * 3. Committed empty file (fallback when no file is found; an invalid file fails the build)
  */
 
-import { ModelConfigurationSchema } from "@app/types/assistant/models/types";
+import { validateCustomModelEndpoint } from "@app/lib/llms/stream/custom_endpoints";
+import { CustomModelsFileSchema } from "@app/types/assistant/models/custom_models";
 import * as fs from "fs";
 import * as path from "path";
-import { z } from "zod";
+import type { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 // Local file path (downloaded by GH action before Docker build).
 const LOCAL_JSON_PATH = path.join(__dirname, "../custom-models.json");
@@ -20,107 +22,87 @@ const OUTPUT_PATH = path.join(
   "../types/assistant/models/custom_models.generated.ts"
 );
 
-const CustomModelsFileSchema = z.object({
-  version: z.number().optional(),
-  models: z.array(ModelConfigurationSchema),
-});
+type CustomModelFileEntry = z.infer<
+  typeof CustomModelsFileSchema
+>["models"][number];
 
-type CustomModelConfig = z.infer<typeof ModelConfigurationSchema>;
-
-function parseModelsFile(content: string): CustomModelConfig[] | null {
-  try {
-    const json = JSON.parse(content);
-    const result = CustomModelsFileSchema.safeParse(json);
-
-    if (!result.success) {
-      console.error("Validation failed:", result.error.format());
-      return null;
-    }
-
-    return result.data.models;
-  } catch (err) {
-    console.warn("Failed to parse custom models JSON:", err);
-    return null;
+// Throws, failing the build: a file that is present but invalid must not silently ship
+// without its models.
+function parseModelsFile(content: string): CustomModelFileEntry[] {
+  const result = CustomModelsFileSchema.safeParse(JSON.parse(content));
+  if (!result.success) {
+    throw new Error(
+      `Invalid custom models file: ${fromError(result.error).toString()}`
+    );
   }
+  return result.data.models;
 }
 
-function readLocalFile(): CustomModelConfig[] | null {
+function readLocalFile(): CustomModelFileEntry[] | null {
   if (!fs.existsSync(LOCAL_JSON_PATH)) {
     return null;
   }
   console.log("Reading from local JSON file...");
-  const content = fs.readFileSync(LOCAL_JSON_PATH, "utf-8");
-  return parseModelsFile(content);
+  return parseModelsFile(fs.readFileSync(LOCAL_JSON_PATH, "utf-8"));
 }
 
-async function fetchFromGCS(): Promise<CustomModelConfig[] | null> {
+async function fetchFromGCS(): Promise<CustomModelFileEntry[] | null> {
+  let content: string;
   try {
     // Dynamic import to avoid errors when GCS deps aren't available.
     const { getPrivateUploadBucket } = await import("@app/lib/file_storage");
-    const bucket = getPrivateUploadBucket();
-    const content = await bucket.fetchFileContent("model-configs/custom.json");
-    return parseModelsFile(content);
+    content = await getPrivateUploadBucket().fetchFileContent(
+      "model-configs/custom.json"
+    );
   } catch (err) {
     console.warn("Failed to fetch from GCS:", err);
     return null;
   }
+  return parseModelsFile(content);
 }
 
-function generateTypeScript(models: CustomModelConfig[]): string {
-  const openaiModelIds = models.filter(
-    (model) => model.providerId === "openai"
+// Throws, failing the build: an entry the router cannot serve must not reach startup.
+function assertEndpointsSupported(models: CustomModelFileEntry[]): void {
+  const errors = models.flatMap(({ modelConfig, endpoint }) => {
+    const validation = validateCustomModelEndpoint(endpoint);
+    return validation.isErr()
+      ? [`${modelConfig.modelId}: ${validation.error}`]
+      : [];
+  });
+
+  if (errors.length > 0) {
+    throw new Error(
+      `Unsupported custom model endpoints:\n${errors.join("\n")}`
+    );
+  }
+}
+
+// The committed file is this function's output for an empty list.
+/**
+ * @cc [owner:pmilliotte,label:security] custom-model-endpoints-stay-out-of-browser-bundles
+ * The output embeds every `endpoint`, `hostModel` included, and is imported by browser code through
+ * `models.ts`. This script MUST NOT run in the `front-spa` build, and the committed
+ * `custom_models.generated.ts` MUST stay the output for an empty list.
+ */
+function generateTypeScript(models: CustomModelFileEntry[]): string {
+  const ids = JSON.stringify(
+    models.map(({ modelConfig }) => modelConfig.modelId)
   );
-  const anthropicModelIds = models.filter(
-    (model) => model.providerId === "anthropic"
-  );
-
-  const modelConstants = models
-    .map((model, idx) => {
-      const configJson = JSON.stringify(model, null, 2)
-        .split("\n")
-        .map((line, i) => (i === 0 ? line : "  " + line))
-        .join("\n");
-
-      return `const CUSTOM_MODEL_${idx}_ID = "${model.modelId}" as const;
-const CUSTOM_MODEL_${idx}_CONFIG = ${configJson} as const;`;
-    })
-    .join("\n\n");
-
-  const configsArray = models
-    .map((_, idx) => `  CUSTOM_MODEL_${idx}_CONFIG`)
-    .join(",\n");
-  const idsArray = models
-    .map((_, idx) => `  CUSTOM_MODEL_${idx}_ID`)
-    .join(",\n");
-  const openaiIdsArray = openaiModelIds
-    .map((model) => `  "${model.modelId}"`)
-    .join(",\n");
-  const anthropicIdsArray = anthropicModelIds
-    .map((model) => `  "${model.modelId}"`)
-    .join(",\n");
 
   return `// AUTO-GENERATED FILE - DO NOT EDIT MANUALLY
 // Generated by scripts/fetch-custom-models.ts at build time.
+import type { CustomModelType } from "@app/types/assistant/models/custom_models";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 
-${modelConstants}
+// Literal ids, so custom models extend the \`ModelIdType\` and \`Model\` unions.
+export const CUSTOM_MODEL_IDS = ${ids} as const;
 
-// Cast needed because ModelConfigurationType.modelId is the union type
-export const CUSTOM_MODEL_CONFIGS = [
-${configsArray}
-] as unknown as ModelConfigurationType[];
+// Cast needed because \`ModelConfigurationType.modelId\` is the model id union.
+export const CUSTOM_MODELS = ${JSON.stringify(models, null, 2)} as unknown as CustomModelType[];
 
-export const CUSTOM_MODEL_IDS = [
-${idsArray}
-] as const;
-
-export const CUSTOM_OPENAI_MODEL_IDS = [
-${openaiIdsArray}
-] as const;
-
-export const CUSTOM_ANTHROPIC_MODEL_IDS = [
-${anthropicIdsArray}
-] as const;
+export const CUSTOM_MODEL_CONFIGS: ModelConfigurationType[] = CUSTOM_MODELS.map(
+  ({ modelConfig }) => modelConfig
+);
 `;
 }
 
@@ -134,15 +116,15 @@ async function main() {
     models = await fetchFromGCS();
   }
 
-  if (models === null || models.length === 0) {
-    console.log("No custom models found, using committed empty file");
+  if (models === null) {
+    console.log("No custom models file found, using committed empty file");
     return;
   }
 
-  console.log(`Generating TypeScript for ${models.length} custom model(s)...`);
-  const content = generateTypeScript(models);
+  assertEndpointsSupported(models);
 
-  fs.writeFileSync(OUTPUT_PATH, content);
+  console.log(`Generating TypeScript for ${models.length} custom model(s)...`);
+  fs.writeFileSync(OUTPUT_PATH, generateTypeScript(models));
   console.log("Done");
 }
 
