@@ -2120,6 +2120,10 @@ export class FileResource extends BaseResource<FileModel> {
       destUseCaseMetadata?: FileUseCaseMetadata;
     }
   ): Promise<Result<undefined, Error>> {
+    if (destMountFilePath === this.mountFilePath) {
+      return new Ok(undefined);
+    }
+
     await FileResource.releaseMountFilePath(auth, destMountFilePath);
 
     try {

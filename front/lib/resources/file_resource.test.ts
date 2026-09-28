@@ -1015,6 +1015,37 @@ describe("FileResource", () => {
         `w/${workspace.sId}/pods/spc-1/files/notes_${file2.sId}.md`
       );
     });
+
+    it("moveMount keeps the path when the destination is the current one", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const mountFilePath = `w/${workspace.sId}/pods/spc-1/files/notes.md`;
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "notes.md",
+        fileSize: 10,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: "spc-1" },
+        mountFilePath,
+      });
+      const release = vi.spyOn(FileResource, "releaseMountFilePath");
+
+      const result = await file.moveMount(auth, {
+        destFileName: "notes.md",
+        destMountFilePath: mountFilePath,
+        destUseCase: "project_context",
+        destUseCaseMetadata: { spaceId: "spc-1" },
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(release).not.toHaveBeenCalled();
+      const row = await FileModel.findOne({
+        where: { id: file.id, workspaceId: workspace.id },
+      });
+      expect(row?.mountFilePath).toBe(mountFilePath);
+    });
   });
 
   describe("toScopedPath", () => {
