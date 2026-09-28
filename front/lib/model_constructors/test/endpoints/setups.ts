@@ -17,6 +17,7 @@ import { AnthropicClaudeOpusFourDotSevenEuropeAgentPlatformStream } from "@app/l
 import { AnthropicClaudeOpusFourDotSevenGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_four_dot_seven_global_anthropic";
 import { AnthropicClaudeOpusFourDotSixEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_four_dot_six_eu_agent_platform";
 import { AnthropicClaudeOpusFourDotSixGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_four_dot_six_global_anthropic";
+import { AnthropicClaudeSonnetFiveDotFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_five_dot_five_eu_agent_platform";
 import { AnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_five_dot_five_global_anthropic";
 import { AnthropicClaudeSonnetFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_five_eu_agent_platform";
 import { AnthropicClaudeSonnetFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_five_global_anthropic";
@@ -100,6 +101,7 @@ import { AnthropicClaudeOpusFourDotSevenEuropeAgentPlatformStreamSetup } from "@
 import { AnthropicClaudeOpusFourDotSevenGlobalAnthropicStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_opus_four_dot_seven_global_anthropic.test";
 import { AnthropicClaudeOpusFourDotSixEuropeAgentPlatformStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_opus_four_dot_six_eu_agent_platform.test";
 import { AnthropicClaudeOpusFourDotSixGlobalAnthropicStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_opus_four_dot_six_global_anthropic.test";
+import { AnthropicClaudeSonnetFiveDotFiveEuropeAgentPlatformStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_sonnet_five_dot_five_eu_agent_platform.test";
 import { AnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_sonnet_five_dot_five_global_anthropic.test";
 import { AnthropicClaudeSonnetFiveEuropeAgentPlatformStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_sonnet_five_eu_agent_platform.test";
 import { AnthropicClaudeSonnetFiveGlobalAnthropicStreamSetup } from "@app/lib/model_constructors/test/endpoints/anthropic_claude_sonnet_five_global_anthropic.test";
@@ -186,6 +188,8 @@ export const STREAM_ENDPOINT_SETUPS = {
     AnthropicClaudeOpusFourDotSixEuropeAgentPlatformStreamSetup,
   [AnthropicClaudeSonnetFiveEuropeAgentPlatformStream.id]:
     AnthropicClaudeSonnetFiveEuropeAgentPlatformStreamSetup,
+  [AnthropicClaudeSonnetFiveDotFiveEuropeAgentPlatformStream.id]:
+    AnthropicClaudeSonnetFiveDotFiveEuropeAgentPlatformStreamSetup,
   [AnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream.id]:
     AnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStreamSetup,
   [GoogleGeminiThreeDotFiveFlashGlobalAgentPlatformStream.id]:
