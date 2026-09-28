@@ -48,7 +48,7 @@ function NewInstructionsBlock({ instructionsHtml }: NewInstructionsBlockProps) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">Instructions</span>
-      <DiffBlock className="[&_.rounded-2xl.border]:border-0">
+      <DiffBlock variant="borderless">
         {editor && <EditorContent editor={editor} />}
       </DiffBlock>
     </div>
