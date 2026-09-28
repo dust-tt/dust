@@ -11,6 +11,7 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
+import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";
 
 type PreviewedAgentFields = Pick<
   AgentConfigurationType,
@@ -95,6 +96,19 @@ export function previewAgentSuggestions({
   PreviewedAgentFields,
   DustError<"invalid_request_error">
 > {
+  const creation = suggestions.find(isCreateAgentSuggestion);
+  if (creation) {
+    const { name, description, instructions } = creation.suggestion;
+    return new Ok({
+      name,
+      description,
+      scope: agent.scope,
+      model: agent.model,
+      instructions: agent.instructions,
+      instructionsHtml: instructions,
+    });
+  }
+
   const edits = mergeAgentFieldEdits(suggestions);
   if (edits.isErr()) {
     return edits;

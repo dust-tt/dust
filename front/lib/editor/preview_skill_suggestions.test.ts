@@ -85,6 +85,37 @@ describe("previewSkillSuggestions", () => {
     }
   });
 
+  it("previews a skill creation as the proposed skill", () => {
+    const result = previewSkillSuggestions({
+      skill: SKILL,
+      suggestions: [
+        {
+          ...BASE_SUGGESTION,
+          kind: "create",
+          suggestion: {
+            name: "Random Quote",
+            userFacingDescription: "Shares a random quote.",
+            agentFacingDescription: "Use when the user asks for a quote.",
+            instructions: "<p>Share one quote.</p>",
+          },
+        },
+      ],
+      pipeline,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({
+        name: "Random Quote",
+        availability: "editors",
+        agentFacingDescription: "Use when the user asks for a quote.",
+        userFacingDescription: "Shares a random quote.",
+        instructions: null,
+        instructionsHtml: "<p>Share one quote.</p>",
+      });
+    }
+  });
+
   it("applies an instruction edit to its block", () => {
     const html = convertMarkdownToBlockHtml(
       "First para\n\nSecond para",

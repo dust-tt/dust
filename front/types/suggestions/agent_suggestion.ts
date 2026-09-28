@@ -298,6 +298,12 @@ export type AgentCreateSuggestionType = Extract<
   { kind: "create" }
 >;
 
+export function isCreateAgentSuggestion(
+  suggestion: AgentSuggestionType
+): suggestion is AgentCreateSuggestionType {
+  return suggestion.kind === "create";
+}
+
 export type AgentDeleteSuggestionType = Extract<
   AgentSuggestionType,
   { kind: "delete" }
