@@ -25,20 +25,24 @@ beforeEach(async () => {
 });
 
 describe("setSpendLimitForUsersActivity", () => {
-  it("rejects an actor who is no longer a workspace manager", async () => {
+  it("records a member authorization failure after the actor loses their workspace role", async () => {
     const workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
+    vi.mocked(spendLimit.setUserSpendLimit).mockResolvedValue(
+      new Err(new spendLimit.UserSpendLimitError("unauthorized", "not allowed"))
+    );
 
-    await expect(
-      setSpendLimitForUsersActivity({
-        workspaceId: workspace.sId,
-        actorUserId: user.sId,
-        userIds: ["member"],
-        limit: { kind: "unlimited" },
-      })
-    ).rejects.toThrow("Only workspace managers");
-    expect(spendLimit.setUserSpendLimit).not.toHaveBeenCalled();
+    const result = await setSpendLimitForUsersActivity({
+      workspaceId: workspace.sId,
+      actorUserId: user.sId,
+      userIds: ["member"],
+      limit: { kind: "unlimited" },
+    });
+    expect(result).toEqual({
+      succeeded: 0,
+      failures: [{ userId: "member", message: "not allowed" }],
+    });
   });
 
   it("records permanent (non-retriable) failures without throwing", async () => {
