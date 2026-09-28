@@ -28,8 +28,7 @@ import {
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface DialogState {
   isOpen: boolean;

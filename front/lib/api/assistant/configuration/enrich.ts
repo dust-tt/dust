@@ -1,4 +1,3 @@
-import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -77,19 +76,13 @@ export async function enrichWithActions(
   auth: Authenticator,
   resources: AgentResource[]
 ): Promise<Map<ModelId, AgentActionsEnrichment>> {
-  const configurationModelIds = resources.map(
-    (resource) => resource.agentConfigurationModelId
+  const actionsByConfigurationModelId = await AgentResource.batchListActions(
+    auth,
+    resources
   );
-  const actionsById = await fetchMCPServerActionConfigurations(auth, {
-    configurationModelIds,
-    variant: "full",
-  });
 
   return new Map(
-    configurationModelIds.map((id) => [
-      id,
-      { actions: actionsById.get(id) ?? [] },
-    ])
+    [...actionsByConfigurationModelId].map(([id, actions]) => [id, { actions }])
   );
 }
 

@@ -47,9 +47,8 @@ export function SuggestionInstructionsDiffBlock({
     [blockHtml]
   );
 
-  // The diff box's border is not configurable, so it is overridden here.
   return (
-    <DiffBlock className="[&_.rounded-2xl.border]:border-0">
+    <DiffBlock variant="borderless">
       {editor && <EditorContent editor={editor} />}
     </DiffBlock>
   );

@@ -131,6 +131,52 @@ describe("AgentResource", () => {
     }
   });
 
+  it.each([
+    "regular",
+    "admin",
+    "system",
+  ] as const)("resolves batch edit permissions with the %s key's current-version rules", async (keyKind) => {
+    const { agent: active } = await buildAgentInState({
+      name: "Active agent",
+      scope: "visible",
+      status: "active",
+    });
+    const { agent: archived } = await buildAgentInState({
+      name: "Archived agent",
+      scope: "visible",
+      status: "archived",
+    });
+    const key = await KeyFactory[keyKind](testContext.globalGroup);
+    const auth = await Authenticator.fromKey(key, testContext.workspace.sId);
+    const agentIds = [active.sId, archived.sId];
+
+    const permissions = await AgentResource.batchFetchCanEdit(auth, agentIds);
+    expect(permissions.get(active.sId)).toBe(keyKind !== "regular");
+    expect(permissions.get(archived.sId)).toBe(keyKind === "system");
+    const resources = await AgentResource.fetchByIds(auth, agentIds);
+    for (const resource of resources) {
+      expect(permissions.get(resource.sId)).toBe(resource.toJSON().canEdit);
+    }
+  });
+
+  it("denies batch edit permissions for global, missing and foreign agents", async () => {
+    const { authenticator: otherAuth } = await createResourceTest({});
+    const foreignAgent =
+      await AgentConfigurationFactory.createTestAgent(otherAuth);
+    const agentIds = [
+      GLOBAL_AGENTS_SID.HELPER,
+      "missing-agent",
+      foreignAgent.sId,
+    ];
+
+    const permissions = await AgentResource.batchFetchCanEdit(
+      testContext.authenticator,
+      agentIds
+    );
+
+    expect([...permissions.values()]).toEqual([false, false, false]);
+  });
+
   it("carries the agent's creation date on full and light resources alike", async () => {
     const createdAt = new Date("2025-01-01T00:00:00.000Z");
     // Hidden, so the non-author admin below gets it light.
@@ -1301,6 +1347,53 @@ describe("AgentResource", () => {
       expect(
         await AgentResource.batchCountFavorites(testContext.authenticator, [])
       ).toEqual(new Map());
+    });
+  });
+
+  describe("batchListActions", () => {
+    it("lists a version's tools to its readers, and none to a member who cannot read it", async () => {
+      const { authenticator, workspace, globalSpace } = testContext;
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Hidden Tool Agent", scope: "hidden" }
+      );
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const mcpServerView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+      await AgentMCPServerConfigurationFactory.create(
+        authenticator,
+        globalSpace,
+        { agent, mcpServerView }
+      );
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const editorView = await AgentResource.fetchById(
+        authenticator,
+        agent.sId
+      );
+      assert(editorView);
+      const actions = await editorView.listActions(authenticator);
+      expect(
+        actions.map((action) =>
+          "mcpServerViewId" in action ? action.mcpServerViewId : null
+        )
+      ).toEqual([mcpServerView.sId]);
+
+      // A member who cannot read the hidden agent does not even fetch it; a light resource built for
+      // them still gets no tools.
+      expect(await AgentResource.fetchById(otherAuth, agent.sId)).toBeNull();
+      expect(await editorView.listActions(otherAuth)).toEqual([]);
     });
   });
 

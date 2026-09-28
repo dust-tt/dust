@@ -292,7 +292,7 @@ describe("MCPServerDetailsTools", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select all" }));
 
     // Only the visible tool is picked up, not the one the search hid.
-    expect(within(getBulkBar()).getByText("1 selected.")).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("1 selected")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Deselect all" })
     ).toBeInTheDocument();
@@ -312,7 +312,7 @@ describe("MCPServerDetailsTools", () => {
 
     expect(settingsFor(WEATHER_TOOL).permission).toBe("high");
     expect(settingsFor(CALENDAR_TOOL).permission).toBe("low");
-    expect(within(getBulkBar()).getByText("1 selected.")).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("1 selected")).toBeInTheDocument();
     expect(within(getRows()[0]).getByRole("checkbox")).toBeChecked();
   });
 
@@ -330,7 +330,7 @@ describe("MCPServerDetailsTools", () => {
 
     expect(settingsFor(CALENDAR_TOOL).enabled).toBe(false);
     expect(settingsFor(WEATHER_TOOL).enabled).toBe(true);
-    expect(within(getBulkBar()).getByText("1 selected.")).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("1 selected")).toBeInTheDocument();
     expect(within(getRows()[1]).getByRole("checkbox")).toBeChecked();
   });
 
@@ -338,10 +338,10 @@ describe("MCPServerDetailsTools", () => {
     renderTools();
 
     selectRow(0);
-    expect(within(getBulkBar()).getByText("1 selected.")).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("1 selected")).toBeInTheDocument();
 
     fireEvent.change(getSearchInput(), { target: { value: "calendar" } });
-    expect(within(getBulkBar()).getByText("1 selected.")).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("1 selected")).toBeInTheDocument();
 
     fireEvent.change(getSearchInput(), { target: { value: "" } });
     expect(within(getRows()[0]).getByRole("checkbox")).toBeChecked();
@@ -353,10 +353,10 @@ describe("MCPServerDetailsTools", () => {
     selectRow(0);
     fireEvent.change(getSearchInput(), { target: { value: "calendar" } });
     fireEvent.click(screen.getByRole("button", { name: "Select all" }));
-    expect(within(getBulkBar()).getByText("2 selected.")).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("2 selected")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Deselect all" }));
-    expect(within(getBulkBar()).getByText("1 selected.")).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("1 selected")).toBeInTheDocument();
 
     fireEvent.change(getSearchInput(), { target: { value: "" } });
     expect(within(getRows()[0]).getByRole("checkbox")).toBeChecked();
@@ -380,7 +380,7 @@ describe("MCPServerDetailsTools", () => {
 
     expect(settingsFor(WEATHER_TOOL).enabled).toBe(false);
     expect(settingsFor(CALENDAR_TOOL).enabled).toBe(false);
-    expect(within(getBulkBar()).getByText("2 selected.")).toBeInTheDocument();
+    expect(within(getBulkBar()).getByText("2 selected")).toBeInTheDocument();
 
     fireEvent.change(getSearchInput(), { target: { value: "" } });
     expect(within(getRows()[0]).getByRole("checkbox")).toBeChecked();

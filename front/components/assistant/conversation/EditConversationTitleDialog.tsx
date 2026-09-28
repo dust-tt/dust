@@ -9,8 +9,7 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type EditConversationTitleDialogProps = {
   isOpen: boolean;

@@ -108,6 +108,8 @@ export type AgentSearchSortOrder = (typeof AGENT_SEARCH_SORT_ORDERS)[number];
 
 export interface AgentSearchListItemType {
   sId: string;
+  // Resolved from current permissions by the listing endpoint; optional for older responses.
+  canEdit?: boolean;
   status: AgentConfigurationStatus;
   scope: AgentConfigurationScope;
   name: string;

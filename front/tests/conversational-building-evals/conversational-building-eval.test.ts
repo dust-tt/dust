@@ -145,7 +145,7 @@ describe
               const { scenario, config } = entry;
 
               const execution = await executeBuildingAgent(
-                scenario.auth,
+                scenario,
                 config,
                 testCase
               );

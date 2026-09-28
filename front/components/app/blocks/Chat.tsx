@@ -137,9 +137,7 @@ export default function Chat({
         : delete b.config.response_format;
       setIsResponseFormatJsonValid(true);
       onBlockUpdate(b);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (e) {
+    } catch {
       setIsResponseFormatJsonValid(false);
     }
   };

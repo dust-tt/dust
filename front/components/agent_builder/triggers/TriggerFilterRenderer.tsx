@@ -6,8 +6,6 @@ import {
 } from "@app/lib/matcher";
 import { OperationDisplayNames } from "@app/lib/matcher/types";
 import { Chip, ContentMessage, cn } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 
 interface TriggerFilterRendererProps {
   data: string | undefined;

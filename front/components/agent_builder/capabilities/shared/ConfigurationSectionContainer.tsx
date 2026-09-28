@@ -1,7 +1,5 @@
 import { cn } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 
 interface ConfigurationSectionContainerProps {
   title: string;

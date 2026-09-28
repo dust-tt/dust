@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   extractSkillRefs,
   hasUnparsableSkillRefTag,
+  parseSkillTag,
   renameSkillReferencesInContent,
   resolveSkillRefTags,
+  serializeSkillTag,
 } from "./format";
 
 describe("renameSkillReferencesInContent", () => {
@@ -19,8 +21,30 @@ describe("renameSkillReferencesInContent", () => {
         newName,
       })
     ).toEqual(
-      `before <skill id="ski_target" name="${newName}" /> middle <skill id="ski_other" name="Other" /> after`
+      'before <skill id="ski_target" name="Cost $1 $&amp; $$ $` $\'" /> middle <skill id="ski_other" name="Other" /> after'
     );
+  });
+});
+
+describe("skill tag names", () => {
+  it("escapes the name on write and decodes it on read", () => {
+    const skill = {
+      id: "ski_A",
+      name: 'Meeting "Notes" <v2> & more',
+      icon: null,
+    };
+    const tag = serializeSkillTag(skill);
+
+    expect(tag).toEqual(
+      '<skill id="ski_A" name="Meeting &quot;Notes&quot; &lt;v2&gt; &amp; more" />'
+    );
+    expect(parseSkillTag(tag)?.name).toEqual(skill.name);
+  });
+
+  it("still parses a legacy tag holding an unescaped quote", () => {
+    expect(
+      parseSkillTag('<skill id="ski_A" name="Meeting "Notes"" />')
+    ).toMatchObject({ id: "ski_A", name: "Meeting " });
   });
 });
 

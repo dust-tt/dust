@@ -100,8 +100,8 @@ export const CreateAgentDropdown = ({
         <Button
           variant="primary"
           icon={Plus}
-          label={isCompact ? undefined : "Create"}
-          tooltip={isCompact ? "Create" : undefined}
+          label={isCompact ? undefined : "Create agent"}
+          tooltip={isCompact ? "Create agent" : undefined}
           data-gtm-label="assistantCreationButton"
           data-gtm-location={dataGtmLocation}
           onClick={withTracking(TRACKING_AREAS.BUILDER, "create_menu")}

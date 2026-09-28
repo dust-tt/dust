@@ -18,6 +18,7 @@ const meta = {
 
 **Guidelines**
 - Group related edits into one \`changes\` array; multi-line hunks collapse automatically into a preview.
+- Pick the box with \`variant\`: \`borderless\` or \`plain\` when the diff already sits inside a bordered section, and pass \`isCollapsible={false}\` when the whole diff must stay visible.
 - Use the \`actions\` slot for affordances like opening the full file rather than embedding controls in the diff body.
 - For plain (non-diff) code rendering, use **CodeBlock**.`,
       },
@@ -94,13 +95,33 @@ export const Default: Story = {
 };
 
 /**
- * A diff tall enough to collapse: when the rendered content exceeds
- * `collapsedLines` lines (default 6), the block clamps to a preview and
- * shows an expand control.
+ * A diff tall enough to collapse: when the rendered content exceeds 6
+ * lines, the block clamps to a preview and shows an expand control.
  * @summary Long diff collapsed to a preview.
  */
 export const CollapsedPreview: Story = {
   args: {
     changes: longDiffExample,
   },
+};
+
+/**
+ * A long diff that never collapses and blends into its container: with
+ * `isCollapsible={false}` the whole diff shows, and `variant="plain"` drops
+ * the border and background, for diffs embedded in an existing section.
+ * @summary Full-height diff without border or background.
+ */
+export const PlainFullHeight: Story = {
+  args: {
+    changes: longDiffExample,
+    isCollapsible: false,
+    variant: "plain",
+  },
+  decorators: [
+    (Story) => (
+      <div className="rounded-xl bg-background p-3">
+        <Story />
+      </div>
+    ),
+  ],
 };

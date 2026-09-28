@@ -1,3 +1,11 @@
+import {
+  AUTO_COMPLEX_MODEL_CONFIG,
+  AUTO_COMPLEX_MODEL_ID,
+  AUTO_FAST_MODEL_CONFIG,
+  AUTO_FAST_MODEL_ID,
+  AUTO_MODEL_CONFIG,
+  AUTO_MODEL_ID,
+} from "@app/types/assistant/models/auto";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 /**
@@ -229,7 +237,7 @@ These options are not mutually exclusive, but you must specify in the prompt whe
 </tool_vs_knowledge>
 </knowledge_guidance>`;
 
-export const MODEL_GUIDANCE_LINE = `Model: Haiku is a good default for simple, single-purpose agents. Recommend upgrading to Sonnet only for agents with complex workflows, multi-step reasoning, or advanced tool orchestration. Don't mention models unless you are recommending a change.`;
+export const MODEL_GUIDANCE_LINE = `Model: unless the user asks for a specific model, recommend a tier model, which routes every message to the best model of its tier available to the workspace: ${AUTO_MODEL_CONFIG.displayName} (modelId \`${AUTO_MODEL_ID}\`) is a good default, ${AUTO_FAST_MODEL_CONFIG.displayName} (\`${AUTO_FAST_MODEL_ID}\`) for simple, single-purpose agents where speed and cost matter, ${AUTO_COMPLEX_MODEL_CONFIG.displayName} (\`${AUTO_COMPLEX_MODEL_ID}\`) for complex workflows, multi-step reasoning or advanced tool orchestration. Don't mention models unless you are recommending a change.`;
 
 // ─── Workflow helpers ────────────────────────────────────────────────────
 

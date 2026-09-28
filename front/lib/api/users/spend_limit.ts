@@ -26,6 +26,11 @@ import {
   FREE_SEAT_LIFETIME_AWU_CREDITS,
 } from "@app/lib/metronome/constants";
 import type { BillingCycle } from "@app/lib/plans/billing_cycle";
+import {
+  getMemberVerbAuthority,
+  hasAnyGroupPermission,
+  hasGroupVerbForMember,
+} from "@app/lib/resources/group_management_access";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -52,6 +57,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 type UserSpendLimitErrorType =
   | "user_not_found"
+  | "unauthorized"
   | "workspace_not_metronome_billed"
   | "metronome_error";
 
@@ -80,6 +86,17 @@ export async function getUserSpendLimit(
 
   const user = await getUserForWorkspace(auth, { userId });
   if (!user) {
+    return new Err(
+      new UserSpendLimitError(
+        "user_not_found",
+        "Could not find the user in this workspace."
+      )
+    );
+  }
+  if (
+    !(await hasAnyGroupPermission(auth, "read_usage")) ||
+    !(await hasGroupVerbForMember(auth, user, "read_usage"))
+  ) {
     return new Err(
       new UserSpendLimitError(
         "user_not_found",
@@ -180,8 +197,23 @@ export async function setUserSpendLimit(
     );
   }
 
+  const authority = await getMemberVerbAuthority(
+    auth,
+    user,
+    "set_usage_limits"
+  );
+  if (authority.kind === "none") {
+    return new Err(
+      new UserSpendLimitError(
+        "unauthorized",
+        "You cannot change this member's spend limit."
+      )
+    );
+  }
+
   // The membership is the source of truth for the per-user cap; the Redis
   // rate-limiter reads this override at enforcement time. Persist it directly.
+  const previousAwuCredits = membership.poolCapOverrideAwuCredits;
   await membership.updatePoolCapOverride({
     poolCapOverrideAwuCredits:
       limit.kind === "limited" ? limit.awuCredits : null,
@@ -220,6 +252,11 @@ export async function setUserSpendLimit(
       kind: limit.kind,
       awu_credits:
         limit.kind === "limited" ? String(limit.awuCredits) : "unlimited",
+      previous_kind: previousAwuCredits === null ? "unlimited" : "limited",
+      previous_awu_credits:
+        previousAwuCredits === null ? "unlimited" : String(previousAwuCredits),
+      authorizing_group_id:
+        authority.kind === "group" ? authority.group.sId : "workspace_role",
     },
   });
 

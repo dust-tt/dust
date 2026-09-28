@@ -20,8 +20,7 @@ import {
 import { PencilIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
 interface AppTableData extends AppType {

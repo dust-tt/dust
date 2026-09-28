@@ -1,4 +1,5 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { MAX_PENDING_INSTRUCTIONS_SUGGESTIONS } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
 import {
   DESCRIBE_AGENT_TOOL_NAME,
@@ -31,11 +32,14 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -162,6 +166,16 @@ async function addMember(
   return user;
 }
 
+async function fetchAgentToolIds(auth: Authenticator, agentId: string) {
+  const agent = await getAgentConfiguration(auth, {
+    agentId,
+    variant: "full",
+  });
+  return (agent?.actions ?? [])
+    .filter(isServerSideMCPServerConfiguration)
+    .map((action) => action.mcpServerViewId);
+}
+
 function expectMcpError(
   result: Awaited<ReturnType<(typeof TOOLS)[number]["handler"]>>,
   fragment: string
@@ -171,6 +185,28 @@ function expectMcpError(
     throw new Error("Expected an error.");
   }
   expect(result.error.message).toContain(fragment);
+}
+
+// An agent built on a restricted space its owner belongs to: a workspace admin outside that space
+// holds `admin` on it but not `read`, so they only get its light resource (no instructions).
+async function createAgentOnUnreadableSpace(workspace: WorkspaceType) {
+  const owner = await addMember(workspace);
+  const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    owner.sId,
+    workspace.sId
+  );
+  const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  const restrictedSpace = await SpaceFactory.regular(workspace);
+  await restrictedSpace.addMembers(internalAdminAuth, {
+    userIds: [owner.sId],
+  });
+  return AgentConfigurationFactory.createTestAgent(ownerAuth, {
+    name: "RestrictedAgent",
+    instructionsHtml: '<p data-block-id="block1">Secret instructions.</p>',
+    requestedSpaceIds: [restrictedSpace.id],
+  });
 }
 
 function extractAgentCreateSuggestionDirective(text: string): {
@@ -1417,7 +1453,7 @@ describe("building_agents_and_skills tools", () => {
         { agentId: agent.sId, modelId: "gpt-4o-mini" },
         makeExtra(authenticator)
       );
-      expectMcpError(result, "Invalid model ID");
+      expectMcpError(result, "is not available in this workspace");
     });
   });
 
@@ -2084,6 +2120,38 @@ describe("building_agents_and_skills tools", () => {
         makeExtra(authenticator)
       );
       expectMcpError(result, "no block-structured instructions");
+    });
+
+    it("returns an MCPError to an admin who cannot read the agent's instructions", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const agent = await createAgentOnUnreadableSpace(workspace);
+
+      const result = await getTool(
+        SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+      ).handler(
+        {
+          agentId: agent.sId,
+          instructionEdit: {
+            targetBlockId: "block1",
+            type: "replace",
+            content: "<p>Leaked?</p>",
+          },
+        },
+        makeExtra(
+          authenticator,
+          await createTestConversationModelId(authenticator)
+        )
+      );
+
+      expectMcpError(result, "instructions of this agent are not readable");
+      expect(
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agent.sId
+        )
+      ).toEqual([]);
     });
 
     it("returns an MCPError when exceeding the pending suggestions limit", async () => {
@@ -2807,6 +2875,40 @@ describe("building_agents_and_skills tools", () => {
       expectMcpError(result, "global agent");
     });
 
+    it("refuses instruction edits from an admin who cannot read the agent, recording nothing", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const agent = await createAgentOnUnreadableSpace(workspace);
+
+      expectMcpError(
+        await runSuggest(authenticator, {
+          title: "Edit restricted agent",
+          analysis: "Edit.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              instructionEdits: [
+                {
+                  targetBlockId: "block1",
+                  content: "<p>Replaced.</p>",
+                  type: "replace",
+                },
+              ],
+            },
+          ],
+        }),
+        "instructions of this agent are not readable"
+      );
+      expect(
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agent.sId
+        )
+      ).toEqual([]);
+    });
+
     it("refuses instruction edits targeting a block that does not exist", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       const agent = await AgentConfigurationFactory.createTestAgent(
@@ -2873,6 +2975,99 @@ describe("building_agents_and_skills tools", () => {
       });
 
       expectMcpError(result, "already exists");
+    });
+
+    it("records an agent creation with its tools and skills", async () => {
+      const { authenticator, workspace, globalSpace } =
+        await createAgentAuthorTestContext();
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+      const skill = await seedSkill(authenticator, { name: "Triage" });
+
+      const batchId = extractBatchId(
+        await runSuggest(authenticator, {
+          title: "New agent",
+          analysis: "Incidents need a helper.",
+          suggestions: [
+            {
+              kind: "create_agent",
+              name: "IncidentHelper",
+              description: "Helps triage incidents.",
+              instructions: "<p>Triage incidents.</p>",
+              toolIds: [view.sId],
+              skillIds: [skill.sId],
+            },
+          ],
+        })
+      );
+
+      const batch = await BatchSuggestionResource.fetchById(
+        authenticator,
+        batchId
+      );
+      expect(batch?.agentSuggestions.map((s) => s.toJSON())).toMatchObject([
+        {
+          kind: "create",
+          state: "pending",
+          suggestion: {
+            name: "IncidentHelper",
+            toolIds: [view.sId],
+            skillIds: [skill.sId],
+          },
+        },
+      ]);
+    });
+
+    it("refuses creating an agent with a tool that needs a configuration", async () => {
+      const { authenticator, workspace, globalSpace } =
+        await createAgentAuthorTestContext();
+      const searchView = await MCPServerViewFactory.internal(
+        workspace,
+        "search",
+        globalSpace
+      );
+
+      const result = await runSuggest(authenticator, {
+        title: "New agent",
+        analysis: "New agent.",
+        suggestions: [
+          {
+            kind: "create_agent",
+            name: "Searcher",
+            description: "Searches things.",
+            instructions: "<p>Search things.</p>",
+            toolIds: [searchView.sId],
+          },
+        ],
+      });
+
+      expectMcpError(result, "needs a configuration");
+    });
+
+    it("refuses creating an agent with a skill the same batch deletes", async () => {
+      const { authenticator } = await createAgentAuthorTestContext();
+      const skill = await seedSkill(authenticator, { name: "Triage" });
+
+      const result = await runSuggest(authenticator, {
+        title: "New agent",
+        analysis: "New agent.",
+        suggestions: [
+          {
+            kind: "create_agent",
+            name: "IncidentHelper",
+            description: "Helps triage incidents.",
+            instructions: "<p>Triage incidents.</p>",
+            skillIds: [skill.sId],
+          },
+          { kind: "delete_skill", skillId: skill.sId },
+        ],
+      });
+
+      expectMcpError(result, "is both deleted and added to an agent");
     });
 
     const createSkill = {
@@ -3173,19 +3368,420 @@ describe("building_agents_and_skills tools", () => {
 
         expectMcpError(result, "must be written as");
       });
+    });
 
-      it("refuses a quote in the name of a skill cited by a ref", async () => {
-        const { authenticator } = await createSkillAuthorTestContext();
+    describe("tool changes", () => {
+      it("records one pending tool addition per tool, together with the instruction edits", async () => {
+        const { authenticator, workspace, globalSpace } =
+          await createResourceTest({ role: "user" });
+        const agent = await AgentConfigurationFactory.createTestAgent(
+          authenticator,
+          { instructionsHtml: '<p data-block-id="b1">Answer questions.</p>' }
+        );
+        const server = await RemoteMCPServerFactory.create(workspace);
+        const view = await MCPServerViewFactory.create(
+          workspace,
+          server.sId,
+          globalSpace
+        );
+
+        const batchId = extractBatchId(
+          await runSuggest(authenticator, {
+            title: "Add ticket tool",
+            analysis: "The agent needs to open tickets.",
+            suggestions: [
+              {
+                kind: "edit_agent",
+                agentId: agent.sId,
+                tools: { addToolIds: [view.sId] },
+                instructionEdits: [
+                  {
+                    targetBlockId: "b1",
+                    content:
+                      '<p data-block-id="b1">Answer questions and open tickets.</p>',
+                    type: "replace",
+                  },
+                ],
+              },
+            ],
+          })
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          authenticator,
+          batchId
+        );
+        expect(batch?.agentSuggestions.map((s) => s.toJSON())).toMatchObject(
+          expect.arrayContaining([
+            expect.objectContaining({
+              kind: "tools",
+              state: "pending",
+              suggestion: { action: "add", toolId: view.sId },
+            }),
+            expect.objectContaining({ kind: "instructions" }),
+          ])
+        );
+        expect(await fetchAgentToolIds(authenticator, agent.sId)).toEqual([]);
+      });
+
+      it("outdates a pending addition of the same tool", async () => {
+        const { authenticator, workspace, globalSpace } =
+          await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const server = await RemoteMCPServerFactory.create(workspace);
+        const view = await MCPServerViewFactory.create(
+          workspace,
+          server.sId,
+          globalSpace
+        );
+        const previous = await AgentSuggestionFactory.createTools(
+          authenticator,
+          agent,
+          { suggestion: { action: "add", toolId: view.sId } }
+        );
+
+        extractBatchId(
+          await runSuggest(authenticator, {
+            title: "Add ticket tool",
+            analysis: "The agent needs to open tickets.",
+            suggestions: [
+              {
+                kind: "edit_agent",
+                agentId: agent.sId,
+                tools: { addToolIds: [view.sId] },
+              },
+            ],
+          })
+        );
+
+        const pending =
+          await AgentSuggestionResource.listByAgentConfigurationId(
+            authenticator,
+            agent.sId,
+            { states: ["pending"], kind: "tools" }
+          );
+        expect(pending).toHaveLength(1);
+        expect(pending[0].sId).not.toBe(previous.sId);
+      });
+
+      it("records the removal of one of the agent's tools", async () => {
+        const { authenticator, workspace, globalSpace } =
+          await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const server = await RemoteMCPServerFactory.create(workspace);
+        const view = await MCPServerViewFactory.create(
+          workspace,
+          server.sId,
+          globalSpace
+        );
+        await AgentMCPServerConfigurationFactory.create(
+          authenticator,
+          globalSpace,
+          { agent, mcpServerView: view }
+        );
+
+        const batchId = extractBatchId(
+          await runSuggest(authenticator, {
+            title: "Remove ticket tool",
+            analysis: "The agent no longer opens tickets.",
+            suggestions: [
+              {
+                kind: "edit_agent",
+                agentId: agent.sId,
+                tools: { removeToolIds: [view.sId] },
+              },
+            ],
+          })
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          authenticator,
+          batchId
+        );
+        expect(batch?.agentSuggestions.map((s) => s.toJSON())).toMatchObject([
+          {
+            kind: "tools",
+            state: "pending",
+            suggestion: { action: "remove", toolId: view.sId },
+          },
+        ]);
+        expect(await fetchAgentToolIds(authenticator, agent.sId)).toEqual([
+          view.sId,
+        ]);
+      });
+
+      it("refuses to remove a tool the agent does not have", async () => {
+        const { authenticator, workspace, globalSpace } =
+          await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const server = await RemoteMCPServerFactory.create(workspace);
+        const view = await MCPServerViewFactory.create(
+          workspace,
+          server.sId,
+          globalSpace
+        );
 
         const result = await runSuggest(authenticator, {
-          title: "Notes skill",
-          analysis: "Notes.",
+          title: "Remove tool",
+          analysis: "Not needed.",
           suggestions: [
-            { ...createSkill, name: 'Meeting "Notes"', ref: "notes" },
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              tools: { removeToolIds: [view.sId] },
+            },
           ],
         });
 
-        expectMcpError(result, "cannot contain");
+        expectMcpError(result, "does not have the tool");
+      });
+
+      it("refuses an admin who is not an editor of the agent", async () => {
+        const { authenticator, workspace, globalSpace } =
+          await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const server = await RemoteMCPServerFactory.create(workspace);
+        const view = await MCPServerViewFactory.create(
+          workspace,
+          server.sId,
+          globalSpace
+        );
+        const admin = await addMember(workspace, "admin");
+        const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          admin.sId,
+          workspace.sId
+        );
+
+        const result = await runSuggest(adminAuth, {
+          title: "Add tool",
+          analysis: "Needed.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              tools: { addToolIds: [view.sId] },
+            },
+          ],
+        });
+
+        expectMcpError(result, "Only editors");
+      });
+
+      it("refuses a tool restricted to skills", async () => {
+        const { authenticator, workspace, globalSpace } =
+          await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const server = await RemoteMCPServerFactory.create(workspace);
+        const view = await MCPServerViewFactory.create(
+          workspace,
+          server.sId,
+          globalSpace
+        );
+        const admin = await addMember(workspace, "admin");
+        const restriction = await view.updateIsRestrictedToSkills(
+          await Authenticator.fromUserIdAndWorkspaceId(
+            admin.sId,
+            workspace.sId
+          ),
+          true
+        );
+        assert(restriction.isOk());
+
+        const result = await runSuggest(authenticator, {
+          title: "Add tool",
+          analysis: "Needed.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              tools: { addToolIds: [view.sId] },
+            },
+          ],
+        });
+
+        expectMcpError(result, "invalid or not accessible");
+      });
+
+      it("refuses a tool that the builder does not offer", async () => {
+        const { authenticator, workspace, globalSpace } =
+          await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        // `workspace_management` is an `auto_hidden_builder` server.
+        const view = await MCPServerViewFactory.internal(
+          workspace,
+          "workspace_management",
+          globalSpace
+        );
+
+        const result = await runSuggest(authenticator, {
+          title: "Add tool",
+          analysis: "Needed.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              tools: { addToolIds: [view.sId] },
+            },
+          ],
+        });
+
+        expectMcpError(result, "invalid or not accessible");
+      });
+
+      it("refuses to remove a tool used by several actions", async () => {
+        const { authenticator, workspace, globalSpace } =
+          await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const server = await RemoteMCPServerFactory.create(workspace);
+        const view = await MCPServerViewFactory.create(
+          workspace,
+          server.sId,
+          globalSpace
+        );
+        for (let i = 0; i < 2; i++) {
+          await AgentMCPServerConfigurationFactory.create(
+            authenticator,
+            globalSpace,
+            { agent, mcpServerView: view }
+          );
+        }
+
+        const result = await runSuggest(authenticator, {
+          title: "Remove tool",
+          analysis: "Not needed.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              tools: { removeToolIds: [view.sId] },
+            },
+          ],
+        });
+
+        expectMcpError(result, "cannot be removed by a suggestion");
+      });
+
+      it("refuses to remove a tool configured with knowledge", async () => {
+        const { authenticator, workspace, globalSpace } =
+          await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const searchView = await MCPServerViewFactory.internal(
+          workspace,
+          "search",
+          globalSpace
+        );
+        await AgentMCPServerConfigurationFactory.create(
+          authenticator,
+          globalSpace,
+          { agent, mcpServerView: searchView }
+        );
+
+        const result = await runSuggest(authenticator, {
+          title: "Remove search",
+          analysis: "Not needed.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              tools: { removeToolIds: [searchView.sId] },
+            },
+          ],
+        });
+
+        expectMcpError(result, "cannot be removed by a suggestion");
+      });
+
+      it("refuses a tool that does not exist", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+
+        const result = await runSuggest(authenticator, {
+          title: "Add tool",
+          analysis: "Needed.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              tools: { addToolIds: ["msv_unknown"] },
+            },
+          ],
+        });
+
+        expectMcpError(result, "invalid or not accessible");
+      });
+
+      it("refuses a tool from a space the caller cannot read", async () => {
+        const { authenticator, workspace } = await createResourceTest({
+          role: "user",
+        });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const restrictedSpace = await SpaceFactory.regular(workspace);
+        const server = await RemoteMCPServerFactory.create(workspace);
+        const view = await MCPServerViewFactory.create(
+          workspace,
+          server.sId,
+          restrictedSpace
+        );
+
+        const result = await runSuggest(authenticator, {
+          title: "Add tool",
+          analysis: "Needed.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              tools: { addToolIds: [view.sId] },
+            },
+          ],
+        });
+
+        expectMcpError(result, "invalid or not accessible");
+      });
+
+      it("refuses a tool that needs a configuration, and records nothing", async () => {
+        const { authenticator, workspace, globalSpace } =
+          await createResourceTest({ role: "user" });
+        const agent = await AgentConfigurationFactory.createTestAgent(
+          authenticator,
+          { name: "OldHelper" }
+        );
+        const searchView = await MCPServerViewFactory.internal(
+          workspace,
+          "search",
+          globalSpace
+        );
+
+        const result = await runSuggest(authenticator, {
+          title: "Add search",
+          analysis: "Needed.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              name: "NewHelper",
+              tools: { addToolIds: [searchView.sId] },
+            },
+          ],
+        });
+
+        expectMcpError(result, "needs a configuration");
+        const pending =
+          await AgentSuggestionResource.listByAgentConfigurationId(
+            authenticator,
+            agent.sId,
+            { states: ["pending"] }
+          );
+        expect(pending).toHaveLength(0);
       });
     });
 

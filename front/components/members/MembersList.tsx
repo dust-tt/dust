@@ -14,8 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import type { KeyedMutator } from "swr";
 
 type RowData = {

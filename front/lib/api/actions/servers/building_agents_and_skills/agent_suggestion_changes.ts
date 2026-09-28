@@ -1,4 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import {
+  LIST_MODELS_TOOL_NAME,
+  WORKSPACE_MANAGEMENT_SERVER_NAME,
+} from "@app/lib/api/actions/servers/workspace_management/metadata";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { validateInstructionEdits } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
@@ -6,25 +12,24 @@ import {
   markDuplicateSuggestionsAsOutdated,
   pruneSupersededSingletonSuggestions,
 } from "@app/lib/api/assistant/agent_suggestion_pruning";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
+import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
 import {
   checkSkillAddition,
   fetchSuggestableSkills,
 } from "@app/lib/api/assistant/suggestable_skills";
+import {
+  checkToolAddition,
+  checkToolRemoval,
+  fetchSuggestableTools,
+} from "@app/lib/api/assistant/suggestable_tools";
 import type { Authenticator } from "@app/lib/auth";
 import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
 import { DustError } from "@app/lib/error";
-import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { hasSuggestionSelfConflict } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ModelIdType,
@@ -41,15 +46,19 @@ import type {
   NameSuggestionType,
   ScopeSuggestionType,
   SkillsSuggestionType,
+  ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
-import { isSkillsSuggestion } from "@app/types/suggestions/agent_suggestion";
+import {
+  isSkillsSuggestion,
+  isToolsSuggestion,
+} from "@app/types/suggestions/agent_suggestion";
 
 // Validators shared by the single-change `suggest_agent_*` tools and the `suggest` tool. They run
 // against live state and never write, so a batch can validate every change before recording any.
 
 export async function validateAgentNameChange(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentResource,
   { name }: { name: string }
 ): Promise<
   Result<
@@ -57,7 +66,7 @@ export async function validateAgentNameChange(
     DustError<"unauthorized" | "invalid_request_error" | "name_conflict">
   >
 > {
-  if (!agent.canEdit) {
+  if (!auth.can("write", agent)) {
     return new Err(
       new DustError("unauthorized", "Only editors of this agent can rename it.")
     );
@@ -126,13 +135,14 @@ async function validateAgentName(
 }
 
 export function validateAgentDescriptionChange(
-  agent: LightAgentConfigurationType,
+  auth: Authenticator,
+  agent: AgentResource,
   { description }: { description: string }
 ): Result<
   DescriptionSuggestionType,
   DustError<"unauthorized" | "invalid_request_error">
 > {
-  if (!agent.canEdit) {
+  if (!auth.can("write", agent)) {
     return new Err(
       new DustError(
         "unauthorized",
@@ -173,13 +183,14 @@ export function validateAgentDescriptionChange(
 }
 
 export function validateAgentPublishStateChange(
-  agent: LightAgentConfigurationType,
+  auth: Authenticator,
+  agent: AgentResource,
   { scope }: { scope: "hidden" | "visible" }
 ): Result<
   ScopeSuggestionType,
   DustError<"unauthorized" | "invalid_request_error">
 > {
-  if (!agent.canEdit) {
+  if (!auth.can("write", agent)) {
     return new Err(
       new DustError(
         "unauthorized",
@@ -212,18 +223,18 @@ export function validateAgentPublishStateChange(
 }
 
 /**
- * Matches the validation `updateAgentConfigurationsModel` applies when the suggestion is approved,
- * so a suggestion that is created as pending can always be applied later.
+ * Applies the validation `updateAgentConfigurationsModel` applies when the suggestion is approved
+ * (`resolveAgentModelChange`), so a suggestion that is created as pending can be applied later.
  */
 export async function validateAgentModelChange(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentResource,
   {
     modelId,
     reasoningEffort,
   }: { modelId: ModelIdType; reasoningEffort?: ReasoningEffort }
 ): Promise<Result<ModelSuggestionType, MCPError>> {
-  if (!agent.canEdit && !auth.isAdmin()) {
+  if (!auth.can("write", agent) && !auth.isAdmin()) {
     return new Err(
       new MCPError(
         "Only editors can suggest changing a workspace agent's model."
@@ -237,27 +248,15 @@ export async function validateAgentModelChange(
     );
   }
 
-  const { models } = await getModelsForAuth(auth);
-  const modelConfiguration = models.find((m) => m.modelId === modelId);
-  if (!modelConfiguration || !modelConfiguration.isSelectable) {
+  const resolved = await resolveAgentModelChange(auth, {
+    modelId,
+    reasoningEffort,
+  });
+  if (resolved.isErr()) {
     return new Err(
       new MCPError(
-        `Invalid model ID: ${modelId}. Available models: ` +
-          `${models
-            .filter((m) => m.isSelectable)
-            .map((m) => m.modelId)
-            .join(", ")}.`
-      )
-    );
-  }
-
-  if (
-    reasoningEffort &&
-    !modelConfiguration.supportedReasoningEfforts[reasoningEffort]
-  ) {
-    return new Err(
-      new MCPError(
-        `Model "${modelId}" does not support the "${reasoningEffort}" reasoning effort.`
+        `${resolved.error.message} Pick a modelId and reasoning effort listed by ` +
+          `${getPrefixedToolName(WORKSPACE_MANAGEMENT_SERVER_NAME, LIST_MODELS_TOOL_NAME)}.`
       )
     );
   }
@@ -267,9 +266,9 @@ export async function validateAgentModelChange(
 
 export function validateAgentDeletion(
   auth: Authenticator,
-  agent: LightAgentConfigurationType
+  agent: AgentResource
 ): Result<DeleteSuggestionType, MCPError> {
-  if (!agent.canEdit && !auth.isAdmin()) {
+  if (!auth.can("write", agent) && !auth.isAdmin()) {
     return new Err(
       new MCPError("Only editors can suggest deleting a workspace agent.")
     );
@@ -288,10 +287,10 @@ export function validateAgentDeletion(
  */
 export async function validateAgentInstructionsChange(
   auth: Authenticator,
-  agent: AgentConfigurationType,
+  agent: AgentResource,
   edits: InstructionSuggestionEditInput[]
 ): Promise<Result<InstructionSuggestionEditInput[], MCPError>> {
-  if (!agent.canEdit && !auth.isAdmin()) {
+  if (!auth.can("write", agent) && !auth.isAdmin()) {
     return new Err(
       new MCPError(
         "Only editors can suggest changing a workspace agent's instructions."
@@ -305,7 +304,17 @@ export async function validateAgentInstructionsChange(
     );
   }
 
-  if (!agent.instructionsHtml) {
+  if (!agent.isFull()) {
+    return new Err(
+      new MCPError(
+        "The instructions of this agent are not readable, so instruction edits cannot be " +
+          "suggested."
+      )
+    );
+  }
+
+  const { instructionsHtml } = agent.content;
+  if (!instructionsHtml) {
     return new Err(
       new MCPError(
         "This agent has no block-structured instructions, so instruction edits cannot be " +
@@ -315,7 +324,7 @@ export async function validateAgentInstructionsChange(
   }
 
   const unknownBlockIds = findUnknownTargetBlockIds(
-    agent.instructionsHtml,
+    instructionsHtml,
     edits.map((edit) => edit.targetBlockId)
   );
   if (unknownBlockIds.length > 0) {
@@ -348,10 +357,7 @@ export async function validateAgentInstructionsChange(
   }
 
   if (
-    hasSuggestionSelfConflict(
-      { instructionEdits: edits },
-      agent.instructionsHtml
-    )
+    hasSuggestionSelfConflict({ instructionEdits: edits }, instructionsHtml)
   ) {
     return new Err(
       new MCPError(
@@ -385,6 +391,42 @@ export async function validateAgentCreation(
 }
 
 /**
+ * Checks each tool and skill a new agent is created with could be added to an existing agent (see
+ * `checkToolAddition` and `checkSkillAddition`), so the creation can be applied later.
+ */
+export async function validateAgentCreationCapabilities(
+  auth: Authenticator,
+  { toolIds, skillIds }: { toolIds: string[]; skillIds: string[] }
+): Promise<Result<undefined, MCPError>> {
+  if (new Set(toolIds).size !== toolIds.length) {
+    return new Err(new MCPError("Each tool can only be added once."));
+  }
+  if (new Set(skillIds).size !== skillIds.length) {
+    return new Err(new MCPError("Each skill can only be added once."));
+  }
+
+  const [suggestableTools, suggestableSkills] = await Promise.all([
+    fetchSuggestableTools(auth, toolIds),
+    fetchSuggestableSkills(auth, skillIds),
+  ]);
+
+  for (const toolId of toolIds) {
+    const addition = checkToolAddition(toolId, suggestableTools);
+    if (addition.isErr()) {
+      return new Err(new MCPError(addition.error));
+    }
+  }
+  for (const skillId of skillIds) {
+    const addition = checkSkillAddition(skillId, suggestableSkills);
+    if (addition.isErr()) {
+      return new Err(new MCPError(addition.error));
+    }
+  }
+
+  return new Ok(undefined);
+}
+
+/**
  * Checks each skill can be added to or removed from the agent. An added skill is one the builder
  * offers (see `checkSkillAddition`) that the agent does not have yet; a removed skill is one of the
  * agent's skills. Only editors can suggest it, as only editors can apply it. Returns one suggestion
@@ -392,13 +434,13 @@ export async function validateAgentCreation(
  */
 export async function validateAgentSkillChanges(
   auth: Authenticator,
-  agent: AgentConfigurationType,
+  agent: AgentResource,
   {
     addSkillIds,
     removeSkillIds,
   }: { addSkillIds: string[]; removeSkillIds: string[] }
 ): Promise<Result<SkillsSuggestionType[], MCPError>> {
-  if (!agent.canEdit) {
+  if (!auth.can("write", agent)) {
     return new Err(
       new MCPError("Only editors can suggest changing an agent's skills.")
     );
@@ -418,9 +460,7 @@ export async function validateAgentSkillChanges(
   }
 
   const currentSkillIds = new Set(
-    (await SkillResource.listByAgentConfiguration(auth, agent)).map(
-      (skill) => skill.sId
-    )
+    (await agent.listSkills(auth)).map((skill) => skill.sId)
   );
 
   for (const skillId of removeSkillIds) {
@@ -454,6 +494,79 @@ export async function validateAgentSkillChanges(
   ]);
 }
 
+/**
+ * Checks each tool can be added to or removed from the agent (see `checkToolAddition` and
+ * `checkToolRemoval`). Only editors can suggest it, as only editors can apply it. Returns one
+ * suggestion per tool.
+ */
+export async function validateAgentToolChanges(
+  auth: Authenticator,
+  agent: AgentResource,
+  {
+    addToolIds,
+    removeToolIds,
+  }: { addToolIds: string[]; removeToolIds: string[] }
+): Promise<Result<ToolsSuggestionType[], MCPError>> {
+  if (!auth.can("write", agent)) {
+    return new Err(
+      new MCPError("Only editors can suggest changing an agent's tools.")
+    );
+  }
+
+  if (agent.status !== "active") {
+    return new Err(
+      new MCPError("Only active agents can have their tools changed.")
+    );
+  }
+
+  const toolIds = [...addToolIds, ...removeToolIds];
+  if (new Set(toolIds).size !== toolIds.length) {
+    return new Err(
+      new MCPError("Each tool can only be added or removed once.")
+    );
+  }
+
+  const actions = (await agent.listActions(auth)).filter(
+    isServerSideMCPServerConfiguration
+  );
+  const suggestable = await fetchSuggestableTools(auth, toolIds);
+
+  for (const toolId of removeToolIds) {
+    const removal = checkToolRemoval(toolId, suggestable, actions);
+    if (removal.isErr()) {
+      return new Err(new MCPError(removal.error));
+    }
+  }
+
+  for (const toolId of addToolIds) {
+    if (actions.some((action) => action.mcpServerViewId === toolId)) {
+      return new Err(
+        new MCPError(`The agent already has the tool "${toolId}".`)
+      );
+    }
+    const addition = checkToolAddition(toolId, suggestable);
+    if (addition.isErr()) {
+      return new Err(new MCPError(addition.error));
+    }
+  }
+
+  // No pending suggestion limit for conversational building.
+  return new Ok([
+    ...addToolIds.map((toolId) => ({ action: "add" as const, toolId })),
+    ...removeToolIds.map((toolId) => ({ action: "remove" as const, toolId })),
+  ]);
+}
+
+function isSupersededToolSuggestion(
+  suggestion: AgentSuggestionResource,
+  toolIds: Set<string>
+): boolean {
+  return (
+    isToolsSuggestion(suggestion.suggestion) &&
+    toolIds.has(suggestion.suggestion.toolId)
+  );
+}
+
 /** Kinds of which a single suggestion may be pending per agent at a time. */
 export type SingletonAgentSuggestionData = Extract<
   AgentSuggestionData,
@@ -468,7 +581,7 @@ export type SingletonAgentSuggestionData = Extract<
  */
 export async function recordSingletonAgentSuggestions(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentResource,
   {
     data,
     analysis,
@@ -514,7 +627,7 @@ export async function recordSingletonAgentSuggestions(
 
 export async function recordSingletonAgentSuggestion(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentResource,
   {
     data,
     analysis,
@@ -564,19 +677,9 @@ export async function recordAgentCreationSuggestion(
     return new Err(new MCPError(pendingResult.error.message));
   }
 
-  const pendingAgent = await getAgentConfiguration(auth, {
-    agentId: pendingResult.value.sId,
-    variant: "light",
-  });
-  if (!pendingAgent) {
-    return new Err(
-      new MCPError("Failed to load the newly created pending agent.")
-    );
-  }
-
   const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
     auth,
-    pendingAgent,
+    pendingResult.value,
     {
       kind: "create",
       suggestion: create,
@@ -598,7 +701,7 @@ export async function recordAgentCreationSuggestion(
  */
 export async function recordAgentSkillSuggestions(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentResource,
   {
     skills,
     conversation,
@@ -631,6 +734,53 @@ export async function recordAgentSkillSuggestions(
     agent,
     skills.map((suggestion) => ({
       kind: "skills" as const,
+      suggestion,
+      analysis: null,
+      state: "pending" as const,
+      conversationId: conversation.id,
+      source: "conversational" as const,
+      batchId: batch?.id ?? null,
+    }))
+  );
+}
+
+/**
+ * @cc [owner:fabiencelier,label:product] single-pending-per-tool
+ * Recording tool suggestions MUST mark every other `pending` tool suggestion on the same agent and
+ * for the same tool `outdated`, and never the recorded ones, like sidekick's `suggest_tools`.
+ */
+export async function recordAgentToolSuggestions(
+  auth: Authenticator,
+  agent: AgentResource,
+  {
+    tools,
+    conversation,
+    batch,
+  }: {
+    tools: ToolsSuggestionType[];
+    conversation: ConversationType;
+    batch: BatchSuggestionResource | null;
+  }
+): Promise<AgentSuggestionResource[]> {
+  if (tools.length === 0) {
+    return [];
+  }
+
+  const toolIds = new Set(tools.map((t) => t.toolId));
+  const pending = await AgentSuggestionResource.listByAgentConfigurationId(
+    auth,
+    agent.sId,
+    { states: ["pending"], kind: "tools" }
+  );
+  await markDuplicateSuggestionsAsOutdated(auth, pending, (s) =>
+    isSupersededToolSuggestion(s, toolIds)
+  );
+
+  return AgentSuggestionResource.createSuggestionsForAgent(
+    auth,
+    agent,
+    tools.map((suggestion) => ({
+      kind: "tools" as const,
       suggestion,
       analysis: null,
       state: "pending" as const,

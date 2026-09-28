@@ -691,7 +691,7 @@ describe("PATCH with applyToAgent", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.message).toContain(
-      "cannot be exported or updated"
+      "cannot be updated"
     );
     const fetched = await AgentSuggestionResource.fetchById(
       auth,
@@ -758,7 +758,7 @@ describe("PATCH with applyToAgent", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.message).toContain(
-      "cannot be exported or updated"
+      "cannot be updated"
     );
     const fetched = await AgentSuggestionResource.fetchById(
       auth,
@@ -970,7 +970,7 @@ describe("PATCH with applyToAgent", () => {
       description: agent.description,
       scope: "visible",
       instructions: agent.instructions,
-      version: agent.version + 1,
+      version: agent.version,
     });
   });
 
@@ -1046,7 +1046,7 @@ describe("PATCH with applyToAgent", () => {
 
   it("returns 400 for kinds that cannot be applied server-side", async () => {
     const { workspace, auth, agent } = await setupTest();
-    const suggestion = await AgentSuggestionFactory.createTools(auth, agent);
+    const suggestion = await AgentSuggestionFactory.createSubAgent(auth, agent);
 
     const response = await patchSuggestions(workspace, agent.sId, {
       suggestionIds: [suggestion.sId],

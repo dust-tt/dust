@@ -10,6 +10,8 @@
   ],
   "metadata": {
     "kind": "string",
-    "awu_credits": "string"
+    "awu_credits": "string",
+    "previous_kind": "string",
+    "previous_awu_credits": "string"
   }
 }

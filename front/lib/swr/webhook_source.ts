@@ -69,8 +69,9 @@ export function useWebhookSourceViewsFromSpaces(
   const spaceIds = spaces.map((s) => s.sId).join(",");
 
   const url = `/api/w/${owner.sId}/webhook_sources/views?spaceIds=${spaceIds}`;
+  // Spaces load asynchronously: don't fire a throwaway `spaceIds=` request before they arrive.
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    disabled,
+    disabled: !!disabled || spaces.length === 0,
   });
 
   return {
@@ -212,9 +213,7 @@ export function useDeleteWebhookSource({
         } else {
           throw new Error("Delete operation failed");
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         sendNotification({
           type: "error",
           title: "Failed to delete webhook source",

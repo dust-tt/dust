@@ -15,8 +15,7 @@ import {
 } from "@dust-tt/sparkle";
 import { compareDesc } from "date-fns";
 import { format } from "date-fns/format";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 interface AgentInstructionsHistoryProps {
   history: LightAgentConfigurationType[];

@@ -41,9 +41,7 @@ async function areTemporalWorkflowsRunning(
       return true;
     }
     return false;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (err) {
+  } catch {
     return true;
   }
 }

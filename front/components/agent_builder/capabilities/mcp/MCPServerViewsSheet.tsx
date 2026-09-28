@@ -2,10 +2,7 @@ import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderForm
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
-import {
-  generateUniqueActionName,
-  nameToStorageFormat,
-} from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
 import {
@@ -47,6 +44,7 @@ import type {
 } from "@app/components/shared/tools_picker/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -588,9 +586,7 @@ export function MCPServerViewsSheet({
         setConfigurationTool(null);
         setConfigurationMCPServerView(null);
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (error) {
+    } catch {
       sendNotification({
         title: "Configuration failed",
         description:

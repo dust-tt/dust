@@ -20,8 +20,7 @@ import {
   SlackLogo,
   Users01,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useState } from "react";
+import { useState } from "react";
 import { useController } from "react-hook-form";
 
 interface AccessSectionProps {

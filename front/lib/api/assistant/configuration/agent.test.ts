@@ -1438,15 +1438,17 @@ describe("AgentResource.delete scoped-resource cleanup", () => {
       userId: authenticator.getNonNullableUser().id,
     });
 
-    await (await AgentResource.fetchById(authenticator, agent.sId))!.delete(
-      authenticator
+    const agentResource = await AgentResource.fetchById(
+      authenticator,
+      agent.sId
     );
+    assert(agentResource);
+    await agentResource.delete(authenticator);
 
     const remainingMemories =
-      await AgentMemoryResource.findByAgentConfigurationIdAndUser(
-        authenticator,
-        { agentConfigurationId: agent.sId }
-      );
+      await AgentMemoryResource.findByAgentForCurrentUser(authenticator, {
+        agent: agentResource,
+      });
     expect(remainingMemories).toHaveLength(0);
   });
 

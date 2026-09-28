@@ -1,7 +1,7 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -10,14 +10,13 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { SupportedResourceType } from "@app/types/poke/plugins";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export type ResourceTypeMap = {
-  agents: LightAgentConfigurationType;
+  agents: AgentResource;
   apps: AppResource;
   conversations: ConversationType;
   workspaces: LightWorkspaceType;
@@ -40,10 +39,7 @@ export async function fetchPluginResource<T extends SupportedResourceType>(
 
   switch (resourceType) {
     case "agents":
-      result = await getAgentConfiguration(auth, {
-        agentId: resourceId,
-        variant: "light",
-      });
+      result = await AgentResource.fetchById(auth, resourceId);
       break;
     case "apps":
       result = await AppResource.fetchById(auth, resourceId);

@@ -8,8 +8,10 @@ import type { SingletonAgentSuggestionData } from "@app/lib/api/actions/servers/
 import {
   recordAgentCreationSuggestion,
   recordAgentSkillSuggestions,
+  recordAgentToolSuggestions,
   recordSingletonAgentSuggestions,
   validateAgentCreation,
+  validateAgentCreationCapabilities,
   validateAgentDeletion,
   validateAgentDescriptionChange,
   validateAgentInstructionsChange,
@@ -17,6 +19,7 @@ import {
   validateAgentNameChange,
   validateAgentPublishStateChange,
   validateAgentSkillChanges,
+  validateAgentToolChanges,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import { formatBatchSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type {
@@ -43,9 +46,10 @@ import {
 } from "@app/lib/api/actions/servers/building_agents_and_skills/skill_suggestion_changes";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { fetchCustomSkillById } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
+import type { FullAgentResource } from "@app/lib/resources/agent_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillReference } from "@app/lib/skills/format";
@@ -54,10 +58,6 @@ import {
   hasUnparsableSkillRefTag,
   resolveSkillRefTags,
 } from "@app/lib/skills/format";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
@@ -66,6 +66,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   CreateSuggestionType,
   SkillsSuggestionType,
+  ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillCreateSuggestionType,
@@ -81,13 +82,14 @@ type PlannedChange =
   | { type: "agent_creation"; create: CreateSuggestionType }
   | {
       type: "agent";
-      agent: LightAgentConfigurationType;
+      agent: AgentResource;
       singletons: SingletonAgentSuggestionData[];
       instructions: {
-        agent: AgentConfigurationType;
+        agent: FullAgentResource;
         edits: InstructionSuggestionEditInput[];
       } | null;
       skills: SkillsSuggestionType[];
+      tools: ToolsSuggestionType[];
     }
   | {
       type: "skill_creation";
@@ -99,12 +101,9 @@ type PlannedChange =
 async function fetchAgentForSuggestion(
   auth: Authenticator,
   agentId: string
-): Promise<Result<AgentConfigurationType, MCPError>> {
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "full",
-  });
-  if (!agent || (!agent.canRead && !auth.isAdmin())) {
+): Promise<Result<AgentResource, MCPError>> {
+  const agent = await AgentResource.fetchById(auth, agentId);
+  if (!agent || (!auth.can("read", agent) && !auth.can("admin", agent))) {
     return new Err(new MCPError(`Agent "${agentId}" not found.`));
   }
 
@@ -122,16 +121,36 @@ async function fetchAgentForSuggestion(
 
 async function planAgentCreation(
   auth: Authenticator,
-  { name, description, instructions }: CreateAgentSuggestion
+  {
+    name,
+    description,
+    instructions,
+    toolIds = [],
+    skillIds = [],
+  }: CreateAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const validation = await validateAgentCreation(auth, { name });
   if (validation.isErr()) {
     return validation;
   }
 
+  const capabilities = await validateAgentCreationCapabilities(auth, {
+    toolIds,
+    skillIds,
+  });
+  if (capabilities.isErr()) {
+    return capabilities;
+  }
+
   return new Ok({
     type: "agent_creation",
-    create: { name: validation.value.name, description, instructions },
+    create: {
+      name: validation.value.name,
+      description,
+      instructions,
+      toolIds,
+      skillIds,
+    },
   });
 }
 
@@ -145,14 +164,6 @@ async function planSkillCreation(
     instructions,
   }: CreateSkillSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
-  if (ref && /["<>]/.test(name)) {
-    return new Err(
-      new MCPError(
-        `The skill "${name}" is cited by a ref, so its name cannot contain ", < or >.`
-      )
-    );
-  }
-
   const validation = await validateSkillCreation(auth, { name });
   if (validation.isErr()) {
     return validation;
@@ -181,6 +192,7 @@ async function planAgentEdit(
     reasoningEffort,
     scope,
     skills: skillChanges,
+    tools: toolChanges,
   }: EditAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const agentRes = await fetchAgentForSuggestion(auth, agentId);
@@ -200,7 +212,9 @@ async function planAgentEdit(
   }
 
   if (description !== undefined) {
-    const validation = validateAgentDescriptionChange(agent, { description });
+    const validation = validateAgentDescriptionChange(auth, agent, {
+      description,
+    });
     if (validation.isErr()) {
       return new Err(new MCPError(validation.error.message));
     }
@@ -208,7 +222,7 @@ async function planAgentEdit(
   }
 
   if (scope !== undefined) {
-    const validation = validateAgentPublishStateChange(agent, { scope });
+    const validation = validateAgentPublishStateChange(auth, agent, { scope });
     if (validation.isErr()) {
       return new Err(new MCPError(validation.error.message));
     }
@@ -231,7 +245,7 @@ async function planAgentEdit(
   }
 
   let instructions: {
-    agent: AgentConfigurationType;
+    agent: FullAgentResource;
     edits: InstructionSuggestionEditInput[];
   } | null = null;
   if (instructionEdits && instructionEdits.length > 0) {
@@ -243,6 +257,10 @@ async function planAgentEdit(
     if (validation.isErr()) {
       return validation;
     }
+    assert(
+      agent.isFull(),
+      "Validated instruction edits imply a readable agent."
+    );
     instructions = { agent, edits: validation.value };
   }
 
@@ -260,7 +278,26 @@ async function planAgentEdit(
     skills = validation.value;
   }
 
-  if (singletons.length === 0 && instructions === null && skills.length === 0) {
+  let tools: ToolsSuggestionType[] = [];
+  const addToolIds = toolChanges?.addToolIds ?? [];
+  const removeToolIds = toolChanges?.removeToolIds ?? [];
+  if (addToolIds.length > 0 || removeToolIds.length > 0) {
+    const validation = await validateAgentToolChanges(auth, agent, {
+      addToolIds,
+      removeToolIds,
+    });
+    if (validation.isErr()) {
+      return validation;
+    }
+    tools = validation.value;
+  }
+
+  if (
+    singletons.length === 0 &&
+    instructions === null &&
+    skills.length === 0 &&
+    tools.length === 0
+  ) {
     return new Err(
       new MCPError(
         `The edit of agent "${agentId}" does not change anything: provide at least one field.`
@@ -268,7 +305,14 @@ async function planAgentEdit(
     );
   }
 
-  return new Ok({ type: "agent", agent, singletons, instructions, skills });
+  return new Ok({
+    type: "agent",
+    agent,
+    singletons,
+    instructions,
+    skills,
+    tools,
+  });
 }
 
 async function planAgentDeletion(
@@ -292,6 +336,7 @@ async function planAgentDeletion(
     singletons: [{ kind: "delete", suggestion: validation.value }],
     instructions: null,
     skills: [],
+    tools: [],
   });
 }
 
@@ -534,6 +579,23 @@ function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
   return new Ok(undefined);
 }
 
+/** The skills a suggestion gives to an agent, whether it creates or edits it. */
+function addedSkillIdsOf(suggestion: Suggestion): string[] {
+  switch (suggestion.kind) {
+    case "create_agent":
+      return suggestion.skillIds ?? [];
+    case "edit_agent":
+      return suggestion.skills?.addSkillIds ?? [];
+    case "delete_agent":
+    case "create_skill":
+    case "edit_skill":
+    case "delete_skill":
+      return [];
+    default:
+      assertNever(suggestion);
+  }
+}
+
 /** A skill the batch deletes cannot also be added to an agent by the same batch. */
 function findSkillAddedAndDeleted(suggestions: Suggestion[]): string | null {
   const deletedSkillIds = new Set(
@@ -542,13 +604,11 @@ function findSkillAddedAndDeleted(suggestions: Suggestion[]): string | null {
     )
   );
   for (const suggestion of suggestions) {
-    if (suggestion.kind === "edit_agent") {
-      const addedSkillId = (suggestion.skills?.addSkillIds ?? []).find((id) =>
-        deletedSkillIds.has(id)
-      );
-      if (addedSkillId) {
-        return addedSkillId;
-      }
+    const addedSkillId = addedSkillIdsOf(suggestion).find((id) =>
+      deletedSkillIds.has(id)
+    );
+    if (addedSkillId) {
+      return addedSkillId;
     }
   }
   return null;
@@ -696,7 +756,7 @@ async function recordPlannedChange(
 
       if (change.instructions) {
         const res = await createAgentInstructionSuggestions(auth, {
-          agentConfiguration: change.instructions.agent,
+          agent: change.instructions.agent,
           edits: change.instructions.edits,
           source: "conversational",
           conversation,
@@ -709,6 +769,11 @@ async function recordPlannedChange(
 
       await recordAgentSkillSuggestions(auth, change.agent, {
         skills: change.skills,
+        conversation,
+        batch,
+      });
+      await recordAgentToolSuggestions(auth, change.agent, {
+        tools: change.tools,
         conversation,
         batch,
       });

@@ -4,6 +4,7 @@ import {
   NavigationListItem,
   NavigationListLabel,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 
 interface FilterCategoryNavProps<Category extends string> {
   categories: readonly Category[];
@@ -11,6 +12,7 @@ interface FilterCategoryNavProps<Category extends string> {
   selectionCounts: Partial<Record<Category, number>>;
   activeCategory: Category;
   onCategoryChange: (category: Category) => void;
+  footer?: ReactNode;
 }
 
 export function FilterCategoryNav<Category extends string>({
@@ -19,6 +21,7 @@ export function FilterCategoryNav<Category extends string>({
   selectionCounts,
   activeCategory,
   onCategoryChange,
+  footer,
 }: FilterCategoryNavProps<Category>) {
   return (
     <div className="flex h-full w-44 flex-col p-2">
@@ -59,6 +62,7 @@ export function FilterCategoryNav<Category extends string>({
           );
         })}
       </NavigationList>
+      {footer}
     </div>
   );
 }

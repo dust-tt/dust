@@ -1,5 +1,9 @@
 import { formatUserQuestionAnswer } from "@app/lib/actions/user_question";
-import { ONE_DAY_MS, ONE_HOUR_MS } from "@app/tests/sidekick-evals/lib/config";
+import {
+  MOCK_AVAILABLE_MODELS,
+  ONE_DAY_MS,
+  ONE_HOUR_MS,
+} from "@app/tests/sidekick-evals/lib/config";
 import type { MockAgentState } from "@app/tests/sidekick-evals/lib/types";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
@@ -60,20 +64,7 @@ export function getMockToolResponse(
       pendingSuggestions: [],
     }),
 
-    get_available_models: () =>
-      [
-        "<available_models>",
-        '<provider id="openai">',
-        "- **GPT-4 Turbo** (modelId: gpt-4-turbo): GPT-4 Turbo (no vision)",
-        "- **GPT-5 Mini** (modelId: gpt-5-mini): GPT-5 Mini (no vision)",
-        "</provider>",
-        "",
-        '<provider id="anthropic">',
-        "- **Claude Sonnet 4.5** (modelId: claude-sonnet-4-5-20250929): Claude Sonnet 4.5 (no vision)",
-        "- **Claude Opus 4** (modelId: claude-opus-4-20250514): Claude Opus 4 (no vision)",
-        "</provider>",
-        "</available_models>",
-      ].join("\n"),
+    get_available_models: () => MOCK_AVAILABLE_MODELS,
 
     get_available_skills: () =>
       [

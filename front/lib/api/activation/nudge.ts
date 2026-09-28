@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postUserMessage,
@@ -9,6 +8,7 @@ import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
 import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { activationSkill } from "@app/lib/resources/skill/code_defined/global/activation";
@@ -20,7 +20,6 @@ import {
   DEFAULT_ACTIVATION_NUDGE_FREQUENCY_CAP_DAYS,
   DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT,
 } from "@app/temporal/activation_scheduler/config";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { ACTIVATION_NUDGE_ORIGIN } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
@@ -206,7 +205,7 @@ export async function isEligibleForNudge(
 // the message itself: the agent is told (in the Activation skill) to read it
 // and never surface it.
 function buildActivationNudgeContent(
-  agentConfiguration: AgentConfigurationType,
+  agent: AgentResource,
   {
     kind,
     context,
@@ -226,8 +225,7 @@ function buildActivationNudgeContent(
       : null,
   ]);
 
-  const content =
-    serializeMention(agentConfiguration) + `\n\n${nudgePromptForKind(kind)}`;
+  const content = serializeMention(agent) + `\n\n${nudgePromptForKind(kind)}`;
   if (contextLines.length === 0) {
     return content;
   }
@@ -283,11 +281,8 @@ export async function postActivationNudge(
     return new Err(new Error("The Pod's user is not a member of the Pod."));
   }
 
-  const agentConfiguration = await getAgentConfiguration(userAuth, {
-    agentId: GLOBAL_AGENTS_SID.DUST,
-    variant: "extra_light",
-  });
-  if (!agentConfiguration) {
+  const agent = await AgentResource.fetchById(userAuth, GLOBAL_AGENTS_SID.DUST);
+  if (!agent) {
     return new Err(
       new Error("The Dust agent is not available to the Pod's user.")
     );
@@ -301,17 +296,17 @@ export async function postActivationNudge(
 
   const messageRes = await postUserMessage(userAuth, {
     conversationResource: conversation,
-    content: buildActivationNudgeContent(agentConfiguration, {
+    content: buildActivationNudgeContent(agent, {
       kind: activationPod.kind,
       context,
     }),
-    mentions: [{ configurationId: agentConfiguration.sId }],
+    mentions: [{ configurationId: agent.sId }],
     context: {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-      username: agentConfiguration.name,
-      fullName: agentConfiguration.name,
+      username: agent.name,
+      fullName: agent.name,
       email: null,
-      profilePictureUrl: agentConfiguration.pictureUrl,
+      profilePictureUrl: agent.pictureUrl,
       origin: ACTIVATION_NUDGE_ORIGIN,
     },
     skipToolsValidation: false,

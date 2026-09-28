@@ -1,5 +1,5 @@
-import { getAgentModelDisplayName } from "@app/components/assistant/manager/agentFilter";
 import { ManageAgentsPage } from "@app/components/pages/builder/agents/ManageAgentsPage";
+import { getModelFilterDisplayName } from "@app/components/shared/filter_panel/searchFilter";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
@@ -7,7 +7,14 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
 import type { MembershipRoleType } from "@app/types/memberships";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import assert from "assert";
 import { SWRConfig } from "swr";
@@ -88,9 +95,11 @@ afterEach(() => {
 async function setup({
   role = "admin",
   pageEnabled = true,
+  tagsLoaded,
 }: {
   role?: MembershipRoleType;
   pageEnabled?: boolean;
+  tagsLoaded?: Promise<void>;
 } = {}) {
   const { authenticator, user } = await createResourceTest({ role });
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
@@ -144,7 +153,10 @@ async function setup({
     total: 1,
     hasMore: false,
     facets: {
-      editors: [{ sId, fullName, image, count: 1 }],
+      editors: [
+        { sId: "other-editor", fullName: "Alice Other", image: null, count: 1 },
+        { sId, fullName, image, count: 1 },
+      ],
       models: [{ modelId: "claude-sonnet-5", count: 1 }],
       tags: [],
     },
@@ -154,6 +166,10 @@ async function setup({
       body.limit === 0 ? facetsResponse : search()
   );
   const fetcher = vi.fn(async (url: string) => {
+    if (url.endsWith("/tags")) {
+      await tagsLoaded;
+      return { tags: [] };
+    }
     if (url.endsWith(`/agent_configurations/${agent.sId}`)) {
       return { agentConfiguration };
     }
@@ -264,7 +280,7 @@ describe("search-backed Manage Agents", () => {
 
     for (const { tab, filters } of [
       {
-        tab: "Editable by me",
+        tab: "Editable",
         filters: {
           status: ["active"],
           editedByMe: true,
@@ -296,15 +312,46 @@ describe("search-backed Manage Agents", () => {
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "Show hidden agents" })
+      screen.getByRole("checkbox", { name: "Hidden agents" })
     );
+    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+      permissionFiltering: "strict",
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         scope: ["visible", "hidden"],
         permissionFiltering: "unrestricted",
       })
     );
+
+    expect(screen.getByText("Hidden agents")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Filters" })
+    ).not.toHaveTextContent(/\d/);
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Hidden agents" })
+    ).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await waitFor(() =>
+      expect(screen.queryByText("Hidden agents")).not.toBeInTheDocument()
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Hidden agents" })
+    ).not.toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Default" }));
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.queryByRole("checkbox", { name: "Hidden agents" })
+    ).not.toBeInTheDocument();
   });
 
   it("never requests unrestricted search for non-admins", async () => {
@@ -312,9 +359,11 @@ describe("search-backed Manage Agents", () => {
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(
-      screen.queryByRole("checkbox", { name: "Show hidden agents" })
+      screen.queryByRole("checkbox", { name: "Hidden agents" })
     ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
@@ -399,6 +448,29 @@ describe("search-backed Manage Agents", () => {
     );
   });
 
+  it("keeps a row checkbox click when tags finish loading mid-click", async () => {
+    let releaseTags = () => {};
+    const { mount } = await setup({
+      tagsLoaded: new Promise((resolve) => {
+        releaseTags = resolve;
+      }),
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Select Weekly report",
+    });
+
+    fireEvent.pointerDown(checkbox);
+    await act(async () => releaseTags());
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Loading")).not.toBeInTheDocument()
+    );
+    fireEvent.click(checkbox);
+
+    expect(await screen.findByText("1 selected")).toBeInTheDocument();
+  });
+
   it("keeps the selection across pages and offers batch actions", async () => {
     const { agent, search, fetcherWithBody, mount } = await setup();
     search.mockResolvedValueOnce({
@@ -413,7 +485,7 @@ describe("search-backed Manage Agents", () => {
     await userEvent.click(
       screen.getByRole("checkbox", { name: "Select Weekly report" })
     );
-    expect(screen.getByText("1 selected.")).toBeInTheDocument();
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
     for (const action of ["Change tag", "Set model", "Unpublish", "Archive"]) {
       expect(screen.getByRole("button", { name: action })).toBeInTheDocument();
     }
@@ -431,11 +503,11 @@ describe("search-backed Manage Agents", () => {
     await userEvent.click(
       screen.getByRole("checkbox", { name: "Select Second page" })
     );
-    expect(screen.getByText("2 selected.")).toBeInTheDocument();
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText("Search agents"), "report");
     await waitFor(() =>
-      expect(screen.queryByText(/selected\./)).not.toBeInTheDocument()
+      expect(screen.queryByText(/^\d+ selected$/)).not.toBeInTheDocument()
     );
   });
 
@@ -484,13 +556,20 @@ describe("search-backed Manage Agents", () => {
       screen.getByRole("checkbox", { name: "Not published" })
     );
     await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
-    await userEvent.click(
-      await screen.findByRole("checkbox", { name: editor.fullName })
-    );
+    const meCheckbox = await screen.findByRole("checkbox", { name: "Me" });
+    const editorCheckboxes = within(screen.getByRole("dialog"))
+      .getAllByRole("checkbox")
+      .filter((checkbox) => checkbox.id.startsWith("agent-filter-option-"));
+    expect(editorCheckboxes).toHaveLength(2);
+    expect(editorCheckboxes[0]).toBe(meCheckbox);
+    expect(
+      screen.queryByRole("checkbox", { name: editor.fullName })
+    ).not.toBeInTheDocument();
+    await userEvent.click(meCheckbox);
     await userEvent.click(screen.getByRole("tab", { name: "Models" }));
     await userEvent.click(
       await screen.findByRole("checkbox", {
-        name: getAgentModelDisplayName("claude-sonnet-5"),
+        name: getModelFilterDisplayName("claude-sonnet-5"),
       })
     );
     const facetBodies = fetcherWithBody.mock.calls

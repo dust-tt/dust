@@ -88,9 +88,7 @@ export const DocumentOrTableDeleteDialog = ({
       }
 
       closeDialog();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (error) {
+    } catch {
       sendNotification({
         type: "error",
         title: `Error deleting ${contentNode.type}`,

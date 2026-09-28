@@ -125,6 +125,16 @@ const CreateSuggestionSchema = z.object({
     .trim()
     .min(1)
     .describe("The agent's instructions, as HTML."),
+  toolIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Ids of the tools (MCP server views) the agent is created with, each with its default configuration."
+    ),
+  skillIds: z
+    .array(z.string())
+    .optional()
+    .describe("Ids of the skills the agent is created with."),
 });
 
 const DeleteSuggestionSchema = z.object({
@@ -297,6 +307,12 @@ export type AgentCreateSuggestionType = Extract<
   AgentSuggestionType,
   { kind: "create" }
 >;
+
+export function isCreateAgentSuggestion(
+  suggestion: AgentSuggestionType
+): suggestion is AgentCreateSuggestionType {
+  return suggestion.kind === "create";
+}
 
 export type AgentDeleteSuggestionType = Extract<
   AgentSuggestionType,

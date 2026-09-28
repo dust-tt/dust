@@ -112,8 +112,10 @@ export function SkillInfoTab({
     setKnowledgeItems(items);
   }, []);
 
+  const hasInstructions = !!skill.instructions || !!skill.instructionsHtml;
+
   const showSeparator =
-    !!skill.instructions ||
+    hasInstructions ||
     knowledgeItems.length > 0 ||
     skill.fileAttachments.length > 0 ||
     sortedMCPServerViews.length > 0 ||
@@ -136,7 +138,7 @@ export function SkillInfoTab({
 
       {showSeparator ? <Separator /> : null}
 
-      {skill.instructions && skill.agentFacingDescription && (
+      {hasInstructions && skill.agentFacingDescription && (
         <div className="relative flex flex-col gap-4">
           {editedSections.has("when_to_use") && <EditedSectionBar />}
           <div className="heading-lg text-foreground">
@@ -148,14 +150,14 @@ export function SkillInfoTab({
         </div>
       )}
 
-      {skill.instructions && (
+      {hasInstructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
           <DetailsSectionHeading
             label="Guidelines"
             isEdited={editedSections.has("guidelines")}
           />
           <SkillInstructionsReadOnlyEditor
-            content={skill.instructions}
+            content={skill.instructions ?? ""}
             htmlContent={skill.instructionsHtml ?? ""}
             owner={owner}
             onKnowledgeItemsChange={handleKnowledgeItemsChange}

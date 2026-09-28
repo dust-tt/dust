@@ -68,7 +68,10 @@ export async function seedSkill(
       instructionsHtml: skillAsset.instructionsHtml,
       status: "active",
       availability: skillAsset.availability,
-      requestedSpaceIds: spaces.map((space) => space.id),
+      // An empty list would leave the skill with no required space, which search never lists;
+      // omit it so the factory defaults to the global space.
+      requestedSpaceIds:
+        spaces.length > 0 ? spaces.map((space) => space.id) : undefined,
     });
     logger.info(
       { sId: skill.sId, ownerId: owner?.sId ?? auth.getNonNullableUser().sId },

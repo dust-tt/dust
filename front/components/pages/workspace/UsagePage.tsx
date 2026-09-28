@@ -9,7 +9,6 @@ import {
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
-import type { DefaultUserSpendLimitState } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
@@ -25,6 +24,7 @@ import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNot
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import { CreditPoolCards } from "@app/components/workspace/WorkspaceCreditPoolCards";
+import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
@@ -79,6 +79,7 @@ import {
   useDefaultUserSpendLimit,
   useUsageSettings,
 } from "@app/lib/swr/usage_settings";
+import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { GroupGrantableSeatType } from "@app/types/groups";
 import {
@@ -320,11 +321,14 @@ export function UsagePage() {
   );
   const [spendLimitRecapMember, setSpendLimitRecapMember] =
     useState<MemberUsageType | null>(null);
+  const [isBulkSpendLimitOpen, setIsBulkSpendLimitOpen] = useState(false);
   const hasMetronomeContract = isSubscriptionMetronomeBilled(subscription);
   const { defaultUserSpendLimit, isDefaultUserSpendLimitError } =
     useDefaultUserSpendLimit({
       workspaceId: owner.sId,
-      disabled: spendLimitRecapMember === null || !hasMetronomeContract,
+      disabled:
+        (spendLimitRecapMember === null && !isBulkSpendLimitOpen) ||
+        !hasMetronomeContract,
     });
   // Same availability rule as the workspace read endpoint and poke's
   // PoolUsagePage: the default pool limit only exists for Metronome-billed
@@ -684,7 +688,6 @@ export function UsagePage() {
   const { doBulkSetSpendLimit } = useBulkSetUserSpendLimit({
     workspaceId: owner.sId,
   });
-  const [isBulkSpendLimitOpen, setIsBulkSpendLimitOpen] = useState(false);
 
   const handleBatchEditSpendLimit = useCallback(() => {
     setIsBulkSpendLimitOpen(true);
@@ -702,13 +705,31 @@ export function UsagePage() {
     setIsBulkChangeSeatOpen(true);
   }, []);
 
-  // Selected members visible on the current page, for the bulk seat modal's
-  // avatar row (with an "all across pages" selection this is the visible
-  // subset only).
-  const selectedVisibleMembers = useMemo(
-    () => membersUsage.filter((m) => selection.rowSelection[m.sId]),
-    [membersUsage, selection.rowSelection]
+  // Remember loaded members so picks from other pages keep their avatar.
+  const [loadedMembersById, setLoadedMembersById] = useState(
+    () => new Map(membersUsage.map((m) => [m.sId, m]))
   );
+  const [prevMembersUsage, setPrevMembersUsage] = useState(membersUsage);
+  if (membersUsage !== prevMembersUsage) {
+    setPrevMembersUsage(membersUsage);
+    setLoadedMembersById((prev) => {
+      const next = new Map(prev);
+      for (const m of membersUsage) {
+        next.set(m.sId, m);
+      }
+      return next;
+    });
+  }
+
+  // In pick order so avatars stay put. A "select all" spans members never
+  // loaded, so no avatars are shown rather than a misleading subset.
+  const selectedVisibleMembers = useMemo(() => {
+    const descriptor = selection.descriptor();
+    if (descriptor.mode === "all") {
+      return [];
+    }
+    return descriptor.ids.flatMap((id) => loadedMembersById.get(id) ?? []);
+  }, [loadedMembersById, selection.descriptor]);
 
   // Translate the cross-page selection into the descriptor the bulk member
   // endpoints expect: explicit ids, or the current filter minus exclusions.
@@ -783,9 +804,7 @@ export function UsagePage() {
   }, [selection, pageItemIds]);
 
   const handleBulkSpendLimitValidate = useCallback(
-    async (
-      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number }
-    ): Promise<boolean> => {
+    async (limit: UserSpendLimit): Promise<boolean> => {
       const pendingMemberIds = getBulkPendingMemberIds();
       setTotalAllowedUsagePendingMemberIds((prev) => {
         const next = new Set(prev);
@@ -798,12 +817,7 @@ export function UsagePage() {
           selection: buildBulkSelectionBody(),
           limit,
         });
-        if (!body) {
-          return false;
-        }
-
-        selection.clearSelection();
-        return true;
+        return body !== null;
       } finally {
         setTotalAllowedUsagePendingMemberIds((prev) => {
           const next = new Set(prev);
@@ -812,12 +826,7 @@ export function UsagePage() {
         });
       }
     },
-    [
-      selection,
-      buildBulkSelectionBody,
-      getBulkPendingMemberIds,
-      doBulkSetSpendLimit,
-    ]
+    [buildBulkSelectionBody, getBulkPendingMemberIds, doBulkSetSpendLimit]
   );
 
   const handleBulkSeatChangePreview = useCallback(
@@ -1105,6 +1114,7 @@ export function UsagePage() {
   const selectionBanner = (
     <MembersSelectionBanner
       selectedCount={selection.selectedCount}
+      selectedMembers={selectedVisibleMembers}
       totalCount={totalMembersUsage}
       hasMorePagesToSelect={selection.hasMorePagesToSelect}
       onSelectAllAcrossPages={selection.selectAllAcrossPages}
@@ -1468,8 +1478,13 @@ export function UsagePage() {
           isOpen={isBulkSpendLimitOpen}
           onClose={() => setIsBulkSpendLimitOpen(false)}
           memberCount={selection.selectedCount}
+          selectedMembers={selectedVisibleMembers}
+          owner={owner}
           seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
+          canEditDefaultLimit={isWorkspaceAdmin}
+          defaultUserSpendLimit={defaultUserSpendLimitState}
           onValidate={handleBulkSpendLimitValidate}
+          onSaved={clearSelection}
         />
         <BulkChangeSeatModal
           isOpen={isBulkChangeSeatOpen}

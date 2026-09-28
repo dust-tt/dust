@@ -4,7 +4,10 @@ import {
   setGroupSpendLimit,
 } from "@app/lib/api/groups/spend_limit";
 import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -56,7 +59,12 @@ describe("setGroupSpendLimit", () => {
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "group.spend_limit_updated",
-        metadata: { kind: "limited", awu_credits: "25000" },
+        metadata: {
+          kind: "limited",
+          awu_credits: "25000",
+          previous_kind: "unlimited",
+          previous_awu_credits: "unlimited",
+        },
       })
     );
   });
@@ -91,7 +99,12 @@ describe("setGroupSpendLimit", () => {
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "group.spend_limit_updated",
-        metadata: { kind: "unlimited", awu_credits: "unlimited" },
+        metadata: {
+          kind: "unlimited",
+          awu_credits: "unlimited",
+          previous_kind: "limited",
+          previous_awu_credits: "25000",
+        },
       })
     );
   });
@@ -120,5 +133,51 @@ describe("setGroupSpendLimit", () => {
       }
     }
     expect(workosAudit.emitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("allows a group manager to edit only the group they manage", async () => {
+    const workspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: METRONOME_CUSTOMER_ID,
+    });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const delegate = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, delegate, { role: "user" });
+    const managed = await GroupResource.makeNew({
+      name: "Support",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+    const other = await GroupResource.makeNew({
+      name: "Sales",
+      workspaceId: workspace.id,
+      kind: "regular_manual",
+    });
+    const grant = await GroupPermissionResource.grantToUser(adminAuth, {
+      user: delegate.toJSON(),
+      grantType: "group_manager",
+      resourceType: "group",
+      resourceId: managed.id,
+    });
+    expect(grant.isOk()).toBe(true);
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      delegate.sId,
+      workspace.sId
+    );
+
+    const denied = await setGroupSpendLimit(auth, {
+      groupId: other.sId,
+      limit: { kind: "limited", awuCredits: 2000 },
+      auditContext: AUDIT_CONTEXT,
+    });
+    expect(denied.isErr() && denied.error.type).toBe("unauthorized");
+
+    const allowed = await setGroupSpendLimit(auth, {
+      groupId: managed.sId,
+      limit: { kind: "limited", awuCredits: 2000 },
+      auditContext: AUDIT_CONTEXT,
+    });
+    expect(allowed.isOk()).toBe(true);
   });
 });

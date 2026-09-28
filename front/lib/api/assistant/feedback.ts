@@ -1,8 +1,8 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
@@ -206,11 +206,8 @@ export async function getAgentFeedbacks({
   const owner = auth.getNonNullableWorkspace();
 
   // Make sure the user has access to the agent
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "light",
-  });
-  if (!agentConfiguration) {
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
+  if (!agent) {
     return new Err(new Error("agent_configuration_not_found"));
   }
 
@@ -218,7 +215,7 @@ export async function getAgentFeedbacks({
     await AgentMessageFeedbackResource.getAgentConfigurationFeedbacksByDescVersion(
       {
         workspace: owner,
-        agentConfiguration,
+        agent,
         paginationParams,
         filter,
         version,

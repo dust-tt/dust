@@ -6,7 +6,6 @@ import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchT
 import type { AgentFilter } from "@app/components/assistant/manager/agentFilter";
 import {
   AGENT_FILTER_CATEGORIES,
-  AGENT_FILTER_CATEGORY_SINGULAR_LABEL,
   toAgentSearchFilters,
 } from "@app/components/assistant/manager/agentFilter";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
@@ -14,6 +13,7 @@ import {
   clearFilterCategory,
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
+import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
 import {
   useSetContentWidth,
   useSetPageTitle,
@@ -32,19 +32,16 @@ import type {
 } from "@app/types/agent_search/agent_search";
 import {
   Button,
-  Checkbox,
   EmptyCTA,
-  InfoCircle,
   Page,
   SearchInput,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  Tooltip,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 const AGENT_SEARCH_PAGE_SIZE = 25;
 
@@ -56,7 +53,7 @@ const SEARCH_TABS = [
   },
   {
     id: "editable_by_me",
-    label: "Editable by me",
+    label: "Editable",
     filters: { status: ["active"], editedByMe: true },
   },
   {
@@ -135,10 +132,13 @@ function AgentsList({
   });
 
   // Batch edits are reserved to the agent's editors and to workspace admins, as on the legacy page.
-  const canSelect = (agent: AgentSearchItem) =>
-    agent.scope !== "global" &&
-    agent.status !== "archived" &&
-    (isAdmin || agent.editorIds.includes(user.sId));
+  const canSelect = useCallback(
+    (agent: AgentSearchItem) =>
+      agent.scope !== "global" &&
+      agent.status !== "archived" &&
+      (isAdmin || agent.editorIds.includes(user.sId)),
+    [isAdmin, user.sId]
+  );
 
   // Prefer the freshly loaded row so batch actions see the agent's current tags.
   const currentSelectedAgents = selectedAgents.map(
@@ -260,6 +260,7 @@ export function SearchAgentsPage() {
   );
   const activeTab =
     SEARCH_TABS.find((tab) => tab.id === selectedTab) ?? SEARCH_TABS[0];
+  const canShowHiddenAgents = isAdmin && selectedTab === "all";
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Agents");
 
@@ -287,9 +288,10 @@ export function SearchAgentsPage() {
               )}
             </div>
           }
+          description="Build and manage agents that work with your team's knowledge and tools."
           noTopPadding
         />
-        <div className="w-full">
+        <div className="w-full md:w-1/2">
           <label htmlFor="agent-search" className="sr-only">
             Search agents
           </label>
@@ -316,25 +318,6 @@ export function SearchAgentsPage() {
               <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
             ))}
             <div className="grow" />
-            {isAdmin && selectedTab === "all" && (
-              <span className="flex gap-1 self-center text-sm text-muted-foreground">
-                <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
-                  <Checkbox
-                    checked={showHiddenAgents}
-                    onCheckedChange={(checked) =>
-                      setShowHiddenAgents(checked === true)
-                    }
-                  />
-                  Show hidden agents
-                </label>
-                <Tooltip
-                  label="Shows the agents of all members you can access as an admin, even if they are not published or if they use restricted spaces"
-                  trigger={
-                    <InfoCircle className="h-4 w-4 text-muted-foreground" />
-                  }
-                />
-              </span>
-            )}
             <div className="flex items-center">
               <AgentFilterPanel
                 owner={owner}
@@ -344,19 +327,46 @@ export function SearchAgentsPage() {
                 permissionFiltering={getPermissionFiltering(activeTab.id)}
                 filter={filter}
                 onFilterChange={setFilter}
+                hiddenAgents={
+                  canShowHiddenAgents
+                    ? {
+                        isShown: showHiddenAgents,
+                        onChange: setShowHiddenAgents,
+                      }
+                    : undefined
+                }
               />
             </div>
           </TabsList>
           <FilterSummaryChips
+            className="mb-4"
             summaries={getFilterSummaries(
               filter,
               filterCategories,
-              AGENT_FILTER_CATEGORY_SINGULAR_LABEL
+              SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
             )}
             onClearCategory={(category) =>
               setFilter(clearFilterCategory(filter, category))
             }
-            onClearAll={() => setFilter({})}
+            extraChips={
+              canShowHiddenAgents && showHiddenAgents
+                ? [
+                    {
+                      key: "hidden-agents",
+                      label: (
+                        <span className="min-w-0 truncate text-xs font-bold">
+                          Hidden agents
+                        </span>
+                      ),
+                      onRemove: () => setShowHiddenAgents(false),
+                    },
+                  ]
+                : []
+            }
+            onClearAll={() => {
+              setFilter({});
+              setShowHiddenAgents(false);
+            }}
           />
           {SEARCH_TABS.map((tab) => (
             <TabsContent key={tab.id} value={tab.id}>

@@ -4,18 +4,20 @@ import {
   clearFilterCategory,
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
+import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillFilterPanel } from "@app/components/skills/SkillFilterPanel";
+import { SkillSearchTable } from "@app/components/skills/SkillSearchTable";
+import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
 import {
-  SKILL_SEARCH_NAME_COLUMN_WIDTH,
-  SkillSearchTable,
-} from "@app/components/skills/SkillSearchTable";
+  BatchAvailabilityDialog,
+  SkillsBatchEditBar,
+} from "@app/components/skills/SkillsBatchEdit";
 import type { SkillFilter } from "@app/components/skills/skillFilter";
 import {
   SKILL_FILTER_CATEGORIES,
-  SKILL_FILTER_CATEGORY_SINGULAR_LABEL,
   toSkillSearchFilters,
 } from "@app/components/skills/skillFilter";
 import {
@@ -25,12 +27,19 @@ import {
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import { useSearchSkills } from "@app/lib/swr/skill_configurations";
+import {
+  useSearchSkills,
+  useUpdateSkillsAvailability,
+} from "@app/lib/swr/skill_configurations";
 import type {
   SkillSearchFilters,
   SkillSearchSort,
   SkillSearchSortOrder,
 } from "@app/types/api/skills";
+import type {
+  SkillAvailability,
+  SkillListItemType,
+} from "@app/types/assistant/skill_configuration";
 import {
   Button,
   EmptyCTA,
@@ -61,6 +70,14 @@ const SEARCH_TABS = [
   { id: "archived", label: "Archived", filters: { status: ["archived"] } },
 ] satisfies { id: string; label: string; filters: SkillSearchFilters }[];
 
+type SearchTabId = (typeof SEARCH_TABS)[number]["id"];
+
+// Batch edits are reserved to the skill's editors and to workspace admins, as for agents;
+// Dust-provided skills are never administrable.
+function canBatchEditSkill(skill: SkillListItemType) {
+  return skill.canAdministrate && skill.status !== "archived";
+}
+
 interface SkillsListProps {
   searchTerm: string;
   filters: SkillSearchFilters;
@@ -75,6 +92,18 @@ function SkillsList({
   onAgentClick,
 }: SkillsListProps) {
   const owner = useWorkspace();
+  const { hasPermission } = useWorkspacePermissions();
+  const canSetAvailability = hasPermission("publish", "skill");
+  const canMakeSkillAutoDiscoverable = hasPermission(
+    "make_discoverable",
+    "skill"
+  );
+  // Selected rows are kept by id across pages, with the item needed by batch actions.
+  const [selectedSkills, setSelectedSkills] = useState<SkillListItemType[]>([]);
+  const [pendingBatchAction, setPendingBatchAction] =
+    useState<BatchAvailabilityAction | null>(null);
+  const [isBatchUpdating, setIsBatchUpdating] = useState(false);
+  const doUpdateAvailability = useUpdateSkillsAvailability({ owner });
   const [tablePagination, setTablePagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: SKILL_SEARCH_PAGE_SIZE,
@@ -92,6 +121,7 @@ function SkillsList({
   if (queryKey !== previousQueryKey) {
     setPreviousQueryKey(queryKey);
     setTablePagination({ pageIndex: 0, pageSize: SKILL_SEARCH_PAGE_SIZE });
+    setSelectedSkills([]);
   }
 
   const { skills, total, isSkillsLoading, isSkillsError, mutate } =
@@ -105,8 +135,58 @@ function SkillsList({
       sortOrder,
     });
 
+  // Prefer the freshly loaded row so batch actions see the skill's current state.
+  const pageSkillsById = new Map(skills.map((skill) => [skill.sId, skill]));
+  const currentSelectedSkills = selectedSkills.map(
+    (selected) => pageSkillsById.get(selected.sId) ?? selected
+  );
+
+  const setSelectedSkillIds = (skillIds: string[]) => {
+    const knownSkills = new Map(
+      [...currentSelectedSkills, ...skills].map((skill) => [skill.sId, skill])
+    );
+    setSelectedSkills(
+      skillIds.flatMap((skillId) => knownSkills.get(skillId) ?? [])
+    );
+  };
+
+  const clearSelectionAndRefresh = () => {
+    setSelectedSkills([]);
+    void mutate();
+  };
+
+  const handleBatchAvailability = async (availability: SkillAvailability) => {
+    if (currentSelectedSkills.length === 0 || isBatchUpdating) {
+      return;
+    }
+    setIsBatchUpdating(true);
+    try {
+      const success = await doUpdateAvailability(
+        currentSelectedSkills.map((skill) => skill.sId),
+        availability
+      );
+      if (success) {
+        clearSelectionAndRefresh();
+      }
+    } finally {
+      setIsBatchUpdating(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
+      {pendingBatchAction && (
+        <BatchAvailabilityDialog
+          action={pendingBatchAction}
+          selectedCount={currentSelectedSkills.length}
+          isUpdating={isBatchUpdating}
+          onConfirm={async () => {
+            await handleBatchAvailability(pendingBatchAction.availability);
+            setPendingBatchAction(null);
+          }}
+          onCancel={() => setPendingBatchAction(null)}
+        />
+      )}
       {isSkillsError && (
         <div
           role="alert"
@@ -160,6 +240,9 @@ function SkillsList({
             }
           }}
           isLoading={isSkillsLoading}
+          selectedSkillIds={selectedSkills.map((skill) => skill.sId)}
+          setSelectedSkillIds={setSelectedSkillIds}
+          canSelect={canBatchEditSkill}
         />
       ) : !isSkillsError ? (
         <EmptyCTA
@@ -171,6 +254,18 @@ function SkillsList({
           action={null}
         />
       ) : null}
+      <SkillsBatchEditBar
+        selectedSkills={currentSelectedSkills}
+        // Search results carry no selectable total, so selection is extended one page at a time.
+        totalCount={currentSelectedSkills.length}
+        isUpdating={isBatchUpdating}
+        canSetAvailability={canSetAvailability}
+        canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
+        owner={owner}
+        onClear={clearSelectionAndRefresh}
+        onSelectAll={() => undefined}
+        onSelectAction={setPendingBatchAction}
+      />
     </div>
   );
 }
@@ -182,9 +277,12 @@ export function SearchSkillsPage() {
   const [skillId, setSkillId] = useHashParam("skillId");
   const [agentId, setAgentId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
   const [filter, setFilter] = useState<SkillFilter>({});
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const searchFilters = toSkillSearchFilters(filter);
+  const activeTab =
+    SEARCH_TABS.find((tab) => tab.id === selectedTab) ?? SEARCH_TABS[0];
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
 
@@ -206,7 +304,7 @@ export function SearchSkillsPage() {
           description="Reusable packages of instructions and tools that agents can share."
           noTopPadding
         />
-        <div className={SKILL_SEARCH_NAME_COLUMN_WIDTH}>
+        <div className="w-full md:w-1/2">
           <label htmlFor="skill-search" className="sr-only">
             Search skills
           </label>
@@ -219,7 +317,15 @@ export function SearchSkillsPage() {
             className="w-full"
           />
         </div>
-        <Tabs defaultValue="all">
+        <Tabs
+          value={selectedTab}
+          onValueChange={(value) => {
+            const tab = SEARCH_TABS.find(({ id }) => id === value);
+            if (tab) {
+              setSelectedTab(tab.id);
+            }
+          }}
+        >
           <TabsList>
             {SEARCH_TABS.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
@@ -228,16 +334,19 @@ export function SearchSkillsPage() {
             <div className="flex items-center">
               <SkillFilterPanel
                 owner={owner}
+                searchTerm={searchTerm}
+                tabFilters={activeTab.filters}
                 filter={filter}
                 onFilterChange={setFilter}
               />
             </div>
           </TabsList>
           <FilterSummaryChips
+            className="mb-4"
             summaries={getFilterSummaries(
               filter,
               SKILL_FILTER_CATEGORIES,
-              SKILL_FILTER_CATEGORY_SINGULAR_LABEL
+              SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
             )}
             onClearCategory={(category) =>
               setFilter(clearFilterCategory(filter, category))

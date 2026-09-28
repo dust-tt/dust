@@ -9,8 +9,7 @@ import type { PluginListItem } from "@app/lib/api/poke/types";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import { Button, cn, Input, Tooltip } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 interface PluginCardProps {
   onClick: () => void;

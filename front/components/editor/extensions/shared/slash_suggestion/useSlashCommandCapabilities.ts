@@ -9,7 +9,7 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
 import {
   useJITMCPServerViewsFromSpaces,
-  useMCPServerViewsFromSpaces,
+  useMCPServerViewsFromMemberSpaces,
 } from "@app/lib/swr/mcp_servers";
 import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -168,7 +168,7 @@ export function useSkillBuilderSlashCommandCapabilities({
     ? isSearchSkillsLoading
     : isListedSkillsLoading;
   const { serverViews, isLoading: isServerViewsLoading } =
-    useMCPServerViewsFromSpaces(owner, spaces, {
+    useMCPServerViewsFromMemberSpaces(owner, {
       includeRestrictedToSkills: true,
     });
 
@@ -194,6 +194,7 @@ export function useSkillBuilderSlashCommandCapabilities({
   return {
     capabilityItems,
     resolvedQuery: capabilityQuery,
+    // Spaces are needed to label tools available in several spaces.
     isLoading: isSkillsLoading || isSpacesLoading || isServerViewsLoading,
   };
 }

@@ -4,7 +4,7 @@ import {
   MembersUsagePaginationSchema,
 } from "@app/lib/api/credits/members_usage";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import { ensureHasAnyGroupPermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -14,11 +14,13 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsManager(),
   validate("query", MembersUsagePaginationSchema),
+  ensureHasAnyGroupPermission(
+    "read_usage",
+    "Only workspace managers and group managers can view member usage."
+  ),
   async (ctx): HandlerResult<GetMembersUsageResponseBody> => {
     const auth = ctx.get("auth");
-
     const body = await getMembersUsage({
       auth,
       paginationParams: ctx.req.valid("query"),

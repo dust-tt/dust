@@ -14,6 +14,8 @@ import type {
   SearchSkillsResponseBody,
 } from "@app/types/api/skills";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
+import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
@@ -47,6 +49,25 @@ vi.mock("@app/lib/platform", () => ({
 
 vi.mock("@app/components/assistant/details/AgentDetailsSheet", () => ({
   AgentDetailsSheet: () => null,
+}));
+
+interface BatchAvailabilityDialogMockProps {
+  action: { availability: string };
+  onConfirm: () => Promise<void>;
+}
+
+vi.mock("@app/components/skills/SkillsBatchEdit", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@app/components/skills/SkillsBatchEdit")
+  >()),
+  BatchAvailabilityDialog: ({
+    action,
+    onConfirm,
+  }: BatchAvailabilityDialogMockProps) => (
+    <button type="button" onClick={() => void onConfirm()}>
+      Confirm {action.availability}
+    </button>
+  ),
 }));
 
 afterEach(() => {
@@ -124,6 +145,27 @@ async function setup({
     spaceId: "sp_2",
     server: serverView.server,
   });
+  const facetSearch = vi
+    .fn<(body: object) => Promise<SearchSkillsResponseBody>>()
+    .mockResolvedValue({
+      skills: [],
+      total: 1,
+      hasMore: false,
+      facets: {
+        availability: SKILL_AVAILABILITIES.map((availability) => ({
+          availability,
+          count: 1,
+        })),
+        editors: [{ sId, fullName, image, count: 1 }],
+        mcpServerViews: [serverView, otherSpaceServerView].map((view) => ({
+          sId: view.sId,
+          mcpServerId: view.server.sId,
+          name: "Slack",
+          icon: view.server.icon,
+          count: 1,
+        })),
+      },
+    });
   const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith("/mcp")) {
       return {
@@ -133,7 +175,11 @@ async function setup({
         ],
       };
     }
-    if (init?.method === "DELETE" || url.endsWith("/restore")) {
+    if (
+      init?.method === "DELETE" ||
+      url.endsWith("/restore") ||
+      url.endsWith("/skills/availability")
+    ) {
       await mutation();
       return {};
     }
@@ -175,7 +221,9 @@ async function setup({
             fetcherWithBody={([url, body, method]) =>
               url.endsWith("/skills/used_by")
                 ? usedBy(body)
-                : fetcherWithBody([url, body, method])
+                : "limit" in body && body.limit === 0
+                  ? facetSearch(body)
+                  : fetcherWithBody([url, body, method])
             }
           >
             <AuthContext.Provider value={context}>
@@ -192,6 +240,7 @@ async function setup({
     search,
     fetcher,
     fetcherWithBody,
+    facetSearch,
     usedBy,
     mutation,
     mount,
@@ -329,7 +378,9 @@ describe("search-backed Manage Skills", () => {
   });
 
   it("applies filters together, keeps them across tabs, and clears the chips", async () => {
-    const { fetcher, fetcherWithBody, mcpServerViewIds, mount } = await setup();
+    const { context, fetcher, fetcherWithBody, mcpServerViewIds, mount } =
+      await setup();
+    const editorIds = [context.user.sId];
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
     const initialSearchCount = fetcherWithBody.mock.calls.length;
@@ -357,7 +408,7 @@ describe("search-backed Manage Skills", () => {
           status: ["active"],
           availability: ["workspace_users", "users_and_agents"],
           mcpServerViewIds,
-          editedByMe: true,
+          editorIds,
           offset: 0,
         }),
         "POST",
@@ -375,7 +426,7 @@ describe("search-backed Manage Skills", () => {
           status: ["archived"],
           availability: ["workspace_users", "users_and_agents"],
           mcpServerViewIds,
-          editedByMe: true,
+          editorIds,
         }),
         "POST",
       ])
@@ -390,7 +441,7 @@ describe("search-backed Manage Skills", () => {
           query: "",
           status: ["archived"],
           mcpServerViewIds,
-          editedByMe: true,
+          editorIds,
           sortBy: "usage",
           limit: 50,
           offset: 0,
@@ -417,6 +468,140 @@ describe("search-backed Manage Skills", () => {
     );
     await waitFor(() =>
       expect(screen.queryByText("Editor")).not.toBeInTheDocument()
+    );
+  });
+
+  it("lists only the filter options held by matching skills, narrowed by the other selections", async () => {
+    const { facetSearch, fetcherWithBody, mount } = await setup();
+    facetSearch.mockResolvedValue({
+      skills: [],
+      total: 1,
+      hasMore: false,
+      facets: {
+        availability: [{ availability: "workspace_users", count: 1 }],
+        editors: [],
+        mcpServerViews: [
+          {
+            sId: "view",
+            mcpServerId: "server",
+            name: "Slack",
+            icon: "SlackLogo",
+            count: 1,
+          },
+        ],
+        spaces: [
+          { sId: "global", name: "Workspace", kind: "global", count: 1 },
+          { sId: "finance", name: "Finance", kind: "regular", count: 1 },
+        ],
+      },
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    await userEvent.type(
+      screen.getByPlaceholderText("Search skills by name"),
+      "Week"
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: "Members" })
+    );
+    expect(
+      screen.queryByRole("checkbox", { name: "Editors only" })
+    ).not.toBeInTheDocument();
+    expect(facetSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        query: "Week",
+        status: ["active"],
+        facets: ["availability"],
+      })
+    );
+    expect(facetSearch.mock.lastCall?.[0]).not.toHaveProperty("availability");
+
+    await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
+    await waitFor(() =>
+      expect(facetSearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          query: "Week",
+          availability: ["workspace_users"],
+          facets: ["editors"],
+        })
+      )
+    );
+    expect(
+      screen.queryByRole("checkbox", { name: "Me" })
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
+    expect(
+      await screen.findByRole("checkbox", { name: "Slack" })
+    ).toBeInTheDocument();
+    expect(facetSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        availability: ["workspace_users"],
+        facets: ["mcpServerViews"],
+      })
+    );
+
+    await userEvent.click(screen.getByRole("tab", { name: "Spaces" }));
+    expect(
+      await screen.findByRole("checkbox", { name: GLOBAL_SPACE_NAME })
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Finance" }));
+    expect(facetSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        availability: ["workspace_users"],
+        facets: ["spaces"],
+      })
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({
+          availability: ["workspace_users"],
+          spaceIds: ["finance"],
+        }),
+        "POST",
+      ])
+    );
+  });
+
+  it("marks retained filter options as updating while their facets reload", async () => {
+    const { facetSearch, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: "Slack" })
+    );
+    let resolveFacets: (response: SearchSkillsResponseBody) => void = () => {};
+    facetSearch.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFacets = resolve;
+        })
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "Availability" }));
+
+    expect(await screen.findByText("Updating…")).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Members" })
+    ).toBeInTheDocument();
+    await act(async () =>
+      resolveFacets({
+        skills: [],
+        total: 1,
+        hasMore: false,
+        facets: {
+          availability: [{ availability: "workspace_users", count: 1 }],
+        },
+      })
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("Updating…")).not.toBeInTheDocument()
     );
   });
 
@@ -710,6 +895,93 @@ describe("search-backed Manage Skills", () => {
       screen.queryByRole("button", { name: /Weekly report/ })
     ).not.toBeInTheDocument();
     expect(mutation).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the selection across pages and updates its availability in batch", async () => {
+    const { skill, search, fetcher, mutation, mount } = await setup();
+    search.mockResolvedValueOnce({
+      skills: [skill],
+      total: 60,
+      hasMore: true,
+      facets: {},
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Select Weekly report" })
+    );
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Set availability" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument();
+    expect(screen.queryByText(/Select all/)).not.toBeInTheDocument();
+
+    search.mockResolvedValue({
+      skills: [{ ...skill, sId: "second", name: "Second page" }],
+      total: 60,
+      hasMore: false,
+      facets: {},
+    });
+    await userEvent.click(screen.getByRole("button", { name: "2" }));
+    await screen.findByRole("button", { name: /Second page/ });
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Select Second page" })
+    );
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Set availability" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Editors only" })
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Confirm editors" })
+    );
+
+    await waitFor(() => expect(mutation).toHaveBeenCalled());
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringMatching(/\/skills\/availability$/),
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({
+          skillIds: [skill.sId, "second"],
+          availability: "editors",
+        }),
+      })
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(/^\d+ selected$/)).not.toBeInTheDocument()
+    );
+  });
+
+  it("offers selection only on the active skills the user administrates", async () => {
+    const { skill, search, mount } = await setup();
+    search.mockResolvedValue({
+      skills: [
+        skill,
+        {
+          ...skill,
+          sId: "not-mine",
+          name: "Not mine",
+          canAdministrate: false,
+        },
+      ],
+      total: 2,
+      hasMore: false,
+      facets: {},
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    expect(
+      screen.getByRole("checkbox", { name: "Select Weekly report" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "Select Not mine" })
+    ).not.toBeInTheDocument();
   });
 
   it("requests page offsets from arrows and page numbers, preserves server order and resets pagination when searching", async () => {

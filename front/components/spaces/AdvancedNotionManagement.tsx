@@ -223,9 +223,7 @@ export function AdvancedNotionManagement({
         dust: data.dust,
         summary: data.summary,
       });
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (e) {
+    } catch {
       sendNotification({
         type: "error",
         title: "Error checking URL status",
@@ -295,9 +293,7 @@ export function AdvancedNotionManagement({
         }
         await mutate();
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (e) {
+    } catch {
       sendNotification({
         type: "error",
         title: "Error syncing Notion URLs",

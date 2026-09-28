@@ -11,6 +11,7 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
+import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";
 
 type PreviewedAgentFields = Pick<
   AgentConfigurationType,
@@ -95,20 +96,34 @@ export function previewAgentSuggestions({
   PreviewedAgentFields,
   DustError<"invalid_request_error">
 > {
+  const creation = suggestions.find(isCreateAgentSuggestion);
+  if (creation) {
+    const { name, description, instructions } = creation.suggestion;
+    return new Ok({
+      name,
+      description,
+      scope: agent.scope,
+      model: agent.model,
+      instructions: agent.instructions,
+      instructionsHtml: instructions,
+    });
+  }
+
   const edits = mergeAgentFieldEdits(suggestions);
   if (edits.isErr()) {
     return edits;
   }
 
-  const { name, description, scope, instructions, model, skills } = edits.value;
+  const { name, description, scope, instructions, model, skills, tools } =
+    edits.value;
 
-  // The preview only covers the fields above: showing the agent without its skill changes would
-  // misrepresent the suggestions.
-  if (skills) {
+  // The preview only covers the fields above: showing the agent without its skill or tool changes
+  // would misrepresent the suggestions.
+  if (skills || tools) {
     return new Err(
       new DustError(
         "invalid_request_error",
-        "Suggestions changing the agent's skills cannot be previewed."
+        "Suggestions changing the agent's skills or tools cannot be previewed."
       )
     );
   }

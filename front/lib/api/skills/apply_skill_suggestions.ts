@@ -8,7 +8,7 @@ import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
-import { findSkillEditorsWithoutAccessToSpaceIds } from "@app/lib/api/skills/space_requirements";
+import { findSkillEditorsWithoutSpaceAccess } from "@app/lib/api/skills/space_requirements";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillEdits } from "@app/lib/editor/merge_skill_suggestion_edits";
 import { mergeSkillSuggestionEdits } from "@app/lib/editor/merge_skill_suggestion_edits";
@@ -27,23 +27,32 @@ import {
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
+import type {
+  SkillAttachedKnowledge,
+  UpdateSkillParams,
+} from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { extractToolTags } from "@app/lib/tools/format";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 import {
+  getSkillSuggestionAction,
   isAvailabilitySkillSuggestion,
   isEditorsSkillSuggestion,
   isNameSkillSuggestion,
   isUserFacingDescriptionSkillSuggestion,
+  SkillSuggestionDataSchema,
 } from "@app/types/suggestions/skill_suggestion";
 import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
 
 function hasSkillFieldEdits({
   agentFacingDescription,
@@ -145,46 +154,28 @@ async function resolveInstructionAttachments(
 }
 
 /**
- * The tools, knowledge and spaces the skill must hold once `instructions` are in place.
- *
- * `PATCH /skills/:sId` computes the same spaces from what the builder's editor sends it; here the
- * rewritten instructions are the only source, so the attachments are read back out of them first.
+ * A change resolved against the current state of its skill: every check has passed and the writes
+ * are fully computed.
  */
-async function resolveInstructionRequirements(
-  auth: Authenticator,
-  skill: SkillResource,
-  instructions: string
-): Promise<
-  Result<
-    {
-      attachedKnowledge: SkillAttachedKnowledge[];
-      mcpServerViews: MCPServerViewResource[];
-      requestedSpaceIds: ModelId[];
-    },
-    DustError<"invalid_request_error">
-  >
-> {
-  const attachments = await resolveInstructionAttachments(auth, instructions);
-  if (attachments.isErr()) {
-    return attachments;
-  }
+export type ResolvedSkillChange =
+  | { type: "create"; skillId: string; update: SkillUpdate }
+  | {
+      type: "edit";
+      skillId: string;
+      update: SkillUpdate | null;
+      availability: SkillAvailability | null;
+      editorsChange: SkillEditorsChange | null;
+    }
+  | { type: "delete"; skillId: string };
 
-  const { attachedKnowledge, mcpServerViews } = attachments.value;
+/**
+ * The `updateSkill` params, except the requested spaces: they depend on the skills the instructions
+ * reference, which the steps of a batch written before this one can change, so they are computed
+ * right before the write.
+ */
+type SkillUpdate = Omit<UpdateSkillParams, "requestedSpaceIds">;
 
-  return new Ok({
-    attachedKnowledge,
-    mcpServerViews,
-    requestedSpaceIds: await SkillResource.computeRequestedSpaceIds(auth, {
-      attachedKnowledge,
-      mcpServerViews,
-      excludedSkillId: skill.sId,
-      instructions,
-      manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
-    }),
-  });
-}
-
-async function applySkillFieldEdits(
+async function resolveSkillFieldEdits(
   auth: Authenticator,
   skill: SkillResource,
   {
@@ -193,7 +184,18 @@ async function applySkillFieldEdits(
     name,
     instructionEdits,
   }: SkillEdits
-): Promise<Result<undefined, DustError<"invalid_request_error">>> {
+): Promise<Result<SkillUpdate, DustError<"invalid_request_error">>> {
+  let resolvedName = skill.name;
+  if (name !== undefined) {
+    const validation = await validateSkillNameChange(auth, skill, { name });
+    if (validation.isErr()) {
+      return new Err(
+        new DustError("invalid_request_error", validation.error.message)
+      );
+    }
+    resolvedName = validation.value.name;
+  }
+
   const instructions = resolveInstructions(skill, instructionEdits);
   if (instructions.isErr()) {
     return instructions;
@@ -201,62 +203,43 @@ async function applySkillFieldEdits(
 
   // A batch that does not change the instructions keeps the attachments it already has: nothing it
   // changed can add or drop a reference.
-  const requirementsRes = instructions.value
-    ? await resolveInstructionRequirements(
-        auth,
-        skill,
-        instructions.value.instructions
-      )
+  const attachmentsRes = instructions.value
+    ? await resolveInstructionAttachments(auth, instructions.value.instructions)
     : new Ok({
         attachedKnowledge: await skill.getAttachedKnowledge(auth),
         mcpServerViews: skill.mcpServerViews,
-        requestedSpaceIds: skill.requestedSpaceIds,
       });
-  if (requirementsRes.isErr()) {
-    return requirementsRes;
+  if (attachmentsRes.isErr()) {
+    return attachmentsRes;
   }
-  const requirements = requirementsRes.value;
-
-  // A suggestion can pull in a restricted space, which would lock out an editor that cannot read
-  // it. Checked before the write so a rejected batch leaves the skill untouched.
-  const editorsAccessError = await findSkillEditorsWithoutAccessToSpaceIds(
-    auth,
-    skill,
-    requirements.requestedSpaceIds
-  );
-  if (editorsAccessError) {
-    return new Err(new DustError("invalid_request_error", editorsAccessError));
-  }
+  const attachments = attachmentsRes.value;
 
   // `updateSkill` replaces the whole skill, so every field no suggestion touched is carried over
   // from the current values.
-  await skill.updateSkill(auth, {
+  return new Ok({
     agentFacingDescription:
       agentFacingDescription ?? skill.agentFacingDescription,
-    attachedKnowledge: requirements.attachedKnowledge,
+    attachedKnowledge: attachments.attachedKnowledge,
     icon: skill.icon,
     instructions: instructions.value?.instructions ?? skill.instructions,
     instructionsHtml:
       instructions.value?.instructionsHtml ?? skill.instructionsHtml,
     manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
-    mcpServerViews: requirements.mcpServerViews,
-    name: name ?? skill.name,
-    requestedSpaceIds: requirements.requestedSpaceIds,
+    mcpServerViews: attachments.mcpServerViews,
+    name: resolvedName,
     userFacingDescription: userFacingDescription ?? skill.userFacingDescription,
   });
-
-  return new Ok(undefined);
 }
 
 /**
  * Availability goes through `updateAvailabilities`, not `updateSkill`: changing it requires `admin`
  * on the skill and the `publish` capability, not `write`.
  */
-async function applyAvailabilityChange(
+async function writeAvailabilityChange(
   auth: Authenticator,
   skill: SkillResource,
   availability: SkillAvailability
-): Promise<Result<undefined, DustError<"invalid_request_error">>> {
+): Promise<void> {
   const previousAvailability = skill.availability;
   await SkillResource.updateAvailabilities(auth, [skill], availability);
 
@@ -274,12 +257,10 @@ async function applyAvailabilityChange(
       new_availability: availability,
     },
   });
-
-  return new Ok(undefined);
 }
 
 // Adding before removing to prevent orphaning the skill
-async function applyEditorsChange(
+async function writeEditorsChange(
   auth: Authenticator,
   skill: SkillResource,
   { usersToAdd, usersToRemove }: SkillEditorsChange
@@ -319,35 +300,32 @@ async function applyEditorsChange(
   return new Ok(undefined);
 }
 
-export async function applySkillSuggestions(
+async function resolveSkillEdits(
   auth: Authenticator,
-  {
-    skill,
-    suggestions,
-  }: { skill: SkillResource; suggestions: SkillSuggestionResource[] }
-): Promise<Result<undefined, DustError<"invalid_request_error">>> {
+  skill: SkillResource,
+  suggestions: SkillSuggestionResource[]
+): Promise<Result<ResolvedSkillChange, DustError<"invalid_request_error">>> {
   const mergedEdits = mergeSkillSuggestionEdits(suggestions);
   if (mergedEdits.isErr()) {
     return mergedEdits;
   }
 
-  let edits = mergedEdits.value;
+  const edits = mergedEdits.value;
 
-  if (edits.name !== undefined) {
-    const validation = await validateSkillNameChange(auth, skill, {
-      name: edits.name,
-    });
-    if (validation.isErr()) {
-      return new Err(
-        new DustError("invalid_request_error", validation.error.message)
-      );
+  // `updateSkill` saves a version, so a change that only moves availability or editors must not
+  // call it.
+  let update: SkillUpdate | null = null;
+  if (hasSkillFieldEdits(edits)) {
+    const updateRes = await resolveSkillFieldEdits(auth, skill, edits);
+    if (updateRes.isErr()) {
+      return updateRes;
     }
-    // Write the validator's trimmed name, never the raw suggestion payload.
-    edits = { ...edits, name: validation.value.name };
+    update = updateRes.value;
   }
 
   // `updateAvailabilities` asserts the publish capabilities, so an availability is only applied
   // when a suggestion asked for it and the value actually changes.
+  let availability: SkillAvailability | null = null;
   if (edits.availability !== undefined) {
     const validation = validateSkillAvailabilityChange(auth, skill, {
       availability: edits.availability,
@@ -357,7 +335,7 @@ export async function applySkillSuggestions(
         new DustError("invalid_request_error", validation.error.message)
       );
     }
-    edits = { ...edits, availability: validation.value?.availability };
+    availability = validation.value?.availability ?? null;
   }
 
   let editorsChange: SkillEditorsChange | null = null;
@@ -376,73 +354,274 @@ export async function applySkillSuggestions(
     editorsChange = validation.value;
   }
 
-  if (edits.archive) {
-    const validation = validateSkillDeletion(auth, skill);
-    if (validation.isErr()) {
-      return new Err(
-        new DustError("invalid_request_error", validation.error.message)
+  return new Ok({
+    type: "edit",
+    skillId: skill.sId,
+    update,
+    availability,
+    editorsChange,
+  });
+}
+
+async function resolveSkillCreation(
+  auth: Authenticator,
+  skill: SkillResource,
+  suggestions: SkillSuggestionResource[]
+): Promise<Result<ResolvedSkillChange, DustError<"invalid_request_error">>> {
+  if (skill.status !== "pending") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The skill this suggestion targets has already been created."
+      )
+    );
+  }
+
+  const [suggestion] = suggestions;
+  const parsed = SkillSuggestionDataSchema.safeParse({
+    kind: suggestion.kind,
+    suggestion: suggestion.suggestion,
+  });
+  if (
+    suggestions.length > 1 ||
+    !parsed.success ||
+    parsed.data.kind !== "create"
+  ) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "A skill is created from a single valid create suggestion."
+      )
+    );
+  }
+  const { name, userFacingDescription, agentFacingDescription, instructions } =
+    parsed.data.suggestion;
+
+  // The placeholder is empty, so the suggested skill is resolved as an edit of every field: the
+  // instructions are HTML and replace the whole (empty) document.
+  const update = await resolveSkillFieldEdits(auth, skill, {
+    name,
+    userFacingDescription,
+    agentFacingDescription,
+    instructionEdits: [
+      {
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: instructions,
+        type: "replace",
+      },
+    ],
+  });
+  if (update.isErr()) {
+    return update;
+  }
+
+  return new Ok({
+    type: "create",
+    skillId: skill.sId,
+    update: { ...update.value, status: "active" },
+  });
+}
+
+function resolveSkillDeletion(
+  auth: Authenticator,
+  skill: SkillResource
+): Result<ResolvedSkillChange, DustError<"invalid_request_error">> {
+  const validation = validateSkillDeletion(auth, skill);
+  if (validation.isErr()) {
+    return new Err(
+      new DustError("invalid_request_error", validation.error.message)
+    );
+  }
+
+  return new Ok({ type: "delete", skillId: skill.sId });
+}
+
+export async function resolveSkillSuggestions(
+  auth: Authenticator,
+  {
+    skill,
+    suggestions,
+  }: { skill: SkillResource; suggestions: SkillSuggestionResource[] }
+): Promise<Result<ResolvedSkillChange, DustError<"invalid_request_error">>> {
+  const actions = new Set(
+    suggestions.map((suggestion) => getSkillSuggestionAction(suggestion.kind))
+  );
+  const [action] = actions;
+  if (!action || actions.size > 1) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Suggestions applied together must all create, edit or delete the skill."
+      )
+    );
+  }
+
+  switch (action) {
+    case "create":
+      return resolveSkillCreation(auth, skill, suggestions);
+    case "edit":
+      return resolveSkillEdits(auth, skill, suggestions);
+    case "delete":
+      return resolveSkillDeletion(auth, skill);
+    default:
+      return assertNever(action);
+  }
+}
+
+/**
+ * The editors the change leaves on the skill who cannot read one of `requestedSpaceIds`. Checked
+ * against the final editors: an editor added by the same change as a restricted space must be able
+ * to read it too.
+ */
+async function findEditorsWithoutAccess(
+  auth: Authenticator,
+  skill: SkillResource,
+  {
+    requestedSpaceIds,
+    editorsChange,
+  }: {
+    requestedSpaceIds: ModelId[];
+    editorsChange: SkillEditorsChange | null;
+  }
+): Promise<string | null> {
+  const removedUserIds = new Set(
+    editorsChange?.usersToRemove.map((user) => user.sId)
+  );
+  const editors = [
+    ...((await skill.listEditors(auth)) ?? []),
+    auth.getNonNullableUser(),
+    ...(editorsChange?.usersToAdd ?? []),
+  ].filter((user) => !removedUserIds.has(user.sId));
+
+  return findSkillEditorsWithoutSpaceAccess(auth, {
+    editors: uniqBy(editors, "id"),
+    requestedSpaces: await SpaceResource.fetchByModelIds(
+      auth,
+      requestedSpaceIds
+    ),
+  });
+}
+
+export async function writeSkillChange(
+  auth: Authenticator,
+  skill: SkillResource,
+  change: ResolvedSkillChange
+): Promise<Result<undefined, DustError<"invalid_request_error">>> {
+  switch (change.type) {
+    case "create": {
+      const { update } = change;
+      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
+        auth,
+        {
+          attachedKnowledge: update.attachedKnowledge,
+          excludedSkillId: skill.sId,
+          instructions: update.instructions,
+          manuallyRequestedSpaceIds: update.manuallyRequestedSpaceIds,
+          mcpServerViews: update.mcpServerViews,
+        }
       );
+
+      await skill.updateSkill(auth, { ...update, requestedSpaceIds });
+      return new Ok(undefined);
     }
-  }
+    case "edit": {
+      const { update, availability, editorsChange } = change;
+      // Computed at write time, from the referenced skills as stored now, so they account for what
+      // the steps of a batch written before this one changed.
+      const requestedSpaceIds = update
+        ? await SkillResource.computeRequestedSpaceIds(auth, {
+            attachedKnowledge: update.attachedKnowledge,
+            excludedSkillId: skill.sId,
+            instructions: update.instructions,
+            manuallyRequestedSpaceIds: update.manuallyRequestedSpaceIds,
+            mcpServerViews: update.mcpServerViews,
+          })
+        : skill.requestedSpaceIds;
 
-  // TODO(achilleburah): make the editor change and skill update atomic so if editors changes fails,
-  //  the skill update is rolled back.
+      // A suggestion can pull in a restricted space, or add an editor, which would leave an editor
+      // unable to read the skill. Checked before any write so the skill is left untouched.
+      if (update || editorsChange) {
+        const editorsAccessError = await findEditorsWithoutAccess(auth, skill, {
+          requestedSpaceIds,
+          editorsChange,
+        });
+        if (editorsAccessError) {
+          return new Err(
+            new DustError("invalid_request_error", editorsAccessError)
+          );
+        }
+      }
 
-  // `updateSkill` saves a version, so a batch that only moves editors must not call it.
-  if (hasSkillFieldEdits(edits)) {
-    const updateRes = await applySkillFieldEdits(auth, skill, edits);
-    if (updateRes.isErr()) {
-      return updateRes;
+      // TODO(achilleburah): make the editor change and skill update atomic so if editors changes
+      //  fails, the skill update is rolled back.
+      if (update) {
+        await skill.updateSkill(auth, { ...update, requestedSpaceIds });
+      }
+      if (availability) {
+        await writeAvailabilityChange(auth, skill, availability);
+      }
+      if (editorsChange) {
+        return writeEditorsChange(auth, skill, editorsChange);
+      }
+      return new Ok(undefined);
     }
-    await pruneConflictingSkillUserFacingDescriptionSuggestions(
-      auth,
-      skill,
-      suggestions.filter(isUserFacingDescriptionSkillSuggestion)
-    );
-    await pruneConflictingSkillNameSuggestions(
-      auth,
-      skill,
-      suggestions.filter(isNameSkillSuggestion)
-    );
+    case "delete":
+      await skill.archive(auth);
+      return new Ok(undefined);
+    default:
+      return assertNever(change);
   }
+}
 
-  if (edits.availability !== undefined) {
-    const availabilityRes = await applyAvailabilityChange(
-      auth,
-      skill,
-      edits.availability
-    );
-    if (availabilityRes.isErr()) {
-      return availabilityRes;
-    }
-  }
-
+/** Marks outdated the pending suggestions that the applied `suggestions` conflict with. */
+async function pruneConflictingSkillSuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  suggestions: SkillSuggestionResource[]
+): Promise<void> {
+  await pruneConflictingSkillUserFacingDescriptionSuggestions(
+    auth,
+    skill,
+    suggestions.filter(isUserFacingDescriptionSkillSuggestion)
+  );
+  await pruneConflictingSkillNameSuggestions(
+    auth,
+    skill,
+    suggestions.filter(isNameSkillSuggestion)
+  );
   // An accepted availability suggestion whose value already matches the skill still resolves
-  // every other pending availability suggestion, so this prunes outside the field-write guard.
+  // every other pending availability suggestion.
   await pruneConflictingSkillAvailabilitySuggestions(
     auth,
     skill,
     suggestions.filter(isAvailabilitySkillSuggestion)
   );
+  await pruneConflictingSkillEditorsSuggestions(
+    auth,
+    skill,
+    suggestions.filter(isEditorsSkillSuggestion)
+  );
+}
 
-  if (editorsChange) {
-    const applyRes = await applyEditorsChange(auth, skill, editorsChange);
-    if (applyRes.isErr()) {
-      return applyRes;
-    }
-
-    await pruneConflictingSkillEditorsSuggestions(
-      auth,
-      skill,
-      suggestions.filter(isEditorsSkillSuggestion)
-    );
+export async function applySkillSuggestions(
+  auth: Authenticator,
+  params: { skill: SkillResource; suggestions: SkillSuggestionResource[] }
+): Promise<Result<undefined, DustError<"invalid_request_error">>> {
+  const change = await resolveSkillSuggestions(auth, params);
+  if (change.isErr()) {
+    return change;
   }
 
-  // Archiving is terminal, so it runs last: any other edit in the batch is applied to the skill
-  // first, exactly as if it had been accepted on its own right before the deletion.
-  if (edits.archive) {
-    await skill.archive(auth);
+  const writeRes = await writeSkillChange(auth, params.skill, change.value);
+  if (writeRes.isErr()) {
+    return writeRes;
   }
+
+  await pruneConflictingSkillSuggestions(
+    auth,
+    params.skill,
+    params.suggestions
+  );
 
   return new Ok(undefined);
 }

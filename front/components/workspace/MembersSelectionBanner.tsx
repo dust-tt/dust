@@ -1,8 +1,10 @@
 import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
+import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { Button } from "@dust-tt/sparkle";
 
 interface MembersSelectionBannerProps {
   selectedCount: number;
+  selectedMembers: MemberUsageType[];
   totalCount: number;
   hasMorePagesToSelect: boolean;
   onSelectAllAcrossPages: () => void;
@@ -15,6 +17,7 @@ interface MembersSelectionBannerProps {
 
 export function MembersSelectionBanner({
   selectedCount,
+  selectedMembers,
   totalCount,
   hasMorePagesToSelect,
   onSelectAllAcrossPages,
@@ -32,12 +35,17 @@ export function MembersSelectionBanner({
       onSelectAll={onSelectAllAcrossPages}
       onClear={onClear}
       disabled={disabled}
+      selectedAvatars={selectedMembers.map((member) => ({
+        name: member.name,
+        visual: member.image ?? undefined,
+        isRounded: true,
+      }))}
     >
       {onBatchChangeSeat && (
         <Button
           size="sm"
           variant="primary"
-          label="Batch change seat"
+          label="Change seat"
           onClick={onBatchChangeSeat}
           disabled={disabled}
         />
@@ -45,7 +53,7 @@ export function MembersSelectionBanner({
       <Button
         size="sm"
         variant="primary"
-        label="Batch edit spend limit"
+        label="Edit spend limit"
         onClick={onBatchEditSpendLimit}
         disabled={disabled}
       />
