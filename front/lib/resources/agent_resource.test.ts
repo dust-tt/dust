@@ -1304,6 +1304,53 @@ describe("AgentResource", () => {
     });
   });
 
+  describe("batchListActions", () => {
+    it("lists a version's tools to its readers, and none to a member who cannot read it", async () => {
+      const { authenticator, workspace, globalSpace } = testContext;
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Hidden Tool Agent", scope: "hidden" }
+      );
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const mcpServerView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+      await AgentMCPServerConfigurationFactory.create(
+        authenticator,
+        globalSpace,
+        { agent, mcpServerView }
+      );
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const editorView = await AgentResource.fetchById(
+        authenticator,
+        agent.sId
+      );
+      assert(editorView);
+      const actions = await editorView.listActions(authenticator);
+      expect(
+        actions.map((action) =>
+          "mcpServerViewId" in action ? action.mcpServerViewId : null
+        )
+      ).toEqual([mcpServerView.sId]);
+
+      // A member who cannot read the hidden agent does not even fetch it; a light resource built for
+      // them still gets no tools.
+      expect(await AgentResource.fetchById(otherAuth, agent.sId)).toBeNull();
+      expect(await editorView.listActions(otherAuth)).toEqual([]);
+    });
+  });
+
   describe("batchListTags", () => {
     it("lists each version's tags, with no tag for untagged and global agents", async () => {
       const { authenticator, workspace } = testContext;

@@ -1,5 +1,8 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
-import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type {
+  MCPServerConfigurationType,
+  ServerSideMCPServerConfigurationType,
+} from "@app/lib/actions/mcp";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
@@ -1257,6 +1260,62 @@ export class AgentResource
         removeNulls(
           memberModelIds.map((userModelId) => userByModelId.get(userModelId))
         )
+      );
+    }
+
+    return result;
+  }
+
+  async listActions(
+    auth: Authenticator
+  ): Promise<MCPServerConfigurationType[]> {
+    const actionsByConfigurationModelId = await AgentResource.batchListActions(
+      auth,
+      [this]
+    );
+    const actions = actionsByConfigurationModelId.get(
+      this.agentConfigurationModelId
+    );
+    assert(actions !== undefined);
+
+    return actions;
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security] actions-require-read
+   * Keyed by `agentConfigurationModelId`: tools belong to a configuration version. Each input agent
+   * has an entry. An agent the caller cannot `read` MUST get `[]`: its tools carry its knowledge
+   * (data sources, tables), as private as its instructions. Global agents MUST NOT be passed: their
+   * tools are code-defined, not `AgentMCPServerConfigurationModel` rows, and they share a sentinel
+   * configuration id.
+   */
+  static async batchListActions(
+    auth: Authenticator,
+    agents: AgentResource[]
+  ): Promise<Map<ModelId, MCPServerConfigurationType[]>> {
+    assert(
+      agents.every((agent) => agent.scope !== "global"),
+      "Unexpected: listing the actions of a global agent."
+    );
+    const result = new Map<ModelId, MCPServerConfigurationType[]>(
+      agents.map((agent) => [agent.agentConfigurationModelId, []])
+    );
+    const readableConfigurationModelIds = agents
+      .filter((agent) => auth.can("read", agent))
+      .map((agent) => agent.agentConfigurationModelId);
+    if (readableConfigurationModelIds.length === 0) {
+      return result;
+    }
+
+    const actionsByConfigurationModelId =
+      await fetchMCPServerActionConfigurations(auth, {
+        configurationModelIds: readableConfigurationModelIds,
+        variant: "full",
+      });
+    for (const configurationModelId of readableConfigurationModelIds) {
+      result.set(
+        configurationModelId,
+        actionsByConfigurationModelId.get(configurationModelId) ?? []
       );
     }
 
