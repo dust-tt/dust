@@ -225,16 +225,19 @@ function SuggestionDetails({
             label="Name"
             currentValue=""
             newValue={name}
+            layout={layout}
           />
           <SuggestionFieldEditSection
             label="Description"
             currentValue=""
             newValue={userFacingDescription}
+            layout={layout}
           />
           <SuggestionFieldEditSection
             label={SKILL_INVOCATION_LABEL}
             currentValue=""
             newValue={agentFacingDescription}
+            layout={layout}
           />
           <div className="flex flex-col gap-2">
             <span className="text-sm text-muted-foreground">Instructions</span>
@@ -243,6 +246,7 @@ function SuggestionDetails({
               targetBlockId={INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}
               content={instructions}
               extensions={buildSkillInstructionsExtensions(true)}
+              layout={layout}
             />
           </div>
         </div>
