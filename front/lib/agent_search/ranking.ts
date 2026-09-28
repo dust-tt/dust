@@ -60,8 +60,10 @@ const NAME_AUTOCOMPLETE_FIELDS = [
 /**
  * @cc [owner:tdraier,label:product] indexed-agent-name-matching
  * An empty (or whitespace-only) search term matches every agent. Otherwise every
- * whitespace-separated term MUST prefix-match a word of the agent name, in any order (`sal mar`
- * matches "Marketing Sales"); the description is not matched. Whole-word, in-order and whole-name
+ * whitespace-separated term MUST match the agent name autocomplete fields as a `bool_prefix` query,
+ * in any order (`sal mar` matches "Marketing Sales"). Terms are analyzed like the name (case-change
+ * and punctuation splits), so only a term's last token is prefix-matched (`ReportB` matches
+ * "Report Builder"). The description is not matched. Whole-word, in-order and whole-name
  * (`name.keyword`) prefix matches only add relevance.
  */
 export function buildAgentNameAutocompleteQuery(
