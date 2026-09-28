@@ -3,6 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurationForDetails } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -59,7 +60,14 @@ export async function describeAgentHandler(
     ]);
   }
 
-  const toolNames = agent.actions.map((action) => action.name).join(", ");
+  // Tools carry their id, as `list_tools` prints them, so that they can be removed by id.
+  const toolNames = agent.actions
+    .map((action) =>
+      isServerSideMCPServerConfiguration(action)
+        ? `${action.name} [${action.mcpServerViewId}]`
+        : action.name
+    )
+    .join(", ");
   // Only reached for an agent the caller can read, so its skills are not private.
   const skills = await SkillResource.listByAgentConfiguration(auth, agent);
   // Skills carry their id, as `list_skills` prints them, so that they can be removed.

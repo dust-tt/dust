@@ -481,6 +481,22 @@ export const EditAgentSuggestionSchema = z.object({
     })
     .optional()
     .describe("The skills to add to or remove from the agent."),
+  tools: z
+    .object({
+      addToolIds: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Ids of the tools to add to the agent. Only tools that need no configuration (no " +
+            "knowledge, sub-agent or settings to pick) can be added."
+        ),
+      removeToolIds: z
+        .array(z.string())
+        .optional()
+        .describe("Ids of the agent's tools to remove from it."),
+    })
+    .optional()
+    .describe("The tools to add to or remove from the agent."),
 });
 
 export type EditAgentSuggestion = z.infer<typeof EditAgentSuggestionSchema>;

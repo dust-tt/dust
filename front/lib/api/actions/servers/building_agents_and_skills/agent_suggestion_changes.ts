@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { validateInstructionEdits } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
@@ -12,6 +13,11 @@ import {
   checkSkillAddition,
   fetchSuggestableSkills,
 } from "@app/lib/api/assistant/suggestable_skills";
+import {
+  checkToolAddition,
+  checkToolRemoval,
+  fetchSuggestableTools,
+} from "@app/lib/api/assistant/suggestable_tools";
 import type { Authenticator } from "@app/lib/auth";
 import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
 import { DustError } from "@app/lib/error";
@@ -41,8 +47,12 @@ import type {
   NameSuggestionType,
   ScopeSuggestionType,
   SkillsSuggestionType,
+  ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
-import { isSkillsSuggestion } from "@app/types/suggestions/agent_suggestion";
+import {
+  isSkillsSuggestion,
+  isToolsSuggestion,
+} from "@app/types/suggestions/agent_suggestion";
 
 // Validators shared by the single-change `suggest_agent_*` tools and the `suggest` tool. They run
 // against live state and never write, so a batch can validate every change before recording any.
@@ -454,6 +464,77 @@ export async function validateAgentSkillChanges(
   ]);
 }
 
+/**
+ * Checks each tool can be added to or removed from the agent (see `checkToolAddition` and
+ * `checkToolRemoval`). Only editors can suggest it, as only editors can apply it. Returns one
+ * suggestion per tool.
+ */
+export async function validateAgentToolChanges(
+  auth: Authenticator,
+  agent: AgentConfigurationType,
+  {
+    addToolIds,
+    removeToolIds,
+  }: { addToolIds: string[]; removeToolIds: string[] }
+): Promise<Result<ToolsSuggestionType[], MCPError>> {
+  if (!agent.canEdit) {
+    return new Err(
+      new MCPError("Only editors can suggest changing an agent's tools.")
+    );
+  }
+
+  if (agent.status !== "active") {
+    return new Err(
+      new MCPError("Only active agents can have their tools changed.")
+    );
+  }
+
+  const toolIds = [...addToolIds, ...removeToolIds];
+  if (new Set(toolIds).size !== toolIds.length) {
+    return new Err(
+      new MCPError("Each tool can only be added or removed once.")
+    );
+  }
+
+  const actions = agent.actions.filter(isServerSideMCPServerConfiguration);
+  const suggestable = await fetchSuggestableTools(auth, toolIds);
+
+  for (const toolId of removeToolIds) {
+    const removal = checkToolRemoval(toolId, suggestable, actions);
+    if (removal.isErr()) {
+      return new Err(new MCPError(removal.error));
+    }
+  }
+
+  for (const toolId of addToolIds) {
+    if (actions.some((action) => action.mcpServerViewId === toolId)) {
+      return new Err(
+        new MCPError(`The agent already has the tool "${toolId}".`)
+      );
+    }
+    const addition = checkToolAddition(toolId, suggestable);
+    if (addition.isErr()) {
+      return new Err(new MCPError(addition.error));
+    }
+  }
+
+  // No pending suggestion limit for conversational building.
+  return new Ok([
+    ...addToolIds.map((toolId) => ({ action: "add" as const, toolId })),
+    ...removeToolIds.map((toolId) => ({ action: "remove" as const, toolId })),
+  ]);
+}
+
+function isSupersededToolSuggestion(
+  suggestion: AgentSuggestionResource,
+  toolIds: Set<string>
+): boolean {
+  return (
+    isToolsSuggestion(suggestion.suggestion) &&
+    toolIds.has(suggestion.suggestion.toolId)
+  );
+}
+
 /** Kinds of which a single suggestion may be pending per agent at a time. */
 export type SingletonAgentSuggestionData = Extract<
   AgentSuggestionData,
@@ -631,6 +712,53 @@ export async function recordAgentSkillSuggestions(
     agent,
     skills.map((suggestion) => ({
       kind: "skills" as const,
+      suggestion,
+      analysis: null,
+      state: "pending" as const,
+      conversationId: conversation.id,
+      source: "conversational" as const,
+      batchId: batch?.id ?? null,
+    }))
+  );
+}
+
+/**
+ * @cc [owner:fabiencelier,label:product] single-pending-per-tool
+ * Recording tool suggestions MUST mark every other `pending` tool suggestion on the same agent and
+ * for the same tool `outdated`, and never the recorded ones, like sidekick's `suggest_tools`.
+ */
+export async function recordAgentToolSuggestions(
+  auth: Authenticator,
+  agent: LightAgentConfigurationType,
+  {
+    tools,
+    conversation,
+    batch,
+  }: {
+    tools: ToolsSuggestionType[];
+    conversation: ConversationType;
+    batch: BatchSuggestionResource | null;
+  }
+): Promise<AgentSuggestionResource[]> {
+  if (tools.length === 0) {
+    return [];
+  }
+
+  const toolIds = new Set(tools.map((t) => t.toolId));
+  const pending = await AgentSuggestionResource.listByAgentConfigurationId(
+    auth,
+    agent.sId,
+    { states: ["pending"], kind: "tools" }
+  );
+  await markDuplicateSuggestionsAsOutdated(auth, pending, (s) =>
+    isSupersededToolSuggestion(s, toolIds)
+  );
+
+  return AgentSuggestionResource.createSuggestionsForAgent(
+    auth,
+    agent,
+    tools.map((suggestion) => ({
+      kind: "tools" as const,
       suggestion,
       analysis: null,
       state: "pending" as const,

@@ -55,6 +55,7 @@ export class AgentSuggestionFactory {
       suggestion: ToolsSuggestionType;
       analysis: string | null;
       state: AgentSuggestionState;
+      batchModelId: number | null;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -68,6 +69,7 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Added useful integration",
         state: overrides.state ?? "pending",
+        batchId: overrides.batchModelId ?? null,
       }
     );
   }
