@@ -176,8 +176,16 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
             activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID ||
             activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID
           ) {
-            // The command text is still in the editor: let Backspace edit it.
+            // The command text is still in the editor: Backspace edits it, except that with an
+            // empty sub-menu query below the browser's root it goes up a level, as from the stack.
             if (queryFrame && event.key === "Backspace") {
+              if (
+                subMenuQuery.trim().length === 0 &&
+                subMenuRef.current?.navigateUp?.()
+              ) {
+                event.preventDefault();
+                return true;
+              }
               return false;
             }
 
@@ -201,7 +209,14 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           return dropdownRef.current?.onKeyDown({ event }) ?? false;
         },
       }),
-      [activeFrame?.subMenuId, flatItems.length, onClose, query, queryFrame]
+      [
+        activeFrame?.subMenuId,
+        flatItems.length,
+        onClose,
+        query,
+        queryFrame,
+        subMenuQuery,
+      ]
     );
 
     if (activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID) {
