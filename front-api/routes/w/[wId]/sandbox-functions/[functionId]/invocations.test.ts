@@ -149,7 +149,7 @@ async function createFramePublicationFunction({
 async function setupFrameV2Function({
   shareScope = "workspace_and_emails",
   withFramesV2FeatureFlag = true,
-  withFramesV2FunctionsFeatureFlag = true,
+  withSandboxFunctionInvocationFeatureFlag = true,
   standalone = false,
   userIdentity = "optional",
   addCallerToSpace = false,
@@ -157,7 +157,7 @@ async function setupFrameV2Function({
 }: {
   shareScope?: FileShareScope;
   withFramesV2FeatureFlag?: boolean;
-  withFramesV2FunctionsFeatureFlag?: boolean;
+  withSandboxFunctionInvocationFeatureFlag?: boolean;
   standalone?: boolean;
   userIdentity?: SandboxFunctionUserIdentityPolicy;
   addCallerToSpace?: boolean;
@@ -169,7 +169,7 @@ async function setupFrameV2Function({
   if (withFramesV2FeatureFlag) {
     await FeatureFlagFactory.basic(adminAuth, "frames_v2");
   }
-  if (withFramesV2FunctionsFeatureFlag) {
+  if (withSandboxFunctionInvocationFeatureFlag) {
     await FeatureFlagFactory.basic(adminAuth, "frames_v2_functions");
   }
   const space = await SpaceFactory.project(workspace);
@@ -412,7 +412,7 @@ function mockInvocationEventStream(events: SandboxFunctionInvocationEvent[]) {
 describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () => {
   it("rejects invocations without frames_v2_functions", async () => {
     const { workspace, frame } = await setupFrameV2Function({
-      withFramesV2FunctionsFeatureFlag: false,
+      withSandboxFunctionInvocationFeatureFlag: false,
     });
 
     const response = await postInvocation({

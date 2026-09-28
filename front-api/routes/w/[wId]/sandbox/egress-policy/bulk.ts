@@ -14,7 +14,7 @@ import type {
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { withFramesV2FunctionsFeature } from "@front-api/middlewares/with_frames_v2_functions_feature";
+import { withSandboxFunctionInvocationFeature } from "@front-api/middlewares/with_sandbox_functions_feature";
 import { z } from "zod";
 
 // Mounted at /api/w/:wId/sandbox/egress-policy/bulk. Multi-pod read (GET) and
@@ -24,7 +24,7 @@ import { z } from "zod";
 // surfaced.
 const app = workspaceApp();
 
-app.use("*", withFramesV2FunctionsFeature());
+app.use("*", withSandboxFunctionInvocationFeature());
 
 const PostBulkEgressPolicyBodySchema = z
   .object({

@@ -8,7 +8,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withFrame } from "@front-api/middlewares/with_frames";
-import { withFramesV2FunctionsFeature } from "@front-api/middlewares/with_frames_v2_functions_feature";
+import { withSandboxFunctionInvocationFeature } from "@front-api/middlewares/with_sandbox_functions_feature";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 
@@ -51,7 +51,7 @@ function requireFrameDatabaseAccess() {
 const app = sandboxFrameApp();
 
 app.use("*", validate("param", FrameParamsSchema));
-app.use("*", withFramesV2FunctionsFeature());
+app.use("*", withSandboxFunctionInvocationFeature());
 app.use("*", withFrame());
 app.use("*", requireFrameDatabaseAccess());
 

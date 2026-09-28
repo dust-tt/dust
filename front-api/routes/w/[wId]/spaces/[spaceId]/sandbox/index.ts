@@ -1,5 +1,5 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { withFramesV2FunctionsFeature } from "@front-api/middlewares/with_frames_v2_functions_feature";
+import { withSandboxFunctionInvocationFeature } from "@front-api/middlewares/with_sandbox_functions_feature";
 
 import egressPolicy from "./egress-policy";
 import envVars from "./env-vars";
@@ -10,7 +10,7 @@ import envVars from "./env-vars";
 // the UI gate in PodSettingsTab.
 const app = workspaceApp();
 
-app.use("*", withFramesV2FunctionsFeature());
+app.use("*", withSandboxFunctionInvocationFeature());
 
 app.route("/egress-policy", egressPolicy);
 app.route("/env-vars", envVars);

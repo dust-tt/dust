@@ -11,7 +11,7 @@ import { createMiddleware } from "hono/factory";
  * Gate a route on Frame functions (frames_v2 + frames_v2_functions). Apply after any auth
  * middleware that sets `ctx.get("auth")`.
  */
-export function withFramesV2FunctionsFeature() {
+export function withSandboxFunctionInvocationFeature() {
   return createMiddleware<PublicApiCtx | WorkspaceAwareCtx>(
     async (ctx, next) => {
       const featureFlags = await getFeatureFlags(ctx.get("auth"));

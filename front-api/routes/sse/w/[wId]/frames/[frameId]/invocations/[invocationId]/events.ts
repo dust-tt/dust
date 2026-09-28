@@ -6,12 +6,12 @@ import { SseQuerySchema } from "@front-api/lib/api/sse/stream_events";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { streamingTag } from "@front-api/middlewares/streaming";
 import { validate } from "@front-api/middlewares/validator";
-import { withFramesV2FunctionsFeature } from "@front-api/middlewares/with_frames_v2_functions_feature";
+import { withSandboxFunctionInvocationFeature } from "@front-api/middlewares/with_sandbox_functions_feature";
 
 const app = workspaceApp();
 
 app.use("*", streamingTag);
-app.use("*", withFramesV2FunctionsFeature());
+app.use("*", withSandboxFunctionInvocationFeature());
 
 /** @ignoreswagger */
 app.get(
