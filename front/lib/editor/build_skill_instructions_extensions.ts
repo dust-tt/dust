@@ -22,6 +22,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 interface BuildSkillInstructionsExtensionsOptions {
+  hideUnchangedSuggestionBlocks?: boolean;
   onSkillNodeDetails?: (skillId: string) => void;
   onToolDetails?: (tool: MCPServerViewType) => void;
 }
@@ -36,6 +37,7 @@ export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
   editableExtensions: Extensions = [],
   {
+    hideUnchangedSuggestionBlocks = false,
     onSkillNodeDetails,
     onToolDetails,
   }: BuildSkillInstructionsExtensionsOptions = {}
@@ -103,7 +105,10 @@ export function buildSkillInstructionsExtensions(
   ];
 
   baseExtensions.push(
-    InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
+    InstructionSuggestionExtension.configure({
+      hideUnchangedBlocks: hideUnchangedSuggestionBlocks,
+      showBlockHighlight: false,
+    }),
     RawMarkdownBlock,
     ...rawMarkdownBlockParsers
   );

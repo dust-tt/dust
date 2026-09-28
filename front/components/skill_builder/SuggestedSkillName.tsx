@@ -7,12 +7,14 @@ interface SuggestedSkillNameProps {
   suggestion: SkillNameSuggestionType;
   skillId: string;
   workspaceId: string;
+  isConversational?: boolean;
 }
 
 export function SuggestedSkillName({
   suggestion,
   skillId,
   workspaceId,
+  isConversational = false,
 }: SuggestedSkillNameProps) {
   const { skill, isSkillLoading } = useSkill({ workspaceId, skillId });
 
@@ -25,6 +27,8 @@ export function SuggestedSkillName({
       label="Name"
       currentValue={skill?.name ?? ""}
       newValue={suggestion.name}
+      isCollapsible={!isConversational}
+      showWordDiff={isConversational}
     />
   );
 }

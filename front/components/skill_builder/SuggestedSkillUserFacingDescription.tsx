@@ -7,12 +7,14 @@ interface SuggestedSkillUserFacingDescriptionProps {
   suggestion: SkillUserFacingDescriptionSuggestionType;
   skillId: string;
   workspaceId: string;
+  isConversational?: boolean;
 }
 
 export function SuggestedSkillUserFacingDescription({
   suggestion,
   skillId,
   workspaceId,
+  isConversational = false,
 }: SuggestedSkillUserFacingDescriptionProps) {
   const { skill, isSkillLoading } = useSkill({ workspaceId, skillId });
 
@@ -25,6 +27,8 @@ export function SuggestedSkillUserFacingDescription({
       label="Description"
       currentValue={skill?.userFacingDescription ?? ""}
       newValue={suggestion.userFacingDescription}
+      isCollapsible={!isConversational}
+      showWordDiff={isConversational}
     />
   );
 }
