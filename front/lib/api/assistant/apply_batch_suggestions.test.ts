@@ -1,12 +1,15 @@
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { applyBatchSuggestions } from "@app/lib/api/assistant/apply_batch_suggestions";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -32,17 +35,28 @@ describe("applyBatchSuggestions", () => {
   let auth: Authenticator;
   let user: UserResource;
   let workspace: WorkspaceType;
+  let globalSpace: SpaceResource;
 
   beforeEach(async () => {
     ({
       authenticator: auth,
       user,
       workspace,
+      globalSpace,
     } = await createResourceTest({
       role: "user",
     }));
   });
 
+  async function fetchAgentToolIds(agentId: string) {
+    const agent = await getAgentConfiguration(auth, {
+      agentId,
+      variant: "full",
+    });
+    return (agent?.actions ?? [])
+      .filter(isServerSideMCPServerConfiguration)
+      .map((action) => action.mcpServerViewId);
+  }
   async function fetchBatch(batchId: string) {
     const batch = await BatchSuggestionResource.fetchById(auth, batchId);
     assert(batch);
@@ -562,5 +576,185 @@ describe("applyBatchSuggestions", () => {
     // The skill referencing it inherits its spaces.
     const edited = await SkillResource.fetchById(auth, skill.sId);
     expect(edited?.requestedSpaceIds).toContain(restrictedSpace.id);
+  });
+
+  it("adds the suggested tools to the agent with their default configuration", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Ticket Tracker",
+    });
+    const view = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createTools(auth, agent, {
+      suggestion: { action: "add", toolId: view.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    expect(await fetchAgentName(agent.sId)).toBe("RenamedAgent");
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "full",
+    });
+    expect(
+      updated?.actions.filter(isServerSideMCPServerConfiguration)
+    ).toMatchObject([
+      {
+        mcpServerViewId: view.sId,
+        name: "ticket_tracker",
+        dataSources: null,
+        childAgentId: null,
+      },
+    ]);
+  });
+
+  it("removes the suggested tools from the agent", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const server = await RemoteMCPServerFactory.create(workspace);
+    const view = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
+    await AgentMCPServerConfigurationFactory.create(auth, globalSpace, {
+      agent,
+      mcpServerView: view,
+    });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createTools(auth, agent, {
+      suggestion: { action: "remove", toolId: view.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    expect(await fetchAgentToolIds(agent.sId)).toEqual([]);
+  });
+
+  it("writes nothing when an added tool needs a configuration", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const searchView = await MCPServerViewFactory.internal(
+      workspace,
+      "search",
+      globalSpace
+    );
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createTools(auth, agent, {
+      suggestion: { action: "add", toolId: searchView.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    assert(res.isErr());
+    expect(res.error.message).toContain("needs a configuration");
+    expect(await fetchAgentName(agent.sId)).toBe(agent.name);
+    expect(await fetchAgentToolIds(agent.sId)).toEqual([]);
+  });
+
+  async function createToolView(
+    space: SpaceResource,
+    options: { name?: string; description?: string } = {}
+  ) {
+    const server = await RemoteMCPServerFactory.create(workspace, options);
+    return MCPServerViewFactory.create(workspace, server.sId, space);
+  }
+
+  it("lifts the space restriction of a removed tool", async () => {
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const addMembers = await restrictedSpace.addMembers(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      { userIds: [auth.getNonNullableUser().sId] }
+    );
+    assert(addMembers.isOk());
+    await auth.refresh();
+    const view = await createToolView(restrictedSpace);
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    await AgentMCPServerConfigurationFactory.create(auth, restrictedSpace, {
+      agent,
+      mcpServerView: view,
+    });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createTools(auth, agent, {
+      suggestion: { action: "remove", toolId: view.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(updated?.requestedSpaceIds).toEqual([]);
+  });
+
+  it("writes nothing when the removed tool is used by several actions", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const view = await createToolView(globalSpace);
+    for (let i = 0; i < 2; i++) {
+      await AgentMCPServerConfigurationFactory.create(auth, globalSpace, {
+        agent,
+        mcpServerView: view,
+      });
+    }
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createTools(auth, agent, {
+      suggestion: { action: "remove", toolId: view.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    assert(res.isErr());
+    expect(res.error.message).toContain("cannot be removed by a suggestion");
+    expect(await fetchAgentToolIds(agent.sId)).toEqual([view.sId, view.sId]);
+  });
+
+  it("writes nothing when an added tool is restricted to skills", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const view = await createToolView(globalSpace);
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const restriction = await view.updateIsRestrictedToSkills(
+      await Authenticator.fromUserIdAndWorkspaceId(admin.sId, workspace.sId),
+      true
+    );
+    assert(restriction.isOk());
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createTools(auth, agent, {
+      suggestion: { action: "add", toolId: view.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    assert(res.isErr());
+    expect(res.error.message).toContain("invalid or not accessible");
+    expect(await fetchAgentToolIds(agent.sId)).toEqual([]);
   });
 });
