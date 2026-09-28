@@ -200,7 +200,11 @@ async function initElasticsearchRust(
   return { success: true, usedCache };
 }
 
-// Initialize Elasticsearch indices (TypeScript scripts)
+/**
+ * @cc [owner:aubin-tchoi,label:backend] hive-code-defined-search-seeding
+ * After creating the front search indices, run each available code-defined skill and global agent
+ * reindex script. A failed reindex MUST fail Elasticsearch initialization.
+ */
 async function initElasticsearchTS(
   worktreePath: string,
   envVars: Record<string, string>
@@ -245,13 +249,20 @@ async function initElasticsearchTS(
     }
   }
 
-  const reindexScript = "./scripts/reindex_code_defined_skills.ts";
-  if (await Bun.file(`${frontDir}/${reindexScript}`).exists()) {
-    logger.step("Indexing code-defined skills...");
+  const reindexScripts = [
+    { path: "./scripts/reindex_code_defined_skills.ts", description: "code-defined skills" },
+    { path: "./scripts/reindex_global_agents.ts", description: "global agents" },
+  ];
+  for (const { path, description } of reindexScripts) {
+    if (!(await Bun.file(`${frontDir}/${path}`).exists())) {
+      continue;
+    }
+
+    logger.step(`Indexing ${description}...`);
     const command = buildShell({
       sourceEnv: envShPath,
       sourceNvm: true,
-      run: `npx tsx ${reindexScript} --execute`,
+      run: `npx tsx ${path} --execute`,
     });
     const proc = Bun.spawn(["bash", "-c", command], {
       cwd: frontDir,
@@ -265,7 +276,7 @@ async function initElasticsearchTS(
     await proc.exited;
 
     if (proc.exitCode !== 0) {
-      logger.error(`Failed to index code-defined skills:\n${stdout}\n${stderr}`);
+      logger.error(`Failed to index ${description}:\n${stdout}\n${stderr}`);
       return false;
     }
   }
