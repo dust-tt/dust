@@ -805,6 +805,13 @@ export function UsagePage() {
     handleApproveOnModalSaved();
   }, [handleApproveOnModalSaved, clearSelection]);
 
+  const handleSpendLimitSaved = useCallback(() => {
+    // A single-member selection can be routed to this modal, so clear the
+    // selection on save like the other selection-driven mutations do.
+    clearSelection();
+    handleApproveOnModalSaved();
+  }, [handleApproveOnModalSaved, clearSelection]);
+
   // Rows to spin while a bulk update runs — the request returns once the bulk
   // workflow has completed. For an "all matching" selection only the current
   // page is visible, so spin its non-excluded rows.
@@ -1429,7 +1436,7 @@ export function UsagePage() {
           canEditDefaultLimit={isWorkspaceAdmin}
           defaultUserSpendLimit={defaultUserSpendLimitState}
           onSavingChange={handleUsagePendingChange}
-          onSaved={handleApproveOnModalSaved}
+          onSaved={handleSpendLimitSaved}
         />
 
         <BulkEditSpendLimitModal
