@@ -42,6 +42,7 @@ import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
 import type { MembershipSeatType } from "@app/types/memberships";
 import {
+  isMembershipSeatType,
   isPaidSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
@@ -205,7 +206,7 @@ function getScheduledSeatChangeLabel(
   // billing cadence switches. Call that out explicitly instead of the
   // confusing "changed to Pro" wording, since the user is already on Pro.
   const isMonthlyToYearlySwitch =
-    !!currentSeatType &&
+    isMembershipSeatType(currentSeatType) &&
     isPaidSeatType(currentSeatType) &&
     !currentSeatType.endsWith("_yearly") &&
     scheduledSeatType.endsWith("_yearly") &&
@@ -1325,7 +1326,7 @@ export function MembersUsageTable({
                 ]
               : []),
             ...(showSpendLimit &&
-            m.seatType !== null &&
+            isMembershipSeatType(m.seatType) &&
             isPaidSeatType(m.seatType)
               ? [
                   {

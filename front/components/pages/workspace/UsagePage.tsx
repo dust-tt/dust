@@ -734,7 +734,7 @@ export function UsagePage() {
 
   const handleBatchEditSpendLimit = useCallback(() => {
     if (
-      singleSelectedMember?.seatType &&
+      isMembershipSeatType(singleSelectedMember?.seatType) &&
       isPaidSeatType(singleSelectedMember.seatType)
     ) {
       handleEditSpendLimitFromTable(singleSelectedMember);
