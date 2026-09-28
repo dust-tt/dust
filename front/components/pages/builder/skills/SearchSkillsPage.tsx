@@ -5,6 +5,7 @@ import {
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
 import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
+import { useSearchFilterHashParam } from "@app/components/shared/filter_panel/searchFilterHash";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
@@ -15,7 +16,6 @@ import {
   BatchAvailabilityDialog,
   SkillsBatchEditBar,
 } from "@app/components/skills/SkillsBatchEdit";
-import type { SkillFilter } from "@app/components/skills/skillFilter";
 import {
   SKILL_FILTER_CATEGORIES,
   toSkillSearchFilters,
@@ -284,7 +284,7 @@ export function SearchSkillsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
   const [showHiddenSkills, setShowHiddenSkills] = useState(false);
-  const [filter, setFilter] = useState<SkillFilter>({});
+  const [filter, setFilter] = useSearchFilterHashParam(SKILL_FILTER_CATEGORIES);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const searchFilters = toSkillSearchFilters(filter);
   const activeTab =
