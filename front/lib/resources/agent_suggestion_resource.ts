@@ -7,7 +7,6 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -44,27 +43,25 @@ export interface AgentSuggestionResource
 export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> {
   static model: ModelStatic<AgentSuggestionModel> = AgentSuggestionModel;
 
-  private readonly agentAccess: AgentResource | null;
-  readonly _agentConfigurationId: string;
+  private readonly agent: AgentResource;
   readonly _conversationId: string | null;
 
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
     blob: Attributes<AgentSuggestionModel>,
-    agentAccess: AgentResource | null,
-    agentConfigurationId: string,
+    agent: AgentResource,
     conversationId: string | null
   ) {
     super(AgentSuggestionModel, blob);
-    this.agentAccess = agentAccess;
-    this._agentConfigurationId = agentConfigurationId;
+    this.agent = agent;
     this._conversationId = conversationId;
   }
 
-  /**
-   * Fetches permissions for agent suggestions using the selected agent read source.
-   */
-  private static async getAgentAccessById(
+  get _agentConfigurationId(): string {
+    return this.agent.sId;
+  }
+
+  private static async getAgentById(
     auth: Authenticator,
     agentIds: string[]
   ): Promise<Map<string, AgentResource>> {
@@ -79,17 +76,15 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
   static async createSuggestionForAgent(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agent: AgentResource,
     blob: Omit<
       CreationAttributes<AgentSuggestionModel>,
       "workspaceId" | "agentConfigurationId"
     >
   ): Promise<AgentSuggestionResource> {
-    const [suggestion] = await this.createSuggestionsForAgent(
-      auth,
-      agentConfiguration,
-      [blob]
-    );
+    const [suggestion] = await this.createSuggestionsForAgent(auth, agent, [
+      blob,
+    ]);
     return suggestion;
   }
 
@@ -100,12 +95,12 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
    * inserted before this contract, not as a fallback for new call sites.
    */
   /**
-   * Same as `createSuggestionForAgent`, batched: the agent's editor permissions are looked up
-   * once and every suggestion is inserted in a single query, instead of once per suggestion.
+   * Same as `createSuggestionForAgent`, batched: every suggestion is inserted in a single query,
+   * instead of once per suggestion.
    */
   static async createSuggestionsForAgent(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType,
+    agent: AgentResource,
     blobs: Omit<
       CreationAttributes<AgentSuggestionModel>,
       "workspaceId" | "agentConfigurationId"
@@ -117,36 +112,21 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
     const owner = auth.getNonNullableWorkspace();
 
-    // Look up the agent's editor permissions.
-    const agentAccessById = await this.getAgentAccessById(auth, [
-      agentConfiguration.sId,
-    ]);
-    const agentAccess = agentAccessById.get(agentConfiguration.sId) ?? null;
-
-    // Check permission.
-    const canWrite = this.canEditAgent(auth, agentAccess);
-
-    if (!canWrite) {
+    if (!this.canEditAgent(auth, agent)) {
       throw new Error("User does not have permission to edit this agent");
     }
 
     const suggestions = await AgentSuggestionModel.bulkCreate(
       blobs.map((blob) => ({
         ...blob,
-        agentConfigurationId: agentConfiguration.id,
+        agentConfigurationId: agent.agentConfigurationModelId,
         workspaceId: owner.id,
       }))
     );
 
     return suggestions.map(
       (suggestion) =>
-        new this(
-          AgentSuggestionModel,
-          suggestion.get(),
-          agentAccess,
-          agentConfiguration.sId,
-          null
-        )
+        new this(AgentSuggestionModel, suggestion.get(), agent, null)
     );
   }
 
@@ -190,14 +170,13 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       ...new Set(suggestions.map((s) => s.agentConfiguration?.sId ?? "")),
     ].filter((sId) => sId !== "");
 
-    const agentAccessById = await this.getAgentAccessById(auth, agentIds);
+    const agentById = await this.getAgentById(auth, agentIds);
 
     // Filter suggestions to only include those for agents the user can edit.
     return removeNulls(
       suggestions.map((suggestion) => {
-        const agentConfig = suggestion.agentConfiguration;
-        const agentAccess = agentAccessById.get(agentConfig.sId) ?? null;
-        if (!this.canEditAgent(auth, agentAccess)) {
+        const agent = agentById.get(suggestion.agentConfiguration.sId);
+        if (!agent || !this.canEditAgent(auth, agent)) {
           if (throwOnInaccessible) {
             throw new Error(
               "User does not have permission to access every requested agent suggestion"
@@ -208,8 +187,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
         return new this(
           AgentSuggestionModel,
           suggestion.get(),
-          agentAccess,
-          agentConfig.sId,
+          agent,
           suggestion.conversation?.sId ?? null
         );
       })
@@ -218,13 +196,13 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
   private static canEditAgent(
     auth: Authenticator,
-    access: AgentResource | null
+    agent: AgentResource
   ): boolean {
     if (auth.isAdmin()) {
       return true;
     }
 
-    return access !== null && auth.can("write", access);
+    return auth.can("write", agent);
   }
 
   static async fetchByIds(
@@ -301,7 +279,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    if (!AgentSuggestionResource.canEditAgent(auth, this.agentAccess)) {
+    if (!AgentSuggestionResource.canEditAgent(auth, this.agent)) {
       return new Err(
         new Error("User does not have permission to edit this agent")
       );
@@ -399,7 +377,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
     assert(
       suggestions.every((s) =>
-        AgentSuggestionResource.canEditAgent(auth, s.agentAccess)
+        AgentSuggestionResource.canEditAgent(auth, s.agent)
       ),
       "User does not have permission to edit this agent"
     );

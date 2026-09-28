@@ -45,9 +45,10 @@ import {
 } from "@app/lib/api/actions/servers/building_agents_and_skills/skill_suggestion_changes";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { fetchCustomSkillById } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
+import type { FullAgentResource } from "@app/lib/resources/agent_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillReference } from "@app/lib/skills/format";
@@ -56,10 +57,6 @@ import {
   hasUnparsableSkillRefTag,
   resolveSkillRefTags,
 } from "@app/lib/skills/format";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
@@ -84,10 +81,10 @@ type PlannedChange =
   | { type: "agent_creation"; create: CreateSuggestionType }
   | {
       type: "agent";
-      agent: LightAgentConfigurationType;
+      agent: AgentResource;
       singletons: SingletonAgentSuggestionData[];
       instructions: {
-        agent: AgentConfigurationType;
+        agent: FullAgentResource;
         edits: InstructionSuggestionEditInput[];
       } | null;
       skills: SkillsSuggestionType[];
@@ -103,12 +100,9 @@ type PlannedChange =
 async function fetchAgentForSuggestion(
   auth: Authenticator,
   agentId: string
-): Promise<Result<AgentConfigurationType, MCPError>> {
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "full",
-  });
-  if (!agent || (!agent.canRead && !auth.isAdmin())) {
+): Promise<Result<AgentResource, MCPError>> {
+  const agent = await AgentResource.fetchById(auth, agentId);
+  if (!agent || (!auth.can("read", agent) && !auth.can("admin", agent))) {
     return new Err(new MCPError(`Agent "${agentId}" not found.`));
   }
 
@@ -197,7 +191,9 @@ async function planAgentEdit(
   }
 
   if (description !== undefined) {
-    const validation = validateAgentDescriptionChange(agent, { description });
+    const validation = validateAgentDescriptionChange(auth, agent, {
+      description,
+    });
     if (validation.isErr()) {
       return new Err(new MCPError(validation.error.message));
     }
@@ -205,7 +201,7 @@ async function planAgentEdit(
   }
 
   if (scope !== undefined) {
-    const validation = validateAgentPublishStateChange(agent, { scope });
+    const validation = validateAgentPublishStateChange(auth, agent, { scope });
     if (validation.isErr()) {
       return new Err(new MCPError(validation.error.message));
     }
@@ -228,7 +224,7 @@ async function planAgentEdit(
   }
 
   let instructions: {
-    agent: AgentConfigurationType;
+    agent: FullAgentResource;
     edits: InstructionSuggestionEditInput[];
   } | null = null;
   if (instructionEdits && instructionEdits.length > 0) {
@@ -240,6 +236,10 @@ async function planAgentEdit(
     if (validation.isErr()) {
       return validation;
     }
+    assert(
+      agent.isFull(),
+      "Validated instruction edits imply a readable agent."
+    );
     instructions = { agent, edits: validation.value };
   }
 
@@ -720,7 +720,7 @@ async function recordPlannedChange(
 
       if (change.instructions) {
         const res = await createAgentInstructionSuggestions(auth, {
-          agentConfiguration: change.instructions.agent,
+          agent: change.instructions.agent,
           edits: change.instructions.edits,
           source: "conversational",
           conversation,

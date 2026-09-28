@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   deleteEmailReplyContext,
   getEmailReplyContext,
@@ -8,14 +7,15 @@ import {
 } from "@app/lib/api/assistant/email/email_trigger";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { getAgentLoopRuntimeDataWithAuth } from "@app/types/assistant/agent_run";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/assistant/configuration/agent", () => ({
-  getAgentConfiguration: vi.fn(),
+vi.mock("@app/lib/resources/agent_resource", () => ({
+  AgentResource: { fetchById: vi.fn() },
 }));
 
 vi.mock("@app/lib/api/assistant/email/email_trigger", () => ({
@@ -72,7 +72,7 @@ describe("sendEmailReplyOnCompletion", () => {
     vi.mocked(
       AgentMCPActionResource.listBlockedActionsForConversation
     ).mockResolvedValue([]);
-    vi.mocked(getAgentConfiguration).mockResolvedValue(null);
+    vi.mocked(AgentResource.fetchById).mockResolvedValue(null);
   });
 
   it("replies only to the sender even when the stored context contains legacy reply-all fields", async () => {

@@ -1,9 +1,9 @@
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import type { Authenticator } from "@app/lib/auth";
+import type { FullAgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -102,13 +102,13 @@ export function validateInstructionEdits(
 export async function createAgentInstructionSuggestions(
   auth: Authenticator,
   {
-    agentConfiguration,
+    agent,
     edits,
     source,
     conversation,
     batch = null,
   }: {
-    agentConfiguration: AgentConfigurationType;
+    agent: FullAgentResource;
     edits: InstructionSuggestionEditInput[];
     source: AgentSuggestionSource;
     conversation: ConversationResource | ConversationWithoutContentType | null;
@@ -122,7 +122,7 @@ export async function createAgentInstructionSuggestions(
 
   const suggestions = await AgentSuggestionResource.createSuggestionsForAgent(
     auth,
-    agentConfiguration,
+    agent,
     edits.map(({ analysis, ...suggestionData }) => ({
       kind: "instructions" as const,
       suggestion: suggestionData,
@@ -142,11 +142,7 @@ export async function createAgentInstructionSuggestions(
     })
   );
 
-  await pruneConflictingInstructionSuggestions(
-    auth,
-    agentConfiguration,
-    created
-  );
+  await pruneConflictingInstructionSuggestions(auth, agent, created);
 
   return new Ok(created);
 }

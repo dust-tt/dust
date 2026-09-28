@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
@@ -7,6 +8,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
+import assert from "assert";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("AgentSuggestionResource", () => {
@@ -492,10 +494,16 @@ describe("AgentSuggestionResource", () => {
         workspace.sId
       );
 
+      const agent = await AgentResource.fetchById(
+        otherAuthenticator,
+        agentConfiguration.sId
+      );
+      assert(agent);
+
       await expect(
         AgentSuggestionResource.createSuggestionForAgent(
           otherAuthenticator,
-          agentConfiguration,
+          agent,
           {
             kind: "instructions",
             suggestion: {

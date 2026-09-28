@@ -4,6 +4,8 @@ import {
 } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import type { FullAgentResource } from "@app/lib/resources/agent_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
@@ -14,7 +16,17 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import assert from "assert";
 import { beforeEach, describe, expect, it } from "vitest";
+
+async function fetchFullAgent(
+  auth: Authenticator,
+  agentId: string
+): Promise<FullAgentResource> {
+  const agent = await AgentResource.fetchById(auth, agentId);
+  assert(agent?.isFull(), `Readable agent not found for agentId: ${agentId}`);
+  return agent;
+}
 
 async function getFullAgentConfiguration(
   auth: Authenticator,
@@ -684,7 +696,7 @@ describe("pruneSuggestionsForAgent", () => {
       // Manually trigger conflict pruning (in production, suggest_prompt_edits does this)
       await pruneConflictingInstructionSuggestions(
         authenticator,
-        agentWithNested,
+        await fetchFullAgent(authenticator, agentWithNested.sId),
         [{ sId: parentSuggestion.sId, targetBlockId: "parent" }]
       );
 
@@ -762,7 +774,7 @@ describe("pruneSuggestionsForAgent", () => {
       // Manually trigger conflict pruning (in production, suggest_prompt_edits does this)
       await pruneConflictingInstructionSuggestions(
         authenticator,
-        agentWithBlocks,
+        await fetchFullAgent(authenticator, agentWithBlocks.sId),
         [
           {
             sId: rootSuggestion.sId,
@@ -827,7 +839,7 @@ describe("pruneSuggestionsForAgent", () => {
 
       await pruneConflictingInstructionSuggestions(
         authenticator,
-        agentWithBlocks,
+        await fetchFullAgent(authenticator, agentWithBlocks.sId),
         [{ sId: blockSuggestion.sId, targetBlockId: "block1" }]
       );
 
