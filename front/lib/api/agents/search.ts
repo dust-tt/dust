@@ -154,7 +154,12 @@ export async function searchAgents(
               function_score: {
                 query,
                 functions: [
-                  { filter: { term: { scope: "global" } }, weight: 2 },
+                  {
+                    filter: {
+                      term: { workspace_id: GLOBAL_AGENTS_WORKSPACE_ID },
+                    },
+                    weight: 2,
+                  },
                 ],
                 boost_mode: "replace",
               },
