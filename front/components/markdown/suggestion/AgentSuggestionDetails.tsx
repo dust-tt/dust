@@ -5,6 +5,7 @@ import { formatModelEffortLabel } from "@app/components/model_picker/modelPicker
 import { getIcon } from "@app/components/resources/resources_icons";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
+import { SuggestionNewInstructionsBlock } from "@app/components/shared/SuggestionNewInstructionsBlock";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -18,8 +19,7 @@ import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Avatar, Chip, DiffBlock } from "@dust-tt/sparkle";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { Avatar, Chip } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
@@ -28,31 +28,6 @@ function formatModel(modelId: string, reasoningEffort?: ReasoningEffort) {
   return reasoningEffort
     ? formatModelEffortLabel(modelName, reasoningEffort)
     : modelName;
-}
-
-interface NewInstructionsBlockProps {
-  instructionsHtml: string;
-}
-
-function NewInstructionsBlock({ instructionsHtml }: NewInstructionsBlockProps) {
-  const editor = useEditor(
-    {
-      extensions: buildAgentInstructionsReadOnlyExtensions(),
-      editable: false,
-      content: instructionsHtml,
-      immediatelyRender: false,
-    },
-    [instructionsHtml]
-  );
-
-  return (
-    <div className="flex flex-col gap-2">
-      <span className="text-sm text-muted-foreground">Instructions</span>
-      <DiffBlock isCollapsible={false} variant="plain">
-        {editor && <EditorContent editor={editor} />}
-      </DiffBlock>
-    </div>
-  );
 }
 
 type SuggestedAction = "add" | "remove";
@@ -184,7 +159,11 @@ export function AgentSuggestionDetails({
             currentValue=""
             newValue={description}
           />
-          <NewInstructionsBlock instructionsHtml={instructions} />
+          <SuggestionNewInstructionsBlock
+            layout="inline"
+            instructionsHtml={instructions}
+            extensions={buildAgentInstructionsReadOnlyExtensions()}
+          />
           {skillIds.length > 0 && (
             <NewCapabilitiesSection label="Skills">
               {skillIds.map((skillId) => (

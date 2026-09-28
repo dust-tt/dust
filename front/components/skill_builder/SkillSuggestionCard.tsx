@@ -1,6 +1,7 @@
 import type { SuggestionDiffLayout } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
+import { SuggestionNewInstructionsBlock } from "@app/components/shared/SuggestionNewInstructionsBlock";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
 import { SuggestedSkillEditors } from "@app/components/skill_builder/SuggestedSkillEditors";
 import { SuggestedSkillName } from "@app/components/skill_builder/SuggestedSkillName";
@@ -11,7 +12,6 @@ import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillSuggestionState,
   SkillSuggestionType,
@@ -239,16 +239,11 @@ function SuggestionDetails({
             newValue={agentFacingDescription}
             layout={layout}
           />
-          <div className="flex flex-col gap-2">
-            <span className="text-sm text-muted-foreground">Instructions</span>
-            <SuggestionInstructionsDiffBlock
-              instructionsHtml=""
-              targetBlockId={INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}
-              content={instructions}
-              extensions={buildSkillInstructionsExtensions(true)}
-              layout={layout}
-            />
-          </div>
+          <SuggestionNewInstructionsBlock
+            instructionsHtml={instructions}
+            extensions={buildSkillInstructionsExtensions(true)}
+            layout={layout}
+          />
         </div>
       );
     }
