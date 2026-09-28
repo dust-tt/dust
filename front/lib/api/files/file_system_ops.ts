@@ -445,12 +445,6 @@ export async function renameCanonicalFile(
         });
   }
 
-  const linkedFileResource = await fetchLinkedFileResource(
-    auth,
-    dustFs,
-    scopedPath
-  );
-
   const dest = path.posix.join(path.posix.dirname(scopedPath), newFileName);
   if (dest !== scopedPath) {
     const isDestRegistered = await isDestinationRegistered(auth, dustFs, dest);
@@ -458,6 +452,12 @@ export async function renameCanonicalFile(
       return new Err(registeredDestinationError());
     }
   }
+
+  const linkedFileResource = await fetchLinkedFileResource(
+    auth,
+    dustFs,
+    scopedPath
+  );
 
   const renameResult = await dustFs.rename(scopedPath, newFileName);
   if (renameResult.isErr()) {
@@ -501,13 +501,13 @@ export async function moveCanonicalFile(
     });
   }
 
-  // Look up the linked FileResource before the bytes move.
-  const linkedFileResource = await fetchLinkedFileResource(auth, dustFs, src);
-
   const isDestRegistered = await isDestinationRegistered(auth, dustFs, dest);
   if (isDestRegistered) {
     return new Err(registeredDestinationError());
   }
+
+  // Look up the linked FileResource before the bytes move.
+  const linkedFileResource = await fetchLinkedFileResource(auth, dustFs, src);
 
   const moveResult = await dustFs.move({ src, dest });
   if (moveResult.isErr()) {
