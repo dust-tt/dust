@@ -12,6 +12,7 @@ import {
 } from "@app/components/shared/filter_panel/searchFilter";
 import type { FilterPanelState } from "@app/components/shared/filter_panel/useFilterPanel";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { getSkillIcon } from "@app/lib/skill";
 import { Avatar, Icon } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
@@ -21,6 +22,8 @@ function renderOptionIcon(option: SearchFilterOption) {
       return (
         <Avatar visual={option.image} name={option.name} size="xxs" isRounded />
       );
+    case "skill":
+      return <Icon visual={getSkillIcon(option.icon)} size="sm" />;
     case "tool":
       return <Icon visual={getIcon(option.icon)} size="sm" />;
     default:

@@ -24,6 +24,7 @@ export const SEARCH_FILTER_CATEGORY_LABEL = {
   availability: "Availability",
   editor: "Editors",
   model: "Models",
+  skill: "Skills",
   space: "Spaces",
   tag: "Tags",
   tool: "Tools",
@@ -39,6 +40,7 @@ export const SEARCH_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   availability: "Availability",
   editor: "Editor",
   model: "Model",
+  skill: "Skill",
   space: "Space",
   tag: "Tag",
   tool: "Tool",
@@ -50,6 +52,7 @@ export type SearchFilterOption = FilterOptionBase &
     | { category: "availability"; id: SkillAvailability }
     | { category: "editor"; image: string | null }
     | { category: "model" }
+    | { category: "skill"; icon: string | null }
     | { category: "space" }
     | { category: "tag" }
     | {
@@ -67,6 +70,7 @@ export interface SearchFilterFacets {
   availability?: { availability: SkillAvailability }[];
   editors?: Pick<UserType, "sId" | "fullName" | "image">[];
   models?: { modelId: string }[];
+  skills?: { sId: string; name: string; icon: string | null }[];
   spaces?: Pick<SpaceType, "sId" | "name" | "kind">[];
   tags?: Pick<TagType, "sId" | "name">[];
   mcpServerViews?: {
@@ -166,6 +170,18 @@ export function getSearchFilterOptions(
             category: "model",
             id: modelId,
             name: getModelFilterDisplayName(modelId),
+            disabled: false,
+          })
+        )
+        .toSorted((a, b) => a.name.localeCompare(b.name));
+    case "skill":
+      return (facets?.skills ?? [])
+        .map(
+          (skill): SearchFilterOption => ({
+            category: "skill",
+            id: skill.sId,
+            name: skill.name,
+            icon: skill.icon,
             disabled: false,
           })
         )

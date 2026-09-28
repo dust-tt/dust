@@ -11,6 +11,7 @@ import type {
 export const SKILL_FILTER_CATEGORIES = [
   "availability",
   "tool",
+  "skill",
   "editor",
   "space",
 ] as const;
@@ -25,6 +26,7 @@ export const SKILL_FILTER_CATEGORY_FACET: Record<
 > = {
   availability: "availability",
   tool: "mcpServerViews",
+  skill: "childSkills",
   editor: "editors",
   space: "spaces",
 };
@@ -34,12 +36,14 @@ export function toSkillSearchFilters(filter: SkillFilter): SkillSearchFilters {
     option.category === "availability" ? [option.id] : []
   );
   const mcpServerViewIds = getSearchFilterMcpServerViewIds(filter);
+  const childSkillIds = getSearchFilterIds(filter, "skill");
   const editorIds = getSearchFilterIds(filter, "editor");
   const spaceIds = getSearchFilterIds(filter, "space");
 
   return {
     ...(availability.length > 0 ? { availability } : {}),
     ...(mcpServerViewIds.length > 0 ? { mcpServerViewIds } : {}),
+    ...(childSkillIds.length > 0 ? { childSkillIds } : {}),
     ...(editorIds.length > 0 ? { editorIds } : {}),
     ...(spaceIds.length > 0 ? { spaceIds } : {}),
   };

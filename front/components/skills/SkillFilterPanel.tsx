@@ -62,7 +62,7 @@ export function SkillFilterPanel({
       categories={SKILL_FILTER_CATEGORIES}
       filter={filter}
       onFilterChange={onFilterChange}
-      facets={facets}
+      facets={facets && { ...facets, skills: facets.childSkills }}
       isLoading={isSkillsLoading}
       isError={isSkillsError}
       idPrefix="skill-filter"
