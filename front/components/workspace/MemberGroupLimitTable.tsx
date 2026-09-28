@@ -27,6 +27,17 @@ type GroupLimitRow = GroupRow & {
 // the input on every keystroke and drop focus.
 const groupColumns: ColumnDef<GroupLimitRow, string>[] = [
   {
+    // Kept even when empty so group names stay aligned across rows.
+    id: "isActive",
+    header: "",
+    meta: { className: "w-6" },
+    cell: ({ row }) => (
+      <DataTable.CellContent>
+        {row.original.isActive && <ActiveLimitDot />}
+      </DataTable.CellContent>
+    ),
+  },
+  {
     id: "name",
     header: "Group",
     accessorFn: (row) => row.name,
@@ -36,10 +47,7 @@ const groupColumns: ColumnDef<GroupLimitRow, string>[] = [
           row.original.isActive ? "font-semibold text-highlight-500" : undefined
         }
       >
-        <div className="flex items-center gap-2">
-          {row.original.isActive && <ActiveLimitDot />}
-          {row.original.name}
-        </div>
+        {row.original.name}
       </DataTable.CellContent>
     ),
   },
