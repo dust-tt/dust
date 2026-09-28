@@ -11,6 +11,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -1301,6 +1302,80 @@ describe("AgentResource", () => {
       expect(
         await AgentResource.batchCountFavorites(testContext.authenticator, [])
       ).toEqual(new Map());
+    });
+  });
+
+  describe("global agent content", () => {
+    it("carries the instructions of a global agent and lists its code-defined tools", async () => {
+      const { authenticator } = testContext;
+
+      const helper = await AgentResource.fetchById(
+        authenticator,
+        GLOBAL_AGENTS_SID.HELPER
+      );
+
+      assert(helper?.isFull());
+      expect(helper.content.instructions).toContain("@help");
+      expect(Array.isArray(await helper.listActions(authenticator))).toBe(true);
+    });
+  });
+
+  describe("admin_can_see_private_entities view override", () => {
+    async function setupHiddenAgentWithTool() {
+      const { workspace, globalSpace } = testContext;
+      const owner = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, owner, { role: "user" });
+      const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        owner.sId,
+        workspace.sId
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(ownerAuth, {
+        name: "Private Agent",
+        scope: "hidden",
+      });
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const mcpServerView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+      await AgentMCPServerConfigurationFactory.create(ownerAuth, globalSpace, {
+        agent,
+        mcpServerView,
+      });
+
+      const admin = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, admin, { role: "admin" });
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        admin.sId,
+        workspace.sId
+      );
+      return { agent, adminAuth };
+    }
+
+    it("keeps an unreadable agent light for an admin without the flag", async () => {
+      const { agent, adminAuth } = await setupHiddenAgentWithTool();
+
+      const resource = await AgentResource.fetchById(adminAuth, agent.sId);
+
+      assert(resource);
+      expect(resource.isFull()).toBe(false);
+      expect(await resource.listActions(adminAuth)).toEqual([]);
+    });
+
+    it("exposes the content and tools to an admin with the flag, without granting read", async () => {
+      const { agent, adminAuth } = await setupHiddenAgentWithTool();
+      await FeatureFlagFactory.basic(
+        adminAuth,
+        "admin_can_see_private_entities"
+      );
+
+      const resource = await AgentResource.fetchById(adminAuth, agent.sId);
+
+      assert(resource?.isFull());
+      expect(resource.content.instructions).toBe(agent.instructions);
+      expect(await resource.listActions(adminAuth)).toHaveLength(1);
+      expect(adminAuth.can("read", resource)).toBe(false);
     });
   });
 

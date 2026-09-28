@@ -40,13 +40,19 @@ export async function getMCPServerViewsForGlobalAgents(
   auth: Authenticator,
   variant: AgentFetchVariant
 ): Promise<MCPServerViewsForGlobalAgentsMap> {
+  // The light variant still resolves the `agent_memory` view, read-only: `dust`'s instructions
+  // depend on it, and light configurations must carry the same instructions as full ones.
   const viewsByName =
     variant === "full"
       ? await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
           auth,
           MCP_SERVERS_FOR_GLOBAL_AGENTS
         )
-      : new Map<AutoInternalMCPServerNameType, MCPServerViewResource>();
+      : await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
+          auth,
+          ["agent_memory"] as const,
+          { ensureAutoViews: false }
+        );
 
   return Object.fromEntries(
     MCP_SERVERS_FOR_GLOBAL_AGENTS.map((name) => [
