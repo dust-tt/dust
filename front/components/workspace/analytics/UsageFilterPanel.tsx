@@ -362,7 +362,7 @@ export function UsageFilterPanelView({
             </FilterSection>
             <div
               ref={setContentScrollContainer}
-              className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
+              className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto"
             >
               {activeCategory === "member" && showMemberGroupFilter && (
                 <UsageFilterMemberGroupsControls
