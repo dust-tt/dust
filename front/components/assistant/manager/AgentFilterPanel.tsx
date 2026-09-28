@@ -26,6 +26,7 @@ import type {
   AgentSearchFilters,
   AgentSearchPermissionFiltering,
 } from "@app/types/agent_search/agent_search";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -56,6 +57,7 @@ const AGENT_FILTER_CATEGORY_FACET: Record<
   editor: "editors",
   model: "models",
   tag: "tags",
+  space: "spaces",
 };
 
 function renderOptionIcon(option: AgentFilterOption) {
@@ -135,6 +137,12 @@ export function AgentFilterPanel({
       name: tag.name,
       disabled: false,
     })),
+    space: (facets?.spaces ?? []).map((space) => ({
+      category: "space",
+      id: space.sId,
+      name: space.kind === "global" ? GLOBAL_SPACE_NAME : space.name,
+      disabled: false,
+    })),
   };
   const filteredOptions = categoryOptions[activeCategory].filter((option) =>
     filterOptionMatchesSearch(option.name, searchText)
@@ -154,6 +162,7 @@ export function AgentFilterPanel({
     editor: draftFilter.editor?.length ?? 0,
     model: draftFilter.model?.length ?? 0,
     tag: draftFilter.tag?.length ?? 0,
+    space: draftFilter.space?.length ?? 0,
   };
   const activeCategorySelectionCount = categorySelectionCounts[activeCategory];
 

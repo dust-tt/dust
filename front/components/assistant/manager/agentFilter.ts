@@ -15,6 +15,7 @@ export const AGENT_FILTER_CATEGORIES = [
   "editor",
   "model",
   "tag",
+  "space",
 ] as const;
 
 export type AgentFilterCategory = (typeof AGENT_FILTER_CATEGORIES)[number];
@@ -25,6 +26,7 @@ export const AGENT_FILTER_CATEGORY_LABEL: Record<AgentFilterCategory, string> =
     editor: "Editors",
     model: "Models",
     tag: "Tags",
+    space: "Spaces",
   };
 
 export const AGENT_FILTER_CATEGORY_SINGULAR_LABEL: Record<
@@ -35,6 +37,7 @@ export const AGENT_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   editor: "Editor",
   model: "Model",
   tag: "Tag",
+  space: "Space",
 };
 
 export type AgentFilterOption = FilterOptionBase &
@@ -43,6 +46,7 @@ export type AgentFilterOption = FilterOptionBase &
     | { category: "editor"; image: string | null }
     | { category: "model" }
     | { category: "tag" }
+    | { category: "space" }
   );
 
 export type AgentFilter = CategoryFilter<
@@ -86,6 +90,7 @@ export function toAgentSearchFilters(
   const editorIds = ids("editor");
   const modelIds = ids("model");
   const tagIds = ids("tag");
+  const spaceIds = ids("space");
 
   return {
     ...tabFilters,
@@ -93,5 +98,6 @@ export function toAgentSearchFilters(
     ...(editorIds.length > 0 ? { editorIds } : {}),
     ...(modelIds.length > 0 ? { modelIds } : {}),
     ...(tagIds.length > 0 ? { tagIds } : {}),
+    ...(spaceIds.length > 0 ? { spaceIds } : {}),
   };
 }
