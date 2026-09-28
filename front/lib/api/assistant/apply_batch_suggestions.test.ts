@@ -1005,4 +1005,24 @@ describe("applyBatchSuggestions", () => {
     });
     expect(updated?.scope).toBe("hidden");
   });
+
+  it("leaves the batch pending once applied", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const newSkill = await SkillFactory.create(auth, { name: "New Skill" });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    // Once saved, the agent holds the skill: pruning its pending suggestions sees this one as done.
+    await AgentSuggestionFactory.createSkills(auth, agent, {
+      suggestion: { action: "add", skillId: newSkill.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const batch = await fetchBatch(sId);
+    expect(batch.state).toBe("pending");
+    expect(batch.agentSuggestions.map((s) => s.state)).toEqual(["pending"]);
+  });
 });

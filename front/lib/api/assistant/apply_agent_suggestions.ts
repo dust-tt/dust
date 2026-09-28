@@ -641,6 +641,9 @@ async function saveAgentConfiguration(
     auth,
     agentConfigurationId: agentId,
     assistant,
+    // Pruning cleans up after edits made in the agent builder. Here we only apply suggestions:
+    // they are still `pending` during the save, so pruning would wrongly outdate them.
+    skipSuggestionPruning: true,
   });
   if (res.isErr()) {
     return new Err(new DustError("invalid_request_error", res.error.message));
