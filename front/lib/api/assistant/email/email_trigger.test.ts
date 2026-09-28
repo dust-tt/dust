@@ -10,8 +10,10 @@ import {
   splitThreadContent,
 } from "@app/lib/api/assistant/email/email_trigger";
 import { sendEmail } from "@app/lib/api/email";
-import type { AgentResource } from "@app/lib/resources/agent_resource";
-import type { LightWorkspaceType } from "@app/types/user";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -295,12 +297,25 @@ describe("getThreadingLookupMessageIds", () => {
 
 describe("sendToolValidationEmail", () => {
   it("adds cell metadata to approval links", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "user",
+    });
+    const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "approvals" }
+    );
+    const agent = await AgentResource.fetchById(
+      authenticator,
+      agentConfiguration.sId
+    );
+    assert(agent);
+
     await sendToolValidationEmail({
       email: makeInboundEmail(),
-      agent: { name: "approvals" } as AgentResource,
+      agent,
       blockedActions: [makeBlockedAction()],
       conversation: { sId: "conversation-1" },
-      workspace: { sId: "workspace-1" } as LightWorkspaceType,
+      workspace,
     });
 
     expect(sendEmail).toHaveBeenCalledOnce();

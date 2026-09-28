@@ -366,9 +366,7 @@ export const triggerAgentMessageFeedbackNotification = async (
     );
   }
 
-  const editors = ((await agent.listEditors(auth)) ?? []).map((editor) =>
-    editor.toJSON()
-  );
+  const editors = (await agent.listEditors(auth)) ?? [];
 
   if (editors.length === 0) {
     logger.info(
