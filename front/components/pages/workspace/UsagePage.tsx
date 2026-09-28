@@ -702,13 +702,31 @@ export function UsagePage() {
     setIsBulkChangeSeatOpen(true);
   }, []);
 
-  // Selected members visible on the current page, for the bulk seat modal's
-  // avatar row (with an "all across pages" selection this is the visible
-  // subset only).
-  const selectedVisibleMembers = useMemo(
-    () => membersUsage.filter((m) => selection.rowSelection[m.sId]),
-    [membersUsage, selection.rowSelection]
+  // Remember loaded members so picks from other pages keep their avatar.
+  const [loadedMembersById, setLoadedMembersById] = useState(
+    () => new Map(membersUsage.map((m) => [m.sId, m]))
   );
+  const [prevMembersUsage, setPrevMembersUsage] = useState(membersUsage);
+  if (membersUsage !== prevMembersUsage) {
+    setPrevMembersUsage(membersUsage);
+    setLoadedMembersById((prev) => {
+      const next = new Map(prev);
+      for (const m of membersUsage) {
+        next.set(m.sId, m);
+      }
+      return next;
+    });
+  }
+
+  // In pick order so avatars stay put. A "select all" spans members never
+  // loaded, so no avatars are shown rather than a misleading subset.
+  const selectedVisibleMembers = useMemo(() => {
+    const descriptor = selection.descriptor();
+    if (descriptor.mode === "all") {
+      return [];
+    }
+    return descriptor.ids.flatMap((id) => loadedMembersById.get(id) ?? []);
+  }, [loadedMembersById, selection.descriptor]);
 
   // Translate the cross-page selection into the descriptor the bulk member
   // endpoints expect: explicit ids, or the current filter minus exclusions.
@@ -1105,6 +1123,7 @@ export function UsagePage() {
   const selectionBanner = (
     <MembersSelectionBanner
       selectedCount={selection.selectedCount}
+      selectedMembers={selectedVisibleMembers}
       totalCount={totalMembersUsage}
       hasMorePagesToSelect={selection.hasMorePagesToSelect}
       onSelectAllAcrossPages={selection.selectAllAcrossPages}

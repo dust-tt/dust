@@ -416,7 +416,7 @@ describe("search-backed Manage Agents", () => {
     await userEvent.click(
       screen.getByRole("checkbox", { name: "Select Weekly report" })
     );
-    expect(screen.getByText("1 selected.")).toBeInTheDocument();
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
     for (const action of ["Change tag", "Set model", "Unpublish", "Archive"]) {
       expect(screen.getByRole("button", { name: action })).toBeInTheDocument();
     }
@@ -434,11 +434,11 @@ describe("search-backed Manage Agents", () => {
     await userEvent.click(
       screen.getByRole("checkbox", { name: "Select Second page" })
     );
-    expect(screen.getByText("2 selected.")).toBeInTheDocument();
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText("Search agents"), "report");
     await waitFor(() =>
-      expect(screen.queryByText(/selected\./)).not.toBeInTheDocument()
+      expect(screen.queryByText(/^\d+ selected$/)).not.toBeInTheDocument()
     );
   });
 
