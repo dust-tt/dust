@@ -7,7 +7,7 @@ import {
   ROLES_DATA,
 } from "@app/components/members/Roles";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
 import { useDeleteGroup, useGroups } from "@app/lib/swr/groups";
@@ -160,12 +160,17 @@ const columns: ColumnDef<GroupRowData>[] = [
     },
   },
 ];
+const columnsWithoutManagers = columns.filter(
+  (column) => column.id !== "managers"
+);
 
 export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
+  const { hasFeature } = useFeatureFlags();
+  const isGroupManagementEnabled = hasFeature("group_management");
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
-    withManagers: true,
+    withManagers: isGroupManagementEnabled,
   });
 
   const router = useAppRouter();
@@ -274,7 +279,9 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
             </div>
             <DataTable
               data={rows}
-              columns={columns}
+              columns={
+                isGroupManagementEnabled ? columns : columnsWithoutManagers
+              }
               filter={searchTerm}
               filterColumn="name"
               pagination={pagination}
