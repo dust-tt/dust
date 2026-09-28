@@ -8,6 +8,7 @@ import { setUserMaxAllowedTier } from "@app/lib/model_tiers/allowed_tiers";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { TestWorkspacePlan } from "@app/tests/utils/WorkspaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -636,5 +637,31 @@ describe("getGlobalAgents Dust Auto default", () => {
 
     expect(agents).toHaveLength(1);
     expect(agents[0].model).toMatchObject({ modelId: expectedModelId });
+  });
+});
+
+describe("getGlobalAgents light instructions", () => {
+  it("gives dust the same instructions in the light and full variants", async () => {
+    const { authenticator } = await createResourceTest({ role: "user" });
+    await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(
+        authenticator.getNonNullableWorkspace().sId
+      )
+    );
+
+    // The full build ensures the workspace's auto tool views (including `agent_memory`) exist.
+    const [full] = await getGlobalAgents(
+      authenticator,
+      [GLOBAL_AGENTS_SID.DUST],
+      "full"
+    );
+    const [light] = await getGlobalAgents(
+      authenticator,
+      [GLOBAL_AGENTS_SID.DUST],
+      "light"
+    );
+
+    expect(full.instructions).toContain("memory");
+    expect(light.instructions).toBe(full.instructions);
   });
 });

@@ -6,6 +6,7 @@ import type {
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
+import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
@@ -360,15 +361,16 @@ export interface AgentResource
  */
 /**
  * @cc [owner:sfriquet,label:security] unreadable-agent-is-light
- * A resource built for a caller who does not hold `read` on the agent (per `getAllowedVerbs`) MUST
- * be `light`: its `content`, which carries the agent's instructions (`instructions`,
- * `instructionsHtml`), is never materialized for that caller, whatever their role, key type, or
- * superuser status. The instructions are the only private fields: the head fields (`name`,
- * `status`, `scope`, `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and
- * carried by every resource. This holds for every `fetch*` resolver and for
- * `fromModels`, so a caller allowed to enumerate agents they cannot read (an admin
- * listing hidden agents, a superuser) sees identity and core fields only. Callers MUST NOT
- * re-attach the instructions to a `light` resource from another read path.
+ * A resource built for a caller who cannot view the agent's content (per `canViewContent`: no
+ * `read`, outside the `admin_can_see_private_entities` admin override) MUST be `light`: its
+ * `content`, which carries the agent's instructions (`instructions`, `instructionsHtml`), is never
+ * materialized for that caller, whatever their role, key type, or superuser status. The
+ * instructions are the only private fields: the head fields (`name`, `status`, `scope`,
+ * `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and carried by every
+ * resource. This holds for every `fetch*` resolver, for `fromModels` and for global agents, so a
+ * caller allowed to enumerate agents they cannot read (an admin listing hidden agents, a
+ * superuser) sees identity and core fields only. Callers MUST NOT re-attach the instructions to a
+ * `light` resource from another read path.
  */
 /**
  * @cc [owner:philipperolet,label:security;product] agent-verbs
@@ -440,6 +442,7 @@ export class AgentResource
 
   private _verbs: Set<GrantVerb> = new Set();
   private _isRegularApiKey = false;
+  private _adminCanSeePrivateEntities = false;
 
   private constructor(
     agent: Attributes<AgentModel>,
@@ -547,8 +550,8 @@ export class AgentResource
         authorId: -1,
         name: configuration.name,
         description: configuration.description,
-        instructions: null,
-        instructionsHtml: null,
+        instructions: configuration.instructions,
+        instructionsHtml: configuration.instructionsHtml,
         providerId: configuration.model.providerId,
         modelId: configuration.model.modelId,
         temperature: configuration.model.temperature,
@@ -569,25 +572,42 @@ export class AgentResource
       status: configuration.status,
       versionAuthorId: null,
     } satisfies Pick<AgentResource, "scope" | "status" | "versionAuthorId">);
-    resource._content = null;
     resource.codeDefinedSkillIds = configuration.codeDefinedSkillIds ?? [];
 
-    return resource;
+    return this.materializeResource(auth, resource as FullAgentResource);
   }
 
   private static materializeResource(
     auth: Authenticator,
-    cachedResource: FullAgentResource
+    cachedResource: FullAgentResource,
+    {
+      adminCanSeePrivateEntities = false,
+    }: { adminCanSeePrivateEntities?: boolean } = {}
   ): AgentResource {
     const verbs = cachedResource.getAllowedVerbs(auth);
     cachedResource._verbs = verbs;
     cachedResource._isRegularApiKey = auth.isKey() && !auth.isSystemKey();
+    cachedResource._adminCanSeePrivateEntities = adminCanSeePrivateEntities;
 
-    if (!verbs.has("read")) {
+    if (!cachedResource.canViewContent(auth)) {
       cachedResource._content = null;
     }
 
     return cachedResource;
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security] agent-content-visibility
+   * The private content (instructions, tools) is visible to a caller who holds `read`, and to a
+   * workspace admin of a workspace with the `admin_can_see_private_entities` feature flag. The flag
+   * MUST NOT grant any verb: such an admin still cannot mention, run or edit an agent they cannot
+   * `read`.
+   */
+  canViewContent(auth: Authenticator): boolean {
+    return (
+      auth.can("read", this) ||
+      (this._adminCanSeePrivateEntities && auth.isAdmin())
+    );
   }
 
   private static fromModels(
@@ -703,10 +723,21 @@ export class AgentResource
       this.fetchGlobalAgents(auth, globalAgentIds),
     ]);
 
+    // The feature flag is only looked up when it can change the outcome: an admin fetching a custom
+    // agent they cannot read.
+    const adminCanSeePrivateEntities =
+      auth.isAdmin() &&
+      customResources.some(
+        (resource) => !resource.getAllowedVerbs(auth).has("read")
+      ) &&
+      (await canAdminSeePrivateEntities(auth));
+
     const resourcesById = new Map(
       [
         ...customResources.map((resource) =>
-          this.materializeResource(auth, resource)
+          this.materializeResource(auth, resource, {
+            adminCanSeePrivateEntities,
+          })
         ),
         ...globalResources,
       ]
@@ -1266,9 +1297,19 @@ export class AgentResource
     return result;
   }
 
+  // Global agents' tools are code-defined and depend on workspace data (data sources, tool views),
+  // so they are only built, through the full global agent build, when asked for.
   async listActions(
     auth: Authenticator
   ): Promise<MCPServerConfigurationType[]> {
+    if (this.scope === "global") {
+      if (!this.canViewContent(auth)) {
+        return [];
+      }
+      const [configuration] = await getGlobalAgents(auth, [this.sId], "full");
+      return configuration?.actions ?? [];
+    }
+
     const actionsByConfigurationModelId = await AgentResource.batchListActions(
       auth,
       [this]
@@ -1284,10 +1325,11 @@ export class AgentResource
   /**
    * @cc [owner:tdraier,label:security] actions-require-read
    * Keyed by `agentConfigurationModelId`: tools belong to a configuration version. Each input agent
-   * has an entry. An agent the caller cannot `read` MUST get `[]`: its tools carry its knowledge
-   * (data sources, tables), as private as its instructions. Global agents MUST NOT be passed: their
-   * tools are code-defined, not `AgentMCPServerConfigurationModel` rows, and they share a sentinel
-   * configuration id.
+   * has an entry. An agent whose content the caller cannot view (see `agent-content-visibility`)
+   * MUST get `[]`: its tools carry its knowledge (data sources, tables), as private as its
+   * instructions. Global agents MUST NOT be passed: their tools are code-defined, not
+   * `AgentMCPServerConfigurationModel` rows, and they share a sentinel configuration id; use
+   * `listActions`.
    */
   static async batchListActions(
     auth: Authenticator,
@@ -1301,7 +1343,7 @@ export class AgentResource
       agents.map((agent) => [agent.agentConfigurationModelId, []])
     );
     const readableConfigurationModelIds = agents
-      .filter((agent) => auth.can("read", agent))
+      .filter((agent) => agent.canViewContent(auth))
       .map((agent) => agent.agentConfigurationModelId);
     if (readableConfigurationModelIds.length === 0) {
       return result;
@@ -2882,6 +2924,10 @@ export class AgentResource
     auth: Authenticator,
     update: AgentConfigurationUpdate
   ): Promise<Result<{ resource: AgentResource; changed: boolean }, Error>> {
+    if (this.scope === "global") {
+      return new Err(new Error("Global agents cannot be updated."));
+    }
+
     // A scope change needs no private content — `scope` is a core field carried by every resource.
     const scopeChange =
       update.scope !== undefined && update.scope !== this.scope
