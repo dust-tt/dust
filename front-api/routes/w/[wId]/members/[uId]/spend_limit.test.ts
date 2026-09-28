@@ -1,3 +1,4 @@
+import { getUserSpendLimit } from "@app/lib/api/users/spend_limit";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -219,6 +220,13 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         resourceId: group.id,
       });
       expect(grant.isOk()).toBe(true);
+      const delegateAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        delegate.sId,
+        workspace.sId
+      );
+      expect(
+        (await getUserSpendLimit(delegateAuth, { userId: member.sId })).isErr()
+      ).toBe(true);
       await FeatureFlagFactory.basic(adminAuth, "group_management");
 
       expect(

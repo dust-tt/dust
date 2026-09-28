@@ -47,6 +47,19 @@ export async function listGroupsWithVerb(
   return groups.filter((group) => canUseGroupVerb(auth, group, verb));
 }
 
+export async function hasAnyGroupPermission(
+  auth: Authenticator,
+  verb: GroupManagementVerb
+): Promise<boolean> {
+  if (auth.isManager()) {
+    return true;
+  }
+  return (
+    (await auth.hasFeatureFlag("group_management")) &&
+    (await listGroupsWithVerb(auth, verb)).length > 0
+  );
+}
+
 export type GroupMemberScope =
   | { kind: "all" }
   | { kind: "ids"; memberModelIds: ModelId[] };

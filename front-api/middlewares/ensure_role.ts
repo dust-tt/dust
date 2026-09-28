@@ -1,6 +1,6 @@
 import {
   type GroupManagementVerb,
-  listGroupsWithVerb,
+  hasAnyGroupPermission,
 } from "@app/lib/resources/group_management_access";
 import type { APIErrorType } from "@app/types/error";
 import type {
@@ -100,11 +100,7 @@ export const ensureHasAnyGroupPermission = (
 ) =>
   createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
     const auth = ctx.get("auth");
-    if (
-      !auth.isManager() &&
-      (!(await auth.hasFeatureFlag("group_management")) ||
-        (await listGroupsWithVerb(auth, verb)).length === 0)
-    ) {
+    if (!(await hasAnyGroupPermission(auth, verb))) {
       return apiError(ctx, {
         status_code: 403,
         api_error: { type: "workspace_auth_error", message },

@@ -26,7 +26,10 @@ import {
   FREE_SEAT_LIFETIME_AWU_CREDITS,
 } from "@app/lib/metronome/constants";
 import type { BillingCycle } from "@app/lib/plans/billing_cycle";
-import { hasGroupVerbForMember } from "@app/lib/resources/group_management_access";
+import {
+  hasAnyGroupPermission,
+  hasGroupVerbForMember,
+} from "@app/lib/resources/group_management_access";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -89,7 +92,7 @@ export async function getUserSpendLimit(
     );
   }
   if (
-    !auth.isManager() &&
+    !(await hasAnyGroupPermission(auth, "read_usage")) ||
     !(await hasGroupVerbForMember(auth, user, "read_usage"))
   ) {
     return new Err(
