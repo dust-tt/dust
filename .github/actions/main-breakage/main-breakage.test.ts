@@ -156,7 +156,7 @@ describe("buildBreakageNotification", () => {
   });
 
   it("returns null when main was already red", async () => {
-    const text = await buildBreakageNotification({
+    const result = await buildBreakageNotification({
       github: fakeGithub({
         otherRuns: [
           { run_number: 6, conclusion: "failure" },
@@ -168,7 +168,7 @@ describe("buildBreakageNotification", () => {
       authors: "",
       slackToken: "token",
     });
-    assert.equal(text, null);
+    assert.equal(result, null);
   });
 
   it("stays silent when a newer run already completed", async () => {
@@ -190,7 +190,7 @@ describe("buildBreakageNotification", () => {
   it("ignores cancelled runs when finding the previous state", async () => {
     globalThis.fetch = (async () =>
       new Response("", { status: 500 })) as typeof fetch;
-    const text = await buildBreakageNotification({
+    const result = await buildBreakageNotification({
       github: fakeGithub({
         otherRuns: [
           { run_number: 6, conclusion: "cancelled" },
@@ -214,9 +214,9 @@ describe("buildBreakageNotification", () => {
       authors: "merger: merger@dust.tt\n",
       slackToken: "token",
     });
-    assert.notEqual(text, null);
+    assert.equal(result?.transition, "broken");
     assert.match(
-      text ?? "",
+      result?.text ?? "",
       /merged by @Merger\. Failed jobs: Test Shard 5 of 6\./
     );
   });
@@ -242,7 +242,7 @@ describe("buildBreakageNotification", () => {
   });
 
   it("skips runs with skipped jobs when finding the previous state", async () => {
-    const text = await buildBreakageNotification({
+    const result = await buildBreakageNotification({
       github: fakeGithub({
         otherRuns: [
           { run_number: 6, conclusion: "success" },
@@ -264,11 +264,11 @@ describe("buildBreakageNotification", () => {
       authors: "",
       slackToken: "token",
     });
-    assert.match(text ?? "", /main is green again/);
+    assert.equal(result?.transition, "recovered");
   });
 
   it("posts recovery when a rerun turns the latest run green", async () => {
-    const text = await buildBreakageNotification({
+    const result = await buildBreakageNotification({
       github: fakeGithub({
         otherRuns: [{ run_number: 6, conclusion: "success" }],
         jobs: [{ name: "test", conclusion: "success" }],
@@ -284,7 +284,7 @@ describe("buildBreakageNotification", () => {
       authors: "",
       slackToken: "token",
     });
-    assert.match(text ?? "", /main is green again/);
+    assert.equal(result?.transition, "recovered");
   });
 
   it("mentions the merger when Slack resolves the email", async () => {
@@ -292,7 +292,7 @@ describe("buildBreakageNotification", () => {
       new Response(JSON.stringify({ ok: true, user: { id: "U42" } }), {
         status: 200,
       })) as typeof fetch;
-    const text = await buildBreakageNotification({
+    const result = await buildBreakageNotification({
       github: fakeGithub({
         otherRuns: [{ run_number: 6, conclusion: "success" }],
         pulls: [
@@ -309,6 +309,6 @@ describe("buildBreakageNotification", () => {
       authors: "merger: merger@dust.tt\n",
       slackToken: "token",
     });
-    assert.match(text ?? "", /merged by <@U42>\./);
+    assert.match(result?.text ?? "", /merged by <@U42>\./);
   });
 });

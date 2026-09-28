@@ -275,7 +275,7 @@ async function getMergedPullRequest({
 }
 
 /**
- * Returns the Slack message text for this run, or null when main did not change state.
+ * Returns the state change and its Slack message text, or null when main did not change state.
  */
 export async function buildBreakageNotification({
   github,
@@ -283,7 +283,7 @@ export async function buildBreakageNotification({
   core,
   authors,
   slackToken,
-}: BreakageOptions): Promise<string | null> {
+}: BreakageOptions): Promise<{ transition: Transition; text: string } | null> {
   const run = context.payload.workflow_run;
   const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
     ...context.repo,
@@ -311,15 +311,18 @@ export async function buildBreakageNotification({
   }
 
   if (transition === "recovered") {
-    return formatBreakageMessage({
+    return {
       transition,
-      run,
-      repo: context.repo,
-      failedJobs: [],
-      pr: null,
-      merger: null,
-      mention: null,
-    });
+      text: formatBreakageMessage({
+        transition,
+        run,
+        repo: context.repo,
+        failedJobs: [],
+        pr: null,
+        merger: null,
+        mention: null,
+      }),
+    };
   }
 
   const { pr, merger } = await getMergedPullRequest({ github, context });
@@ -331,15 +334,18 @@ export async function buildBreakageNotification({
         core,
       })
     : new Map<string, string>();
-  return formatBreakageMessage({
+  return {
     transition,
-    run,
-    repo: context.repo,
-    failedJobs: jobsData.jobs
-      .filter((job) => job.conclusion === "failure")
-      .map((job) => job.name),
-    pr,
-    merger,
-    mention: merger ? (mentions.get(merger.toLowerCase()) ?? null) : null,
-  });
+    text: formatBreakageMessage({
+      transition,
+      run,
+      repo: context.repo,
+      failedJobs: jobsData.jobs
+        .filter((job) => job.conclusion === "failure")
+        .map((job) => job.name),
+      pr,
+      merger,
+      mention: merger ? (mentions.get(merger.toLowerCase()) ?? null) : null,
+    }),
+  };
 }
