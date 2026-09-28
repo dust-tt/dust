@@ -155,7 +155,7 @@ export const MCPServerViewsProvider = ({
   children,
   includeRestrictedToSkills = false,
 }: MCPServerViewsProviderProps) => {
-  const { spaces } = useSpacesContext();
+  const { spaces, isSpacesLoading } = useSpacesContext();
   const { featureFlags } = useFeatureFlags();
 
   const {
@@ -187,7 +187,8 @@ export const MCPServerViewsProvider = ({
       mcpServerViews: sortedMCPServerViews,
       mcpServerViewsWithKnowledge,
       mcpServerViewsWithoutKnowledge,
-      isMCPServerViewsLoading: isLoading,
+      // Spaces are needed to label views available in several spaces.
+      isMCPServerViewsLoading: isLoading || isSpacesLoading,
       isMCPServerViewsError,
     };
   }, [
@@ -196,6 +197,7 @@ export const MCPServerViewsProvider = ({
     mcpServerViewsWithoutKnowledge,
     isLoading,
     isMCPServerViewsError,
+    isSpacesLoading,
   ]);
 
   return (

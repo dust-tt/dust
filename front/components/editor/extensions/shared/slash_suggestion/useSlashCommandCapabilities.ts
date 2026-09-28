@@ -141,7 +141,7 @@ export function useSkillBuilderSlashCommandCapabilities({
 }) {
   const { hasFeature } = useFeatureFlags();
   const useSkillSearch = hasFeature("skills_search");
-  const { spaces } = useSpaces({
+  const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: "all",
   });
@@ -194,6 +194,7 @@ export function useSkillBuilderSlashCommandCapabilities({
   return {
     capabilityItems,
     resolvedQuery: capabilityQuery,
-    isLoading: isSkillsLoading || isServerViewsLoading,
+    // Spaces are needed to label tools available in several spaces.
+    isLoading: isSkillsLoading || isSpacesLoading || isServerViewsLoading,
   };
 }
