@@ -51,8 +51,6 @@ import type {
   OAuthProtectedResourceMetadata,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { Dispatcher } from "undici";
-import { fetch as undiciFetch } from "undici";
 import assert from "assert";
 import uniq from "lodash/uniq";
 import type {
@@ -62,6 +60,8 @@ import type {
   Transaction,
 } from "sequelize";
 import { Op } from "sequelize";
+import type { Dispatcher } from "undici";
+import { fetch as undiciFetch } from "undici";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 

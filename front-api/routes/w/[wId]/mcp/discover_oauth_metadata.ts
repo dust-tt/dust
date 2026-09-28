@@ -67,13 +67,16 @@ app.post(
     // Direct connect failed — try discovery.
     const defaultServerConfig = getDefaultRemoteMCPServerByURL(url);
     const extraScopes = defaultServerConfig?.scope;
-    
-    const discoveryRes = await RemoteMCPServerResource.discoverOAuthMetadata(auth, {
-      serverUrl: url,
-      provider: new MCPOAuthProvider(),
-      customHeaders: headers,
-      extraScopes,
-    });
+
+    const discoveryRes = await RemoteMCPServerResource.discoverOAuthMetadata(
+      auth,
+      {
+        serverUrl: url,
+        provider: new MCPOAuthProvider(),
+        customHeaders: headers,
+        extraScopes,
+      }
+    );
 
     if (discoveryRes.isOk()) {
       return ctx.json({
