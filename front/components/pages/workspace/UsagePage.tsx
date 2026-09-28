@@ -79,6 +79,7 @@ import {
   useDefaultUserSpendLimit,
   useUsageSettings,
 } from "@app/lib/swr/usage_settings";
+import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { GroupGrantableSeatType } from "@app/types/groups";
 import {
@@ -801,9 +802,7 @@ export function UsagePage() {
   }, [selection, pageItemIds]);
 
   const handleBulkSpendLimitValidate = useCallback(
-    async (
-      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number }
-    ): Promise<boolean> => {
+    async (limit: UserSpendLimit): Promise<boolean> => {
       const pendingMemberIds = getBulkPendingMemberIds();
       setTotalAllowedUsagePendingMemberIds((prev) => {
         const next = new Set(prev);
@@ -1487,6 +1486,7 @@ export function UsagePage() {
           isOpen={isBulkSpendLimitOpen}
           onClose={() => setIsBulkSpendLimitOpen(false)}
           memberCount={selection.selectedCount}
+          selectedMembers={selectedVisibleMembers}
           seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
           onValidate={handleBulkSpendLimitValidate}
         />
