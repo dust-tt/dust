@@ -28,6 +28,10 @@ export type DiffBlockProps = {
   className?: string;
   /** Number of lines shown before the diff collapses behind a "Show more" toggle (default 6). */
   collapsedLines?: number;
+  /** When false, the whole diff always shows, with no "Show more" toggle (default true). */
+  isCollapsible?: boolean;
+  /** "plain" drops the border and background so the diff blends into its container. */
+  variant?: "default" | "plain";
   /** The edits to display as removal/addition line pairs; ignored when children is provided. */
   changes?: DiffChange[];
   /** Custom content rendered instead of the changes array. */
@@ -55,6 +59,8 @@ export function DiffBlock({
   actions,
   className,
   collapsedLines = DEFAULT_COLLAPSED_LINES,
+  isCollapsible: canCollapse = true,
+  variant = "default",
 }: DiffBlockProps) {
   const hasContent = changes !== undefined || children !== undefined;
 
@@ -70,7 +76,7 @@ export function DiffBlock({
   useLayoutEffect(() => {
     const element = contentRef.current;
     const container = containerRef.current;
-    if (!element || !container) {
+    if (!canCollapse || !element || !container) {
       return;
     }
 
@@ -111,7 +117,7 @@ export function DiffBlock({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [changes, children, collapsedLines]);
+  }, [changes, children, collapsedLines, canCollapse]);
 
   if (!hasContent) {
     return null;
@@ -129,24 +135,27 @@ export function DiffBlock({
         <div
           ref={containerRef}
           className={cn(
-            "rounded-2xl border border-border",
-            "bg-muted-background p-2"
+            "p-2",
+            variant === "default" &&
+              "rounded-2xl border border-border bg-muted-background"
           )}
           style={
-            !isMeasured
-              ? {
-                  overflow: "hidden",
-                  maxHeight: getEstimatedCollapsedHeight(collapsedLines),
-                }
-              : isCollapsible && collapsedHeight !== undefined
+            !canCollapse
+              ? undefined
+              : !isMeasured
                 ? {
-                    maxHeight: shouldClamp
-                      ? collapsedHeight
-                      : (expandedHeight ?? collapsedHeight),
                     overflow: "hidden",
-                    transition: "max-height 200ms ease",
+                    maxHeight: getEstimatedCollapsedHeight(collapsedLines),
                   }
-                : undefined
+                : isCollapsible && collapsedHeight !== undefined
+                  ? {
+                      maxHeight: shouldClamp
+                        ? collapsedHeight
+                        : (expandedHeight ?? collapsedHeight),
+                      overflow: "hidden",
+                      transition: "max-height 200ms ease",
+                    }
+                  : undefined
           }
         >
           <div
@@ -178,7 +187,7 @@ export function DiffBlock({
               ))}
           </div>
         </div>
-        {isCollapsible && (
+        {canCollapse && isCollapsible && (
           <div className="flex justify-start px-3">
             <Button
               size="xs"
