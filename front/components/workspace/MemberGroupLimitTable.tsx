@@ -1,6 +1,9 @@
-import { CreditLimitNumberInput } from "@app/components/workspace/CreditLimitInput";
+import {
+  ActiveLimitDot,
+  CreditLimitNumberInput,
+} from "@app/components/workspace/CreditLimitInput";
 import type { GroupRow } from "@app/components/workspace/member_spend_limit_helpers";
-import { Chip, DataTable } from "@dust-tt/sparkle";
+import { DataTable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 interface MemberGroupLimitTableProps {
@@ -35,9 +38,7 @@ const groupColumns: ColumnDef<GroupLimitRow, string>[] = [
       >
         <div className="flex items-center gap-2">
           {row.original.name}
-          {row.original.isActive && (
-            <Chip size="mini" color="highlight" label="Active" />
-          )}
+          {row.original.isActive && <ActiveLimitDot />}
         </div>
       </DataTable.CellContent>
     ),
