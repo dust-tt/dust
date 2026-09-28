@@ -51,6 +51,7 @@ export async function createOrUpgradeAgentConfiguration({
   agentConfigurationId,
   authorId,
   dangerouslySkipPermissionFiltering,
+  skipSuggestionPruning,
 }: {
   auth: Authenticator;
   assistant: AgentConfigurationAssistantPayload;
@@ -61,6 +62,7 @@ export async function createOrUpgradeAgentConfiguration({
   // updates): without it those spaces are rejected and those skills silently dropped, which would
   // unrestrict the agent and strip its skills. It grants no access to what the spaces protect.
   dangerouslySkipPermissionFiltering?: boolean;
+  skipSuggestionPruning?: boolean;
 }): Promise<
   Result<
     { agentConfiguration: AgentConfigurationType; changed: boolean },
@@ -325,7 +327,7 @@ export async function createOrUpgradeAgentConfiguration({
 
   // Prune outdated suggestions after saving an existing agent.
   // This must happen after skills/tools are added to the new version.
-  if (agentConfigurationId) {
+  if (agentConfigurationId && !skipSuggestionPruning) {
     await pruneSuggestionsForAgent(auth, savedConfig);
   }
 
