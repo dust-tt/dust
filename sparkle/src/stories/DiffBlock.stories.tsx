@@ -18,6 +18,7 @@ const meta = {
 
 **Guidelines**
 - Group related edits into one \`changes\` array; multi-line hunks collapse automatically into a preview.
+- Pick the box with \`variant\`: \`borderless\` or \`plain\` when the diff already sits inside a bordered section, and pass \`isCollapsible={false}\` when the whole diff must stay visible.
 - Use the \`actions\` slot for affordances like opening the full file rather than embedding controls in the diff body.
 - For plain (non-diff) code rendering, use **CodeBlock**.`,
       },
