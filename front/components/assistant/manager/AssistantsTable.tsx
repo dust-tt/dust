@@ -812,6 +812,8 @@ export function AssistantsTable({
         .filter((a) => selectionSet.has(a.sId))
         .map((a) => ({
           sId: a.sId,
+          name: a.name,
+          pictureUrl: a.pictureUrl,
           usage: a.usage,
           tagIds: a.tags.map((tag) => tag.sId),
         })),

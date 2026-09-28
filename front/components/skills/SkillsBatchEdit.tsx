@@ -1,5 +1,6 @@
 import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
 import { ArchiveSkillsDialog } from "@app/components/skills/ArchiveSkillsDialog";
+import { getSkillIcon, SKILL_AVATAR_BACKGROUND_COLOR } from "@app/lib/skill";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -96,6 +97,11 @@ export function SkillsBatchEditBar({
       onClear={onClear}
       disabled={isUpdating}
       isLoading={isUpdating}
+      selectedAvatars={selectedSkills.map((skill) => ({
+        name: skill.name,
+        icon: getSkillIcon(skill.icon),
+        backgroundColor: SKILL_AVATAR_BACKGROUND_COLOR,
+      }))}
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

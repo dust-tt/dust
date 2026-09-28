@@ -23,7 +23,7 @@ import { UnpublishAssistantsDialog } from "./UnpublishAssistantsDialog";
 
 export type BatchEditableAgent = Pick<
   LightAgentConfigurationType,
-  "sId" | "usage"
+  "sId" | "name" | "pictureUrl" | "usage"
 > & { tagIds: string[] };
 
 type AgentEditBarProps = {
@@ -84,6 +84,10 @@ export const AgentEditBar = ({
       onClear={onClear}
       disabled={isLoading}
       isLoading={isLoading}
+      selectedAvatars={selectedAgents.map((agent) => ({
+        name: agent.name,
+        visual: agent.pictureUrl,
+      }))}
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
