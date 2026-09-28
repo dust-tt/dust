@@ -65,20 +65,28 @@ export type SearchFilterOption = FilterOptionBase &
 export type SearchFilter<Category extends SearchFilterCategory> =
   CategoryFilter<Category, SearchFilterOption>;
 
+interface SearchFilterSkillFacetValue {
+  sId: string;
+  name: string;
+  icon: string | null;
+}
+
+interface SearchFilterToolFacetValue {
+  sId: string;
+  mcpServerId: string;
+  name: string;
+  icon: MCPServerType["icon"];
+}
+
 // The facet values the options are built from; agent and skill search responses both fit.
 export interface SearchFilterFacets {
   availability?: { availability: SkillAvailability }[];
   editors?: Pick<UserType, "sId" | "fullName" | "image">[];
   models?: { modelId: string }[];
-  skills?: { sId: string; name: string; icon: string | null }[];
+  skills?: SearchFilterSkillFacetValue[];
   spaces?: Pick<SpaceType, "sId" | "name" | "kind">[];
   tags?: Pick<TagType, "sId" | "name">[];
-  mcpServerViews?: {
-    sId: string;
-    mcpServerId: string;
-    name: string;
-    icon: MCPServerType["icon"];
-  }[];
+  mcpServerViews?: SearchFilterToolFacetValue[];
 }
 
 const ACCESS_FILTER_OPTIONS: SearchFilterOption[] = [
@@ -99,7 +107,7 @@ export function getModelFilterDisplayName(modelId: string): string {
 
 // One option per MCP server, filtering on every view of it that matching resources use.
 function toToolFilterOptions(
-  views: NonNullable<SearchFilterFacets["mcpServerViews"]>
+  views: SearchFilterToolFacetValue[]
 ): SearchFilterOption[] {
   const optionsByServerId = new Map<
     string,
