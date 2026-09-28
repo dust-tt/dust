@@ -24,7 +24,7 @@ export function SuggestionPreviewHeader({
           )
         }
       >
-        View edit suggestions
+        Suggestion preview
       </ContentMessage>
       <Button
         variant="ghost"
