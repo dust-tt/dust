@@ -467,19 +467,14 @@ async function _updateDocumentOrTableParentsField({
   }
 }
 
-// Core rejects a document once the prefixes stacked along a section path reach
-// MAX_CHUNK_SIZE / 2. The title prefix also carries the metadata lines, so nested
-// prefixes get a smaller budget (see MAX_HEADING_PREFIX_TOKENS).
-// Must match `max_chunk_size` of EMBEDDING_CONFIGS in front/types/core/core_api.ts.
-export const MAX_CHUNK_SIZE = 512;
+// allows for 4 full prefixes before hitting half of the max chunk size (approx.
+// 256 chars for 512 token chunks)
+const MAX_CHUNK_SIZE = 512;
 export const MAX_PREFIX_TOKENS = MAX_CHUNK_SIZE / 8;
 // Limit on chars to avoid tokenizing too much text uselessly on documents with
 // large prefixes. The final truncating will rely on MAX_PREFIX_TOKENS so this
 // limit can be large and should be large to avoid underusing prexfixes
 export const MAX_PREFIX_CHARS = MAX_PREFIX_TOKENS * 8;
-// Headings nest under the title prefix, which also carries the metadata lines. Halving
-// the budget keeps title + two heading levels under core's MAX_CHUNK_SIZE / 2 limit.
-export const MAX_HEADING_PREFIX_TOKENS = MAX_PREFIX_TOKENS / 2;
 
 // The role of this function is to create a prefix from an arbitrary long string. The prefix
 // provided will not be augmented with `\n`, so it should include appropriate carriage return. If
@@ -569,12 +564,6 @@ async function tokenize(text: string, ds: DataSourceConfig) {
 /// This function is used to render markdown from (alternatively GFM format) to our Section format.
 /// The top-level node is always with prefix and content null and can be edited to add a prefix or
 /// content.
-/**
- * @cc [owner:PopDaph,label:backend] heading-prefix-budget
- * Each heading prefix MUST be truncated to at most `MAX_HEADING_PREFIX_TOKENS` tokens, so that a
- * title prefix rendered by `renderDocumentTitleAndContent` plus the two nested heading levels stay
- * under half of the embedder chunk size, which core enforces when tokenizing the document.
- */
 export async function renderMarkdownSection(
   dsConfig: DataSourceConfig,
   markdown: string,
@@ -606,7 +595,6 @@ export async function renderMarkdownSection(
       const c = await renderPrefixSection({
         dataSourceConfig: dsConfig,
         prefix: toMarkdown(child, { extensions: [gfmToMarkdown()] }),
-        maxPrefixTokens: MAX_HEADING_PREFIX_TOKENS,
       });
       last.content.sections.push(c);
       path.push({

@@ -16,7 +16,6 @@ import {
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   MAX_FILE_SIZE_TO_DOWNLOAD,
-  renderDocumentTitleAndContent,
   renderMarkdownSection,
 } from "@connectors/lib/data_sources";
 import type { Logger } from "@connectors/logger/logger";
@@ -156,19 +155,13 @@ export async function handleFileExport(
           return textContent;
         }
 
+        // Title and metadata prefixes are added by upsertGdriveDocument, like for
+        // every other mime type.
         return new Ok(
-          await renderDocumentTitleAndContent({
+          await renderMarkdownSection(
             dataSourceConfig,
-            title: file.name || "",
-            createdAt: new Date(file.createdAtMs),
-            content: await renderMarkdownSection(
-              dataSourceConfig,
-              textContent.value.content || ""
-            ),
-            ...(file.updatedAtMs
-              ? { updatedAt: new Date(file.updatedAtMs) }
-              : {}),
-          })
+            textContent.value.content || ""
+          )
         );
       } else {
         return handleTextExtraction(payload, localLogger, file.mimeType);
