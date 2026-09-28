@@ -42,7 +42,7 @@ app.get("/", validate("query", QuerySchema), async (ctx) => {
 
   const { zip, filename } = result.value;
 
-  // Raw Response, matching the pod app export route: the body is binary, not JSON.
+  // Raw Response: the body is binary, not JSON.
   return new Response(new Uint8Array(zip), {
     status: 200,
     headers: {
