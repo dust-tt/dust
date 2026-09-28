@@ -3,6 +3,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
@@ -10,6 +11,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -29,6 +31,16 @@ describe("applyBatchSuggestions", () => {
     const batch = await BatchSuggestionResource.fetchById(auth, batchId);
     assert(batch);
     return batch;
+  }
+
+  async function fetchAgentSkillIds(agentId: string) {
+    const agent = await getAgentConfiguration(auth, {
+      agentId,
+      variant: "full",
+    });
+    assert(agent);
+    const skills = await SkillResource.listByAgentConfiguration(auth, agent);
+    return skills.map((skill) => skill.sId);
   }
 
   async function fetchAgentName(agentId: string) {
@@ -218,5 +230,99 @@ describe("applyBatchSuggestions", () => {
 
     expect(res.isErr()).toBe(true);
     expect(await fetchAgentName(agent.sId)).toBe(agent.name);
+  });
+
+  it("adds and removes the suggested skills", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const currentSkill = await SkillFactory.create(auth, {
+      name: "Current Skill",
+    });
+    await SkillFactory.linkToAgent(auth, {
+      skillId: currentSkill.id,
+      agentConfigurationId: agent.id,
+    });
+    const newSkill = await SkillFactory.create(auth, { name: "New Skill" });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createSkills(auth, agent, {
+      suggestion: { action: "add", skillId: newSkill.sId },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createSkills(auth, agent, {
+      suggestion: { action: "remove", skillId: currentSkill.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    if (res.isErr()) {
+      throw res.error;
+    }
+    expect(await fetchAgentSkillIds(agent.sId)).toEqual([newSkill.sId]);
+  });
+
+  it("writes nothing when an added skill was archived since", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const skill = await SkillFactory.create(auth, {
+      name: "Archived Skill",
+      status: "archived",
+    });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createSkills(auth, agent, {
+      suggestion: { action: "add", skillId: skill.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    assert(res.isErr());
+    expect(res.error.message).toContain("invalid, archived or not accessible");
+    expect(await fetchAgentName(agent.sId)).toBe(agent.name);
+    expect(await fetchAgentSkillIds(agent.sId)).toEqual([]);
+  });
+
+  it("lifts the space restriction of a removed skill", async () => {
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const addMembers = await restrictedSpace.addMembers(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      { userIds: [auth.getNonNullableUser().sId] }
+    );
+    assert(addMembers.isOk());
+    await auth.refresh();
+    const skill = await SkillFactory.create(auth, {
+      name: "Restricted Skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    await SkillFactory.linkToAgent(auth, {
+      skillId: skill.id,
+      agentConfigurationId: agent.id,
+    });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createSkills(auth, agent, {
+      suggestion: { action: "remove", skillId: skill.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    if (res.isErr()) {
+      throw res.error;
+    }
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(updated?.requestedSpaceIds).toEqual([]);
+    expect(await fetchAgentSkillIds(agent.sId)).toEqual([]);
   });
 });
