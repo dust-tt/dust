@@ -77,6 +77,12 @@ function assertEndpointsSupported(models: CustomModelFileEntry[]): void {
 }
 
 // The committed file is this function's output for an empty list.
+/**
+ * @cc [owner:pmilliotte,label:security] custom-model-endpoints-stay-out-of-browser-bundles
+ * The output embeds every `endpoint`, `hostModel` included, and is imported by browser code through
+ * `models.ts`. This script MUST NOT run in the `front-spa` build, and the committed
+ * `custom_models.generated.ts` MUST stay the output for an empty list.
+ */
 function generateTypeScript(models: CustomModelFileEntry[]): string {
   const ids = JSON.stringify(
     models.map(({ modelConfig }) => modelConfig.modelId)
