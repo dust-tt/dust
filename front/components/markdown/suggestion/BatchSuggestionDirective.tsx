@@ -25,11 +25,13 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { SuggestionBatchReviewState } from "@app/types/api/assistant/suggestion_batches";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type { BatchSuggestionType } from "@app/types/suggestions/batch_suggestion";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
 import partition from "lodash/partition";
+import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 
 function toBatchProperties(attributes: Record<string, string>) {
@@ -160,6 +162,81 @@ function SkillSuggestionsDiff({
   );
 }
 
+export function getBatchSuggestionTitle(batch: BatchSuggestionType): string {
+  return batch.title ?? "Suggested changes";
+}
+
+interface PendingBatchSuggestionCardProps {
+  owner: LightWorkspaceType;
+  batch: BatchSuggestionType;
+  onAccept: () => void;
+  onReject: () => void;
+  disabled?: boolean;
+  isAccepting?: boolean;
+  isDeclining?: boolean;
+  titleAside?: ReactNode;
+  secondaryAction?: ReactNode;
+}
+
+export function PendingBatchSuggestionCard({
+  owner,
+  batch,
+  onAccept,
+  onReject,
+  disabled = false,
+  isAccepting = false,
+  isDeclining = false,
+  titleAside,
+  secondaryAction,
+}: PendingBatchSuggestionCardProps) {
+  const agentSuggestionsByAgentId = groupBy(
+    batch.agentSuggestions,
+    (s) => s.agentId
+  );
+  const skillSuggestionsBySkillId = groupBy(
+    batch.skillSuggestions,
+    (s) => s.skillConfigurationId
+  );
+
+  return (
+    <ConversationalSuggestionCard
+      title={getBatchSuggestionTitle(batch)}
+      titleAside={titleAside}
+      analysis={batch.analysis}
+      collapsibleContent={
+        <div className="flex flex-col gap-4">
+          {Object.entries(agentSuggestionsByAgentId).map(
+            ([agentId, suggestions]) => (
+              <AgentSuggestionsDiff
+                key={agentId}
+                owner={owner}
+                agentId={agentId}
+                suggestions={suggestions}
+              />
+            )
+          )}
+          {Object.entries(skillSuggestionsBySkillId).map(
+            ([skillId, suggestions]) => (
+              <SkillSuggestionsDiff
+                key={skillId}
+                owner={owner}
+                skillId={skillId}
+                suggestions={suggestions}
+              />
+            )
+          )}
+        </div>
+      }
+      onAccept={onAccept}
+      onReject={onReject}
+      secondaryAction={secondaryAction}
+      disabled={disabled}
+      isAccepting={isAccepting}
+      isDeclining={isDeclining}
+    />
+  );
+}
+
 interface BatchSuggestionProps {
   owner: LightWorkspaceType;
   batchId: string;
@@ -200,56 +277,21 @@ function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
     return null;
   }
 
-  const agentSuggestionsByAgentId = groupBy(
-    batch.agentSuggestions,
-    (s) => s.agentId
-  );
-  const skillSuggestionsBySkillId = groupBy(
-    batch.skillSuggestions,
-    (s) => s.skillConfigurationId
-  );
-
-  const title = batch.title ?? "Suggested changes";
-
   // A reviewed batch is shown like a reviewed suggestion: its state chip and title only.
   if (batch.state !== "pending") {
     return (
       <ReviewedSuggestionCard
         state={batch.state}
-        title={title}
+        title={getBatchSuggestionTitle(batch)}
         updatedAt={batch.updatedAt}
       />
     );
   }
 
   return (
-    <ConversationalSuggestionCard
-      title={title}
-      analysis={batch.analysis}
-      collapsibleContent={
-        <div className="flex flex-col gap-4">
-          {Object.entries(agentSuggestionsByAgentId).map(
-            ([agentId, suggestions]) => (
-              <AgentSuggestionsDiff
-                key={agentId}
-                owner={owner}
-                agentId={agentId}
-                suggestions={suggestions}
-              />
-            )
-          )}
-          {Object.entries(skillSuggestionsBySkillId).map(
-            ([skillId, suggestions]) => (
-              <SkillSuggestionsDiff
-                key={skillId}
-                owner={owner}
-                skillId={skillId}
-                suggestions={suggestions}
-              />
-            )
-          )}
-        </div>
-      }
+    <PendingBatchSuggestionCard
+      owner={owner}
+      batch={batch}
       onAccept={() => void review("approved")}
       onReject={() => void review("rejected")}
       disabled={pendingState !== null}

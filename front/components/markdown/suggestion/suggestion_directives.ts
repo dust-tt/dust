@@ -22,41 +22,19 @@ export function isConversationAgentSuggestionKind(
   return CONVERSATION_AGENT_SUGGESTION_KINDS.some((k) => k === kind);
 }
 
-const SUGGESTION_DIRECTIVE_REGEX =
-  /:{1,2}(agent_suggestion|skill_suggestion)\[\]\{([^}]*)\}/g;
-
-export type SuggestionPileDirective =
-  | {
-      type: "agent";
-      sId: string;
-      kind: ConversationAgentSuggestionKind;
-      agentId: string;
-    }
-  | { type: "skill"; sId: string; skillId: string };
+const BATCH_DIRECTIVE_REGEX = /:{1,2}batch_edit\[\]\{([^}]*)\}/g;
 
 // Values may be double-quoted, single-quoted or bare, as the markdown directive parser accepts.
 const ATTRIBUTE_REGEX = /(\w+)=(?:"([^"]*)"|'([^']*)'|([^\s}"']+))/g;
 
-function parseDirective(
-  name: string,
-  rawAttributes: string
-): SuggestionPileDirective | null {
+function parseBatchId(rawAttributes: string): string | null {
   const attributes = Object.fromEntries(
     [...rawAttributes.matchAll(ATTRIBUTE_REGEX)].map((m) => [
       m[1],
       m[2] ?? m[3] ?? m[4],
     ])
   );
-
-  if (name === "agent_suggestion") {
-    const { sId, kind, agentId } = attributes;
-    return sId && agentId && kind && isConversationAgentSuggestionKind(kind)
-      ? { type: "agent", sId, kind, agentId }
-      : null;
-  }
-
-  const { sId, skillId } = attributes;
-  return sId && skillId ? { type: "skill", sId, skillId } : null;
+  return attributes.sId || null;
 }
 
 const MIN_PILE_SIZE = 2;
@@ -92,12 +70,12 @@ function capRecap(text: string): string {
 
 /**
  * @cc [owner:avervaet,label:product] pile-two-or-more-suggestions
- * Two or more complete suggestion directives MUST all move, in order, to `pileDirectives`; else none.
- * Directives inside code spans or fences are literal text: never counted nor removed.
+ * Two or more batch directives carrying a batch id MUST all move, in order, to `pileBatchIds`; else
+ * none. Directives inside code spans or fences are literal text: never counted nor removed.
  */
 export function extractSuggestionPile(content: string): {
   content: string;
-  pileDirectives: SuggestionPileDirective[];
+  pileBatchIds: string[];
   recap: string | null;
 } {
   const recaps: string[] = [];
@@ -112,27 +90,27 @@ export function extractSuggestionPile(content: string): {
     }
   );
 
-  const pileDirectives: SuggestionPileDirective[] = [];
+  const pileBatchIds: string[] = [];
   const contentWithoutDirectives = replaceOutsideCode(
     contentWithoutRecap,
-    SUGGESTION_DIRECTIVE_REGEX,
-    (match, name: string, rawAttributes: string) => {
-      const directive = parseDirective(name, rawAttributes);
-      if (!directive) {
+    BATCH_DIRECTIVE_REGEX,
+    (match, rawAttributes: string) => {
+      const batchId = parseBatchId(rawAttributes);
+      if (!batchId) {
         return match;
       }
-      pileDirectives.push(directive);
+      pileBatchIds.push(batchId);
       return "";
     }
   );
 
-  if (pileDirectives.length < MIN_PILE_SIZE) {
-    return { content: contentWithoutRecap, pileDirectives: [], recap: null };
+  if (pileBatchIds.length < MIN_PILE_SIZE) {
+    return { content: contentWithoutRecap, pileBatchIds: [], recap: null };
   }
 
   return {
     content: contentWithoutDirectives,
-    pileDirectives,
+    pileBatchIds,
     recap: recaps.length > 0 ? capRecap(recaps[0]) : null,
   };
 }

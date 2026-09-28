@@ -1601,11 +1601,10 @@ function AgentMessageContent({
               additionalMarkdownComponents={additionalMarkdownComponents}
               additionalMarkdownPlugins={additionalMarkdownPlugins}
             />
-            {answer.pileDirectives.length > 0 && (
+            {answer.pileBatchIds.length > 0 && (
               <ConversationSuggestionPile
                 owner={owner}
-                conversationId={conversationId}
-                directives={answer.pileDirectives}
+                batchIds={answer.pileBatchIds}
                 recap={answer.recap}
               />
             )}

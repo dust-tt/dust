@@ -1,18 +1,16 @@
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { getAgentSuggestionLabels } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
+import {
+  getBatchSuggestionTitle,
+  PendingBatchSuggestionCard,
+} from "@app/components/markdown/suggestion/BatchSuggestionDirective";
 import { DEFAULT_SUGGESTION_VISUAL } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
-import { ConversationalSuggestionReviewCard } from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
-import type { SuggestionPileDirective } from "@app/components/markdown/suggestion/suggestion_directives";
-import { DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS } from "@app/components/markdown/suggestion/suggestion_directives";
 import { getSuggestionStateChip } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
-  useConversationAgentSuggestionReview,
-  useConversationSkillSuggestionReview,
-} from "@app/hooks/useConversationalSuggestionReview";
-import {
-  AGENT_SIDE_PANEL_TYPE,
-  SKILL_SIDE_PANEL_TYPE,
-} from "@app/types/conversation_side_panel";
+  usePatchSuggestionBatch,
+  useRevalidateBatchTargets,
+  useSuggestionBatches,
+} from "@app/hooks/useSuggestionBatches";
+import type { SuggestionBatchReviewState } from "@app/types/api/assistant/suggestion_batches";
+import type { BatchSuggestionType } from "@app/types/suggestions/batch_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionCardStack,
@@ -23,301 +21,10 @@ import {
   Edit04,
   LoadingBlock,
 } from "@dust-tt/sparkle";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cloneElement, useState } from "react";
 
-interface PileCardExtras {
-  titleAside: ReactNode;
-  secondaryAction: ReactNode;
-}
-
-interface PileEntry {
-  sId: string;
-  state: "pending" | "approved" | "rejected" | "outdated";
-  title: string;
-  visual: ReactElement<{ size?: string }>;
-  renderCard: (extras: PileCardExtras) => ReactNode;
-}
-
-// Everything the pile needs from one agent or skill: its suggestions from this message and a way
-// to review the pending ones in a single request.
-interface PileTarget {
-  isLoading: boolean;
-  isBusy: boolean;
-  entries: PileEntry[];
-  reviewPending: (decision: "accept" | "reject") => Promise<void>;
-}
-
-type AgentDirective = Extract<SuggestionPileDirective, { type: "agent" }>;
-type SkillDirective = Extract<SuggestionPileDirective, { type: "skill" }>;
-
-type PileTargetDirectives =
-  | { type: "agent"; agentId: string; directives: AgentDirective[] }
-  | { type: "skill"; skillId: string; directives: SkillDirective[] };
-
-function groupByTarget(
-  directives: SuggestionPileDirective[]
-): PileTargetDirectives[] {
-  const byAgent = new Map<string, AgentDirective[]>();
-  const bySkill = new Map<string, SkillDirective[]>();
-  for (const directive of directives) {
-    if (directive.type === "agent") {
-      const bucket = byAgent.get(directive.agentId) ?? [];
-      bucket.push(directive);
-      byAgent.set(directive.agentId, bucket);
-    } else {
-      const bucket = bySkill.get(directive.skillId) ?? [];
-      bucket.push(directive);
-      bySkill.set(directive.skillId, bucket);
-    }
-  }
-  return [
-    ...[...byAgent].map(
-      ([agentId, agentDirectives]): PileTargetDirectives => ({
-        type: "agent",
-        agentId,
-        directives: agentDirectives,
-      })
-    ),
-    ...[...bySkill].map(
-      ([skillId, skillDirectives]): PileTargetDirectives => ({
-        type: "skill",
-        skillId,
-        directives: skillDirectives,
-      })
-    ),
-  ];
-}
-
-interface AgentPileTargetProps {
-  owner: LightWorkspaceType;
-  conversationId: string;
-  target: Extract<PileTargetDirectives, { type: "agent" }>;
-  children: (target: PileTarget) => ReactNode;
-}
-
-function AgentPileTarget({
-  owner,
-  conversationId,
-  target,
-  children,
-}: AgentPileTargetProps) {
-  const {
-    suggestions,
-    agentConfiguration,
-    isLoading,
-    isAgentConfigurationValidating,
-    getPendingAction,
-    acceptSuggestions,
-    rejectSuggestions,
-  } = useConversationAgentSuggestionReview({
-    workspaceId: owner.sId,
-    agentId: target.agentId,
-    conversationId,
-    skipAgentConfiguration: target.directives.every(({ kind }) =>
-      DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind)
-    ),
-  });
-
-  const { openPanel } = useConversationSidePanelContext();
-
-  const suggestionsById = new Map(suggestions.map((s) => [s.sId, s]));
-  const entries: PileEntry[] = target.directives.flatMap(({ sId, kind }) => {
-    const suggestion = suggestionsById.get(sId);
-    if (!suggestion || suggestion.kind !== kind) {
-      return [];
-    }
-    return [
-      {
-        sId,
-        state: suggestion.state,
-        title: getAgentSuggestionLabels(suggestion).title,
-        visual: agentConfiguration?.pictureUrl ? (
-          <Avatar visual={agentConfiguration.pictureUrl} size="sm" />
-        ) : (
-          DEFAULT_SUGGESTION_VISUAL
-        ),
-        renderCard: (extras: PileCardExtras) => (
-          <ConversationalSuggestionReviewCard
-            target={{ type: "agent", suggestion, agentConfiguration }}
-            onAccept={() => void acceptSuggestions([suggestion])}
-            onReject={() => void rejectSuggestions([suggestion])}
-            onPreview={() =>
-              openPanel({
-                type: AGENT_SIDE_PANEL_TYPE,
-                agentId: target.agentId,
-                previewSuggestionIds: [suggestion.sId],
-              })
-            }
-            isAccepting={getPendingAction(suggestion) === "accept"}
-            isRejecting={getPendingAction(suggestion) === "reject"}
-            // Reviewing against stale agent details would be misleading, so wait for the refresh.
-            disabled={isAgentConfigurationValidating}
-            {...extras}
-          />
-        ),
-      },
-    ];
-  });
-
-  const pendingEntries = entries.filter((e) => e.state === "pending");
-
-  return children({
-    isLoading,
-    isBusy:
-      isAgentConfigurationValidating ||
-      pendingEntries.some((e) => getPendingAction(e) !== null),
-    entries,
-    reviewPending: async (decision) => {
-      if (pendingEntries.length === 0) {
-        return;
-      }
-      await (decision === "accept"
-        ? acceptSuggestions(pendingEntries)
-        : rejectSuggestions(pendingEntries));
-    },
-  });
-}
-
-interface SkillPileTargetProps {
-  owner: LightWorkspaceType;
-  conversationId: string;
-  target: Extract<PileTargetDirectives, { type: "skill" }>;
-  children: (target: PileTarget) => ReactNode;
-}
-
-function SkillPileTarget({
-  owner,
-  conversationId,
-  target,
-  children,
-}: SkillPileTargetProps) {
-  const {
-    suggestions,
-    skill,
-    isLoading,
-    getPendingAction,
-    acceptSuggestions,
-    rejectSuggestions,
-  } = useConversationSkillSuggestionReview({
-    workspaceId: owner.sId,
-    skillId: target.skillId,
-    conversationId,
-  });
-
-  const { openPanel } = useConversationSidePanelContext();
-
-  const suggestionsById = new Map(suggestions.map((s) => [s.sId, s]));
-  const entries: PileEntry[] = skill
-    ? target.directives.flatMap(({ sId }) => {
-        const suggestion = suggestionsById.get(sId);
-        if (!suggestion) {
-          return [];
-        }
-        return [
-          {
-            sId,
-            state: suggestion.state,
-            title: suggestion.title ?? "Suggestion",
-            visual: DEFAULT_SUGGESTION_VISUAL,
-            renderCard: (extras: PileCardExtras) => (
-              <ConversationalSuggestionReviewCard
-                target={{
-                  type: "skill",
-                  suggestion,
-                  skill,
-                  workspaceId: owner.sId,
-                }}
-                onAccept={() => void acceptSuggestions([suggestion])}
-                onReject={() => void rejectSuggestions([suggestion])}
-                onPreview={() =>
-                  openPanel({
-                    type: SKILL_SIDE_PANEL_TYPE,
-                    skillId: target.skillId,
-                    previewSuggestionIds: [suggestion.sId],
-                  })
-                }
-                isAccepting={getPendingAction(suggestion) === "accept"}
-                isRejecting={getPendingAction(suggestion) === "reject"}
-                {...extras}
-              />
-            ),
-          },
-        ];
-      })
-    : [];
-
-  const pendingEntries = entries.filter((e) => e.state === "pending");
-
-  return children({
-    isLoading,
-    isBusy: pendingEntries.some((e) => getPendingAction(e) !== null),
-    entries,
-    reviewPending: async (decision) => {
-      if (pendingEntries.length === 0) {
-        return;
-      }
-      await (decision === "accept"
-        ? acceptSuggestions(pendingEntries)
-        : rejectSuggestions(pendingEntries));
-    },
-  });
-}
-
-interface PileTargetsLoaderProps {
-  owner: LightWorkspaceType;
-  conversationId: string;
-  targets: PileTargetDirectives[];
-  loaded: PileTarget[];
-  children: (loaded: PileTarget[]) => ReactNode;
-}
-
-// Hooks can't be called in a loop, so each agent or skill gets its own loader component, nested
-// one inside the other until every target is available. Each level copies the loaded prefix, which
-// is quadratic in the number of targets; a message only touches a handful of agents or skills.
-function PileTargetsLoader({
-  owner,
-  conversationId,
-  targets,
-  loaded,
-  children,
-}: PileTargetsLoaderProps) {
-  if (loaded.length === targets.length) {
-    return children(loaded);
-  }
-
-  const target = targets[loaded.length];
-  const next = (pileTarget: PileTarget) => (
-    <PileTargetsLoader
-      owner={owner}
-      conversationId={conversationId}
-      targets={targets}
-      loaded={[...loaded, pileTarget]}
-    >
-      {children}
-    </PileTargetsLoader>
-  );
-
-  return target.type === "agent" ? (
-    <AgentPileTarget
-      key={target.agentId}
-      owner={owner}
-      conversationId={conversationId}
-      target={target}
-    >
-      {next}
-    </AgentPileTarget>
-  ) : (
-    <SkillPileTarget
-      key={target.skillId}
-      owner={owner}
-      conversationId={conversationId}
-      target={target}
-    >
-      {next}
-    </SkillPileTarget>
-  );
-}
+const ENTRY_VISUAL = cloneElement(DEFAULT_SUGGESTION_VISUAL, { size: "xs" });
 
 function formatEditCount(count: number): string {
   return count === 1 ? "1 edit" : `${count} edits`;
@@ -334,10 +41,10 @@ const OUTCOME_TEXT_CLASS_NAMES: Record<
 };
 
 // E.g. "3 accepted, 1 declined", leaving out outcomes nobody got.
-function formatReviewOutcomes(entries: PileEntry[]): ReactNode {
+function formatReviewOutcomes(batches: BatchSuggestionType[]): ReactNode {
   return (["approved", "rejected", "outdated"] as const)
     .flatMap((state) => {
-      const count = entries.filter((e) => e.state === state).length;
+      const count = batches.filter((b) => b.state === state).length;
       const chip = getSuggestionStateChip(state);
       return count > 0 && chip ? [{ state, count, chip }] : [];
     })
@@ -352,7 +59,7 @@ function formatReviewOutcomes(entries: PileEntry[]): ReactNode {
 }
 
 interface SuggestionStateChipProps {
-  state: PileEntry["state"];
+  state: BatchSuggestionType["state"];
 }
 
 function SuggestionStateChip({ state }: SuggestionStateChipProps) {
@@ -373,19 +80,19 @@ function SuggestionStateChip({ state }: SuggestionStateChipProps) {
 
 interface SuggestionPileSummaryCardProps {
   title: ReactNode;
-  /** Summary written by the agent before review; `entries` are listed when missing. */
+  /** Summary written by the agent before review; `batches` are listed when missing. */
   recap: string | null;
-  entries: PileEntry[];
-  /** Always lists `entries` with their review outcome, below the recap if any. */
-  showEntryState?: boolean;
+  batches: BatchSuggestionType[];
+  /** Always lists `batches` with their review outcome, below the recap if any. */
+  showBatchState?: boolean;
   actions?: ReactNode;
 }
 
 function SuggestionPileSummaryCard({
   title,
   recap,
-  entries,
-  showEntryState = false,
+  batches,
+  showBatchState = false,
   actions,
 }: SuggestionPileSummaryCardProps) {
   return (
@@ -400,15 +107,15 @@ function SuggestionPileSummaryCard({
         <span className="heading-base text-foreground">{title}</span>
       </div>
       {recap && <p className="text-sm text-muted-foreground">{recap}</p>}
-      {(!recap || showEntryState) && (
+      {(!recap || showBatchState) && (
         <ul className="flex flex-col gap-2">
-          {entries.map((entry) => (
-            <li key={entry.sId} className="flex min-w-0 items-center gap-2">
-              {cloneElement(entry.visual, { size: "xs" })}
+          {batches.map((batch) => (
+            <li key={batch.id} className="flex min-w-0 items-center gap-2">
+              {ENTRY_VISUAL}
               <span className="truncate text-sm text-muted-foreground">
-                {entry.title}
+                {getBatchSuggestionTitle(batch)}
               </span>
-              {showEntryState && <SuggestionStateChip state={entry.state} />}
+              {showBatchState && <SuggestionStateChip state={batch.state} />}
             </li>
           ))}
         </ul>
@@ -420,7 +127,7 @@ function SuggestionPileSummaryCard({
 
 interface SuggestionPileRecapActionsProps {
   isBusy: boolean;
-  bulkDecision: "accept" | "reject" | null;
+  bulkState: SuggestionBatchReviewState | null;
   onReview: () => void;
   onAcceptAll: () => void;
   onRejectAll: () => void;
@@ -428,7 +135,7 @@ interface SuggestionPileRecapActionsProps {
 
 function SuggestionPileRecapActions({
   isBusy,
-  bulkDecision,
+  bulkState,
   onReview,
   onAcceptAll,
   onRejectAll,
@@ -441,7 +148,7 @@ function SuggestionPileRecapActions({
         label="Reject all"
         onClick={onRejectAll}
         disabled={isBusy}
-        isLoading={bulkDecision === "reject"}
+        isLoading={bulkState === "rejected"}
       />
       <div className="ml-auto flex gap-2">
         <Button
@@ -450,7 +157,7 @@ function SuggestionPileRecapActions({
           label="Accept all"
           onClick={onAcceptAll}
           disabled={isBusy}
-          isLoading={bulkDecision === "accept"}
+          isLoading={bulkState === "approved"}
         />
         <Button
           variant="highlight"
@@ -464,95 +171,147 @@ function SuggestionPileRecapActions({
   );
 }
 
-interface SuggestionPileViewProps {
-  directives: SuggestionPileDirective[];
+interface InFlightReview {
+  // `null` when every pending batch of the pile is being reviewed at once.
+  batchId: string | null;
+  state: SuggestionBatchReviewState;
+}
+
+interface ConversationSuggestionPileProps {
+  owner: LightWorkspaceType;
+  batchIds: string[];
   recap: string | null;
-  targets: PileTarget[];
 }
 
 /**
  * @cc [owner:avervaet,label:product] bulk-review-pending-only
- * "Accept all", "Reject all" and "Accept remaining" MUST only review suggestions of this pile that
- * are still pending, and MUST leave a suggestion pending when its review request fails.
+ * "Accept all", "Reject all" and "Accept remaining" MUST only review batches of this pile that are
+ * still pending, and MUST leave a batch pending when its review request fails.
  */
-function SuggestionPileView({
-  directives,
+export function ConversationSuggestionPile({
+  owner,
+  batchIds: rawBatchIds,
   recap,
-  targets,
-}: SuggestionPileViewProps) {
-  const [isReviewing, setIsReviewing] = useState(false);
-  const [bulkDecision, setBulkDecision] = useState<"accept" | "reject" | null>(
-    null
-  );
+}: ConversationSuggestionPileProps) {
+  // The agent may repeat a directive; each batch is reviewed once.
+  const batchIds = [...new Set(rawBatchIds)];
 
-  if (targets.some((t) => t.isLoading)) {
+  const { batches, isBatchesLoading, mutateBatches } = useSuggestionBatches({
+    batchIds,
+    workspaceId: owner.sId,
+  });
+  const { patchBatch } = usePatchSuggestionBatch({ workspaceId: owner.sId });
+  const revalidateBatchTargets = useRevalidateBatchTargets({
+    workspaceId: owner.sId,
+  });
+
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [inFlight, setInFlight] = useState<InFlightReview | null>(null);
+
+  if (isBatchesLoading) {
     return <LoadingBlock className="h-24 w-full max-w-lg" />;
   }
 
-  const entriesById = new Map(
-    targets.flatMap((t) => t.entries).map((e) => [e.sId, e])
-  );
-  const entries = directives.flatMap((d) => entriesById.get(d.sId) ?? []);
-  if (entries.length === 0) {
+  const batchesById = new Map(batches.map((b) => [b.id, b]));
+  const pileBatches = batchIds.flatMap((id) => batchesById.get(id) ?? []);
+  if (pileBatches.length === 0) {
     return null;
   }
 
-  const pendingEntries = entries.filter((e) => e.state === "pending");
-  const positionById = new Map(entries.map((e, index) => [e.sId, index + 1]));
-  const isBusy = bulkDecision !== null || targets.some((t) => t.isBusy);
+  const pendingBatches = pileBatches.filter((b) => b.state === "pending");
+  const positionById = new Map(
+    pileBatches.map((b, index) => [b.id, index + 1])
+  );
+  const isBusy = inFlight !== null;
+  const bulkState = inFlight?.batchId === null ? inFlight.state : null;
 
-  const reviewAll = async (decision: "accept" | "reject") => {
-    setBulkDecision(decision);
+  const review = async (
+    toReview: BatchSuggestionType[],
+    state: SuggestionBatchReviewState,
+    batchId: string | null
+  ) => {
+    setInFlight({ batchId, state });
     try {
-      await Promise.all(targets.map((t) => t.reviewPending(decision)));
+      const results = await Promise.all(
+        toReview.map((b) => patchBatch(b.id, state))
+      );
+      const reviewedById = new Map(
+        results.flatMap((r) => (r ? [[r.batch.id, r.batch] as const] : []))
+      );
+      if (state === "approved") {
+        reviewedById.forEach(revalidateBatchTargets);
+      }
+      // A failed review may come from a batch reviewed elsewhere: resync with the server then.
+      await mutateBatches(
+        (current) =>
+          current && {
+            batches: current.batches.map((b) => reviewedById.get(b.id) ?? b),
+          },
+        { revalidate: reviewedById.size < toReview.length }
+      );
     } finally {
-      setBulkDecision(null);
+      setInFlight(null);
     }
   };
 
-  const pendingCards = pendingEntries.map((entry) =>
-    entry.renderCard({
-      titleAside: `Edit ${positionById.get(entry.sId)} of ${entries.length}`,
-      secondaryAction: (
+  const reviewAll = (state: SuggestionBatchReviewState) =>
+    void review(pendingBatches, state, null);
+
+  const pendingCards = pendingBatches.map((batch) => (
+    <PendingBatchSuggestionCard
+      key={batch.id}
+      owner={owner}
+      batch={batch}
+      onAccept={() => void review([batch], "approved", batch.id)}
+      onReject={() => void review([batch], "rejected", batch.id)}
+      disabled={isBusy}
+      isAccepting={
+        inFlight?.batchId === batch.id && inFlight.state === "approved"
+      }
+      isDeclining={
+        inFlight?.batchId === batch.id && inFlight.state === "rejected"
+      }
+      titleAside={`Edit ${positionById.get(batch.id)} of ${pileBatches.length}`}
+      secondaryAction={
         <Button
           variant="ghost-secondary"
           size="sm"
           label="Accept remaining"
-          onClick={() => void reviewAll("accept")}
+          onClick={() => reviewAll("approved")}
           disabled={isBusy}
-          isLoading={bulkDecision === "accept"}
+          isLoading={bulkState === "approved"}
         />
-      ),
-    })
-  );
+      }
+    />
+  ));
 
   const summaryCard = (
     <SuggestionPileSummaryCard
       title={
         <>
-          {formatEditCount(entries.length)} reviewed ·{" "}
-          {formatReviewOutcomes(entries)}
+          {formatEditCount(pileBatches.length)} reviewed ·{" "}
+          {formatReviewOutcomes(pileBatches)}
         </>
       }
       recap={recap}
-      entries={entries}
-      showEntryState
+      batches={pileBatches}
+      showBatchState
     />
   );
 
-  // The recap card is part of the pile, on top of the pending suggestions.
+  // The recap card is part of the pile, on top of the pending batches.
   const recapCard = (
     <SuggestionPileSummaryCard
-      title={`${formatEditCount(pendingEntries.length)} ready for your review`}
+      title={`${formatEditCount(pendingBatches.length)} ready for your review`}
       recap={recap}
-      entries={pendingEntries}
+      batches={pendingBatches}
       actions={
         <SuggestionPileRecapActions
           isBusy={isBusy}
-          bulkDecision={bulkDecision}
+          bulkState={bulkState}
           onReview={() => setIsReviewing(true)}
-          onAcceptAll={() => void reviewAll("accept")}
-          onRejectAll={() => void reviewAll("reject")}
+          onAcceptAll={() => reviewAll("approved")}
+          onRejectAll={() => reviewAll("rejected")}
         />
       }
     />
@@ -567,45 +326,4 @@ function SuggestionPileView({
 
   // Only the front card is interactive; the ones behind it are drawn as decorative layers.
   return <ActionCardStack cardCount={cards.length}>{cards[0]}</ActionCardStack>;
-}
-
-interface ConversationSuggestionPileProps {
-  owner: LightWorkspaceType;
-  conversationId: string;
-  directives: SuggestionPileDirective[];
-  recap: string | null;
-}
-
-export function ConversationSuggestionPile({
-  owner,
-  conversationId,
-  directives: rawDirectives,
-  recap,
-}: ConversationSuggestionPileProps) {
-  // The agent may repeat a directive; each suggestion is reviewed once.
-  const seenIds = new Set<string>();
-  const directives = rawDirectives.filter((d) => {
-    if (seenIds.has(d.sId)) {
-      return false;
-    }
-    seenIds.add(d.sId);
-    return true;
-  });
-
-  return (
-    <PileTargetsLoader
-      owner={owner}
-      conversationId={conversationId}
-      targets={groupByTarget(directives)}
-      loaded={[]}
-    >
-      {(targets) => (
-        <SuggestionPileView
-          directives={directives}
-          recap={recap}
-          targets={targets}
-        />
-      )}
-    </PileTargetsLoader>
-  );
 }
