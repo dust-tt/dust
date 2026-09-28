@@ -14,6 +14,7 @@ import { DustAnthropicClaudeOpusFourDotSevenEuropeAgentPlatformStream } from "@a
 import { DustAnthropicClaudeOpusFourDotSevenGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_four_dot_seven_global_anthropic";
 import { DustAnthropicClaudeOpusFourDotSixEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_four_dot_six_eu_agent_platform";
 import { DustAnthropicClaudeOpusFourDotSixGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_four_dot_six_global_anthropic";
+import { DustAnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_sonnet_five_dot_five_global_anthropic";
 import { DustAnthropicClaudeSonnetFiveEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_sonnet_five_eu_agent_platform";
 import { DustAnthropicClaudeSonnetFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_sonnet_five_global_anthropic";
 import { DustAnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_sonnet_four_dot_six_eu_agent_platform";
@@ -146,6 +147,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustAnthropicClaudeOpusFourDotSixGlobalAnthropicStream,
   [DustAnthropicClaudeSonnetFiveGlobalAnthropicStream.id]:
     DustAnthropicClaudeSonnetFiveGlobalAnthropicStream,
+  [DustAnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStream.id]:
+    DustAnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStream,
   [DustAnthropicClaudeSonnetFourDotSixGlobalAnthropicStream.id]:
     DustAnthropicClaudeSonnetFourDotSixGlobalAnthropicStream,
 
