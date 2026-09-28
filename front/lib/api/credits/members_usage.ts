@@ -2141,13 +2141,12 @@ export async function getMembersUsage({
       isCreditPricedPlan(subscription.plan)
   );
 
-  // Resolved up front (Redis-cached) so even empty pages carry the reset date
-  // for the table header.
-  const creditsResetAt = await fetchCreditsResetAt(workspace);
-
-  // Restrict the search to authorized members before applying the optional
-  // filters, sorting, pagination, and total count.
-  const memberScope = await getMemberScopeWithGroupVerb(auth, "read_usage");
+  // Fetch the reset date and authorized member scope together. Even empty
+  // pages need the reset date; the scope limits search, filters, and counts.
+  const [creditsResetAt, memberScope] = await Promise.all([
+    fetchCreditsResetAt(workspace),
+    getMemberScopeWithGroupVerb(auth, "read_usage"),
+  ]);
   const allowedUserIds =
     memberScope.kind === "all"
       ? undefined
