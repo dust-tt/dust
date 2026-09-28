@@ -1,4 +1,6 @@
 import {
+  normalizeAllowedDomainsForKind,
+  normalizeHttpsSecretAllowedDomains,
   parseSandboxEnvVarNameForKind,
   validateEnvVarName,
   validateEnvVarValueForKind,
@@ -148,5 +150,44 @@ describe("validateEnvVarValueForKind", () => {
         validateEnvVarValueForKind({ kind: "https_secret", value }).isErr()
       ).toBe(true);
     }
+  });
+});
+
+describe("normalizeHttpsSecretAllowedDomains", () => {
+  it("accepts exact domains with two labels and wildcards", () => {
+    expect(
+      normalizeHttpsSecretAllowedDomains(["API.GitHub.COM.", "*.mistral.ai"])
+    ).toMatchObject({ value: ["api.github.com", "*.mistral.ai"] });
+  });
+
+  it("rejects single-label exact domains, as dsbx does", () => {
+    for (const domain of ["localhost", "intranet", "LOCALHOST."]) {
+      const result = normalizeHttpsSecretAllowedDomains([
+        "api.github.com",
+        domain,
+      ]);
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("at least two DNS labels");
+      }
+    }
+  });
+
+  it("applies to https_secret rows through the kind-aware normalizer", () => {
+    expect(
+      normalizeAllowedDomainsForKind({
+        kind: "https_secret",
+        allowedDomains: ["localhost"],
+        requiredForSecret: true,
+      }).isErr()
+    ).toBe(true);
+    expect(
+      normalizeAllowedDomainsForKind({
+        kind: "https_secret",
+        allowedDomains: ["api.github.com"],
+        requiredForSecret: true,
+      })
+    ).toMatchObject({ value: ["api.github.com"] });
   });
 });

@@ -132,6 +132,28 @@ describe("SandboxEnvVarResource", () => {
     }
   });
 
+  it("fails closed on an https_secret row with a single-label allowed domain", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    await SandboxEnvVarFactory.create(authenticator, {
+      name: "API_TOKEN",
+      kind: "https_secret",
+      placeholderNonce: randomBytes(16),
+      allowedDomains: ["api.example.com", "localhost"],
+    });
+
+    const result = await SandboxEnvVarResource.listHttpsSecretsForEgress(
+      authenticator,
+      wsScope(authenticator)
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "DSEC_API_TOKEN has an invalid allowed domain: localhost"
+      );
+    }
+  });
+
   it("rejects duplicate names within the workspace without clobbering", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
