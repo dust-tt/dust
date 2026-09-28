@@ -148,12 +148,9 @@ function useClampedHeight({
 }
 
 /**
- * Renders proposed or applied edits as a diff inside an agent message: either
- * a changes array of { old, new } pairs drawn line by line, or custom diff
- * content passed as children. Large diffs collapse to a preview with a
- * "Show more" toggle, the variant sets the box around the diff, and an
- * actions slot holds extra controls. For plain (non-diff) code rendering, use
- * CodeBlock.
+ * Renders edits as a line-by-line diff, from { old, new } pairs or custom
+ * children. Large diffs collapse behind a "Show more" toggle. For plain code
+ * rendering, use CodeBlock.
  * @summary Collapsible line-by-line code diff.
  */
 /**
