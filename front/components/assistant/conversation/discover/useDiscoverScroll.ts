@@ -29,12 +29,6 @@ function onScrollSettled(
   return cancel;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:product] discovery-button-only-navigation
- * When the desktop home-page lock is enabled, scrolling must not reveal Discover.
- * The Discover button must unlock navigation without snapping back to Home.
- * Returning to Home must restore the lock.
- */
 export function useDiscoverScroll({ isLockEnabled }: UseDiscoverScrollParams) {
   // State rather than a ref: the scroller comes and goes with the new-conversation route,
   // and the listeners below have to rebind to whichever node is on screen.
