@@ -37,6 +37,14 @@ function onlyChild(
   return child;
 }
 
+// Largest prefix total over all root-to-leaf paths, which is what core checks.
+function maxStackedPrefixTokens(
+  node: CoreAPIDataSourceDocumentSection
+): number {
+  const own = node.prefix?.length ?? 0;
+  return own + Math.max(0, ...node.sections.map(maxStackedPrefixTokens));
+}
+
 describe("truncateSection", () => {
   it("should return unchanged section if within length limit", () => {
     const section: CoreAPIDataSourceDocumentSection = {
@@ -308,13 +316,6 @@ describe("renderMarkdownSection", () => {
       ),
     });
 
-    // Walk the deepest path: title -> h1 -> h2.
-    let prefixTokens = 0;
-    let node: CoreAPIDataSourceDocumentSection | undefined = section;
-    while (node) {
-      prefixTokens += node.prefix?.length ?? 0;
-      node = node.sections[node.sections.length - 1];
-    }
-    expect(prefixTokens).toBeLessThan(MAX_CHUNK_SIZE / 2);
+    expect(maxStackedPrefixTokens(section)).toBeLessThan(MAX_CHUNK_SIZE / 2);
   });
 });

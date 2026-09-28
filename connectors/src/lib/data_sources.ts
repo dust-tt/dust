@@ -470,6 +470,7 @@ async function _updateDocumentOrTableParentsField({
 // Core rejects a document once the prefixes stacked along a section path reach
 // MAX_CHUNK_SIZE / 2. The title prefix also carries the metadata lines, so nested
 // prefixes get a smaller budget (see MAX_HEADING_PREFIX_TOKENS).
+// Must match `max_chunk_size` of EMBEDDING_CONFIGS in front/types/core/core_api.ts.
 export const MAX_CHUNK_SIZE = 512;
 export const MAX_PREFIX_TOKENS = MAX_CHUNK_SIZE / 8;
 // Limit on chars to avoid tokenizing too much text uselessly on documents with
