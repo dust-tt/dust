@@ -570,7 +570,7 @@ async function tokenize(text: string, ds: DataSourceConfig) {
 /// The top-level node is always with prefix and content null and can be edited to add a prefix or
 /// content.
 /**
- * @cc [owner:spolu,label:backend] heading-prefix-budget
+ * @cc [owner:PopDaph,label:backend] heading-prefix-budget
  * Each heading prefix MUST be truncated to at most `MAX_HEADING_PREFIX_TOKENS` tokens, so that a
  * title prefix rendered by `renderDocumentTitleAndContent` plus the two nested heading levels stay
  * under half of the embedder chunk size, which core enforces when tokenizing the document.
