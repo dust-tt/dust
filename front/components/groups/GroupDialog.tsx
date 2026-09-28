@@ -1,7 +1,7 @@
 import { GroupManagersField } from "@app/components/groups/GroupManagersField";
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCreateGroup, useGroup, useUpdateGroup } from "@app/lib/swr/groups";
 import type { GroupWithAllowedActions } from "@app/types/api/groups";
 import type { GroupType } from "@app/types/groups";
@@ -111,6 +111,7 @@ function GroupForm({
   onCreated,
   onClose,
 }: GroupFormProps) {
+  const { hasFeature } = useFeatureFlags();
   const [name, setName] = useState(initialName);
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(
     () => new Set(initialMembers.map((m) => m.sId))
@@ -207,7 +208,9 @@ function GroupForm({
             />
           )}
           <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-semibold">Group members</h3>
+            {hasFeature("group_management") && (
+              <h3 className="text-sm font-semibold">Group members</h3>
+            )}
             <MemberSelectionTable
               owner={owner}
               selectedMemberIds={selectedMemberIds}
