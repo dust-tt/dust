@@ -321,7 +321,7 @@ export function ModelPicker({
 
   const effortLabel =
     shown.display.kind === "model"
-      ? getReasoningEffortLabel(shown.display.effort)
+      ? getReasoningEffortLabel(shown.display.effort)?.toLowerCase()
       : null;
 
   return (
