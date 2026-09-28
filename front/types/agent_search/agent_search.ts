@@ -99,7 +99,6 @@ export const AGENT_SEARCH_SORTS = [
   "relevance",
   "usage",
   "name",
-  "nameWithGlobalFirst",
   "updatedAt",
 ] as const;
 export type AgentSearchSort = (typeof AGENT_SEARCH_SORTS)[number];

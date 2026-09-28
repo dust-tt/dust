@@ -7,9 +7,7 @@ import type { estypes } from "@elastic/elasticsearch";
 
 export function buildAgentDefaultSort({
   sortBy = "relevance",
-  sortOrder = sortBy === "name" || sortBy === "nameWithGlobalFirst"
-    ? "asc"
-    : "desc",
+  sortOrder = sortBy === "name" ? "asc" : "desc",
 }: {
   sortBy?: AgentSearchSort;
   sortOrder?: AgentSearchSortOrder;
@@ -32,12 +30,6 @@ export function buildAgentDefaultSort({
       return [
         { "name.keyword": { order: sortOrder, missing: "_last" } },
         // Agent ID is the tie-breaker.
-        { agent_id: { order: "asc" } },
-      ];
-    case "nameWithGlobalFirst":
-      return [
-        { _score: { order: "desc" } },
-        { "name.keyword": { order: sortOrder, missing: "_last" } },
         { agent_id: { order: "asc" } },
       ];
     case "updatedAt":

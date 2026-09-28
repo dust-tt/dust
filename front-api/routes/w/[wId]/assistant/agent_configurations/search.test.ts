@@ -105,10 +105,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     });
   });
 
-  it.each([
-    "name",
-    "nameWithGlobalFirst",
-  ])("accepts structured filters and %s sorting", async (sortBy) => {
+  it("accepts structured filters and sorts", async () => {
     const { workspace } = await setup();
     searchAgents.mockResolvedValue(
       new Ok({ agents: [], total: 0, hasMore: false, facets: {} })
@@ -124,7 +121,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
 
     const response = await searchRequest(workspace.sId, {
       ...filters,
-      sortBy,
+      sortBy: "name",
       sortOrder: "desc",
     });
 
@@ -133,7 +130,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       searchTerm: "",
       limit: undefined,
       offset: undefined,
-      sortBy,
+      sortBy: "name",
       sortOrder: "desc",
       permissionFiltering: undefined,
       facets: undefined,
