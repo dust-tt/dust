@@ -13,6 +13,7 @@ import { CustomModelsFileSchema } from "@app/types/assistant/models/custom_model
 import * as fs from "fs";
 import * as path from "path";
 import type { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 // Local file path (downloaded by GH action before Docker build).
 const LOCAL_JSON_PATH = path.join(__dirname, "../custom-models.json");
@@ -31,7 +32,7 @@ function parseModelsFile(content: string): CustomModelFileEntry[] {
   const result = CustomModelsFileSchema.safeParse(JSON.parse(content));
   if (!result.success) {
     throw new Error(
-      `Invalid custom models file: ${JSON.stringify(result.error.format())}`
+      `Invalid custom models file: ${fromError(result.error).toString()}`
     );
   }
   return result.data.models;
