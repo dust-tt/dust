@@ -1,0 +1,50 @@
+name: Main breakage notifier
+description: Post to Slack when a main workflow goes from green to red or back, mentioning who merged the breaking commit.
+
+inputs:
+  slack_token:
+    description: Slack bot token for user lookup and notifications.
+    required: true
+  slack_channel:
+    description: Slack channel ID for notifications.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Detect a main state change
+      id: detect
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        MAIN_BREAKAGE_ACTION_PATH: ${{ github.action_path }}
+        SLACK_BOT_TOKEN: ${{ inputs.slack_token }}
+        SLACK_CHANNEL_ID: ${{ inputs.slack_channel }}
+      with:
+        script: |
+          const path = require('node:path');
+          const { readFileSync } = require('node:fs');
+          const { buildBreakageNotification } = require(path.join(process.env.MAIN_BREAKAGE_ACTION_PATH, 'main-breakage.ts'));
+          const text = await buildBreakageNotification({
+            github,
+            context,
+            core,
+            authors: readFileSync('.authors', 'utf8'),
+            slackToken: process.env.SLACK_BOT_TOKEN,
+          });
+          if (text) {
+            core.setOutput('slack_payload', JSON.stringify({
+              channel: process.env.SLACK_CHANNEL_ID,
+              text,
+              unfurl_links: false,
+              unfurl_media: false,
+            }));
+          }
+
+    - name: Post to Slack
+      if: steps.detect.outputs.slack_payload != ''
+      uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 # v3.0.1
+      with:
+        errors: true
+        method: chat.postMessage
+        token: ${{ inputs.slack_token }}
+        payload: ${{ steps.detect.outputs.slack_payload }}
