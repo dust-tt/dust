@@ -7,13 +7,11 @@ import type { SlashCommand } from "@app/components/editor/extensions/shared/slas
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
+import { useModelPickerModels } from "@app/components/model_picker/useModelPickerModels";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { useModels } from "@app/lib/swr/models";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import { getModelMaker } from "@app/types/assistant/models/providers";
-import { isCreditPricedPlan } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
@@ -45,11 +43,14 @@ export const PickModelSubMenuDropdown = forwardRef<
     const dropdownRef = useRef<{
       onKeyDown: (props: { event: KeyboardEvent }) => boolean;
     }>(null);
-    const { subscription } = useAuth();
-    const lockPremiumEfforts = !isCreditPricedPlan(subscription.plan);
     const { isDark } = useTheme();
 
-    const { models, streams, isModelsLoading } = useModels({ owner });
+    const {
+      models,
+      modelProps: { streams },
+      isModelsLoading,
+      lockPremiumEfforts,
+    } = useModelPickerModels({ owner });
 
     const getModelIcon = useMemo(() => {
       return (model: EnabledModelConfigurationType) =>
