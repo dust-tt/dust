@@ -298,6 +298,14 @@ function MemberSpendLimitForm({
               setPersonalLimitInput(cleaned);
               setValidationMessage(null);
             }}
+            onRemove={
+              personalLimitInput !== ""
+                ? () => {
+                    setPersonalLimitInput("");
+                    setValidationMessage(null);
+                  }
+                : undefined
+            }
           />
           {editableGroupIds && (
             <span className="copy-xs text-muted-foreground">

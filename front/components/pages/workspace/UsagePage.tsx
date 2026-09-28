@@ -719,8 +719,7 @@ export function UsagePage() {
     return descriptor.ids.flatMap((id) => loadedMembersById.get(id) ?? []);
   }, [loadedMembersById, selection.descriptor]);
 
-  // A single selected member gets the individual modals rather than the batch
-  // ones, since only that member is concerned.
+  // A single selected member gets the individual modals
   const singleSelectedMember =
     selection.selectedCount === 1 && selectedVisibleMembers.length === 1
       ? selectedVisibleMembers[0]
@@ -734,7 +733,6 @@ export function UsagePage() {
   }, [singleSelectedMember, handleChangeSeatFromTable]);
 
   const handleBatchEditSpendLimit = useCallback(() => {
-    // Same rule as the row menu for opening the individual modal.
     if (
       singleSelectedMember?.seatType &&
       isPaidSeatType(singleSelectedMember.seatType)
