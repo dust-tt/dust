@@ -2,29 +2,31 @@ import { SUGGESTION_DIFF_CLASSES } from "@app/components/editor/extensions/agent
 import { DiffBlock } from "@dust-tt/sparkle";
 import { diffWords } from "diff";
 
+// "boxed" shows the diff in its own collapsible box. "inline" is for cards that already frame
+// the diff: it shows in full with no box, and removed and added words are highlighted in place.
+export type SuggestionDiffLayout = "boxed" | "inline";
+
 interface SuggestionFieldEditSectionProps {
   label: string;
   currentValue: string;
   newValue: string;
-  // Shown in a conversation: the whole diff stays visible, blends into its section and
-  // highlights removed and added words inline instead of stacking both values.
-  isConversational?: boolean;
+  layout?: SuggestionDiffLayout;
 }
 
 export function SuggestionFieldEditSection({
   label,
   currentValue,
   newValue,
-  isConversational = false,
+  layout = "boxed",
 }: SuggestionFieldEditSectionProps) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">{label}</span>
       <DiffBlock
-        isCollapsible={!isConversational}
-        variant={isConversational ? "plain" : "default"}
+        isCollapsible={layout === "boxed"}
+        variant={layout === "inline" ? "plain" : "default"}
       >
-        {isConversational ? (
+        {layout === "inline" ? (
           <p className="p-3 text-sm text-foreground">
             {diffWords(currentValue, newValue).map((part, index) => (
               <span

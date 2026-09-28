@@ -173,13 +173,13 @@ export function AgentSuggestionDetails({
       return (
         <div className="flex flex-col gap-3">
           <SuggestionFieldEditSection
-            isConversational
+            layout="inline"
             label="Name"
             currentValue=""
             newValue={name}
           />
           <SuggestionFieldEditSection
-            isConversational
+            layout="inline"
             label="Description"
             currentValue=""
             newValue={description}
@@ -225,7 +225,7 @@ export function AgentSuggestionDetails({
     case "description":
       return (
         <SuggestionFieldEditSection
-          isConversational
+          layout="inline"
           label="Description"
           currentValue={agentConfiguration?.description ?? ""}
           newValue={suggestion.suggestion.description}
@@ -237,7 +237,7 @@ export function AgentSuggestionDetails({
         <div className="flex flex-col gap-2">
           <span className="text-sm text-muted-foreground">Instructions</span>
           <SuggestionInstructionsDiffBlock
-            isConversational
+            layout="inline"
             instructionsHtml={agentConfiguration?.instructionsHtml ?? ""}
             targetBlockId={suggestion.suggestion.targetBlockId}
             content={suggestion.suggestion.content}
@@ -256,7 +256,7 @@ export function AgentSuggestionDetails({
       const { modelId, reasoningEffort } = suggestion.suggestion;
       return (
         <SuggestionFieldEditSection
-          isConversational
+          layout="inline"
           label="Model"
           currentValue={
             agentConfiguration
@@ -274,7 +274,7 @@ export function AgentSuggestionDetails({
     case "name":
       return (
         <SuggestionFieldEditSection
-          isConversational
+          layout="inline"
           label="Name"
           currentValue={agentConfiguration?.name ?? ""}
           newValue={suggestion.suggestion.name}
@@ -284,7 +284,7 @@ export function AgentSuggestionDetails({
     case "scope":
       return (
         <SuggestionFieldEditSection
-          isConversational
+          layout="inline"
           label="Visibility"
           currentValue={
             agentConfiguration

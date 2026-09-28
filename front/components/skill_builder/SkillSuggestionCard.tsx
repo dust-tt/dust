@@ -1,3 +1,4 @@
+import type { SuggestionDiffLayout } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
@@ -191,7 +192,7 @@ interface SuggestionDetailsProps {
   getSkillInstructionsHtml: () => string;
   getCurrentAgentFacingDescription: () => string;
   workspaceId: string;
-  isConversational: boolean;
+  layout: SuggestionDiffLayout;
 }
 
 function SuggestionDetails({
@@ -199,7 +200,7 @@ function SuggestionDetails({
   getSkillInstructionsHtml,
   getCurrentAgentFacingDescription,
   workspaceId,
-  isConversational,
+  layout,
 }: SuggestionDetailsProps) {
   switch (suggestion.kind) {
     case "availability":
@@ -267,7 +268,7 @@ function SuggestionDetails({
               label="Description"
               currentValue={getCurrentAgentFacingDescription()}
               newValue={agentFacingDescriptionEdit.content}
-              isConversational={isConversational}
+              layout={layout}
             />
           )}
 
@@ -283,9 +284,9 @@ function SuggestionDetails({
                   targetBlockId={edit.targetBlockId}
                   content={edit.content}
                   extensions={buildSkillInstructionsExtensions(true, [], {
-                    hideUnchangedSuggestionBlocks: isConversational,
+                    hideUnchangedSuggestionBlocks: layout === "inline",
                   })}
-                  isConversational={isConversational}
+                  layout={layout}
                 />
               ))}
             </div>
@@ -308,7 +309,7 @@ function SuggestionDetails({
           suggestion={suggestion.suggestion}
           skillId={suggestion.skillConfigurationId}
           workspaceId={workspaceId}
-          isConversational={isConversational}
+          layout={layout}
         />
       );
 
@@ -318,7 +319,7 @@ function SuggestionDetails({
           suggestion={suggestion.suggestion}
           skillId={suggestion.skillConfigurationId}
           workspaceId={workspaceId}
-          isConversational={isConversational}
+          layout={layout}
         />
       );
 
@@ -333,9 +334,7 @@ interface PendingSkillSuggestionDetailsProps {
   getSkillInstructionsHtml: () => string;
   getCurrentAgentFacingDescription: () => string;
   workspaceId: string;
-  // Shown in a conversation: diffs stay fully visible, with word-level highlights and
-  // unchanged instruction blocks hidden.
-  isConversational?: boolean;
+  layout?: SuggestionDiffLayout;
 }
 
 export function PendingSkillSuggestionDetails({
@@ -343,7 +342,7 @@ export function PendingSkillSuggestionDetails({
   getSkillInstructionsHtml,
   getCurrentAgentFacingDescription,
   workspaceId,
-  isConversational = false,
+  layout = "boxed",
 }: PendingSkillSuggestionDetailsProps) {
   return (
     <>
@@ -352,7 +351,7 @@ export function PendingSkillSuggestionDetails({
         getSkillInstructionsHtml={getSkillInstructionsHtml}
         getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
         workspaceId={workspaceId}
-        isConversational={isConversational}
+        layout={layout}
       />
 
       {suggestion.source !== "conversational" && (
