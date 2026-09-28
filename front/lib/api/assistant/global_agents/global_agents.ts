@@ -17,6 +17,7 @@ import {
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import {
+  _getCustomModelDustGlobalAgent,
   _getDustAntGlobalAgent,
   _getDustAntHighGlobalAgent,
   _getDustAntHighOmittedGlobalAgent,
@@ -53,9 +54,6 @@ import {
   _getDustMinimaxMediumGlobalAgent,
   _getDustMistralMediumHighGlobalAgent,
   _getDustMistralMediumNoneGlobalAgent,
-  _getDustNextGlobalAgent,
-  _getDustNextHighGlobalAgent,
-  _getDustNextMediumGlobalAgent,
   _getDustOaiGlobalAgent,
   _getDustOaiHighGlobalAgent,
   _getDustOaiLunaGlobalAgent,
@@ -70,7 +68,8 @@ import {
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
   _getRetiredDustLikeGlobalAgent,
-  getCustomModelDustGlobalAgentIndex,
+  getCustomModelForDustGlobalAgent,
+  isCustomModelDustGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getReinforcementGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/reinforcement";
@@ -129,7 +128,6 @@ import {
   GLOBAL_AGENTS_SID,
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
-import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
@@ -793,31 +791,22 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_NEXT:
-      agentConfiguration = _getDustNextGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-        featureFlags,
-      });
-      break;
     case GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM:
-      agentConfiguration = _getDustNextMediumGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-        featureFlags,
-      });
-      break;
     case GLOBAL_AGENTS_SID.DUST_NEXT_HIGH:
-      agentConfiguration = _getDustNextHighGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-        featureFlags,
-      });
+    case GLOBAL_AGENTS_SID.DUST_NEXT_NONE:
+    case GLOBAL_AGENTS_SID.DUST_NEXT_XHIGH:
+    case GLOBAL_AGENTS_SID.DUST_NEXT_MAX:
+      agentConfiguration = _getCustomModelDustGlobalAgent(
+        auth,
+        {
+          settings,
+          preFetchedDataSources,
+          mcpServerViews,
+          hasDeepDive,
+          featureFlags,
+        },
+        sId
+      );
       break;
     case GLOBAL_AGENTS_SID.DUST_LIONEL:
       agentConfiguration = _getDustLionelGlobalAgent(auth, {
@@ -957,9 +946,6 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_TASK,
   GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
   GLOBAL_AGENTS_SID.DUST_PLANNING,
-  GLOBAL_AGENTS_SID.DUST_NEXT,
-  GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
-  GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
   GLOBAL_AGENTS_SID.DUST_QUICK,
   GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
@@ -1031,14 +1017,6 @@ export function listDefaultGlobalAgentIds(): GLOBAL_AGENTS_SID[] {
       .filter((sId) => sId !== GLOBAL_AGENTS_SID.REINFORCEMENT)
       .filter((sId) => !MODEL_ONLY_GLOBAL_AGENTS_SID.includes(sId))
   );
-}
-
-function getCustomModelIndexForGlobalAgent(sId: string): number | null {
-  if (!isGlobalAgentId(sId)) {
-    return null;
-  }
-
-  return getCustomModelDustGlobalAgentIndex(sId);
 }
 
 export async function getGlobalAgents(
@@ -1142,6 +1120,9 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_NEXT,
     GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+    GLOBAL_AGENTS_SID.DUST_NEXT_NONE,
+    GLOBAL_AGENTS_SID.DUST_NEXT_XHIGH,
+    GLOBAL_AGENTS_SID.DUST_NEXT_MAX,
     GLOBAL_AGENTS_SID.DUST_CHAWI,
     GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
@@ -1171,17 +1152,16 @@ export async function getGlobalAgents(
 
   if (!flags.includes("custom_model_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => getCustomModelIndexForGlobalAgent(sId) === null
+      (sId) => !isGlobalAgentId(sId) || !isCustomModelDustGlobalAgent(sId)
     );
   }
 
   agentsIdsToFetch = agentsIdsToFetch.filter((sId) => {
-    const customModelIndex = getCustomModelIndexForGlobalAgent(sId);
-    if (customModelIndex === null) {
+    if (!isGlobalAgentId(sId) || !isCustomModelDustGlobalAgent(sId)) {
       return true;
     }
 
-    const customModel = CUSTOM_MODEL_CONFIGS[customModelIndex];
+    const customModel = getCustomModelForDustGlobalAgent(sId);
     if (!customModel) {
       return false;
     }

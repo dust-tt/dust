@@ -6,7 +6,7 @@ import type { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import type { TokenizerConfig } from "../../tokenizer";
 import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
 import type { SUPPORTED_MODEL_CONFIGS } from "./models";
-import { MODEL_IDS } from "./models";
+import { isStaticModelId, MODEL_IDS } from "./models";
 import type { BYOK_MODEL_PROVIDER_IDS } from "./providers";
 import { MODEL_MAKER_IDS, MODEL_PROVIDER_IDS } from "./providers";
 import {
@@ -20,14 +20,18 @@ export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 export type ByokModelProviderIdType = (typeof BYOK_MODEL_PROVIDER_IDS)[number];
 export type ModelMakerIdType = (typeof MODEL_MAKER_IDS)[number];
 
-export const CUSTOM_THINKING_TYPES = ["auto", "enabled"] as const;
-export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];
-
 // Raw model selection coming from the input-bar model picker: an explicit
-// provider/model pick, with an optional reasoning-effort override.
+// provider/model pick, with an optional reasoning-effort override. Static ids only: custom
+// models are reachable only through the global agents bound to them.
 export const ModelSelectionSchema = z.object({
   providerId: z.enum(MODEL_PROVIDER_IDS),
-  modelId: z.enum(MODEL_IDS),
+  // Refined rather than `z.enum(STATIC_MODEL_IDS)` so the type stays `ModelIdType`: selections are
+  // also rebuilt from stored models, which can be custom ones.
+  modelId: z
+    .enum(MODEL_IDS)
+    .refine((modelId): boolean => isStaticModelId(modelId), {
+      message: "Custom models cannot be selected.",
+    }),
   reasoningEffort: ReasoningEffortSchema.optional(),
 });
 export type ModelSelectionType = z.infer<typeof ModelSelectionSchema>;
@@ -152,13 +156,6 @@ export const ModelConfigurationSchema = z.object({
     type: z.string(),
     base: z.string().optional(),
   }),
-  customThinkingType: z.enum(CUSTOM_THINKING_TYPES).optional(),
-  customBetas: z.array(z.string()).optional(),
-  // Ordered list of fallback model ids (3 max), sent as the `fallbacks` param on
-  // Anthropic streaming requests so the API retries on these models when the
-  // primary model's safety classifiers decline the request.
-  // https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback#server-side-fallback
-  fallbackModels: z.array(z.string()).optional(),
   // If true, the model is served through the dedicated EAP (Early Access
   // Program) Anthropic API key (ANTHROPIC_EAP_API_KEY) instead of the
   // workspace's Dust-managed / BYOK credentials, for models hosted in a

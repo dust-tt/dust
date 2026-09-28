@@ -3,6 +3,7 @@ import {
   isCreditPricedPlanPrefix,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
+import { isStaticModelId } from "@app/types/assistant/models/models";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -115,6 +116,11 @@ export function isModelAvailable(
 
   // EAP models are served from Dust's own Anthropic EAP organization, on Dust's key.
   if (plan?.isByok && m.useEapKey) {
+    return false;
+  }
+
+  // Custom models are test models served on Dust's keys, whichever one they use.
+  if (plan?.isByok && !isStaticModelId(m.modelId)) {
     return false;
   }
 
