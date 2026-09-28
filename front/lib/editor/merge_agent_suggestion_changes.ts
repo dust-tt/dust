@@ -11,7 +11,7 @@ import type {
 } from "@app/types/suggestions/agent_suggestion";
 import { AgentSuggestionDataSchema } from "@app/types/suggestions/agent_suggestion";
 
-export interface AgentFieldEdits {
+export interface AgentEdits {
   name?: string;
   model?: ModelSuggestionType;
   description?: string;
@@ -28,7 +28,7 @@ type AgentSuggestionChangeInput = Pick<
 
 function fieldEditsForSuggestion(
   suggestion: AgentSuggestionChangeInput
-): Result<AgentFieldEdits, DustError<"invalid_request_error">> {
+): Result<AgentEdits, DustError<"invalid_request_error">> {
   const parsed = AgentSuggestionDataSchema.safeParse({
     kind: suggestion.kind,
     suggestion: suggestion.suggestion,
@@ -84,10 +84,7 @@ function fieldEditsForSuggestion(
   }
 }
 
-function mergeFieldEdits(
-  merged: AgentFieldEdits,
-  next: AgentFieldEdits
-): AgentFieldEdits {
+function mergeFieldEdits(merged: AgentEdits, next: AgentEdits): AgentEdits {
   const instructions = [
     ...(merged.instructions ?? []),
     ...(next.instructions ?? []),
@@ -104,10 +101,10 @@ function mergeFieldEdits(
   };
 }
 
-export function mergeAgentFieldEdits(
+export function mergeAgentEdits(
   suggestions: AgentSuggestionChangeInput[]
-): Result<AgentFieldEdits, DustError<"invalid_request_error">> {
-  let merged: AgentFieldEdits = {};
+): Result<AgentEdits, DustError<"invalid_request_error">> {
+  let merged: AgentEdits = {};
 
   for (const suggestion of suggestions) {
     const edits = fieldEditsForSuggestion(suggestion);

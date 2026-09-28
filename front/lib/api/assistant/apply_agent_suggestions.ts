@@ -13,8 +13,8 @@ import {
   fetchSuggestableTools,
 } from "@app/lib/api/assistant/suggestable_tools";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
-import { mergeAgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import type { AgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import { mergeAgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
 import {
   applyInstructionEditsToHtml,
   convertMarkdownToBlockHtml,
@@ -26,7 +26,10 @@ import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestio
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationScope,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -52,9 +55,17 @@ type ApplyAgentSuggestionsError = DustError<"invalid_request_error">;
  */
 export type ResolvedAgentChange =
   | {
-      type: "create" | "edit";
+      type: "create";
       agentId: string;
       assistant: AgentConfigurationAssistantPayload;
+    }
+  | {
+      type: "edit";
+      agentId: string;
+      assistant: AgentConfigurationAssistantPayload | null;
+      // Applied in place on its own when there is no full save, which needs no read access to the
+      // agent's definition.
+      scope: Exclude<AgentConfigurationScope, "global"> | null;
     }
   | { type: "delete"; agentId: string };
 
@@ -384,25 +395,10 @@ async function getAdditionalRequestedSpaceModelIds(
 async function resolveAgentFieldEdits(
   auth: Authenticator,
   agent: AgentResource,
-  {
-    name,
-    model,
-    description,
-    scope,
-    instructions,
-    skills,
-    tools,
-  }: AgentFieldEdits
-): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
-  if (agent.scope === "global" || agent.status !== "active") {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        "Archived and global agents cannot be updated."
-      )
-    );
-  }
-
+  { name, model, description, scope, instructions, skills, tools }: AgentEdits
+): Promise<
+  Result<AgentConfigurationAssistantPayload, ApplyAgentSuggestionsError>
+> {
   // The agent as stored, which is what the save compares the new version against: every field no
   // suggestion touches is carried over exactly as it is.
   const current = await agent.buildResaveParams(auth);
@@ -457,29 +453,79 @@ async function resolveAgentFieldEdits(
   // however in that case also the agent would be unreadable as it would request the
   // same spaces.
   return new Ok({
+    name: name ?? current.name,
+    description: description ?? current.description,
+    instructions: nextInstructions,
+    instructionsHtml: nextInstructionsHtml,
+    pictureUrl: current.pictureUrl,
+    status: current.status,
+    scope: scope ?? current.scope,
+    model: nextModel,
+    actions: resolvedActions.value.actions,
+    templateId: current.templateId,
+    tags: current.tags,
+    editors: current.editors.map((editor) => ({ sId: editor.sId })),
+    skills: resolvedSkills.value.skillIds.map((sId) => ({ sId })),
+    additionalRequestedSpaceIds: additionalRequestedSpaceModelIds.map((id) =>
+      SpaceResource.modelIdToSId({
+        id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      })
+    ),
+  });
+}
+
+/**
+ * Definition fields are saved as a new version, from the agent's full definition. The scope can be
+ * applied in place, so a caller holding `admin` on an agent they cannot read can still change it.
+ */
+function hasAgentFieldEdits({
+  name,
+  model,
+  description,
+  instructions,
+  skills,
+  tools,
+}: AgentEdits): boolean {
+  return (
+    name !== undefined ||
+    model !== undefined ||
+    description !== undefined ||
+    (instructions?.length ?? 0) > 0 ||
+    (skills?.length ?? 0) > 0 ||
+    (tools?.length ?? 0) > 0
+  );
+}
+
+async function resolveAgentEdits(
+  auth: Authenticator,
+  agent: AgentResource,
+  edits: AgentEdits
+): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
+  if (agent.scope === "global" || agent.status !== "active") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Archived and global agents cannot be updated."
+      )
+    );
+  }
+
+  // Saving the definition creates a version, so a change that only moves the scope must not.
+  let assistant: AgentConfigurationAssistantPayload | null = null;
+  if (hasAgentFieldEdits(edits)) {
+    const assistantRes = await resolveAgentFieldEdits(auth, agent, edits);
+    if (assistantRes.isErr()) {
+      return assistantRes;
+    }
+    assistant = assistantRes.value;
+  }
+
+  return new Ok({
     type: "edit",
     agentId: agent.sId,
-    assistant: {
-      name: name ?? current.name,
-      description: description ?? current.description,
-      instructions: nextInstructions,
-      instructionsHtml: nextInstructionsHtml,
-      pictureUrl: current.pictureUrl,
-      status: current.status,
-      scope: scope ?? current.scope,
-      model: nextModel,
-      actions: resolvedActions.value.actions,
-      templateId: current.templateId,
-      tags: current.tags,
-      editors: current.editors.map((editor) => ({ sId: editor.sId })),
-      skills: resolvedSkills.value.skillIds.map((sId) => ({ sId })),
-      additionalRequestedSpaceIds: additionalRequestedSpaceModelIds.map((id) =>
-        SpaceResource.modelIdToSId({
-          id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        })
-      ),
-    },
+    assistant,
+    scope: edits.scope ?? null,
   });
 }
 
@@ -540,11 +586,11 @@ export async function resolveAgentSuggestions(
       return resolveCreateSuggestion(auth, agent, parsed.data.suggestion);
     }
     case "edit": {
-      const edits = mergeAgentFieldEdits(suggestions);
+      const edits = mergeAgentEdits(suggestions);
       if (edits.isErr()) {
         return edits;
       }
-      return resolveAgentFieldEdits(auth, agent, edits.value);
+      return resolveAgentEdits(auth, agent, edits.value);
     }
     case "delete":
       return resolveDeleteSuggestion(agent);
@@ -586,25 +632,52 @@ async function archiveAgent(
   return new Ok(undefined);
 }
 
+async function saveAgentConfiguration(
+  auth: Authenticator,
+  agentId: string,
+  assistant: AgentConfigurationAssistantPayload
+): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+  const res = await createOrUpgradeAgentConfiguration({
+    auth,
+    agentConfigurationId: agentId,
+    assistant,
+  });
+  if (res.isErr()) {
+    return new Err(new DustError("invalid_request_error", res.error.message));
+  }
+
+  return new Ok(undefined);
+}
+
+async function updateAgentScope(
+  auth: Authenticator,
+  agent: AgentResource,
+  scope: Exclude<AgentConfigurationScope, "global">
+): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+  const res = await agent.updateConfiguration(auth, { scope });
+  if (res.isErr()) {
+    return new Err(new DustError("invalid_request_error", res.error.message));
+  }
+
+  return new Ok(undefined);
+}
+
 export async function writeAgentChange(
   auth: Authenticator,
+  agent: AgentResource,
   change: ResolvedAgentChange
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
   switch (change.type) {
     case "create":
-    case "edit": {
-      const res = await createOrUpgradeAgentConfiguration({
-        auth,
-        agentConfigurationId: change.agentId,
-        assistant: change.assistant,
-      });
-      if (res.isErr()) {
-        return new Err(
-          new DustError("invalid_request_error", res.error.message)
-        );
+      return saveAgentConfiguration(auth, change.agentId, change.assistant);
+    case "edit":
+      if (change.assistant) {
+        return saveAgentConfiguration(auth, change.agentId, change.assistant);
+      }
+      if (change.scope) {
+        return updateAgentScope(auth, agent, change.scope);
       }
       return new Ok(undefined);
-    }
     case "delete":
       return archiveAgent(auth, change.agentId);
     default:
@@ -630,5 +703,5 @@ export async function applyAgentSuggestions(
     return change;
   }
 
-  return writeAgentChange(auth, change.value);
+  return writeAgentChange(auth, params.agent, change.value);
 }
