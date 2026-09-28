@@ -479,12 +479,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "id13",
   },
-  knowledge_browser: {
-    description:
-      "Browse spaces and folders from the knowledge pickers of the composer and skill builder instead of searching only",
-    stage: "dust_only",
-    owner: "smb2268",
-  },
   discovery_homepage: {
     description: "New homepage optimized for skill and agents discovery",
     stage: "dust_only",
