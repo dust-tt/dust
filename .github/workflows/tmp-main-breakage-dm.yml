@@ -21,7 +21,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          RUN_ID: "34107161084"
+          RUN_ID: "34134350869"
           DM_EMAIL: arthur.vervaet@dust.tt
         with:
           script: |
