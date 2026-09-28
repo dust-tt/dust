@@ -18,6 +18,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -557,6 +558,8 @@ describe("moveFile", () => {
     const { authenticator } = await createResourceTest({});
     auth = authenticator;
     prefix = `w/${auth.getNonNullableWorkspace().sId}/pods/proj123/files/`;
+    // Only the source holds bytes.
+    fileStorageMock.setFileExists((p) => p === `${prefix}a.txt`);
   });
 
   afterEach(() => {
@@ -610,6 +613,20 @@ describe("moveFile", () => {
     expect(reloadedStale?.mountFilePath).toBeNull();
   });
 
+  it("refuses a destination that already holds bytes and keeps its registration", async () => {
+    const moved = await registerAt("a.txt");
+    const live = await registerAt("archive/a.txt", { ageMs: STALE_AGE_MS });
+    fileStorageMock.setFileExists(() => true);
+    copyFile.mockClear();
+
+    const result = await moveToArchive(moved);
+
+    expect(result.isErr()).toBe(true);
+    expect(copyFile).not.toHaveBeenCalled();
+    const reloadedLive = await FileResource.fetchById(auth, live.sId);
+    expect(reloadedLive?.mountFilePath).toBe(`${prefix}archive/a.txt`);
+  });
+
   it("treats a fresh registration as a pending upload and copies nothing", async () => {
     const moved = await registerAt("a.txt");
     const pending = await registerAt("archive/a.txt");
@@ -623,9 +640,10 @@ describe("moveFile", () => {
     expect(reloadedPending?.mountFilePath).toBe(`${prefix}archive/a.txt`);
   });
 
-  it("returns Err when the destination is claimed during the move", async () => {
+  it("refuses a destination claimed after the reservation, before any bytes move", async () => {
     const moved = await registerAt("a.txt");
     await registerAt("archive/a.txt");
+    copyFile.mockClear();
     vi.spyOn(FileResource, "releaseStaleMountFilePath").mockResolvedValue(
       new Ok(undefined)
     );
@@ -636,6 +654,18 @@ describe("moveFile", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("destination path");
     }
+    expect(copyFile).not.toHaveBeenCalled();
+  });
+
+  it("restores the registration when the copy fails", async () => {
+    const moved = await registerAt("a.txt");
+    fileStorageMock.setCopyFileFails((src) => src === `${prefix}a.txt`);
+
+    const result = await moveToArchive(moved);
+
+    expect(result.isErr()).toBe(true);
+    const reloadedMoved = await FileResource.fetchById(auth, moved.sId);
+    expect(reloadedMoved?.mountFilePath).toBe(`${prefix}a.txt`);
   });
 });
 

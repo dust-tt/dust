@@ -36,6 +36,7 @@ import {
   sandboxFunctionContentType,
 } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
+import { Err } from "@app/types/shared/result";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -1016,7 +1017,7 @@ describe("FileResource", () => {
       );
     });
 
-    it("moveMount keeps the path when the destination is the current one", async () => {
+    it("moveMount restores the previous path when the bytes do not move", async () => {
       const { authenticator: auth, workspace } = await createResourceTest({
         role: "admin",
       });
@@ -1033,12 +1034,13 @@ describe("FileResource", () => {
 
       const result = await file.moveMount({
         destFileName: "notes.md",
-        destMountFilePath: mountFilePath,
+        destMountFilePath: `w/${workspace.sId}/pods/spc-1/files/archive/notes.md`,
         destUseCase: "project_context",
         destUseCaseMetadata: { spaceId: "spc-1" },
+        moveBytes: async () => new Err(new Error("copy failed")),
       });
 
-      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(true);
       const reloaded = await FileResource.fetchById(auth, file.sId);
       expect(reloaded?.mountFilePath).toBe(mountFilePath);
     });

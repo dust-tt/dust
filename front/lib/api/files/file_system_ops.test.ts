@@ -91,6 +91,7 @@ describe("moveCanonicalFile onto a registered path", () => {
     const storage = getPrivateUploadBucket();
     vi.mocked(getPrivateUploadBucket).mockReturnValue(storage);
     const copyFile = vi.spyOn(storage, "copyFile");
+    copyFile.mockClear();
 
     const result = await moveCanonicalFile(
       auth,
@@ -108,12 +109,16 @@ describe("moveCanonicalFile onto a registered path", () => {
     expect(reloadedPending?.mountFilePath).toBe(`${basePath}archive/a.txt`);
   });
 
-  it("reports a destination claimed during the move as already_exists", async () => {
+  it("refuses a destination claimed between the reservation and the move, before any bytes move", async () => {
     const { auth, dustFs, projectId, basePath, registerAt } = await setup();
     await registerAt("a.txt");
     await registerAt("archive/a.txt");
     fileStorageMock.setFileExists((p) => p === `${basePath}a.txt`);
-    // Simulate another writer claiming the path between the reservation and the repoint.
+    const storage = getPrivateUploadBucket();
+    vi.mocked(getPrivateUploadBucket).mockReturnValue(storage);
+    const copyFile = vi.spyOn(storage, "copyFile");
+    copyFile.mockClear();
+    // Simulate another writer claiming the path right after the reservation.
     vi.spyOn(FileResource, "releaseStaleMountFilePath").mockResolvedValue(
       new Ok(undefined)
     );
@@ -127,6 +132,27 @@ describe("moveCanonicalFile onto a registered path", () => {
 
     assert(result.isErr());
     expect(result.error.code).toBe("already_exists");
+    expect(copyFile).not.toHaveBeenCalled();
+  });
+
+  it("restores the registration when the bytes fail to move", async () => {
+    const { auth, dustFs, projectId, basePath, registerAt } = await setup();
+    const moved = await registerAt("a.txt");
+    fileStorageMock.setFileExists((p) => p === `${basePath}a.txt`);
+    fileStorageMock.setCopyFileFails((src) => src === `${basePath}a.txt`);
+
+    const result = await moveCanonicalFile(
+      auth,
+      dustFs,
+      `pod-${projectId}/a.txt`,
+      `pod-${projectId}/archive/a.txt`
+    );
+
+    assert(result.isErr());
+    expect(result.error.code).toBe("internal");
+    const reloadedMoved = await FileResource.fetchById(auth, moved.sId);
+    expect(reloadedMoved?.mountFilePath).toBe(`${basePath}a.txt`);
+    expect(reloadedMoved?.fileName).toBe("a.txt");
   });
 });
 

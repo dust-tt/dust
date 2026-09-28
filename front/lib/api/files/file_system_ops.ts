@@ -459,10 +459,10 @@ export async function moveCanonicalFile(
 
 /**
  * @cc [owner:flvndvd,label:backend;product] destination-reserved-before-bytes-move
- * The destination mount path MUST be reserved before any bytes move there: bytes already stored
+ * The destination mount path MUST be cleared before any bytes move there: bytes already stored
  * at `dest` are a conflict, a stale registration is released, and a pending upload's registration
- * is a conflict too. Moving the bytes first and sorting out the registration afterwards is not
- * allowed, since a pending upload would then overwrite the moved content.
+ * is a conflict too. Clearing does not grant ownership: a linked file MUST then claim the path
+ * through `FileResource.moveMount` before its bytes move, so no upload can take it meanwhile.
  */
 async function reserveMountDestination(
   auth: Authenticator,
@@ -516,26 +516,24 @@ async function moveLinkedFile(
     }
   }
 
-  const moveResult = await dustFs.move({ src, dest });
-  if (moveResult.isErr()) {
-    return moveResult;
+  if (!linkedFileResource || !destGcsPath || !destInfo) {
+    return dustFs.move({ src, dest });
   }
 
-  if (linkedFileResource && destGcsPath && destInfo) {
-    const moved = await linkedFileResource.moveMount({
-      destFileName: path.posix.basename(dest),
-      destMountFilePath: destGcsPath,
-      destUseCase: destInfo.useCase,
-      destUseCaseMetadata: destInfo.useCaseMetadata,
-    });
-    if (moved.isErr()) {
-      return new Err(
-        new DustFileSystemError("already_exists", moved.error.message)
-      );
-    }
+  const moved = await linkedFileResource.moveMount({
+    destFileName: path.posix.basename(dest),
+    destMountFilePath: destGcsPath,
+    destUseCase: destInfo.useCase,
+    destUseCaseMetadata: destInfo.useCaseMetadata,
+    moveBytes: () => dustFs.move({ src, dest }),
+  });
+  if (moved.isErr()) {
+    return isDustFileSystemError(moved.error)
+      ? new Err(moved.error)
+      : new Err(new DustFileSystemError("already_exists", moved.error.message));
   }
 
-  return moveResult;
+  return moved;
 }
 
 /**

@@ -2123,25 +2123,33 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   /**
-   * @cc [owner:flvndvd,label:backend;product] stale-destination-row-does-not-block-move
-   * Repoints this file to `destMountFilePath` once its bytes moved there. Callers MUST have
-   * reserved the path with `releaseStaleMountFilePath` before moving the bytes. A claim of the
-   * path that slipped in since MUST surface as `Err`, never as a thrown constraint error.
+   * @cc [owner:flvndvd,label:backend;product] destination-claimed-before-bytes-move
+   * Registers this file at `destMountFilePath` BEFORE `moveBytes` runs, so the unique index on the
+   * mount path makes it the owner of the destination while the bytes move: an upload with the
+   * same name arriving meanwhile falls back to a disambiguated name instead of taking the path.
+   * A destination already claimed by another file MUST surface as `Err` before any bytes move,
+   * never as a thrown constraint error. When `moveBytes` fails, the registration MUST be restored
+   * to the previous path and the failure returned unchanged.
    */
-  async moveMount({
+  async moveMount<T, E extends Error>({
     destFileName,
     destMountFilePath,
     destUseCase,
     destUseCaseMetadata,
+    moveBytes,
   }: {
     destFileName: string;
     destMountFilePath: string;
     destUseCase: FileUseCase;
     destUseCaseMetadata?: FileUseCaseMetadata;
-  }): Promise<Result<undefined, Error>> {
-    if (destMountFilePath === this.mountFilePath) {
-      return new Ok(undefined);
-    }
+    moveBytes: () => Promise<Result<T, E>>;
+  }): Promise<Result<T, E | Error>> {
+    const previous = {
+      destFileName: this.fileName,
+      destMountFilePath: this.mountFilePath,
+      destUseCase: this.useCase,
+      destUseCaseMetadata: this.useCaseMetadata ?? undefined,
+    };
 
     try {
       await this.updateMount({
@@ -2163,7 +2171,24 @@ export class FileResource extends BaseResource<FileModel> {
       throw err;
     }
 
-    return new Ok(undefined);
+    const moved = await moveBytes();
+    if (moved.isErr() && previous.destMountFilePath) {
+      try {
+        await this.updateMount({
+          ...previous,
+          destMountFilePath: previous.destMountFilePath,
+        });
+      } catch (err) {
+        // The previous path was taken meanwhile: the file stays registered at the destination
+        // while its bytes are still at the source, which the caller's error already reports.
+        logger.error(
+          { err: normalizeError(err), fileId: this.sId, destMountFilePath },
+          "Failed to restore a file's mount path after its bytes did not move"
+        );
+      }
+    }
+
+    return moved;
   }
 
   // Sharing logic.

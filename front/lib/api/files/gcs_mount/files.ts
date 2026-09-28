@@ -514,8 +514,20 @@ export async function moveFile(
 ): Promise<Result<void, Error>> {
   const destGcsPath = `${resolvePrefix(auth.getNonNullableWorkspace(), destScope)}${destRelativeFilePath}`;
 
-  // The copy below replaces whatever is stored at dest, so a file registered there is stale once
-  // it lands. Release it first: a pending upload there is a conflict, not something to overwrite.
+  // Same rules as the canonical move: bytes at dest are a conflict, a stale registration is
+  // released, a pending upload is a conflict, and a linked file claims the path before moving.
+  try {
+    const [destExists] = await getPrivateUploadBucket()
+      .file(destGcsPath)
+      .exists();
+    if (destExists) {
+      return new Err(
+        new Error("File name already exists in the destination directory.")
+      );
+    }
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
   const reserved = await FileResource.releaseStaleMountFilePath(
     auth,
     destGcsPath
@@ -524,24 +536,18 @@ export async function moveFile(
     return reserved;
   }
 
-  const moveRes = await moveGCSMountFile({
-    sourceGcsPath,
-    destGcsPath,
-  });
+  const moveBytes = () => moveGCSMountFile({ sourceGcsPath, destGcsPath });
+  const moveRes = file
+    ? await file.moveMount({
+        destFileName,
+        destMountFilePath: destGcsPath,
+        destUseCase,
+        destUseCaseMetadata,
+        moveBytes,
+      })
+    : await moveBytes();
   if (moveRes.isErr()) {
     return moveRes;
-  }
-
-  if (file) {
-    const moved = await file.moveMount({
-      destFileName,
-      destMountFilePath: destGcsPath,
-      destUseCase,
-      destUseCaseMetadata,
-    });
-    if (moved.isErr()) {
-      return moved;
-    }
   }
 
   const prefix = resolvePrefix(auth.getNonNullableWorkspace(), destScope);
