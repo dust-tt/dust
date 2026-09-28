@@ -37,6 +37,7 @@ export { default as GeminiLogo } from "./Gemini";
 export { default as GithubLogo } from "./Github";
 export { default as GitlabLogo } from "./Gitlab";
 export { default as GmailLogo } from "./Gmail";
+export { default as GojiberryLogo } from "./Gojiberry";
 export { default as GongLogo } from "./Gong";
 export { default as GoogleLogo } from "./Google";
 export { default as GoogleCloudLogo } from "./GoogleCloud";

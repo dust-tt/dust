@@ -3630,6 +3630,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "GithubLogo"
   | "GitlabLogo"
   | "GmailLogo"
+  | "GojiberryLogo"
   | "GongLogo"
   | "GoogleSpreadsheetLogo"
   | "GranolaLogo"
