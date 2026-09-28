@@ -69,8 +69,9 @@ export function useWebhookSourceViewsFromSpaces(
   const spaceIds = spaces.map((s) => s.sId).join(",");
 
   const url = `/api/w/${owner.sId}/webhook_sources/views?spaceIds=${spaceIds}`;
+  // Spaces load asynchronously: don't fire a throwaway `spaceIds=` request before they arrive.
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    disabled,
+    disabled: !!disabled || spaces.length === 0,
   });
 
   return {
