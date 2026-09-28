@@ -45,11 +45,6 @@ function canEdit(item: ActionPhaseItem, canEditAgent: boolean): boolean {
   }
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:security] command-palette-agent-edit-permission
- * For search results, show Edit only when the selected agent's fetched configuration
- * grants `canEdit`; indexed editor metadata must not grant editing permission.
- */
 export function CommandPaletteActionPhase({
   workspaceId,
   item,

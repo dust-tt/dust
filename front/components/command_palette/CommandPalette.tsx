@@ -35,11 +35,6 @@ interface CommandPaletteProps {
 const MAX_DISPLAYED_AGENTS = 5;
 const MAX_DISPLAYED_SKILLS = 5;
 
-/**
- * @cc [owner:aubin-tchoi,label:product;performance] command-palette-agent-search
- * With `new_manage_agents_page`, fetch at most five agents through search and preserve
- * server ranking without fetching the full listing. Otherwise retain the legacy listing.
- */
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const { isOpen, close } = useCommandPalette();
   const { hasFeature } = useFeatureFlags();
