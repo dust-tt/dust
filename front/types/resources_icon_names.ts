@@ -242,6 +242,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "ProductboardLogo",
   "PuzzleIcon",
   "QobraLogo",
+  "QontoLogo",
   "SalesforceLogo",
   "SemrushLogo",
   "SalesloftLogo",
