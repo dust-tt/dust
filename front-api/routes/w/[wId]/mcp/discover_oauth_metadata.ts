@@ -68,12 +68,15 @@ app.post(
     const defaultServerConfig = getDefaultRemoteMCPServerByURL(url);
     const extraScopes = defaultServerConfig?.scope;
 
-    const discoveryRes = await RemoteMCPServerResource.discoverOAuthMetadata({
-      serverUrl: url,
-      provider: new MCPOAuthProvider(),
-      customHeaders: headers,
-      extraScopes,
-    });
+    const discoveryRes = await RemoteMCPServerResource.discoverOAuthMetadata(
+      auth,
+      {
+        serverUrl: url,
+        provider: new MCPOAuthProvider(),
+        customHeaders: headers,
+        extraScopes,
+      }
+    );
 
     if (discoveryRes.isOk()) {
       return ctx.json({
