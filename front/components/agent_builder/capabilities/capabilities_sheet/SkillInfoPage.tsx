@@ -15,8 +15,7 @@ import {
   TabsTrigger,
   Users01,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 type SkillTabType = "info" | "editors";
 

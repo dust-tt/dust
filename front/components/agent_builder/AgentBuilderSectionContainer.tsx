@@ -1,6 +1,4 @@
 import type { ReactNode } from "react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 
 interface AgentBuilderSectionContainerProps {
   title: string;

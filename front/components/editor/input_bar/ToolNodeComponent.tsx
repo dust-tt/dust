@@ -1,7 +1,5 @@
 import { AttachmentChip } from "@dust-tt/sparkle";
 import { NodeViewWrapper } from "@tiptap/react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 
 interface ToolNodeComponentProps {
   node: { attrs: { toolName?: string | null } };

@@ -9,8 +9,6 @@ import type {
   WorkspaceUserIdentity,
 } from "@app/types/assistant/visualization";
 import { Spinner } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 import { useCookies } from "react-cookie";
 
 interface PublicFrameRendererProps {

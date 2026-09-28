@@ -15,8 +15,7 @@ import {
 } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
 interface AgentTableData extends LightAgentConfigurationType {
