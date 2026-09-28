@@ -19,10 +19,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
 import type {
-  AgentConfigurationType,
-  TemplateAgentConfigurationType,
-} from "@app/types/assistant/agent";
-import type {
   DataSourceViewContentNode,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
@@ -74,16 +70,16 @@ export const getAccessibleSourcesAndAppsForActions = async (
 
 export async function buildInitialActions({
   dataSourceViews,
-  configuration,
+  actions,
   mcpServerViews = [],
 }: {
   dataSourceViews: DataSourceViewResource[];
-  configuration: AgentConfigurationType | TemplateAgentConfigurationType;
+  actions: MCPServerConfigurationType[];
   mcpServerViews?: MCPServerViewType[];
 }): Promise<AgentBuilderMCPConfiguration[]> {
   const builderActions: AgentBuilderMCPConfiguration[] = [];
 
-  for (const action of configuration.actions) {
+  for (const action of actions) {
     assert(
       action.type === "mcp_server_configuration",
       "Legacy action type, non-MCP, are no longer supported."

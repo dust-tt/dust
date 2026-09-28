@@ -1,4 +1,3 @@
-import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
@@ -498,14 +497,9 @@ export async function validateAgentToolChanges(
     );
   }
 
-  const actionsByConfigurationModelId =
-    await fetchMCPServerActionConfigurations(auth, {
-      configurationModelIds: [agent.agentConfigurationModelId],
-      variant: "full",
-    });
-  const actions = (
-    actionsByConfigurationModelId.get(agent.agentConfigurationModelId) ?? []
-  ).filter(isServerSideMCPServerConfiguration);
+  const actions = (await agent.listActions(auth)).filter(
+    isServerSideMCPServerConfiguration
+  );
   const suggestable = await fetchSuggestableTools(auth, toolIds);
 
   for (const toolId of removeToolIds) {

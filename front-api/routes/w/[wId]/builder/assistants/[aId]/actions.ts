@@ -3,7 +3,7 @@ import {
   buildInitialActions,
   getAccessibleSourcesAndAppsForActions,
 } from "@app/lib/agent_builder/server_side_props_helpers";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -26,11 +26,8 @@ app.get(
     const { aId } = ctx.req.valid("param");
 
     try {
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: aId,
-        variant: "full",
-      });
-      if (!agentConfiguration) {
+      const agent = await AgentResource.fetchById(auth, aId);
+      if (!agent || agent.scope === "global" || !auth.can("read", agent)) {
         return apiError(ctx, {
           status_code: 404,
           api_error: {
@@ -46,14 +43,11 @@ app.get(
 
       const actions = await buildInitialActions({
         dataSourceViews,
-        configuration: agentConfiguration,
+        actions: await agent.listActions(auth),
         mcpServerViews: mcpServerViewsJSON,
       });
 
-      if (
-        agentConfiguration.scope !== "visible" &&
-        agentConfiguration.scope !== "hidden"
-      ) {
+      if (agent.scope !== "visible" && agent.scope !== "hidden") {
         throw new Error("Invalid agent scope");
       }
 

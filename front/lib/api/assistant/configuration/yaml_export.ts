@@ -65,7 +65,7 @@ export async function getAgentConfigurationAsYAMLConfig(
 
   const actions = await buildInitialActions({
     dataSourceViews,
-    configuration: agentConfiguration,
+    actions: agentConfiguration.actions,
     mcpServerViews: mcpServerViewsJSON,
   });
 
