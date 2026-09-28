@@ -71,8 +71,8 @@ describe("GET /api/w/:wId/groups", () => {
     ]);
   });
 
-  it("returns each group's managers only when requested", async () => {
-    const { workspace, user } = await createPrivateApiMockRequest();
+  it("returns each group's managers only when enabled and requested", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest();
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -85,6 +85,15 @@ describe("GET /api/w/:wId/groups", () => {
       resourceId: sales.id,
     });
     expect(grant.isOk()).toBe(true);
+
+    const disabledResponse = await getGroupsRequest(workspace.sId, {
+      kind: "regular_manual",
+      withManagers: "true",
+    });
+    expect(disabledResponse.status).toBe(200);
+    expect((await disabledResponse.json()).groups[0].managers).toBeUndefined();
+
+    await FeatureFlagFactory.basic(auth, "group_management");
 
     const response = await getGroupsRequest(workspace.sId, {
       kind: "regular_manual",

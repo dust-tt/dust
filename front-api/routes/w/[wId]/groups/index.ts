@@ -64,13 +64,13 @@ app.get(
       withMembers === "true"
         ? await GroupResource.fetchJSONWithMembers(auth, groups)
         : await GroupResource.toJSONWithMemberCounts(auth, groups);
+    const isGroupManagementEnabled =
+      await auth.hasFeatureFlag("group_management");
     const managersByGroup =
-      withManagers === "true"
+      withManagers === "true" && isGroupManagementEnabled
         ? await getGroupManagersForGroups(auth, groups)
         : null;
     const groupsById = new Map(groups.map((group) => [group.sId, group]));
-    const isGroupManagementEnabled =
-      await auth.hasFeatureFlag("group_management");
     return ctx.json({
       groups: serializedGroups.map((serialized) => {
         const group = groupsById.get(serialized.sId);
