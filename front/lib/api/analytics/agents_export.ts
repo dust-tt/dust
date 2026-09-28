@@ -6,13 +6,13 @@ import {
   MAX_EXPORT_TERMS_SIZE,
   uniqueMessagesCardinalityAgg,
 } from "@app/lib/api/analytics/consumption/scope";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
   bucketsToArray,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { Result } from "@app/types/shared/result";
@@ -232,10 +232,7 @@ export async function fetchAgentExportRows(
     .map((b) => String(b.key))
     .filter(isGlobalAgentId);
   if (globalAgentIds.length > 0) {
-    const globalAgents = await getAgentConfigurations(auth, {
-      agentIds: globalAgentIds,
-      variant: "extra_light",
-    });
+    const globalAgents = await AgentResource.fetchByIds(auth, globalAgentIds);
     for (const agent of globalAgents) {
       const metrics = esMetrics.get(agent.sId);
       rows.push({
@@ -243,8 +240,8 @@ export async function fetchAgentExportRows(
         name: agent.name,
         description: agent.description,
         settings: "global",
-        modelId: agent.model.modelId,
-        providerId: agent.model.providerId,
+        modelId: agent.modelConfiguration.modelId,
+        providerId: agent.modelConfiguration.providerId,
         authorEmails: "",
         editorEmails: [],
         messages: metrics?.messages ?? 0,

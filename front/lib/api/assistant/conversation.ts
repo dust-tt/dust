@@ -1,9 +1,6 @@
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
-import {
-  getAgentConfiguration,
-  getAgentConfigurations,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { fetchPrecedingContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
@@ -115,6 +112,7 @@ import { triggerConversationUnreadNotifications } from "@app/lib/notifications/w
 import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import type { RunningAgentMessageContext } from "@app/lib/resources/conversation_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -142,7 +140,7 @@ import type {
 } from "@app/types/api/assistant";
 import { isContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type {
-  LightAgentConfigurationType,
+  AgentConfigurationStatus,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -628,10 +626,10 @@ export async function postUserMessage(
       });
 
     if (!hasOtherHumans) {
-      const dustAgent = await getAgentConfiguration(auth, {
-        agentId: GLOBAL_AGENTS_SID.DUST,
-        variant: "extra_light",
-      });
+      const dustAgent = await AgentResource.fetchById(
+        auth,
+        GLOBAL_AGENTS_SID.DUST
+      );
 
       if (dustAgent && dustAgent.status === "active") {
         mentions.push({ configurationId: dustAgent.sId });
@@ -1089,13 +1087,17 @@ export async function postUserMessage(
 /**
  * Can a user mention a given configuration
  */
-function canAccessAgent(
-  agentConfiguration: LightAgentConfigurationType
-): boolean {
-  switch (agentConfiguration.status) {
+function canAccessAgent({
+  status,
+  canRead,
+}: {
+  status: AgentConfigurationStatus;
+  canRead: boolean;
+}): boolean {
+  switch (status) {
     case "active":
     case "draft":
-      return agentConfiguration.canRead;
+      return canRead;
     case "disabled_free_workspace":
     case "disabled_missing_datasource":
     case "disabled_by_admin":
@@ -1103,7 +1105,7 @@ function canAccessAgent(
     case "pending":
       return false;
     default:
-      assertNever(agentConfiguration.status);
+      assertNever(status);
   }
 }
 
@@ -1875,11 +1877,17 @@ export async function retryAgentMessage(
     retryModelResolution = premiumLimitResult.value;
   }
 
-  const retryAgentConfiguration = await getAgentConfiguration(auth, {
-    agentId: message.configuration.sId,
-    variant: "extra_light",
-  });
-  if (!retryAgentConfiguration || !canAccessAgent(retryAgentConfiguration)) {
+  const retryAgent = await AgentResource.fetchById(
+    auth,
+    message.configuration.sId
+  );
+  if (
+    !retryAgent ||
+    !canAccessAgent({
+      status: retryAgent.status,
+      canRead: auth.can("read", retryAgent),
+    })
+  ) {
     return new Err({
       status_code: 400,
       api_error: {
