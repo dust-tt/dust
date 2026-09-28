@@ -50,7 +50,7 @@ export function formatAvailableModels(
             m.supportedReasoningEfforts
           );
           const reasoningInfo =
-            reasoningEfforts.length > 1
+            reasoningEfforts.length > 0
               ? ` (supported reasoning efforts: ${reasoningEfforts.join(", ")})`
               : "";
           // Tier models route to concrete models: their own vision flag means nothing.
