@@ -62,10 +62,10 @@ export function useGroupManagerAppointmentReview({
     (isLoading || isGovernancePermissionsError);
 
   const confirmAppointment = async (): Promise<boolean> => {
-    if (managersNeedingWarning.length === 0) {
+    if (!group || managersNeedingWarning.length === 0) {
       return true;
     }
-    if (isReviewBlocked || !group) {
+    if (isReviewBlocked) {
       return false;
     }
     return confirm({
