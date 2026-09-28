@@ -11,7 +11,6 @@ interface BulkSelectionBarProps {
   onClear: () => void;
   disabled?: boolean;
   isLoading?: boolean;
-  // Rendered before the selected count, e.g. a preview of the selected items.
   selectionPreview?: ReactNode;
   // Action buttons, rendered after "Clear all". Use `size="sm"`.
   children: ReactNode;

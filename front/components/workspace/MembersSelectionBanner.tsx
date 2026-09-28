@@ -1,7 +1,6 @@
 import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
-import { SelectedMembersAvatarStack } from "@app/components/workspace/SelectedMembersAvatarStack";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { Button } from "@dust-tt/sparkle";
+import { Avatar, Button } from "@dust-tt/sparkle";
 
 interface MembersSelectionBannerProps {
   selectedCount: number;
@@ -38,8 +37,12 @@ export function MembersSelectionBanner({
       disabled={disabled}
       selectionPreview={
         selectedMembers.length > 0 && (
-          <SelectedMembersAvatarStack
-            selectedMembers={selectedMembers}
+          <Avatar.Stack
+            avatars={selectedMembers.map((member) => ({
+              name: member.name,
+              visual: member.image ?? undefined,
+              isRounded: true,
+            }))}
             size="xs"
           />
         )

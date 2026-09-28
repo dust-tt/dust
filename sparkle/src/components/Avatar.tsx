@@ -294,7 +294,7 @@ type AvatarStackSizeType = (typeof AVATAR_STACK_SIZES)[number];
 
 export interface AvatarStackProps {
   avatars: AvatarProps[];
-  /** Max avatars shown before collapsing the rest into a "+N" counter. */
+  /** Max avatars shown before collapsing the rest into a "+N" counter (default 3). */
   nbVisibleItems?: number;
   size?: AvatarStackSizeType;
   /** Slightly scale down avatars deeper in the stack for a depth effect (default true). */
@@ -319,7 +319,7 @@ const sizeClassesPx: Record<AvatarStackSizeType, number> = {
  */
 Avatar.Stack = function ({
   avatars,
-  nbVisibleItems,
+  nbVisibleItems = 3,
   size = "sm",
   hasMagnifier = true,
   tooltipTriggerAsChild = false,
@@ -329,7 +329,7 @@ Avatar.Stack = function ({
   const [isHovered, setIsHovered] = useState(false);
 
   // Get visible avatars and calculate remaining count
-  const shouldShowAll = !nbVisibleItems || avatars.length <= nbVisibleItems;
+  const shouldShowAll = avatars.length <= nbVisibleItems;
   const isFirstOnTop = onTop === "first";
 
   const maxVisible = shouldShowAll

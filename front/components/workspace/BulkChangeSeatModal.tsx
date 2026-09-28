@@ -9,7 +9,6 @@ import {
   sortSeatTypes,
   stripYearlySuffix,
 } from "@app/components/workspace/SeatCard";
-import { SelectedMembersAvatarStack } from "@app/components/workspace/SelectedMembersAvatarStack";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type {
@@ -24,6 +23,7 @@ import { isMembershipSeatType, isPaidSeatType } from "@app/types/memberships";
 import { isSubscriptionCancellationScheduled } from "@app/types/plan";
 import {
   ArrowRight,
+  Avatar,
   Button,
   Dialog,
   DialogContainer,
@@ -550,8 +550,12 @@ function BulkChangeSeatForm({
       <DialogHeader>
         <div className="flex flex-col gap-2">
           {selectedMembers.length > 0 && (
-            <SelectedMembersAvatarStack
-              selectedMembers={selectedMembers}
+            <Avatar.Stack
+              avatars={selectedMembers.map((member) => ({
+                name: member.name,
+                visual: member.image ?? undefined,
+                isRounded: true,
+              }))}
               size="md"
             />
           )}
