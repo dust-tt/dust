@@ -353,9 +353,10 @@ export function ConversationContainerVirtuoso({
     discoverRef,
     goToDiscover,
     goToHome,
-    isOpeningDiscover,
+    fillProgress,
+    isScrollLocked,
     scrollerRef,
-  } = useDiscoverScroll();
+  } = useDiscoverScroll({ isFillEnabled: isDiscoveryHomepage && !isMobile });
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
@@ -481,7 +482,7 @@ export function ConversationContainerVirtuoso({
               >
                 <DiscoverButton
                   onClick={goToDiscover}
-                  isOpening={isOpeningDiscover}
+                  progress={fillProgress}
                 />
               </div>
             </div>
@@ -535,7 +536,12 @@ export function ConversationContainerVirtuoso({
   ) : isMobile ? (
     <div className="px-4">{body}</div>
   ) : (
-    <ScrollArea className="px-4 md:px-8" viewportRef={scrollerRef}>
+    <ScrollArea
+      className="px-4 md:px-8"
+      // biome-ignore lint/plugin/noCssImportant: override Radix's inline overflow while wheel input fills the Discover button.
+      viewportClassName={isScrollLocked ? "overflow-y-hidden!" : undefined}
+      viewportRef={scrollerRef}
+    >
       {body}
     </ScrollArea>
   );
