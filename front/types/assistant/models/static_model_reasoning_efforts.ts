@@ -355,6 +355,15 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     xhigh: true,
     maximal: true,
   },
+  "claude-sonnet-5-5": {
+    none: false,
+    minimal: false,
+    low: true,
+    medium: true,
+    high: true,
+    xhigh: true,
+    maximal: true,
+  },
   "claude-sonnet-5": {
     none: true,
     minimal: false,

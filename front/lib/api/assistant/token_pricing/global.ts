@@ -333,6 +333,15 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     long_cache_creation_input_tokens: 6.0,
     cache_read_input_tokens: 0.3,
   },
+  // https://platform.claude.com/docs/en/about-claude/pricing (2026-09-28).
+  // Same rates as Sonnet 5.
+  "claude-sonnet-5-5": {
+    input: 2.0,
+    output: 10.0,
+    cache_creation_input_tokens: 2.5,
+    long_cache_creation_input_tokens: 4.0,
+    cache_read_input_tokens: 0.2,
+  },
   // https://platform.claude.com/docs/en/about-claude/pricing
   "claude-sonnet-5": {
     input: 2.0,
