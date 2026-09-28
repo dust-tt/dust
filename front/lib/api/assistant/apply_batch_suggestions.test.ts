@@ -66,6 +66,34 @@ describe("applyBatchSuggestions", () => {
     expect(await fetchAgentName(agent.sId)).toBe("RenamedAgent");
   });
 
+  async function fetchSkillName(skillId: string) {
+    const skill = await SkillResource.fetchById(auth, skillId);
+    return skill?.name;
+  }
+
+  it("applies the agent and skill suggestions", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const skill = await SkillFactory.create(auth);
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "name",
+      suggestion: { name: "RenamedSkill" },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    expect(await fetchAgentName(agent.sId)).toBe("RenamedAgent");
+    expect(await fetchSkillName(skill.sId)).toBe("RenamedSkill");
+  });
+
   it("writes nothing when the batch holds several actions on the same agent", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const { id: batchModelId, sId } =
@@ -324,5 +352,38 @@ describe("applyBatchSuggestions", () => {
     });
     expect(updated?.requestedSpaceIds).toEqual([]);
     expect(await fetchAgentSkillIds(agent.sId)).toEqual([]);
+  });
+
+  it("writes nothing when a skill change does not fit its skill", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const skill = await SkillFactory.create(auth);
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "name",
+      suggestion: { name: "RenamedSkill" },
+      batchModelId,
+    });
+    // Skills are edited before agents, so without the upfront resolution the skill would be renamed
+    // before this rename fails.
+    await SkillFactory.create(auth, { name: "Taken Name" });
+    const otherSkill = await SkillFactory.create(auth, { name: "Other Skill" });
+    await auth.refresh();
+    await SkillSuggestionFactory.create(auth, otherSkill, {
+      kind: "name",
+      suggestion: { name: "Taken Name" },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    expect(await fetchAgentName(agent.sId)).toBe(agent.name);
+    expect(await fetchSkillName(skill.sId)).toBe(skill.name);
   });
 });

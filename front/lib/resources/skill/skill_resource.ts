@@ -242,6 +242,27 @@ export interface SkillAttachedKnowledge {
   nodeId: string;
 }
 
+export type UpdateSkillParams = {
+  agentFacingDescription: string;
+  attachedKnowledge: SkillAttachedKnowledge[];
+  availability?: SkillAvailability;
+  fileAttachments?: FileResource[];
+  icon: string | null;
+  instructions: string;
+  instructionsHtml?: string | null;
+  // The spaces a person picked by hand: the subset of `requestedSpaceIds` that stays when
+  // nothing in the skill requires it any more.
+  manuallyRequestedSpaceIds: ModelId[];
+  mcpServerViews: MCPServerViewResource[];
+  name: string;
+  reinforcement?: SkillReinforcementMode;
+  requestedSpaceIds: ModelId[];
+  source?: SkillSourceType;
+  sourceMetadata?: SkillSourceMetadata;
+  status?: SkillStatus;
+  userFacingDescription: string;
+};
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -3562,26 +3583,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       sourceMetadata,
       status,
       userFacingDescription,
-    }: {
-      agentFacingDescription: string;
-      attachedKnowledge: SkillAttachedKnowledge[];
-      availability?: SkillAvailability;
-      fileAttachments?: FileResource[];
-      icon: string | null;
-      instructions: string;
-      instructionsHtml?: string | null;
-      // The spaces a person picked by hand: the subset of `requestedSpaceIds` that stays when
-      // nothing in the skill requires it any more.
-      manuallyRequestedSpaceIds: ModelId[];
-      mcpServerViews: MCPServerViewResource[];
-      name: string;
-      reinforcement?: SkillReinforcementMode;
-      requestedSpaceIds: ModelId[];
-      source?: SkillSourceType;
-      sourceMetadata?: SkillSourceMetadata;
-      status?: SkillStatus;
-      userFacingDescription: string;
-    }
+    }: UpdateSkillParams
   ): Promise<void> {
     assert(
       auth.can("write", this),

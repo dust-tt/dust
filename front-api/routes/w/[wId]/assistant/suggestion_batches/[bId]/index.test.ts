@@ -26,6 +26,8 @@ async function setup() {
     batchModelId: batch.id,
   });
   await SkillSuggestionFactory.create(auth, skill, {
+    kind: "name",
+    suggestion: { name: "RenamedSkill" },
     source: "conversational",
     batchModelId: batch.id,
   });
