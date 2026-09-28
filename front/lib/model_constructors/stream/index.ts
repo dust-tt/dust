@@ -81,6 +81,7 @@ import { ThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/model_con
 import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_five_global_xai";
 import { XaiGrokFourDotSevenGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_seven_global_xai";
 import { XaiGrokFourDotSixGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_six_global_xai";
+import { ZAiGlmFiveDotThreeEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_eu_mistral";
 import { ZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
 import { ZAiGlmFiveDotThreeGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_global_fireworks";
 
@@ -149,6 +150,8 @@ export const STREAM_ENDPOINTS = {
     DeepSeekDeepSeekV4ProGlobalFireworksStream,
   [DeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream.id]:
     DeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream,
+  [ZAiGlmFiveDotThreeEuropeMistralStream.id]:
+    ZAiGlmFiveDotThreeEuropeMistralStream,
   [ZAiGlmFiveDotThreeGlobalFireworksStream.id]:
     ZAiGlmFiveDotThreeGlobalFireworksStream,
   [ZAiGlmFiveDotThreeFlashGlobalFireworksStream.id]:
