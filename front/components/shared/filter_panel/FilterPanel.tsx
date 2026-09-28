@@ -149,7 +149,7 @@ export function FilterPanel<
             }}
             footer={categoryNavFooter}
           />
-          <div className="flex h-full w-80 flex-col gap-2 p-2">
+          <div className="flex h-full w-80 flex-col gap-3 p-2">
             <FilterSection
               title={categoryLabels[activeCategory]}
               action={

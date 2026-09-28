@@ -337,7 +337,7 @@ export function UsageFilterPanelView({
             activeCategory={activeCategory}
             onCategoryChange={handleCategoryChange}
           />
-          <div className="flex h-full w-80 flex-col gap-2 p-2">
+          <div className="flex h-full w-80 flex-col gap-3 p-2">
             <FilterSection
               title={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
               action={
