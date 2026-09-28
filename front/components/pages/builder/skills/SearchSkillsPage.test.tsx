@@ -15,6 +15,7 @@ import type {
 } from "@app/types/api/skills";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
+import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
@@ -354,7 +355,9 @@ describe("search-backed Manage Skills", () => {
   });
 
   it("applies filters together, keeps them across tabs, and clears the chips", async () => {
-    const { fetcher, fetcherWithBody, mcpServerViewIds, mount } = await setup();
+    const { context, fetcher, fetcherWithBody, mcpServerViewIds, mount } =
+      await setup();
+    const editorIds = [context.user.sId];
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
     const initialSearchCount = fetcherWithBody.mock.calls.length;
@@ -382,7 +385,7 @@ describe("search-backed Manage Skills", () => {
           status: ["active"],
           availability: ["workspace_users", "users_and_agents"],
           mcpServerViewIds,
-          editedByMe: true,
+          editorIds,
           offset: 0,
         }),
         "POST",
@@ -400,7 +403,7 @@ describe("search-backed Manage Skills", () => {
           status: ["archived"],
           availability: ["workspace_users", "users_and_agents"],
           mcpServerViewIds,
-          editedByMe: true,
+          editorIds,
         }),
         "POST",
       ])
@@ -415,7 +418,7 @@ describe("search-backed Manage Skills", () => {
           query: "",
           status: ["archived"],
           mcpServerViewIds,
-          editedByMe: true,
+          editorIds,
           sortBy: "usage",
           limit: 50,
           offset: 0,
@@ -446,7 +449,7 @@ describe("search-backed Manage Skills", () => {
   });
 
   it("lists only the filter options held by matching skills, narrowed by the other selections", async () => {
-    const { facetSearch, mount } = await setup();
+    const { facetSearch, fetcherWithBody, mount } = await setup();
     facetSearch.mockResolvedValue({
       skills: [],
       total: 1,
@@ -462,6 +465,10 @@ describe("search-backed Manage Skills", () => {
             icon: "SlackLogo",
             count: 1,
           },
+        ],
+        spaces: [
+          { sId: "global", name: "Workspace", kind: "global", count: 1 },
+          { sId: "finance", name: "Finance", kind: "regular", count: 1 },
         ],
       },
     });
@@ -511,6 +518,29 @@ describe("search-backed Manage Skills", () => {
         availability: ["workspace_users"],
         facets: ["mcpServerViews"],
       })
+    );
+
+    await userEvent.click(screen.getByRole("tab", { name: "Spaces" }));
+    expect(
+      await screen.findByRole("checkbox", { name: GLOBAL_SPACE_NAME })
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Finance" }));
+    expect(facetSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        availability: ["workspace_users"],
+        facets: ["spaces"],
+      })
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({
+          availability: ["workspace_users"],
+          spaceIds: ["finance"],
+        }),
+        "POST",
+      ])
     );
   });
 

@@ -4,6 +4,7 @@ import {
   clearFilterCategory,
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
+import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
@@ -12,7 +13,6 @@ import { SkillSearchTable } from "@app/components/skills/SkillSearchTable";
 import type { SkillFilter } from "@app/components/skills/skillFilter";
 import {
   SKILL_FILTER_CATEGORIES,
-  SKILL_FILTER_CATEGORY_SINGULAR_LABEL,
   toSkillSearchFilters,
 } from "@app/components/skills/skillFilter";
 import {
@@ -249,7 +249,7 @@ export function SearchSkillsPage() {
             summaries={getFilterSummaries(
               filter,
               SKILL_FILTER_CATEGORIES,
-              SKILL_FILTER_CATEGORY_SINGULAR_LABEL
+              SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
             )}
             onClearCategory={(category) =>
               setFilter(clearFilterCategory(filter, category))
