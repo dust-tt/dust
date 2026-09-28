@@ -35,14 +35,19 @@ beforeEach(() => {
   }
 });
 
+const { routerQuery, replace } = vi.hoisted(() => ({
+  routerQuery: { current: {} as Record<string, string | string[] | undefined> },
+  replace: vi.fn(),
+}));
+
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({
     isReady: true,
     pathname: "/w/workspace/builder/skills",
     asPath: "/w/workspace/builder/skills",
-    query: {},
+    query: routerQuery.current,
     push: vi.fn(),
-    replace: vi.fn(),
+    replace,
     events: { on: vi.fn(), off: vi.fn() },
   }),
 }));
@@ -71,6 +76,8 @@ vi.mock("@app/components/skills/SkillsBatchEdit", async (importOriginal) => ({
 }));
 
 afterEach(() => {
+  routerQuery.current = {};
+  replace.mockClear();
   window.history.replaceState({}, "", "/");
   vi.unstubAllGlobals();
 });
@@ -249,6 +256,68 @@ async function setup({
 }
 
 describe("search-backed Manage Skills", () => {
+  it("restores a shared search URL, including grouped tools, and clears only its filters", async () => {
+    const { context, fetcherWithBody, mcpServerViewIds, mount } = await setup();
+    routerQuery.current = {
+      q: "report",
+      tab: "archived",
+      availability: "workspace_users",
+      editor: context.user.sId,
+      space: "selected-space",
+      tool: mcpServerViewIds,
+      other: "keep",
+    };
+    window.history.replaceState({}, "", "/#?modal=personal-settings");
+    mount();
+
+    await screen.findByRole("button", { name: /Weekly report/ });
+    expect(screen.getByRole("textbox", { name: "Search skills" })).toHaveValue(
+      "report"
+    );
+    expect(screen.getByRole("tab", { name: "Archived" })).toHaveAttribute(
+      "data-state",
+      "active"
+    );
+    await screen.findByText("Slack");
+    expect(fetcherWithBody).toHaveBeenLastCalledWith([
+      expect.any(String),
+      expect.objectContaining({
+        query: "report",
+        status: ["archived"],
+        availability: ["workspace_users"],
+        editorIds: [context.user.sId],
+        spaceIds: ["selected-space"],
+        mcpServerViewIds,
+      }),
+      "POST",
+    ]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(screen.getByRole("tab", { name: /^Tools/ }));
+    expect(
+      await screen.findByRole("checkbox", { name: "Slack" })
+    ).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    expect(replace).toHaveBeenLastCalledWith(
+      {
+        pathname: "/w/workspace/builder/skills",
+        query: {
+          q: "report",
+          tab: "archived",
+          other: "keep",
+          availability: undefined,
+          editor: undefined,
+          tool: undefined,
+          space: undefined,
+        },
+        hash: "#?modal=personal-settings",
+      },
+      undefined,
+      { shallow: true }
+    );
+  });
+
   it("sorts Name, Usage and Last edited in both directions without reordering the server page", async () => {
     const { skill, search, fetcherWithBody, mount } = await setup();
     search.mockResolvedValue({
@@ -417,6 +486,17 @@ describe("search-backed Manage Skills", () => {
     expect(screen.getByText("Tool")).toBeInTheDocument();
     expect(screen.getByText("Editor")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(3);
+    expect(replace).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        query: expect.objectContaining({
+          availability: ["workspace_users", "users_and_agents"],
+          editor: [context.user.sId],
+          tool: mcpServerViewIds,
+        }),
+      }),
+      undefined,
+      { shallow: true }
+    );
 
     await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
     await waitFor(() =>

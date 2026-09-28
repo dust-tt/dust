@@ -4,7 +4,10 @@ import {
   clearFilterCategory,
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
-import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
+import {
+  resolveSearchFilter,
+  SEARCH_FILTER_CATEGORY_SINGULAR_LABEL,
+} from "@app/components/shared/filter_panel/searchFilter";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
@@ -15,9 +18,10 @@ import {
   BatchAvailabilityDialog,
   SkillsBatchEditBar,
 } from "@app/components/skills/SkillsBatchEdit";
-import type { SkillFilter } from "@app/components/skills/skillFilter";
 import {
+  readSkillFilter,
   SKILL_FILTER_CATEGORIES,
+  skillFilterQuery,
   toSkillSearchFilters,
 } from "@app/components/skills/skillFilter";
 import {
@@ -25,6 +29,7 @@ import {
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
+import { useSearchPageState } from "@app/hooks/useSearchPageState";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
@@ -69,8 +74,6 @@ const SEARCH_TABS = [
   },
   { id: "archived", label: "Archived", filters: { status: ["archived"] } },
 ] satisfies { id: string; label: string; filters: SkillSearchFilters }[];
-
-type SearchTabId = (typeof SEARCH_TABS)[number]["id"];
 
 // Batch edits are reserved to the skill's editors and to workspace admins, as for agents;
 // Dust-provided skills are never administrable.
@@ -276,13 +279,38 @@ export function SearchSkillsPage() {
   const { hasPermission } = useWorkspacePermissions();
   const [skillId, setSkillId] = useHashParam("skillId");
   const [agentId, setAgentId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
-  const [filter, setFilter] = useState<SkillFilter>({});
+  const {
+    searchTerm,
+    setSearchTerm,
+    selectedTab,
+    setSelectedTab,
+    filter: savedFilter,
+    setFilter,
+  } = useSearchPageState({
+    tabs: SEARCH_TABS,
+    readFilter: readSkillFilter,
+    filterQuery: skillFilterQuery,
+  });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const searchFilters = toSkillSearchFilters(filter);
+  const searchFilters = toSkillSearchFilters(savedFilter);
   const activeTab =
     SEARCH_TABS.find((tab) => tab.id === selectedTab) ?? SEARCH_TABS[0];
+  const { facets, isSkillsLoading: isFilterLoading } = useSearchSkills({
+    owner,
+    searchTerm: "",
+    limit: 0,
+    filters: { ...activeTab.filters, ...searchFilters },
+    facets: ["editors", "spaces", "mcpServerViews"],
+    disabled: ![savedFilter.editor, savedFilter.space, savedFilter.tool].some(
+      (options) => options?.some(({ id, name }) => id === name)
+    ),
+  });
+  const filter = resolveSearchFilter(
+    savedFilter,
+    SKILL_FILTER_CATEGORIES,
+    facets,
+    user.sId
+  );
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
 
@@ -314,6 +342,7 @@ export function SearchSkillsPage() {
             placeholder="Search skills by name"
             value={searchTerm}
             onChange={setSearchTerm}
+            isLoading={isFilterLoading}
             className="w-full"
           />
         </div>

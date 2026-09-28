@@ -2,7 +2,10 @@ import type { SearchFilter } from "@app/components/shared/filter_panel/searchFil
 import {
   getSearchFilterIds,
   getSearchFilterMcpServerViewIds,
+  readSearchFilter,
+  searchFilterQuery,
 } from "@app/components/shared/filter_panel/searchFilter";
+import type { SearchPageQuery } from "@app/hooks/useSearchPageState";
 import type {
   SkillSearchFacet,
   SkillSearchFilters,
@@ -18,6 +21,14 @@ export const SKILL_FILTER_CATEGORIES = [
 export type SkillFilterCategory = (typeof SKILL_FILTER_CATEGORIES)[number];
 
 export type SkillFilter = SearchFilter<SkillFilterCategory>;
+
+export function readSkillFilter(query: SearchPageQuery): SkillFilter {
+  return readSearchFilter(query, SKILL_FILTER_CATEGORIES);
+}
+
+export function skillFilterQuery(filter: SkillFilter): SearchPageQuery {
+  return searchFilterQuery(filter, SKILL_FILTER_CATEGORIES);
+}
 
 export const SKILL_FILTER_CATEGORY_FACET: Record<
   SkillFilterCategory,
