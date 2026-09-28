@@ -43,7 +43,7 @@ function NewInstructionsBlock({ instructionsHtml }: NewInstructionsBlockProps) {
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">Instructions</span>
       <DiffBlock
-        className="[&_.rounded-2xl.border]:border-0 [&_.rounded-2xl.border]:bg-transparent"
+        className="[&_.rounded-2xl.border]:border-0"
         collapsedLines={Number.POSITIVE_INFINITY}
       >
         {editor && <EditorContent editor={editor} />}
@@ -142,9 +142,7 @@ export function AgentSuggestionDetails({
 
     case "instructions":
       return (
-        // The diff box's background is not configurable, so it is overridden here to blend in
-        // with the surrounding section.
-        <div className="flex flex-col gap-2 [&_.rounded-2xl.border]:bg-transparent">
+        <div className="flex flex-col gap-2">
           <span className="text-sm text-muted-foreground">Instructions</span>
           <SuggestionInstructionsDiffBlock
             isCollapsible={false}

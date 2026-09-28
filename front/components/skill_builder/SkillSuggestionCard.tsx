@@ -19,7 +19,6 @@ import {
   CheckCircle,
   Chip,
   Clock,
-  cn,
   Hoverable,
   LoadingBlock,
   Tooltip,
@@ -238,14 +237,7 @@ function SuggestionDetails({
           )}
 
           {instructionEdits && instructionEdits.length > 0 && (
-            <div
-              className={cn(
-                "flex flex-col gap-2",
-                // The diff box's background is not configurable, so it is overridden here to
-                // blend in with the surrounding section.
-                isConversational && "[&_.rounded-2xl.border]:bg-transparent"
-              )}
-            >
+            <div className="flex flex-col gap-2">
               <span className="text-sm text-muted-foreground">
                 Instructions
               </span>
