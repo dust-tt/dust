@@ -1,9 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
-import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
+import { getSelectableModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import type { BulkAgentUpdateResult } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -31,9 +32,9 @@ export async function resolveAgentModelChange(
     Error
   >
 > {
-  const { models } = await getModelsForAuth(auth);
+  const models = await getSelectableModelsForAuth(auth);
   const model = models.find((m) => m.modelId === modelId);
-  if (!model || !model.isSelectable) {
+  if (!model) {
     return new Err(
       new Error(`Model "${modelId}" is not available in this workspace.`)
     );
@@ -43,7 +44,8 @@ export async function resolveAgentModelChange(
   if (!model.supportedReasoningEfforts[effort]) {
     return new Err(
       new Error(
-        `Model "${modelId}" does not support the "${effort}" reasoning effort.`
+        `Model "${modelId}" does not support the "${effort}" reasoning effort. ` +
+          `Supported reasoning efforts: ${getAvailableReasoningEfforts(model.supportedReasoningEfforts).join(", ")}.`
       )
     );
   }

@@ -1,5 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import {
+  LIST_MODELS_TOOL_NAME,
+  WORKSPACE_MANAGEMENT_SERVER_NAME,
+} from "@app/lib/api/actions/servers/workspace_management/metadata";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { validateInstructionEdits } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
@@ -8,6 +13,7 @@ import {
   pruneSupersededSingletonSuggestions,
 } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
+import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
 import {
   checkSkillAddition,
   fetchSuggestableSkills,
@@ -20,7 +26,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
 import { DustError } from "@app/lib/error";
-import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { hasSuggestionSelfConflict } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
@@ -218,8 +223,8 @@ export function validateAgentPublishStateChange(
 }
 
 /**
- * Matches the validation `updateAgentConfigurationsModel` applies when the suggestion is approved,
- * so a suggestion that is created as pending can always be applied later.
+ * Applies the validation `updateAgentConfigurationsModel` applies when the suggestion is approved
+ * (`resolveAgentModelChange`), so a suggestion that is created as pending can be applied later.
  */
 export async function validateAgentModelChange(
   auth: Authenticator,
@@ -243,27 +248,15 @@ export async function validateAgentModelChange(
     );
   }
 
-  const { models } = await getModelsForAuth(auth);
-  const modelConfiguration = models.find((m) => m.modelId === modelId);
-  if (!modelConfiguration || !modelConfiguration.isSelectable) {
+  const resolved = await resolveAgentModelChange(auth, {
+    modelId,
+    reasoningEffort,
+  });
+  if (resolved.isErr()) {
     return new Err(
       new MCPError(
-        `Invalid model ID: ${modelId}. Available models: ` +
-          `${models
-            .filter((m) => m.isSelectable)
-            .map((m) => m.modelId)
-            .join(", ")}.`
-      )
-    );
-  }
-
-  if (
-    reasoningEffort &&
-    !modelConfiguration.supportedReasoningEfforts[reasoningEffort]
-  ) {
-    return new Err(
-      new MCPError(
-        `Model "${modelId}" does not support the "${reasoningEffort}" reasoning effort.`
+        `${resolved.error.message} Pick a modelId and reasoning effort listed by ` +
+          `${getPrefixedToolName(WORKSPACE_MANAGEMENT_SERVER_NAME, LIST_MODELS_TOOL_NAME)}.`
       )
     );
   }

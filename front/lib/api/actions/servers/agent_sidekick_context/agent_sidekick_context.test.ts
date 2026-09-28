@@ -1918,7 +1918,9 @@ describe("agent_sidekick_context tools", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain("Invalid reasoning effort");
+        expect(result.error.message).toContain(
+          'does not support the "minimal" reasoning effort'
+        );
         expect(result.error.message).toContain("none");
         expect(result.error.message).toContain("claude-sonnet-4-6");
       }
@@ -1951,7 +1953,9 @@ describe("agent_sidekick_context tools", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain("Invalid model ID");
+        expect(result.error.message).toContain(
+          "is not available in this workspace"
+        );
         expect(result.error.message).toContain("gpt-4o-mini");
         expect(result.error.message).toContain("<workspace_context>");
       }
@@ -1996,7 +2000,9 @@ describe("agent_sidekick_context tools", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain("Invalid model ID");
+        expect(result.error.message).toContain(
+          "is not available in this workspace"
+        );
         expect(result.error.message).toContain("gpt-5.6-sol");
       }
     });

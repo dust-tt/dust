@@ -5,11 +5,11 @@ import type {
   AvailableTool,
 } from "@app/lib/api/assistant/workspace_capabilities";
 import {
-  getAvailableModelsForWorkspace,
   listAvailableSkills,
   listAvailableTools,
 } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
+import { getSelectableModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
@@ -32,6 +32,11 @@ export interface SidekickContext {
   } | null;
 }
 
+/**
+ * @cc [owner:fabiencelier,label:product] lists-every-effort
+ * Each model's line MUST carry its `modelId` and every reasoning effort it supports,
+ * so a model and effort picked from the listing can be passed as-is.
+ */
 export function formatAvailableModels(
   models: ModelConfigurationType[]
 ): string {
@@ -249,7 +254,7 @@ export async function buildWorkspaceContext(
   auth: Authenticator
 ): Promise<string> {
   const [models, skills, tools] = await Promise.all([
-    getAvailableModelsForWorkspace(auth),
+    getSelectableModelsForAuth(auth),
     listAvailableSkills(auth),
     listAvailableTools(auth),
   ]);
