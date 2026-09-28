@@ -114,6 +114,42 @@ function AgentSearchModelCell({ model, isDark }: AgentSearchModelCellProps) {
   );
 }
 
+interface AgentSearchTagSelectorProps {
+  owner: WorkspaceType;
+  agent: AgentSearchItem;
+  onRefresh: () => void;
+}
+
+function AgentSearchTagSelector({
+  owner,
+  agent,
+  onRefresh,
+}: AgentSearchTagSelectorProps) {
+  const { tags, isTagsLoading } = useTags({ owner });
+  const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
+
+  if (isTagsLoading) {
+    return <Spinner size="xs" />;
+  }
+  return (
+    <TableTagSelector
+      tags={sortedTags}
+      agentTags={agent.tags}
+      agentConfigurationId={agent.sId}
+      owner={owner}
+      onChange={async () => onRefresh()}
+    />
+  );
+}
+
+// Cells render as components, so a new `columns` identity remounts every cell: an open menu
+// closes and an in-flight checkbox click is lost.
+/**
+ * @cc [owner:tdraier,label:react;performance] stable-columns
+ * `columns` MUST only be rebuilt when `canSelect`, `onSelect`, `onRefresh`, `owner` or the theme
+ * change, never on data the table loads itself. Callers MUST keep `canSelect`, `onSelect` and
+ * `onRefresh` referentially stable while the search inputs are unchanged.
+ */
 export function AgentSearchTable({
   owner,
   agents,
@@ -130,8 +166,6 @@ export function AgentSearchTable({
   canSelect,
 }: AgentSearchTableProps) {
   const { isDark } = useTheme();
-  const { tags, isTagsLoading } = useTags({ owner });
-  const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
   const columns = useMemo(
     () =>
       [
@@ -282,14 +316,11 @@ export function AgentSearchTable({
                       trigger={<span>{tagNames}</span>}
                     />
                   </div>
-                  {canSelect(agent) && isTagsLoading && <Spinner size="xs" />}
-                  {canSelect(agent) && !isTagsLoading && (
-                    <TableTagSelector
-                      tags={sortedTags}
-                      agentTags={agent.tags}
-                      agentConfigurationId={agent.sId}
+                  {canSelect(agent) && (
+                    <AgentSearchTagSelector
                       owner={owner}
-                      onChange={async () => onRefresh()}
+                      agent={agent}
+                      onRefresh={onRefresh}
                     />
                   )}
                 </div>
@@ -362,7 +393,7 @@ export function AgentSearchTable({
           meta: { className: "hidden @md:table-cell @md:w-14" },
         },
       ] satisfies ColumnDef<AgentSearchRow>[],
-    [canSelect, isDark, isTagsLoading, onRefresh, onSelect, owner, sortedTags]
+    [canSelect, isDark, onRefresh, onSelect, owner]
   );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.

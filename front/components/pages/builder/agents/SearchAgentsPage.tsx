@@ -44,7 +44,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 const AGENT_SEARCH_PAGE_SIZE = 25;
 
@@ -135,10 +135,13 @@ function AgentsList({
   });
 
   // Batch edits are reserved to the agent's editors and to workspace admins, as on the legacy page.
-  const canSelect = (agent: AgentSearchItem) =>
-    agent.scope !== "global" &&
-    agent.status !== "archived" &&
-    (isAdmin || agent.editorIds.includes(user.sId));
+  const canSelect = useCallback(
+    (agent: AgentSearchItem) =>
+      agent.scope !== "global" &&
+      agent.status !== "archived" &&
+      (isAdmin || agent.editorIds.includes(user.sId)),
+    [isAdmin, user.sId]
+  );
 
   // Prefer the freshly loaded row so batch actions see the agent's current tags.
   const currentSelectedAgents = selectedAgents.map(

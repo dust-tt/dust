@@ -7,7 +7,14 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
 import type { MembershipRoleType } from "@app/types/memberships";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import assert from "assert";
 import { SWRConfig } from "swr";
@@ -88,9 +95,11 @@ afterEach(() => {
 async function setup({
   role = "admin",
   pageEnabled = true,
+  tagsLoaded,
 }: {
   role?: MembershipRoleType;
   pageEnabled?: boolean;
+  tagsLoaded?: Promise<void>;
 } = {}) {
   const { authenticator, user } = await createResourceTest({ role });
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
@@ -157,6 +166,10 @@ async function setup({
       body.limit === 0 ? facetsResponse : search()
   );
   const fetcher = vi.fn(async (url: string) => {
+    if (url.endsWith("/tags")) {
+      await tagsLoaded;
+      return { tags: [] };
+    }
     if (url.endsWith(`/agent_configurations/${agent.sId}`)) {
       return { agentConfiguration };
     }
@@ -400,6 +413,29 @@ describe("search-backed Manage Agents", () => {
     expect(fetchedUrls(fetcher)).toContainEqual(
       expect.stringContaining(`/agent_configurations/${agent.sId}`)
     );
+  });
+
+  it("keeps a row checkbox click when tags finish loading mid-click", async () => {
+    let releaseTags = () => {};
+    const { mount } = await setup({
+      tagsLoaded: new Promise((resolve) => {
+        releaseTags = resolve;
+      }),
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Select Weekly report",
+    });
+
+    fireEvent.pointerDown(checkbox);
+    await act(async () => releaseTags());
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Loading")).not.toBeInTheDocument()
+    );
+    fireEvent.click(checkbox);
+
+    expect(await screen.findByText("1 selected.")).toBeInTheDocument();
   });
 
   it("keeps the selection across pages and offers batch actions", async () => {
