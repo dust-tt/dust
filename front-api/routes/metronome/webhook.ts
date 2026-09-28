@@ -5,10 +5,8 @@ import {
   MetronomeWebhookEventSchema,
 } from "@app/lib/metronome/webhook_events";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchMetronomeEventsWorkflow } from "@app/temporal/metronome_events_queue/client";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -122,32 +120,27 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
   // Both regions receive the events of a relocated workspace, and its row
   // stays in the source region until purge. Only the destination may act on
   // them: processing here would e.g. unpause the source connectors.
-  const maintenance = renderLightWorkspaceType({ workspace }).metadata
-    ?.maintenance;
-  switch (maintenance) {
-    case undefined:
-      break;
-    case "relocation-done":
-      logger.info(
-        {
-          eventId: event.id,
-          eventType: event.type,
-          workspaceId: workspace.sId,
-        },
-        "[Metronome Webhook] Workspace has been relocated, skipping event"
-      );
-      return ctx.json({ success: true });
-    case "relocation":
-      // apiError logs the 503.
-      return apiError(ctx, {
-        status_code: 503,
-        api_error: {
-          type: "service_unavailable",
-          message: `Workspace under maintenance. [${maintenance}]`,
-        },
-      });
-    default:
-      assertNever(maintenance);
+  const maintenance = workspace.metadata?.maintenance;
+  if (maintenance === "relocation-done") {
+    logger.info(
+      {
+        eventId: event.id,
+        eventType: event.type,
+        workspaceId: workspace.sId,
+      },
+      "[Metronome Webhook] Workspace has been relocated, skipping event"
+    );
+    return ctx.json({ success: true });
+  }
+  if (maintenance) {
+    // apiError logs the 503.
+    return apiError(ctx, {
+      status_code: 503,
+      api_error: {
+        type: "service_unavailable",
+        message: `Workspace under maintenance. [${maintenance}]`,
+      },
+    });
   }
 
   // Hand the event off to a Temporal workflow for durable processing.
