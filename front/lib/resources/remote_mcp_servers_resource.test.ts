@@ -5,6 +5,8 @@ import {
   getMCPAuthorizationScope,
   RemoteMCPServerResource,
 } from "@app/lib/resources/remote_mcp_servers_resource";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -16,6 +18,32 @@ const oauthMocks = vi.hoisted(() => ({
   discoverOAuthProtectedResourceMetadata: vi.fn(),
   registerClient: vi.fn(),
 }));
+
+const egressMocks = vi.hoisted(() => ({
+  staticIPAgent: { kind: "static-ip" },
+  untrustedAgent: { kind: "untrusted" },
+  undiciFetch: vi.fn(),
+}));
+
+vi.mock("@app/lib/egress/server", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/egress/server")>();
+
+  return {
+    ...actual,
+    getStaticIPProxyAgent: () => egressMocks.staticIPAgent,
+    getUntrustedEgressAgent: () => egressMocks.untrustedAgent,
+  };
+});
+
+vi.mock("undici", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("undici")>();
+
+  return {
+    ...actual,
+    fetch: egressMocks.undiciFetch,
+  };
+});
 
 vi.mock("@modelcontextprotocol/sdk/client/auth.js", async (importOriginal) => {
   const actual =
@@ -154,6 +182,85 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata", () => {
           token_endpoint_auth_method: requestedMethod,
         }),
       })
+    );
+  });
+});
+
+describe("RemoteMCPServerResource.discoverOAuthMetadata egress routing", () => {
+  beforeEach(() => {
+    oauthMocks.discoverAuthorizationServerMetadata.mockReset();
+    oauthMocks.discoverOAuthProtectedResourceMetadata.mockReset();
+    oauthMocks.registerClient.mockReset();
+    egressMocks.undiciFetch.mockReset();
+
+    egressMocks.undiciFetch.mockImplementation(
+      async () => new Response("{}", { status: 200 })
+    );
+    // Exercise the fetch function handed to the SDK so we observe the dispatcher it uses.
+    oauthMocks.discoverOAuthProtectedResourceMetadata.mockImplementation(
+      async (serverUrl: string, _opts: unknown, fetchFn: typeof fetch) => {
+        await fetchFn(serverUrl);
+        return {
+          authorization_servers: [new URL("/", serverUrl).toString()],
+          resource: serverUrl,
+        };
+      }
+    );
+    oauthMocks.discoverAuthorizationServerMetadata.mockResolvedValue({
+      authorization_endpoint: "https://auth.example.com/authorize",
+      registration_endpoint: "https://auth.example.com/register",
+      token_endpoint: "https://auth.example.com/token",
+    });
+    oauthMocks.registerClient.mockResolvedValue({
+      client_id: "registered-client",
+    });
+  });
+
+  async function setup() {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const domain = `${generateRandomModelSId().replaceAll("_", "-").toLowerCase()}.example.com`;
+    await WorkspaceHasDomainModel.create({
+      domain,
+      workspaceId: workspace.id,
+    });
+
+    return { auth, domain };
+  }
+
+  it.each([
+    {
+      label: "the static IP proxy for a server under a verified domain",
+      serverUrl: (domain: string) => `https://mcp.${domain}/mcp`,
+      expectedAgent: egressMocks.staticIPAgent,
+    },
+    {
+      label: "the untrusted egress proxy for a server outside verified domains",
+      serverUrl: () => "https://mcp.unverified.example.com/mcp",
+      expectedAgent: egressMocks.untrustedAgent,
+    },
+    {
+      label:
+        "the untrusted egress proxy for a plaintext server under a verified domain",
+      serverUrl: (domain: string) => `http://mcp.${domain}/mcp`,
+      expectedAgent: egressMocks.untrustedAgent,
+    },
+  ])("routes discovery through $label", async ({
+    serverUrl,
+    expectedAgent,
+  }) => {
+    const { auth, domain } = await setup();
+    const url = serverUrl(domain);
+
+    const result = await RemoteMCPServerResource.discoverOAuthMetadata(auth, {
+      serverUrl: url,
+      provider: oauthProvider,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(egressMocks.undiciFetch).toHaveBeenCalledWith(
+      url,
+      expect.objectContaining({ dispatcher: expectedAgent })
     );
   });
 });
