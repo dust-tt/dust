@@ -176,7 +176,7 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
     }
 
     await withTransaction(async (t) => {
-      await this.update({ state }, t, { workspaceId });
+      await this.update(this.stateUpdate(auth, state), t, { workspaceId });
       await AgentSuggestionResource.updateStateOfBatchMembers(
         auth,
         [this.id],
@@ -190,6 +190,19 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
         { transaction: t }
       );
     }, transaction);
+  }
+
+  // Track the user who accepted/rejected. Do not set for "outdated" (batch became obsolete) or
+  // "pending" (reset).
+  private stateUpdate(
+    auth: Authenticator,
+    state: BatchSuggestionState
+  ): { state: BatchSuggestionState; updatedByUserId?: ModelId } {
+    const user = auth.user();
+    if ((state === "approved" || state === "rejected") && user) {
+      return { state, updatedByUserId: user.id };
+    }
+    return { state };
   }
 
   /**
