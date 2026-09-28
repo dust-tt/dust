@@ -1,6 +1,7 @@
 import { AdminLayout } from "@dust-tt/front/components/layouts/AdminLayout";
 import Custom404 from "@dust-tt/front/components/pages/Custom404";
 import { useAuth } from "@dust-tt/front/lib/auth/AuthContext";
+import { hasGroupManagementScope } from "@dust-tt/front/types/api/auth_context";
 import { isManager } from "@dust-tt/front/types/user";
 import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayout";
 import { RequireRoleLayout } from "@spa/app/layouts/RequireRoleLayout";
@@ -106,7 +107,7 @@ const GroupManagerUsagePage = withSuspense(
 );
 
 function UsageRoute() {
-  const { workspace, featureFlags, groupUsageScope } = useAuth();
+  const { workspace, featureFlags, groupManagement } = useAuth();
   if (isManager(workspace)) {
     return (
       <AdminLayout>
@@ -116,7 +117,7 @@ function UsageRoute() {
   }
   if (
     !featureFlags.includes("group_management") ||
-    !groupUsageScope?.readGroupIds.length
+    !hasGroupManagementScope(groupManagement?.read_usage)
   ) {
     return <Custom404 />;
   }

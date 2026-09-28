@@ -29,9 +29,7 @@ const NOOP_MEMBER_ACTION = (_member: MemberUsageType) => {};
 
 export function GroupManagerUsagePage() {
   const owner = useWorkspace();
-  const { subscription, groupUsageScope } = useAuth();
-  // This component is only mounted after UsageRoute checked the scope.
-  const scope = groupUsageScope!;
+  const { subscription, groupManagement } = useAuth();
   const [tab, setTab] = useState<"members" | "groups">("members");
   const [searchTerm, setSearchTerm] = useState("");
   const [groupId, setGroupId] = useState<string | null>(null);
@@ -43,15 +41,27 @@ export function GroupManagerUsagePage() {
   const [selectedMember, setSelectedMember] = useState<MemberUsageType | null>(
     null
   );
+  const { groups } = useGroups({ owner });
+  const readScope = groupManagement?.read_usage;
+  const editScope = groupManagement?.set_usage_limits;
   const visibleGroupIds = useMemo(
-    () => new Set(scope.readGroupIds),
-    [scope.readGroupIds]
+    () =>
+      new Set(
+        readScope?.kind === "all"
+          ? groups.map((group) => group.sId)
+          : (readScope?.groupIds ?? [])
+      ),
+    [groups, readScope]
   );
   const editableGroupIds = useMemo(
-    () => new Set(scope.editGroupIds),
-    [scope.editGroupIds]
+    () =>
+      new Set(
+        editScope?.kind === "all"
+          ? groups.map((group) => group.sId)
+          : (editScope?.groupIds ?? [])
+      ),
+    [groups, editScope]
   );
-  const { groups } = useGroups({ owner });
   const visibleGroups = useMemo(
     () => groups.filter((group) => visibleGroupIds.has(group.sId)),
     [groups, visibleGroupIds]
