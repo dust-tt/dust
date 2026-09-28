@@ -32,16 +32,13 @@ import type {
 } from "@app/types/agent_search/agent_search";
 import {
   Button,
-  Checkbox,
   EmptyCTA,
-  InfoCircle,
   Page,
   SearchInput,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  Tooltip,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
@@ -317,25 +314,6 @@ export function SearchAgentsPage() {
               <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
             ))}
             <div className="grow" />
-            {isAdmin && selectedTab === "all" && (
-              <span className="flex gap-1 self-center text-sm text-muted-foreground">
-                <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
-                  <Checkbox
-                    checked={showHiddenAgents}
-                    onCheckedChange={(checked) =>
-                      setShowHiddenAgents(checked === true)
-                    }
-                  />
-                  Show hidden agents
-                </label>
-                <Tooltip
-                  label="Shows the agents of all members you can access as an admin, even if they are not published or if they use restricted spaces"
-                  trigger={
-                    <InfoCircle className="h-4 w-4 text-muted-foreground" />
-                  }
-                />
-              </span>
-            )}
             <div className="flex items-center">
               <AgentFilterPanel
                 owner={owner}
@@ -345,6 +323,14 @@ export function SearchAgentsPage() {
                 permissionFiltering={getPermissionFiltering(activeTab.id)}
                 filter={filter}
                 onFilterChange={setFilter}
+                hiddenAgents={
+                  isAdmin && selectedTab === "all"
+                    ? {
+                        isShown: showHiddenAgents,
+                        onChange: setShowHiddenAgents,
+                      }
+                    : undefined
+                }
               />
             </div>
           </TabsList>

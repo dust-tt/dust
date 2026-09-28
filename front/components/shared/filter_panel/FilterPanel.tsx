@@ -40,6 +40,10 @@ interface FilterPanelProps<
   renderIcon?: (option: Option) => ReactNode;
   warning?: string;
   applyDisabled?: boolean;
+  // Rendered below the categories, for settings that are not a category.
+  categoryNavFooter?: ReactNode;
+  // Called when the panel opens, so the caller can reset the drafts it owns.
+  onOpen?: () => void;
 }
 
 export function FilterPanel<
@@ -58,6 +62,8 @@ export function FilterPanel<
   renderIcon,
   warning,
   applyDisabled,
+  categoryNavFooter,
+  onOpen,
 }: FilterPanelProps<Category, Option>) {
   const {
     isOpen,
@@ -105,6 +111,7 @@ export function FilterPanel<
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
+      onOpen?.();
     }
   };
 
@@ -138,6 +145,7 @@ export function FilterPanel<
               setSearchText("");
               resetContentScroll();
             }}
+            footer={categoryNavFooter}
           />
           <div className="flex h-full w-80 flex-col gap-2 p-2">
             <FilterSection

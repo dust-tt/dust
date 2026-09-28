@@ -16,6 +16,8 @@ import type {
   AgentSearchPermissionFiltering,
 } from "@app/types/agent_search/agent_search";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Checkbox, Label } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 interface AgentFilterPanelProps {
   owner: LightWorkspaceType;
@@ -26,6 +28,11 @@ interface AgentFilterPanelProps {
   permissionFiltering: AgentSearchPermissionFiltering;
   filter: AgentFilter;
   onFilterChange: (filter: AgentFilter) => void;
+  // Offered only where admins may list hidden agents; checking it searches unrestricted.
+  hiddenAgents?: {
+    isShown: boolean;
+    onChange: (isShown: boolean) => void;
+  };
 }
 
 export function AgentFilterPanel({
@@ -36,12 +43,16 @@ export function AgentFilterPanel({
   permissionFiltering,
   filter,
   onFilterChange,
+  hiddenAgents,
 }: AgentFilterPanelProps) {
   const panel = useFilterPanel<AgentFilterCategory, SearchFilterOption>(
     filter,
     categories
   );
   const { isOpen, activeCategory, draftFilter } = panel;
+  const [draftShowHiddenAgents, setDraftShowHiddenAgents] = useState(
+    hiddenAgents?.isShown ?? false
+  );
   const facet = AGENT_FILTER_CATEGORY_FACET[activeCategory];
   // Options are the values held by the agents matching the search and the draft selections of the
   // other categories: the active category ignores its own selection so that its options stay
@@ -54,7 +65,11 @@ export function AgentFilterPanel({
       clearFilterCategory(draftFilter, activeCategory),
       tabFilters
     ),
-    permissionFiltering,
+    permissionFiltering: hiddenAgents
+      ? draftShowHiddenAgents
+        ? "unrestricted"
+        : "strict"
+      : permissionFiltering,
     facets: facet ? [facet] : [],
     disabled: !isOpen || !facet,
   });
@@ -64,11 +79,34 @@ export function AgentFilterPanel({
       panel={panel}
       categories={categories}
       filter={filter}
-      onFilterChange={onFilterChange}
+      onFilterChange={(nextFilter) => {
+        onFilterChange(nextFilter);
+        hiddenAgents?.onChange(draftShowHiddenAgents);
+      }}
+      onOpen={() => setDraftShowHiddenAgents(hiddenAgents?.isShown ?? false)}
       facets={facets}
       isLoading={!!facet && isAgentsLoading}
       isError={!!facet && isAgentsError}
       idPrefix="agent-filter"
+      categoryNavFooter={
+        hiddenAgents && (
+          <div className="flex items-center gap-1.5 py-1 pl-1 pr-2">
+            <Checkbox
+              id="agent-filter-hidden-agents"
+              checked={draftShowHiddenAgents}
+              onCheckedChange={(checked) =>
+                setDraftShowHiddenAgents(checked === true)
+              }
+            />
+            <Label
+              htmlFor="agent-filter-hidden-agents"
+              className="cursor-pointer text-sm leading-none"
+            >
+              Hidden agents
+            </Label>
+          </div>
+        )
+      }
     />
   );
 }

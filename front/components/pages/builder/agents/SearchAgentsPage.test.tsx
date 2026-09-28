@@ -299,15 +299,31 @@ describe("search-backed Manage Agents", () => {
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "Show hidden agents" })
+      screen.getByRole("checkbox", { name: "Hidden agents" })
     );
+    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+      permissionFiltering: "strict",
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         scope: ["visible", "hidden"],
         permissionFiltering: "unrestricted",
       })
     );
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Hidden agents" })
+    ).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Default" }));
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.queryByRole("checkbox", { name: "Hidden agents" })
+    ).not.toBeInTheDocument();
   });
 
   it("never requests unrestricted search for non-admins", async () => {
@@ -315,9 +331,11 @@ describe("search-backed Manage Agents", () => {
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(
-      screen.queryByRole("checkbox", { name: "Show hidden agents" })
+      screen.queryByRole("checkbox", { name: "Hidden agents" })
     ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
@@ -488,9 +506,9 @@ describe("search-backed Manage Agents", () => {
     );
     await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
     const meCheckbox = await screen.findByRole("checkbox", { name: "Me" });
-    const editorCheckboxes = within(screen.getByRole("dialog")).getAllByRole(
-      "checkbox"
-    );
+    const editorCheckboxes = within(screen.getByRole("dialog"))
+      .getAllByRole("checkbox")
+      .filter((checkbox) => checkbox.id.startsWith("agent-filter-option-"));
     expect(editorCheckboxes).toHaveLength(2);
     expect(editorCheckboxes[0]).toBe(meCheckbox);
     expect(
