@@ -16,7 +16,9 @@ import {
 } from "@app/lib/model_constructors/sdk/mistralai/converters/input/utils";
 import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
+import type { Model } from "@app/lib/model_constructors/types/models";
 import type { ChatCompletionStreamRequest } from "@mistralai/mistralai/models/components";
+import { unrecognized } from "@mistralai/mistralai/types";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 
@@ -38,6 +40,9 @@ export function WithMistralAIInputConverter<
     assistantReasoningMessageToMessage = assistantReasoningMessageToMessage;
     assistantToolCallRequestToMessage = assistantToolCallRequestToMessage;
 
+    // Third-party models hosted by Mistral go by Mistral's own id.
+    modelToHostModel = (modelId: Model): string => modelId;
+
     buildRequestPayload(
       payload: Payload,
       config: MistralInputConfig
@@ -55,7 +60,7 @@ export function WithMistralAIInputConverter<
       // client); it uses its own default. `reasoning_effort` is only sent when
       // the model supports it — non-reasoning models drop it in their schema.
       return {
-        model: this.constructor.model,
+        model: this.modelToHostModel(this.constructor.model),
         messages: conversationToMistralAIMessages(conversation, this),
         temperature,
         tools: tools.map(toTool),
@@ -65,7 +70,15 @@ export function WithMistralAIInputConverter<
         // repeat with a key and intermittently without one.
         // https://docs.mistral.ai/studio/conversations/advanced/prompt-caching
         ...(cacheKey ? { promptCacheKey: cacheKey } : {}),
-        ...(reasoning ? { reasoningEffort: reasoning.effort } : {}),
+        ...(reasoning
+          ? {
+              // The API takes `max`; SDK 2.7's enum does not list it yet.
+              reasoningEffort:
+                reasoning.effort === "maximal"
+                  ? unrecognized("max")
+                  : reasoning.effort,
+            }
+          : {}),
         ...(outputFormat
           ? { responseFormat: outputFormatToResponseFormat(outputFormat) }
           : {}),
