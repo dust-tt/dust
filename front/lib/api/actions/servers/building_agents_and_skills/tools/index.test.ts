@@ -3087,6 +3087,220 @@ describe("building_agents_and_skills tools", () => {
         expectMcpError(result, "must be written as");
       });
     });
+
+    describe("skill changes", () => {
+      const editSkills = (
+        agentId: string,
+        skills: { addSkillIds?: string[]; removeSkillIds?: string[] }
+      ) => ({
+        title: "Update skills",
+        analysis: "The agent needs other skills.",
+        suggestions: [{ kind: "edit_agent", agentId, skills }],
+      });
+
+      it("records one pending suggestion per added or removed skill", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const currentSkill = await seedSkill(authenticator, {
+          name: "Current Skill",
+        });
+        await SkillFactory.linkToAgent(authenticator, {
+          skillId: currentSkill.id,
+          agentConfigurationId: agent.id,
+        });
+        const newSkill = await seedSkill(authenticator, { name: "New Skill" });
+
+        const batchId = extractBatchId(
+          await runSuggest(
+            authenticator,
+            editSkills(agent.sId, {
+              addSkillIds: [newSkill.sId],
+              removeSkillIds: [currentSkill.sId],
+            })
+          )
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          authenticator,
+          batchId
+        );
+        expect(batch?.agentSuggestions.map((s) => s.toJSON())).toMatchObject([
+          {
+            kind: "skills",
+            state: "pending",
+            suggestion: { action: "add", skillId: newSkill.sId },
+          },
+          {
+            kind: "skills",
+            state: "pending",
+            suggestion: { action: "remove", skillId: currentSkill.sId },
+          },
+        ]);
+      });
+
+      it("outdates a pending suggestion on the same skill", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const skill = await seedSkill(authenticator, { name: "New Skill" });
+        const previous = await AgentSuggestionFactory.createSkills(
+          authenticator,
+          agent,
+          { suggestion: { action: "add", skillId: skill.sId } }
+        );
+
+        extractBatchId(
+          await runSuggest(
+            authenticator,
+            editSkills(agent.sId, { addSkillIds: [skill.sId] })
+          )
+        );
+
+        const pending =
+          await AgentSuggestionResource.listByAgentConfigurationId(
+            authenticator,
+            agent.sId,
+            { states: ["pending"], kind: "skills" }
+          );
+        expect(pending).toHaveLength(1);
+        expect(pending[0].sId).not.toBe(previous.sId);
+      });
+
+      it("refuses an archived skill", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const skill = await seedSkill(authenticator, {
+          name: "Archived Skill",
+          status: "archived",
+        });
+
+        const result = await runSuggest(
+          authenticator,
+          editSkills(agent.sId, { addSkillIds: [skill.sId] })
+        );
+
+        expectMcpError(result, "invalid, archived or not accessible");
+      });
+
+      it("refuses a skill the caller cannot read", async () => {
+        const { authenticator, workspace } = await createResourceTest({
+          role: "user",
+        });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const restrictedSpace = await SpaceFactory.regular(workspace);
+        const skill = await seedSkill(authenticator, {
+          name: "Restricted Skill",
+          requestedSpaceIds: [restrictedSpace.id],
+        });
+
+        const result = await runSuggest(
+          authenticator,
+          editSkills(agent.sId, { addSkillIds: [skill.sId] })
+        );
+
+        expectMcpError(result, "invalid, archived or not accessible");
+      });
+
+      it("refuses an unpublished skill the caller does not edit", async () => {
+        const { authenticator, workspace } = await createResourceTest({
+          role: "user",
+        });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const skillOwner = await addMember(workspace);
+        const skill = await seedSkill(
+          await Authenticator.fromUserIdAndWorkspaceId(
+            skillOwner.sId,
+            workspace.sId
+          ),
+          { name: "Draft Skill", availability: "editors" }
+        );
+
+        const result = await runSuggest(
+          authenticator,
+          editSkills(agent.sId, { addSkillIds: [skill.sId] })
+        );
+
+        expectMcpError(result, "invalid, archived or not accessible");
+      });
+
+      it("refuses to add a skill that the same call deletes", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const skill = await seedSkill(authenticator, { name: "Old Skill" });
+
+        const result = await runSuggest(authenticator, {
+          title: "Update skills",
+          analysis: "Replace the skill.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              skills: { addSkillIds: [skill.sId] },
+            },
+            { kind: "delete_skill", skillId: skill.sId },
+          ],
+        });
+
+        expectMcpError(result, "both deleted and added");
+      });
+
+      it("refuses an admin who is not an editor of the agent", async () => {
+        const { authenticator, workspace } = await createResourceTest({
+          role: "user",
+        });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const skill = await seedSkill(authenticator, { name: "New Skill" });
+        const admin = await addMember(workspace, "admin");
+        const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          admin.sId,
+          workspace.sId
+        );
+
+        const result = await runSuggest(
+          adminAuth,
+          editSkills(agent.sId, { addSkillIds: [skill.sId] })
+        );
+
+        expectMcpError(result, "Only editors");
+      });
+
+      it("refuses to add a skill the agent has, or remove one it does not have", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const currentSkill = await seedSkill(authenticator, {
+          name: "Current Skill",
+        });
+        await SkillFactory.linkToAgent(authenticator, {
+          skillId: currentSkill.id,
+          agentConfigurationId: agent.id,
+        });
+        const otherSkill = await seedSkill(authenticator, {
+          name: "Other Skill",
+        });
+
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editSkills(agent.sId, { addSkillIds: [currentSkill.sId] })
+          ),
+          "already has the skill"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editSkills(agent.sId, { removeSkillIds: [otherSkill.sId] })
+          ),
+          "does not have the skill"
+        );
+      });
+    });
   });
 
   describe(SUGGEST_SKILL_AVAILABILITY_TOOL_NAME, () => {

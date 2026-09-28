@@ -7,6 +7,7 @@ import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import type { SingletonAgentSuggestionData } from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import {
   recordAgentCreationSuggestion,
+  recordAgentSkillSuggestions,
   recordSingletonAgentSuggestions,
   validateAgentCreation,
   validateAgentDeletion,
@@ -15,6 +16,7 @@ import {
   validateAgentModelChange,
   validateAgentNameChange,
   validateAgentPublishStateChange,
+  validateAgentSkillChanges,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import { formatBatchSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type {
@@ -59,7 +61,10 @@ import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { CreateSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type {
+  CreateSuggestionType,
+  SkillsSuggestionType,
+} from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillCreateSuggestionType,
   SkillSuggestionData,
@@ -80,6 +85,7 @@ type PlannedChange =
         agent: AgentConfigurationType;
         edits: InstructionSuggestionEditInput[];
       } | null;
+      skills: SkillsSuggestionType[];
     }
   | { type: "skill_creation"; create: SkillCreateSuggestionType }
   | { type: "skill"; skill: SkillResource; rows: SkillSuggestionData[] };
@@ -158,6 +164,7 @@ async function planAgentEdit(
     modelId,
     reasoningEffort,
     scope,
+    skills: skillChanges,
   }: EditAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const agentRes = await fetchAgentForSuggestion(auth, agentId);
@@ -223,7 +230,21 @@ async function planAgentEdit(
     instructions = { agent, edits: validation.value };
   }
 
-  if (singletons.length === 0 && instructions === null) {
+  let skills: SkillsSuggestionType[] = [];
+  const addSkillIds = skillChanges?.addSkillIds ?? [];
+  const removeSkillIds = skillChanges?.removeSkillIds ?? [];
+  if (addSkillIds.length > 0 || removeSkillIds.length > 0) {
+    const validation = await validateAgentSkillChanges(auth, agent, {
+      addSkillIds,
+      removeSkillIds,
+    });
+    if (validation.isErr()) {
+      return validation;
+    }
+    skills = validation.value;
+  }
+
+  if (singletons.length === 0 && instructions === null && skills.length === 0) {
     return new Err(
       new MCPError(
         `The edit of agent "${agentId}" does not change anything: provide at least one field.`
@@ -231,7 +252,7 @@ async function planAgentEdit(
     );
   }
 
-  return new Ok({ type: "agent", agent, singletons, instructions });
+  return new Ok({ type: "agent", agent, singletons, instructions, skills });
 }
 
 async function planAgentDeletion(
@@ -254,6 +275,7 @@ async function planAgentDeletion(
     agent,
     singletons: [{ kind: "delete", suggestion: validation.value }],
     instructions: null,
+    skills: [],
   });
 }
 
@@ -496,6 +518,26 @@ function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
   return new Ok(undefined);
 }
 
+/** A skill the batch deletes cannot also be added to an agent by the same batch. */
+function findSkillAddedAndDeleted(suggestions: Suggestion[]): string | null {
+  const deletedSkillIds = new Set(
+    suggestions.flatMap((suggestion) =>
+      suggestion.kind === "delete_skill" ? [suggestion.skillId] : []
+    )
+  );
+  for (const suggestion of suggestions) {
+    if (suggestion.kind === "edit_agent") {
+      const addedSkillId = (suggestion.skills?.addSkillIds ?? []).find((id) =>
+        deletedSkillIds.has(id)
+      );
+      if (addedSkillId) {
+        return addedSkillId;
+      }
+    }
+  }
+  return null;
+}
+
 /** Each existing agent or skill may be targeted by at most one suggestion of the batch. */
 function findDuplicateTarget(suggestions: Suggestion[]): string | null {
   const seen = new Set<string>();
@@ -568,6 +610,12 @@ async function recordPlannedChange(
           return new Err(new MCPError(res.error));
         }
       }
+
+      await recordAgentSkillSuggestions(auth, change.agent, {
+        skills: change.skills,
+        conversation,
+        batch,
+      });
       return new Ok(undefined);
     }
 
@@ -601,7 +649,7 @@ async function recordPlannedChange(
  * @cc [owner:fabiencelier,label:product;mcp] suggest-validates-all-before-writing
  * `suggest` MUST validate every suggestion of the call against live state before recording any of
  * them: when one suggestion is invalid or unsupported, or two suggestions target the same agent or
- * skill, or a ref is declared twice or used without being declared, the call fails and no batch,
+ * skill, or a skill is both deleted and added to an agent, or a ref is declared twice or used without being declared, the call fails and no batch,
  * placeholder agent or skill, or suggestion row is created.
  */
 export async function suggest(
@@ -620,6 +668,15 @@ export async function suggest(
     return new Err(
       new MCPError(
         `"${duplicateTarget}" is targeted by several suggestions: merge them into one.`
+      )
+    );
+  }
+
+  const addedAndDeletedSkillId = findSkillAddedAndDeleted(suggestions);
+  if (addedAndDeletedSkillId) {
+    return new Err(
+      new MCPError(
+        `Skill "${addedAndDeletedSkillId}" is both deleted and added to an agent: keep only one.`
       )
     );
   }

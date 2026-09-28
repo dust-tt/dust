@@ -347,10 +347,13 @@ async function createSkillsSuggestions({
       uniqueSkillIds.has(s.suggestion.skillId)
   );
 
+  // Conversational skill suggestions have no limit and cannot be resolved from the sidekick: only
+  // the sidekick's own count (see `pending-suggestion-limit-enforced-by-caller`).
   const limitCheck = canAddPendingSuggestions({
     kind: "skills",
     newPendingCount: suggestions.length,
-    currentPendingCount: remainingPending.length,
+    currentPendingCount: remainingPending.filter((s) => s.source === "sidekick")
+      .length,
     resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
   });
   if (!limitCheck.allowed) {
