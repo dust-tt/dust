@@ -39,7 +39,7 @@ describe("POST /api/metronome/webhook", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(launchMetronomeEventsWorkflow).mockResolvedValue(
-      new Ok({ outcome: "started" } as never)
+      new Ok("started")
     );
   });
 

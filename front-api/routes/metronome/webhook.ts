@@ -124,18 +124,18 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
   const maintenance = renderLightWorkspaceType({ workspace }).metadata
     ?.maintenance;
   if (maintenance) {
-    logger.warn(
-      {
-        eventId: event.id,
-        eventType: event.type,
-        maintenance,
-        workspaceId: workspace.sId,
-      },
-      "[Metronome Webhook] Workspace under maintenance, skipping event"
-    );
     if (maintenance === "relocation-done") {
+      logger.info(
+        {
+          eventId: event.id,
+          eventType: event.type,
+          workspaceId: workspace.sId,
+        },
+        "[Metronome Webhook] Workspace has been relocated, skipping event"
+      );
       return ctx.json({ success: true });
     }
+    // apiError logs the 503.
     return apiError(ctx, {
       status_code: 503,
       api_error: {
