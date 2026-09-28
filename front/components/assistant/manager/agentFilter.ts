@@ -1,13 +1,9 @@
-import {
-  getModelTier,
-  getTierIdForMetaModelId,
-} from "@app/components/model_picker/modelPickerUtils";
+import type { SearchFilter } from "@app/components/shared/filter_panel/searchFilter";
+import { getSearchFilterIds } from "@app/components/shared/filter_panel/searchFilter";
 import type {
-  CategoryFilter,
-  FilterOptionBase,
-} from "@app/components/shared/filter_panel/filterState";
-import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
-import type { AgentSearchFilters } from "@app/types/agent_search/agent_search";
+  AgentSearchFacet,
+  AgentSearchFilters,
+} from "@app/types/agent_search/agent_search";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 
 export const AGENT_FILTER_CATEGORIES = [
@@ -20,57 +16,19 @@ export const AGENT_FILTER_CATEGORIES = [
 
 export type AgentFilterCategory = (typeof AGENT_FILTER_CATEGORIES)[number];
 
-export const AGENT_FILTER_CATEGORY_LABEL: Record<AgentFilterCategory, string> =
-  {
-    access: "Access",
-    editor: "Editors",
-    model: "Models",
-    tag: "Tags",
-    space: "Spaces",
-  };
+export type AgentFilter = SearchFilter<AgentFilterCategory>;
 
-export const AGENT_FILTER_CATEGORY_SINGULAR_LABEL: Record<
-  AgentFilterCategory,
-  string
+// Access options are static, so it has no facet.
+export const AGENT_FILTER_CATEGORY_FACET: Partial<
+  Record<AgentFilterCategory, AgentSearchFacet>
 > = {
-  access: "Access",
-  editor: "Editor",
-  model: "Model",
-  tag: "Tag",
-  space: "Space",
+  editor: "editors",
+  model: "models",
+  tag: "tags",
+  space: "spaces",
 };
 
-export type AgentFilterOption = FilterOptionBase &
-  (
-    | { category: "access"; id: Exclude<AgentConfigurationScope, "global"> }
-    | { category: "editor"; image: string | null }
-    | { category: "model" }
-    | { category: "tag" }
-    | { category: "space" }
-  );
-
-export type AgentFilter = CategoryFilter<
-  AgentFilterCategory,
-  AgentFilterOption
->;
-
 const AGENT_ACCESS_SCOPES: AgentConfigurationScope[] = ["visible", "hidden"];
-
-export const AGENT_ACCESS_FILTER_OPTIONS: AgentFilterOption[] = [
-  { category: "access", id: "visible", name: "Published", disabled: false },
-  { category: "access", id: "hidden", name: "Not published", disabled: false },
-];
-
-export function getAgentModelDisplayName(modelId: string): string {
-  const tierId = getTierIdForMetaModelId(modelId);
-  if (tierId) {
-    return getModelTier(tierId).name;
-  }
-  return (
-    getSupportedModelConfigs().find((model) => model.modelId === modelId)
-      ?.displayName ?? modelId
-  );
-}
 
 // Access narrows the tab's scope and is ignored where it cannot apply (the Default tab); the other
 // categories add their own filter.
@@ -78,19 +36,17 @@ export function toAgentSearchFilters(
   filter: AgentFilter,
   tabFilters: AgentSearchFilters
 ): AgentSearchFilters {
-  const ids = (category: AgentFilterCategory) =>
-    (filter[category] ?? []).map((option) => option.id);
-  const access = ids("access");
+  const access = getSearchFilterIds(filter, "access");
   const scope =
     access.length > 0
       ? (tabFilters.scope ?? AGENT_ACCESS_SCOPES).filter((tabScope) =>
           access.some((selected) => selected === tabScope)
         )
       : [];
-  const editorIds = ids("editor");
-  const modelIds = ids("model");
-  const tagIds = ids("tag");
-  const spaceIds = ids("space");
+  const editorIds = getSearchFilterIds(filter, "editor");
+  const modelIds = getSearchFilterIds(filter, "model");
+  const tagIds = getSearchFilterIds(filter, "tag");
+  const spaceIds = getSearchFilterIds(filter, "space");
 
   return {
     ...tabFilters,

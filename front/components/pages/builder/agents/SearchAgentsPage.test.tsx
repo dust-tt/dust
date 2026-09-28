@@ -1,5 +1,5 @@
-import { getAgentModelDisplayName } from "@app/components/assistant/manager/agentFilter";
 import { ManageAgentsPage } from "@app/components/pages/builder/agents/ManageAgentsPage";
+import { getModelFilterDisplayName } from "@app/components/shared/filter_panel/searchFilter";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
@@ -500,7 +500,7 @@ describe("search-backed Manage Agents", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Models" }));
     await userEvent.click(
       await screen.findByRole("checkbox", {
-        name: getAgentModelDisplayName("claude-sonnet-5"),
+        name: getModelFilterDisplayName("claude-sonnet-5"),
       })
     );
     const facetBodies = fetcherWithBody.mock.calls

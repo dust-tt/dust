@@ -6,7 +6,6 @@ import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchT
 import type { AgentFilter } from "@app/components/assistant/manager/agentFilter";
 import {
   AGENT_FILTER_CATEGORIES,
-  AGENT_FILTER_CATEGORY_SINGULAR_LABEL,
   toAgentSearchFilters,
 } from "@app/components/assistant/manager/agentFilter";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
@@ -14,6 +13,7 @@ import {
   clearFilterCategory,
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
+import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
 import {
   useSetContentWidth,
   useSetPageTitle,
@@ -352,7 +352,7 @@ export function SearchAgentsPage() {
             summaries={getFilterSummaries(
               filter,
               filterCategories,
-              AGENT_FILTER_CATEGORY_SINGULAR_LABEL
+              SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
             )}
             onClearCategory={(category) =>
               setFilter(clearFilterCategory(filter, category))
