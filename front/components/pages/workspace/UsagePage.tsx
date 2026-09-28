@@ -94,6 +94,7 @@ import type {
 } from "@app/types/memberships";
 import {
   isMembershipSeatType,
+  isPaidSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
@@ -684,10 +685,6 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
-  const handleBatchEditSpendLimit = useCallback(() => {
-    setIsBulkSpendLimitOpen(true);
-  }, []);
-
   const { doBulkChangeSeatType } = useBulkChangeSeatType({
     workspaceId: owner.sId,
   });
@@ -695,10 +692,6 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
   const [isBulkChangeSeatOpen, setIsBulkChangeSeatOpen] = useState(false);
-
-  const handleBatchChangeSeat = useCallback(() => {
-    setIsBulkChangeSeatOpen(true);
-  }, []);
 
   // Remember loaded members so picks from other pages keep their avatar.
   const [loadedMembersById, setLoadedMembersById] = useState(
@@ -725,6 +718,32 @@ export function UsagePage() {
     }
     return descriptor.ids.flatMap((id) => loadedMembersById.get(id) ?? []);
   }, [loadedMembersById, selection.descriptor]);
+
+  // A single selected member gets the individual modals rather than the batch
+  // ones, since only that member is concerned.
+  const singleSelectedMember =
+    selection.selectedCount === 1 && selectedVisibleMembers.length === 1
+      ? selectedVisibleMembers[0]
+      : null;
+  const handleBatchChangeSeat = useCallback(() => {
+    if (singleSelectedMember) {
+      handleChangeSeatFromTable(singleSelectedMember);
+      return;
+    }
+    setIsBulkChangeSeatOpen(true);
+  }, [singleSelectedMember, handleChangeSeatFromTable]);
+
+  const handleBatchEditSpendLimit = useCallback(() => {
+    // Same rule as the row menu for opening the individual modal.
+    if (
+      singleSelectedMember?.seatType &&
+      isPaidSeatType(singleSelectedMember.seatType)
+    ) {
+      handleEditSpendLimitFromTable(singleSelectedMember);
+      return;
+    }
+    setIsBulkSpendLimitOpen(true);
+  }, [singleSelectedMember, handleEditSpendLimitFromTable]);
 
   // Translate the cross-page selection into the descriptor the bulk member
   // endpoints expect: explicit ids, or the current filter minus exclusions.
