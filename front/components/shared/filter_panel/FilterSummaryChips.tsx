@@ -1,5 +1,5 @@
 import type { FilterSummary } from "@app/components/shared/filter_panel/filterState";
-import { Button, Chip } from "@dust-tt/sparkle";
+import { Button, Chip, cn } from "@dust-tt/sparkle";
 import {
   AnimatePresence,
   domMax,
@@ -40,6 +40,7 @@ interface FilterSummaryChipsProps<Category extends string> {
   extraChips?: FilterExtraChip[];
   onClearCategory: (category: Category) => void;
   onClearAll: () => void;
+  className?: string;
 }
 
 export function FilterSummaryChips<Category extends string>({
@@ -47,6 +48,7 @@ export function FilterSummaryChips<Category extends string>({
   extraChips = [],
   onClearCategory,
   onClearAll,
+  className,
 }: FilterSummaryChipsProps<Category>) {
   const chips: FilterExtraChip[] = [
     ...summaries.map((summary) => ({
@@ -82,7 +84,7 @@ export function FilterSummaryChips<Category extends string>({
                 : { opacity: 0, scale: 0.98, y: -4 }
             }
             transition={transition}
-            className="mt-2 origin-top"
+            className={cn("mt-2 origin-top", className)}
           >
             <div className="flex flex-wrap items-center gap-2">
               <AnimatePresence initial={false}>

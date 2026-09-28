@@ -336,6 +336,7 @@ export function SearchAgentsPage() {
             </div>
           </TabsList>
           <FilterSummaryChips
+            className="mb-4"
             summaries={getFilterSummaries(
               filter,
               filterCategories,
