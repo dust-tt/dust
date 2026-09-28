@@ -13,7 +13,10 @@ import {
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import {
+  ensureHasAnyGroupPermission,
+  ensureIsManager,
+} from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -74,19 +77,12 @@ const app = workspaceApp();
 app.get(
   "/",
   validate("param", ParamsSchema),
+  ensureHasAnyGroupPermission(
+    "read_usage",
+    "Only workspace managers and group managers can view member limits."
+  ),
   async (ctx): HandlerResult<GetUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");
-    if (!auth.isManager() && !(await auth.hasFeatureFlag("group_management"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "Only workspace managers and group managers can view member limits.",
-        },
-      });
-    }
-
     if (!auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled) {
       return apiError(ctx, {
         status_code: 403,
