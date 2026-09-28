@@ -204,6 +204,7 @@ describe("searchSkills filters and facets", () => {
       aggregations: {
         availability: { buckets: [{ key: "workspace_users", doc_count: 3 }] },
         editors: { buckets: [{ key: "alice", doc_count: 2 }] },
+        mcpServerViews: { buckets: [{ key: "view", doc_count: 1 }] },
         usage: { count: 3, min: 0, max: 17 },
       },
     });
@@ -211,12 +212,13 @@ describe("searchSkills filters and facets", () => {
     const result = await searchSkills(auth, {
       searchTerm: "",
       limit: 0,
-      facets: ["availability", "editors", "usage"],
+      facets: ["availability", "editors", "mcpServerViews", "usage"],
     });
     assert(result.isOk());
     expect(result.value.facets).toEqual({
       availability: [{ value: "workspace_users", count: 3 }],
       editors: [{ value: "alice", count: 2 }],
+      mcpServerViews: [{ value: "view", count: 1 }],
       usage: { min: 0, max: 17 },
     });
     expect(mockSearch.mock.calls[0][0]).toMatchObject({
@@ -224,6 +226,7 @@ describe("searchSkills filters and facets", () => {
       aggs: {
         availability: { terms: { field: "availability" } },
         editors: { terms: { field: "editor_ids" } },
+        mcpServerViews: { terms: { field: "mcp_server_view_ids" } },
         usage: { stats: { field: "active_users_count" } },
       },
     });

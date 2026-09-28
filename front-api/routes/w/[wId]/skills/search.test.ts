@@ -1,6 +1,11 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { Authenticator } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -249,6 +254,65 @@ describe("POST /api/w/:wId/skills/search", () => {
         },
       ],
       usage: { min: 1, max: 9 },
+    });
+  });
+
+  it("names the tool views the caller can read and drops the others", async () => {
+    const { workspace, globalSpace } = await setup();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Readable tool",
+    });
+    const hiddenServer = await RemoteMCPServerFactory.create(workspace);
+    for (const { sId } of [server, hiddenServer]) {
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        adminAuth,
+        sId
+      );
+    }
+    const view = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
+    const hiddenView = await MCPServerViewFactory.create(
+      workspace,
+      hiddenServer.sId,
+      await SpaceFactory.regular(workspace)
+    );
+    searchSkills.mockResolvedValue(
+      new Ok({
+        skills: [],
+        total: 0,
+        hasMore: false,
+        facets: {
+          mcpServerViews: [
+            { value: view.sId, count: 2 },
+            { value: hiddenView.sId, count: 1 },
+            { value: "missing-view", count: 1 },
+          ],
+        },
+      })
+    );
+
+    const response = await searchRequest(workspace.sId, {
+      limit: 0,
+      facets: ["mcpServerViews"],
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).facets).toEqual({
+      mcpServerViews: [
+        {
+          sId: view.sId,
+          mcpServerId: server.sId,
+          name: view.getDisplayName(),
+          icon: view.getServerDisplayMetadata().icon,
+          count: 2,
+        },
+      ],
     });
   });
 

@@ -32,6 +32,7 @@ const SKILL_SEARCH_TERMS_FACET_FIELDS: Record<SkillSearchTermsFacet, string> = {
   editors: "editor_ids",
   childSkills: "child_skill_ids",
   spaces: "requested_space_ids",
+  mcpServerViews: "mcp_server_view_ids",
 };
 
 type SkillSearchAggregations = Partial<
