@@ -4,8 +4,8 @@ import { toCsv } from "@app/lib/api/csv";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getBillingCycleFromDay } from "@app/lib/plans/billing_cycle";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -129,6 +129,18 @@ async function fetchAllCompositeBuckets(
   return allBuckets;
 }
 
+/**
+ * @cc [owner:sfriquet,label:security] admin-only-export
+ * Callers MUST restrict this export to workspace admins (the route gates it with `ensureIsAdmin`),
+ * so every custom agent of the workspace is fetchable and its name is exported, hidden, draft and
+ * pending agents included.
+ */
+/**
+ * @cc [owner:sfriquet,label:security;backend] agent-names-workspace-scoped
+ * Agent names MUST be resolved through `AgentResource.fetchByIds` within `auth`'s workspace, from
+ * each agent's current version. An agent id that does not resolve (deleted, from another
+ * workspace, or not fetchable by the caller) MUST be exported as its raw sId.
+ */
 export async function getProgrammaticCostExport(
   auth: Authenticator,
   { selectedPeriod, billingCycleStartDay }: ExportQuery
@@ -178,14 +190,9 @@ export async function getProgrammaticCostExport(
   }
 
   const agentNames: Record<string, string> = {};
-  if (agentIds.size > 0) {
-    const agents = await AgentConfigurationModel.findAll({
-      where: { sId: Array.from(agentIds) },
-      attributes: ["sId", "name"],
-    });
-    for (const agent of agents) {
-      agentNames[agent.sId] = agent.name;
-    }
+  const agents = await AgentResource.fetchByIds(auth, Array.from(agentIds));
+  for (const agent of agents) {
+    agentNames[agent.sId] = agent.name;
   }
 
   const markupMultiplier = 1 + DUST_MARKUP_PERCENT / 100;
