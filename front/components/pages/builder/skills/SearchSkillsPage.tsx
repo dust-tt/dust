@@ -326,44 +326,45 @@ export function SearchSkillsPage() {
             }
           }}
         >
-          <TabsList>
+          <div className="flex flex-col gap-2">
+            <TabsList>
+              {SEARCH_TABS.map((tab) => (
+                <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
+              ))}
+              <div className="grow" />
+              <div className="flex items-center">
+                <SkillFilterPanel
+                  owner={owner}
+                  searchTerm={searchTerm}
+                  tabFilters={activeTab.filters}
+                  filter={filter}
+                  onFilterChange={setFilter}
+                />
+              </div>
+            </TabsList>
+            <FilterSummaryChips
+              summaries={getFilterSummaries(
+                filter,
+                SKILL_FILTER_CATEGORIES,
+                SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
+              )}
+              onClearCategory={(category) =>
+                setFilter(clearFilterCategory(filter, category))
+              }
+              onClearAll={() => setFilter({})}
+            />
             {SEARCH_TABS.map((tab) => (
-              <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
+              <TabsContent key={tab.id} value={tab.id}>
+                <SkillsList
+                  key={owner.sId}
+                  searchTerm={searchTerm}
+                  filters={{ ...tab.filters, ...searchFilters }}
+                  onSelect={setSkillId}
+                  onAgentClick={setAgentId}
+                />
+              </TabsContent>
             ))}
-            <div className="grow" />
-            <div className="flex items-center">
-              <SkillFilterPanel
-                owner={owner}
-                searchTerm={searchTerm}
-                tabFilters={activeTab.filters}
-                filter={filter}
-                onFilterChange={setFilter}
-              />
-            </div>
-          </TabsList>
-          <FilterSummaryChips
-            className="mb-4"
-            summaries={getFilterSummaries(
-              filter,
-              SKILL_FILTER_CATEGORIES,
-              SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
-            )}
-            onClearCategory={(category) =>
-              setFilter(clearFilterCategory(filter, category))
-            }
-            onClearAll={() => setFilter({})}
-          />
-          {SEARCH_TABS.map((tab) => (
-            <TabsContent key={tab.id} value={tab.id}>
-              <SkillsList
-                key={owner.sId}
-                searchTerm={searchTerm}
-                filters={{ ...tab.filters, ...searchFilters }}
-                onSelect={setSkillId}
-                onAgentClick={setAgentId}
-              />
-            </TabsContent>
-          ))}
+          </div>
         </Tabs>
       </div>
       {isImportDialogOpen && (
