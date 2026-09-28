@@ -12,6 +12,7 @@ interface ClientVisualizationWrapperProps {
   allowedOrigins: string[];
   identifier: string;
   isEditable?: boolean;
+  stagedEdits?: boolean;
   isFullHeight?: boolean;
 }
 
@@ -23,6 +24,7 @@ export function ClientVisualizationWrapper({
   allowedOrigins,
   identifier,
   isEditable = false,
+  stagedEdits = false,
   isFullHeight = false,
 }: ClientVisualizationWrapperProps) {
   const sendCrossDocumentMessage = useMemo(
@@ -43,6 +45,7 @@ export function ClientVisualizationWrapper({
     allowedOrigins,
     identifier,
     isEditable,
+    stagedEdits,
     isFullHeight,
     isPdfMode: false,
     dataAPI,

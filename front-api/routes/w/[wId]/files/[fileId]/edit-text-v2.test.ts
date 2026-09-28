@@ -1,6 +1,9 @@
 // @vitest-environment node
 
-import { publishFrameV2FromSource } from "@app/lib/api/frames/publish_from_source";
+import {
+  MAX_FRAME_TEXT_EDITS,
+  publishFrameV2FromSource,
+} from "@app/lib/api/frames/publish_from_source";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -169,6 +172,200 @@ describe("POST /api/w/:wId/files/:fileId/edit-text for Frames v2", () => {
     expect(
       reloadedAfterStorageFailure?.useCaseMetadata?.activePublicationId
     ).toBe(activePublicationId);
+  });
+
+  it("applies edits[] in one publish for Frames v2", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+    });
+    const sourceDirectoryPath = `conversation-${conversation.sId}/Status`;
+    const manifestPath = `${sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const gcsSourceDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+    })}Status`;
+    const sourcePath = `${gcsSourceDirectoryPath}/index.tsx`;
+    const batchSource =
+      "export default function Status() { return (<div><p>Ready</p><span>Alpha</span></div>); }";
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifest),
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+      mountFilePath: `${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+    });
+
+    const sourceByPath = new Map([
+      [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
+      [sourcePath, batchSource],
+    ]);
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      prefix === `${gcsSourceDirectoryPath}/`
+        ? [...sourceByPath.entries()].map(([name, content]) => ({
+            name,
+            metadata: {
+              contentType: name.endsWith(".tsx")
+                ? "text/typescript"
+                : frameV2ContentType,
+              size: String(Buffer.byteLength(content)),
+            },
+          }))
+        : null
+    );
+    fileStorageMock.setFileContent(
+      (filePath) => sourceByPath.get(filePath) ?? null
+    );
+
+    const firstPublication = await publishFrameV2FromSource(auth, {
+      conversation,
+      frame,
+      manifestPath,
+    });
+    if (firstPublication.isErr()) {
+      throw firstPublication.error;
+    }
+
+    const response = await postEdit(workspace, frame.sId, {
+      conversationId: conversation.sId,
+      edits: [
+        {
+          oldText: "Ready",
+          newText: "Done",
+          source: "index.tsx:1:1",
+        },
+        {
+          oldText: "Alpha",
+          newText: "Beta",
+          source: "index.tsx:1:1",
+        },
+      ],
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true });
+    const updatedSource = fileStorageMock.getObject(sourcePath);
+    expect(updatedSource).toContain("<p>Done</p>");
+    expect(updatedSource).toContain("<span>Beta</span>");
+
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    assert(reloaded?.isFrameV2);
+    const activePublicationId = reloaded.useCaseMetadata?.activePublicationId;
+    assert(activePublicationId);
+    expect(activePublicationId).not.toBe(firstPublication.value.publicationId);
+
+    const uiBundle = fileStorageMock.getObject(
+      getFramePublicationUiBundlePath({
+        workspaceId: workspace.sId,
+        frameId: frame.sId,
+        publicationId: activePublicationId,
+      })
+    );
+    expect(uiBundle).toContain("Done");
+    expect(uiBundle).toContain("Beta");
+  });
+
+  it("writes no source when a later file in the batch cannot be edited", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+    });
+    const gcsSourceDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+    })}Status`;
+    const indexPath = `${gcsSourceDirectoryPath}/index.tsx`;
+    const otherPath = `${gcsSourceDirectoryPath}/Other.tsx`;
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifest),
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+      mountFilePath: `${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+    });
+
+    const sourceByPath = new Map([
+      [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
+      [indexPath, uiSource],
+      [otherPath, "export function Other() { return <p>Other</p>; }"],
+    ]);
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      prefix === `${gcsSourceDirectoryPath}/`
+        ? [...sourceByPath.entries()].map(([name, content]) => ({
+            name,
+            metadata: {
+              contentType: name.endsWith(".tsx")
+                ? "text/typescript"
+                : frameV2ContentType,
+              size: String(Buffer.byteLength(content)),
+            },
+          }))
+        : null
+    );
+    fileStorageMock.setFileContent(
+      (filePath) => sourceByPath.get(filePath) ?? null
+    );
+
+    const response = await postEdit(workspace, frame.sId, {
+      conversationId: conversation.sId,
+      edits: [
+        { oldText: "Ready", newText: "Done", source: "index.tsx:1:1" },
+        { oldText: "Missing", newText: "X", source: "Other.tsx:1:1" },
+      ],
+    });
+
+    expect(response.status).toBe(400);
+    expect(
+      fileStorageMock.saveFileCalls.filter(
+        (call) => call.filePath === indexPath || call.filePath === otherPath
+      )
+    ).toHaveLength(0);
+  });
+
+  it("rejects batches larger than the edit cap", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+    });
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifest),
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const response = await postEdit(workspace, frame.sId, {
+      conversationId: conversation.sId,
+      edits: Array.from({ length: MAX_FRAME_TEXT_EDITS + 1 }, (_, i) => ({
+        oldText: `Old ${i}`,
+        newText: `New ${i}`,
+        source: "index.tsx:1:1",
+      })),
+    });
+
+    expect(response.status).toBe(400);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("rejects malformed source locations without changing source", async () => {

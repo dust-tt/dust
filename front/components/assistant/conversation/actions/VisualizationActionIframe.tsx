@@ -60,6 +60,7 @@ import type { SetStateAction } from "react";
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -771,6 +772,11 @@ export interface VisualizationActionIframeProps {
   /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
   frameId?: string;
   isEditable?: boolean;
+  /**
+   * Frames v2 authors only: edits are staged in the viz until Save. Switching between Preview and
+   * Edit is posted to the loaded viz (SET_EDIT_MODE), so it never changes the iframe URL.
+   */
+  stagedEditMode?: "preview" | "edit";
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
   scopedUserIdentity?: ScopedWorkspaceUserIdentity;
@@ -913,6 +919,7 @@ export const VisualizationActionIframe = forwardRef<
     canInvokeFunctions,
     conversationId,
     isEditable = false,
+    stagedEditMode,
     isInDrawer = false,
     onEditText,
     scopedUserIdentity,
@@ -1070,6 +1077,8 @@ export const VisualizationActionIframe = forwardRef<
     }
   }, [errorMessage, handleVisualizationRetry, retryClicked]);
 
+  // Only whether edits are staged is part of the URL; the current mode is posted instead.
+  const hasStagedEdits = stagedEditMode !== undefined;
   const vizUrl = useMemo(() => {
     const params = new URLSearchParams();
     params.set("identifier", visualization.identifier);
@@ -1086,8 +1095,28 @@ export const VisualizationActionIframe = forwardRef<
       params.set("editable", "true");
     }
 
+    if (hasStagedEdits) {
+      params.set("stagedEdits", "true");
+    }
+
     return `${props.vizUrl.replace(/\/$/, "")}/content?${params.toString()}`;
-  }, [visualization, isInDrawer, isEditable, props.vizUrl]);
+  }, [visualization, isInDrawer, isEditable, hasStagedEdits, props.vizUrl]);
+
+  // Toggle Preview|Edit affordances inside the already-loaded viz (no URL / remount change).
+  const postEditMode = useCallback(() => {
+    const contentWindow = vizIframeRef.current?.contentWindow;
+    if (!contentWindow || !stagedEditMode) {
+      return;
+    }
+    contentWindow.postMessage(
+      { type: "SET_EDIT_MODE", enabled: stagedEditMode === "edit" },
+      "*"
+    );
+  }, [stagedEditMode]);
+
+  useEffect(() => {
+    postEditMode();
+  }, [postEditMode]);
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
@@ -1164,6 +1193,7 @@ export const VisualizationActionIframe = forwardRef<
                     src={vizUrl}
                     allowFullScreen
                     sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+                    onLoad={postEditMode}
                   />
                 </div>
               )}

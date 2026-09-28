@@ -3,7 +3,7 @@
 import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { TailwindDiagnostics } from "@viz/app/components/TailwindDiagnostics";
-import { VizContext } from "@viz/app/components/VizContext";
+import { type FrameEditMode, VizContext } from "@viz/app/components/VizContext";
 import { FrameFunctionHooksProvider } from "@viz/app/lib/frame-function-hooks";
 import { createFrameRuntimeImports } from "@viz/app/lib/frame-runtime-scope";
 import { extractFileRefs, type FileRef } from "@viz/app/lib/parseFileRefs";
@@ -383,11 +383,14 @@ export function VisualizationWrapper({
   const {
     identifier,
     isEditable = false,
+    stagedEdits = false,
     isFullHeight = false,
     isPdfMode = false,
   } = config;
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
   const [vizReady, setVizReady] = useState(false);
+  // Frames v2: parent toggles Preview|Edit via SET_EDIT_MODE without remounting the iframe.
+  const [editModeActive, setEditModeActive] = useState(false);
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
@@ -613,9 +616,26 @@ export function VisualizationWrapper({
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [addEventListener, handleScreenshotDownload, handleSVGDownload]);
 
+  // Preview|Edit without remount: the parent posts SET_EDIT_MODE to the loaded viz.
+  useEffect(() => {
+    if (!stagedEdits) {
+      return;
+    }
+    return addEventListener("SET_EDIT_MODE", (message) => {
+      if (message.type === "SET_EDIT_MODE") {
+        setEditModeActive(message.enabled);
+      }
+    });
+  }, [addEventListener, stagedEdits]);
+
+  const editMode: FrameEditMode = !stagedEdits
+    ? "legacy"
+    : editModeActive
+      ? "edit"
+      : "preview";
   const vizContextValue = useMemo(
-    () => ({ isPdfMode, editText }),
-    [isPdfMode, editText]
+    () => ({ isPdfMode, editText, addEventListener, editMode }),
+    [addEventListener, editMode, editText, isPdfMode]
   );
 
   if (errored) {

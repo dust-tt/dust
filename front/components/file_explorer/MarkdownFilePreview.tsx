@@ -28,25 +28,40 @@ interface MarkdownFilePreviewProps {
 interface MarkdownFilePreviewViewModeSwitchProps {
   viewMode: MarkdownFilePreviewViewMode;
   onViewModeChange: (mode: MarkdownFilePreviewViewMode) => void;
+  disabled?: boolean;
+  /** Icon-only options for narrow headers (e.g. mobile Frame panel). */
+  hideLabels?: boolean;
 }
 
 export function MarkdownFilePreviewViewModeSwitch({
   viewMode,
   onViewModeChange,
+  disabled,
+  hideLabels = false,
 }: MarkdownFilePreviewViewModeSwitchProps) {
   return (
     <ButtonsSwitchList
-      key={viewMode}
-      defaultValue={viewMode}
+      value={viewMode}
       size="xs"
+      disabled={disabled}
       onValueChange={(value) => {
         if (isViewMode(value)) {
           onViewModeChange(value);
         }
       }}
     >
-      <ButtonsSwitch value="preview" label="Preview" icon={Eye} />
-      <ButtonsSwitch value="edit" label="Edit" icon={Edit04} />
+      <ButtonsSwitch
+        value="preview"
+        label={hideLabels ? undefined : "Preview"}
+        icon={Eye}
+        tooltip={hideLabels ? "Preview" : undefined}
+      />
+      <ButtonsSwitch
+        value="edit"
+        label={hideLabels ? undefined : "Edit"}
+        icon={Edit04}
+        tooltip={hideLabels ? "Edit" : undefined}
+      />
     </ButtonsSwitchList>
   );
 }

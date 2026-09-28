@@ -75,6 +75,8 @@ export interface VisualizationConfig {
   identifier: string;
   allowedOrigins: string[];
   isEditable?: boolean;
+  /** Frames v2 Edit session: click-to-edit + FLUSH_EDITABLES for batch Save. */
+  stagedEdits?: boolean;
   isFullHeight?: boolean;
   isPdfMode?: boolean;
   dataAPI: VisualizationDataAPI;

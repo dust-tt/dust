@@ -5,7 +5,9 @@ import { DEFAULT_FRAME_PANEL_SIZE } from "@app/components/assistant/conversation
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { FrameBetaChip } from "@app/components/assistant/conversation/interactive_content/frame/FrameBetaChip";
+import { FrameEditControls } from "@app/components/assistant/conversation/interactive_content/frame/FrameEditControls";
 import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
+import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
@@ -207,6 +209,23 @@ export function FrameRenderer({
   });
   const isEditable =
     renderMode === "legacy" || Boolean(conversation && isFrameAuthor);
+  // Frames v2 authors edit in a Preview|Edit session with batch Save. Legacy Frames keep the
+  // always-on double-click + blur-save path.
+  const canEditV2 = renderMode === "v2" && isEditable;
+  const editSession = useFrameEditSession({
+    owner,
+    fileId,
+    conversationId: conversation?.sId,
+    iframeRef,
+    mutateFileContent,
+  });
+  // Remount via React key only (identifier stays stable so Next.js keeps one /content URL):
+  // on a new contentHash (agent publish / open_frame) and, for v2, after Save/discard/reload.
+  const vizInstanceKey = `${
+    contentHash
+      ? `viz-${contentHash}`
+      : `viz-${fileId}-${framePath ?? packageRoot ?? ""}`
+  }${renderMode === "v2" ? `-${editSession.contentRevision}` : ""}`;
 
   const handleEditText = useCallback(
     async (params: Parameters<typeof editFrameText>[0]) => {
@@ -259,6 +278,10 @@ export function FrameRenderer({
   const reloadFile = async () => {
     setIsLoading(true);
     await mutateFileContent(`/api/w/${owner.sId}/files/${fileId}?action=view`);
+    if (renderMode === "v2") {
+      // v2 renders a built bundle: remount so react-runner loads the refreshed content.
+      editSession.remount();
+    }
     setIsLoading(false);
   };
 
@@ -404,7 +427,10 @@ export function FrameRenderer({
             />
             {hasFrameFunctions && <FrameBetaChip />}
           </div>
-          <div className="flex items-center">
+          <div className="flex min-w-0 items-center gap-1">
+            {canEditV2 && (
+              <FrameEditControls session={editSession} hideLabels={isMobile} />
+            )}
             <ExportContentDropdown
               iframeRef={iframeRef}
               owner={owner}
@@ -487,35 +513,47 @@ export function FrameRenderer({
           />
         ) : (
           <div className="h-full">
-            <AuthenticatedVisualizationActionIframe
-              agentConfigurationId={
-                fileMetadata?.useCaseMetadata
-                  .lastEditedByAgentConfigurationId ?? ""
-              }
-              workspaceId={owner.sId}
-              vizUrl={vizUrl}
-              visualization={{
-                code: fileContent ?? "",
-                complete: true,
-                // Stable across revisions — contentHash belongs in `key` only.
-                // Putting it in identifier forced Next.js to recompile /content
-                // for every open_frame/publish.
-                identifier: `viz-${fileId}`,
-              }}
-              key={
-                contentHash
-                  ? `viz-${contentHash}`
-                  : `viz-${fileId}-${framePath ?? packageRoot ?? ""}`
-              }
-              conversationId={conversation?.sId ?? null}
-              spaceId={frameSpaceId ?? undefined}
-              framePackageRoot={framePackageRoot}
-              frameId={renderMode === "v2" ? fileId : undefined}
-              isInDrawer={true}
-              isEditable={isEditable}
-              onEditText={isEditable ? handleEditText : undefined}
-              ref={iframeRef}
-            />
+            <div className="relative h-full">
+              <AuthenticatedVisualizationActionIframe
+                agentConfigurationId={
+                  fileMetadata?.useCaseMetadata
+                    .lastEditedByAgentConfigurationId ?? ""
+                }
+                workspaceId={owner.sId}
+                vizUrl={vizUrl}
+                visualization={{
+                  code: fileContent ?? "",
+                  complete: true,
+                  // Stable across revisions — contentHash belongs in `key` only.
+                  // Putting it in identifier forced Next.js to recompile /content
+                  // for every open_frame/publish.
+                  identifier: `viz-${fileId}`,
+                }}
+                key={vizInstanceKey}
+                conversationId={conversation?.sId ?? null}
+                spaceId={frameSpaceId ?? undefined}
+                framePackageRoot={framePackageRoot}
+                frameId={renderMode === "v2" ? fileId : undefined}
+                isInDrawer={true}
+                isEditable={isEditable}
+                stagedEditMode={canEditV2 ? editSession.mode : undefined}
+                onEditText={
+                  !isEditable
+                    ? undefined
+                    : canEditV2
+                      ? editSession.stageEdit
+                      : handleEditText
+                }
+                ref={iframeRef}
+              />
+              {editSession.isSaving && (
+                <div
+                  className="absolute inset-0 z-10 cursor-wait"
+                  aria-busy="true"
+                  aria-label="Publishing your changes..."
+                />
+              )}
+            </div>
             {conversation && (
               <PreviewActionButtons
                 owner={owner}
