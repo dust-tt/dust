@@ -1,0 +1,45 @@
+name: Check no new bulk Biome suppressions
+
+on:
+  push:
+    paths:
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - ".github/workflows/check-bulk-suppressions.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check-bulk-suppressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Check the bulk suppression count did not grow
+        shell: bash
+        run: |
+          # The Biome migration silenced every existing violation with this
+          # marker. It is meant to shrink over time, never to be copied.
+          # Comparing added against removed lets refactors move an existing
+          # suppression without being flagged.
+          # TODO: delete this workflow once no marker is left in the codebase.
+          git diff -U0 origin/main...HEAD -- ':!.github/' | awk -v marker='ignored using `--suppress`' '
+            /^\+\+\+ / { file = substr($0, 7) }
+            !index($0, marker) { next }
+            /^\+/ { added++; lines = lines "  " file ": " substr($0, 2) "\n" }
+            /^-/ { removed++ }
+            END {
+              if (added > removed) {
+                printf "ERROR: %d bulk Biome suppressions added, %d removed.\n", added, removed
+                printf "This marker comes from the Biome migration and must not be copied.\n\n"
+                printf "Added lines:\n%s\n", lines
+                printf "Fix the violation instead, or write a biome-ignore comment that explains why it is needed.\n"
+                exit 1
+              }
+              printf "OK: %d bulk Biome suppressions added, %d removed.\n", added, removed
+            }
+          '
