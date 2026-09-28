@@ -1,6 +1,27 @@
-import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
+import type {
+  CatalogFilters,
+  CatalogItem,
+  CatalogKind,
+  CatalogQuery,
+  CatalogView,
+  DiscoverSkill,
+} from "@app/components/assistant/conversation/discover/catalog";
+import {
+  buildCatalogQuery,
+  getItemDescription,
+  getItemId,
+  getItemName,
+  toHydratedAgentCatalogItem,
+  toHydratedSkillCatalogItem,
+} from "@app/components/assistant/conversation/discover/catalog";
+import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useDebounce } from "@app/hooks/useDebounce";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useCatalogSearch } from "@app/lib/swr/catalog_search";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
+import { useTagsUsage } from "@app/lib/swr/tags";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   compareForFuzzySort,
@@ -8,8 +29,7 @@ import {
   subFilter,
   tagsSorter,
 } from "@app/lib/utils";
-import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -20,7 +40,6 @@ import {
   cn,
   EmptyCTA,
   Icon,
-  MessageCircle01,
   NavigationList,
   NavigationListItem,
   Pin02,
@@ -28,16 +47,7 @@ import {
   Spinner,
   Users01,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
-
-export type DiscoverSkill =
-  GetSkillsWithRelationsResponseBody["skills"][number];
-
-export type CatalogItem =
-  | { kind: "agent"; agent: LightAgentConfigurationType }
-  | { kind: "skill"; skill: DiscoverSkill };
-
-type CatalogView = "favorites" | "popular" | "all" | "mine";
+import { useEffect, useMemo, useState } from "react";
 
 const CATALOG_VIEWS: { id: CatalogView; label: string }[] = [
   { id: "favorites", label: "Favorites" },
@@ -45,14 +55,6 @@ const CATALOG_VIEWS: { id: CatalogView; label: string }[] = [
   { id: "all", label: "All" },
   { id: "mine", label: "Mine" },
 ];
-
-type CatalogKind = "all" | CatalogItem["kind"];
-
-interface CatalogFilters {
-  view: CatalogView;
-  kind: CatalogKind;
-  tagId: string | null;
-}
 
 const DEFAULT_FILTERS: CatalogFilters = {
   view: "all",
@@ -66,57 +68,17 @@ const CATALOG_KINDS: { id: CatalogKind; label: string }[] = [
   { id: "skill", label: "Skills" },
 ];
 
-export function getItemId(item: CatalogItem): string {
-  return item.kind === "agent" ? item.agent.sId : item.skill.sId;
-}
-
-export function getItemName(item: CatalogItem): string {
-  return item.kind === "agent" ? item.agent.name : item.skill.name;
-}
-
-export function getItemDescription(item: CatalogItem): string {
-  return item.kind === "agent"
-    ? item.agent.description
-    : item.skill.userFacingDescription;
-}
-
-function getItemSearchString(item: CatalogItem): string {
-  if (item.kind === "agent") {
-    return getAgentSearchString(item.agent);
-  }
-  return [item.skill.name, ...getItemAuthors(item)].join(" ").toLowerCase();
+function skillSearchString(skill: DiscoverSkill): string {
+  return [
+    skill.name,
+    ...(skill.relations.editors ?? []).map((editor) => editor.fullName),
+  ]
+    .join(" ")
+    .toLowerCase();
 }
 
 function capitalizeWords(text: string): string {
   return text.replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function getItemUsageCount(item: CatalogItem): number {
-  return item.kind === "agent"
-    ? (item.agent.usage?.messageCount ?? 0)
-    : (item.skill.usage ?? 0);
-}
-
-export function getItemAuthors(item: CatalogItem): readonly string[] {
-  return item.kind === "agent"
-    ? (item.agent.lastAuthors ?? [])
-    : (item.skill.relations.editors ?? []).map((e) => e.fullName);
-}
-
-function isFavorite(item: CatalogItem): boolean {
-  return item.kind === "agent"
-    ? item.agent.userFavorite
-    : !!item.skill.isFavorite;
-}
-
-function isMine(item: CatalogItem): boolean {
-  return item.kind === "agent" ? item.agent.canEdit : item.skill.canWrite;
-}
-
-function isDustProvided(item: CatalogItem): boolean {
-  return item.kind === "agent"
-    ? item.agent.scope === "global"
-    : isDustProvidedSkill(item.skill);
 }
 
 interface ItemAuthorProps {
@@ -124,7 +86,7 @@ interface ItemAuthorProps {
 }
 
 export function ItemAuthor({ item }: ItemAuthorProps) {
-  if (isDustProvided(item)) {
+  if (item.isDustProvided) {
     return (
       <span className="flex shrink-0 items-center gap-1 text-highlight">
         <Icon visual={CheckVerified01} size="xs" />
@@ -132,12 +94,13 @@ export function ItemAuthor({ item }: ItemAuthorProps) {
       </span>
     );
   }
-  const authors = getItemAuthors(item);
-  if (authors.length === 0) {
+  if (item.authors.length === 0) {
     return null;
   }
   return (
-    <span className="truncate text-foreground">{formatAuthors(authors)}</span>
+    <span className="truncate text-foreground">
+      {formatAuthors(item.authors)}
+    </span>
   );
 }
 
@@ -151,11 +114,184 @@ function formatAuthors(authors: readonly string[]): string {
 
 interface DiscoverCatalogProps {
   owner: WorkspaceType;
-  onAgentClick: (agent: LightAgentConfigurationType) => void;
-  onSkillClick: (skill: DiscoverSkill) => void;
+  onAgentClick: (agent: RichAgentMentionCandidate) => void;
+  onSkillClick: (skill: PendingSkill) => void;
   onPin?: (item: CatalogItem) => void;
   onDetails: (item: CatalogItem) => void;
   onFiltersChange: () => void;
+}
+
+interface CatalogActions {
+  onAgentClick: (agent: RichAgentMentionCandidate) => void;
+  onSkillClick: (skill: PendingSkill) => void;
+  onPin?: (item: CatalogItem) => void;
+  onDetails: (item: CatalogItem) => void;
+}
+
+interface CatalogSourceProps extends CatalogActions {
+  owner: WorkspaceType;
+  query: CatalogQuery;
+  search: string;
+  onSearchChange: (value: string) => void;
+  onUpdateFilters: (update: Partial<CatalogFilters>) => void;
+  canClearFilters: boolean;
+  onClearFilters: () => void;
+}
+
+function HydratedCatalog({
+  owner,
+  query,
+  search,
+  onSearchChange,
+  onUpdateFilters,
+  canClearFilters,
+  onClearFilters,
+  ...actions
+}: CatalogSourceProps) {
+  const { agentConfigurations, isLoading: isAgentsLoading } =
+    useUnifiedAgentConfigurations({ workspaceId: owner.sId });
+  const { skillsWithRelations, isSkillsWithRelationsLoading } =
+    useSkillsWithRelations({
+      owner,
+      status: "active",
+      withUsage: true,
+    });
+
+  const activeAgents = useMemo(
+    () => agentConfigurations.filter((a) => a.status === "active"),
+    [agentConfigurations]
+  );
+  const tags = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          activeAgents.flatMap((agent) =>
+            agent.tags.map((tag) => [tag.sId, tag])
+          )
+        ).values()
+      ).sort(tagsSorter),
+    [activeAgents]
+  );
+
+  const items = useMemo(() => {
+    const agents = query.showAgents
+      ? activeAgents
+          .filter(
+            (agent) =>
+              (query.view !== "favorites" || agent.userFavorite) &&
+              (query.view !== "mine" || agent.canEdit) &&
+              (query.tagId === null ||
+                agent.tags.some((tag) => tag.sId === query.tagId)) &&
+              (!query.searchTerm ||
+                subFilter(query.searchTerm, getAgentSearchString(agent)))
+          )
+          .map((agent) => ({
+            item: toHydratedAgentCatalogItem(agent),
+            searchString: getAgentSearchString(agent),
+            sortName: agent.name.toLowerCase(),
+            usage: agent.usage?.messageCount ?? 0,
+          }))
+      : [];
+    const skills = query.showSkills
+      ? skillsWithRelations
+          .filter(
+            (skill) =>
+              (query.view !== "favorites" || !!skill.isFavorite) &&
+              (query.view !== "mine" || skill.canWrite) &&
+              (!query.searchTerm ||
+                subFilter(query.searchTerm, skillSearchString(skill)))
+          )
+          .map((skill) => ({
+            item: toHydratedSkillCatalogItem(skill),
+            searchString: skillSearchString(skill),
+            sortName: skill.name.toLowerCase(),
+            usage: skill.usage ?? 0,
+          }))
+      : [];
+    return [...agents, ...skills]
+      .sort(
+        (a, b) =>
+          (query.searchTerm
+            ? compareForFuzzySort(
+                query.searchTerm,
+                a.searchString,
+                b.searchString
+              )
+            : 0) ||
+          (query.view === "popular" ? b.usage - a.usage : 0) ||
+          a.sortName.localeCompare(b.sortName)
+      )
+      .map(({ item }) => item);
+  }, [activeAgents, query, skillsWithRelations]);
+
+  return (
+    <CatalogLayout
+      filters={query}
+      tags={tags}
+      search={search}
+      onSearchChange={onSearchChange}
+      onUpdateFilters={onUpdateFilters}
+    >
+      <CatalogResults
+        items={items}
+        isLoading={isAgentsLoading || isSkillsWithRelationsLoading}
+        hasError={false}
+        hasNextPage={false}
+        canClearFilters={canClearFilters}
+        onClearFilters={onClearFilters}
+        {...actions}
+      />
+    </CatalogLayout>
+  );
+}
+
+interface SearchCatalogProps extends CatalogSourceProps {
+  isDebouncing: boolean;
+}
+
+function SearchCatalog({
+  owner,
+  query,
+  search,
+  onSearchChange,
+  onUpdateFilters,
+  canClearFilters,
+  onClearFilters,
+  isDebouncing,
+  ...actions
+}: SearchCatalogProps) {
+  const catalogSearch = useCatalogSearch({ owner, query });
+  const { tags: tagsWithUsage, isTagsLoading } = useTagsUsage({ owner });
+  const tags = useMemo(
+    () => tagsWithUsage.filter((tag) => tag.usage > 0).sort(tagsSorter),
+    [tagsWithUsage]
+  );
+
+  return (
+    <CatalogLayout
+      filters={query}
+      tags={tags}
+      search={search}
+      onSearchChange={onSearchChange}
+      onUpdateFilters={onUpdateFilters}
+    >
+      <CatalogResults
+        items={catalogSearch.items}
+        isLoading={
+          isDebouncing ||
+          isTagsLoading ||
+          catalogSearch.isLoading ||
+          catalogSearch.isLoadingMore
+        }
+        hasError={catalogSearch.hasError}
+        hasNextPage={catalogSearch.hasMore}
+        onLoadMore={catalogSearch.loadMore}
+        canClearFilters={canClearFilters}
+        onClearFilters={onClearFilters}
+        {...actions}
+      />
+    </CatalogLayout>
+  );
 }
 
 export function DiscoverCatalog({
@@ -168,189 +304,274 @@ export function DiscoverCatalog({
 }: DiscoverCatalogProps) {
   const [filters, setFilters] = useState<CatalogFilters>(DEFAULT_FILTERS);
   const [search, setSearch] = useState("");
-  const { view, kind, tagId } = filters;
+  const searchTerm = search.trim().toLowerCase().replace(/^@/, "");
+  const {
+    debouncedValue: debouncedSearchTerm,
+    isDebouncing,
+    setValue: setSearchTerm,
+  } = useDebounce(searchTerm, { delay: 250 });
 
+  useEffect(() => {
+    setSearchTerm(searchTerm);
+  }, [searchTerm, setSearchTerm]);
+
+  const { hasFeature } = useFeatureFlags();
+  // Skill search 403s without its flag. Favorites stay hydrated because search
+  // results have no favorite flag.
+  const skillsSearchEnabled = hasFeature("skills_search");
+  const useSearch =
+    filters.view !== "favorites" &&
+    (filters.kind !== "skill" || skillsSearchEnabled);
+  const query = useMemo(() => {
+    const built = buildCatalogQuery(
+      filters,
+      useSearch ? debouncedSearchTerm : searchTerm
+    );
+    // Skill search 403s without the flag. Favorites and the skill-only view stay
+    // on the hydrated lists, which still include skills.
+    if (!useSearch || skillsSearchEnabled) {
+      return built;
+    }
+    return { ...built, showSkills: false };
+  }, [
+    debouncedSearchTerm,
+    filters,
+    searchTerm,
+    skillsSearchEnabled,
+    useSearch,
+  ]);
   const updateFilters = (update: Partial<CatalogFilters>) => {
     setFilters((current) => ({ ...current, ...update }));
     onFiltersChange();
   };
-
-  const { agentConfigurations, isLoading: isAgentsLoading } =
-    useUnifiedAgentConfigurations({ workspaceId: owner.sId });
-  // Only skills list exposing editors, favorites and usage together; shares the Manage Skills cache.
-  const { skillsWithRelations, isSkillsWithRelationsLoading } =
-    useSkillsWithRelations({ owner, status: "active", withUsage: true });
-
-  const activeAgents = useMemo(
-    () => agentConfigurations.filter((a) => a.status === "active"),
-    [agentConfigurations]
-  );
-
-  const tags = useMemo(
-    () =>
-      Array.from(
-        new Map(
-          activeAgents.flatMap((a) => a.tags).map((t) => [t.sId, t])
-        ).values()
-      ).sort(tagsSorter),
-    [activeAgents]
-  );
-
-  const entries = useMemo(
-    () =>
-      [
-        ...activeAgents.map((agent) => ({ kind: "agent" as const, agent })),
-        ...skillsWithRelations.map((skill) => ({
-          kind: "skill" as const,
-          skill,
-        })),
-      ].map((item: CatalogItem) => ({
-        item,
-        searchString: getItemSearchString(item),
-        sortName: getItemName(item).toLowerCase(),
-      })),
-    [activeAgents, skillsWithRelations]
-  );
-
-  const needle = search.trim().toLowerCase().replace(/^@/, "");
-
-  const items = useMemo(
-    () =>
-      entries
-        .filter(
-          ({ item, searchString }) =>
-            (kind === "all" || item.kind === kind) &&
-            (tagId === null ||
-              (item.kind === "agent" &&
-                item.agent.tags.some((t) => t.sId === tagId))) &&
-            (view !== "favorites" || isFavorite(item)) &&
-            (view !== "mine" || isMine(item)) &&
-            (!needle || subFilter(needle, searchString))
-        )
-        .sort(
-          (a, b) =>
-            (needle
-              ? compareForFuzzySort(needle, a.searchString, b.searchString)
-              : 0) ||
-            (view === "popular"
-              ? getItemUsageCount(b.item) - getItemUsageCount(a.item)
-              : 0) ||
-            a.sortName.localeCompare(b.sortName)
-        )
-        .map(({ item }) => item),
-    [entries, kind, tagId, view, needle]
-  );
-
-  const hasActiveFilters =
-    view !== "all" || kind !== "all" || tagId !== null || needle !== "";
-
   const clearFilters = () => {
-    updateFilters(DEFAULT_FILTERS);
+    setFilters(DEFAULT_FILTERS);
     setSearch("");
+    onFiltersChange();
   };
+  const onSearchChange = (value: string) => {
+    setSearch(value);
+    onFiltersChange();
+  };
+  const canClearFilters =
+    filters.view !== "all" ||
+    filters.kind !== "all" ||
+    filters.tagId !== null ||
+    searchTerm !== "";
+  const actions = { onAgentClick, onSkillClick, onPin, onDetails };
 
-  const isInitialLoading =
-    (isAgentsLoading && activeAgents.length === 0) ||
-    isSkillsWithRelationsLoading;
-  const isRefreshing = isAgentsLoading && !isInitialLoading;
+  return useSearch ? (
+    <SearchCatalog
+      key={query.key}
+      owner={owner}
+      query={query}
+      search={search}
+      onSearchChange={onSearchChange}
+      onUpdateFilters={updateFilters}
+      canClearFilters={canClearFilters}
+      onClearFilters={clearFilters}
+      isDebouncing={isDebouncing}
+      {...actions}
+    />
+  ) : (
+    <HydratedCatalog
+      owner={owner}
+      query={query}
+      search={search}
+      onSearchChange={onSearchChange}
+      onUpdateFilters={updateFilters}
+      canClearFilters={canClearFilters}
+      onClearFilters={clearFilters}
+      {...actions}
+    />
+  );
+}
 
+interface CatalogLayoutProps {
+  filters: CatalogFilters;
+  tags: { sId: string; name: string }[];
+  search: string;
+  onSearchChange: (value: string) => void;
+  onUpdateFilters: (update: Partial<CatalogFilters>) => void;
+  children: React.ReactNode;
+}
+
+function CatalogLayout({
+  filters,
+  tags,
+  search,
+  onSearchChange,
+  onUpdateFilters,
+  children,
+}: CatalogLayoutProps) {
   return (
     <div className="flex flex-col gap-8">
       <SearchInput
         name="discover-search"
         placeholder="Search for agents or skills"
         value={search}
-        onChange={(value) => {
-          setSearch(value);
-          onFiltersChange();
-        }}
+        onChange={onSearchChange}
       />
       <div className="grid grid-cols-1 gap-10 md:grid-cols-[12rem_1fr]">
-        <nav aria-label="Filter" className="flex flex-col gap-6 self-start">
-          <NavigationList>
-            {CATALOG_VIEWS.map((v) => (
-              <NavigationListItem
-                key={v.id}
-                label={v.label}
-                selected={view === v.id}
-                onClick={() => updateFilters({ view: v.id })}
-              />
-            ))}
-          </NavigationList>
-          <NavigationList>
-            {CATALOG_KINDS.map((k) => (
-              <NavigationListItem
-                key={k.id}
-                label={k.label}
-                selected={kind === k.id}
-                onClick={() =>
-                  updateFilters(
-                    k.id === "skill"
-                      ? { kind: k.id, tagId: null }
-                      : { kind: k.id }
-                  )
-                }
-              />
-            ))}
-          </NavigationList>
-          {tags.length > 0 && kind !== "skill" && (
-            <NavigationList>
-              {tags.map((t) => (
-                <NavigationListItem
-                  key={t.sId}
-                  label={capitalizeWords(t.name)}
-                  selected={tagId === t.sId}
-                  onClick={() =>
-                    updateFilters({ tagId: tagId === t.sId ? null : t.sId })
-                  }
-                />
-              ))}
-            </NavigationList>
-          )}
-        </nav>
-        <section className="relative flex min-w-0 flex-col">
-          {isRefreshing && (
-            <div className="absolute right-0 top-0">
-              <Spinner size="xs" />
-            </div>
-          )}
-          {isInitialLoading ? (
-            <div className="flex justify-center py-6">
-              <Spinner />
-            </div>
-          ) : items.length === 0 ? (
-            <EmptyCTA
-              title="No agents or skills found"
-              message="Try another search or different filters."
-              action={
-                hasActiveFilters && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    label="Clear filters"
-                    onClick={clearFilters}
-                  />
-                )
-              }
-            />
-          ) : (
-            items.map((item) => (
-              <CatalogRow
-                key={`${item.kind}-${getItemId(item)}`}
-                item={item}
-                onUse={() =>
-                  item.kind === "agent"
-                    ? onAgentClick(item.agent)
-                    : onSkillClick(item.skill)
-                }
-                onPin={onPin && (() => onPin(item))}
-                onDetails={() => onDetails(item)}
-              />
-            ))
-          )}
-        </section>
+        <CatalogFiltersNav
+          filters={filters}
+          tags={tags}
+          onUpdateFilters={onUpdateFilters}
+        />
+        {children}
       </div>
     </div>
+  );
+}
+
+interface CatalogFiltersNavProps {
+  filters: CatalogFilters;
+  tags: { sId: string; name: string }[];
+  onUpdateFilters: (update: Partial<CatalogFilters>) => void;
+}
+
+function CatalogFiltersNav({
+  filters: { view, kind, tagId },
+  tags,
+  onUpdateFilters,
+}: CatalogFiltersNavProps) {
+  return (
+    <nav aria-label="Filter" className="flex flex-col gap-6 self-start">
+      <NavigationList>
+        {CATALOG_VIEWS.map((v) => (
+          <NavigationListItem
+            key={v.id}
+            label={v.label}
+            selected={view === v.id}
+            onClick={() => onUpdateFilters({ view: v.id })}
+          />
+        ))}
+      </NavigationList>
+      <NavigationList>
+        {CATALOG_KINDS.map((k) => (
+          <NavigationListItem
+            key={k.id}
+            label={k.label}
+            selected={kind === k.id}
+            onClick={() =>
+              onUpdateFilters(
+                k.id === "skill" ? { kind: k.id, tagId: null } : { kind: k.id }
+              )
+            }
+          />
+        ))}
+      </NavigationList>
+      {tags.length > 0 && kind !== "skill" && (
+        <NavigationList>
+          {tags.map((t) => (
+            <NavigationListItem
+              key={t.sId}
+              label={capitalizeWords(t.name)}
+              selected={tagId === t.sId}
+              onClick={() =>
+                onUpdateFilters({ tagId: tagId === t.sId ? null : t.sId })
+              }
+            />
+          ))}
+        </NavigationList>
+      )}
+    </nav>
+  );
+}
+
+interface CatalogResultsProps extends CatalogActions {
+  items: CatalogItem[];
+  isLoading: boolean;
+  hasError: boolean;
+  hasNextPage: boolean;
+  onLoadMore?: () => void;
+  canClearFilters: boolean;
+  onClearFilters: () => void;
+}
+
+function CatalogResults({
+  items,
+  isLoading,
+  hasError,
+  hasNextPage,
+  onLoadMore,
+  canClearFilters,
+  onClearFilters,
+  onAgentClick,
+  onSkillClick,
+  onPin,
+  onDetails,
+}: CatalogResultsProps) {
+  const isInitialLoading = isLoading && items.length === 0;
+
+  return (
+    <section className="relative flex min-w-0 flex-col">
+      {isLoading && !isInitialLoading && (
+        <div className="absolute right-0 top-0">
+          <Spinner size="xs" />
+        </div>
+      )}
+      {isInitialLoading ? (
+        <div className="flex justify-center py-6">
+          <Spinner />
+        </div>
+      ) : items.length === 0 ? (
+        hasError ? (
+          <EmptyCTA
+            title="Unable to load agents and skills"
+            message="Try again in a moment."
+            action={null}
+          />
+        ) : (
+          <EmptyCTA
+            title="No agents or skills found"
+            message="Try another search or different filters."
+            action={
+              canClearFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label="Clear filters"
+                  onClick={onClearFilters}
+                />
+              )
+            }
+          />
+        )
+      ) : (
+        <>
+          {items.map((item) => (
+            <CatalogRow
+              key={`${item.kind}-${getItemId(item)}`}
+              item={item}
+              onUse={() =>
+                item.kind === "agent"
+                  ? onAgentClick(item.agent)
+                  : onSkillClick(item.skill)
+              }
+              onPin={onPin && (() => onPin(item))}
+              onDetails={() => onDetails(item)}
+            />
+          ))}
+          {hasError && (
+            <p className="py-4 text-center copy-sm text-warning-500">
+              Couldn't load more. Try again in a moment.
+            </p>
+          )}
+          {hasNextPage && onLoadMore && (
+            <div className="flex justify-center pt-6">
+              <Button
+                variant="outline"
+                size="sm"
+                label="Load more"
+                isLoading={isLoading}
+                onClick={onLoadMore}
+              />
+            </div>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
@@ -368,7 +589,11 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
     item.kind === "agent" ? (
       <Avatar size={isMobile ? "md" : "lg"} visual={item.agent.pictureUrl} />
     ) : (
-      <SkillCatalogAvatar skill={item.skill} size={isMobile ? "md" : "lg"} />
+      <SkillCatalogAvatar
+        icon={item.skill.icon}
+        isDustProvided={item.isDustProvided}
+        size={isMobile ? "md" : "lg"}
+      />
     );
   return (
     <div
@@ -397,29 +622,18 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
         )}
         <Chip
           size="xs"
-          label={
-            item.kind === "agent"
-              ? `@${item.agent.name}`
-              : `/${item.skill.name}`
-          }
+          label={item.kind === "agent" ? `@${name}` : `/${name}`}
           className="shrink-0 font-mono"
         />
       </div>
       <div className="col-start-1 col-end-3 row-start-2 flex min-w-0 flex-col gap-1 self-start md:col-start-2">
         <div className="flex h-5 items-center gap-4 copy-sm">
           <ItemAuthor item={item} />
-          <span className="flex items-center gap-1 text-muted-foreground">
-            <Icon visual={MessageCircle01} size="xs" />
-            {getItemUsageCount(item).toLocaleString()}
-            <span className="sr-only">
-              {item.kind === "agent" ? "messages" : "uses"}
-            </span>
-          </span>
-          {item.kind === "agent" && (
+          {item.activeUsersCount !== null && (
             <span className="flex items-center gap-1 text-muted-foreground">
               <Icon visual={Users01} size="xs" />
-              {(item.agent.usage?.userCount ?? 0).toLocaleString()}
-              <span className="sr-only">members</span>
+              {item.activeUsersCount.toLocaleString()}
+              <span className="sr-only">active users</span>
             </span>
           )}
         </div>
@@ -455,17 +669,24 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
 }
 
 interface SkillCatalogAvatarProps {
-  skill: DiscoverSkill;
+  icon: string | null;
+  isDustProvided: boolean;
   size?: "md" | "lg";
 }
 
 export function SkillCatalogAvatar({
-  skill,
+  icon,
+  isDustProvided,
   size = "lg",
 }: SkillCatalogAvatarProps) {
   const SkillAvatar = useMemo(
-    () => getSkillAvatarIcon(skill.icon),
-    [skill.icon]
+    () =>
+      getSkillAvatarIcon({
+        icon,
+        // Null editedBy is how the avatar marks a Dust-provided skill.
+        editedBy: isDustProvided ? null : "custom",
+      }),
+    [icon, isDustProvided]
   );
   return <SkillAvatar size={size} className="shrink-0" />;
 }

@@ -1,11 +1,11 @@
-import type { CatalogItem } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
+import type { CatalogItem } from "@app/components/assistant/conversation/discover/catalog";
 import { DiscoverCatalog } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
 import { DiscoverHome } from "@app/components/assistant/conversation/discover/DiscoverHome";
 import { DiscoverPinDialog } from "@app/components/assistant/conversation/discover/DiscoverPinDialog";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
@@ -15,7 +15,7 @@ const DISCOVER_TABS = ["Discover", "Agents & Skills"] as const;
 type DiscoverTab = (typeof DISCOVER_TABS)[number];
 
 interface DiscoverContainerProps {
-  onAgentConfigurationClick: (agent: LightAgentConfigurationType) => void;
+  onAgentConfigurationClick: (agent: RichAgentMentionCandidate) => void;
   onSkillClick: (skill: PendingSkill) => void;
   onFiltersChange: () => void;
   owner: WorkspaceType;
