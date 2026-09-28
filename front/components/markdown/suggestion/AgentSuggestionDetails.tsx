@@ -2,18 +2,27 @@ import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { formatModelEffortLabel } from "@app/components/model_picker/modelPickerUtils";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { getAgentScopeLabel } from "@app/lib/agent_builder/labels";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useMCPServerView } from "@app/lib/swr/mcp_servers";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { AgentSkillsSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type {
+  AgentSkillsSuggestionType,
+  AgentToolsSuggestionType,
+} from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, DiffBlock } from "@dust-tt/sparkle";
+import { Avatar, Chip, DiffBlock } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useMemo } from "react";
 
@@ -72,6 +81,47 @@ function SuggestedSkillRow({ owner, suggestion }: SuggestedSkillRowProps) {
         {skill && (
           <div className="truncate text-xs text-muted-foreground">
             {skill.userFacingDescription}
+          </div>
+        )}
+      </div>
+      <Chip
+        size="xs"
+        color={action === "add" ? "highlight" : "warning"}
+        label={action === "add" ? "Add" : "Remove"}
+      />
+    </div>
+  );
+}
+
+interface SuggestedToolRowProps {
+  owner: LightWorkspaceType;
+  suggestion: AgentToolsSuggestionType;
+}
+
+function SuggestedToolRow({ owner, suggestion }: SuggestedToolRowProps) {
+  const { action, toolId } = suggestion.suggestion;
+  const { serverView, isMCPServerViewLoading } = useMCPServerView({
+    owner,
+    viewId: toolId,
+  });
+
+  const displayName = serverView
+    ? getMcpServerViewDisplayName(serverView)
+    : isMCPServerViewLoading
+      ? "Loading…"
+      : toolId;
+
+  return (
+    <div className="flex items-center gap-3 py-2.5">
+      <Avatar
+        size="xs"
+        icon={serverView ? getIcon(serverView.server.icon) : undefined}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm text-foreground">{displayName}</div>
+        {serverView && (
+          <div className="truncate text-xs text-muted-foreground">
+            {getMcpServerViewDescription(serverView)}
           </div>
         )}
       </div>
@@ -193,6 +243,9 @@ export function AgentSuggestionDetails({
 
     case "skills":
       return <SuggestedSkillRow owner={owner} suggestion={suggestion} />;
+
+    case "tools":
+      return <SuggestedToolRow owner={owner} suggestion={suggestion} />;
 
     default:
       assertNeverAndIgnore(suggestion);
