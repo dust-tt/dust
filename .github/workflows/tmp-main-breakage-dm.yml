@@ -1,0 +1,71 @@
+name: TMP main breakage DM test
+
+on:
+  push:
+    branches: [avervaet/tmp-main-breakage-dm]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+jobs:
+  dm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Replay a real breakage and DM it
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          RUN_ID: "34107161084"
+          DM_EMAIL: arthur.vervaet@dust.tt
+        with:
+          script: |
+            const path = require('node:path');
+            const { readFileSync } = require('node:fs');
+            const { buildBreakageNotification } = require(path.join(process.env.GITHUB_WORKSPACE, '.github/actions/main-breakage/main-breakage.ts'));
+            const token = process.env.SLACK_BOT_TOKEN;
+
+            const { data: run } = await github.rest.actions.getWorkflowRun({ ...context.repo, run_id: Number(process.env.RUN_ID) });
+            // Look back from the replayed run so an old run still finds its predecessor.
+            const replayGithub = {
+              rest: {
+                ...github.rest,
+                actions: {
+                  ...github.rest.actions,
+                  listWorkflowRuns: (params) => github.rest.actions.listWorkflowRuns({ ...params, created: `<=${run.created_at}` }),
+                },
+              },
+            };
+            const text = await buildBreakageNotification({
+              github: replayGithub,
+              context: { repo: context.repo, payload: { workflow_run: run } },
+              core,
+              authors: readFileSync('.authors', 'utf8'),
+              slackToken: token,
+            });
+            if (!text) {
+              core.setFailed('Replayed run is not a state change.');
+              return;
+            }
+
+            const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json; charset=utf-8' };
+            const lookup = await fetch(`https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(process.env.DM_EMAIL)}`, { headers }).then((r) => r.json());
+            if (!lookup.ok) {
+              core.setFailed(`users.lookupByEmail failed: ${lookup.error}`);
+              return;
+            }
+            const post = await fetch('https://slack.com/api/chat.postMessage', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ channel: lookup.user.id, text, unfurl_links: false, unfurl_media: false }),
+            }).then((r) => r.json());
+            if (!post.ok) {
+              core.setFailed(`chat.postMessage failed: ${post.error}`);
+              return;
+            }
+            core.info(`Sent:\n${text}`);
