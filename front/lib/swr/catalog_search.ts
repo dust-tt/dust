@@ -150,6 +150,7 @@ export function useCatalogSearch({
       getKey,
       fetchPage,
       {
+        keepPreviousData: true,
         revalidateAll: false,
         revalidateFirstPage: false,
         revalidateOnFocus: false,

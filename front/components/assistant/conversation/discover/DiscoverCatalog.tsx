@@ -362,7 +362,6 @@ export function DiscoverCatalog({
 
   return useSearch ? (
     <SearchCatalog
-      key={query.key}
       owner={owner}
       query={query}
       search={search}
