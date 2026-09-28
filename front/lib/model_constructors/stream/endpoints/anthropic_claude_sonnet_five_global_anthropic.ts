@@ -10,9 +10,6 @@ export class AnthropicClaudeSonnetFiveGlobalAnthropicStream extends WithAnthropi
   AnthropicStream
 ) {
   // https://platform.claude.com/docs/en/about-claude/pricing
-  // TODO(2026-08-31): intro pricing ends; revert to standard rates
-  // (standardInput 3.0, standardOutput 15.0, cacheCreated/shortCacheCreated
-  // 3.75, longCacheCreated 6.0, cacheHit 0.3).
   static readonly tokenPricing = {
     cacheCreated: 2.5,
     // 5m cache write = 1.25x base input; 1h cache write = 2x base input.
