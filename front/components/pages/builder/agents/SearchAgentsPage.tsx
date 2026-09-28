@@ -19,6 +19,7 @@ import {
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
+import { useSearchPageState } from "@app/hooks/useSearchPageState";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useTags } from "@app/lib/swr/tags";
@@ -250,10 +251,19 @@ export function SearchAgentsPage() {
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
-  const [showHiddenAgents, setShowHiddenAgents] = useState(false);
-  const [filter, setFilter] = useState<AgentFilter>({});
+  const {
+    searchTerm,
+    setSearchTerm,
+    selectedTab,
+    setSelectedTab,
+    showHiddenAgents,
+    setShowHiddenAgents,
+    filter,
+    setFilter,
+  } = useSearchPageState<AgentFilter>({
+    tabs: SEARCH_TABS,
+    initialFilter: {},
+  });
   // Default agents all share the global scope, so Access does not apply to them.
   const filterCategories = AGENT_FILTER_CATEGORIES.filter(
     (category) => selectedTab !== "default" || category !== "access"

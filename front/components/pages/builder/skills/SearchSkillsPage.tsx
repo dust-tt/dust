@@ -25,6 +25,7 @@ import {
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
+import { useSearchPageState } from "@app/hooks/useSearchPageState";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
@@ -69,8 +70,6 @@ const SEARCH_TABS = [
   },
   { id: "archived", label: "Archived", filters: { status: ["archived"] } },
 ] satisfies { id: string; label: string; filters: SkillSearchFilters }[];
-
-type SearchTabId = (typeof SEARCH_TABS)[number]["id"];
 
 // Batch edits are reserved to the skill's editors and to workspace admins, as for agents;
 // Dust-provided skills are never administrable.
@@ -276,9 +275,17 @@ export function SearchSkillsPage() {
   const { hasPermission } = useWorkspacePermissions();
   const [skillId, setSkillId] = useHashParam("skillId");
   const [agentId, setAgentId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
-  const [filter, setFilter] = useState<SkillFilter>({});
+  const {
+    searchTerm,
+    setSearchTerm,
+    selectedTab,
+    setSelectedTab,
+    filter,
+    setFilter,
+  } = useSearchPageState<SkillFilter>({
+    tabs: SEARCH_TABS,
+    initialFilter: {},
+  });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const searchFilters = toSkillSearchFilters(filter);
   const activeTab =
