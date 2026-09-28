@@ -3641,6 +3641,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "JiraLogo"
   | "LemlistLogo"
   | "LinearLogo"
+  | "LokaliseLogo"
   | "LumaLogo"
   | "MicrosoftExcelLogo"
   | "MicrosoftLogo"

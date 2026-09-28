@@ -57,6 +57,7 @@ export const MCPInternalActionIconSchema = z.enum([
   "JiraLogo",
   "LemlistLogo",
   "LinearLogo",
+  "LokaliseLogo",
   "LumaLogo",
   "MicrosoftExcelLogo",
   "MicrosoftLogo",
