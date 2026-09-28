@@ -1,5 +1,8 @@
 import { editClientExecutableFile } from "@app/lib/api/files/client_executable";
-import { editFrameV2TextsAtSource } from "@app/lib/api/frames/publish_from_source";
+import {
+  editFrameV2TextsAtSource,
+  MAX_FRAME_TEXT_EDITS,
+} from "@app/lib/api/frames/publish_from_source";
 import { editFrameTextsAtSource } from "@app/lib/api/viz/edit_frame_text";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -33,7 +36,7 @@ const EditTextRequestBodySchema = z
     newText: z.string().optional(),
     oldText: z.string().min(1, "oldText must be a non-empty string").optional(),
     source: z.string().optional(),
-    edits: z.array(EditItemSchema).min(1).optional(),
+    edits: z.array(EditItemSchema).min(1).max(MAX_FRAME_TEXT_EDITS).optional(),
   })
   .superRefine((body, ctx) => {
     if (body.edits && body.edits.length > 0) {

@@ -884,6 +884,10 @@ export type FrameV2TextEdit = {
   newText: string;
 };
 
+// Human-staged edits from one Save. Applying them re-parses the file per edit, so the batch
+// must stay small (avoid-quadratic-loops).
+export const MAX_FRAME_TEXT_EDITS = 50;
+
 /**
  * Apply one or more location-based text edits to a Frames v2 package, then publish once.
  *
@@ -974,10 +978,14 @@ export async function editFrameV2TextsAtSource(
       editsByPath.set(sourcePath, list);
     }
 
-    const rollbacks: Array<
-      () => Promise<Result<unknown, DustFileSystemError>>
-    > = [];
-
+    // Resolve every file's edited content before writing anything, so an edit that fails on a
+    // later file cannot leave earlier files written but unpublished.
+    const plannedWrites: Array<{
+      sourcePath: string;
+      originalSource: Buffer;
+      content: string;
+      contentType: string;
+    }> = [];
     for (const [sourcePath, fileEdits] of editsByPath) {
       const sourceBuffer = await dustFs.readBuffer(sourcePath);
       if (sourceBuffer.isErr()) {
@@ -991,6 +999,7 @@ export async function editFrameV2TextsAtSource(
       }
       const originalSource = sourceBuffer.value;
 
+      // Each edit re-parses the file: O(edits × file size), bounded by MAX_FRAME_TEXT_EDITS.
       let content = originalSource.toString("utf8");
       for (const fileEdit of fileEdits) {
         const edited = replaceJsxTextAtSourceLocation(content, fileEdit);
@@ -1004,19 +1013,20 @@ export async function editFrameV2TextsAtSource(
       if (stat.isErr()) {
         return new Err(stat.error);
       }
-      const contentType =
-        stat.value?.contentType ??
-        contentTypeFromFileName(path.posix.basename(sourcePath)) ??
-        "text/plain";
-      const writeResult = await dustFs.write(sourcePath, content, contentType);
-      if (writeResult.isErr()) {
-        return new Err(writeResult.error);
-      }
-      rollbacks.push(() =>
-        dustFs.write(sourcePath, originalSource, contentType)
-      );
+      plannedWrites.push({
+        sourcePath,
+        originalSource,
+        content,
+        contentType:
+          stat.value?.contentType ??
+          contentTypeFromFileName(path.posix.basename(sourcePath)) ??
+          "text/plain",
+      });
     }
 
+    const rollbacks: Array<
+      () => Promise<Result<unknown, DustFileSystemError>>
+    > = [];
     const rollbackAll = async () => {
       for (const rollback of [...rollbacks].reverse()) {
         const rollbackResult = await rollback();
@@ -1026,6 +1036,24 @@ export async function editFrameV2TextsAtSource(
       }
       return new Ok(undefined);
     };
+
+    for (const {
+      sourcePath,
+      originalSource,
+      content,
+      contentType,
+    } of plannedWrites) {
+      const writeResult = await dustFs.write(sourcePath, content, contentType);
+      if (writeResult.isErr()) {
+        const rollbackResult = await rollbackAll();
+        return new Err(
+          rollbackResult.isErr() ? rollbackResult.error : writeResult.error
+        );
+      }
+      rollbacks.push(() =>
+        dustFs.write(sourcePath, originalSource, contentType)
+      );
+    }
 
     try {
       const publishResult = await publishFrameV2FromSourceWithSourceLockHeld(
