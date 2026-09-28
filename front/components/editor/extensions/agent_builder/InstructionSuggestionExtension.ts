@@ -213,11 +213,10 @@ function inlineContentForInsertion(slice: Slice): Fragment {
 }
 
 // Create inline diff decorations for a single block (deletion + addition widgets).
-// Returns whether the block has any change.
+// An empty result means the block has no change.
 function buildBlockDecorations({
   applyBlockHighlight,
   blockPos,
-  decorations,
   isHighlighted,
   newNode,
   oldNode,
@@ -226,13 +225,13 @@ function buildBlockDecorations({
 }: {
   applyBlockHighlight: boolean;
   blockPos: number;
-  decorations: Decoration[];
   isHighlighted: boolean;
   newNode: PMNode;
   oldNode: PMNode;
   schema: Schema;
   suggestionId: string;
-}): boolean {
+}): Decoration[] {
+  const decorations: Decoration[] = [];
   const changes = diffBlockContent(oldNode, newNode, schema);
   const contentStart = blockPos + 1;
 
@@ -312,45 +311,42 @@ function buildBlockDecorations({
     }
   }
 
-  return changes.length > 0;
+  return decorations;
 }
 
-function addBlockAdditionWidget(
+function buildBlockAdditionWidget(
   pos: number,
   newChild: PMNode,
   isHighlighted: boolean,
-  decorations: Decoration[],
   schema: Schema,
   suggestionId: string
-): void {
+): Decoration {
   const className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
-  decorations.push(
-    Decoration.widget(
-      pos,
-      () => {
-        const div = document.createElement("div");
-        div.className = className;
-        div.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
-        div.contentEditable = "false";
-        div.style.width = "fit-content";
+  return Decoration.widget(
+    pos,
+    () => {
+      const div = document.createElement("div");
+      div.className = className;
+      div.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
+      div.contentEditable = "false";
+      div.style.width = "fit-content";
 
-        const serializer = DOMSerializer.fromSchema(schema);
-        serializer.serializeFragment(Fragment.from(newChild), {}, div);
+      const serializer = DOMSerializer.fromSchema(schema);
+      serializer.serializeFragment(Fragment.from(newChild), {}, div);
 
-        labelSkillReferences(div);
+      labelSkillReferences(div);
 
-        div.querySelectorAll("*").forEach((el) => {
-          if (el instanceof HTMLElement) {
-            el.className = el.className
-              ? `${el.className} ${className}`
-              : className;
-          }
-        });
+      div.querySelectorAll("*").forEach((el) => {
+        if (el instanceof HTMLElement) {
+          el.className = el.className
+            ? `${el.className} ${className}`
+            : className;
+        }
+      });
 
-        return div;
-      },
-      { side: -1 }
-    )
+      return div;
+    },
+    { side: -1 }
   );
 }
 
@@ -361,7 +357,6 @@ function addBlockAdditionWidget(
 // between two changes.
 function buildRootDecorations({
   applyBlockHighlight,
-  decorations,
   hideUnchangedBlocks,
   isHighlighted,
   newRoot,
@@ -371,7 +366,6 @@ function buildRootDecorations({
   suggestionId,
 }: {
   applyBlockHighlight: boolean;
-  decorations: Decoration[];
   hideUnchangedBlocks: boolean;
   isHighlighted: boolean;
   newRoot: PMNode;
@@ -379,7 +373,8 @@ function buildRootDecorations({
   rootPos: number;
   schema: Schema;
   suggestionId: string;
-}): void {
+}): Decoration[] {
+  const decorations: Decoration[] = [];
   const oldChildren: PMNode[] = [];
   const newChildren: PMNode[] = [];
   oldRoot.content.forEach((child) => oldChildren.push(child));
@@ -408,7 +403,7 @@ function buildRootDecorations({
 
     if (oldChild && newChild) {
       if (oldChild.content.size > 0) {
-        const hasChanges = buildBlockDecorations({
+        const blockDecorations = buildBlockDecorations({
           applyBlockHighlight: false, // Root handles the highlight as a single decoration.
           blockPos: childPos,
           newNode: newChild,
@@ -416,9 +411,9 @@ function buildRootDecorations({
           schema,
           suggestionId,
           isHighlighted,
-          decorations,
         });
-        if (!hasChanges) {
+        decorations.push(...blockDecorations);
+        if (blockDecorations.length === 0) {
           if (hideUnchangedBlocks) {
             decorations.push(
               Decoration.node(childPos, childPos + oldChild.nodeSize, {
@@ -434,13 +429,14 @@ function buildRootDecorations({
         // Old block is empty (e.g. the default placeholder paragraph in a new editor).
         // Skip pairing — pairing would place the addition widget *after* the empty block,
         // causing a blank line before the first heading/paragraph in the card.
-        addBlockAdditionWidget(
-          childPos,
-          newChild,
-          isHighlighted,
-          decorations,
-          schema,
-          suggestionId
+        decorations.push(
+          buildBlockAdditionWidget(
+            childPos,
+            newChild,
+            isHighlighted,
+            schema,
+            suggestionId
+          )
         );
       }
       oldOffset += oldChild.nodeSize;
@@ -462,13 +458,14 @@ function buildRootDecorations({
       oldOffset += oldChild.nodeSize;
     } else if (newChild) {
       // Block was added: insert as a widget after the last old child.
-      addBlockAdditionWidget(
-        childPos,
-        newChild,
-        isHighlighted,
-        decorations,
-        schema,
-        suggestionId
+      decorations.push(
+        buildBlockAdditionWidget(
+          childPos,
+          newChild,
+          isHighlighted,
+          schema,
+          suggestionId
+        )
       );
     }
 
@@ -489,6 +486,8 @@ function buildRootDecorations({
     hiddenRunStart = null;
     hasSeenChange = true;
   }
+
+  return decorations;
 }
 
 interface SuggestionDisplayOptions {
@@ -541,39 +540,42 @@ function buildDecorations(
         blockNode.type.name === INSTRUCTIONS_ROOT_NODE_NAME &&
         newNodes[0].type.name === INSTRUCTIONS_ROOT_NODE_NAME
       ) {
-        buildRootDecorations({
-          applyBlockHighlight,
-          hideUnchangedBlocks,
-          oldRoot: blockNode,
-          newRoot: newNodes[0],
-          rootPos: blockPos,
-          schema,
-          suggestionId,
-          isHighlighted,
-          decorations,
-        });
+        decorations.push(
+          ...buildRootDecorations({
+            applyBlockHighlight,
+            hideUnchangedBlocks,
+            oldRoot: blockNode,
+            newRoot: newNodes[0],
+            rootPos: blockPos,
+            schema,
+            suggestionId,
+            isHighlighted,
+          })
+        );
       } else {
-        buildBlockDecorations({
-          applyBlockHighlight,
-          oldNode: blockNode,
-          newNode: newNodes[0],
-          blockPos,
-          schema,
-          suggestionId,
-          isHighlighted,
-          decorations,
-        });
+        decorations.push(
+          ...buildBlockDecorations({
+            applyBlockHighlight,
+            oldNode: blockNode,
+            newNode: newNodes[0],
+            blockPos,
+            schema,
+            suggestionId,
+            isHighlighted,
+          })
+        );
 
         // Extra new blocks shown as full addition widgets after the old block.
         const afterBlockPos = blockPos + blockNode.nodeSize;
         for (let i = 1; i < newNodes.length; i++) {
-          addBlockAdditionWidget(
-            afterBlockPos,
-            newNodes[i],
-            isHighlighted,
-            decorations,
-            schema,
-            suggestionId
+          decorations.push(
+            buildBlockAdditionWidget(
+              afterBlockPos,
+              newNodes[i],
+              isHighlighted,
+              schema,
+              suggestionId
+            )
           );
         }
       }
