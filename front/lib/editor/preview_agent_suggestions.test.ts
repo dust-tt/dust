@@ -53,6 +53,36 @@ function instructionsSuggestion(
 describe("previewAgentSuggestions", () => {
   const pipeline = getBrowserMarkdownPipeline();
 
+  it("previews an agent creation as the proposed agent", () => {
+    const result = previewAgentSuggestions({
+      agent: AGENT,
+      suggestions: [
+        {
+          ...BASE_SUGGESTION,
+          kind: "create",
+          suggestion: {
+            name: "RandomQuoteAgent",
+            description: "Shares a random quote.",
+            instructions: "<p>Share one quote.</p>",
+          },
+        },
+      ],
+      pipeline,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({
+        name: "RandomQuoteAgent",
+        description: "Shares a random quote.",
+        scope: AGENT.scope,
+        model: AGENT.model,
+        instructions: null,
+        instructionsHtml: "<p>Share one quote.</p>",
+      });
+    }
+  });
+
   it("merges field suggestions and keeps untouched fields", () => {
     const suggestions: AgentSuggestionType[] = [
       { ...BASE_SUGGESTION, kind: "name", suggestion: { name: "First" } },

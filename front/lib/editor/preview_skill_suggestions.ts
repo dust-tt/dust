@@ -9,6 +9,7 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import { isCreateSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 
 type PreviewedSkillFields = Pick<
   SkillType,
@@ -34,6 +35,24 @@ export function previewSkillSuggestions({
   PreviewedSkillFields,
   DustError<"invalid_request_error">
 > {
+  const creation = suggestions.find(isCreateSkillSuggestion);
+  if (creation) {
+    const {
+      name,
+      agentFacingDescription,
+      userFacingDescription,
+      instructions,
+    } = creation.suggestion;
+    return new Ok({
+      name,
+      availability: skill.availability,
+      agentFacingDescription,
+      userFacingDescription,
+      instructions: skill.instructions,
+      instructionsHtml: instructions,
+    });
+  }
+
   const edits = mergeSkillSuggestionEdits(suggestions);
   if (edits.isErr()) {
     return edits;
