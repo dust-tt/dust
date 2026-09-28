@@ -8,6 +8,7 @@ type Repository = { owner: string; repo: string };
 type WorkflowRun = {
   id: number;
   run_number: number;
+  run_attempt: number;
   workflow_id: number;
   name: string | null;
   conclusion: string | null;
@@ -16,6 +17,8 @@ type WorkflowRun = {
   head_commit: { message: string } | null;
   actor: { login: string } | null;
 };
+
+type Job = { name: string; conclusion: string | null };
 
 type BreakageContext = {
   repo: Repository;
@@ -44,9 +47,10 @@ type BreakageOptions = {
         }>;
         listJobsForWorkflowRun(
           params: Repository & { run_id: number; per_page: number }
-        ): Promise<{
-          data: { jobs: Array<{ name: string; conclusion: string | null }> };
-        }>;
+        ): Promise<{ data: { jobs: Job[] } }>;
+        getWorkflowRunAttempt(
+          params: Repository & { run_id: number; attempt_number: number }
+        ): Promise<{ data: { conclusion: string | null } }>;
       };
       repos: {
         listPullRequestsAssociatedWithCommit(
@@ -99,6 +103,103 @@ export function getTransition(
   return null;
 }
 
+/**
+ * @cc [label:product] main-breakage-skipped-runs
+ * A path-gated workflow concludes `success` when its gate skips every real job, without testing
+ * anything. Such a run MUST NOT count as a green signal: it MUST neither notify nor serve as the
+ * state another run is compared against. A success counts only when at least one job ran and none
+ * were skipped.
+ */
+function isSignal(conclusion: string | null, jobs: Job[]): boolean {
+  if (conclusion === "failure") {
+    return true;
+  }
+  if (conclusion !== "success") {
+    return false;
+  }
+  return jobs.length > 0 && jobs.every((job) => job.conclusion !== "skipped");
+}
+
+async function findSignalConclusion(
+  { github, context }: Pick<BreakageOptions, "github" | "context">,
+  candidates: Array<{ id: number; conclusion: string | null }>
+): Promise<string | null> {
+  for (const candidate of candidates) {
+    if (candidate.conclusion === "failure") {
+      return "failure";
+    }
+    const { data } = await github.rest.actions.listJobsForWorkflowRun({
+      ...context.repo,
+      run_id: candidate.id,
+      per_page: 100,
+    });
+    if (isSignal(candidate.conclusion, data.jobs)) {
+      return "success";
+    }
+  }
+  return null;
+}
+
+type PreviousState =
+  | { superseded: true }
+  | { superseded: false; previous: string | null };
+
+/**
+ * @cc [label:product] main-breakage-run-ordering
+ * Runs complete out of order. When a signal run newer than the current one has already completed,
+ * the current run MUST stay silent: the newer run defines main's state. Otherwise the previous
+ * state is the newest signal run older than the current one, regardless of completion order.
+ */
+/**
+ * @cc [label:product] main-breakage-reruns
+ * A rerun keeps its run number, so its state change MUST be computed against its own most recent
+ * success-or-failure attempt rather than against the previous run; comparing to the previous run
+ * would keep recovery-by-rerun silent forever.
+ */
+async function getPreviousState({
+  github,
+  context,
+}: Pick<BreakageOptions, "github" | "context">): Promise<PreviousState> {
+  const run = context.payload.workflow_run;
+  const { data } = await github.rest.actions.listWorkflowRuns({
+    ...context.repo,
+    workflow_id: run.workflow_id,
+    branch: "main",
+    status: "completed",
+    per_page: 20,
+  });
+  const completed = data.workflow_runs.filter(
+    (candidate) =>
+      candidate.conclusion === "success" || candidate.conclusion === "failure"
+  );
+
+  const newer = completed
+    .filter((candidate) => candidate.run_number > run.run_number)
+    .sort((a, b) => b.run_number - a.run_number);
+  if ((await findSignalConclusion({ github, context }, newer)) !== null) {
+    return { superseded: true };
+  }
+
+  for (let attempt = run.run_attempt - 1; attempt >= 1; attempt--) {
+    const { data: prior } = await github.rest.actions.getWorkflowRunAttempt({
+      ...context.repo,
+      run_id: run.id,
+      attempt_number: attempt,
+    });
+    if (prior.conclusion === "success" || prior.conclusion === "failure") {
+      return { superseded: false, previous: prior.conclusion };
+    }
+  }
+
+  const older = completed
+    .filter((candidate) => candidate.run_number < run.run_number)
+    .sort((a, b) => b.run_number - a.run_number);
+  return {
+    superseded: false,
+    previous: await findSignalConclusion({ github, context }, older),
+  };
+}
+
 type BreakageDetails = {
   transition: Transition;
   run: Pick<WorkflowRun, "name" | "head_sha" | "html_url" | "head_commit">;
@@ -146,30 +247,6 @@ export function formatBreakageMessage({
   );
 }
 
-async function getPreviousConclusion({
-  github,
-  context,
-}: Pick<BreakageOptions, "github" | "context">): Promise<string | null> {
-  const run = context.payload.workflow_run;
-  const { data } = await github.rest.actions.listWorkflowRuns({
-    ...context.repo,
-    workflow_id: run.workflow_id,
-    branch: "main",
-    status: "completed",
-    per_page: 20,
-  });
-  // Older runs can finish after newer ones, so order by run number rather than completion.
-  const previous = data.workflow_runs
-    .filter(
-      (candidate) =>
-        candidate.run_number < run.run_number &&
-        (candidate.conclusion === "success" ||
-          candidate.conclusion === "failure")
-    )
-    .sort((a, b) => b.run_number - a.run_number)[0];
-  return previous?.conclusion ?? null;
-}
-
 async function getMergedPullRequest({
   github,
   context,
@@ -208,11 +285,27 @@ export async function buildBreakageNotification({
   slackToken,
 }: BreakageOptions): Promise<string | null> {
   const run = context.payload.workflow_run;
-  const previous = await getPreviousConclusion({ github, context });
-  const transition = getTransition(previous, run.conclusion);
+  const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
+    ...context.repo,
+    run_id: run.id,
+    per_page: 100,
+  });
+  if (!isSignal(run.conclusion, jobsData.jobs)) {
+    core.info(
+      `No notification: ${run.name} concluded ${run.conclusion} without running its jobs.`
+    );
+    return null;
+  }
+
+  const state = await getPreviousState({ github, context });
+  if (state.superseded) {
+    core.info(`No notification: a newer ${run.name} run already completed.`);
+    return null;
+  }
+  const transition = getTransition(state.previous, run.conclusion);
   if (!transition) {
     core.info(
-      `No notification: ${run.name} went from ${previous ?? "nothing"} to ${run.conclusion}.`
+      `No notification: ${run.name} went from ${state.previous ?? "nothing"} to ${run.conclusion}.`
     );
     return null;
   }
@@ -229,14 +322,7 @@ export async function buildBreakageNotification({
     });
   }
 
-  const [{ data: jobs }, { pr, merger }] = await Promise.all([
-    github.rest.actions.listJobsForWorkflowRun({
-      ...context.repo,
-      run_id: run.id,
-      per_page: 100,
-    }),
-    getMergedPullRequest({ github, context }),
-  ]);
+  const { pr, merger } = await getMergedPullRequest({ github, context });
   const mentions = merger
     ? await resolveSlackMentions({
         handles: [merger],
@@ -249,7 +335,7 @@ export async function buildBreakageNotification({
     transition,
     run,
     repo: context.repo,
-    failedJobs: jobs.jobs
+    failedJobs: jobsData.jobs
       .filter((job) => job.conclusion === "failure")
       .map((job) => job.name),
     pr,

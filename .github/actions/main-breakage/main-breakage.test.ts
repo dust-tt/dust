@@ -27,6 +27,7 @@ const repo = { owner: "dust-tt", repo: "dust" };
 const run = {
   id: 42,
   run_number: 7,
+  run_attempt: 1,
   workflow_id: 3,
   name: "Lint & Build & Test (front)",
   conclusion: "failure",
@@ -88,13 +89,20 @@ describe("formatBreakageMessage", () => {
 });
 
 function fakeGithub({
-  previousRuns,
+  otherRuns,
   jobs = [],
+  jobsByRunNumber = {},
+  attempts = {},
   pulls = [],
   mergedBy = null,
 }: {
-  previousRuns: Array<{ run_number: number; conclusion: string | null }>;
+  otherRuns: Array<{ run_number: number; conclusion: string | null }>;
   jobs?: Array<{ name: string; conclusion: string | null }>;
+  jobsByRunNumber?: Record<
+    number,
+    Array<{ name: string; conclusion: string | null }>
+  >;
+  attempts?: Record<number, { conclusion: string | null }>;
   pulls?: Array<{ number: number; html_url: string; merged_at: string | null }>;
   mergedBy?: string | null;
 }) {
@@ -103,13 +111,29 @@ function fakeGithub({
       actions: {
         listWorkflowRuns: async () => ({
           data: {
-            workflow_runs: previousRuns.map((candidate, index) => ({
-              id: index,
+            workflow_runs: otherRuns.map((candidate) => ({
+              id: 1000 + candidate.run_number,
               ...candidate,
             })),
           },
         }),
-        listJobsForWorkflowRun: async () => ({ data: { jobs } }),
+        listJobsForWorkflowRun: async ({ run_id }: { run_id: number }) => {
+          if (run_id === run.id) {
+            return { data: { jobs } };
+          }
+          return {
+            data: {
+              jobs: jobsByRunNumber[run_id - 1000] ?? [
+                { name: "test", conclusion: "success" },
+              ],
+            },
+          };
+        },
+        getWorkflowRunAttempt: async ({
+          attempt_number,
+        }: {
+          attempt_number: number;
+        }) => ({ data: attempts[attempt_number] ?? { conclusion: null } }),
       },
       repos: {
         listPullRequestsAssociatedWithCommit: async () => ({ data: pulls }),
@@ -134,7 +158,7 @@ describe("buildBreakageNotification", () => {
   it("returns null when main was already red", async () => {
     const text = await buildBreakageNotification({
       github: fakeGithub({
-        previousRuns: [
+        otherRuns: [
           { run_number: 6, conclusion: "failure" },
           { run_number: 5, conclusion: "success" },
         ],
@@ -147,13 +171,28 @@ describe("buildBreakageNotification", () => {
     assert.equal(text, null);
   });
 
-  it("ignores cancelled runs and runs newer than the current one", async () => {
+  it("stays silent when a newer run already completed", async () => {
+    const text = await buildBreakageNotification({
+      github: fakeGithub({
+        otherRuns: [
+          { run_number: 8, conclusion: "success" },
+          { run_number: 6, conclusion: "success" },
+        ],
+      }),
+      context: { repo, payload: { workflow_run: run } },
+      core,
+      authors: "",
+      slackToken: "token",
+    });
+    assert.equal(text, null);
+  });
+
+  it("ignores cancelled runs when finding the previous state", async () => {
     globalThis.fetch = (async () =>
       new Response("", { status: 500 })) as typeof fetch;
     const text = await buildBreakageNotification({
       github: fakeGithub({
-        previousRuns: [
-          { run_number: 8, conclusion: "failure" },
+        otherRuns: [
           { run_number: 6, conclusion: "cancelled" },
           { run_number: 5, conclusion: "success" },
         ],
@@ -182,6 +221,72 @@ describe("buildBreakageNotification", () => {
     );
   });
 
+  it("does not treat a run with skipped jobs as a green signal", async () => {
+    const text = await buildBreakageNotification({
+      github: fakeGithub({
+        otherRuns: [{ run_number: 6, conclusion: "failure" }],
+        jobs: [
+          { name: "check-changes", conclusion: "success" },
+          { name: "test", conclusion: "skipped" },
+        ],
+      }),
+      context: {
+        repo,
+        payload: { workflow_run: { ...run, conclusion: "success" } },
+      },
+      core,
+      authors: "",
+      slackToken: "token",
+    });
+    assert.equal(text, null);
+  });
+
+  it("skips runs with skipped jobs when finding the previous state", async () => {
+    const text = await buildBreakageNotification({
+      github: fakeGithub({
+        otherRuns: [
+          { run_number: 6, conclusion: "success" },
+          { run_number: 5, conclusion: "failure" },
+        ],
+        jobs: [{ name: "test", conclusion: "success" }],
+        jobsByRunNumber: {
+          6: [
+            { name: "check-changes", conclusion: "success" },
+            { name: "test", conclusion: "skipped" },
+          ],
+        },
+      }),
+      context: {
+        repo,
+        payload: { workflow_run: { ...run, conclusion: "success" } },
+      },
+      core,
+      authors: "",
+      slackToken: "token",
+    });
+    assert.match(text ?? "", /main is green again/);
+  });
+
+  it("posts recovery when a rerun turns the latest run green", async () => {
+    const text = await buildBreakageNotification({
+      github: fakeGithub({
+        otherRuns: [{ run_number: 6, conclusion: "success" }],
+        jobs: [{ name: "test", conclusion: "success" }],
+        attempts: { 1: { conclusion: "failure" } },
+      }),
+      context: {
+        repo,
+        payload: {
+          workflow_run: { ...run, conclusion: "success", run_attempt: 2 },
+        },
+      },
+      core,
+      authors: "",
+      slackToken: "token",
+    });
+    assert.match(text ?? "", /main is green again/);
+  });
+
   it("mentions the merger when Slack resolves the email", async () => {
     globalThis.fetch = (async () =>
       new Response(JSON.stringify({ ok: true, user: { id: "U42" } }), {
@@ -189,7 +294,7 @@ describe("buildBreakageNotification", () => {
       })) as typeof fetch;
     const text = await buildBreakageNotification({
       github: fakeGithub({
-        previousRuns: [{ run_number: 6, conclusion: "success" }],
+        otherRuns: [{ run_number: 6, conclusion: "success" }],
         pulls: [
           {
             number: 12,
