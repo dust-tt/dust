@@ -27,8 +27,7 @@ export function SuggestedSkillName({
       label="Name"
       currentValue={skill?.name ?? ""}
       newValue={suggestion.name}
-      isCollapsible={!isConversational}
-      showWordDiff={isConversational}
+      isConversational={isConversational}
     />
   );
 }

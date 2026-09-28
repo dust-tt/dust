@@ -111,12 +111,9 @@ function SuggestionTargetSection({
           />
         </CollapsibleTrigger>
       </div>
-      {/* Spacing lives on an inner element so the height animation stays smooth.
-          Diff boxes are not configurable, so they are made to blend into the section. */}
+      {/* Spacing lives on an inner element so the height animation stays smooth. */}
       <CollapsibleContent>
-        <div className="flex flex-col gap-3 pt-3 [&_.rounded-2xl.border]:border-0 [&_.rounded-2xl.border]:bg-transparent">
-          {children}
-        </div>
+        <div className="flex flex-col gap-3 pt-3">{children}</div>
       </CollapsibleContent>
     </Collapsible>
   );

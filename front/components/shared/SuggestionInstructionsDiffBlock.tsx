@@ -10,8 +10,8 @@ interface SuggestionInstructionsDiffBlockProps {
   content: string;
   // Must include the instruction suggestion extension, which provides the diff commands.
   extensions: Extensions;
-  // When false, the whole diff stays visible instead of collapsing behind a toggle.
-  isCollapsible?: boolean;
+  // Shown in a conversation: the whole diff stays visible and blends into its section.
+  isConversational?: boolean;
 }
 
 export function SuggestionInstructionsDiffBlock({
@@ -19,7 +19,7 @@ export function SuggestionInstructionsDiffBlock({
   targetBlockId,
   content,
   extensions,
-  isCollapsible = true,
+  isConversational = false,
 }: SuggestionInstructionsDiffBlockProps) {
   const blockHtml = useMemo(
     () =>
@@ -54,7 +54,8 @@ export function SuggestionInstructionsDiffBlock({
   return (
     <DiffBlock
       className="[&_.rounded-2xl.border]:border-0"
-      collapsedLines={isCollapsible ? undefined : Number.POSITIVE_INFINITY}
+      isCollapsible={!isConversational}
+      variant={isConversational ? "plain" : "default"}
     >
       {editor && <EditorContent editor={editor} />}
     </DiffBlock>

@@ -231,8 +231,7 @@ function SuggestionDetails({
               label="Description"
               currentValue={getCurrentAgentFacingDescription()}
               newValue={agentFacingDescriptionEdit.content}
-              isCollapsible={!isConversational}
-              showWordDiff={isConversational}
+              isConversational={isConversational}
             />
           )}
 
@@ -250,7 +249,7 @@ function SuggestionDetails({
                   extensions={buildSkillInstructionsExtensions(true, [], {
                     hideUnchangedSuggestionBlocks: isConversational,
                   })}
-                  isCollapsible={!isConversational}
+                  isConversational={isConversational}
                 />
               ))}
             </div>

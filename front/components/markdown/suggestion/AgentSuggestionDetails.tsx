@@ -42,10 +42,7 @@ function NewInstructionsBlock({ instructionsHtml }: NewInstructionsBlockProps) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">Instructions</span>
-      <DiffBlock
-        className="[&_.rounded-2xl.border]:border-0"
-        collapsedLines={Number.POSITIVE_INFINITY}
-      >
+      <DiffBlock isCollapsible={false} variant="plain">
         {editor && <EditorContent editor={editor} />}
       </DiffBlock>
     </div>
@@ -104,13 +101,13 @@ export function AgentSuggestionDetails({
       return (
         <div className="flex flex-col gap-3">
           <SuggestionFieldEditSection
-            isCollapsible={false}
+            isConversational
             label="Name"
             currentValue=""
             newValue={name}
           />
           <SuggestionFieldEditSection
-            isCollapsible={false}
+            isConversational
             label="Description"
             currentValue=""
             newValue={description}
@@ -132,10 +129,9 @@ export function AgentSuggestionDetails({
     case "description":
       return (
         <SuggestionFieldEditSection
-          isCollapsible={false}
+          isConversational
           label="Description"
           currentValue={agentConfiguration?.description ?? ""}
-          showWordDiff
           newValue={suggestion.suggestion.description}
         />
       );
@@ -145,7 +141,7 @@ export function AgentSuggestionDetails({
         <div className="flex flex-col gap-2">
           <span className="text-sm text-muted-foreground">Instructions</span>
           <SuggestionInstructionsDiffBlock
-            isCollapsible={false}
+            isConversational
             instructionsHtml={agentConfiguration?.instructionsHtml ?? ""}
             targetBlockId={suggestion.suggestion.targetBlockId}
             content={suggestion.suggestion.content}
@@ -164,7 +160,7 @@ export function AgentSuggestionDetails({
       const { modelId, reasoningEffort } = suggestion.suggestion;
       return (
         <SuggestionFieldEditSection
-          isCollapsible={false}
+          isConversational
           label="Model"
           currentValue={
             agentConfiguration
@@ -182,10 +178,9 @@ export function AgentSuggestionDetails({
     case "name":
       return (
         <SuggestionFieldEditSection
-          isCollapsible={false}
+          isConversational
           label="Name"
           currentValue={agentConfiguration?.name ?? ""}
-          showWordDiff
           newValue={suggestion.suggestion.name}
         />
       );
@@ -193,7 +188,7 @@ export function AgentSuggestionDetails({
     case "scope":
       return (
         <SuggestionFieldEditSection
-          isCollapsible={false}
+          isConversational
           label="Visibility"
           currentValue={
             agentConfiguration

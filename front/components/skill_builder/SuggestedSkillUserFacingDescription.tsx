@@ -27,8 +27,7 @@ export function SuggestedSkillUserFacingDescription({
       label="Description"
       currentValue={skill?.userFacingDescription ?? ""}
       newValue={suggestion.userFacingDescription}
-      isCollapsible={!isConversational}
-      showWordDiff={isConversational}
+      isConversational={isConversational}
     />
   );
 }

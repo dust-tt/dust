@@ -6,26 +6,25 @@ interface SuggestionFieldEditSectionProps {
   label: string;
   currentValue: string;
   newValue: string;
-  // When false, the whole diff stays visible instead of collapsing behind a toggle.
-  isCollapsible?: boolean;
-  // When true, removed and added words are highlighted inline instead of stacking both values.
-  showWordDiff?: boolean;
+  // Shown in a conversation: the whole diff stays visible, blends into its section and
+  // highlights removed and added words inline instead of stacking both values.
+  isConversational?: boolean;
 }
 
 export function SuggestionFieldEditSection({
   label,
   currentValue,
   newValue,
-  isCollapsible = true,
-  showWordDiff = false,
+  isConversational = false,
 }: SuggestionFieldEditSectionProps) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">{label}</span>
       <DiffBlock
-        collapsedLines={isCollapsible ? undefined : Number.POSITIVE_INFINITY}
+        isCollapsible={!isConversational}
+        variant={isConversational ? "plain" : "default"}
       >
-        {showWordDiff ? (
+        {isConversational ? (
           <p className="p-3 text-sm text-foreground">
             {diffWords(currentValue, newValue).map((part, index) => (
               <span

@@ -104,3 +104,24 @@ export const CollapsedPreview: Story = {
     changes: longDiffExample,
   },
 };
+
+/**
+ * A long diff that never collapses and blends into its container: with
+ * `isCollapsible={false}` the whole diff shows, and `variant="plain"` drops
+ * the border and background, for diffs embedded in an existing section.
+ * @summary Full-height diff without border or background.
+ */
+export const PlainFullHeight: Story = {
+  args: {
+    changes: longDiffExample,
+    isCollapsible: false,
+    variant: "plain",
+  },
+  decorators: [
+    (Story) => (
+      <div className="rounded-xl bg-background p-3">
+        <Story />
+      </div>
+    ),
+  ],
+};
