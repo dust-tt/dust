@@ -2,10 +2,24 @@ import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { useMentionSuggestions } from "@app/lib/swr/mentions";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockHasFeature } = vi.hoisted(() => ({
+  mockHasFeature: vi.fn<(flag: string) => boolean>(),
+}));
+
+vi.mock("@app/lib/auth/AuthContext", () => ({
+  useFeatureFlags: () => ({ hasFeature: mockHasFeature }),
+}));
+
+beforeEach(() => {
+  mockHasFeature.mockImplementation(
+    (flag) => flag === "new_manage_agents_page"
+  );
+});
 
 const owner = LightWorkspaceFactory.build({ sId: "workspace_1" });
 const searchUrl = "/api/w/workspace_1/assistant/agent_configurations/search";
@@ -40,6 +54,25 @@ const userResponse = {
     },
   ],
 };
+const legacyResponse = {
+  suggestions: [
+    {
+      id: "agent_1",
+      type: "agent",
+      label: "Sales",
+      description: "Sales assistant",
+      pictureUrl: "/agent_1.png",
+    },
+    ...userResponse.suggestions,
+    {
+      id: "agent_2",
+      type: "agent",
+      label: "Alpha Sales",
+      description: "Sales reporting",
+      pictureUrl: "/agent_2.png",
+    },
+  ],
+};
 
 interface WrapperProps {
   children: ReactNode;
@@ -67,6 +100,108 @@ function setup() {
 }
 
 describe("useMentionSuggestions", () => {
+  it.each([
+    {
+      select: { agents: true, users: true },
+      selectParams: "&select=agents&select=users",
+      expectedIds: ["agent_1", "user_1", "agent_2"],
+    },
+    {
+      select: { agents: true, users: false },
+      selectParams: "&select=agents",
+      expectedIds: ["agent_1", "agent_2"],
+    },
+    {
+      select: { agents: false, users: true },
+      selectParams: "&select=users",
+      expectedIds: ["user_1"],
+    },
+    {
+      select: { agents: false, users: false },
+      selectParams: "",
+      expectedIds: [],
+    },
+  ])("keeps the legacy path for $select when the flag is off", async ({
+    select,
+    selectParams,
+    expectedIds,
+  }) => {
+    mockHasFeature.mockReturnValue(false);
+    const { fetcher, fetcherWithBody, wrapper } = setup();
+    fetcher.mockResolvedValue(legacyResponse);
+    const { result } = renderHook(
+      () =>
+        useMentionSuggestions({
+          owner,
+          conversationId: "conversation_1",
+          query: "sales",
+          select,
+          includeCurrentUser: true,
+        }),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.suggestions.map((mention) => mention.id)).toEqual(
+      expectedIds
+    );
+    if (select.agents || select.users) {
+      expect(fetcher).toHaveBeenCalledWith(
+        `/api/w/workspace_1/assistant/conversations/conversation_1/mentions/suggestions?query=sales${selectParams}&current=true`
+      );
+    } else {
+      expect(fetcher).not.toHaveBeenCalled();
+    }
+    await act(async () => {
+      await result.current.mutate();
+    });
+    expect(fetcherWithBody).not.toHaveBeenCalled();
+    expect(result.current.isError).toBe(false);
+  });
+
+  it("switches between legacy and search results when the flag changes", async () => {
+    mockHasFeature.mockReturnValue(false);
+    const { fetcher, fetcherWithBody, wrapper } = setup();
+    fetcher.mockImplementation(async (url) =>
+      url.includes("select=agents") ? legacyResponse : userResponse
+    );
+    const { result, rerender } = renderHook(
+      () =>
+        useMentionSuggestions({
+          owner,
+          conversationId: null,
+          select: { agents: true, users: true },
+        }),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.suggestions.map((mention) => mention.id)).toEqual([
+      "agent_1",
+      "user_1",
+      "agent_2",
+    ]);
+
+    mockHasFeature.mockReturnValue(true);
+    rerender();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.suggestions.map((mention) => mention.id)).toEqual([
+      "user_1",
+      "agent_2",
+      "agent_1",
+    ]);
+
+    mockHasFeature.mockReturnValue(false);
+    rerender();
+    await waitFor(() =>
+      expect(result.current.suggestions.map((mention) => mention.id)).toEqual([
+        "agent_1",
+        "user_1",
+        "agent_2",
+      ])
+    );
+    expect(fetcherWithBody).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     "",
     "sales",
