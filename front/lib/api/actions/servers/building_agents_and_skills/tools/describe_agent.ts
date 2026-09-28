@@ -62,7 +62,10 @@ export async function describeAgentHandler(
   const toolNames = agent.actions.map((action) => action.name).join(", ");
   // Only reached for an agent the caller can read, so its skills are not private.
   const skills = await SkillResource.listByAgentConfiguration(auth, agent);
-  const skillNames = skills.map((skill) => skill.name).join(", ");
+  // Skills carry their id, as `list_skills` prints them, so that they can be removed.
+  const skillNames = skills
+    .map((skill) => `${skill.name} [${skill.sId}]`)
+    .join(", ");
 
   const instructionsBlock = agent.instructionsHtml
     ? "Instructions (full system prompt), as HTML whose blocks carry a data-block-id — " +

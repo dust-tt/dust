@@ -100,7 +100,18 @@ export function previewAgentSuggestions({
     return edits;
   }
 
-  const { name, description, scope, instructions, model } = edits.value;
+  const { name, description, scope, instructions, model, skills } = edits.value;
+
+  // The preview only covers the fields above: showing the agent without its skill changes would
+  // misrepresent the suggestions.
+  if (skills) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Suggestions changing the agent's skills cannot be previewed."
+      )
+    );
+  }
 
   const instructionsRes = previewInstructions(
     agent,

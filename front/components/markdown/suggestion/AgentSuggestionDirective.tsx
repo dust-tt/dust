@@ -94,6 +94,7 @@ function ConversationAgentSuggestion({
     <ConversationalSuggestionReviewCard
       target={{
         type: "agent",
+        owner,
         suggestion,
         agentConfiguration,
       }}

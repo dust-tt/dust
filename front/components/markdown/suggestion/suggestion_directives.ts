@@ -6,6 +6,7 @@ const CONVERSATION_AGENT_SUGGESTION_KINDS = [
   "model",
   "name",
   "scope",
+  "skills",
 ] as const;
 
 export type ConversationAgentSuggestionKind =

@@ -468,6 +468,19 @@ export const EditAgentSuggestionSchema = z.object({
       "The new publish state: 'visible' to publish the agent (visible to the " +
         "whole workspace), 'hidden' to unpublish it (visible to editors only)."
     ),
+  skills: z
+    .object({
+      addSkillIds: z
+        .array(z.string())
+        .optional()
+        .describe("Ids of the active skills to add to the agent."),
+      removeSkillIds: z
+        .array(z.string())
+        .optional()
+        .describe("Ids of the agent's skills to remove from it."),
+    })
+    .optional()
+    .describe("The skills to add to or remove from the agent."),
 });
 
 export type EditAgentSuggestion = z.infer<typeof EditAgentSuggestionSchema>;

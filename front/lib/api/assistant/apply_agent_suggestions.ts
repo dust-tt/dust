@@ -3,6 +3,11 @@ import { DROID_AVATAR_URLS } from "@app/lib/agent_builder/avatars";
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import {
+  checkSkillAddition,
+  fetchSuggestableSkills,
+} from "@app/lib/api/assistant/suggestable_skills";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
 import { mergeAgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
@@ -14,8 +19,13 @@ import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -23,6 +33,7 @@ import type {
   CreateSuggestionType,
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
+  SkillsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import {
   AgentSuggestionDataSchema,
@@ -197,6 +208,90 @@ async function resolveModelEdit(
   return new Ok({ ...currentModel, ...modelRes.value });
 }
 
+type AgentActionPayload = AgentConfigurationAssistantPayload["actions"][number];
+
+/**
+ * Carries the agent's current skills over, with the suggested skills added or removed. Added skills
+ * are checked again against live state. A skill already added, or already removed,
+ * since the suggestion was recorded is skipped.
+ */
+async function resolveSkillsEdits(
+  auth: Authenticator,
+  currentSkills: SkillResource[],
+  skills: SkillsSuggestionType[]
+): Promise<
+  Result<
+    { skillIds: string[]; hasRemovedSkills: boolean },
+    ApplyAgentSuggestionsError
+  >
+> {
+  const hasSkill = (skillId: string) =>
+    currentSkills.some((skill) => skill.sId === skillId);
+  const removedSkillIds = new Set(
+    skills
+      .filter((s) => s.action === "remove" && hasSkill(s.skillId))
+      .map((s) => s.skillId)
+  );
+  const addedSkillIds = new Set(
+    skills
+      .filter((s) => s.action === "add" && !hasSkill(s.skillId))
+      .map((s) => s.skillId)
+  );
+
+  const suggestable = await fetchSuggestableSkills(auth, [...addedSkillIds]);
+  for (const skillId of addedSkillIds) {
+    const addition = checkSkillAddition(skillId, suggestable);
+    if (addition.isErr()) {
+      return new Err(new DustError("invalid_request_error", addition.error));
+    }
+  }
+
+  return new Ok({
+    skillIds: [
+      ...currentSkills
+        .map((skill) => skill.sId)
+        .filter((skillId) => !removedSkillIds.has(skillId)),
+      ...addedSkillIds,
+    ],
+    hasRemovedSkills: removedSkillIds.size > 0,
+  });
+}
+
+/**
+ * @cc [owner:fabiencelier,label:security;product] removed-skill-lifts-its-space
+ * When a batch removes a skill, the agent's additional requested spaces MUST be recomputed as the
+ * builder does (its requested spaces minus those its current actions and skills imply), so that a
+ * space only the removed skill required no longer restricts the agent. Without a removal, the
+ * requested spaces are carried over as they are.
+ */
+async function getAdditionalRequestedSpaceIds(
+  auth: Authenticator,
+  {
+    agentConfiguration,
+    actions,
+    skills,
+  }: {
+    agentConfiguration: AgentConfigurationType;
+    actions: AgentActionPayload[];
+    skills: SkillResource[];
+  }
+): Promise<string[]> {
+  const { requestedSpaceIds } =
+    await getAgentConfigurationRequirementsFromCapabilities(auth, {
+      actions,
+      skills,
+    });
+  const impliedSpaceIds = new Set(
+    (await SpaceResource.fetchByModelIds(auth, requestedSpaceIds)).map(
+      (space) => space.sId
+    )
+  );
+
+  return agentConfiguration.requestedSpaceIds.filter(
+    (spaceId) => !impliedSpaceIds.has(spaceId)
+  );
+}
+
 /**
  * @cc [owner:matteotrab,label:product] field-edits-carry-the-agent-over
  * `createOrUpgradeAgentConfiguration` replaces the whole agent, so every field no suggestion
@@ -206,7 +301,7 @@ async function resolveModelEdit(
 async function resolveAgentFieldEdits(
   auth: Authenticator,
   agent: AgentResource,
-  { name, model, description, scope, instructions }: AgentFieldEdits
+  { name, model, description, scope, instructions, skills }: AgentFieldEdits
 ): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
   const contextRes = await getAgentConfigurationContext(auth, agent.sId, {
     requireEditorGroup: true,
@@ -217,7 +312,11 @@ async function resolveAgentFieldEdits(
     );
   }
 
-  const { agentConfiguration, editorUsers, skills } = contextRes.value;
+  const {
+    agentConfiguration,
+    editorUsers,
+    skills: currentSkills,
+  } = contextRes.value;
 
   const resolvedInstructions = resolveInstructionsEdits(
     agentConfiguration,
@@ -241,6 +340,25 @@ async function resolveAgentFieldEdits(
   }
   const nextModel = resolvedModel.value;
 
+  const resolvedSkills = await resolveSkillsEdits(
+    auth,
+    currentSkills,
+    skills ?? []
+  );
+  if (resolvedSkills.isErr()) {
+    return resolvedSkills;
+  }
+  const currentActions = agentConfiguration.actions.filter(
+    isServerSideMCPServerConfiguration
+  );
+  const additionalRequestedSpaceIds = resolvedSkills.value.hasRemovedSkills
+    ? await getAdditionalRequestedSpaceIds(auth, {
+        agentConfiguration,
+        actions: currentActions,
+        skills: currentSkills,
+      })
+    : agentConfiguration.requestedSpaceIds;
+
   // Some skills may not be readable by the caller because of their requested spaces,
   // however in that case also the agent would be unreadable as it would request the
   // same spaces.
@@ -256,14 +374,12 @@ async function resolveAgentFieldEdits(
       status: agentConfiguration.status,
       scope: scope ?? agentConfiguration.scope,
       model: nextModel,
-      actions: agentConfiguration.actions.filter(
-        isServerSideMCPServerConfiguration
-      ),
+      actions: currentActions,
       templateId: agentConfiguration.templateId,
       tags: agentConfiguration.tags,
       editors: editorUsers.map((user) => ({ sId: user.sId })),
-      skills: skills.map((skill) => ({ sId: skill.sId })),
-      additionalRequestedSpaceIds: agentConfiguration.requestedSpaceIds,
+      skills: resolvedSkills.value.skillIds.map((sId) => ({ sId })),
+      additionalRequestedSpaceIds,
     },
   });
 }

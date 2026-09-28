@@ -2,9 +2,16 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { validateInstructionEdits } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
-import { pruneSupersededSingletonSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
+import {
+  markDuplicateSuggestionsAsOutdated,
+  pruneSupersededSingletonSuggestions,
+} from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
+import {
+  checkSkillAddition,
+  fetchSuggestableSkills,
+} from "@app/lib/api/assistant/suggestable_skills";
 import type { Authenticator } from "@app/lib/auth";
 import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
 import { DustError } from "@app/lib/error";
@@ -13,6 +20,7 @@ import { hasSuggestionSelfConflict } from "@app/lib/reinforcement/skill_suggesti
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -32,7 +40,9 @@ import type {
   ModelSuggestionType,
   NameSuggestionType,
   ScopeSuggestionType,
+  SkillsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
+import { isSkillsSuggestion } from "@app/types/suggestions/agent_suggestion";
 
 // Validators shared by the single-change `suggest_agent_*` tools and the `suggest` tool. They run
 // against live state and never write, so a batch can validate every change before recording any.
@@ -374,6 +384,76 @@ export async function validateAgentCreation(
   return new Ok(nameValidation.value);
 }
 
+/**
+ * Checks each skill can be added to or removed from the agent. An added skill is one the builder
+ * offers (see `checkSkillAddition`) that the agent does not have yet; a removed skill is one of the
+ * agent's skills. Only editors can suggest it, as only editors can apply it. Returns one suggestion
+ * per skill.
+ */
+export async function validateAgentSkillChanges(
+  auth: Authenticator,
+  agent: AgentConfigurationType,
+  {
+    addSkillIds,
+    removeSkillIds,
+  }: { addSkillIds: string[]; removeSkillIds: string[] }
+): Promise<Result<SkillsSuggestionType[], MCPError>> {
+  if (!agent.canEdit) {
+    return new Err(
+      new MCPError("Only editors can suggest changing an agent's skills.")
+    );
+  }
+
+  if (agent.status !== "active") {
+    return new Err(
+      new MCPError("Only active agents can have their skills changed.")
+    );
+  }
+
+  const skillIds = [...addSkillIds, ...removeSkillIds];
+  if (new Set(skillIds).size !== skillIds.length) {
+    return new Err(
+      new MCPError("Each skill can only be added or removed once.")
+    );
+  }
+
+  const currentSkillIds = new Set(
+    (await SkillResource.listByAgentConfiguration(auth, agent)).map(
+      (skill) => skill.sId
+    )
+  );
+
+  for (const skillId of removeSkillIds) {
+    if (!currentSkillIds.has(skillId)) {
+      return new Err(
+        new MCPError(`The agent does not have the skill "${skillId}".`)
+      );
+    }
+  }
+
+  const suggestable = await fetchSuggestableSkills(auth, addSkillIds);
+  for (const skillId of addSkillIds) {
+    if (currentSkillIds.has(skillId)) {
+      return new Err(
+        new MCPError(`The agent already has the skill "${skillId}".`)
+      );
+    }
+    const addition = checkSkillAddition(skillId, suggestable);
+    if (addition.isErr()) {
+      return new Err(new MCPError(addition.error));
+    }
+  }
+
+  // No pending suggestion limit for conversational building.
+  return new Ok([
+    ...addSkillIds.map((skillId) => ({ action: "add" as const, skillId })),
+    ...removeSkillIds.map((skillId) => ({
+      action: "remove" as const,
+      skillId,
+    })),
+  ]);
+}
+
 /** Kinds of which a single suggestion may be pending per agent at a time. */
 export type SingletonAgentSuggestionData = Extract<
   AgentSuggestionData,
@@ -508,4 +588,55 @@ export async function recordAgentCreationSuggestion(
     }
   );
   return new Ok(suggestion);
+}
+
+/**
+ * @cc [owner:fabiencelier,label:product] single-pending-per-skill
+ * Recording skill suggestions MUST mark every other `pending` skill suggestion on the same agent
+ * and for the same skill `outdated`, and never the recorded ones, like sidekick's
+ * `suggest_skills`.
+ */
+export async function recordAgentSkillSuggestions(
+  auth: Authenticator,
+  agent: LightAgentConfigurationType,
+  {
+    skills,
+    conversation,
+    batch,
+  }: {
+    skills: SkillsSuggestionType[];
+    conversation: ConversationType;
+    batch: BatchSuggestionResource | null;
+  }
+): Promise<AgentSuggestionResource[]> {
+  if (skills.length === 0) {
+    return [];
+  }
+
+  const skillIds = new Set(skills.map((s) => s.skillId));
+  const pending = await AgentSuggestionResource.listByAgentConfigurationId(
+    auth,
+    agent.sId,
+    { states: ["pending"], kind: "skills" }
+  );
+  await markDuplicateSuggestionsAsOutdated(
+    auth,
+    pending,
+    (s) =>
+      isSkillsSuggestion(s.suggestion) && skillIds.has(s.suggestion.skillId)
+  );
+
+  return AgentSuggestionResource.createSuggestionsForAgent(
+    auth,
+    agent,
+    skills.map((suggestion) => ({
+      kind: "skills" as const,
+      suggestion,
+      analysis: null,
+      state: "pending" as const,
+      conversationId: conversation.id,
+      source: "conversational" as const,
+      batchId: batch?.id ?? null,
+    }))
+  );
 }

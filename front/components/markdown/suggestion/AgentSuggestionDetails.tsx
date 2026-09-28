@@ -5,12 +5,17 @@ import { formatModelEffortLabel } from "@app/components/model_picker/modelPicker
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { getAgentScopeLabel } from "@app/lib/agent_builder/labels";
+import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { DiffBlock } from "@dust-tt/sparkle";
+import type { AgentSkillsSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type { LightWorkspaceType } from "@app/types/user";
+import { Chip, DiffBlock } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { useMemo } from "react";
 
 function formatModel(modelId: string, reasoningEffort?: ReasoningEffort) {
   const modelName = getModelDisplayNameFromId(modelId);
@@ -44,12 +49,49 @@ function NewInstructionsBlock({ instructionsHtml }: NewInstructionsBlockProps) {
   );
 }
 
+interface SuggestedSkillRowProps {
+  owner: LightWorkspaceType;
+  suggestion: AgentSkillsSuggestionType;
+}
+
+function SuggestedSkillRow({ owner, suggestion }: SuggestedSkillRowProps) {
+  const { action, skillId } = suggestion.suggestion;
+  const { skill, isSkillLoading } = useSkill({
+    workspaceId: owner.sId,
+    skillId,
+  });
+  const SkillAvatar = useMemo(() => getSkillAvatarIcon(skill ?? null), [skill]);
+
+  const displayName = skill?.name ?? (isSkillLoading ? "Loading…" : skillId);
+
+  return (
+    <div className="flex items-center gap-3 py-2.5">
+      <SkillAvatar size="xs" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm text-foreground">{displayName}</div>
+        {skill && (
+          <div className="truncate text-xs text-muted-foreground">
+            {skill.userFacingDescription}
+          </div>
+        )}
+      </div>
+      <Chip
+        size="xs"
+        color={action === "add" ? "highlight" : "warning"}
+        label={action === "add" ? "Add" : "Remove"}
+      />
+    </div>
+  );
+}
+
 interface AgentSuggestionDetailsProps {
+  owner: LightWorkspaceType;
   suggestion: AgentActionCardSuggestionType;
   agentConfiguration: AgentConfigurationType | null;
 }
 
 export function AgentSuggestionDetails({
+  owner,
   suggestion,
   agentConfiguration,
 }: AgentSuggestionDetailsProps) {
@@ -148,6 +190,9 @@ export function AgentSuggestionDetails({
           newValue={getAgentScopeLabel(suggestion.suggestion.scope)}
         />
       );
+
+    case "skills":
+      return <SuggestedSkillRow owner={owner} suggestion={suggestion} />;
 
     default:
       assertNeverAndIgnore(suggestion);
