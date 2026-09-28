@@ -65,6 +65,26 @@ describe("feature flag resource caches", () => {
     expect(flags.map((flag) => flag.name)).toEqual(["deepseek_feature"]);
   });
 
+  it("invalidates every affected workspace after a bulk enable", async () => {
+    const firstWorkspace = await WorkspaceFactory.basic();
+    const secondWorkspace = await WorkspaceFactory.basic();
+    await FeatureFlagResource.enable(firstWorkspace, "deepseek_feature");
+    await FeatureFlagResource.listForWorkspace(firstWorkspace);
+    await FeatureFlagResource.listForWorkspace(secondWorkspace);
+
+    await FeatureFlagResource.enableForWorkspaceModelIds("deepseek_feature", [
+      firstWorkspace.id,
+      secondWorkspace.id,
+    ]);
+
+    const firstFlags =
+      await FeatureFlagResource.listForWorkspace(firstWorkspace);
+    const secondFlags =
+      await FeatureFlagResource.listForWorkspace(secondWorkspace);
+    expect(firstFlags.map((flag) => flag.name)).toEqual(["deepseek_feature"]);
+    expect(secondFlags.map((flag) => flag.name)).toEqual(["deepseek_feature"]);
+  });
+
   it("invalidates every affected workspace after a bulk disable", async () => {
     const firstWorkspace = await WorkspaceFactory.basic();
     const secondWorkspace = await WorkspaceFactory.basic();

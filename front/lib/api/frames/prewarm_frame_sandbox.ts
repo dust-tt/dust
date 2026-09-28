@@ -1,15 +1,18 @@
 import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
  * @cc [owner:davidebbo,label:security;performance] prewarm-gated-like-a-call
- * The Frame's sandbox MUST only be woken when its active publication declares a function and the
- * caller could call one: a workspace member for whom `canCurrentUserUseFrame` holds. Otherwise the
- * pre-warm MUST do nothing.
+ * The Frame's sandbox MUST only be woken when Frame functions are enabled for the workspace (see
+ * isFramesV2FunctionsEnabled), its active publication declares a function, and the caller could
+ * call one: a workspace member for whom `canCurrentUserUseFrame` holds. Otherwise the pre-warm
+ * MUST do nothing.
  */
 /**
  * @cc [owner:davidebbo,label:concurrency] prewarm-never-creates
@@ -36,6 +39,11 @@ export async function prewarmFrameSandbox(
     workspaceModelId: frame.workspaceId,
   };
   try {
+    const featureFlags = await getFeatureFlags(auth);
+    if (!isFramesV2FunctionsEnabled(featureFlags)) {
+      return;
+    }
+
     // `canCurrentUserUseFrame` also requires a workspace member.
     const [hasFunctions, canUse] = await Promise.all([
       frame.hasActiveFrameFunctions(),

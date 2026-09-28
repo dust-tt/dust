@@ -35,6 +35,16 @@ describe("prewarmFrameSandbox", () => {
     expect(ensureFrameSandboxReady).not.toHaveBeenCalled();
   });
 
+  it("does nothing when Frame functions are disabled for the workspace", async () => {
+    const { auth, frame } = await makeTestFrameFunction({
+      enableFramesV2Functions: false,
+    });
+
+    await prewarmFrameSandbox(auth, frame);
+
+    expect(ensureFrameSandboxReady).not.toHaveBeenCalled();
+  });
+
   it("does nothing when the active publication declares no function", async () => {
     const { auth, frame } = await makeTestFrameFunction();
     await frame.setActiveFramePublication({

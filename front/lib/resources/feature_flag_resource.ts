@@ -161,6 +161,22 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
     }
   }
 
+  // Enables one flag on many workspaces with a single insert, skipping workspaces that already
+  // have it, and invalidates their per-workspace caches.
+  static async enableForWorkspaceModelIds(
+    name: WhitelistableFeature,
+    workspaceModelIds: ModelId[]
+  ): Promise<void> {
+    if (workspaceModelIds.length === 0) {
+      return;
+    }
+    await FeatureFlagModel.bulkCreate(
+      workspaceModelIds.map((workspaceId) => ({ workspaceId, name })),
+      { ignoreDuplicates: true }
+    );
+    await FeatureFlagResource.store.invalidateMany(workspaceModelIds);
+  }
+
   static async disableMany(
     workspace: WorkspaceResource | WorkspaceType | LightWorkspaceType,
     names: WhitelistableFeature[]

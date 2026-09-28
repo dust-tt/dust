@@ -1,5 +1,4 @@
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
@@ -36,17 +35,14 @@ makeScript({}, async ({ execute }, logger) => {
     offset < workspaceModelIds.length;
     offset += BATCH_SIZE
   ) {
-    const workspaces = await WorkspaceResource.fetchByModelIds(
-      workspaceModelIds.slice(offset, offset + BATCH_SIZE)
+    const batch = workspaceModelIds.slice(offset, offset + BATCH_SIZE);
+    // Skips workspaces that already have the flag.
+    await FeatureFlagResource.enableForWorkspaceModelIds(
+      FRAMES_V2_FUNCTIONS_FEATURE_FLAG,
+      batch
     );
-    for (const workspace of workspaces) {
-      // enableMany skips flags the workspace already has.
-      await FeatureFlagResource.enableMany(workspace, [
-        FRAMES_V2_FUNCTIONS_FEATURE_FLAG,
-      ]);
-    }
     logger.info(
-      { processed: offset + workspaces.length },
+      { processed: offset + batch.length },
       "Enabled frames_v2_functions for batch"
     );
   }
