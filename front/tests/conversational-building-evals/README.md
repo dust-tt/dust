@@ -29,7 +29,7 @@ seed workspace (skills, admin member) from the scenario
    against the tool schema, calls the production handler with the scenario's authenticator, and
    feeds the text result back. Nothing is mocked: `list_skills` lists the seeded skills,
    `describe_skill` returns their stored block HTML, `suggest` records a real batch of
-   suggestions (rolled back with the per-test transaction).
+   suggestions.
 5. **Assertions**: the *final* tool call (last non-exploratory one, i.e. the last `suggest`) must
    carry the change `expectedFinalToolCall` describes (e.g. an `edit_skill` suggestion renaming the
    seeded skill).

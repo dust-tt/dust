@@ -1,4 +1,5 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { EditSkillSuggestion } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
@@ -73,7 +74,10 @@ export interface ConversationMessage {
   content: string;
 }
 
-export type SkillUpdateEditKind = "instructionEdits" | "agentFacingDescription";
+export type SkillUpdateEditKind = keyof Pick<
+  EditSkillSuggestion,
+  "instructionEdits" | "agentFacingDescription"
+>;
 
 /**
  * The change the run must end with. The "final" tool call is the last non-exploratory call of the
