@@ -145,14 +145,6 @@ async function planSkillCreation(
     instructions,
   }: CreateSkillSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
-  if (ref && /["<>]/.test(name)) {
-    return new Err(
-      new MCPError(
-        `The skill "${name}" is cited by a ref, so its name cannot contain ", < or >.`
-      )
-    );
-  }
-
   const validation = await validateSkillCreation(auth, { name });
   if (validation.isErr()) {
     return validation;
