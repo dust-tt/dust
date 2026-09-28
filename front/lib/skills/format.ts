@@ -1,4 +1,6 @@
 import { removeNulls } from "@app/types/shared/utils/general";
+import { escapeXml } from "@app/types/shared/utils/string_utils";
+import { unescape } from "html-escaper";
 import uniq from "lodash/uniq";
 
 export type SkillReference = {
@@ -28,7 +30,9 @@ function parseSkillTagAttributes(
   const id = attributes.match(/\bid="([^"]+)"/)?.[1];
   const name = attributes.match(/\bname="([^"]+)"/)?.[1];
   const icon = attributes.match(/\bicon="([^"]+)"/)?.[1];
-  const parsedName = unavailable ? UNAVAILABLE_SKILL_LABEL : name;
+  const parsedName = unavailable
+    ? UNAVAILABLE_SKILL_LABEL
+    : name && unescape(name);
 
   if (!id || !parsedName) {
     return null;
@@ -93,7 +97,7 @@ export function serializeSkillTag(
   { html = false }: { html?: boolean } = {}
 ): string {
   const iconAttribute = icon ? ` icon="${icon}"` : "";
-  const attributes = `id="${id}" name="${name}"${iconAttribute}`;
+  const attributes = `id="${id}" name="${escapeXml(name)}"${iconAttribute}`;
 
   if (html) {
     return `<${SKILL_TAG_NAME} ${attributes}></${SKILL_TAG_NAME}>`;
@@ -199,7 +203,7 @@ export function renameSkillReferencesInContent(
       return tag.replace(
         SKILL_NAME_ATTRIBUTE_REGEX,
         (_match, prefix: string, suffix: string) =>
-          `${prefix}${newName}${suffix}`
+          `${prefix}${escapeXml(newName)}${suffix}`
       );
     }
 

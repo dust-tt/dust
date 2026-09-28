@@ -3173,20 +3173,6 @@ describe("building_agents_and_skills tools", () => {
 
         expectMcpError(result, "must be written as");
       });
-
-      it("refuses a quote in the name of a skill cited by a ref", async () => {
-        const { authenticator } = await createSkillAuthorTestContext();
-
-        const result = await runSuggest(authenticator, {
-          title: "Notes skill",
-          analysis: "Notes.",
-          suggestions: [
-            { ...createSkill, name: 'Meeting "Notes"', ref: "notes" },
-          ],
-        });
-
-        expectMcpError(result, "cannot contain");
-      });
     });
 
     describe("skill changes", () => {
