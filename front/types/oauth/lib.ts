@@ -557,7 +557,7 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "Default Snowflake Role",
             value: undefined,
             helpMessage:
-              "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication.",
+              "The default Snowflake role (e.g., ANALYST or test@company.com). Wrap the name in double quotes to match a case-sensitive role exactly. Users can override this during their personal authentication.",
             validator: isValidSnowflakeRole,
             overridableAtPersonalAuth: true,
             personalAuthLabel: "Snowflake Role",
@@ -735,14 +735,31 @@ export function isValidSnowflakeAccount(s: unknown): s is string {
   return /^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$/.test(v);
 }
 
+const SNOWFLAKE_UNQUOTED_IDENTIFIER_REGEX = /^[A-Za-z_][A-Za-z0-9_$]*$/;
+const SNOWFLAKE_MAX_IDENTIFIER_LENGTH = 255;
+
+// Strips optional surrounding double quotes and unescapes `""` to `"`.
+function parseSnowflakeQuotedRole(role: string): string | null {
+  const match = /^"(.*)"$/.exec(role);
+  return match ? match[1].replace(/""/g, '"') : null;
+}
+
 export function isValidSnowflakeRole(s: unknown): s is string {
-  // Snowflake role names are uppercase identifiers
-  // Allow alphanumeric and underscores
-  return (
-    typeof s === "string" &&
-    s.trim().length > 0 &&
-    /^[A-Za-z_][A-Za-z0-9_]*$/.test(s.trim())
-  );
+  if (typeof s !== "string") {
+    return false;
+  }
+  const trimmed = s.trim();
+  const name = parseSnowflakeQuotedRole(trimmed) ?? trimmed;
+  return name.length > 0 && name.length <= SNOWFLAKE_MAX_IDENTIFIER_LENGTH;
+}
+
+export function snowflakeRoleToOAuthScope(role: string): string {
+  const trimmed = role.trim();
+  const quoted = parseSnowflakeQuotedRole(trimmed);
+  if (quoted === null && SNOWFLAKE_UNQUOTED_IDENTIFIER_REGEX.test(trimmed)) {
+    return `session:role:${trimmed.toUpperCase()}`;
+  }
+  return `session:role-encoded:${encodeURIComponent(quoted ?? trimmed)}`;
 }
 
 function isValidSnowflakeWarehouse(s: unknown): s is string {
