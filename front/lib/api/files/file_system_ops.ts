@@ -463,7 +463,15 @@ export async function renameCanonicalFile(
         });
   }
 
-  const dest = path.posix.join(path.posix.dirname(scopedPath), newFileName);
+  // Resolve the full destination the way the file system will, so the lookup and the row update
+  // agree with where the bytes land (control characters are stripped, `.` segments collapsed).
+  const resolvedDest = DustFileSystem.resolveScopedPath(
+    path.posix.join(path.posix.dirname(scopedPath), newFileName)
+  );
+  if (resolvedDest.isErr()) {
+    return resolvedDest;
+  }
+  const dest = resolvedDest.value;
   if (dest !== scopedPath) {
     const isDestRegistered = await isDestinationRegistered(auth, dustFs, dest);
     if (isDestRegistered) {
@@ -483,13 +491,12 @@ export async function renameCanonicalFile(
   }
 
   if (linkedFileResource) {
-    const { dest } = renameResult.value;
     const destGcsPath = dustFs.toMountFilePath(dest);
     const destInfo = inferDestMountInfo(dest);
 
     if (destGcsPath && destInfo) {
       await linkedFileResource.updateMount({
-        destFileName: newFileName,
+        destFileName: path.posix.basename(dest),
         destMountFilePath: destGcsPath,
         destUseCase: destInfo.useCase,
         destUseCaseMetadata: destInfo.useCaseMetadata,
@@ -497,7 +504,10 @@ export async function renameCanonicalFile(
     }
   }
 
-  return renameResult;
+  return new Ok({
+    dest,
+    sourceDeletionFailed: renameResult.value.sourceDeletionFailed,
+  });
 }
 
 /**

@@ -141,4 +141,19 @@ describe("moving onto a path a FileResource still claims", () => {
     expect(reloaded?.mountFilePath).toBe(`${basePath}a.txt`);
     expect(reloaded?.fileName).toBe("a.txt");
   });
+
+  it("renameCanonicalFile resolves control characters before checking registration", async () => {
+    const { auth, dustFs, projectId, copyFile } = await setup();
+
+    const result = await renameCanonicalFile(
+      auth,
+      dustFs,
+      `pod-${projectId}/a.txt`,
+      "b\t.txt"
+    );
+
+    assert(result.isErr());
+    expect(result.error.code).toBe("already_exists");
+    expect(copyFile).not.toHaveBeenCalled();
+  });
 });
