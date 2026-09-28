@@ -27,7 +27,9 @@ export function GroupManagersField({
 
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold">Group managers</h3>
+      <h3 className="text-sm font-semibold">
+        Group managers ({managers.length})
+      </h3>
       <p className="text-sm text-muted-foreground">
         Group managers can manage usage and credit limits for this group's
         members. {membershipDescription}

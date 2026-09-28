@@ -168,7 +168,9 @@ function ProvisionedGroupDetails({
             />
           )}
           {hasFeature("group_management") && (
-            <h3 className="text-sm font-semibold">Group members</h3>
+            <h3 className="text-sm font-semibold">
+              Group members ({rows.length})
+            </h3>
           )}
           {rows.length > 0 ? (
             <DataTable

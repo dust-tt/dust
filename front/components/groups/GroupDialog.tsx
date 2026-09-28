@@ -260,7 +260,9 @@ function GroupForm({
           )}
           <div className="flex flex-col gap-2">
             {hasFeature("group_management") && (
-              <h3 className="text-sm font-semibold">Group members</h3>
+              <h3 className="text-sm font-semibold">
+                Group members ({selectedMemberIds.size})
+              </h3>
             )}
             <MemberSelectionTable
               owner={owner}
