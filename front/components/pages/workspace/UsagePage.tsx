@@ -9,7 +9,6 @@ import {
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
-import type { DefaultUserSpendLimitState } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
@@ -25,6 +24,7 @@ import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNot
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import { CreditPoolCards } from "@app/components/workspace/WorkspaceCreditPoolCards";
+import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
@@ -321,11 +321,14 @@ export function UsagePage() {
   );
   const [spendLimitRecapMember, setSpendLimitRecapMember] =
     useState<MemberUsageType | null>(null);
+  const [isBulkSpendLimitOpen, setIsBulkSpendLimitOpen] = useState(false);
   const hasMetronomeContract = isSubscriptionMetronomeBilled(subscription);
   const { defaultUserSpendLimit, isDefaultUserSpendLimitError } =
     useDefaultUserSpendLimit({
       workspaceId: owner.sId,
-      disabled: spendLimitRecapMember === null || !hasMetronomeContract,
+      disabled:
+        (spendLimitRecapMember === null && !isBulkSpendLimitOpen) ||
+        !hasMetronomeContract,
     });
   // Same availability rule as the workspace read endpoint and poke's
   // PoolUsagePage: the default pool limit only exists for Metronome-billed
@@ -685,7 +688,6 @@ export function UsagePage() {
   const { doBulkSetSpendLimit } = useBulkSetUserSpendLimit({
     workspaceId: owner.sId,
   });
-  const [isBulkSpendLimitOpen, setIsBulkSpendLimitOpen] = useState(false);
 
   const handleBatchEditSpendLimit = useCallback(() => {
     setIsBulkSpendLimitOpen(true);
@@ -1487,7 +1489,10 @@ export function UsagePage() {
           onClose={() => setIsBulkSpendLimitOpen(false)}
           memberCount={selection.selectedCount}
           selectedMembers={selectedVisibleMembers}
+          owner={owner}
           seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
+          canEditDefaultLimit={isWorkspaceAdmin}
+          defaultUserSpendLimit={defaultUserSpendLimitState}
           onValidate={handleBulkSpendLimitValidate}
         />
         <BulkChangeSeatModal
