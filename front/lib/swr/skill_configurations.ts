@@ -16,6 +16,7 @@ import type {
   GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
   SearchSkillsResponseBody,
+  SkillSearchFacet,
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
   SkillSearchSort,
@@ -197,6 +198,7 @@ export function useSearchSkills({
   sortOrder,
   permissionFiltering,
   filters,
+  facets,
   disabled,
 }: {
   owner: LightWorkspaceType;
@@ -207,6 +209,7 @@ export function useSearchSkills({
   sortOrder?: SkillSearchSortOrder;
   permissionFiltering?: SkillSearchPermissionFiltering;
   filters?: SkillSearchFilters;
+  facets?: SkillSearchFacet[];
   disabled?: boolean;
 }) {
   const { fetcherWithBody } = useFetcher();
@@ -229,6 +232,7 @@ export function useSearchSkills({
     sortBy,
     sortOrder,
     permissionFiltering,
+    facets,
   };
   const skillsFetcher = async () => {
     const response: SearchSkillsResponseBody = await fetcherWithBody([
@@ -262,6 +266,7 @@ export function useSearchSkills({
     resolvedSearchTerm: disabled ? null : (data?.searchTerm ?? null),
     total: data?.total ?? 0,
     hasMore: data?.hasMore ?? false,
+    facets: data?.facets,
     isSkillsError: !!error,
     isSkillsLoading: !disabled && (isDebouncing || isLoading),
     mutate,

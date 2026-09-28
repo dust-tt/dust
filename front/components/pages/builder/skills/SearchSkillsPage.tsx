@@ -61,6 +61,8 @@ const SEARCH_TABS = [
   { id: "archived", label: "Archived", filters: { status: ["archived"] } },
 ] satisfies { id: string; label: string; filters: SkillSearchFilters }[];
 
+type SearchTabId = (typeof SEARCH_TABS)[number]["id"];
+
 interface SkillsListProps {
   searchTerm: string;
   filters: SkillSearchFilters;
@@ -182,9 +184,12 @@ export function SearchSkillsPage() {
   const [skillId, setSkillId] = useHashParam("skillId");
   const [agentId, setAgentId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
   const [filter, setFilter] = useState<SkillFilter>({});
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const searchFilters = toSkillSearchFilters(filter);
+  const activeTab =
+    SEARCH_TABS.find((tab) => tab.id === selectedTab) ?? SEARCH_TABS[0];
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
 
@@ -219,7 +224,15 @@ export function SearchSkillsPage() {
             className="w-full"
           />
         </div>
-        <Tabs defaultValue="all">
+        <Tabs
+          value={selectedTab}
+          onValueChange={(value) => {
+            const tab = SEARCH_TABS.find(({ id }) => id === value);
+            if (tab) {
+              setSelectedTab(tab.id);
+            }
+          }}
+        >
           <TabsList>
             {SEARCH_TABS.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
@@ -228,6 +241,8 @@ export function SearchSkillsPage() {
             <div className="flex items-center">
               <SkillFilterPanel
                 owner={owner}
+                searchTerm={searchTerm}
+                tabFilters={activeTab.filters}
                 filter={filter}
                 onFilterChange={setFilter}
               />

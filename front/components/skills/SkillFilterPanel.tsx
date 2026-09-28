@@ -5,6 +5,7 @@ import { FilterOptionCheckboxList } from "@app/components/shared/filter_panel/Fi
 import { FilterSection } from "@app/components/shared/filter_panel/FilterSection";
 import { FilterSelectionSummary } from "@app/components/shared/filter_panel/FilterSelectionSummary";
 import {
+  clearFilterCategory,
   filterOptionMatchesSearch,
   filterSelectionCount,
 } from "@app/components/shared/filter_panel/filterState";
@@ -21,8 +22,13 @@ import {
   SKILL_FILTER_CATEGORY_LABEL,
   toSkillSearchFilters,
 } from "@app/components/skills/skillFilter";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { useMCPServers } from "@app/lib/swr/mcp_servers";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useSearchSkills } from "@app/lib/swr/skill_configurations";
+import type {
+  SearchSkillsResponseBody,
+  SkillSearchFacet,
+  SkillSearchFilters,
+} from "@app/types/api/skills";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -40,8 +46,47 @@ const MAX_MCP_SERVER_VIEW_IDS = 100;
 
 interface SkillFilterPanelProps {
   owner: LightWorkspaceType;
+  searchTerm: string;
+  tabFilters: SkillSearchFilters;
   filter: SkillFilter;
   onFilterChange: (filter: SkillFilter) => void;
+}
+
+const SKILL_FILTER_CATEGORY_FACET: Record<
+  SkillFilterCategory,
+  SkillSearchFacet
+> = {
+  availability: "availability",
+  tool: "mcpServerViews",
+  editor: "editors",
+};
+
+// One option per MCP server, filtering on every view of it that matching skills use.
+function toToolOptions(
+  views: NonNullable<SearchSkillsResponseBody["facets"]["mcpServerViews"]>
+): SkillFilterOption[] {
+  const optionsByServerId = new Map<
+    string,
+    Extract<SkillFilterOption, { category: "tool" }>
+  >();
+  for (const view of views) {
+    const option = optionsByServerId.get(view.mcpServerId);
+    if (option) {
+      option.mcpServerViewIds.push(view.sId);
+    } else {
+      optionsByServerId.set(view.mcpServerId, {
+        category: "tool",
+        id: view.mcpServerId,
+        name: view.name,
+        icon: view.icon,
+        mcpServerViewIds: [view.sId],
+        disabled: false,
+      });
+    }
+  }
+  return [...optionsByServerId.values()].toSorted((a, b) =>
+    a.name.localeCompare(b.name)
+  );
 }
 
 function renderOptionIcon(option: SkillFilterOption) {
@@ -52,9 +97,12 @@ function renderOptionIcon(option: SkillFilterOption) {
 
 export function SkillFilterPanel({
   owner,
+  searchTerm,
+  tabFilters,
   filter,
   onFilterChange,
 }: SkillFilterPanelProps) {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [activeCategory, setActiveCategory] =
     useState<SkillFilterCategory>("availability");
@@ -70,33 +118,33 @@ export function SkillFilterPanel({
     removeOption,
     selectAllFiltered,
   } = useFilterDraft<SkillFilterCategory, SkillFilterOption>(filter);
-  const { mcpServers, isMCPServersLoading, isMCPServersError } = useMCPServers({
+  // Options are the values held by the skills matching the search, the tab and the draft
+  // selections of the other categories: the active category ignores its own selection so that its
+  // options stay selectable together.
+  const { facets, isSkillsLoading, isSkillsError } = useSearchSkills({
     owner,
-    disabled: !isOpen || activeCategory !== "tool",
+    searchTerm,
+    limit: 0,
+    filters: {
+      ...tabFilters,
+      ...toSkillSearchFilters(clearFilterCategory(draftFilter, activeCategory)),
+    },
+    facets: [SKILL_FILTER_CATEGORY_FACET[activeCategory]],
+    disabled: !isOpen,
   });
 
+  const availabilities = new Set(
+    (facets?.availability ?? []).map(({ availability }) => availability)
+  );
   const categoryOptions: Record<SkillFilterCategory, SkillFilterOption[]> = {
-    availability: SKILL_AVAILABILITY_FILTER_OPTIONS,
-    tool: mcpServers
-      .flatMap((server): SkillFilterOption[] =>
-        server.views.length > 0
-          ? [
-              {
-                category: "tool",
-                id: server.sId,
-                name: getMcpServerViewDisplayName({
-                  ...server.views[0],
-                  server,
-                }),
-                icon: server.icon,
-                mcpServerViewIds: server.views.map((view) => view.sId),
-                disabled: false,
-              },
-            ]
-          : []
-      )
-      .toSorted((a, b) => a.name.localeCompare(b.name)),
-    editor: SKILL_EDITOR_FILTER_OPTIONS,
+    availability: SKILL_AVAILABILITY_FILTER_OPTIONS.filter(
+      (option) =>
+        option.category === "availability" && availabilities.has(option.id)
+    ),
+    tool: toToolOptions(facets?.mcpServerViews ?? []),
+    editor: (facets?.editors ?? []).some((editor) => editor.sId === user.sId)
+      ? SKILL_EDITOR_FILTER_OPTIONS
+      : [],
   };
   const filteredOptions = categoryOptions[activeCategory].filter((option) =>
     filterOptionMatchesSearch(option.name, searchText)
@@ -193,7 +241,7 @@ export function SkillFilterPanel({
               ref={setContentScrollContainer}
               className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
             >
-              {activeCategory === "tool" && isMCPServersError ? (
+              {isSkillsError ? (
                 <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
                   Failed to load filters.
                 </div>
@@ -213,7 +261,7 @@ export function SkillFilterPanel({
                   selectAllLabel="Select all"
                   hasSelectableOptions={unselectedOptions.length > 0}
                   renderIcon={renderOptionIcon}
-                  status={isMCPServersLoading ? "loading" : "idle"}
+                  status={isSkillsLoading ? "loading" : "idle"}
                   scrollContainer={contentScrollContainer}
                 />
               )}
