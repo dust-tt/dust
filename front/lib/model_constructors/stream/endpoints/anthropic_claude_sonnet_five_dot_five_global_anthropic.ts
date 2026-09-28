@@ -1,15 +1,15 @@
 import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources";
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import type { ClaudeSonnetFive } from "@app/lib/model_constructors/providers/anthropic/models/claude_sonnet_five";
-import { WithAnthropicClaudeSonnetFiveConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_sonnet_five";
+import type { ClaudeSonnetFiveDotFive } from "@app/lib/model_constructors/providers/anthropic/models/claude_sonnet_five_dot_five";
+import { WithAnthropicClaudeSonnetFiveDotFiveConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_sonnet_five_dot_five";
 import { AnthropicStream } from "@app/lib/model_constructors/stream/clients/anthropic";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class AnthropicClaudeSonnetFiveGlobalAnthropicStream extends WithAnthropicClaudeSonnetFiveConfig(
+export class AnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStream extends WithAnthropicClaudeSonnetFiveDotFiveConfig(
   AnthropicStream
 ) {
-  // https://platform.claude.com/docs/en/about-claude/pricing
+  // https://platform.claude.com/docs/en/about-claude/pricing (2026-09-28).
   static readonly tokenPricing = {
     cacheCreated: 2.5,
     // 5m cache write = 1.25x base input; 1h cache write = 2x base input.
@@ -25,8 +25,8 @@ export class AnthropicClaudeSonnetFiveGlobalAnthropicStream extends WithAnthropi
   static readonly id = this.buildId();
 }
 
-AnthropicClaudeSonnetFiveGlobalAnthropicStream satisfies StreamEndpointConstructor<
+AnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStream satisfies StreamEndpointConstructor<
   MessageCreateParamsNonStreaming,
   BetaRawMessageStreamEvent,
-  ClaudeSonnetFive
+  ClaudeSonnetFiveDotFive
 >;

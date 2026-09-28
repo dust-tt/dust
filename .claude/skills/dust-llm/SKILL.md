@@ -83,8 +83,8 @@ Adding the id to `STATIC_MODEL_IDS` makes these fail to compile until updated:
 | File | What to add |
 |------|-------------|
 | `front/lib/api/assistant/token_pricing/global.ts` | `CURRENT_MODEL_PRICING` entry (input/output/`cache_read_input_tokens` per 1M) + doc URL comment. |
-| `front/types/assistant/models/static_model_reasoning_efforts.ts` | `{ none, light, medium, high }` support map (`satisfies Record<StaticModelIdType, ReasoningEffortSupport>`). **Must match the config's `supportedReasoningEfforts`** (enforced by `model_tiers.test.ts`). |
-| `front/types/assistant/models/model_tiers.ts` | `STATIC_MODEL_TIERS` entry mapping each supported effort → tier name. |
+| `front/types/assistant/models/static_model_reasoning_efforts.ts` | `{ none, minimal, low, medium, high, xhigh, maximal }` support map (`satisfies Record<StaticModelIdType, ReasoningEffortSupport>`). **Must match the config's `supportedReasoningEfforts`** (enforced by `model_tiers.test.ts`). |
+| `front/types/assistant/models/model_tiers.ts` | `STATIC_MODEL_TIERS` entry mapping each supported effort → tier name (omit unsupported efforts). |
 
 And one that is **not** compile-forced, so nothing turns red if you skip it:
 
@@ -261,10 +261,17 @@ documents a model-specific override — generic host guidance is not a contradic
 each documented effort actually works on the live endpoint, and record any effort the endpoint
 accepts but the docs omit, with a note that undocumented efforts can change without notice.
 
-When the product still offers an effort the model does not have, map it in the **llms layer** with
-a `configParsers` entry (`mapReasoningNoneToMinimal`, `mapNonNoneReasoningToHigh`,
-`mapReasoningEffortToLowHighMax`, `forceHighReasoningEffort`) — never with a schema `.transform()`, and never by widening the
-endpoint schema to swallow it.
+The product vocabulary covers the full range (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`,
+`maximal`; the legacy `light` is read as `low`), and the picker offers exactly the efforts a model
+marks supported. So **an effort the model does not have is marked `false` in
+`supportedReasoningEfforts` — never remapped to another one.** `configParsers` must not rewrite
+`reasoning.effort` (`effort-sent-as-selected` contract in `front/lib/llms/CONTRACTS`); the only
+exceptions are `disableReasoningWhenForcingTool` and `dropReasoning`. No schema `.transform()`
+either, and no widening the endpoint schema to swallow it.
+
+When the new model replaces one whose efforts differ (e.g. Sonnet 5.5 drops `none`, which Sonnet 5
+supports), repointing agents to it needs a `reasoningEffort` migration too
+(`replacement-model-preserves-reasoning-effort` contract).
 
 ### 1. Widen
 
@@ -296,6 +303,11 @@ Env-var names live in the sibling's `createInstance` (`DUST_MANAGED_ANTHROPIC_AP
 `VERTEX_AI_PROJECT_ID` plus GCP credentials — a `GOOGLE_APPLICATION_CREDENTIALS` service-account
 key works and needs no `gcloud auth application-default login`. Add `--bail 1` or
 `-t "<substring>"` only later, when iterating on a single case.
+
+A Vertex 404 *"Publisher model … was not found or your project does not have access to it"* on
+**every** location (`global` included), while the sibling model works on the same project, means
+the model is not enabled in the project's Model Garden yet, not that the region lacks it. Ask
+for it to be enabled before concluding anything about EU availability.
 
 ### 4. Sort every failure into one of three buckets
 
@@ -490,7 +502,7 @@ on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models
 | `contextSize` / `generationTokensCount` | Real provider values (legacy config). Caps go in the dust layer. |
 | `supportsVision` | Can process images. |
 | `supportsResponseFormat` | Structured output (JSON). Often incompatible with tool use — verify. |
-| `supportedReasoningEfforts` | `{ none, light, medium, high }`. Must match `static_model_reasoning_efforts.ts`. |
+| `supportedReasoningEfforts` | `{ none, minimal, low, medium, high, xhigh, maximal }`. Must match `static_model_reasoning_efforts.ts`. |
 | `defaultReasoningEffort` | Default effort. |
 | `isLatest` / `isLegacy` | Exactly one `isLatest` per family; flip the previous one to `false`. |
 | `regionalAvailability` | `{ "us-central1", "europe-west1" }` — reflect real availability. |

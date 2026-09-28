@@ -330,6 +330,13 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     xhigh: "ultra",
     maximal: "ultra",
   },
+  "claude-sonnet-5-5": {
+    low: "cost_efficient",
+    medium: "balanced",
+    high: "premium",
+    xhigh: "premium",
+    maximal: "premium",
+  },
   "claude-sonnet-5": {
     none: "cost_efficient",
     low: "cost_efficient",
