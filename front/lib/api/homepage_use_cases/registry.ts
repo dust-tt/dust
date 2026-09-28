@@ -163,27 +163,6 @@ export const HOMEPAGE_USE_CASES: HomepageUseCaseDefinition[] = [
     requires: [{ type: "internalServer", name: "web_search_&_browse" }],
   },
   {
-    id: "support-trends",
-    label: "Spot the recurring issues in our support tickets",
-    prompt:
-      "Go through our Zendesk tickets from the last 30 days and find the recurring issues: group them by theme, count them, quote one representative ticket per theme, and suggest which ones deserve a help center article or a product fix.",
-    icon: "ZendeskLogo",
-    audience: {
-      type: "jobTypes",
-      jobTypes: ["customer_support", "customer_success"],
-    },
-    requires: [{ type: "internalServer", name: "zendesk" }],
-  },
-  {
-    id: "linear-sprint-review",
-    label: "Summarize what my team shipped this sprint",
-    prompt:
-      "Go through our Linear issues for the current cycle: what shipped, what slipped and why, and what is still in review. Group it by project and flag anything that has been in progress for more than a week.",
-    icon: "LinearLogo",
-    audience: { type: "jobTypes", jobTypes: ["engineering", "product"] },
-    requires: [{ type: "remoteServer", name: "Linear" }],
-  },
-  {
     id: "deep-research",
     label: "Research how our competitors position themselves",
     prompt:
