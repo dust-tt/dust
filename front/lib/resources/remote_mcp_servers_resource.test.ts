@@ -5,11 +5,12 @@ import {
   getMCPAuthorizationScope,
   RemoteMCPServerResource,
 } from "@app/lib/resources/remote_mcp_servers_resource";
-import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { WorkspaceType } from "@app/types/user";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -45,6 +46,16 @@ vi.mock("undici", async (importOriginal) => {
   };
 });
 
+vi.mock("@app/lib/api/workos/organization_primitives", async () => {
+  const actual = await vi.importActual(
+    "@app/lib/api/workos/organization_primitives"
+  );
+  return {
+    ...actual,
+    listWorkOSOrganizationsWithDomain: vi.fn().mockResolvedValue([]),
+  };
+});
+
 vi.mock("@modelcontextprotocol/sdk/client/auth.js", async (importOriginal) => {
   const actual =
     await importOriginal<
@@ -60,6 +71,14 @@ vi.mock("@modelcontextprotocol/sdk/client/auth.js", async (importOriginal) => {
     registerClient: oauthMocks.registerClient,
   };
 });
+
+async function verifyDomain(workspace: WorkspaceType, domain: string) {
+  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+  const res = await workspaceResource?.upsertWorkspaceDomain({ domain });
+  if (!res?.isOk()) {
+    throw new Error(`Failed to verify domain ${domain} for test setup`);
+  }
+}
 
 const oauthProvider: OAuthClientProvider = {
   redirectUrl: undefined,
@@ -220,10 +239,7 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata egress routing", () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const domain = `${generateRandomModelSId().replaceAll("_", "-").toLowerCase()}.example.com`;
-    await WorkspaceHasDomainModel.create({
-      domain,
-      workspaceId: workspace.id,
-    });
+    await verifyDomain(workspace, domain);
 
     return { auth, domain };
   }
