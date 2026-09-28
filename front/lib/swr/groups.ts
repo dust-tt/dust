@@ -593,6 +593,8 @@ export function useDeleteGroup({ owner }: { owner: LightWorkspaceType }) {
           { revalidate: false }
         );
 
+        await invalidateWorkspaceGroups(owner.sId);
+
         return true;
       } finally {
         setIsDeleting(false);

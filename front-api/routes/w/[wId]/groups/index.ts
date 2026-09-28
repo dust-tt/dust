@@ -1,6 +1,6 @@
 import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
-import { getGroupManagersForGroups } from "@app/lib/api/groups/manager_assignments";
 import { getGroupAllowedActions } from "@app/lib/api/groups/management_actions";
+import { getGroupManagersForGroups } from "@app/lib/api/groups/manager_assignments";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { GetGroupsResponseBody } from "@app/types/api/groups";
 import {

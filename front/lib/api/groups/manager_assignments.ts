@@ -36,10 +36,9 @@ export async function getGroupManagersForGroups(
     auth,
     { grants }
   );
-  const memberships = await GroupResource.getActiveMembershipsForGroups(
-    auth,
-    [...holders.values()]
-  );
+  const memberships = await GroupResource.getActiveMembershipsForGroups(auth, [
+    ...holders.values(),
+  ]);
   const userIds = [...new Set(Object.values(memberships).flat())];
   const users = await UserResource.fetchByModelIds(userIds);
   const usersById = new Map(users.map((user) => [user.id, user.toJSON()]));
