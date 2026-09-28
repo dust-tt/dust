@@ -4,7 +4,6 @@ import {
   SEAT_TYPE_ICONS,
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
-import type { DefaultUserSpendLimitState } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
@@ -13,6 +12,7 @@ import {
   toCreditPoolFetchStatus,
   useCycleHistoryLimit,
 } from "@app/components/workspace/WorkspaceCreditPoolCards";
+import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { expandMaxTierName } from "@app/lib/client/model_tiers";
