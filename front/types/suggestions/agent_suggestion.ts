@@ -125,6 +125,8 @@ const CreateSuggestionSchema = z.object({
     .trim()
     .min(1)
     .describe("The agent's instructions, as HTML."),
+  toolIds: z.array(z.string()).optional(),
+  skillIds: z.array(z.string()).optional(),
 });
 
 const DeleteSuggestionSchema = z.object({

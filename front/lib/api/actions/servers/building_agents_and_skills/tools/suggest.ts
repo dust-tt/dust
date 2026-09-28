@@ -11,6 +11,7 @@ import {
   recordAgentToolSuggestions,
   recordSingletonAgentSuggestions,
   validateAgentCreation,
+  validateAgentCreationCapabilities,
   validateAgentDeletion,
   validateAgentDescriptionChange,
   validateAgentInstructionsChange,
@@ -120,16 +121,36 @@ async function fetchAgentForSuggestion(
 
 async function planAgentCreation(
   auth: Authenticator,
-  { name, description, instructions }: CreateAgentSuggestion
+  {
+    name,
+    description,
+    instructions,
+    toolIds = [],
+    skillIds = [],
+  }: CreateAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const validation = await validateAgentCreation(auth, { name });
   if (validation.isErr()) {
     return validation;
   }
 
+  const capabilities = await validateAgentCreationCapabilities(auth, {
+    toolIds,
+    skillIds,
+  });
+  if (capabilities.isErr()) {
+    return capabilities;
+  }
+
   return new Ok({
     type: "agent_creation",
-    create: { name: validation.value.name, description, instructions },
+    create: {
+      name: validation.value.name,
+      description,
+      instructions,
+      toolIds,
+      skillIds,
+    },
   });
 }
 
@@ -558,6 +579,23 @@ function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
   return new Ok(undefined);
 }
 
+/** The skills a suggestion gives to an agent, whether it creates or edits it. */
+function addedSkillIdsOf(suggestion: Suggestion): string[] {
+  switch (suggestion.kind) {
+    case "create_agent":
+      return suggestion.skillIds ?? [];
+    case "edit_agent":
+      return suggestion.skills?.addSkillIds ?? [];
+    case "delete_agent":
+    case "create_skill":
+    case "edit_skill":
+    case "delete_skill":
+      return [];
+    default:
+      assertNever(suggestion);
+  }
+}
+
 /** A skill the batch deletes cannot also be added to an agent by the same batch. */
 function findSkillAddedAndDeleted(suggestions: Suggestion[]): string | null {
   const deletedSkillIds = new Set(
@@ -566,13 +604,11 @@ function findSkillAddedAndDeleted(suggestions: Suggestion[]): string | null {
     )
   );
   for (const suggestion of suggestions) {
-    if (suggestion.kind === "edit_agent") {
-      const addedSkillId = (suggestion.skills?.addSkillIds ?? []).find((id) =>
-        deletedSkillIds.has(id)
-      );
-      if (addedSkillId) {
-        return addedSkillId;
-      }
+    const addedSkillId = addedSkillIdsOf(suggestion).find((id) =>
+      deletedSkillIds.has(id)
+    );
+    if (addedSkillId) {
+      return addedSkillId;
     }
   }
   return null;

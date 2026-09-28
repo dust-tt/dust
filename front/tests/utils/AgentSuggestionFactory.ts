@@ -171,6 +171,7 @@ export class AgentSuggestionFactory {
       analysis: string | null;
       state: AgentSuggestionState;
       batchModelId: number | null;
+      source: AgentSuggestionSource;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -187,6 +188,7 @@ export class AgentSuggestionFactory {
         state: overrides.state ?? "pending",
         conversationId: null,
         batchId: overrides.batchModelId ?? null,
+        source: overrides.source ?? "conversational",
       }
     );
   }

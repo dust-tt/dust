@@ -72,13 +72,21 @@ function pickDefaultAvatar(): string {
  * @cc [owner:fabiencelier,label:product] create-activates-placeholder-only
  * A `create` suggestion MUST only be applied to the `pending` placeholder agent it targets: it
  * turns that placeholder into an `active`, `hidden` agent (same `sId`, editors unchanged) carrying
- * the suggested name, description and instructions. Applying it to an agent that is not `pending`
- * fails with `invalid_request_error` and changes nothing.
+ * the suggested name, description, instructions, tools and skills. Tools and skills are checked
+ * again against live state, as when added to an existing agent. Applying it to an agent that is not
+ * `pending`, or with a tool or skill that no longer qualifies, fails with `invalid_request_error`
+ * and changes nothing.
  */
 async function resolveCreateSuggestion(
   auth: Authenticator,
   agent: AgentResource,
-  { name, description, instructions }: CreateSuggestionType
+  {
+    name,
+    description,
+    instructions,
+    toolIds = [],
+    skillIds = [],
+  }: CreateSuggestionType
 ): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
   if (agent.status !== "pending") {
     return new Err(
@@ -108,6 +116,23 @@ async function resolveCreateSuggestion(
     return converted;
   }
 
+  const resolvedActions = await resolveToolsEdits(
+    auth,
+    [],
+    toolIds.map((toolId) => ({ action: "add", toolId }))
+  );
+  if (resolvedActions.isErr()) {
+    return resolvedActions;
+  }
+  const resolvedSkills = await resolveSkillsEdits(
+    auth,
+    [],
+    skillIds.map((skillId) => ({ action: "add", skillId }))
+  );
+  if (resolvedSkills.isErr()) {
+    return resolvedSkills;
+  }
+
   const [editors, { defaultModel }] = await Promise.all([
     agent.listEditors(auth).then((editors) => editors ?? []),
     getModelsForAuth(auth),
@@ -130,8 +155,8 @@ async function resolveCreateSuggestion(
         temperature: 0.7,
         reasoningEffort: defaultModel.defaultReasoningEffort,
       },
-      actions: [],
-      skills: [],
+      actions: resolvedActions.value.actions,
+      skills: resolvedSkills.value.skillIds.map((sId) => ({ sId })),
       tags: [],
       editors: editors.map((e) => ({ sId: e.sId })),
     },

@@ -2977,6 +2977,99 @@ describe("building_agents_and_skills tools", () => {
       expectMcpError(result, "already exists");
     });
 
+    it("records an agent creation with its tools and skills", async () => {
+      const { authenticator, workspace, globalSpace } =
+        await createAgentAuthorTestContext();
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+      const skill = await seedSkill(authenticator, { name: "Triage" });
+
+      const batchId = extractBatchId(
+        await runSuggest(authenticator, {
+          title: "New agent",
+          analysis: "Incidents need a helper.",
+          suggestions: [
+            {
+              kind: "create_agent",
+              name: "IncidentHelper",
+              description: "Helps triage incidents.",
+              instructions: "<p>Triage incidents.</p>",
+              toolIds: [view.sId],
+              skillIds: [skill.sId],
+            },
+          ],
+        })
+      );
+
+      const batch = await BatchSuggestionResource.fetchById(
+        authenticator,
+        batchId
+      );
+      expect(batch?.agentSuggestions.map((s) => s.toJSON())).toMatchObject([
+        {
+          kind: "create",
+          state: "pending",
+          suggestion: {
+            name: "IncidentHelper",
+            toolIds: [view.sId],
+            skillIds: [skill.sId],
+          },
+        },
+      ]);
+    });
+
+    it("refuses creating an agent with a tool that needs a configuration", async () => {
+      const { authenticator, workspace, globalSpace } =
+        await createAgentAuthorTestContext();
+      const searchView = await MCPServerViewFactory.internal(
+        workspace,
+        "search",
+        globalSpace
+      );
+
+      const result = await runSuggest(authenticator, {
+        title: "New agent",
+        analysis: "New agent.",
+        suggestions: [
+          {
+            kind: "create_agent",
+            name: "Searcher",
+            description: "Searches things.",
+            instructions: "<p>Search things.</p>",
+            toolIds: [searchView.sId],
+          },
+        ],
+      });
+
+      expectMcpError(result, "needs a configuration");
+    });
+
+    it("refuses creating an agent with a skill the same batch deletes", async () => {
+      const { authenticator } = await createAgentAuthorTestContext();
+      const skill = await seedSkill(authenticator, { name: "Triage" });
+
+      const result = await runSuggest(authenticator, {
+        title: "New agent",
+        analysis: "New agent.",
+        suggestions: [
+          {
+            kind: "create_agent",
+            name: "IncidentHelper",
+            description: "Helps triage incidents.",
+            instructions: "<p>Triage incidents.</p>",
+            skillIds: [skill.sId],
+          },
+          { kind: "delete_skill", skillId: skill.sId },
+        ],
+      });
+
+      expectMcpError(result, "is both deleted and added to an agent");
+    });
+
     const createSkill = {
       kind: "create_skill",
       name: "Meeting Notes",
