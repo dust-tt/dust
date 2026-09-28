@@ -7,8 +7,13 @@ import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import { MCP_CLIENT_ID_METADATA_DOCUMENT_URL } from "@app/lib/api/mcp_server/urls";
+import { shouldUseStaticIpProxy } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
-import { toGlobalResponse, untrustedFetch } from "@app/lib/egress/server";
+import {
+  getStaticIPProxyAgent,
+  getUntrustedEgressAgent,
+  toGlobalResponse,
+} from "@app/lib/egress/server";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
@@ -46,6 +51,8 @@ import type {
   OAuthProtectedResourceMetadata,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { Dispatcher } from "undici";
+import { fetch as undiciFetch } from "undici";
 import assert from "assert";
 import uniq from "lodash/uniq";
 import type {
@@ -86,6 +93,20 @@ export function getMCPAuthorizationScope({
   }
 
   return scopes.size > 0 ? [...scopes].join(" ") : undefined;
+}
+
+async function getMCPServerEgressAgent(
+  auth: Authenticator,
+  serverUrl: string
+): Promise<Dispatcher | undefined> {
+  if (await shouldUseStaticIpProxy(auth, serverUrl)) {
+    const staticIPAgent = getStaticIPProxyAgent();
+    if (staticIPAgent) {
+      return staticIPAgent;
+    }
+  }
+
+  return getUntrustedEgressAgent();
 }
 
 // Unbounded columns (large JSONB/TEXT values) excluded from the base fetch. Callers opt into
@@ -690,28 +711,34 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
    * / `client_secret_post` in the server's `token_endpoint_auth_methods_supported` order; otherwise
    * the provider's default `clientMetadata.token_endpoint_auth_method`.
    */
-  static async discoverOAuthMetadata({
-    serverUrl,
-    provider,
-    extraScopes,
-    customHeaders,
-  }: {
-    serverUrl: string;
-    provider: OAuthClientProvider;
-    extraScopes?: string;
-    customHeaders?: Record<string, string>;
-  }): Promise<
+  static async discoverOAuthMetadata(
+    auth: Authenticator,
+    {
+      serverUrl,
+      provider,
+      extraScopes,
+      customHeaders,
+    }: {
+      serverUrl: string;
+      provider: OAuthClientProvider;
+      extraScopes?: string;
+      customHeaders?: Record<string, string>;
+    }
+  ): Promise<
     Result<MCPOAuthConnectionMetadataType, DustError<"internal_error">>
   > {
     // More or less copied from the official "MCP Inspector" code, but adapted to our needs.
     // Basically, we do the 2 first steps of the Guided Tour.
     // See: https://github.com/modelcontextprotocol/inspector/blob/c2dbff738e582941d6b1af04c4b9f41c28305487/client/src/lib/oauth-state-machine.ts#L31
 
+    const dispatcher = await getMCPServerEgressAgent(auth, serverUrl);
+
     const fetchFn: FetchLike = async (input, init?) => {
       // @ts-expect-error - globalThis.RequestInit and undici.RequestInit are structurally
       // compatible at runtime.
-      const response = await untrustedFetch(String(input), {
+      const response = await undiciFetch(String(input), {
         ...init,
+        dispatcher,
         headers: {
           ...init?.headers,
           ...customHeaders,

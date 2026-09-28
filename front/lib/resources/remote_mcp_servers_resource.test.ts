@@ -96,7 +96,9 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata", () => {
       token_endpoint_auth_method: registeredMethod,
     });
 
-    const result = await RemoteMCPServerResource.discoverOAuthMetadata({
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const result = await RemoteMCPServerResource.discoverOAuthMetadata(auth, {
       serverUrl: "https://mcp.example.com/mcp",
       provider: oauthProvider,
     });
@@ -138,7 +140,9 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata", () => {
       client_id: "registered-client",
     });
 
-    await RemoteMCPServerResource.discoverOAuthMetadata({
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await RemoteMCPServerResource.discoverOAuthMetadata(auth, {
       serverUrl: "https://mcp.example.com/mcp",
       provider: oauthProvider,
     });
