@@ -2,7 +2,7 @@
 
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { EditableFrame } from "@viz/app/components/EditableFrame";
-import { VizContext } from "@viz/app/components/VizContext";
+import { type FrameEditMode, VizContext } from "@viz/app/components/VizContext";
 import type { EditTextFn } from "@viz/app/lib/visualization-api";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -18,29 +18,21 @@ type AddEventListener = NonNullable<
 
 interface RenderOptions {
   editText?: EditTextFn;
-  addEventListener?: AddEventListener | null;
-  stagedEdits?: boolean;
-  editModeActive?: boolean;
+  addEventListener?: AddEventListener;
+  editMode?: FrameEditMode;
 }
 
 function frame(
   children: ReactNode,
   {
     editText = vi.fn<EditTextFn>(),
-    addEventListener = null,
-    stagedEdits = false,
-    editModeActive = false,
+    addEventListener,
+    editMode = "legacy",
   }: RenderOptions = {}
 ) {
   return (
     <VizContext.Provider
-      value={{
-        isPdfMode: false,
-        editText,
-        addEventListener,
-        stagedEdits,
-        editModeActive,
-      }}
+      value={{ isPdfMode: false, editText, addEventListener, editMode }}
     >
       <EditableFrame>{children}</EditableFrame>
     </VizContext.Provider>
@@ -67,9 +59,7 @@ describe("EditableFrame", () => {
   });
 
   it("enters edit mode on a single click in a Frames v2 Edit session", () => {
-    const { container } = render(
-      frame(hello, { stagedEdits: true, editModeActive: true })
-    );
+    const { container } = render(frame(hello, { editMode: "edit" }));
 
     const span = container.querySelector("[data-editable]") as HTMLElement;
     fireEvent.click(span);
@@ -78,9 +68,7 @@ describe("EditableFrame", () => {
   });
 
   it("ignores clicks in Frames v2 Preview", () => {
-    const { container } = render(
-      frame(hello, { stagedEdits: true, editModeActive: false })
-    );
+    const { container } = render(frame(hello, { editMode: "preview" }));
 
     const span = container.querySelector("[data-editable]") as HTMLElement;
     fireEvent.click(span);
@@ -89,16 +77,14 @@ describe("EditableFrame", () => {
 
   it("disables the Frame's form controls only during an Edit session", () => {
     const button = <button type="button">Add</button>;
-    const { container, rerender } = render(
-      frame(button, { stagedEdits: true, editModeActive: true })
-    );
+    const { container, rerender } = render(frame(button, { editMode: "edit" }));
 
     const fieldset = () => container.querySelector("fieldset") as HTMLElement;
     const control = () => container.querySelector("button") as HTMLElement;
     expect(fieldset()).toHaveProperty("disabled", true);
     expect(control().matches(":disabled")).toBe(true);
 
-    rerender(frame(button, { stagedEdits: true, editModeActive: false }));
+    rerender(frame(button, { editMode: "preview" }));
 
     expect(fieldset()).toHaveProperty("disabled", false);
     expect(control().matches(":disabled")).toBe(false);
@@ -142,7 +128,7 @@ describe("EditableFrame", () => {
             Two
           </span>
         </>,
-        { editText, stagedEdits: true, editModeActive: true }
+        { editText, editMode: "edit" }
       )
     );
 
@@ -178,7 +164,7 @@ describe("EditableFrame", () => {
 
   it("registers FLUSH_EDITABLES only when staging", () => {
     const staged = vi.fn<AddEventListener>(() => () => undefined);
-    render(frame(hello, { addEventListener: staged, stagedEdits: true }));
+    render(frame(hello, { addEventListener: staged, editMode: "preview" }));
     expect(staged).toHaveBeenCalledWith(
       "FLUSH_EDITABLES",
       expect.any(Function)

@@ -772,13 +772,11 @@ export interface VisualizationActionIframeProps {
   /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
   frameId?: string;
   isEditable?: boolean;
-  /** Frames v2 Edit session: click-to-edit + staged commits until Save. */
-  stagedEdits?: boolean;
   /**
-   * Frames v2 Preview|Edit: when stagedEdits is set, toggles inline-edit affordances via
-   * SET_EDIT_MODE without changing the iframe URL (avoids reload on entering Edit).
+   * Frames v2 authors only: edits are staged in the viz until Save. Switching between Preview and
+   * Edit is posted to the loaded viz (SET_EDIT_MODE), so it never changes the iframe URL.
    */
-  editModeActive?: boolean;
+  stagedEditMode?: "preview" | "edit";
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
   scopedUserIdentity?: ScopedWorkspaceUserIdentity;
@@ -921,8 +919,7 @@ export const VisualizationActionIframe = forwardRef<
     canInvokeFunctions,
     conversationId,
     isEditable = false,
-    stagedEdits = false,
-    editModeActive = false,
+    stagedEditMode,
     isInDrawer = false,
     onEditText,
     scopedUserIdentity,
@@ -1080,6 +1077,8 @@ export const VisualizationActionIframe = forwardRef<
     }
   }, [errorMessage, handleVisualizationRetry, retryClicked]);
 
+  // Only whether edits are staged is part of the URL; the current mode is posted instead.
+  const hasStagedEdits = stagedEditMode !== undefined;
   const vizUrl = useMemo(() => {
     const params = new URLSearchParams();
     params.set("identifier", visualization.identifier);
@@ -1096,24 +1095,24 @@ export const VisualizationActionIframe = forwardRef<
       params.set("editable", "true");
     }
 
-    if (stagedEdits) {
+    if (hasStagedEdits) {
       params.set("stagedEdits", "true");
     }
 
     return `${props.vizUrl.replace(/\/$/, "")}/content?${params.toString()}`;
-  }, [visualization, isInDrawer, isEditable, stagedEdits, props.vizUrl]);
+  }, [visualization, isInDrawer, isEditable, hasStagedEdits, props.vizUrl]);
 
   // Toggle Preview|Edit affordances inside the already-loaded viz (no URL / remount change).
   const postEditMode = useCallback(() => {
     const contentWindow = vizIframeRef.current?.contentWindow;
-    if (!contentWindow || !stagedEdits) {
+    if (!contentWindow || !stagedEditMode) {
       return;
     }
     contentWindow.postMessage(
-      { type: "SET_EDIT_MODE", enabled: editModeActive },
+      { type: "SET_EDIT_MODE", enabled: stagedEditMode === "edit" },
       "*"
     );
-  }, [editModeActive, stagedEdits]);
+  }, [stagedEditMode]);
 
   useEffect(() => {
     postEditMode();

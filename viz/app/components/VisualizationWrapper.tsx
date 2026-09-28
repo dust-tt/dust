@@ -3,7 +3,7 @@
 import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { TailwindDiagnostics } from "@viz/app/components/TailwindDiagnostics";
-import { VizContext } from "@viz/app/components/VizContext";
+import { type FrameEditMode, VizContext } from "@viz/app/components/VizContext";
 import { FrameFunctionHooksProvider } from "@viz/app/lib/frame-function-hooks";
 import { createFrameRuntimeImports } from "@viz/app/lib/frame-runtime-scope";
 import { extractFileRefs, type FileRef } from "@viz/app/lib/parseFileRefs";
@@ -616,10 +616,9 @@ export function VisualizationWrapper({
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [addEventListener, handleScreenshotDownload, handleSVGDownload]);
 
-  // Preview|Edit without remount: parent posts SET_EDIT_MODE; EditableFrame gates affordances.
+  // Preview|Edit without remount: the parent posts SET_EDIT_MODE to the loaded viz.
   useEffect(() => {
     if (!stagedEdits) {
-      setEditModeActive(false);
       return;
     }
     return addEventListener("SET_EDIT_MODE", (message) => {
@@ -629,15 +628,14 @@ export function VisualizationWrapper({
     });
   }, [addEventListener, stagedEdits]);
 
+  const editMode: FrameEditMode = !stagedEdits
+    ? "legacy"
+    : editModeActive
+      ? "edit"
+      : "preview";
   const vizContextValue = useMemo(
-    () => ({
-      isPdfMode,
-      editText,
-      addEventListener,
-      stagedEdits,
-      editModeActive,
-    }),
-    [addEventListener, editModeActive, editText, isPdfMode, stagedEdits]
+    () => ({ isPdfMode, editText, addEventListener, editMode }),
+    [addEventListener, editMode, editText, isPdfMode]
   );
 
   if (errored) {

@@ -109,6 +109,8 @@ export function InteractiveContentContainer({
 
         return (
           <FrameRenderer
+            // One edit session per Frame: switching Frames starts from a clean state.
+            key={contentId}
             conversation={conversation}
             fileId={contentId}
             projectId={fileMetadata.useCaseMetadata.spaceId ?? null}

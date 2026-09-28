@@ -21,8 +21,7 @@ const mocks = vi.hoisted(() => ({
     (_props: {
       frameId?: string;
       isEditable?: boolean;
-      stagedEdits?: boolean;
-      editModeActive?: boolean;
+      stagedEditMode?: "preview" | "edit";
       onEditText?: EditTextFn;
       visualization?: { identifier: string };
     }) => null
@@ -244,8 +243,7 @@ describe("FrameRenderer", () => {
       expect.objectContaining({
         frameId: "frame_1",
         isEditable: true,
-        stagedEdits: true,
-        editModeActive: false,
+        stagedEditMode: "preview",
         onEditText: expect.any(Function),
       })
     );
@@ -273,8 +271,7 @@ describe("FrameRenderer", () => {
       expect.objectContaining({
         frameId: "frame_1",
         isEditable: true,
-        stagedEdits: true,
-        editModeActive: true,
+        stagedEditMode: "edit",
         onEditText: expect.any(Function),
       })
     );
@@ -413,17 +410,17 @@ describe("FrameRenderer", () => {
       />
     );
 
-    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.editModeActive).toBe(false);
+    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.stagedEditMode).toBe("preview");
     expect(mocks.iframeMounts).toBe(1);
 
     fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
 
-    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.editModeActive).toBe(true);
+    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.stagedEditMode).toBe("edit");
     expect(mocks.iframeMounts).toBe(1);
 
     fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
 
-    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.editModeActive).toBe(false);
+    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.stagedEditMode).toBe("preview");
     expect(mocks.iframeMounts).toBe(1);
   });
 
@@ -498,7 +495,9 @@ describe("FrameRenderer", () => {
       expect(
         mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier
       ).toBe("viz-frame_1");
-      expect(mocks.iframe.mock.calls.at(-1)?.[0]?.editModeActive).toBe(false);
+      expect(mocks.iframe.mock.calls.at(-1)?.[0]?.stagedEditMode).toBe(
+        "preview"
+      );
     });
     expect(mocks.mutateFileContent).toHaveBeenCalled();
     expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute(
@@ -565,6 +564,51 @@ describe("FrameRenderer", () => {
     });
   });
 
+  it("saves both text nodes of one element instead of merging them", async () => {
+    mocks.batchEditFrameText.mockResolvedValue({ success: true });
+
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
+    const onEditText = mocks.iframe.mock.calls.at(-1)?.[0].onEditText;
+    if (!onEditText) {
+      throw new Error("Expected Frame v2 to be editable.");
+    }
+
+    // `<p>Hello <b>x</b> world</p>`: both text nodes resolve to the `<p>` source.
+    await act(async () => {
+      await onEditText({
+        oldText: "Hello",
+        newText: "Hi",
+        source: "index.tsx:1:1",
+      });
+      await onEditText({
+        oldText: "world",
+        newText: "there",
+        source: "index.tsx:1:1",
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    });
+
+    await waitFor(() => {
+      expect(mocks.batchEditFrameText).toHaveBeenCalledWith([
+        { oldText: "Hello", newText: "Hi", source: "index.tsx:1:1" },
+        { oldText: "world", newText: "there", source: "index.tsx:1:1" },
+      ]);
+    });
+  });
+
   it("publishes legacy Frame edits immediately without Preview|Edit or Save", async () => {
     mocks.editFrameText.mockResolvedValue({ success: true });
     mocks.mutateFileContent.mockResolvedValue(
@@ -589,7 +633,7 @@ describe("FrameRenderer", () => {
     expect(mocks.iframe).toHaveBeenCalledWith(
       expect.objectContaining({
         isEditable: true,
-        stagedEdits: false,
+        stagedEditMode: undefined,
         onEditText: expect.any(Function),
       })
     );

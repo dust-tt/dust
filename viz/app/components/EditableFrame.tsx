@@ -47,8 +47,7 @@ interface EditableFrameProps {
 }
 
 export function EditableFrame({ children }: EditableFrameProps) {
-  const { editText, addEventListener, stagedEdits, editModeActive } =
-    useVizContext();
+  const { editText, addEventListener, editMode = "legacy" } = useVizContext();
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const lastHoverPosRef = useRef<HoverState | null>(null);
   const hoveredSpanRef = useRef<HTMLElement | null>(null);
@@ -56,11 +55,12 @@ export function EditableFrame({ children }: EditableFrameProps) {
   // commits so FLUSH_EDITABLES can wait on in-flight stages.
   const isSavingRef = useRef(false);
   const commitInFlightRef = useRef<Promise<void> | null>(null);
+  const stagedEdits = editMode !== "legacy";
   // v2 Preview: EditableFrame stays mounted (no remount) but interactions are off.
-  const interactionsEnabled = !stagedEdits || editModeActive;
+  const interactionsEnabled = editMode !== "preview";
   // v2 Edit: the fieldset natively disables every descendant form control so a click on the
   // Frame's own buttons/inputs cannot fire while text is being edited.
-  const isEditSession = stagedEdits && editModeActive;
+  const isEditSession = editMode === "edit";
 
   const clearHover = useCallback(() => {
     if (hoveredSpanRef.current) {
