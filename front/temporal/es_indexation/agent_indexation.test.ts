@@ -42,7 +42,7 @@ describe("agent search indexing activity", () => {
         favorite_count: 0,
         feedback_positive_count: 0,
         feedback_negative_count: 0,
-        active_users_count: null,
+        active_users_count: 0,
       })
     );
   });

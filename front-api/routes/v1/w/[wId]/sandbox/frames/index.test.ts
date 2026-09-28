@@ -27,6 +27,11 @@ vi.mock("@app/lib/lock", async (importActual) => {
   };
 });
 
+const notifyPublishedFrameSidePanel = vi.hoisted(() => vi.fn());
+vi.mock("@app/lib/api/frames/notify_published_frame", () => ({
+  notifyPublishedFrameSidePanel,
+}));
+
 const manifest = JSON.stringify({
   version: 1,
   name: "Status",
@@ -148,6 +153,8 @@ async function setupLegacyFrame() {
 
 beforeEach(() => {
   fileStorageMock.reset();
+  notifyPublishedFrameSidePanel.mockClear();
+  notifyPublishedFrameSidePanel.mockResolvedValue(undefined);
 });
 
 describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
@@ -202,6 +209,16 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     const frame = await FileResource.fetchById(context.auth, published.frameId);
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
       published.publicationId
+    );
+    expect(notifyPublishedFrameSidePanel).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        frameId: context.frame.sId,
+        conversationId: context.conversation.sId,
+        messageId: context.agentMessage.sId,
+        configurationId: context.agentConfig.sId,
+        contentRevision: published.publicationId,
+      })
     );
   });
 

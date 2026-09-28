@@ -33,20 +33,17 @@ app.get(
       const info = await getAwuPurchaseInfo(auth);
       return ctx.json(info);
     } catch (err) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          error: normalizeError(err),
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to get credit purchase info.",
+          },
         },
-        "[AWU Purchase] Failed to get purchase info"
+        normalizeError(err)
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to get credit purchase info.",
-        },
-      });
     }
   }
 );

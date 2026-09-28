@@ -63,6 +63,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -83,7 +84,7 @@ export abstract class LLM<
   protected modelId: ModelIdType;
   protected modelConfig: ModelConfigurationType;
   protected temperature: number | null;
-  protected reasoningEffort: ReasoningEffort | null;
+  protected reasoningEffort: ReasoningEffort;
   protected responseFormat: string | null;
   protected bypassFeatureFlag: boolean;
   protected metadata: LLMClientMetadata;
@@ -117,9 +118,10 @@ export abstract class LLM<
     this.modelConfig = modelConfig;
     this.temperature =
       modelInfo.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES["balanced"];
-    // TODO(new-llm-router): We should not set reasoning effort to none
-    // Not in scope of the current refactor
-    this.reasoningEffort = modelInfo.reasoningEffort ?? "none";
+    // Callers that set no effort (internal helpers) want the cheapest run.
+    this.reasoningEffort =
+      modelInfo.reasoningEffort ??
+      getMinimumReasoningEffort(modelConfig.supportedReasoningEfforts);
     this.responseFormat = modelInfo.responseFormat ?? null;
     this.bypassFeatureFlag = bypassFeatureFlag;
     this.isRetry = isRetry;
@@ -275,7 +277,7 @@ export abstract class LLM<
         input: undefined,
         model: this.modelId,
         modelParameters: {
-          reasoningEffort: this.reasoningEffort ?? "",
+          reasoningEffort: this.reasoningEffort,
           responseFormat: this.responseFormat ?? "",
           temperature: this.temperature ?? "",
         },
@@ -620,7 +622,7 @@ export abstract class LLM<
           input: payload,
           model: this.modelId,
           modelParameters: {
-            reasoningEffort: this.reasoningEffort ?? "",
+            reasoningEffort: this.reasoningEffort,
             responseFormat: this.responseFormat ?? "",
             temperature: this.temperature ?? "",
           },
@@ -758,7 +760,7 @@ export abstract class LLM<
           input: { batchCustomId: customId },
           model: this.modelId,
           modelParameters: {
-            reasoningEffort: this.reasoningEffort ?? "",
+            reasoningEffort: this.reasoningEffort,
             responseFormat: this.responseFormat ?? "",
             temperature: this.temperature ?? "",
           },

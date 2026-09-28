@@ -228,7 +228,7 @@ export function useChildAgentStream({
         return null;
       }
       const { conversationId, agentMessageId } = childStreamIds;
-      return `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events/poll?lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`;
+      return `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events/poll?lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`;
     },
     [childStreamIds, disabled, owner.sId]
   );
@@ -244,6 +244,11 @@ export function useChildAgentStream({
       buildLongPollURL,
       isReadyToConsumeStream:
         childStreamIds !== null && !isStreamDone && !disabled,
+      telemetryContext: {
+        sseKind: "child_agent",
+        conversationId: childStreamIds?.conversationId ?? null,
+        messageId: childStreamIds?.agentMessageId ?? null,
+      },
     }
   );
 

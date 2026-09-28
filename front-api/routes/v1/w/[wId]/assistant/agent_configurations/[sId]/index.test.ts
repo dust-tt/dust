@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -286,5 +287,37 @@ describe("PATCH /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     });
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("DELETE /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
+  it("lets an admin key archive an agent built on a space its groups do not cover", async () => {
+    const { workspace, key, auth, user } = await setupTest();
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(internalAdminAuth, {
+      userIds: [user.sId],
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Restricted Agent",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const response = await honoApp.request(
+      `/api/v1/w/${workspace.sId}/assistant/agent_configurations/${agent.sId}`,
+      {
+        method: "DELETE",
+        headers: { authorization: `Bearer ${key.secret}` },
+      }
+    );
+
+    expect(response.status).toBe(200);
+    const archived = await AgentResource.fetchById(
+      internalAdminAuth,
+      agent.sId
+    );
+    expect(archived?.status).toBe("archived");
   });
 });

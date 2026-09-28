@@ -664,17 +664,17 @@ app.post(
       try {
         credentials = await getLlmCredentials(auth);
       } catch (err) {
-        logger.error(
-          { error: normalizeError(err) },
-          "Failed to get LLM credentials to upsert document"
-        );
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+        return apiError(
+          ctx,
+          {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
+            },
           },
-        });
+          normalizeError(err)
+        );
       }
 
       // Create document with the Dust internal API.

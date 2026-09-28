@@ -4,6 +4,7 @@ import type { GroupGrant } from "@app/lib/resources/group_permission_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { getNamespace } from "@app/tests/utils/test_cls";
@@ -754,6 +755,41 @@ describe("GroupPermissionResource", () => {
   });
 
   describe("grantToUser / revokeFromUser", () => {
+    it("rejects manager grants after the target group is deleted", async () => {
+      const target = await GroupFactory.regularManual(
+        workspace,
+        "Deleted target"
+      );
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      expect((await target.delete(auth)).isOk()).toBe(true);
+
+      const grant = {
+        grantType: "group_manager" as const,
+        resourceType: "group" as const,
+        resourceId: target.id,
+      };
+      await expect(
+        GroupPermissionResource.grantToUser(auth, {
+          user: user.toJSON(),
+          ...grant,
+        })
+      ).rejects.toThrow(/no longer exists/);
+      await expect(
+        GroupPermissionResource.grant(auth, { group: groupB, ...grant })
+      ).rejects.toThrow(/no longer exists/);
+      await expect(
+        GroupPermissionResource.grantMany(auth, {
+          grants: [{ group: groupB, ...grant }],
+        })
+      ).rejects.toThrow(/no longer exists/);
+      expect(
+        await GroupPermissionModel.count({
+          where: { resourceType: "group", resourceId: target.id },
+        })
+      ).toBe(0);
+    });
+
     it("creates a regular_auto group, grants access, and adds the user", async () => {
       const user = await UserFactory.basic();
       await MembershipFactory.associate(workspace, user, { role: "user" });

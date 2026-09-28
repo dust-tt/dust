@@ -3,7 +3,6 @@ import type { TaskOwnerFilter } from "@app/components/assistant/conversation/spa
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
 import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
-import { GoalPodOverview } from "@app/components/pod/GoalPodOverview";
 import { PodFileTabContent } from "@app/components/pod/PodFileTabContent";
 import { PodSettingsSection } from "@app/components/pod/settings/PodSettingsSection";
 import { PodTasksTab } from "@app/components/pod/tasks/PodTasksTab";
@@ -33,7 +32,6 @@ type PodInfo = NonNullable<ReturnType<typeof useSpaceInfo>["spaceInfo"]>;
 
 interface PodPageContentProps {
   podInfo: PodInfo;
-  isGoalPod?: boolean;
   onTabChange: (tab: PodTab) => void;
   podUiPreferences: PodUiScopedPreferences;
   setPodUiPreferences: (value: PodUiScopedPreferences) => void;
@@ -44,7 +42,6 @@ interface PodPageContentProps {
 
 export function PodPageContent({
   podInfo,
-  isGoalPod = false,
   onTabChange,
   podUiPreferences,
   setPodUiPreferences,
@@ -191,31 +188,27 @@ export function PodPageContent({
   return (
     <>
       <NavTabPillContent value="conversations">
-        {isGoalPod && podInfo.isEditor ? (
-          <GoalPodOverview owner={owner} user={user} podId={podInfo.sId} />
-        ) : (
-          <FilePreviewProvider owner={owner}>
-            <PodConversationsTab
-              owner={owner}
-              user={user}
-              conversations={conversations}
-              isConversationsLoading={isConversationsLoading}
-              hasMore={hasMore}
-              loadMore={loadMore}
-              isLoadingMore={isLoadingMore}
-              podInfo={podInfo}
-              isPodEmpty={isPodEmpty}
-              conversationFilter={conversationFilter}
-              onConversationFilterChange={handleConversationFilterChange}
-              hideTriggeredConversations={hideTriggeredConversations}
-              onHideTriggeredConversationsChange={
-                handleHideTriggeredConversationsChange
-              }
-              onSubmit={handleConversationCreation}
-              onNavigateToTasks={() => onTabChange("tasks")}
-            />
-          </FilePreviewProvider>
-        )}
+        <FilePreviewProvider owner={owner}>
+          <PodConversationsTab
+            owner={owner}
+            user={user}
+            conversations={conversations}
+            isConversationsLoading={isConversationsLoading}
+            hasMore={hasMore}
+            loadMore={loadMore}
+            isLoadingMore={isLoadingMore}
+            podInfo={podInfo}
+            isPodEmpty={isPodEmpty}
+            conversationFilter={conversationFilter}
+            onConversationFilterChange={handleConversationFilterChange}
+            hideTriggeredConversations={hideTriggeredConversations}
+            onHideTriggeredConversationsChange={
+              handleHideTriggeredConversationsChange
+            }
+            onSubmit={handleConversationCreation}
+            onNavigateToTasks={() => onTabChange("tasks")}
+          />
+        </FilePreviewProvider>
       </NavTabPillContent>
       <NavTabPillContent value="files">
         <PodFilesTab owner={owner} pod={podInfo} />

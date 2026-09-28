@@ -1,3 +1,8 @@
+import {
+  DetailsSectionHeading,
+  EditedSectionBar,
+} from "@app/components/assistant/details/DetailsSectionHeading";
+import { useEditedSkillSections } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
@@ -47,6 +52,7 @@ export function SkillInfoTab({
   showDescription = true,
 }: SkillInfoTabProps) {
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
+  const editedSections = useEditedSkillSections();
 
   const showDiscoverableSkills = skill.sId === "discover_skills";
   const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;
@@ -118,7 +124,8 @@ export function SkillInfoTab({
   return (
     <div className="flex flex-col gap-4">
       {showDescription && skill.userFacingDescription ? (
-        <div className="text-sm text-foreground">
+        <div className="relative text-sm text-foreground">
+          {editedSections.has("description") && <EditedSectionBar />}
           {skill.userFacingDescription}
         </div>
       ) : null}
@@ -130,7 +137,8 @@ export function SkillInfoTab({
       {showSeparator ? <Separator /> : null}
 
       {skill.instructions && skill.agentFacingDescription && (
-        <div className="flex flex-col gap-4">
+        <div className="relative flex flex-col gap-4">
+          {editedSections.has("when_to_use") && <EditedSectionBar />}
           <div className="heading-lg text-foreground">
             {SKILL_INVOCATION_LABEL}
           </div>
@@ -142,7 +150,10 @@ export function SkillInfoTab({
 
       {skill.instructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
-          <div className="heading-lg text-foreground">Guidelines</div>
+          <DetailsSectionHeading
+            label="Guidelines"
+            isEdited={editedSections.has("guidelines")}
+          />
           <SkillInstructionsReadOnlyEditor
             content={skill.instructions}
             htmlContent={skill.instructionsHtml ?? ""}

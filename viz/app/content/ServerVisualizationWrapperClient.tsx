@@ -34,11 +34,16 @@ interface ServerVisualizationWrapperClientProps {
  * This component runs on the client and:
  * 1. Receives plain pre-fetched data from the server component (avoids serialization issues)
  * 2. Creates a CacheDataAPI instance using the pre-fetched code and files
- * 3. Renders the visualization using the cached data (no network requests needed)
+ * 3. Uses authenticated RPC for member file access, retaining cached files for other viewers
  *
  * This is the client counterpart to ServerSideVisualizationWrapper and handles
  * the React Server Component serialization boundary by accepting plain objects
  * instead of class instances.
+ */
+/**
+ * @cc [owner:flvndvd,label:security] shared-frame-data-api-selection
+ * Only server-confirmed workspace members MAY use the authenticated RPC bridge.
+ * Anonymous views and PDF exports MUST use the read-only cache without RPC access.
  */
 export function ServerVisualizationWrapperClient({
   identifier,
@@ -51,12 +56,11 @@ export function ServerVisualizationWrapperClient({
 }: ServerVisualizationWrapperClientProps) {
   const dataAPI = useMemo(() => {
     const cache = new CacheDataAPI(prefetchedFiles, prefetchedCode);
-    if (!isAuthenticatedMember) {
+    if (!isAuthenticatedMember || isPdfMode) {
       return cache;
     }
 
-    // Authenticated member on a public frame: keep SSR reads from the cache,
-    // route callFunction over RPC.
+    // Members use live file permissions while the published code stays cached.
     const sendMessage = makeSendCrossDocumentMessage({
       allowedOrigins,
       identifier,
@@ -66,6 +70,7 @@ export function ServerVisualizationWrapperClient({
     prefetchedCode,
     prefetchedFiles,
     isAuthenticatedMember,
+    isPdfMode,
     allowedOrigins,
     identifier,
   ]);

@@ -32,6 +32,7 @@ import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { getTestStreamEndpoint } from "@app/tests/utils/models";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -240,6 +241,77 @@ describe("SkillResource", () => {
       expect((await readerAuth.getWorkspacePermissions()).skill).not.toContain(
         "read"
       );
+    });
+  });
+
+  describe("createPending", () => {
+    it("creates a pending skill edited only by its creator", async () => {
+      const { authenticator: auth, user } = testContext;
+
+      const result = await SkillResource.createPending(auth);
+      assert(result.isOk());
+      const pendingSkill = result.value;
+
+      expect(pendingSkill.status).toBe("pending");
+      expect(pendingSkill.availability).toBe("editors");
+      const editors = await pendingSkill.listEditors(auth);
+      expect(editors?.map((editor) => editor.sId)).toEqual([user.sId]);
+    });
+
+    it("creates several pending skills in the same workspace", async () => {
+      const { authenticator: auth } = testContext;
+
+      const first = await SkillResource.createPending(auth);
+      const second = await SkillResource.createPending(auth);
+
+      assert(first.isOk() && second.isOk());
+      expect(first.value.sId).not.toBe(second.value.sId);
+    });
+
+    it("refuses a caller without the create capability", async () => {
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, member, {
+        role: "user",
+      });
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        member.sId,
+        testContext.workspace.sId
+      );
+
+      const result = await SkillResource.createPending(memberAuth);
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("is fetchable by id", async () => {
+      const { authenticator: auth } = testContext;
+      const result = await SkillResource.createPending(auth);
+      assert(result.isOk());
+      const pendingSkill = result.value;
+
+      expect((await SkillResource.fetchById(auth, pendingSkill.sId))?.sId).toBe(
+        pendingSkill.sId
+      );
+    });
+
+    it("never appears in listings", async () => {
+      const { authenticator: auth } = testContext;
+      const result = await SkillResource.createPending(auth);
+      assert(result.isOk());
+      const pendingSkill = result.value;
+
+      const listed = await SkillResource.listByWorkspace(auth);
+      const discoverable = await SkillResource.listDiscoverable(auth);
+
+      expect(listed.map((skill) => skill.sId)).not.toContain(pendingSkill.sId);
+      expect(discoverable.map((skill) => skill.sId)).not.toContain(
+        pendingSkill.sId
+      );
+      expect(
+        await SkillResource.fetchById(auth, pendingSkill.sId, {
+          onlyActive: true,
+        })
+      ).toBeNull();
     });
   });
 
@@ -1603,6 +1675,60 @@ describe("SkillResource", () => {
       ).rejects.toThrow("User is not authorized to update skill availability");
     });
 
+    it("rejects a publisher who does not administrate every skill", async () => {
+      const publisher = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, publisher, {
+        role: "user",
+      });
+      await grantWorkspacePermission(testContext.workspace, publisher, {
+        grantType: "publish",
+        resourceType: "skill",
+      });
+      const publisherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        publisher.sId,
+        testContext.workspace.sId
+      );
+
+      // The publisher edits the first skill only: the second is someone else's.
+      const ownSkill = await SkillFactory.create(publisherAuth, {
+        name: "Own Skill",
+        availability: "editors",
+      });
+      const otherSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Other Skill",
+        availability: "editors",
+      });
+      await publisherAuth.refresh();
+
+      await expect(
+        SkillResource.updateAvailabilities(
+          publisherAuth,
+          [ownSkill, otherSkill],
+          "workspace_users"
+        )
+      ).rejects.toThrow(
+        "User is not authorized to update the availability of these skills"
+      );
+
+      // Nothing was changed, not even the skill the publisher administrates.
+      const unchanged = await SkillResource.fetchById(
+        testContext.authenticator,
+        ownSkill.sId
+      );
+      expect(unchanged?.availability).toBe("editors");
+
+      await SkillResource.updateAvailabilities(
+        publisherAuth,
+        [ownSkill],
+        "workspace_users"
+      );
+      const updated = await SkillResource.fetchById(
+        testContext.authenticator,
+        ownSkill.sId
+      );
+      expect(updated?.availability).toBe("workspace_users");
+    });
+
     it("requires the publish permission to change availability through updateSkill", async () => {
       const manager = await UserFactory.basic();
       await MembershipFactory.associate(testContext.workspace, manager, {
@@ -2905,7 +3031,10 @@ describe("SkillResource", () => {
         authenticator,
         { name: "Pod Agent" }
       );
-      await skill.addToAgent(authenticator, agent);
+      await SkillFactory.linkToAgent(authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agent.id,
+      });
 
       const conversation = await ConversationFactory.create(authenticator, {
         agentConfigurationId: agent.sId,
@@ -2942,7 +3071,10 @@ describe("SkillResource", () => {
         authenticator,
         { name: "Pod Agent" }
       );
-      await agentSkill.addToAgent(authenticator, agent);
+      await SkillFactory.linkToAgent(authenticator, {
+        skillId: agentSkill.id,
+        agentConfigurationId: agent.id,
+      });
 
       const conversation = await ConversationFactory.create(authenticator, {
         agentConfigurationId: agent.sId,

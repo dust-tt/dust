@@ -1,5 +1,4 @@
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import type {
   CreateTagResponseBody,
@@ -55,27 +54,14 @@ app.post(
       });
     }
 
+    // Recreating a soft-deleted tag restores it (undelete); see `TagResource.makeNew`.
     const newTag = await TagResource.makeNew(auth, {
       name,
       kind: "standard",
     });
 
-    if (agentIds) {
-      const agentsToTag = await AgentConfigurationModel.findAll({
-        where: {
-          sId: agentIds,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          status: "active",
-        },
-      });
-
-      for (const agent of agentsToTag) {
-        await TagAgentModel.create({
-          workspaceId: auth.getNonNullableWorkspace().id,
-          tagId: newTag.id,
-          agentConfigurationId: agent.id,
-        });
-      }
+    if (agentIds && agentIds.length > 0) {
+      await AgentResource.bulkUpdate(auth, agentIds, { addTags: [newTag] });
     }
 
     return ctx.json({ tag: newTag.toJSON() }, 201);

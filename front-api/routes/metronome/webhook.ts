@@ -56,17 +56,17 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
   try {
     rawEvent = unwrapMetronomeWebhook(bodyString, headers, webhookSecret);
   } catch (err) {
-    logger.error(
-      { error: normalizeError(err) },
-      "[Metronome Webhook] Signature verification failed"
-    );
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "internal_server_error",
-        message: "Invalid webhook signature.",
+    return apiError(
+      ctx,
+      {
+        status_code: 403,
+        api_error: {
+          type: "internal_server_error",
+          message: "Invalid webhook signature.",
+        },
       },
-    });
+      normalizeError(err)
+    );
   }
 
   const parsedEvent = MetronomeWebhookEventSchema.safeParse(rawEvent);

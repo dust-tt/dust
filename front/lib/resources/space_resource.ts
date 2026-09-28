@@ -2597,6 +2597,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return result;
   }
 
+  toSearchFacetJSON(count: number) {
+    return { sId: this.sId, name: this.name, kind: this.kind, count };
+  }
+
   toJSON(): SpaceType {
     return {
       createdAt: this.createdAt.getTime(),

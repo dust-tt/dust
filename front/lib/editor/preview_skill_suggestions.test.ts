@@ -18,6 +18,7 @@ const BASE_SUGGESTION: Omit<SkillSuggestionType, "kind" | "suggestion"> = {
   visibleSourceConversationIds: [],
   notificationConversationId: null,
   updatedBy: null,
+  batchId: null,
 };
 
 const SKILL = {

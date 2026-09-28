@@ -1,14 +1,9 @@
-use anyhow::bail;
-
+use super::view_reference::single_view;
 use crate::api::DustApiClient;
 
 pub async fn cmd_list_tools(client: &DustApiClient, server_name: &str) -> anyhow::Result<()> {
     let views = client.list_tools(Some(server_name), false).await?;
-
-    let view = match views.first() {
-        Some(v) => v,
-        None => bail!("server '{server_name}' not found"),
-    };
+    let view = single_view(&views, server_name)?;
 
     if view.server.tools.is_empty() {
         println!("No tools found on server '{server_name}'.");

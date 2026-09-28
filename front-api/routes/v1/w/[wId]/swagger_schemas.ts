@@ -252,6 +252,10 @@
  *           nullable: true
  *           description: ID of the template used for this configuration
  *           example: "b4e2f1a9c7"
+ *         ignoreCreditSpendThresholdAlert:
+ *           type: boolean
+ *           description: Whether the agent keeps running past the workspace credit spend threshold alert
+ *           example: false
  *     AgentSkill:
  *       type: object
  *       description: A skill attached to an agent configuration.
@@ -482,8 +486,8 @@
  *           example: "claude-sonnet-4-20250514"
  *         reasoningEffort:
  *           type: string
- *           enum: [none, light, medium, high]
- *           description: Optional reasoning effort. Honored only if the resolved model supports it.
+ *           enum: [none, minimal, low, medium, high, xhigh, maximal, light]
+ *           description: Optional reasoning effort. Honored only if the resolved model supports it. `light` is a deprecated alias of `low`.
  *           example: "medium"
  *     ContentFragment:
  *       type: object

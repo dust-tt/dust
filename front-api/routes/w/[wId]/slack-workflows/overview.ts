@@ -5,7 +5,6 @@ import {
 } from "@app/lib/api/analytics/consumption/schema";
 import type { GetSlackWorkflowsOverviewResponse } from "@app/lib/api/analytics/slack_workflows/overview";
 import { fetchSlackWorkflowsOverview } from "@app/lib/api/analytics/slack_workflows/overview";
-import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -31,20 +30,17 @@ app.post(
 
     const result = await fetchSlackWorkflowsOverview(auth, { period });
     if (result.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          err: result.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve overview.",
+          },
         },
-        "[SlackWorkflowsAnalytics] Failed to retrieve overview."
+        result.error
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to retrieve overview.",
-        },
-      });
     }
 
     return ctx.json(result.value);

@@ -229,6 +229,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "suggest": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "suggest_agent_creation": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -2837,6 +2841,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "building_agents_and_skills": {
     "describe_agent": "never_ask",
     "describe_skill": "never_ask",
+    "suggest": "never_ask",
     "suggest_agent_creation": "never_ask",
     "suggest_agent_deletion": "never_ask",
     "suggest_agent_description": "never_ask",

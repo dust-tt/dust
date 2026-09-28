@@ -3,7 +3,6 @@
  * instructions editor, so they can be rendered from a plain conversation message.
  */
 
-import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -51,13 +50,14 @@ interface AgentSuggestionActionCardProps {
   agentSuggestion: AgentActionCardSuggestionType;
   onAccept: () => void;
   onReject: () => void;
-  onPreview?: () => void;
   /** Forces the busy/disabled visual, e.g. while an accept/reject request is in flight. */
   disabled?: boolean;
   pictureUrl?: string;
 }
 
-function getLabels(agentSuggestion: AgentActionCardSuggestionType): {
+export function getAgentSuggestionLabels(
+  agentSuggestion: AgentActionCardSuggestionType
+): {
   title: string;
   acceptedTitle: string;
   rejectedTitle: string;
@@ -152,7 +152,6 @@ export function AgentSuggestionActionCard({
   agentSuggestion,
   onAccept,
   onReject,
-  onPreview,
   disabled,
   pictureUrl,
 }: AgentSuggestionActionCardProps) {
@@ -161,23 +160,7 @@ export function AgentSuggestionActionCard({
     ? "disabled"
     : mapSuggestionStateToCardState(state);
 
-  const labels = getLabels(agentSuggestion);
-
-  if (agentSuggestion.source === "conversational" && state === "pending") {
-    return (
-      <ConversationalSuggestionCard
-        title={labels.title}
-        analysis={labels.description}
-        visual={
-          pictureUrl ? <Avatar visual={pictureUrl} size="sm" /> : undefined
-        }
-        onAccept={onAccept}
-        onReject={onReject}
-        onPreview={onPreview}
-        disabled={disabled}
-      />
-    );
-  }
+  const labels = getAgentSuggestionLabels(agentSuggestion);
 
   return (
     <ActionCardBlock

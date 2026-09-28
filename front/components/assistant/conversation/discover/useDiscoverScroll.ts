@@ -1,8 +1,6 @@
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const FILL_DISTANCE_PX = 900;
-const FILL_IDLE_RESET_MS = 700;
 // Fallback for browsers without `scrollend`, and for a scroll that never
 // starts because Discover is already in view.
 const TRANSITION_FALLBACK_MS = 800;
@@ -11,27 +9,7 @@ const TRANSITION_FALLBACK_MS = 800;
 type DiscoverStage = "home" | "transition" | "discover";
 
 interface UseDiscoverScrollParams {
-  isFillEnabled: boolean;
-}
-
-// Wheeling a long draft in the composer is reading, not intent to leave the home page.
-function isOverScrollableRegion(
-  target: EventTarget | null,
-  boundary: HTMLElement
-): boolean {
-  let node = target instanceof Element ? target : null;
-
-  while (node && node !== boundary) {
-    if (node.scrollHeight > node.clientHeight) {
-      const { overflowY } = window.getComputedStyle(node);
-      if (overflowY === "auto" || overflowY === "scroll") {
-        return true;
-      }
-    }
-    node = node.parentElement;
-  }
-
-  return false;
+  isLockEnabled: boolean;
 }
 
 function onScrollSettled(
@@ -52,15 +30,12 @@ function onScrollSettled(
   return cancel;
 }
 
-export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
+export function useDiscoverScroll({ isLockEnabled }: UseDiscoverScrollParams) {
   // State rather than a ref: the scroller comes and goes with the new-conversation route,
   // and the listeners below have to rebind to whichever node is on screen.
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   const discoverRef = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState<DiscoverStage>("home");
-  const [fillProgress, setFillProgress] = useState(0);
-  const fillRef = useRef(0);
-  const idleTimerRef = useRef<number | null>(null);
   const endTransitionRef = useRef<(() => void) | null>(null);
 
   // Radix rewrites the viewport's inline overflow on every scroll-state change, so the lock
@@ -69,7 +44,7 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     if (!scroller) {
       return;
     }
-    if (isFillEnabled && stage === "home") {
+    if (isLockEnabled && stage === "home") {
       scroller.style.setProperty("overflow-y", "hidden", "important");
     } else {
       scroller.style.removeProperty("overflow-y");
@@ -78,15 +53,11 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     return () => {
       scroller.style.removeProperty("overflow-y");
     };
-  }, [isFillEnabled, scroller, stage]);
+  }, [isLockEnabled, scroller, stage]);
 
   // No scroller on mobile, where the button still has to move the page.
   const goToDiscover = useCallback(() => {
     endTransitionRef.current?.();
-
-    // Hold the ring at full while the page travels, so completing it reads as the cause.
-    fillRef.current = 1;
-    setFillProgress(1);
     setStage("transition");
     // The lock effect has not run for the new stage yet, and scrollIntoView needs a scroller
     // that can move.
@@ -96,8 +67,6 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     const cancel = onScrollSettled(scroller ?? window, () => {
       endTransitionRef.current = null;
       setStage("discover");
-      fillRef.current = 0;
-      setFillProgress(0);
     });
     endTransitionRef.current = () => {
       cancel();
@@ -147,64 +116,21 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
       return;
     }
     setStage("home");
-    setFillProgress(0);
-    fillRef.current = 0;
   }, [scroller]);
 
   useEffect(() => {
-    if (!scroller || !isFillEnabled) {
+    if (!scroller || stage !== "transition") {
       return;
     }
 
-    const fill = (event: WheelEvent) => {
-      if (event.deltaY <= 0 || isOverScrollableRegion(event.target, scroller)) {
-        return;
-      }
-      fillRef.current = Math.min(
-        1,
-        fillRef.current + event.deltaY / FILL_DISTANCE_PX
-      );
-      setFillProgress(fillRef.current);
-
-      if (idleTimerRef.current) {
-        window.clearTimeout(idleTimerRef.current);
-      }
-      if (fillRef.current >= 1) {
-        goToDiscover();
-        return;
-      }
-      idleTimerRef.current = window.setTimeout(() => {
-        fillRef.current = 0;
-        setFillProgress(0);
-      }, FILL_IDLE_RESET_MS);
-    };
-
-    const handleWheel = (event: WheelEvent) => {
-      switch (stage) {
-        case "home":
-          fill(event);
-          return;
-        case "transition":
-          event.preventDefault();
-          return;
-        case "discover":
-          return;
-        default:
-          assertNever(stage);
-      }
-    };
+    const handleWheel = (event: WheelEvent) => event.preventDefault();
 
     scroller.addEventListener("wheel", handleWheel, { passive: false });
-    return () => {
-      scroller.removeEventListener("wheel", handleWheel);
-      if (idleTimerRef.current) {
-        window.clearTimeout(idleTimerRef.current);
-      }
-    };
-  }, [goToDiscover, isFillEnabled, scroller, stage]);
+    return () => scroller.removeEventListener("wheel", handleWheel);
+  }, [scroller, stage]);
 
   useEffect(() => {
-    if (!scroller || !isFillEnabled) {
+    if (!scroller || !isLockEnabled) {
       return;
     }
 
@@ -230,14 +156,14 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
 
     scroller.addEventListener("scroll", handleScroll, { passive: true });
     return () => scroller.removeEventListener("scroll", handleScroll);
-  }, [isFillEnabled, scroller, stage]);
+  }, [isLockEnabled, scroller, stage]);
 
   return {
     alignDiscover,
     discoverRef,
-    fillProgress,
     goToDiscover,
     goToHome,
+    isOpeningDiscover: stage === "transition",
     scrollerRef: setScroller,
   };
 }

@@ -441,9 +441,7 @@ describe("ensureConversationSandboxReady", () => {
     expect(mockStartTelemetry).not.toHaveBeenCalled();
     expect(mockForConversation).toHaveBeenCalledWith(auth, conversation);
     expect(mockRefreshSandboxMount).toHaveBeenCalledWith(sandbox, image);
-    expect(mockRefreshSandboxMount.mock.invocationCallOrder[0]).toBeLessThan(
-      mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]
-    );
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledTimes(1);
     expect(sandbox.lastRuntimeRefreshAt?.getTime()).toBeGreaterThan(
       staleRefreshAt.getTime()
     );
@@ -484,9 +482,7 @@ describe("ensureConversationSandboxReady", () => {
     const result = await ensureFrameSandboxReady(auth, frame);
 
     expect(result.isOk()).toBe(true);
-    expect(mockEnsureFrameSandboxActive).toHaveBeenCalledWith(auth, frame, {
-      requireRunning: false,
-    });
+    expect(mockEnsureFrameSandboxActive).toHaveBeenCalledWith(auth, frame, {});
     expect(mockForFrameSandboxProvisioning).toHaveBeenCalledWith(auth, frame, {
       sandboxOnlyMounts: [
         {
@@ -713,19 +709,62 @@ describe("ensureConversationSandboxReady", () => {
     expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
   });
 
-  it("short-circuits when refreshing the GCS token fails", async () => {
+  it("returns the GCS token refresh error after also running the egress check", async () => {
+    const refreshError = new Error("refresh failed");
+    mockRefreshSandboxMount.mockResolvedValue(new Err(refreshError));
+
+    const result = await ensureConversationSandboxReady(auth, conversation);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toBe(refreshError);
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledTimes(1);
+    expect(sandbox.lastRuntimeRefreshAt).toBeNull();
+  });
+
+  it("returns the egress check error when both warm phases fail", async () => {
+    const egressError = new Error("ensure-egress failed");
     mockRefreshSandboxMount.mockResolvedValue(
       new Err(new Error("refresh failed"))
     );
+    mockEnsureSandboxEgressOnExec.mockResolvedValue(new Err(egressError));
 
-    const result = await ensureConversationSandboxReady(
-      auth as never,
-      conversation as never
-    );
+    const result = await ensureConversationSandboxReady(auth, conversation);
 
     expect(result.isErr()).toBe(true);
-    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
-    expect(sandbox.lastRuntimeRefreshAt).toBeNull();
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toBe(egressError);
+  });
+
+  it("starts the egress check before the GCS token refresh resolves on wake", async () => {
+    const refreshStarted = createDeferred<void>();
+    const refreshResult = createDeferred<Result<void, Error>>();
+    mockEnsureSandboxActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: false,
+        sandbox,
+        wokeFromSleep: true,
+        scope: { spaceId: null },
+      })
+    );
+    mockRefreshSandboxMount.mockImplementation(() => {
+      refreshStarted.resolve(undefined);
+      return refreshResult.promise;
+    });
+
+    const resultPromise = ensureConversationSandboxReady(auth, conversation);
+
+    await refreshStarted.promise;
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledTimes(1);
+
+    refreshResult.resolve(new Ok(undefined));
+    const result = await resultPromise;
+
+    expect(result.isOk()).toBe(true);
   });
 
   it("short-circuits when ensure-on-exec fails", async () => {

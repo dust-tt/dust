@@ -1,4 +1,5 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
+import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -29,7 +30,7 @@ import type {
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import assert from "assert";
 import type { JSONSchema7 } from "json-schema";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const AGENT_MODEL_ID = 42;
 
@@ -501,12 +502,12 @@ describe("AgentResource", () => {
     expect(actualContentColumns).toEqual(expectedContentColumns);
   });
 
-  it("serves the same full content from the cache as from the database", async () => {
+  it("serves the same full content through single and batch reads", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator
     );
 
-    // First read populates the cache; the second is served from it.
+    // Both forms round-trip the same snapshot while caching ships in dry-run.
     await AgentResource.fetchById(testContext.authenticator, agent.sId);
     const cached = await AgentResource.fetchById(
       testContext.authenticator,
@@ -520,6 +521,46 @@ describe("AgentResource", () => {
     assert(cached?.isFull());
     assert(fromDatabase?.isFull());
     expect(cached.toSnapshot()).toEqual(fromDatabase.toSnapshot());
+  });
+
+  it("loads custom agents together and preserves input order across globals and missing IDs", async () => {
+    const first = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "First batch agent" }
+    );
+    const second = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "Second batch agent" }
+    );
+    const findAll = vi.spyOn(AgentModel, "findAll");
+    try {
+      const resources = await AgentResource.fetchByIds(
+        testContext.authenticator,
+        [
+          second.sId,
+          GLOBAL_AGENTS_SID.HELPER,
+          "missing-agent",
+          first.sId,
+          second.sId,
+        ]
+      );
+      expect(resources.map((r) => r.sId)).toEqual([
+        second.sId,
+        GLOBAL_AGENTS_SID.HELPER,
+        first.sId,
+      ]);
+      expect(findAll).toHaveBeenCalledTimes(1);
+      expect(findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            sId: [second.sId, "missing-agent", first.sId],
+            workspaceId: testContext.workspace.id,
+          },
+        })
+      );
+    } finally {
+      findAll.mockRestore();
+    }
   });
 
   it("reflects a fresh archive on the next read", async () => {
@@ -626,10 +667,18 @@ describe("AgentResource", () => {
     await AgentResource.fetchById(testContext.authenticator, agent.sId);
 
     const otherContext = await createResourceTest({ role: "admin" });
+    const otherAgent = await AgentConfigurationFactory.createTestAgent(
+      otherContext.authenticator
+    );
 
     expect(
       await AgentResource.fetchById(otherContext.authenticator, agent.sId)
     ).toBeNull();
+    const resources = await AgentResource.fetchByIds(
+      otherContext.authenticator,
+      [agent.sId, otherAgent.sId]
+    );
+    expect(resources.map((resource) => resource.sId)).toEqual([otherAgent.sId]);
   });
 
   it("lists agent editors from grants individually and in batches", async () => {
@@ -1022,7 +1071,7 @@ describe("AgentResource", () => {
       );
       assert(resource);
 
-      const document = resource.toSearchDocument(testContext.workspace, {
+      const document = resource.toSearchDocument(testContext.authenticator, {
         activeUsersCount: null,
         editors: [testContext.user, testContext.user],
         favoriteCount: 4,
@@ -1073,7 +1122,7 @@ describe("AgentResource", () => {
       );
       assert(resource);
 
-      const document = resource.toSearchDocument(testContext.workspace, {
+      const document = resource.toSearchDocument(testContext.authenticator, {
         activeUsersCount: null,
         editors: [],
         favoriteCount: 0,
@@ -1092,26 +1141,51 @@ describe("AgentResource", () => {
       });
     });
 
-    it("refuses to serialize a global agent", async () => {
+    it("serializes a global agent without workspace-specific metadata", async () => {
       const resource = await AgentResource.fetchById(
         testContext.authenticator,
         GLOBAL_AGENTS_SID.HELPER
       );
       assert(resource);
 
-      expect(() =>
-        resource.toSearchDocument(testContext.workspace, {
-          activeUsersCount: null,
-          editors: [],
-          favoriteCount: 0,
-          feedbackNegativeCount: 0,
-          feedbackPositiveCount: 0,
-          lastEditedByUser: null,
-          mcpServerViewIds: [],
-          skillIds: [],
-          tagIds: [],
-        })
-      ).toThrow("Search documents require a custom agent in the workspace.");
+      const document = resource.toSearchDocument(testContext.authenticator, {
+        activeUsersCount: 4,
+        editors: [testContext.user],
+        favoriteCount: 2,
+        feedbackNegativeCount: 1,
+        feedbackPositiveCount: 9,
+        lastEditedByUser: testContext.user,
+        mcpServerViewIds: ["view-a"],
+        skillIds: ["skill-b", "skill-a"],
+        tagIds: ["tag-a"],
+      });
+
+      expect(document).toEqual({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: GLOBAL_AGENTS_SID.HELPER,
+        status: "active",
+        scope: "global",
+        model: {
+          provider_id: resource.modelConfiguration.providerId,
+          model_id: resource.modelConfiguration.modelId,
+          reasoning_effort: expect.any(String),
+        },
+        name: resource.name,
+        description: resource.description,
+        picture_url: resource.pictureUrl,
+        last_edited_by_user_id: null,
+        editor_ids: [],
+        requested_space_ids: [],
+        created_at: null,
+        updated_at: null,
+        skill_ids: ["skill-a", "skill-b"],
+        mcp_server_view_ids: [],
+        tag_ids: [],
+        feedback_positive_count: 0,
+        feedback_negative_count: 0,
+        active_users_count: null,
+        favorite_count: 0,
+      });
     });
   });
 
@@ -1171,6 +1245,111 @@ describe("AgentResource", () => {
       const skills = await resource.listSkills(testContext.authenticator);
 
       expect(skills.map((s) => s.sId)).toEqual(["frames"]);
+    });
+  });
+
+  describe("batchCountFavorites", () => {
+    it("counts each agent's favorites, with zero for agents nobody favorites", async () => {
+      const { authenticator, workspace } = testContext;
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+      const [popular, unfavorited, ignored] = await Promise.all(
+        ["Popular", "Unfavorited", "Ignored"].map(async (name) => {
+          const agent = await AgentConfigurationFactory.createTestAgent(
+            authenticator,
+            { name, scope: "visible" }
+          );
+          const resource = await AgentResource.fetchById(
+            authenticator,
+            agent.sId
+          );
+          assert(resource);
+          return resource;
+        })
+      );
+      for (const [auth, agent, favorite] of [
+        [authenticator, popular, true],
+        [otherAuth, popular, true],
+        [authenticator, unfavorited, true],
+        [authenticator, unfavorited, false],
+      ] as const) {
+        expect((await agent.setUserFavorite(auth, favorite)).isOk()).toBe(true);
+      }
+
+      const counts = await AgentResource.batchCountFavorites(authenticator, [
+        popular,
+        unfavorited,
+        ignored,
+      ]);
+
+      expect(counts).toEqual(
+        new Map([
+          [popular.sId, 2],
+          [unfavorited.sId, 0],
+          [ignored.sId, 0],
+        ])
+      );
+    });
+
+    it("returns an empty map without agents", async () => {
+      expect(
+        await AgentResource.batchCountFavorites(testContext.authenticator, [])
+      ).toEqual(new Map());
+    });
+  });
+
+  describe("batchListTags", () => {
+    it("lists each version's tags, with no tag for untagged and global agents", async () => {
+      const { authenticator, workspace } = testContext;
+      const tagged = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Tagged" }
+      );
+      const untagged = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Untagged" }
+      );
+      const tag = await TagFactory.create(workspace, { name: "tagged" });
+      await TagFactory.addToAgent(authenticator, tag, tagged);
+
+      const agents = await AgentResource.fetchByIds(authenticator, [
+        tagged.sId,
+        untagged.sId,
+        GLOBAL_AGENTS_SID.HELPER,
+      ]);
+      expect(agents).toHaveLength(3);
+      const [taggedAgent, untaggedAgent, globalAgent] = agents;
+
+      const listForAgents = vi.spyOn(TagResource, "listForAgents");
+      try {
+        const tagsByConfigurationModelId = await AgentResource.batchListTags(
+          authenticator,
+          agents
+        );
+
+        expect(
+          [...tagsByConfigurationModelId].map(([id, tags]) => [
+            id,
+            tags.map((t) => t.sId),
+          ])
+        ).toEqual([
+          [taggedAgent.agentConfigurationModelId, [tag.sId]],
+          [untaggedAgent.agentConfigurationModelId, []],
+          [globalAgent.agentConfigurationModelId, []],
+        ]);
+        expect(listForAgents).toHaveBeenCalledWith(authenticator, [
+          taggedAgent.agentConfigurationModelId,
+          untaggedAgent.agentConfigurationModelId,
+        ]);
+      } finally {
+        listForAgents.mockRestore();
+      }
     });
   });
 
@@ -1348,10 +1527,7 @@ describe("AgentResource", () => {
     ): Promise<string[]> {
       const agent = await AgentResource.fetchById(auth, agentId);
       assert(agent);
-      const tags = await TagResource.listForAgent(
-        auth,
-        agent.agentConfigurationModelId
-      );
+      const tags = await agent.listTags(auth);
       return tags.map((tag) => tag.sId).sort();
     }
 
@@ -1746,6 +1922,207 @@ describe("AgentResource", () => {
       expect(after.content.version).toBe(before.content.version);
       expect(after.scope).toBe("visible");
       expect(after.description).toBe(before.description);
+    });
+  });
+
+  describe("list resolvers", () => {
+    it("fetchByName resolves the active agent by exact name, else null", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Findable Agent" }
+      );
+
+      const found = await AgentResource.fetchByName(
+        testContext.authenticator,
+        "Findable Agent"
+      );
+      expect(found?.sId).toBe(agent.sId);
+
+      expect(
+        await AgentResource.fetchByName(
+          testContext.authenticator,
+          "No Such Agent"
+        )
+      ).toBeNull();
+    });
+
+    it("listByWorkspace returns the workspace's active agents", async () => {
+      const first = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "WS One" }
+      );
+      const second = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "WS Two" }
+      );
+
+      const sIds = (
+        await AgentResource.listByWorkspace(testContext.authenticator)
+      ).map((resource) => resource.sId);
+
+      expect(sIds).toEqual(expect.arrayContaining([first.sId, second.sId]));
+    });
+
+    it("listByWorkspace filters on the requested statuses, scoped to the workspace", async () => {
+      const { agent: active } = await buildAgentInState({
+        scope: "visible",
+        status: "active",
+        name: "Active agent",
+      });
+      const { agent: archived } = await buildAgentInState({
+        scope: "visible",
+        status: "archived",
+        name: "Archived agent",
+      });
+      await buildAgentInState({
+        scope: "visible",
+        status: "draft",
+        name: "Draft agent",
+      });
+      const other = await createResourceTest({ role: "admin" });
+      await AgentConfigurationFactory.createTestAgent(other.authenticator);
+
+      const activeAgents = await AgentResource.listByWorkspace(
+        testContext.authenticator
+      );
+      const agents = await AgentResource.listByWorkspace(
+        testContext.authenticator,
+        { status: ["active", "archived"] }
+      );
+
+      expect(activeAgents.map((agent) => agent.sId)).toEqual([active.sId]);
+      expect(agents.map((agent) => agent.sId).toSorted()).toEqual(
+        [active.sId, archived.sId].toSorted()
+      );
+    });
+
+    it("listByAuthor returns agents the user authored, not others'", async () => {
+      const mine = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Mine" }
+      );
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        testContext.workspace.sId
+      );
+      const theirs = await AgentConfigurationFactory.createTestAgent(
+        otherAuth,
+        {
+          name: "Theirs",
+        }
+      );
+
+      const sIds = (
+        await AgentResource.listByAuthor(testContext.authenticator, {
+          authorModelId: testContext.user.id,
+        })
+      ).map((resource) => resource.sId);
+
+      expect(sIds).toContain(mine.sId);
+      expect(sIds).not.toContain(theirs.sId);
+    });
+
+    it("listByTag returns agents whose current version carries the tag", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Tagged" }
+      );
+      const tag = await TagFactory.create(testContext.workspace, {
+        name: "topic",
+      });
+      await TagFactory.addToAgent(testContext.authenticator, tag, agent);
+
+      const sIds = (
+        await AgentResource.listByTag(testContext.authenticator, [tag.id])
+      ).map((resource) => resource.sId);
+
+      expect(sIds).toEqual([agent.sId]);
+    });
+
+    it("listBySkills returns agents whose current version links the skill", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Skilled" }
+      );
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Linked Skill",
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agent.id,
+      });
+
+      const sIds = (
+        await AgentResource.listBySkills(testContext.authenticator, {
+          customSkillModelIds: [skill.id],
+        })
+      ).map((resource) => resource.sId);
+
+      expect(sIds).toEqual([agent.sId]);
+    });
+
+    it("listByMCPServerViewIds returns agents whose current version uses the view", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Tooled" }
+      );
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const view = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        testContext.globalSpace
+      );
+      await AgentMCPServerConfigurationFactory.create(
+        testContext.authenticator,
+        testContext.globalSpace,
+        { agent, mcpServerView: view }
+      );
+
+      const sIds = (
+        await AgentResource.listByMCPServerViewIds(testContext.authenticator, [
+          view.id,
+        ])
+      ).map((resource) => resource.sId);
+
+      expect(sIds).toEqual([agent.sId]);
+    });
+
+    it("listFavoritesForCurrentUser returns only the user's favorited agents", async () => {
+      const favorite = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Fav" }
+      );
+      const other = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "NotFav" }
+      );
+      const favoriteResource = await AgentResource.fetchById(
+        testContext.authenticator,
+        favorite.sId
+      );
+      assert(favoriteResource);
+      expect(
+        (
+          await favoriteResource.setUserFavorite(
+            testContext.authenticator,
+            true
+          )
+        ).isOk()
+      ).toBe(true);
+
+      const sIds = (
+        await AgentResource.listFavoritesForCurrentUser(
+          testContext.authenticator
+        )
+      ).map((resource) => resource.sId);
+
+      expect(sIds).toContain(favorite.sId);
+      expect(sIds).not.toContain(other.sId);
     });
   });
 });

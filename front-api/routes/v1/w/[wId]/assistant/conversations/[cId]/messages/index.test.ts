@@ -207,6 +207,43 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
     expect(body.message.requestedModel).toEqual(modelSelection);
   });
 
+  it("reads the deprecated light effort as low", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "POST",
+      plan: "creditPriced",
+    });
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const conversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const response = await postMessage(workspace, conversation.sId, key, {
+      content: "Hello",
+      mentions: [],
+      context: {
+        username: "tester",
+        timezone: "Europe/Paris",
+        origin: "api",
+      },
+      modelSelection: {
+        providerId: "anthropic",
+        modelId: CLAUDE_OPUS_4_8_MODEL_ID,
+        reasoningEffort: "light",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.message.requestedModel.reasoningEffort).toBe("low");
+  });
+
   it("rebuilds the posting user from x-api-user-email on a system key", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       method: "POST",

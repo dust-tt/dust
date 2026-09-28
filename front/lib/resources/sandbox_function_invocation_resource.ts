@@ -27,7 +27,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
 import {
   clearStagedSandboxFunctionInvocationBlob,
@@ -714,7 +713,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       };
       const runEnsure = async (): Promise<
         Result<EnsureSandboxReadyResult & { scope?: FrameSandboxScope }, Error>
-      > => ensureFrameSandboxReady(auth, frame, { requireRunning: inline });
+      > =>
+        ensureFrameSandboxReady(
+          auth,
+          frame,
+          inline ? { requireRunning: true } : {}
+        );
 
       let functionCheck;
       let ensureResult;
@@ -1588,30 +1592,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     });
 
     return { deletedInvocationCount, deletedMCPActionCount };
-  }
-
-  /**
-   * How many invocations still reference a function of `publicationId`. Retention uses this to
-   * tell a superseded publication that can be dropped from one whose runs are still on record.
-   */
-  static async countForFramePublication(
-    auth: Authenticator,
-    { frame, publicationId }: { frame: FileResource; publicationId: string }
-  ): Promise<number> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    return this.model.count({
-      where: { workspaceId },
-      include: [
-        {
-          model: SandboxFunctionModel,
-          as: "sandboxFunction",
-          attributes: [],
-          required: true,
-          where: { workspaceId, fileId: frame.id, publicationId },
-        },
-      ],
-    });
   }
 
   /**

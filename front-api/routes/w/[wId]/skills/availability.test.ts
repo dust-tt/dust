@@ -15,8 +15,9 @@ async function setupTest(role: MembershipRoleType = "admin") {
     role,
   });
 
-  // Skills are created by another user so the requester is never in their
-  // editor group: the batch endpoint relies on the publish permission alone.
+  // Skills are created by another user so the requester is never in their editor group: a
+  // workspace admin still administrates them, a regular member does not (see
+  // `availability-change-requires-admin-and-publish`).
   const skillOwner = await UserFactory.basic();
   await MembershipFactory.associate(workspace, skillOwner, {
     role: "user",
@@ -201,14 +202,34 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
     expect(response.status).toBe(403);
   });
 
-  it("denies making skills auto-discoverable without the make_discoverable permission", async () => {
+  it("denies a publisher who does not administrate the skill", async () => {
     const { workspace, requestUser, skillOwnerAuth } = await setupTest("user");
-    // The caller can publish skills, but not make them auto-discoverable.
     await grantWorkspacePermission(workspace, requestUser, {
       grantType: "publish",
       resourceType: "skill",
     });
     const skill = await SkillFactory.create(skillOwnerAuth, {
+      availability: "editors",
+    });
+
+    const response = await patchSkillsAvailability(workspace, {
+      skillIds: [skill.sId],
+      availability: "workspace_users",
+    });
+    expect(response.status).toBe(403);
+
+    const unchanged = await SkillResource.fetchById(skillOwnerAuth, skill.sId);
+    expect(unchanged?.availability).toBe("editors");
+  });
+
+  it("denies making skills auto-discoverable without the make_discoverable permission", async () => {
+    const { workspace, requestUser, requestUserAuth } = await setupTest("user");
+    // The caller can publish skills, but not make them auto-discoverable.
+    await grantWorkspacePermission(workspace, requestUser, {
+      grantType: "publish",
+      resourceType: "skill",
+    });
+    const skill = await SkillFactory.create(requestUserAuth, {
       availability: "editors",
     });
 
@@ -234,9 +255,13 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
       grantType: "publish",
       resourceType: "skill",
     });
+    // Created by the owner (the factory grants make_discoverable to the creator of an
+    // auto-discoverable skill), then administrated by the caller as an editor.
     const skill = await SkillFactory.create(skillOwnerAuth, {
       availability: "users_and_agents",
     });
+    const addEditors = await skill.addEditors(skillOwnerAuth, [requestUser]);
+    expect(addEditors.isOk()).toBe(true);
 
     const response = await patchSkillsAvailability(workspace, {
       skillIds: [skill.sId],
@@ -253,8 +278,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
   });
 
   it("allows changing an auto-discoverable skill's availability with the make_discoverable permission", async () => {
-    const { workspace, requestUser, requestUserAuth, skillOwnerAuth } =
-      await setupTest("user");
+    const { workspace, requestUser, requestUserAuth } = await setupTest("user");
     await grantWorkspacePermission(workspace, requestUser, {
       grantType: "publish",
       resourceType: "skill",
@@ -263,7 +287,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
       grantType: "make_discoverable",
       resourceType: "skill",
     });
-    const skill = await SkillFactory.create(skillOwnerAuth, {
+    const skill = await SkillFactory.create(requestUserAuth, {
       availability: "users_and_agents",
     });
 
@@ -281,8 +305,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
   });
 
   it("allows making skills auto-discoverable with the make_discoverable permission", async () => {
-    const { workspace, requestUser, requestUserAuth, skillOwnerAuth } =
-      await setupTest("user");
+    const { workspace, requestUser, requestUserAuth } = await setupTest("user");
     await grantWorkspacePermission(workspace, requestUser, {
       grantType: "publish",
       resourceType: "skill",
@@ -291,7 +314,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
       grantType: "make_discoverable",
       resourceType: "skill",
     });
-    const skill = await SkillFactory.create(skillOwnerAuth, {
+    const skill = await SkillFactory.create(requestUserAuth, {
       availability: "editors",
     });
 

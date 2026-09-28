@@ -6,6 +6,9 @@ export const SLASH_COMMAND_CAPABILITIES_SECTION_LABEL = "Capabilities";
 export interface SlashCommandSection {
   label: string;
   items: SlashCommand[];
+  // Shown under the label while `items` is empty: placeholder rows, else the message.
+  isLoading?: boolean;
+  emptyMessage?: string;
 }
 
 export function buildSlashCommandSections({

@@ -7,6 +7,7 @@ import { SlackSettingsSheet } from "@app/components/agent_builder/settings/Slack
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
+import { getAgentScopeLabel } from "@app/lib/agent_builder/labels";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   Button,
@@ -68,7 +69,7 @@ export function AccessSection({
   const canPublishAgent = hasPermission("publish", "agent");
 
   const getDisplayValue = () => {
-    return scope.value === "visible" ? "Published" : "Unpublished";
+    return getAgentScopeLabel(scope.value);
   };
 
   const getDisplayIcon = () => {

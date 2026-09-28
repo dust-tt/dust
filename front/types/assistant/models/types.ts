@@ -9,7 +9,11 @@ import type { SUPPORTED_MODEL_CONFIGS } from "./models";
 import { MODEL_IDS } from "./models";
 import type { BYOK_MODEL_PROVIDER_IDS } from "./providers";
 import { MODEL_MAKER_IDS, MODEL_PROVIDER_IDS } from "./providers";
-import { ORDERED_REASONING_EFFORTS } from "./reasoning";
+import {
+  normalizeLegacyReasoningEffort,
+  ORDERED_REASONING_EFFORTS,
+  ReasoningEffortSchema,
+} from "./reasoning";
 
 export type ModelIdType = (typeof MODEL_IDS)[number];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
@@ -24,7 +28,7 @@ export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];
 export const ModelSelectionSchema = z.object({
   providerId: z.enum(MODEL_PROVIDER_IDS),
   modelId: z.enum(MODEL_IDS),
-  reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
+  reasoningEffort: ReasoningEffortSchema.optional(),
 });
 export type ModelSelectionType = z.infer<typeof ModelSelectionSchema>;
 
@@ -58,15 +62,43 @@ export const isModelResolutionMethod = (
   MODEL_RESOLUTION_METHODS.includes(value as ModelResolutionMethodType);
 
 // z.object (not z.record) so every reasoning effort key is required.
-const ReasoningEffortSupportSchema = z.object({
+const ReasoningEffortSupportShape = z.object({
   none: z.boolean(),
-  light: z.boolean(),
+  minimal: z.boolean(),
+  low: z.boolean(),
   medium: z.boolean(),
   high: z.boolean(),
+  xhigh: z.boolean(),
+  maximal: z.boolean(),
 } satisfies Record<ReasoningEffort, z.ZodBoolean>);
 export type ReasoningEffortSupport = z.infer<
-  typeof ReasoningEffortSupportSchema
+  typeof ReasoningEffortSupportShape
 >;
+
+// Custom model configs fetched from GCS may still use the legacy
+// `{none, light, medium, high}` shape: "light" reads as "low" and efforts it
+// does not list are unsupported.
+function normalizeLegacyReasoningEffortSupport(value: unknown): unknown {
+  if (typeof value !== "object" || value === null) {
+    return value;
+  }
+  return {
+    ...Object.fromEntries(
+      ORDERED_REASONING_EFFORTS.map((effort) => [effort, false])
+    ),
+    ...Object.fromEntries(
+      Object.entries(value).map(([effort, isSupported]) => [
+        normalizeLegacyReasoningEffort(effort),
+        isSupported,
+      ])
+    ),
+  };
+}
+
+const ReasoningEffortSupportSchema = z.preprocess(
+  normalizeLegacyReasoningEffortSupport,
+  ReasoningEffortSupportShape
+);
 
 const WhitelistableFeatureSchema = z.custom<WhitelistableFeature>(
   isWhitelistableFeature,
@@ -108,8 +140,10 @@ export const ModelConfigurationSchema = z.object({
   generationTokensCount: z.number(),
   supportsVision: z.boolean(),
   supportedReasoningEfforts: ReasoningEffortSupportSchema,
-  defaultReasoningEffort: z.string(),
-  useNativeLightReasoning: z.boolean().optional(),
+  defaultReasoningEffort: z.preprocess(
+    normalizeLegacyReasoningEffort,
+    z.string()
+  ),
   supportsResponseFormat: z.boolean().optional(),
   supportsPromptCaching: z.boolean().optional(),
   featureFlag: z.string().optional(),

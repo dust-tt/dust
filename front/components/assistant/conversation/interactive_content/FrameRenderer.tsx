@@ -144,11 +144,12 @@ export function FrameRenderer({
   );
   const isFullScreen = fullScreenHash === "true";
 
-  const { fileContent, error, mutateFileContent } = useFileContent({
-    fileId,
-    owner,
-    cacheKey: contentHash,
-  });
+  const { fileContent, error, mutateFileContent, isFileContentLoading } =
+    useFileContent({
+      fileId,
+      owner,
+      cacheKey: contentHash,
+    });
 
   const { fileMetadata, mutateFileMetadata } = useFileMetadata({
     fileId,
@@ -249,10 +250,14 @@ export function FrameRenderer({
     isFrameAuthor;
   const isEditable = usesBatchEdit ? canEditV2 : true;
   const isEditSession = canEditV2 && isEditMode;
-  // v2 remounts only after Save/discard/reload; Preview↔Edit keeps the same instance.
-  const vizInstanceId = usesBatchEdit
-    ? `viz-${fileId}-${contentRevision}`
-    : `viz-${fileId}`;
+  // Remount via React key only (identifier stays stable so Next.js keeps one /content URL).
+  // Remounts on a new contentHash (agent publish / open_frame) and, for v2, after
+  // Save/discard/reload (contentRevision). Preview↔Edit keeps the same instance.
+  const vizInstanceKey = `${
+    contentHash
+      ? `viz-${contentHash}`
+      : `viz-${fileId}-${framePath ?? packageRoot ?? ""}`
+  }${usesBatchEdit ? `-${contentRevision}` : ""}`;
 
   const stagePendingEdits = useCallback((next: Parameters<EditTextFn>[0][]) => {
     pendingEditsRef.current = next;
@@ -685,7 +690,7 @@ export function FrameRenderer({
       </ConversationSidePanelHeader>
 
       <div className="flex-1 overflow-hidden">
-        {isLoading || isFramePathPending ? (
+        {isLoading || isFramePathPending || isFileContentLoading ? (
           <Spinner />
         ) : showCode ? (
           <FrameCodeView
@@ -711,9 +716,12 @@ export function FrameRenderer({
                 visualization={{
                   code: fileContent ?? "",
                   complete: true,
-                  identifier: vizInstanceId,
+                  // Stable across revisions — contentHash belongs in `key` only.
+                  // Putting it in identifier forced Next.js to recompile /content
+                  // for every open_frame/publish.
+                  identifier: `viz-${fileId}`,
                 }}
-                key={`${vizInstanceId}-${framePath ?? packageRoot ?? ""}`}
+                key={vizInstanceKey}
                 conversationId={conversation?.sId ?? null}
                 spaceId={frameSpaceId ?? undefined}
                 framePackageRoot={framePackageRoot}

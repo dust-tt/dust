@@ -1,12 +1,15 @@
 import {
   refreshSearchUsageWorkflow,
   refreshWorkspaceSearchUsageWorkflow,
+  reindexCodeDefinedSearchWorkflow,
 } from "@app/temporal/es_indexation/workflows";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   listWorkspaceIdsActivity: vi.fn(),
   refreshWorkspaceSearchUsageActivity: vi.fn(),
+  reindexCodeDefinedSkillsActivity: vi.fn(),
+  reindexGlobalAgentsActivity: vi.fn(),
 }));
 
 vi.mock("@temporalio/workflow", () => ({
@@ -73,5 +76,29 @@ describe("refreshSearchUsageWorkflow", () => {
       workspaceId: "workspace-4",
     });
     expect(mocks.listWorkspaceIdsActivity).not.toHaveBeenCalled();
+  });
+});
+
+describe("reindexCodeDefinedSearchWorkflow", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mocks.reindexCodeDefinedSkillsActivity.mockResolvedValue(undefined);
+    mocks.reindexGlobalAgentsActivity.mockResolvedValue(undefined);
+  });
+
+  it("reindexes code-defined skills and global agents", async () => {
+    await reindexCodeDefinedSearchWorkflow();
+
+    expect(
+      mocks.reindexCodeDefinedSkillsActivity
+    ).toHaveBeenCalledExactlyOnceWith();
+    expect(mocks.reindexGlobalAgentsActivity).toHaveBeenCalledExactlyOnceWith();
+  });
+
+  it("throws when a reindex fails", async () => {
+    const error = new Error("Global agent indexing failed");
+    mocks.reindexGlobalAgentsActivity.mockRejectedValue(error);
+
+    await expect(reindexCodeDefinedSearchWorkflow()).rejects.toBe(error);
   });
 });

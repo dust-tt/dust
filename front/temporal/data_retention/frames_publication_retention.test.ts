@@ -7,16 +7,11 @@ import { storeTestFramePublication } from "@app/tests/utils/FramePublicationFact
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { getFramePublicationsBasePath } from "@app/types/api/frame_storage";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@temporalio/activity", () => ({
   heartbeat: vi.fn(),
 }));
-
-// Every frame's publications listing, keyed by prefix: the mock exposes one global resolver and
-// this suite sweeps frames from several workspaces at once.
-const publicationIdsByPrefix = new Map<string, string[]>();
 
 async function setupFrameWithStalePublication(): Promise<{
   auth: Authenticator;
@@ -39,24 +34,12 @@ async function setupFrameWithStalePublication(): Promise<{
     description: "Track tasks.",
   });
 
-  publicationIdsByPrefix.set(
-    getFramePublicationsBasePath({
-      workspaceId: workspace.sId,
-      frameId: frame.sId,
-    }),
-    [stalePublicationId, activePublicationId]
-  );
-
   return { auth, frame, stalePublicationId };
 }
 
 describe("purgeStaleFramePublicationsActivity", () => {
   beforeEach(() => {
     fileStorageMock.reset();
-    publicationIdsByPrefix.clear();
-    fileStorageMock.setSubdirectoryNames(
-      (prefix) => publicationIdsByPrefix.get(prefix) ?? null
-    );
   });
 
   it("purges superseded publications of frames from every workspace", async () => {

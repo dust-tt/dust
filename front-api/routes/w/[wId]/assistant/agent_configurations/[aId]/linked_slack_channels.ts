@@ -1,8 +1,9 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -65,11 +66,8 @@ app.patch(
       throw new Error("Unreachable code: connectorId is null.");
     }
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (!agentConfiguration) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -80,7 +78,7 @@ app.patch(
       });
     }
 
-    if (!agentConfiguration.canEdit && !auth.isAdmin()) {
+    if (!auth.can("write", agent)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -90,7 +88,7 @@ app.patch(
       });
     }
 
-    if (isArchivedAgent(agentConfiguration)) {
+    if (isArchivedAgent(agent)) {
       return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
@@ -101,7 +99,7 @@ app.patch(
 
     const connectorsApiRes = await connectorsAPI.linkSlackChannelsWithAgent({
       connectorId: connectorId.toString(),
-      agentConfigurationId: agentConfiguration.sId,
+      agentConfigurationId: agent.sId,
       slackChannelInternalIds: body.slack_channel_internal_ids,
       autoRespondWithoutMention: body.auto_respond_without_mention,
       autoRespondWithoutMentionSkipThreadReplies:
@@ -110,30 +108,30 @@ app.patch(
 
     if (connectorsApiRes.isErr()) {
       if (connectorsApiRes.error.type === "connector_operation_in_progress") {
-        logger.info(
-          connectorsApiRes.error,
-          "Slack channel linking already in progress."
-        );
-        return apiError(ctx, {
-          status_code: 409,
-          api_error: {
-            type: "connector_operation_in_progress",
-            message: connectorsApiRes.error.message,
+        return apiError(
+          ctx,
+          {
+            status_code: 409,
+            api_error: {
+              type: "connector_operation_in_progress",
+              message: connectorsApiRes.error.message,
+            },
           },
-        });
+          normalizeError(connectorsApiRes.error)
+        );
       }
 
-      logger.error(
-        connectorsApiRes.error,
-        "An error occurred while linking Slack channels."
-      );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "An error occurred while linking Slack channels.",
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "An error occurred while linking Slack channels.",
+          },
         },
-      });
+        normalizeError(connectorsApiRes.error)
+      );
     }
 
     return ctx.json({ success: true });

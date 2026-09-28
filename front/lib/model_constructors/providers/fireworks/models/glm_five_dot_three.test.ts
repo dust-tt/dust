@@ -1,7 +1,6 @@
 // @vitest-environment node
 
 import { DustZAiGlmFiveDotThreeGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_three_global_fireworks";
-import { mapReasoningEffortToLowHighMax } from "@app/lib/llms/stream/types/configuration";
 import { ZAiGlmFiveDotThreeGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_global_fireworks";
 import { itKeepsLimitsAndPricingConsistent } from "@app/lib/model_constructors/test/model_limits";
 import { FIREWORKS_GLM_5P3_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
@@ -28,12 +27,6 @@ describe("GLM-5.3 model configuration", () => {
     );
 
     expect(payload.reasoning).toEqual({ effort: "max", summary: "auto" });
-  });
-
-  it("folds Dust's reasoning ladder onto the native efforts", () => {
-    expect(DustZAiGlmFiveDotThreeGlobalFireworksStream.configParsers).toEqual([
-      mapReasoningEffortToLowHighMax,
-    ]);
   });
 
   it("keeps the thinking-only contract agreed between the config and the schema", () => {

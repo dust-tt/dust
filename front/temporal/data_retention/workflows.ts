@@ -130,7 +130,6 @@ async function purgeStalePublications(): Promise<void> {
   let deletedFunctionCount = 0;
   let deletedPublicationCount = 0;
   let scannedFrameCount = 0;
-  let unreadablePublicationCount = 0;
 
   for (
     let processedBatches = 0;
@@ -142,7 +141,6 @@ async function purgeStalePublications(): Promise<void> {
     deletedFunctionCount += result.deletedFunctionCount;
     deletedPublicationCount += result.deletedPublicationCount;
     scannedFrameCount += result.scannedFrameCount;
-    unreadablePublicationCount += result.unreadablePublicationCount;
 
     if (result.nextAfterModelId === null) {
       log.info("[Frames Retention] Publication sweep complete.", {
@@ -150,7 +148,6 @@ async function purgeStalePublications(): Promise<void> {
         deletedPublicationCount,
         processedBatches: processedBatches + 1,
         scannedFrameCount,
-        unreadablePublicationCount,
       });
 
       return;
@@ -168,7 +165,6 @@ async function purgeStalePublications(): Promise<void> {
       deletedPublicationCount,
       processedBatches: FRAME_PUBLICATION_MAX_BATCHES_PER_RUN,
       scannedFrameCount,
-      unreadablePublicationCount,
     }
   );
 }

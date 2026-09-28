@@ -3,6 +3,7 @@ import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type {
+  SkillCreateSuggestionType,
   SkillSuggestionKind,
   SkillSuggestionPayload,
   SkillSuggestionSource,
@@ -21,6 +22,7 @@ export class SkillSuggestionFactory {
       state: SkillSuggestionState;
       source: SkillSuggestionSource;
       sourceConversationIds: number[] | null;
+      batchModelId: number | null;
     }> = {}
   ): Promise<SkillSuggestionResource> {
     return SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
@@ -39,6 +41,7 @@ export class SkillSuggestionFactory {
       state: overrides.state ?? "pending",
       source: overrides.source ?? "reinforcement",
       sourceConversationIds: overrides.sourceConversationIds ?? null,
+      batchId: overrides.batchModelId ?? null,
     });
   }
 
@@ -82,7 +85,7 @@ export class SkillSuggestionFactory {
     auth: Authenticator,
     skill: SkillResource,
     overrides: Partial<{
-      suggestion: { name: string };
+      suggestion: SkillCreateSuggestionType;
       analysis: string | null;
       title: string | null;
       state: SkillSuggestionState;
@@ -91,7 +94,12 @@ export class SkillSuggestionFactory {
   ): Promise<SkillSuggestionResource> {
     return this.create(auth, skill, {
       kind: "create",
-      suggestion: overrides.suggestion ?? { name: skill.name },
+      suggestion: overrides.suggestion ?? {
+        name: skill.name,
+        userFacingDescription: "Summarizes meeting notes.",
+        agentFacingDescription: "Use to summarize meeting notes.",
+        instructions: "<p>Summarize the notes.</p>",
+      },
       analysis: overrides.analysis,
       title: overrides.title,
       state: overrides.state,

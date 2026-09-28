@@ -7,7 +7,6 @@ import {
 } from "@app/lib/api/agent_data_sources";
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import { hardDeleteApp } from "@app/lib/api/apps";
-import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { isDatabaseFileSystemPodName } from "@app/lib/api/file_system/storage_mode";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
 import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
@@ -16,6 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_requested_spaces";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -444,9 +444,9 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           const newSpaceIds = agent.requestedSpaceIds.filter(
             (id) => id !== space.id
           );
-          const res = await updateAgentRequirements(
+          const res = await updateAgentRequestedSpaceIdsInPlace(
             auth,
-            { agentModelId: agent.id, newSpaceIds },
+            { agentConfigurationModelId: agent.id, newSpaceIds },
             { transaction: t }
           );
 

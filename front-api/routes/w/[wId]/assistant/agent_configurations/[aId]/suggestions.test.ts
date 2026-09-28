@@ -6,6 +6,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
@@ -178,6 +179,32 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions", ()
     expect(data.error.message).toContain(
       "do not belong to the specified agent configuration"
     );
+  });
+
+  it("returns 400 for a suggestion that belongs to a batch", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const batch = await BatchSuggestionFactory.createEmpty(auth);
+    const suggestion = await AgentSuggestionFactory.createInstructions(
+      auth,
+      agent,
+      { source: "conversational", state: "pending", batchModelId: batch.id }
+    );
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "rejected",
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.message).toContain("belong to a batch");
+
+    const fetchedSuggestion = await AgentSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(fetchedSuggestion?.state).toBe("pending");
   });
 
   it.each<Exclude<AgentSuggestionState, "pending">>([
@@ -553,7 +580,7 @@ describe("PATCH with applyToAgent", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns 400 when the caller lost the create-agent capability", async () => {
+  it("returns 403 when the caller does not have the create-agent capability", async () => {
     const { workspace, auth, agent } = await setupPendingAgent();
     const suggestion = await AgentSuggestionFactory.createCreate(auth, agent);
 
@@ -568,8 +595,10 @@ describe("PATCH with applyToAgent", () => {
       applyToAgent: true,
     });
 
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toContain("restricted");
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe(
+      "agent_group_permission_error"
+    );
 
     const placeholder = await getAgentConfiguration(auth, {
       agentId: agent.sId,
@@ -579,7 +608,12 @@ describe("PATCH with applyToAgent", () => {
   });
 
   it("returns 400 and leaves the suggestion pending when the target is not a placeholder", async () => {
-    const { workspace, auth, agent } = await setupTest();
+    const { workspace, auth, user, agent } = await setupTest();
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "agent",
+    });
+    await auth.refresh();
     const suggestion = await AgentSuggestionFactory.createCreate(auth, agent);
 
     const response = await patchSuggestions(workspace, agent.sId, {
@@ -940,7 +974,7 @@ describe("PATCH with applyToAgent", () => {
     });
   });
 
-  it("returns 400 when the caller lacks the publish capability, leaving the agent's scope unchanged", async () => {
+  it("returns 403 when the caller lacks the publish capability, leaving the agent's scope unchanged", async () => {
     const { workspace, auth, agent } = await setupTest();
     // The caller holds `write` on the agent (created it) but not the workspace `publish`
     // capability that a scope change also requires (see `scope-change-requires-edit-and-publish`).
@@ -954,8 +988,10 @@ describe("PATCH with applyToAgent", () => {
       applyToAgent: true,
     });
 
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toContain("publish");
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe(
+      "agent_group_permission_error"
+    );
 
     const untouched = await getAgentConfiguration(auth, {
       agentId: agent.sId,

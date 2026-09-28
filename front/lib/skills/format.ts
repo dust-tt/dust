@@ -1,3 +1,6 @@
+import { removeNulls } from "@app/types/shared/utils/general";
+import uniq from "lodash/uniq";
+
 export type SkillReference = {
   id: string;
   icon: string | null;
@@ -97,6 +100,23 @@ export function serializeSkillTag(
   }
 
   return `<${SKILL_TAG_NAME} ${attributes} />`;
+}
+
+function parseSkillRef(attributes: string): string | null {
+  return attributes.match(/\bref=(["'])([\w-]+)\1/)?.[2] ?? null;
+}
+
+export function extractSkillRefs(content: string): string[] {
+  const refs = [...content.matchAll(SKILL_TAG_REGEX)].map((m) =>
+    parseSkillRef(m[1])
+  );
+  return uniq(removeNulls(refs));
+}
+
+export function hasUnparsableSkillRefTag(content: string): boolean {
+  return [...content.matchAll(SKILL_TAG_REGEX)].some(
+    (m) => /\bref\s*=/.test(m[1]) && parseSkillRef(m[1]) === null
+  );
 }
 
 export function serializeUnavailableSkillTag(

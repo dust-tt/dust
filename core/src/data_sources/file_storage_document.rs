@@ -97,7 +97,7 @@ impl FileStorageDocument {
                 info!(
                     data_source_internal_id = data_source.internal_id(),
                     document_id_hash = document_id_hash,
-                    duration = utils::now() - now,
+                    duration_ms = utils::now() - now,
                     size_bytes = bytes.len(),
                     blob_url = format!("gs://{}/{}", bucket, file_path),
                     "Downloaded document blob"
@@ -111,7 +111,7 @@ impl FileStorageDocument {
                 error!(
                     data_source_internal_id = data_source.internal_id(),
                     document_id_hash = document_id_hash,
-                    duration = utils::now() - now,
+                    duration_ms = utils::now() - now,
                     error = %e,
                     blob_url = format!("gs://{}/{}", bucket, file_path),
                     "Failed to download document blob"
@@ -182,7 +182,7 @@ impl FileStorageDocument {
         info!(
             data_source_internal_id = data_source_internal_id,
             document_id = document_id,
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             blob_url = format!("gs://{}/{}", bucket, document_file_path),
             "Scrubbed document blob"
         );
@@ -231,7 +231,7 @@ impl FileStorageDocument {
         info!(
             data_source_internal_id = data_source_internal_id,
             document_id = document_id,
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             blob_url = format!("gs://{}/{}", bucket, document_file_path),
             "Created document blob"
         );

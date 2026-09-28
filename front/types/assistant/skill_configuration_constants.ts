@@ -6,7 +6,15 @@
 // throws at module init. `skill_configuration.ts` re-exports everything below, so existing
 // importers keep their import path.
 
-export const SKILL_STATUSES = ["active", "archived", "suggested"] as const;
+// `suggested`: a complete skill proposed to the workspace, that members can adopt as is.
+// `pending`: an empty placeholder holding a conversational creation suggestion, until the
+// suggestion is accepted and the skill becomes `active`.
+export const SKILL_STATUSES = [
+  "active",
+  "archived",
+  "suggested",
+  "pending",
+] as const;
 export type SkillStatus = (typeof SKILL_STATUSES)[number];
 
 export const SKILL_AVAILABILITIES = [

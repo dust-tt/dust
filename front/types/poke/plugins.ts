@@ -27,6 +27,7 @@ export type EnumValue = {
   label: string;
   value: string;
   checked?: boolean;
+  disabled?: boolean;
 };
 
 export type EnumValues = AtLeastTwoElements<EnumValue>;

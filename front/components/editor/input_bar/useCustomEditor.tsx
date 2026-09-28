@@ -252,6 +252,11 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
         chainCommands?.run();
       },
 
+      // Inserts a "/" at the cursor to open the slash suggestion dropdown.
+      openSlashCommand() {
+        editor?.commands.openInputBarSlashCommand();
+      },
+
       focusEnd() {
         editor?.commands.focus("end");
       },
@@ -362,6 +367,7 @@ export interface CustomEditorProps {
     slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
     includeAttachKnowledgeRef: React.RefObject<boolean>;
     includePickModelRef: React.RefObject<boolean>;
+    includeSelectSpacesRef: React.RefObject<boolean>;
     onModelSelectRef: React.RefObject<
       ((selection: Selection) => void) | undefined
     >;
@@ -532,6 +538,7 @@ export const buildEditorExtensions = ({
         slashCommandsRef: slashSuggestion.slashCommandsRef,
         includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
         includePickModelRef: slashSuggestion.includePickModelRef,
+        includeSelectSpacesRef: slashSuggestion.includeSelectSpacesRef,
         spaceIdRef: slashSuggestion.spaceIdRef,
       })
     );

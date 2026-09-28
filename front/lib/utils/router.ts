@@ -91,7 +91,3 @@ export const getSpaceRoute = (workspaceId: string, spaceId: string) => {
 export const getPodRoute = (workspaceId: string, spaceId: string) => {
   return `/w/${workspaceId}/pods/${spaceId}`;
 };
-
-export const getGetStartedRoute = (workspaceId: string) => {
-  return `/w/${workspaceId}/for-you`;
-};

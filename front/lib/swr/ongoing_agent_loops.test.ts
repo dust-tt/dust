@@ -4,7 +4,7 @@ import {
 } from "@app/lib/swr/ongoing_agent_loops";
 import type { GetOngoingAgentLoopsResponseBody } from "@app/types/api/assistant/conversation/types";
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type OngoingAgentLoopsSWRData = GetOngoingAgentLoopsResponseBody & {
   pendingAgentLoopStart?: true;
@@ -52,6 +52,10 @@ vi.mock("@app/lib/swr/swr", () => ({
 }));
 
 describe("useOngoingAgentLoops", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mutate.mockResolvedValue(undefined);
@@ -85,6 +89,36 @@ describe("useOngoingAgentLoops", () => {
         agentLoops: [{ conversationId: "conv_1", messageId: "msg_1" }],
       })
     ).toBe(10_000);
+  });
+
+  it("refreshes the registry when a visible page regains focus", () => {
+    let visibilityState: DocumentVisibilityState = "hidden";
+    vi.spyOn(document, "visibilityState", "get").mockImplementation(
+      () => visibilityState
+    );
+    let now = 10_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const { unmount } = renderHook(() =>
+      useOngoingAgentLoops({ workspaceId: "w_1", onSuccess: vi.fn() })
+    );
+
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(mocks.mutate).not.toHaveBeenCalled();
+
+    visibilityState = "visible";
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(mocks.mutate).toHaveBeenCalledOnce();
+
+    unmount();
+    now += 1_000;
+    window.dispatchEvent(new Event("focus"));
+    expect(mocks.mutate).toHaveBeenCalledOnce();
   });
 
   it("resumes active polling without revalidating", () => {

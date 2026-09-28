@@ -10,7 +10,7 @@ import type {
   InlineActivityStep,
 } from "@app/types/assistant/conversation";
 import type { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import { ReasoningEffortSchema } from "@app/types/assistant/models/reasoning";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import type { AgentSkillType } from "@app/types/assistant/skill_configuration";
 import { DbModelIdSchema } from "@app/types/shared/model_id";
@@ -147,7 +147,7 @@ export const AgentModelConfigurationSchema = z.object({
   ),
   modelId: z.custom<ModelIdType>((val) => typeof val === "string"),
   temperature: z.number(),
-  reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
+  reasoningEffort: ReasoningEffortSchema.optional(),
   responseFormat: z.string().optional(),
   metaData: z.record(z.string(), z.unknown()).optional(),
 });
@@ -203,6 +203,7 @@ export const AgentConfigurationBaseSchema = z.object({
   requestedSpaceIds: z.array(z.string()),
   reinforcement: z.enum(AGENT_REINFORCEMENT_MODES).optional(),
   lastReinforcementAnalysisAt: z.string().nullable().optional(),
+  ignoreCreditSpendThresholdAlert: z.boolean().optional(),
   canRead: z.boolean(),
   canEdit: z.boolean(),
   omittedThinking: z.boolean().optional(),

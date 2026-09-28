@@ -1,4 +1,3 @@
-import { mapReasoningEffortToLowHighMax } from "@app/lib/llms/stream/types/configuration";
 import { FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustDeepSeekDeepSeekV41FlashConfig<
@@ -16,9 +15,6 @@ export function WithDustDeepSeekDeepSeekV41FlashConfig<
     static readonly byok = false;
 
     static readonly modelConfig = FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG;
-
-    // V4.1 Flash has no `medium`: fold low/medium/high onto its low/high/max.
-    static readonly configParsers = [mapReasoningEffortToLowHighMax];
   }
 
   return DustDeepSeekDeepSeekV41Flash;

@@ -53,6 +53,22 @@ export interface EnsureSandboxResult<TScope = undefined> {
   scope: TScope;
 }
 
+/**
+ * How far `ensureActive` may go to make a sandbox available. At most one of the two flags may be
+ * set; with neither, it creates, wakes, or recreates as needed.
+ *
+ * - `requireRunning`: use the sandbox only if it is already running: do not create, wake, or
+ *   recreate one. Creating and waking take seconds to minutes, which a caller running inside a
+ *   request cannot wait for.
+ * - `wakeOnly`: use a running sandbox or wake a sleeping one, but never create or recreate one: a
+ *   sandbox this call creates would be marked running before the caller finishes setting it up,
+ *   and any concurrent caller would then use it half-initialized.
+ */
+export type SandboxActivationMode =
+  | { requireRunning?: false; wakeOnly?: false }
+  | { requireRunning: true; wakeOnly?: false }
+  | { requireRunning?: false; wakeOnly: true };
+
 export type SandboxCreateBlob = {
   providerId: string;
   status: SandboxStatus;
@@ -150,6 +166,31 @@ const SANDBOX_OWNER_ENV_VAR_CONTRACT_NAMES = new Set([
   "CONVERSATION_ID",
   "FRAME_ID",
 ]);
+
+/**
+ * @cc [owner:pmilliotte,label:product] outdated-sleeper-recreated-on-wake
+ * A `sleeping` sandbox whose `baseImage`/`version` differs from the current
+ * sandbox image MUST be recreated on the current image instead of being woken.
+ * `running` and `pending_approval` sandboxes MUST NOT be recreated for being
+ * outdated. When the current image cannot be resolved, the sandbox MUST be
+ * woken as before.
+ */
+function isSleepingOnOutdatedImage(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): boolean {
+  if (sandbox.status !== "sleeping") {
+    return false;
+  }
+  const imageResult = getSandboxImage(auth);
+  const imageId = imageResult.isOk() ? imageResult.value.imageId : undefined;
+  if (!imageId) {
+    return false;
+  }
+  return (
+    sandbox.baseImage !== imageId.imageName || sandbox.version !== imageId.tag
+  );
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
@@ -745,6 +786,16 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   /**
+   * @cc [owner:davidebbo,label:concurrency] wake-only-never-creates
+   * With `opts.wakeOnly`, a running sandbox MUST be returned and a sleeping one woken, and the call
+   * MUST NOT create or recreate a sandbox: a missing, deleted, or kill-requested sandbox, a
+   * sleeping one on an outdated image, or a sleeping one that fails to wake, MUST fail with
+   * `SandboxNotRunningError` and leave the stored sandbox untouched, so the next full ensure
+   * recreates an outdated one as `outdated-sleeper-recreated-on-wake` requires. A
+   * `pending_approval` sandbox that fails to wake keeps its own error, as it does without
+   * `wakeOnly`, since it is never recreated either way.
+   */
+  /**
    * Ensure a running sandbox exists for the given owner.
    *
    * The provider is resolved internally — callers never touch it.
@@ -756,13 +807,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   static async ensureActive<TScope = undefined>(
     auth: Authenticator,
     owner: SandboxCreateOwner<TScope>,
-    opts: {
-      beforeSleep?: SandboxPreSleepCheck;
-      // Use the sandbox only if it is already running: do not create, wake, or recreate one.
-      // Creating and waking take seconds to minutes, which a caller running inside a request
-      // cannot wait for.
-      requireRunning?: boolean;
-    } = {}
+    opts: { beforeSleep?: SandboxPreSleepCheck } & SandboxActivationMode = {}
   ): Promise<Result<EnsureSandboxResult<TScope>, Error>> {
     assert(
       auth.getNonNullableWorkspace().id !== undefined,
@@ -788,31 +833,39 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     // A sandbox that is NOT running never takes the fast path: the error return below preserves
     // requireRunning's contract without touching the lock, since waiting behind an in-flight
     // multi-second wake would defeat the caller's latency bound anyway.
-    if (opts.requireRunning) {
-      const existing = await owner.fetchSandbox();
-      if (
-        !existing ||
-        existing.killRequestedAt !== null ||
-        existing.status !== "running"
-      ) {
-        return new Err(new SandboxNotRunningError());
-      }
+    //
+    // wakeOnly shares the fast path for a running sandbox, and takes the lock below otherwise.
+    //
+    // Only these two modes read the sandbox before the lock: the locked path must re-read it under
+    // the lock anyway, so reading it here for a full ensure would only add a query.
+    const unlockedSnapshot =
+      opts.requireRunning || opts.wakeOnly ? await owner.fetchSandbox() : null;
+    const isUsableWithoutLock =
+      unlockedSnapshot !== null &&
+      unlockedSnapshot.killRequestedAt === null &&
+      unlockedSnapshot.status === "running";
+
+    if (isUsableWithoutLock) {
       // Same touch the locked path performs, so the reaper's inactivity clock keeps running for
       // sandboxes served entirely through the fast path. Throttled internally to one write/30s.
-      await existing.updateLastActivityAt();
+      await unlockedSnapshot.updateLastActivityAt();
       // Resolved outside the lock: this path never creates, wakes, or mints,
       // so the scope parameterizes nothing lifecycle-ordered. requireRunning
-      // callers must therefore have lock-independent (immutable) scope.
+      // and wakeOnly callers must therefore have lock-independent (immutable) scope.
       const fastPathScopeResult = await owner.resolveScope();
       if (fastPathScopeResult.isErr()) {
         return fastPathScopeResult;
       }
       return new Ok({
-        sandbox: existing,
+        sandbox: unlockedSnapshot,
         freshlyCreated: false,
         wokeFromSleep: false,
         scope: fastPathScopeResult.value,
       });
+    }
+
+    if (opts.requireRunning) {
+      return new Err(new SandboxNotRunningError());
     }
 
     return this.withLifecycleLock(owner.lockKey, async (provider) => {
@@ -827,6 +880,17 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       const scope = scopeResult.value;
 
       const existing = await owner.fetchSandbox();
+
+      // Refused here, before the code below creates a missing sandbox or destroys a kill-requested
+      // or outdated one. A deleted or unwakeable sandbox is refused where it would be recreated.
+      if (
+        opts.wakeOnly &&
+        (!existing ||
+          existing.killRequestedAt !== null ||
+          isSleepingOnOutdatedImage(auth, existing))
+      ) {
+        return new Err(new SandboxNotRunningError());
+      }
 
       if (!existing) {
         const imageResult = getSandboxImage(auth);
@@ -884,13 +948,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       let freshlyCreated = false;
       let wokeFromSleep = false;
 
-      // If a kill was requested, destroy the existing sandbox at the provider
-      // (best-effort) and fall through to recreation. This races with the
-      // reaper's killRequested phase; the lifecycle lock keeps it serialised.
-      if (existing.killRequestedAt && existing.status !== "deleted") {
+      // If a kill was requested, or a sleeper is about to wake on an image
+      // that is no longer the current one, destroy the existing sandbox at the
+      // provider (best-effort) and fall through to recreation. This races with
+      // the reaper's killRequested phase; the lifecycle lock keeps it
+      // serialised.
+      const isOutdatedSleeper = isSleepingOnOutdatedImage(auth, existing);
+      if (
+        (existing.killRequestedAt || isOutdatedSleeper) &&
+        existing.status !== "deleted"
+      ) {
         logger.info(
-          { sandbox: existing.toLogJSON() },
-          "Sandbox has killRequestedAt — destroying and recreating."
+          { sandbox: existing.toLogJSON(), isOutdatedSleeper },
+          "Sandbox has killRequestedAt or an outdated image — destroying and recreating."
         );
         // Best-effort pre-destroy flush. Unlike the reaper's kill sweep this
         // PROCEEDS on failure: this branch is the user-facing
@@ -959,13 +1029,16 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           if (wakeResult.isErr()) {
             // The sandbox may have been killed by the provider (e.g. lifetime
             // expired). Fall through to recreation instead of propagating the
-            // error.
+            // error; a wake-only caller refuses it there, leaving recreation
+            // to the next full ensure.
             logger.error(
               {
                 sandbox: existing.toLogJSON(),
                 error: wakeResult.error.message,
               },
-              "Failed to wake sandbox — will recreate"
+              opts.wakeOnly
+                ? "Failed to wake sandbox — leaving recreation to the next access"
+                : "Failed to wake sandbox — will recreate"
             );
           } else {
             wokeFromSleep = true;
@@ -976,6 +1049,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         // Falls through to recreation when wake fails.
 
         case "deleted": {
+          if (opts.wakeOnly) {
+            return new Err(new SandboxNotRunningError());
+          }
           const imageResult = getSandboxImage(auth);
           if (imageResult.isErr()) {
             return imageResult;

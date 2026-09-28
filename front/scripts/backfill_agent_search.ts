@@ -1,4 +1,3 @@
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { Logger } from "@app/logger/logger";
@@ -11,21 +10,10 @@ async function backfillWorkspace(
   { execute, logger }: { execute: boolean; logger: Logger }
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const agents = await getAgentConfigurationsForView({
-    auth,
-    agentsGetView: "admin_internal",
-    variant: "light",
-    dangerouslySkipPermissionFiltering: true,
+  const agents = await AgentResource.listByWorkspace(auth, {
+    status: ["active", "archived"],
   });
-  // The activity skips them anyway; filtering here keeps the reported counts honest.
-  const agentIds = agents
-    .filter(
-      (agent) =>
-        agent.scope !== "global" &&
-        agent.status !== "draft" &&
-        agent.status !== "pending"
-    )
-    .map((agent) => agent.sId);
+  const agentIds = agents.map((agent) => agent.sId);
 
   if (execute) {
     await AgentResource.launchSearchIndexation(auth, agentIds);

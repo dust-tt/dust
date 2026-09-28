@@ -1,9 +1,11 @@
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
+import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/assistant/recent_authors", () => ({
@@ -53,11 +55,16 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/tags", () => {
       "Protected tags cannot be added or removed."
     );
 
-    const tags = await TagResource.listForAgent(
-      await Authenticator.internalAdminForWorkspace(workspace.sId),
-      agent.id
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
     );
-    expect(tags?.some((t) => t.sId === protectedTag.sId)).toBe(false);
+    const agentResource = await AgentResource.fetchById(
+      internalAdminAuth,
+      agent.sId
+    );
+    assert(agentResource);
+    const tags = await agentResource.listTags(internalAdminAuth);
+    expect(tags.some((t) => t.sId === protectedTag.sId)).toBe(false);
   });
 
   it("allows adding a protected tag once the publish:agent capability is granted", async () => {

@@ -1,11 +1,11 @@
 import type {
   CategoryFilter,
   FilterOptionBase,
-} from "@app/components/workspace/analytics/filterPanel/filterState";
+} from "@app/components/shared/filter_panel/filterState";
 import {
   filterSelectionCount,
   getFilterSummaries,
-} from "@app/components/workspace/analytics/filterPanel/filterState";
+} from "@app/components/shared/filter_panel/filterState";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import type {
   TriggerExecutionMode,

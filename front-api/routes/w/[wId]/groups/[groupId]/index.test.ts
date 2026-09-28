@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -100,5 +101,93 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
 
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("group_not_found");
+  });
+
+  it("replaces managers without changing a provisioned group's members", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "group_management");
+    const alice = await UserFactory.basic();
+    const bob = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, alice, { role: "user" });
+    await MembershipFactory.associate(workspace, bob, { role: "user" });
+    const group = await GroupFactory.provisioned(workspace, "Engineering");
+
+    const first = await patchGroupRequest(workspace.sId, group.sId, {
+      managerIds: [alice.sId],
+    });
+    expect(first.status).toBe(200);
+    expect(
+      (await first.json()).managers.map((u: { sId: string }) => u.sId)
+    ).toEqual([alice.sId]);
+
+    const second = await patchGroupRequest(workspace.sId, group.sId, {
+      managerIds: [bob.sId],
+    });
+    expect(second.status).toBe(200);
+    const body = await (await getGroupRequest(workspace.sId, group.sId)).json();
+    expect(body.managers.map((u: { sId: string }) => u.sId)).toEqual([bob.sId]);
+    expect(body.members).toEqual([]);
+
+    const cleared = await patchGroupRequest(workspace.sId, group.sId, {
+      managerIds: [],
+    });
+    expect(cleared.status).toBe(200);
+    expect((await cleared.json()).managers).toEqual([]);
+  });
+
+  it("rejects inactive managers and mixed updates before changing assignments", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "group_management");
+    const alice = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, alice, { role: "user" });
+    const outsider = await UserFactory.basic();
+    const group = await GroupFactory.regularManual(workspace, "Sales");
+    await GroupFactory.withMembers(auth, group, [alice]);
+
+    const invalid = await patchGroupRequest(workspace.sId, group.sId, {
+      managerIds: [alice.sId, outsider.sId],
+    });
+    expect(invalid.status).toBe(400);
+
+    const mixed = await patchGroupRequest(workspace.sId, group.sId, {
+      managerIds: [alice.sId],
+      name: "New Sales",
+    });
+    expect(mixed.status).toBe(400);
+    const body = await (await getGroupRequest(workspace.sId, group.sId)).json();
+    expect(body.group.name).toBe("Sales");
+    expect(body.managers).toEqual([]);
+  });
+
+  it("keeps assignments admin-only and behind the feature flag", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const group = await GroupFactory.provisioned(workspace, "Engineering");
+    const alice = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, alice, { role: "user" });
+
+    const disabled = await patchGroupRequest(workspace.sId, group.sId, {
+      managerIds: [alice.sId],
+    });
+    expect(disabled.status).toBe(403);
+
+    await FeatureFlagFactory.basic(auth, "group_management");
+    await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "manager",
+      workspace,
+    });
+    const manager = await patchGroupRequest(workspace.sId, group.sId, {
+      managerIds: [alice.sId],
+    });
+    expect(manager.status).toBe(403);
   });
 });

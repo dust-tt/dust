@@ -149,7 +149,7 @@ function createMockAuthenticator(): Authenticator {
     _user: mockUser,
     _subscription: null,
     _role: "admin",
-    _groupModelIds: [],
+    _requestedGroupModelIds: null,
     _authMethod: "internal",
   } as unknown as Authenticator;
 }

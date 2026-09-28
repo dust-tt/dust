@@ -23,6 +23,7 @@ import {
   SandboxFunctionResource,
 } from "@app/lib/resources/sandbox_function_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { FramePublicationModel } from "@app/lib/resources/storage/models/frame_publication";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -1153,5 +1154,54 @@ describe("publishFramePublication", () => {
       deletion.isErr() ? deletion.error.message : undefined
     ).toBe(true);
     await expect(FileResource.fetchById(auth, frame.sId)).resolves.toBeNull();
+  });
+});
+
+describe("frame_publications rows", () => {
+  async function listPublicationRows(frame: FileResource) {
+    return FramePublicationModel.findAll({
+      where: { workspaceId: frame.workspaceId, fileId: frame.id },
+    });
+  }
+
+  it("records a row for the stored publication and its publisher", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const stored = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+
+    const rows = await listPublicationRows(frame);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      publicationId: stored.value.publicationId,
+      publishedByUserId: auth.getNonNullableUser().id,
+    });
+  });
+
+  it("commits the row before writing any publication object", async () => {
+    const { auth, frame } = await setupFrame();
+    fileStorageMock.setFileSaveFails(() => true);
+
+    await expect(
+      storeFramePublication(auth, {
+        frame,
+        functionArtifacts: [],
+        manifest,
+        sourceFiles,
+        uiBundleCode,
+      })
+    ).rejects.toThrow("Simulated GCS write failure");
+
+    expect(await listPublicationRows(frame)).toHaveLength(1);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 });

@@ -54,6 +54,7 @@ export const AUDIT_ACTIONS = [
   "membership.pool_cap_override_expired",
   "group.advanced_model_access_updated",
   "group.granted_seat_type_updated",
+  "group.managers_updated",
   "group.member_added",
   "group.member_removed",
   "group.spend_limit_updated",
@@ -75,6 +76,7 @@ export const AUDIT_ACTIONS = [
   "dust_mcp_server.settings_updated",
   "mcp_connection.created",
   "mcp_connection.deleted",
+  "mcp_server.tool_settings_updated",
   // Skill import GitHub connection.
   "skill_import_github_connection.created",
   "skill_import_github_connection.deleted",

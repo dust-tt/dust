@@ -1,4 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { TagModel } from "@app/lib/models/tags";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -95,6 +98,110 @@ describe("TagResource", () => {
       );
 
       expect(tags).toEqual([]);
+    });
+  });
+
+  describe("delete", () => {
+    it("soft-deletes the tag and hides it from every read", async () => {
+      const tag = await TagFactory.create(workspace, { name: "to-delete" });
+      const { sId } = tag;
+
+      const result = await tag.delete(authenticator);
+      expect(result.isOk()).toBe(true);
+
+      expect(await TagResource.fetchById(authenticator, sId)).toBeNull();
+      expect(
+        await TagResource.findByName(authenticator, "to-delete")
+      ).toBeNull();
+      expect(await TagResource.findAll(authenticator)).toEqual([]);
+    });
+
+    it("stops surfacing a deleted tag on agents without creating a new version", async () => {
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const tag = await TagFactory.create(workspace, { name: "agent-tag" });
+      await TagFactory.addToAgent(authenticator, tag, agent);
+
+      const before = await TagResource.listForAgentVersion(
+        authenticator,
+        agent.sId,
+        agent.version
+      );
+      expect(before.map((t) => t.sId)).toEqual([tag.sId]);
+
+      const result = await tag.delete(authenticator);
+      expect(result.isOk()).toBe(true);
+
+      // No new version: the agent is untouched, the soft-deleted tag is just excluded from reads.
+      const current = await AgentResource.fetchById(authenticator, agent.sId);
+      expect(current).not.toBeNull();
+      expect(current!.currentVersion).toBe(agent.version);
+
+      const currentTags = await TagResource.listForAgentVersion(
+        authenticator,
+        agent.sId,
+        agent.version
+      );
+      expect(currentTags).toEqual([]);
+    });
+
+    it("excludes a deleted tag from the batch agent listing", async () => {
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const kept = await TagFactory.create(workspace, { name: "kept" });
+      const deleted = await TagFactory.create(workspace, { name: "deleted" });
+      await TagFactory.addToAgent(authenticator, kept, agent);
+      await TagFactory.addToAgent(authenticator, deleted, agent);
+
+      const result = await deleted.delete(authenticator);
+      expect(result.isOk()).toBe(true);
+
+      const tagsPerAgent = await TagResource.listForAgents(authenticator, [
+        agent.id,
+      ]);
+      expect(tagsPerAgent[agent.id].map((t) => t.sId)).toEqual([kept.sId]);
+    });
+  });
+
+  describe("deleteAllForWorkspace", () => {
+    it("hard-deletes every tag and its tag_agents links", async () => {
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const tag = await TagFactory.create(workspace, { name: "to-scrub" });
+      await TagFactory.addToAgent(authenticator, tag, agent);
+      const deleted = await TagFactory.create(workspace, { name: "gone" });
+      await deleted.delete(authenticator);
+
+      await TagResource.deleteAllForWorkspace(authenticator);
+
+      // Rows are permanently removed, including the already soft-deleted one.
+      expect(
+        await TagModel.findAll({
+          where: { workspaceId: workspace.id },
+          includeDeleted: true,
+        })
+      ).toEqual([]);
+      expect(
+        await TagAgentModel.count({ where: { workspaceId: workspace.id } })
+      ).toBe(0);
+    });
+  });
+
+  describe("makeNew", () => {
+    it("restores a soft-deleted tag when its name is recreated", async () => {
+      const tag = await TagFactory.create(workspace, { name: "reused" });
+      const { sId } = tag;
+      await tag.delete(authenticator);
+      expect(await TagResource.fetchById(authenticator, sId)).toBeNull();
+
+      const recreated = await TagResource.makeNew(authenticator, {
+        name: "reused",
+        kind: "standard",
+      });
+
+      // The same row is undeleted rather than a duplicate inserted.
+      expect(recreated.sId).toBe(sId);
+      expect(await TagResource.fetchById(authenticator, sId)).not.toBeNull();
     });
   });
 });

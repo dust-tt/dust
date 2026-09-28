@@ -9,6 +9,7 @@ import homepageUseCases from "./homepage_use_cases";
 import mentions from "./mentions";
 import ongoingAgentLoops from "./ongoing-agent-loops";
 import skills from "./skills";
+import suggestionBatches from "./suggestion_batches";
 
 // Mounted at /api/w/:wId/assistant.
 const app = workspaceApp();
@@ -22,5 +23,6 @@ app.route("/homepage_use_cases", homepageUseCases);
 app.route("/mentions", mentions);
 app.route("/ongoing-agent-loops", ongoingAgentLoops);
 app.route("/skills", skills);
+app.route("/suggestion_batches", suggestionBatches);
 
 export default app;

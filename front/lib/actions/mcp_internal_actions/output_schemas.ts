@@ -795,6 +795,9 @@ const NotificationInteractiveContentFileContentSchema = z.object({
   mimeType: z.string(),
   title: z.string(),
   updatedAt: z.string(),
+  // When false, refresh an already-open Frame panel but do not steal focus from
+  // another panel (e.g. file explorer). Omitted / true = open as today.
+  autoOpen: z.boolean().optional(),
 });
 
 type InteractiveContentFileContentProgressOutput = z.infer<

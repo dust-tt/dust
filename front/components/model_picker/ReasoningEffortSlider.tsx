@@ -1,9 +1,14 @@
 import type { EffortStop } from "@app/components/model_picker/modelPickerUtils";
 import { getEffortStopTooltip } from "@app/components/model_picker/modelPickerUtils";
 import { classNames } from "@app/lib/utils";
+import { REASONING_EFFORT_LABELS } from "@app/types/assistant/models/reasoning";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { SliderSteps } from "@dust-tt/sparkle";
-import capitalize from "lodash/capitalize";
+
+// The picker is too narrow to label more stops than this: beyond it, only the
+// ends and the selected stop are labelled, and every other stop names itself in
+// its step tooltip.
+const MAX_LABELLED_STOPS = 3;
 
 interface ReasoningEffortSliderProps {
   stops: EffortStop[];
@@ -11,11 +16,10 @@ interface ReasoningEffortSliderProps {
   onChange: (effort: ReasoningEffort) => void;
 }
 
-// A stepped slider for reasoning effort. It always shows the three canonical
-// levels (Light/Medium/High). Unsupported efforts render with a slash; efforts
-// outside the member's access render with a padlock. Both are skipped when
-// snapping. When at most one level is selectable there is nothing to choose,
-// so the whole slider is disabled.
+// A stepped slider over the efforts a model supports. Efforts outside the
+// member's access render with a padlock and are skipped when snapping. When at
+// most one level is selectable there is nothing to choose, so the whole slider
+// is disabled.
 export function ReasoningEffortSlider({
   stops,
   value,
@@ -26,13 +30,7 @@ export function ReasoningEffortSlider({
     0
   );
   const lockedSteps = stops.flatMap((stop, index) =>
-    stop.unavailabilityReason !== null &&
-    stop.unavailabilityReason !== "unsupported"
-      ? [index]
-      : []
-  );
-  const unavailableSteps = stops.flatMap((stop, index) =>
-    stop.unavailabilityReason === "unsupported" ? [index] : []
+    stop.unavailabilityReason !== null ? [index] : []
   );
   const lastIndex = Math.max(stops.length - 1, 1);
   const availableStops = stops.filter(
@@ -40,6 +38,7 @@ export function ReasoningEffortSlider({
   );
   // With a single (or no) selectable level there is nothing to slide.
   const isDisabled = availableStops.length <= 1;
+  const labelsEveryStop = stops.length <= MAX_LABELLED_STOPS;
 
   const selectStop = (stop: EffortStop) => {
     if (
@@ -62,9 +61,12 @@ export function ReasoningEffortSlider({
         stepCount={stops.length}
         value={valueIndex}
         lockedSteps={lockedSteps}
-        unavailableSteps={unavailableSteps}
         disabled={isDisabled}
-        stepTooltips={stops.map(getEffortStopTooltip)}
+        stepTooltips={stops.map(
+          (stop) =>
+            getEffortStopTooltip(stop) ??
+            (labelsEveryStop ? null : REASONING_EFFORT_LABELS[stop.effort])
+        )}
         onChange={(index) => {
           const next = stops[index];
           if (next) {
@@ -78,6 +80,14 @@ export function ReasoningEffortSlider({
         {stops.map((stop, index) => {
           const isFirst = index === 0;
           const isLast = index === stops.length - 1;
+          if (
+            !labelsEveryStop &&
+            !isFirst &&
+            !isLast &&
+            stop.effort !== value
+          ) {
+            return null;
+          }
           const buttonDisabled =
             stop.unavailabilityReason !== null || isDisabled;
           return (
@@ -106,7 +116,7 @@ export function ReasoningEffortSlider({
                     : "translateX(-50%)",
               }}
             >
-              {capitalize(stop.effort)}
+              {REASONING_EFFORT_LABELS[stop.effort]}
             </button>
           );
         })}

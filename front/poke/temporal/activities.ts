@@ -34,6 +34,7 @@ import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
@@ -360,6 +361,8 @@ export async function deleteAgentsActivity({
   });
 
   await AgentSuggestionResource.deleteAllForWorkspace(auth);
+  // Skill suggestions are deleted by `deleteSkillsActivity`, which runs before this one.
+  await BatchSuggestionResource.deleteAllForWorkspace(auth);
 
   await GlobalAgentSettingsModel.destroy({
     where: {
@@ -904,10 +907,7 @@ export async function deleteTagsActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const tags = await TagResource.findAll(auth);
-  for (const tag of tags) {
-    await tag.delete(auth);
-  }
+  await TagResource.deleteAllForWorkspace(auth);
 }
 
 export async function deleteWorkspaceUserMetadataActivity({

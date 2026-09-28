@@ -174,6 +174,7 @@ const API_ERROR_TYPES = [
   "project_metadata_not_found",
   // Suggestions
   "agent_suggestion_not_found",
+  "batch_suggestion_not_found",
   // Wake-ups
   "wakeup_not_found",
 ] as const;

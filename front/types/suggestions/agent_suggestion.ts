@@ -1,9 +1,10 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
-import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import { ReasoningEffortSchema } from "@app/types/assistant/models/reasoning";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewType } from "@app/types/data_source_view";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
 export const AGENT_SUGGESTION_KINDS = [
@@ -21,6 +22,31 @@ export const AGENT_SUGGESTION_KINDS = [
 ] as const;
 
 export type AgentSuggestionKind = (typeof AGENT_SUGGESTION_KINDS)[number];
+
+export type SuggestionAction = "create" | "edit" | "delete";
+
+export function getAgentSuggestionAction(
+  kind: AgentSuggestionKind
+): SuggestionAction {
+  switch (kind) {
+    case "create":
+      return "create";
+    case "delete":
+      return "delete";
+    case "description":
+    case "instructions":
+    case "knowledge":
+    case "model":
+    case "name":
+    case "scope":
+    case "skills":
+    case "sub_agent":
+    case "tools":
+      return "edit";
+    default:
+      return assertNever(kind);
+  }
+}
 
 export const AGENT_SUGGESTION_STATES = [
   "pending",
@@ -78,7 +104,7 @@ const InstructionsSuggestionSchema = z.object({
 
 const ModelSuggestionSchema = z.object({
   modelId: z.enum(MODEL_IDS),
-  reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
+  reasoningEffort: ReasoningEffortSchema.optional(),
 });
 
 const CreateSuggestionSchema = z.object({
@@ -220,11 +246,15 @@ const BaseAgentSuggestionSchema = z.object({
   sId: z.string(),
   createdAt: z.number(),
   updatedAt: z.number(),
+  // TODO(conversational-building): drop `agentConfigurationId`, a model id, in favor of `agentId`.
   agentConfigurationId: z.number(),
+  // The sId of the agent the suggestion targets.
+  agentId: z.string(),
   analysis: z.string().nullable(),
   state: z.enum(AGENT_SUGGESTION_STATES),
   source: z.enum(AGENT_SUGGESTION_SOURCES),
   conversationId: z.string().nullable(),
+  batchId: z.string().nullable(),
 });
 
 export const AgentSuggestionSchema = BaseAgentSuggestionSchema.and(

@@ -936,7 +936,7 @@
  *               type: number
  *             reasoningEffort:
  *               type: string
- *               enum: [none, light, medium, high]
+ *               enum: [none, minimal, low, medium, high, xhigh, maximal]
  *         maxStepsPerRun:
  *           type: integer
  *         tags:
@@ -961,6 +961,9 @@
  *           type: array
  *           items:
  *             type: string
+ *         ignoreCreditSpendThresholdAlert:
+ *           type: boolean
+ *           description: Whether the agent keeps running past the workspace credit spend threshold alert
  *         canRead:
  *           type: boolean
  *         canEdit:

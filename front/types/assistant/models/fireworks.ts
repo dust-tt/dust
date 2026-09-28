@@ -50,9 +50,12 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   // https://api-docs.deepseek.com/guides/thinking_mode
   supportedReasoningEfforts: {
     none: true,
-    light: false,
+    minimal: false,
+    low: false,
     medium: false,
     high: false,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
@@ -83,16 +86,17 @@ export const FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_CONFIG: ModelConfigurationTy
     isLatest: false,
     generationTokensCount: 64_000,
     supportsVision: false,
-    // No native `medium`; `mapReasoningEffortToLowHighMax` folds our ladder on.
     supportedReasoningEfforts: {
       none: true,
-      light: true,
+      minimal: false,
+      low: true,
       medium: true,
       high: true,
+      xhigh: false,
+      maximal: false,
     },
-    defaultReasoningEffort: "light",
+    defaultReasoningEffort: "low",
     // Native thinking at `light`, so no chain-of-thought meta prompt.
-    useNativeLightReasoning: true,
     supportsResponseFormat: true,
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
@@ -124,17 +128,18 @@ export const FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG: ModelConfigurationType 
     generationTokensCount: 64_000,
     supportsVision: true,
     // DeepSeek documents low/high/max + disabled, all confirmed live on
-    // 2026-09-11 (https://api-docs.deepseek.com/guides/thinking_mode/). No
-    // native `medium`; `mapReasoningEffortToLowHighMax` folds our ladder on.
+    // 2026-09-11 (https://api-docs.deepseek.com/guides/thinking_mode/).
     supportedReasoningEfforts: {
       none: true,
-      light: true,
-      medium: true,
+      minimal: false,
+      low: true,
+      medium: false,
       high: true,
+      xhigh: false,
+      maximal: true,
     },
-    defaultReasoningEffort: "light",
+    defaultReasoningEffort: "high",
     // Native thinking at `light`, so no chain-of-thought meta prompt.
-    useNativeLightReasoning: true,
     supportsResponseFormat: true,
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
@@ -166,11 +171,14 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   supportedReasoningEfforts: {
     none: true,
-    light: false,
+    minimal: false,
+    low: false,
     medium: false,
-    high: false,
+    high: true,
+    xhigh: false,
+    maximal: true,
   },
-  defaultReasoningEffort: "none",
+  defaultReasoningEffort: "high",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -207,17 +215,19 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_0813_MODEL_CONFIG: ModelConfigurationType
     supportsVision: false,
     // DeepSeek documents low/high/max for Pro, identically to V4 Flash
     // (https://api-docs.deepseek.com/guides/thinking_mode/); all three
-    // confirmed live on 2026-09-07. `mapReasoningEffortToLowHighMax` folds our
-    // ladder on. No `none` rung, as on Kimi K3 and GLM-5.3 Flash.
+    // confirmed live on 2026-09-07. No `none` rung, as on Kimi K3 and GLM-5.3
+    // Flash.
     supportedReasoningEfforts: {
       none: false,
-      light: true,
+      minimal: false,
+      low: true,
       medium: true,
       high: true,
+      xhigh: false,
+      maximal: false,
     },
-    defaultReasoningEffort: "light",
+    defaultReasoningEffort: "low",
     // Native thinking at `light`, so no chain-of-thought meta prompt.
-    useNativeLightReasoning: true,
     supportsResponseFormat: true,
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
@@ -241,12 +251,15 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 2048,
   supportsVision: false,
   supportedReasoningEfforts: {
-    none: false,
-    light: true,
+    none: true,
+    minimal: false,
+    low: false,
     medium: false,
     high: false,
+    xhigh: false,
+    maximal: false,
   },
-  defaultReasoningEffort: "light",
+  defaultReasoningEffort: "none",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
@@ -271,11 +284,14 @@ export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   supportedReasoningEfforts: {
     none: true,
-    light: true,
+    minimal: false,
+    low: false,
     medium: true,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
-  defaultReasoningEffort: "light",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -305,11 +321,14 @@ export const FIREWORKS_KIMI_K2P6_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   supportedReasoningEfforts: {
     none: true,
-    light: true,
+    minimal: false,
+    low: false,
     medium: true,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
-  defaultReasoningEffort: "light",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -344,15 +363,15 @@ export const FIREWORKS_KIMI_K3_MODEL_CONFIG: ModelConfigurationType = {
   // Fireworks as `low`, then `medium`/`high` straight through.
   supportedReasoningEfforts: {
     none: false,
-    light: true,
-    // K3 has no native `medium`; the `mapReasoningEffortToLowHighMax` config
-    // parser folds it onto `high`.
-    medium: true,
+    minimal: false,
+    low: true,
+    medium: false,
     high: true,
+    xhigh: false,
+    maximal: true,
   },
-  defaultReasoningEffort: "light",
+  defaultReasoningEffort: "maximal",
   // Native thinking at `light`, so no chain-of-thought meta prompt.
-  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -377,12 +396,15 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 2048,
   supportsVision: false,
   supportedReasoningEfforts: {
-    none: false,
-    light: true,
+    none: true,
+    minimal: false,
+    low: false,
     medium: true,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
-  defaultReasoningEffort: "light",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -412,9 +434,12 @@ export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   supportedReasoningEfforts: {
     none: false,
-    light: false,
+    minimal: false,
+    low: false,
     medium: false,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
   defaultReasoningEffort: "high",
   supportsResponseFormat: true,
@@ -446,17 +471,18 @@ export const FIREWORKS_GLM_5P3_MODEL_CONFIG: ModelConfigurationType = {
   // GLM-5.3 is text-only; visual understanding lives in GLM-5.3 Flash.
   supportsVision: false,
   // GLM-5.3 documents low/high/max with thinking always enabled, so there is no
-  // `none` tier. Dust maps light/medium/high onto those native efforts in the
-  // llms layer.
+  // `none` tier.
   supportedReasoningEfforts: {
     none: false,
-    light: true,
-    medium: true,
+    minimal: false,
+    low: true,
+    medium: false,
     high: true,
+    xhigh: false,
+    maximal: true,
   },
-  defaultReasoningEffort: "high",
+  defaultReasoningEffort: "maximal",
   // Native thinking at `light`, so no chain-of-thought meta prompt.
-  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -491,12 +517,14 @@ export const FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   // those native efforts in the llms layer; thinking cannot be disabled.
   supportedReasoningEfforts: {
     none: false,
-    light: true,
-    medium: true,
+    minimal: false,
+    low: true,
+    medium: false,
     high: true,
+    xhigh: false,
+    maximal: true,
   },
-  defaultReasoningEffort: "light",
-  useNativeLightReasoning: true,
+  defaultReasoningEffort: "maximal",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -521,12 +549,15 @@ export const FIREWORKS_GLM_5_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 2048,
   supportsVision: false,
   supportedReasoningEfforts: {
-    none: false,
-    light: true,
+    none: true,
+    minimal: false,
+    low: false,
     medium: true,
     high: true,
+    xhigh: false,
+    maximal: false,
   },
-  defaultReasoningEffort: "light",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -561,15 +592,15 @@ export const FIREWORKS_INKLING_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 64_000,
   supportsVision: true,
   supportedReasoningEfforts: {
-    // Fireworks accepts `none` as the lowest effort, but Inkling still emits a
-    // reasoning trace at that level, so Dust does not present it as disabled.
-    none: false,
-    light: true,
+    none: true,
+    minimal: false,
+    low: true,
     medium: true,
     high: true,
+    xhigh: true,
+    maximal: true,
   },
   defaultReasoningEffort: "high",
-  useNativeLightReasoning: true,
   // Fireworks documents JSON-schema response formats, confirmed live for
   // Inkling on 2026-08-14:
   // https://docs.fireworks.ai/structured-responses/structured-response-formatting

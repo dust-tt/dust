@@ -405,7 +405,10 @@ describe("getJITServers", () => {
       const skill = await SkillFactory.create(auth, {
         name: "Conversation Enabled Agent Skill",
       });
-      await skill.addToAgent(auth, agentConfig);
+      await SkillFactory.linkToAgent(auth, {
+        skillId: skill.id,
+        agentConfigurationId: agentConfig.id,
+      });
       const res = await skill.upsertToConversation(auth, {
         conversationId: conversation.id,
         enabled: true,
@@ -701,7 +704,10 @@ describe("getJITServers", () => {
         globalSkillId: "discover_tools",
         agentConfigurationId: agentConfig.id,
       });
-      await agentSkill.addToAgent(auth, agentConfig);
+      await SkillFactory.linkToAgent(auth, {
+        skillId: agentSkill.id,
+        agentConfigurationId: agentConfig.id,
+      });
       await enabledOnlySkill.enableForAgent(auth, {
         agentConfiguration: agentConfig,
         conversation: projectConversation,

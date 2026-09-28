@@ -9,7 +9,11 @@ import type {
   UserMessageContext,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import type { ResolvedRequestedModel } from "@app/types/assistant/models/types";
+import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import type {
+  ReasoningEffort,
+  ResolvedRequestedModel,
+} from "@app/types/assistant/models/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetFeatureFlags, mockRateLimiter, mockGetEnabledModels } =
@@ -99,7 +103,7 @@ function makeEnabledModels(
   models: {
     providerId: string;
     modelId: string;
-    efforts: ("none" | "light" | "medium" | "high")[];
+    efforts: ReasoningEffort[];
   }[]
 ) {
   return models.map(({ providerId, modelId, efforts }) => ({
@@ -107,12 +111,12 @@ function makeEnabledModels(
     modelId,
     isSelectable: true,
     defaultReasoningEffort: efforts[0],
-    supportedReasoningEfforts: {
-      none: efforts.includes("none"),
-      light: efforts.includes("light"),
-      medium: efforts.includes("medium"),
-      high: efforts.includes("high"),
-    },
+    supportedReasoningEfforts: Object.fromEntries(
+      ORDERED_REASONING_EFFORTS.map((effort) => [
+        effort,
+        efforts.includes(effort),
+      ])
+    ),
   }));
 }
 

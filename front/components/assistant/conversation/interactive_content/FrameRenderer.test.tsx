@@ -30,16 +30,21 @@ const mocks = vi.hoisted(() => ({
   hasFrameFunctions: false,
   isFrameAuthor: true,
   isMobile: false,
+  /** Incremented on every iframe mount (React key change). */
+  iframeMounts: 0,
   mutateFileContent: vi.fn(),
 }));
 
 vi.mock(
   "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe",
   async () => {
-    const { forwardRef } =
+    const { forwardRef, useEffect } =
       await vi.importActual<typeof import("react")>("react");
     return {
       AuthenticatedVisualizationActionIframe: forwardRef((props, _ref) => {
+        useEffect(() => {
+          mocks.iframeMounts += 1;
+        }, []);
         mocks.iframe(props);
         return null;
       }),
@@ -109,6 +114,7 @@ vi.mock("@app/lib/swr/files", () => ({
   useFileContent: () => ({
     fileContent: "export default function Frame() {}",
     error: null,
+    isFileContentLoading: false,
     mutateFileContent: mocks.mutateFileContent,
   }),
   useFileContentByUrl: () => ({
@@ -195,6 +201,7 @@ afterEach(() => {
   mocks.hasFrameFunctions = false;
   mocks.isFrameAuthor = true;
   mocks.isMobile = false;
+  mocks.iframeMounts = 0;
 });
 
 describe("FrameRenderer", () => {
@@ -358,6 +365,43 @@ describe("FrameRenderer", () => {
     );
   });
 
+  it("remounts the viz iframe when contentHash changes", () => {
+    const { rerender } = render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        contentHash="frame_1@42"
+        renderMode="v2"
+      />
+    );
+
+    // Identifier stays stable (avoids Next.js /content URL thrash); remount is
+    // driven by React key which includes contentHash.
+    expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization?.identifier).toBe(
+      "viz-frame_1"
+    );
+    expect(mocks.iframeMounts).toBe(1);
+
+    rerender(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        contentHash="frame_1@99"
+        renderMode="v2"
+      />
+    );
+
+    expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization?.identifier).toBe(
+      "viz-frame_1"
+    );
+    // New mount after contentHash change (React key includes contentHash).
+    expect(mocks.iframeMounts).toBe(2);
+  });
+
   it("does not remount the iframe when switching between Preview and Edit", () => {
     render(
       <FrameRenderer
@@ -369,21 +413,18 @@ describe("FrameRenderer", () => {
       />
     );
 
-    const previewCall = mocks.iframe.mock.calls.at(-1)?.[0];
-    expect(previewCall?.visualization?.identifier).toBe("viz-frame_1-0");
-    expect(previewCall?.editModeActive).toBe(false);
+    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.editModeActive).toBe(false);
+    expect(mocks.iframeMounts).toBe(1);
 
     fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
 
-    const editCall = mocks.iframe.mock.calls.at(-1)?.[0];
-    expect(editCall?.visualization?.identifier).toBe("viz-frame_1-0");
-    expect(editCall?.editModeActive).toBe(true);
+    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.editModeActive).toBe(true);
+    expect(mocks.iframeMounts).toBe(1);
 
     fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
 
-    const backCall = mocks.iframe.mock.calls.at(-1)?.[0];
-    expect(backCall?.visualization?.identifier).toBe("viz-frame_1-0");
-    expect(backCall?.editModeActive).toBe(false);
+    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.editModeActive).toBe(false);
+    expect(mocks.iframeMounts).toBe(1);
   });
 
   it("stages v2 edits without publishing until Save", async () => {
@@ -405,7 +446,6 @@ describe("FrameRenderer", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
 
     const lastIframeProps = mocks.iframe.mock.calls.at(-1)?.[0];
-    const identifierBefore = lastIframeProps?.visualization?.identifier;
     const onEditText = lastIframeProps?.onEditText;
     if (!onEditText) {
       throw new Error("Expected Frame v2 to be editable.");
@@ -426,9 +466,8 @@ describe("FrameRenderer", () => {
 
     expect(mocks.batchEditFrameText).not.toHaveBeenCalled();
     expect(mocks.editFrameText).not.toHaveBeenCalled();
-    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier).toBe(
-      identifierBefore
-    );
+    // Staging does not remount the iframe.
+    expect(mocks.iframeMounts).toBe(1);
 
     const saveButton = screen.getByRole("button", { name: "Save" });
     expect(saveButton).toBeEnabled();
@@ -452,10 +491,14 @@ describe("FrameRenderer", () => {
       ]);
     });
 
+    // Save remounts on the published content (contentRevision in the React key) while
+    // the viz identifier stays stable.
     await waitFor(() => {
+      expect(mocks.iframeMounts).toBe(2);
       expect(
         mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier
-      ).toBe("viz-frame_1-1");
+      ).toBe("viz-frame_1");
+      expect(mocks.iframe.mock.calls.at(-1)?.[0]?.editModeActive).toBe(false);
     });
     expect(mocks.mutateFileContent).toHaveBeenCalled();
     expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute(

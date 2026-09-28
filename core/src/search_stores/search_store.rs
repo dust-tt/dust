@@ -396,7 +396,7 @@ impl SearchStore for ElasticsearchSearchStore {
 
         let search_duration = utils::now() - search_start;
         info!(
-            duration = search_duration,
+            duration_ms = search_duration,
             data_source_id = data_source_id,
             data_source_filter = data_source_filter.as_ref().map(|v| v.join(", ")),
             parent_id = parent_id_log,
@@ -450,7 +450,7 @@ impl SearchStore for ElasticsearchSearchStore {
         let compute_node_start = utils::now();
         let result = self.process_search_nodes_results(items, store).await?;
         info!(
-            duration = utils::now() - compute_node_start,
+            duration_ms = utils::now() - compute_node_start,
             data_source_id = data_source_id,
             data_source_filter = data_source_filter.as_ref().map(|v| v.join(", ")),
             parent_id = parent_id_log,
@@ -1121,7 +1121,7 @@ impl ElasticsearchSearchStore {
         let children_count_map = store.count_nodes_children(&nodes).await?;
         let count_duration = utils::now() - count_start;
         info!(
-            duration = count_duration,
+            duration_ms = count_duration,
             "[ElasticsearchSearchStore] Count children duration"
         );
 
@@ -1350,7 +1350,7 @@ impl ElasticsearchSearchStore {
         match response.status_code().is_success() {
             true => {
                 info!(
-                    duration = utils::now() - now,
+                    duration_ms = utils::now() - now,
                     document_id = doc.unique_id(),
                     "[ElasticsearchSearchStore] Indexed {}",
                     doc.document_type()
@@ -1361,7 +1361,7 @@ impl ElasticsearchSearchStore {
                 let error = response.json::<serde_json::Value>().await?;
                 error!(
                     error = %error,
-                    duration = utils::now() - now,
+                    duration_ms = utils::now() - now,
                     document_id = doc.unique_id(),
                     "[ElasticsearchSearchStore] Failed to index {}",
                     doc.document_type()

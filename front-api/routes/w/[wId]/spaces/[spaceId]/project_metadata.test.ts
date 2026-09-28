@@ -1,6 +1,7 @@
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -82,6 +83,41 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.projectMetadata.description).toBe("New description");
+  });
+
+  it("sets a readable default agent and rejects one the caller cannot read", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const projectSpace = await SpaceFactory.project(workspace);
+    const readableAgent = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      {
+        name: "Readable Agent",
+      }
+    );
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const hiddenAgent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { name: "Hidden Agent", scope: "hidden" }
+    );
+
+    const accepted = await patchMetadata(workspace, projectSpace.sId, {
+      defaultAgentId: readableAgent.sId,
+    });
+    expect(accepted.status).toBe(200);
+
+    const rejected = await patchMetadata(workspace, projectSpace.sId, {
+      defaultAgentId: hiddenAgent.sId,
+    });
+    expect(rejected.status).toBe(400);
+    expect((await rejected.json()).error.type).toBe("invalid_request_error");
+
+    const metadata = await ProjectMetadataResource.fetchBySpace(
+      auth,
+      projectSpace
+    );
+    expect(metadata?.defaultAgentId).toBe(readableAgent.sId);
   });
 
   it("denies non-admin users", async () => {

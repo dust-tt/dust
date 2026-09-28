@@ -23,6 +23,7 @@ import {
   useMCPServers,
   useMCPServersUsage,
   useMutateMCPServersViewsForAdmin,
+  useUpdateMCPToolsSettings,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
@@ -111,6 +112,10 @@ export function MCPServerDetails({
   );
   const { mutate: mutateMCPServersViewsForAdmin } =
     useMutateMCPServersViewsForAdmin(owner);
+  const { updateMCPToolsSettings } = useUpdateMCPToolsSettings({
+    owner,
+    serverId: mcpServerView?.server.sId ?? "",
+  });
   const sendNotification = useSendNotification(true);
   const confirm = useContext(ConfirmContext);
 
@@ -201,36 +206,6 @@ export function MCPServerDetails({
       validateLabel: "Continue",
       validateVariant: "warning",
     });
-  };
-
-  const applyToolChanges = async (
-    toolChanges: Array<{
-      toolName: string;
-      enabled: boolean;
-      permission: string;
-    }>
-  ) => {
-    for (const change of toolChanges) {
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}/tools/${change.toolName}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            permission: change.permission,
-            enabled: change.enabled,
-          }),
-        }
-      );
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(
-          body.error?.message ?? "Failed to update tool settings"
-        );
-      }
-    }
   };
 
   const applySharingChanges = async (
@@ -426,7 +401,18 @@ export function MCPServerDetails({
 
           // Apply tool changes if any.
           if (diff.toolChanges && diff.toolChanges.length > 0) {
-            await applyToolChanges(diff.toolChanges);
+            const updateResult = await updateMCPToolsSettings(diff.toolChanges);
+            if (updateResult.isErr()) {
+              datadogLogger.error(
+                {
+                  error: updateResult.error.message,
+                  serverViewId: mcpServerView.sId,
+                },
+                "[MCP Details] - Tool settings update error"
+              );
+              success = false;
+              return;
+            }
           }
 
           // Apply sharing changes if any.

@@ -4,14 +4,15 @@ import {
   deleteAgentDocument,
   deleteWorkspaceAgentDocuments,
   indexAgentDocument,
+  updateAgentSearchActiveUsers,
 } from "@app/lib/agent_search";
+import { reindexGlobalAgents } from "@app/lib/agent_search/index_global";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { fetchSearchActiveUsers } from "@app/lib/search_usage/usage";
@@ -21,6 +22,7 @@ import {
   indexSkillDocument,
   updateSkillSearchActiveUsers,
 } from "@app/lib/skill_search";
+import { reindexCodeDefinedSkills } from "@app/lib/skill_search/index_code_defined";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -116,9 +118,8 @@ export async function indexSkillSearchActivity({
     withTools: true,
     withFileAttachments: false,
   });
-  // Suggested skills are not indexed: they have only been suggested and are not
-  // ready to be used yet.
-  if (!skill || skill.status === "suggested") {
+  // Suggested and pending skills are not indexed: they are not ready to be used yet.
+  if (!skill || skill.status === "suggested" || skill.status === "pending") {
     return;
   }
 
@@ -194,9 +195,7 @@ export async function indexAgentSearchActivity({
   const skills = await agent.listSkills(auth, {
     permissionFiltering: "redact_unreadable",
   });
-  const tagsByConfigurationId = await TagResource.listForAgents(auth, [
-    agent.agentConfigurationModelId,
-  ]);
+  const tags = await agent.listTags(auth);
   const actionsByConfigurationId = await fetchMCPServerActionConfigurations(
     auth,
     {
@@ -215,8 +214,8 @@ export async function indexAgentSearchActivity({
     ? await UserResource.fetchByModelId(agent.versionAuthorId)
     : null;
 
-  const document = agent.toSearchDocument(auth.getNonNullableWorkspace(), {
-    activeUsersCount: null,
+  const document = agent.toSearchDocument(auth, {
+    activeUsersCount: 0,
     editors: editors ?? [],
     favoriteCount,
     feedbackNegativeCount: feedback.negative,
@@ -228,9 +227,7 @@ export async function indexAgentSearchActivity({
       .filter(isServerSideMCPServerConfiguration)
       .map((action) => action.mcpServerViewId),
     skillIds: skills.map((skill) => skill.sId),
-    tagIds: (tagsByConfigurationId[agent.agentConfigurationModelId] ?? []).map(
-      (tag) => tag.sId
-    ),
+    tagIds: tags.map((tag) => tag.sId),
   });
 
   const result = await indexAgentDocument(document);
@@ -263,6 +260,22 @@ export async function deleteWorkspaceAgentSearchActivity({
   }
 }
 
+export async function reindexCodeDefinedSkillsActivity(): Promise<void> {
+  const result = await reindexCodeDefinedSkills();
+  if (result.isErr()) {
+    throw result.error;
+  }
+  logger.info(result.value, "Code-defined skill search index updated");
+}
+
+export async function reindexGlobalAgentsActivity(): Promise<void> {
+  const result = await reindexGlobalAgents();
+  if (result.isErr()) {
+    throw result.error;
+  }
+  logger.info(result.value, "Global agent search index updated");
+}
+
 export async function listWorkspaceIdsActivity(): Promise<string[]> {
   const workspaces = await WorkspaceResource.listAll("ASC");
   const subscriptions =
@@ -274,15 +287,24 @@ export async function listWorkspaceIdsActivity(): Promise<string[]> {
     .map((workspace) => workspace.sId);
 }
 
+/**
+ * @cc [owner:sfriquet,label:backend;product] search-usage-refresh-coverage
+ * Sets `active_users_count` on the existing search document of every indexed skill and agent of
+ * the workspace (see `searchable-skill-index-projection` and `searchable-agent-index-projection`),
+ * including those the internal admin cannot read. A skill or agent with no usage in the window
+ * MUST be reset to 0. A skill or agent without a search document MUST be skipped, never created.
+ * Any other usage fetch or update failure MUST be thrown so Temporal retries.
+ */
 export async function refreshWorkspaceSearchUsageActivity({
   workspaceId,
 }: {
   workspaceId: string;
 }): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const evaluatedAtMs = Date.now();
   const activeUsers = await fetchSearchActiveUsers(auth, {
     dimension: "skill",
-    evaluatedAtMs: Date.now(),
+    evaluatedAtMs,
   });
   if (activeUsers.isErr()) {
     throw activeUsers.error;
@@ -302,5 +324,24 @@ export async function refreshWorkspaceSearchUsageActivity({
   });
   if (updated.isErr()) {
     throw updated.error;
+  }
+
+  const agentActiveUsers = await fetchSearchActiveUsers(auth, {
+    dimension: "agent",
+    evaluatedAtMs,
+  });
+  if (agentActiveUsers.isErr()) {
+    throw agentActiveUsers.error;
+  }
+  const agents = await AgentResource.listByWorkspace(auth, {
+    status: ["active", "archived"],
+  });
+  const agentsUpdated = await updateAgentSearchActiveUsers({
+    workspaceId,
+    agentIds: agents.map((agent) => agent.sId),
+    activeUsers: agentActiveUsers.value,
+  });
+  if (agentsUpdated.isErr()) {
+    throw agentsUpdated.error;
   }
 }

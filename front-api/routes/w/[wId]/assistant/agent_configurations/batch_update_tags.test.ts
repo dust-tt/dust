@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -31,10 +30,7 @@ async function currentTagIds(
   if (!agent) {
     return [];
   }
-  const tags = await TagResource.listForAgent(
-    auth,
-    agent.agentConfigurationModelId
-  );
+  const tags = await agent.listTags(auth);
   return tags.map((tag) => tag.sId).sort();
 }
 

@@ -34,6 +34,9 @@ pub enum FrameCommand {
     Publish {
         /// Absolute path to a v2 manifest or legacy Frame entry file under /files
         source: PathBuf,
+        /// Legacy Frame entry file this v2 manifest replaces, keeping its ID and share link
+        #[arg(long, value_name = "LEGACY_ENTRY")]
+        replaces: Option<PathBuf>,
     },
 }
 

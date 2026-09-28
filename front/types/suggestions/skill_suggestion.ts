@@ -3,6 +3,8 @@ import {
   SKILL_AVAILABILITIES,
   SKILL_NAME_MAX_LENGTH,
 } from "@app/types/assistant/skill_configuration_constants";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SuggestionAction } from "@app/types/suggestions/agent_suggestion";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { z } from "zod";
 
@@ -64,6 +66,25 @@ export const SKILL_SUGGESTION_KINDS = [
 ] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
+
+export function getSkillSuggestionAction(
+  kind: SkillSuggestionKind
+): SuggestionAction {
+  switch (kind) {
+    case "create":
+      return "create";
+    case "delete":
+      return "delete";
+    case "availability":
+    case "edit":
+    case "editors":
+    case "name":
+    case "user_facing_description":
+      return "edit";
+    default:
+      return assertNever(kind);
+  }
+}
 
 // Kinds the reinforcement workflow produces (synthetic analysis) and consumes (aggregation).
 // Reinforcement code MUST filter on these kinds when fetching suggestions so it never has to
@@ -172,6 +193,19 @@ export const SkillCreateSuggestionSchema = z.object({
     .trim()
     .min(1)
     .describe("The name the agent proposed for the new skill."),
+  userFacingDescription: z
+    .string()
+    .min(1)
+    .describe("The description members read when browsing skills."),
+  agentFacingDescription: z
+    .string()
+    .min(1)
+    .describe("The description agents read to decide when to use the skill."),
+  instructions: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("The skill's instructions, as HTML."),
 });
 
 export type SkillCreateSuggestionType = z.infer<
@@ -260,7 +294,7 @@ export const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillAvailabilitySuggestionDataSchema,
 ]);
 
-type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
+export type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
 
 export function parseSkillSuggestionData(data: unknown): SkillSuggestionData {
   return SkillSuggestionDataSchema.parse(data);
@@ -386,6 +420,7 @@ const BaseSkillSuggestionSchema = z.object({
   visibleSourceConversationIds: z.array(z.string()),
   notificationConversationId: z.string().nullable(),
   updatedBy: SkillSuggestionUpdatedBySchema.nullable(),
+  batchId: z.string().nullable(),
 });
 
 export const SkillSuggestionSchema = BaseSkillSuggestionSchema.and(

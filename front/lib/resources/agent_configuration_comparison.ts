@@ -100,6 +100,8 @@ export function canonicalizeSaveParamsForComparison(
     templateId: params.templateId ?? null,
     requestedSpaceIds: [...params.requestedSpaceIds].sort((a, b) => a - b),
     reinforcement: params.reinforcement ?? "auto",
+    ignoreCreditSpendThresholdAlert:
+      params.ignoreCreditSpendThresholdAlert ?? false,
     tags: params.tags.map((tag) => tag.sId).sort(),
     editors: params.editors.map((editor) => editor.id).sort((a, b) => a - b),
     skills: (params.skills ?? []).map((skill) => skill.sId).sort(),

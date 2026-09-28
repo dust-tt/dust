@@ -14,6 +14,7 @@ import type useCustomEditor from "@app/components/editor/input_bar/useCustomEdit
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { setQueryParam } from "@app/lib/utils/router";
@@ -39,6 +40,7 @@ import {
   cn,
   Icon,
   InfoCircle,
+  Plus,
   Robot,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -129,6 +131,10 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   const router = useAppRouter();
   const isMobile = useIsMobile();
   const isWidthConstrained = useIsWidthConstrained();
+  const { featureFlags } = useFeatureFlags();
+  const shouldPlusOpenSlashCommand =
+    featureFlags.includes("knowledge_browser") &&
+    actions.includes("capabilities");
   const [serverToSetup, setServerToSetup] =
     React.useState<MCPServerType | null>(null);
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
@@ -290,31 +296,47 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       ) : (
         <>
           {agentButton}
-          <InputBarPlusMenu
-            owner={owner}
-            user={user}
-            buttonSize={buttonSize}
-            disabled={isInputDisabled}
-            hideCapabilities={
-              hideCapabilities || !actions.includes("capabilities")
-            }
-            hideAttachments={!actions.includes("attachment")}
-            onMCPServerViewSelect={onMCPServerViewSelect}
-            onSkillSelect={onSkillSelect}
-            onSetupServer={setServerToSetup}
-            fileUploaderService={fileUploaderService}
-            onNodeSelect={onNodeSelect}
-            conversation={conversation}
-            spaceId={spaceId}
-            selectedSpaceIds={selectedSpaceIds}
-            onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
-            spaces={spaces}
-            isSpacesLoading={isSpacesLoading}
-            canDeselectSelectedSpaces={canDeselectSelectedSpaces}
-            onOpenChange={onPlusMenuOpenChange}
-            onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
-            onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}
-          />
+          {shouldPlusOpenSlashCommand ? (
+            <Button
+              variant="ghost-secondary"
+              icon={Plus}
+              size={buttonSize}
+              disabled={isInputDisabled}
+              isRounded
+              tooltip="More"
+              className={cn(
+                INPUT_BAR_PILL_SURFACE_CLASSNAME,
+                INPUT_BAR_PILL_HOVER_CLASSNAME
+              )}
+              onClick={() => editorService.openSlashCommand()}
+            />
+          ) : (
+            <InputBarPlusMenu
+              owner={owner}
+              user={user}
+              buttonSize={buttonSize}
+              disabled={isInputDisabled}
+              hideCapabilities={
+                hideCapabilities || !actions.includes("capabilities")
+              }
+              hideAttachments={!actions.includes("attachment")}
+              onMCPServerViewSelect={onMCPServerViewSelect}
+              onSkillSelect={onSkillSelect}
+              onSetupServer={setServerToSetup}
+              fileUploaderService={fileUploaderService}
+              onNodeSelect={onNodeSelect}
+              conversation={conversation}
+              spaceId={spaceId}
+              selectedSpaceIds={selectedSpaceIds}
+              onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
+              spaces={spaces}
+              isSpacesLoading={isSpacesLoading}
+              canDeselectSelectedSpaces={canDeselectSelectedSpaces}
+              onOpenChange={onPlusMenuOpenChange}
+              onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
+              onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}
+            />
+          )}
         </>
       )}
       {serverToSetup && (

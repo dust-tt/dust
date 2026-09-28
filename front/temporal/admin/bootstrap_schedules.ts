@@ -3,7 +3,10 @@ import {
   createOrUpdateFramesRetentionSchedule,
   launchDataRetentionWorkflow,
 } from "@app/temporal/data_retention/client";
-import { launchSearchUsageSchedule } from "@app/temporal/es_indexation/client";
+import {
+  launchCodeDefinedSearchSchedule,
+  launchSearchUsageSchedule,
+} from "@app/temporal/es_indexation/client";
 import { launchInvitationRemindersWorkflow } from "@app/temporal/invitations/client";
 import { launchEnsureReinforcementSchedulesWorkflow } from "@app/temporal/reinforcement/client";
 import { createRemoteMCPServersSyncSchedule } from "@app/temporal/remote_tools/client";
@@ -40,6 +43,10 @@ const SCHEDULES: {
     start: launchEnsureActivationSchedulesWorkflow,
   },
   { name: "search-usage-daily", start: launchSearchUsageSchedule },
+  {
+    name: "search-code-defined-hourly",
+    start: launchCodeDefinedSearchSchedule,
+  },
 ];
 
 const main = async () => {

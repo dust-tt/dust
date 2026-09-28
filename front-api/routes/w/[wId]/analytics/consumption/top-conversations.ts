@@ -5,7 +5,6 @@ import {
 } from "@app/lib/api/analytics/consumption/schema";
 import type { GetConsumptionTopConversationsResponse } from "@app/lib/api/analytics/consumption/top_conversations";
 import { fetchConsumptionTopConversations } from "@app/lib/api/analytics/consumption/top_conversations";
-import logger from "@app/logger/logger";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { consumptionAnalyticsApp } from "./context";
@@ -44,20 +43,17 @@ app.post(
       filter: { ...filter, users: [userId] },
     });
     if (result.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          err: result.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve top conversations.",
+          },
         },
-        "[ConsumptionAnalytics] Failed to retrieve top conversations."
+        result.error
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to retrieve top conversations.",
-        },
-      });
     }
 
     return ctx.json(result.value);

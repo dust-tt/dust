@@ -2143,13 +2143,7 @@ describe("postUserMessage", () => {
   });
 
   describe("auto-mention global @dust when posting without mentions", () => {
-    const expectedDustMentionPrefix = serializeMention({
-      id: GLOBAL_AGENTS_SID.DUST,
-      type: "agent",
-      label: "dust",
-    });
-
-    it("prepends serialized @dust and persists the mention for web origin", async () => {
+    it("injects @dust into mentions without rewriting content for web origin", async () => {
       const user = auth.getNonNullableUser();
       const userJson = user.toJSON();
 
@@ -2174,9 +2168,8 @@ describe("postUserMessage", () => {
       }
 
       const { userMessage } = result.value;
-      expect(userMessage.content).toBe(
-        `${expectedDustMentionPrefix} Hello without explicit mentions`
-      );
+      // Side-channel only: matches the single-agent composer happy path.
+      expect(userMessage.content).toBe("Hello without explicit mentions");
 
       expect(userMessage.mentions?.length).toBe(1);
       expect(userMessage.mentions?.[0]).toEqual({
@@ -2232,9 +2225,7 @@ describe("postUserMessage", () => {
         return;
       }
 
-      expect(firstFromUser.value.userMessage.content).toBe(
-        `${expectedDustMentionPrefix} first from A`
-      );
+      expect(firstFromUser.value.userMessage.content).toBe("first from A");
       expect(firstFromUser.value.userMessage.mentions?.length ?? 0).toBe(1);
 
       const afterFirst = await getConversation(auth, conversation.sId);
@@ -2271,10 +2262,8 @@ describe("postUserMessage", () => {
         return;
       }
 
-      // With no other humans present, we should still prepend @dust.
-      expect(secondFromUser.value.userMessage.content).toBe(
-        `${expectedDustMentionPrefix} second from A`
-      );
+      // With no other humans present, we should still inject @dust via mentions.
+      expect(secondFromUser.value.userMessage.content).toBe("second from A");
       expect(secondFromUser.value.userMessage.mentions?.length ?? 0).toBe(1);
 
       const mentionsInDb = await MentionModel.findAll({
@@ -2292,7 +2281,7 @@ describe("postUserMessage", () => {
       expect(launchAgentLoopWorkflow).toHaveBeenCalled();
     });
 
-    it("prepends serialized @dust for extension origin", async () => {
+    it("injects @dust into mentions without rewriting content for extension origin", async () => {
       const user = auth.getNonNullableUser();
       const userJson = user.toJSON();
 
@@ -2316,9 +2305,7 @@ describe("postUserMessage", () => {
         return;
       }
 
-      expect(result.value.userMessage.content).toBe(
-        `${expectedDustMentionPrefix} From extension`
-      );
+      expect(result.value.userMessage.content).toBe("From extension");
       expect(result.value.userMessage.mentions?.[0]).toEqual({
         configurationId: GLOBAL_AGENTS_SID.DUST,
       });

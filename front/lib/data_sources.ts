@@ -79,6 +79,14 @@ export function isWebsite(
   return ds.connectorProvider === "webcrawler";
 }
 
+// A pod's own files live behind the `dust_project` connector, which is Dust itself rather than an
+// external source, so UIs show them with the plain node icon and no provider logo.
+export function isPodFilesDataSource(
+  ds: DataSource
+): ds is DataSource & WithConnector & { connectorProvider: "dust_project" } {
+  return ds.connectorProvider === "dust_project";
+}
+
 export function isManagedConnectorProvider(
   connectorProvider: ConnectorProvider
 ) {

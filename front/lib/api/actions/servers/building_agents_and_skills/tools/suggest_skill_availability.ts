@@ -7,14 +7,15 @@ import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatSkillSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestSkillAvailabilityArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
-import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
+import {
+  recordSkillSuggestion,
+  validateSkillAvailabilitySuggestion,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/skill_suggestion_changes";
 import { fetchCustomSkillById } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
-import { pruneConflictingSkillAvailabilitySuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
-import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { isAvailabilitySkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import assert from "assert";
 
 /**
@@ -43,41 +44,24 @@ export async function suggestSkillAvailability(
   if (skillResult.isErr()) {
     return new Err(new MCPError(skillResult.error.message));
   }
-
   const skill = skillResult.value;
 
-  const validation = validateSkillAvailabilityChange(auth, skill, {
+  const validation = validateSkillAvailabilitySuggestion(auth, skill, {
     availability,
   });
   if (validation.isErr()) {
-    return new Err(new MCPError(validation.error.message));
+    return validation;
   }
 
-  if (validation.value === null) {
-    return new Err(
-      new MCPError(`The skill's availability is already "${availability}".`)
-    );
-  }
-
-  const created = await SkillSuggestionResource.createSuggestionForSkill(
-    auth,
-    skill,
-    {
-      kind: "availability",
-      suggestion: { availability },
+  return new Ok(
+    await recordSkillSuggestion(auth, skill, {
+      data: { kind: "availability", suggestion: validation.value },
       analysis: analysis ?? null,
       title: title ?? null,
-      state: "pending",
-      source: "conversational",
-      sourceConversationIds: [runContext.conversation.id],
-    }
+      conversation: runContext.conversation,
+      batch: null,
+    })
   );
-
-  if (isAvailabilitySkillSuggestion(created)) {
-    await pruneConflictingSkillAvailabilitySuggestions(auth, skill, [created]);
-  }
-
-  return new Ok(created);
 }
 
 export async function suggestSkillAvailabilityHandler(

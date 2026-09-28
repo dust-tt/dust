@@ -1,4 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { getBrowserMarkdownPipeline } from "@app/lib/editor/browser_markdown_pipeline";
+import { previewAgentSuggestions } from "@app/lib/editor/preview_agent_suggestions";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -12,8 +14,9 @@ import type {
   PatchSuggestionRequestBody,
   PatchSuggestionResponseBody,
 } from "@app/types/api/assistant/agent_suggestion";
-import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
-import { useCallback, useState } from "react";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 export function useAgentSuggestions({
@@ -21,6 +24,8 @@ export function useAgentSuggestions({
   disabled,
   kind,
   state,
+  sources,
+  conversationId,
   limit,
   workspaceId,
 }: {
@@ -28,6 +33,8 @@ export function useAgentSuggestions({
   disabled?: boolean;
   kind?: GetSuggestionsQuery["kind"];
   state?: GetSuggestionsQuery["states"];
+  sources?: GetSuggestionsQuery["sources"];
+  conversationId?: string;
   limit?: number;
   workspaceId: string;
 }) {
@@ -40,6 +47,12 @@ export function useAgentSuggestions({
   }
   if (kind) {
     urlParams.append("kind", kind);
+  }
+  if (sources) {
+    sources.forEach((s) => urlParams.append("sources", s));
+  }
+  if (conversationId) {
+    urlParams.append("conversationId", conversationId);
   }
   if (limit !== undefined) {
     urlParams.append("limit", limit.toString());
@@ -64,6 +77,32 @@ export function useAgentSuggestions({
   };
 }
 
+interface UseAgentSuggestionsPreviewParams {
+  agent: AgentConfigurationType | null;
+  suggestions: AgentSuggestionType[];
+}
+
+export function useAgentSuggestionsPreview({
+  agent,
+  suggestions,
+}: UseAgentSuggestionsPreviewParams) {
+  const preview = useMemo(() => {
+    if (!agent || suggestions.length === 0) {
+      return null;
+    }
+
+    const previewRes = previewAgentSuggestions({
+      agent,
+      suggestions,
+      pipeline: getBrowserMarkdownPipeline(),
+    });
+
+    return previewRes.isOk() ? previewRes.value : null;
+  }, [agent, suggestions]);
+
+  return { preview };
+}
+
 export function usePatchAgentSuggestions({
   agentConfigurationId,
   workspaceId,
@@ -77,7 +116,7 @@ export function usePatchAgentSuggestions({
     async (
       suggestionIds: string[],
       state: PatchSuggestionRequestBody["state"],
-      { applyToAgent }: { applyToAgent?: boolean } = {}
+      { apply }: { apply?: boolean } = {}
     ): Promise<PatchSuggestionResponseBody | null> => {
       if (!agentConfigurationId || suggestionIds.length === 0) {
         return null;
@@ -94,7 +133,7 @@ export function usePatchAgentSuggestions({
             body: JSON.stringify({
               suggestionIds,
               state,
-              applyToAgent,
+              applyToAgent: apply,
             } satisfies PatchSuggestionRequestBody),
           }
         );
@@ -123,83 +162,4 @@ export function usePatchAgentSuggestions({
   );
 
   return { patchSuggestions };
-}
-
-export function useAgentSuggestionActions({
-  agentConfigurationId,
-  workspaceId,
-  mutateSuggestions,
-}: {
-  agentConfigurationId: string | null;
-  workspaceId: string;
-  mutateSuggestions: ReturnType<
-    typeof useAgentSuggestions
-  >["mutateSuggestions"];
-}) {
-  const { patchSuggestions } = usePatchAgentSuggestions({
-    agentConfigurationId,
-    workspaceId,
-  });
-  const [pendingIds, setPendingIds] = useState<Record<string, boolean>>({});
-
-  const isSuggestionPending = useCallback(
-    (suggestion: { sId: string }) => pendingIds[suggestion.sId] ?? false,
-    [pendingIds]
-  );
-
-  const setSuggestionState = useCallback(
-    async (
-      suggestion: { sId: string },
-      nextState: Extract<AgentSuggestionState, "approved" | "rejected">,
-      options?: { applyToAgent?: boolean }
-    ): Promise<boolean> => {
-      setPendingIds((current) => ({ ...current, [suggestion.sId]: true }));
-
-      const result = await patchSuggestions(
-        [suggestion.sId],
-        nextState,
-        options
-      );
-
-      setPendingIds((current) => {
-        const { [suggestion.sId]: _removed, ...rest } = current;
-        return rest;
-      });
-
-      if (!result || result.suggestions.length === 0) {
-        return false;
-      }
-
-      const reviewedById = new Map(result.suggestions.map((s) => [s.sId, s]));
-      void mutateSuggestions(
-        (current) => ({
-          suggestions: (current?.suggestions ?? []).map(
-            (s) => reviewedById.get(s.sId) ?? s
-          ),
-        }),
-        { revalidate: false }
-      );
-
-      return true;
-    },
-    [patchSuggestions, mutateSuggestions]
-  );
-
-  // `create`/`delete` are only ever applied server-side on accept, and only when `applyToAgent`
-  // is set: the route otherwise just records the review without touching the agent.
-  const acceptSuggestion = useCallback(
-    (suggestion: { sId: string }) =>
-      setSuggestionState(suggestion, "approved", { applyToAgent: true }),
-    [setSuggestionState]
-  );
-  const rejectSuggestion = useCallback(
-    (suggestion: { sId: string }) => setSuggestionState(suggestion, "rejected"),
-    [setSuggestionState]
-  );
-
-  return {
-    isSuggestionPending,
-    acceptSuggestion,
-    rejectSuggestion,
-  };
 }

@@ -1,3 +1,4 @@
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import type { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
@@ -13,6 +14,7 @@ import type {
   AgentStatus,
   GlobalAgentStatus,
 } from "@app/types/assistant/agent";
+import { normalizeLegacyReasoningEffort } from "@app/types/assistant/models/reasoning";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -24,9 +26,10 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
  * @cc [owner:sfriquet,label:backend] agent-current-version-pointer
  * `currentVersion` MUST equal the highest `version` among the agent's rows in
  * `agent_configurations`, and an agent MUST NOT exist without such a row. A transaction that
- * inserts a configuration row or deletes the one with the highest version MUST leave
- * `currentVersion` satisfying this before it commits (`AgentResource.setCurrentConfiguration`,
- * `destroyAgentConfigurationRow`). The current configuration is the row matching
+ * inserts a configuration row MUST leave `currentVersion` satisfying this before it commits
+ * (`AgentResource.setCurrentConfiguration`); a transaction that deletes configuration rows MUST
+ * either leave the highest remaining row matched by `currentVersion` or remove the identity row
+ * entirely (`AgentResource.delete`). The current configuration is the row matching
  * `(agentId, version) = (agents.id, agents.currentVersion)`, served by that unique index.
  */
 export class AgentModel extends WorkspaceAwareModel<AgentModel> {
@@ -147,6 +150,12 @@ export class AgentConfigurationModel extends WorkspaceAwareModel<AgentConfigurat
 
   declare lastReinforcementAnalysisAt: Date | null;
 
+  // NULL means the credit spend checkpoint is off for this agent, any value means it is on. Stored in
+  // AWU credits so a per-agent threshold can be added later.
+  declare creditSpendCheckpointThresholdAwuCredits: CreationOptional<
+    number | null
+  >;
+
   declare requestedSpaceIds: number[];
 
   declare author: NonAttribute<UserModel>;
@@ -223,6 +232,13 @@ AgentConfigurationModel.init(
     reasoningEffort: {
       type: DataTypes.STRING,
       allowNull: true,
+      // Rows written before "light" was renamed "low" still hold "light" until the reasoning
+      // effort data migration rewrites them.
+      get() {
+        return normalizeLegacyReasoningEffort(
+          this.getDataValue("reasoningEffort")
+        );
+      },
     },
     responseFormat: {
       type: DataTypes.JSONB,
@@ -267,6 +283,11 @@ AgentConfigurationModel.init(
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
+    },
+    creditSpendCheckpointThresholdAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
     },
     requestedSpaceIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),

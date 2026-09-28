@@ -118,6 +118,7 @@ export async function seedAgent(
       tags: [],
       editors,
       authorId: author.id,
+      skills,
     });
 
     if (result.isErr()) {
@@ -129,15 +130,6 @@ export async function seedAgent(
       { sId: agentConfiguration.sId, name: agentAsset.name },
       "Agent created"
     );
-
-    // Link skills to the agent
-    for (const skill of skills) {
-      await skill.addToAgent(auth, agentConfiguration);
-      logger.info(
-        { skillId: skill.sId, agentId: agentConfiguration.sId },
-        "Skill linked to agent"
-      );
-    }
 
     return { sId: agentConfiguration.sId, name: agentAsset.name };
   }

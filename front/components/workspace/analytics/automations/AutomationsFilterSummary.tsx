@@ -1,10 +1,10 @@
+import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
+import { clearFilterCategory } from "@app/components/shared/filter_panel/filterState";
 import type {
   AutomationsFilter,
   AutomationsFilterCategory,
 } from "@app/components/workspace/analytics/automationsFilter";
 import { getAutomationsFilterSummaries } from "@app/components/workspace/analytics/automationsFilter";
-import { FilterSummaryChips } from "@app/components/workspace/analytics/filterPanel/FilterSummaryChips";
-import { clearFilterCategory } from "@app/components/workspace/analytics/filterPanel/filterState";
 
 interface AutomationsFilterSummaryProps {
   filter: AutomationsFilter;

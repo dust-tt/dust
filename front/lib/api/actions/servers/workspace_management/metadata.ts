@@ -128,6 +128,7 @@ const listSkillsSchema = {
     ),
   status: z
     .enum(SKILL_STATUSES)
+    .exclude(["pending"])
     .optional()
     .describe(
       "Skill status to list. 'active' (default), 'archived', or 'suggested'."

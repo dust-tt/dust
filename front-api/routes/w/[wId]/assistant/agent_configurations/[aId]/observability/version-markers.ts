@@ -1,6 +1,6 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/lib/api/analytics/observability_constants";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { fetchVersionMarkers } from "@app/lib/api/assistant/observability/version_markers";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -26,11 +26,8 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const assistant = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (!assistant || (!assistant.canRead && !auth.isAdmin())) {
+    const assistant = await AgentResource.fetchById(auth, aId);
+    if (!assistant || (!auth.can("read", assistant) && !auth.isAdmin())) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

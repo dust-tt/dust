@@ -16,7 +16,8 @@ export type EventSourceLike = Pick<
 
 export type EventSourceFactory = (
   url: string,
-  headers?: Record<string, string>
+  headers: Record<string, string> | undefined,
+  signal: AbortSignal
 ) => Promise<EventSourceLike>;
 
 export type LongPollFactory = (

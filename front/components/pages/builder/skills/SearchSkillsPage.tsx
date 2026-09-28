@@ -1,15 +1,27 @@
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
+import {
+  clearFilterCategory,
+  getFilterSummaries,
+} from "@app/components/shared/filter_panel/filterState";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import { SkillFilterPanel } from "@app/components/skills/SkillFilterPanel";
 import {
   SKILL_SEARCH_NAME_COLUMN_WIDTH,
   SkillSearchTable,
 } from "@app/components/skills/SkillSearchTable";
+import type { SkillFilter } from "@app/components/skills/skillFilter";
+import {
+  SKILL_FILTER_CATEGORIES,
+  SKILL_FILTER_CATEGORY_SINGULAR_LABEL,
+  toSkillSearchFilters,
+} from "@app/components/skills/skillFilter";
 import {
   useSetContentWidth,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
-import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
@@ -29,12 +41,18 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import type { PaginationState } from "@tanstack/react-table";
 import { useState } from "react";
 
 const SKILL_SEARCH_PAGE_SIZE = 50;
 
 const SEARCH_TABS = [
   { id: "all", label: "All", filters: { status: ["active"] } },
+  {
+    id: "editable",
+    label: "Editable",
+    filters: { status: ["active"], editedByMe: true },
+  },
   {
     id: "default",
     label: "Default",
@@ -47,16 +65,20 @@ interface SkillsListProps {
   searchTerm: string;
   filters: SkillSearchFilters;
   onSelect: (skillId: string) => void;
+  onAgentClick: (agentId: string) => void;
 }
 
-function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
+function SkillsList({
+  searchTerm,
+  filters,
+  onSelect,
+  onAgentClick,
+}: SkillsListProps) {
   const owner = useWorkspace();
-  const {
-    cursorPagination,
-    tablePagination,
-    handlePaginationChange,
-    resetPagination,
-  } = useCursorPaginationForDataTable(SKILL_SEARCH_PAGE_SIZE);
+  const [tablePagination, setTablePagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: SKILL_SEARCH_PAGE_SIZE,
+  });
   const [selectedSort, setSelectedSort] = useState<{
     sortBy: Exclude<SkillSearchSort, "relevance">;
     sortOrder: SkillSearchSortOrder;
@@ -69,25 +91,19 @@ function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
 
   if (queryKey !== previousQueryKey) {
     setPreviousQueryKey(queryKey);
-    resetPagination();
+    setTablePagination({ pageIndex: 0, pageSize: SKILL_SEARCH_PAGE_SIZE });
   }
 
-  const {
-    skills,
-    hasMore,
-    nextCursor,
-    isSkillsLoading,
-    isSkillsError,
-    mutate,
-  } = useSearchSkills({
-    owner,
-    searchTerm,
-    filters,
-    cursor: cursorPagination.cursor,
-    limit: SKILL_SEARCH_PAGE_SIZE,
-    sortBy,
-    sortOrder,
-  });
+  const { skills, total, isSkillsLoading, isSkillsError, mutate } =
+    useSearchSkills({
+      owner,
+      searchTerm,
+      filters,
+      offset: tablePagination.pageIndex * SKILL_SEARCH_PAGE_SIZE,
+      limit: SKILL_SEARCH_PAGE_SIZE,
+      sortBy,
+      sortOrder,
+    });
 
   return (
     <div className="flex flex-col gap-4">
@@ -112,14 +128,18 @@ function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
           owner={owner}
           skills={skills}
           onSelect={onSelect}
+          onAgentClick={onAgentClick}
           onRefresh={mutate}
           pagination={tablePagination}
-          setPagination={(pagination) => {
-            if (!isSkillsLoading) {
-              handlePaginationChange(pagination, nextCursor);
+          setPagination={(next) => {
+            if (
+              next.pageIndex !== tablePagination.pageIndex ||
+              next.pageSize !== tablePagination.pageSize
+            ) {
+              setTablePagination(next);
             }
           }}
-          hasMore={hasMore}
+          total={total}
           sorting={
             sortBy === "relevance"
               ? []
@@ -160,8 +180,11 @@ export function SearchSkillsPage() {
   const { user } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
   const [skillId, setSkillId] = useHashParam("skillId");
+  const [agentId, setAgentId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState<SkillFilter>({});
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const searchFilters = toSkillSearchFilters(filter);
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
 
@@ -201,14 +224,34 @@ export function SearchSkillsPage() {
             {SEARCH_TABS.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
             ))}
+            <div className="grow" />
+            <div className="flex items-center">
+              <SkillFilterPanel
+                owner={owner}
+                filter={filter}
+                onFilterChange={setFilter}
+              />
+            </div>
           </TabsList>
+          <FilterSummaryChips
+            summaries={getFilterSummaries(
+              filter,
+              SKILL_FILTER_CATEGORIES,
+              SKILL_FILTER_CATEGORY_SINGULAR_LABEL
+            )}
+            onClearCategory={(category) =>
+              setFilter(clearFilterCategory(filter, category))
+            }
+            onClearAll={() => setFilter({})}
+          />
           {SEARCH_TABS.map((tab) => (
             <TabsContent key={tab.id} value={tab.id}>
               <SkillsList
                 key={owner.sId}
                 searchTerm={searchTerm}
-                filters={tab.filters}
+                filters={{ ...tab.filters, ...searchFilters }}
                 onSelect={setSkillId}
+                onAgentClick={setAgentId}
               />
             </TabsContent>
           ))}
@@ -225,6 +268,12 @@ export function SearchSkillsPage() {
         user={user}
         skillId={skillId ?? null}
         onClose={() => setSkillId(undefined)}
+      />
+      <AgentDetailsSheet
+        owner={owner}
+        user={user}
+        agentId={agentId}
+        onClose={() => setAgentId(null)}
       />
     </>
   );

@@ -1,3 +1,4 @@
+import type { Authenticator } from "@app/lib/auth";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -50,6 +51,8 @@ export function apiError(
     ? "info"
     : "error";
 
+  const auth: Authenticator | undefined = ctx.get("auth");
+
   logger[logLevel](
     {
       method: ctx.req.method,
@@ -57,6 +60,10 @@ export function apiError(
       statusCode: err.status_code,
       apiError: { ...err, callstack },
       error: errorAttrs,
+      workspaceId:
+        auth && typeof auth.workspace === "function"
+          ? auth.workspace()?.sId
+          : undefined,
     },
     "API Error"
   );

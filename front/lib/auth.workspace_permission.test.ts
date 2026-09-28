@@ -6,7 +6,10 @@ import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { emptyWorkspacePermissions } from "@app/types/group_permissions";
+import {
+  emptyWorkspacePermissions,
+  WHOLE_TYPE_RESOURCE_ID,
+} from "@app/types/group_permissions";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const CAPABILITY = { grantType: "create", resourceType: "agent" } as const;
@@ -188,7 +191,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
 describe("Authenticator.fromJSON", () => {
   it("resolves the grants of a payload serialized before permissions existed", async () => {
     const workspace = await WorkspaceFactory.basic();
-    await GroupFactory.defaults(workspace);
+    const { globalGroup } = await GroupFactory.defaults(workspace);
 
     const admin = await UserFactory.basic();
     await MembershipFactory.associate(workspace, admin, { role: "admin" });
@@ -212,9 +215,15 @@ describe("Authenticator.fromJSON", () => {
       workspace.sId
     );
 
-    // In-flight Temporal workflows carry payloads serialized before the permissions field existed.
-    const { permissions, ...legacyAuthType } = auth.toJSON();
+    // A pre-permissions payload also predates nullable groupIds: it serialized the full group set,
+    // so reconstruct that shape for the back-compat path to resolve grants from.
+    const { permissions, groupIds: _groupIds, ...rest } = auth.toJSON();
     expect(permissions).toBeDefined();
+
+    const legacyAuthType = {
+      ...rest,
+      groupIds: [globalGroup.sId, group.sId],
+    };
 
     const restored = await Authenticator.fromJSON(legacyAuthType);
 
@@ -252,8 +261,9 @@ describe("Authenticator.fromKey permission resolution", () => {
     // A system key holds every group of its workspace, so its grants are stated, not read.
     expect(listForGroups).not.toHaveBeenCalled();
 
-    // Every verb the registry defines holds, on the granted agent and on one that carries no
-    // grant at all (instance verbs and type-level capabilities alike).
+    // Instance resolution returns only the instance-valid verbs, on the granted agent and on one
+    // that carries no grant at all — the type-level capabilities (create/publish) are never folded
+    // into an instance's verbs (see `resolvedVerbsForResource`'s level filter).
     expect(
       [
         ...workspaceAuth.getGovernanceGrantVerbs(
@@ -262,7 +272,7 @@ describe("Authenticator.fromKey permission resolution", () => {
           workspaceAuth.getNonNullableWorkspace().id
         ),
       ].sort()
-    ).toEqual(["admin", "create", "publish", "read", "write"]);
+    ).toEqual(["admin", "read", "write"]);
     expect(
       [
         ...workspaceAuth.getGovernanceGrantVerbs(
@@ -271,7 +281,18 @@ describe("Authenticator.fromKey permission resolution", () => {
           workspaceAuth.getNonNullableWorkspace().id
         ),
       ].sort()
-    ).toEqual(["admin", "create", "publish", "read", "write"]);
+    ).toEqual(["admin", "read", "write"]);
+    // The type-level capabilities still hold at the type level (what `hasWorkspacePermission` reads).
+    expect(
+      [
+        ...workspaceAuth.getGovernanceGrantVerbs(
+          "agent",
+          WHOLE_TYPE_RESOURCE_ID,
+          workspaceAuth.getNonNullableWorkspace().id,
+          "type"
+        ),
+      ].sort()
+    ).toEqual(["create", "publish"]);
     expect(
       workspaceAuth.getGovernanceGrantVerbs(
         "space",

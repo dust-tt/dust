@@ -1,4 +1,5 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
+import { BatchSuggestionModel } from "@app/lib/models/batch_suggestion";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
@@ -34,6 +35,7 @@ export class SkillSuggestionModel extends WorkspaceAwareModel<SkillSuggestionMod
   declare notificationConversationModelId: ForeignKey<
     ConversationModel["id"]
   > | null;
+  declare batchId: ForeignKey<BatchSuggestionModel["id"]> | null;
 
   declare skillConfiguration: NonAttribute<SkillConfigurationModel>;
   declare updatedByUser: NonAttribute<UserModel | null>;
@@ -106,6 +108,12 @@ SkillSuggestionModel.init(
       comment:
         "Conversation created to notify editors about this reinforcement suggestion.",
     },
+    batchId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      comment:
+        "FK to the batch this suggestion belongs to, reviewed together with the other members.",
+    },
   },
   {
     modelName: "skill_suggestion",
@@ -136,6 +144,12 @@ SkillSuggestionModel.init(
         name: "idx_skill_suggestions_notification_conversation_id",
         fields: ["notificationConversationId"],
         concurrently: true,
+      },
+      {
+        name: "idx_skill_suggestions_workspace_batch_id",
+        fields: ["workspaceId", "batchId"],
+        concurrently: true,
+        where: { batchId: { [Op.ne]: null } },
       },
     ],
   }
@@ -169,4 +183,14 @@ SkillSuggestionModel.belongsTo(ConversationModel, {
 ConversationModel.hasMany(SkillSuggestionModel, {
   foreignKey: { name: "notificationConversationId", allowNull: true },
   onDelete: "SET NULL",
+});
+
+SkillSuggestionModel.belongsTo(BatchSuggestionModel, {
+  foreignKey: { name: "batchId", allowNull: true },
+  onDelete: "RESTRICT",
+  as: "batch",
+});
+BatchSuggestionModel.hasMany(SkillSuggestionModel, {
+  foreignKey: { name: "batchId", allowNull: true },
+  onDelete: "RESTRICT",
 });

@@ -1,3 +1,7 @@
+import { FilterCategoryNav } from "@app/components/shared/filter_panel/FilterCategoryNav";
+import { FilterFooter } from "@app/components/shared/filter_panel/FilterFooter";
+import { FilterOptionCheckboxList } from "@app/components/shared/filter_panel/FilterOptionCheckboxList";
+import { FilterSelectionSummary } from "@app/components/shared/filter_panel/FilterSelectionSummary";
 import { AutomationsFilterOptionIcon } from "@app/components/workspace/analytics/automations/AutomationsFilterOptionIcon";
 import { POOL_OPTIONS } from "@app/components/workspace/analytics/automations/trigger_pool_options";
 import type {
@@ -11,10 +15,6 @@ import {
   automationsFilterSelectionCount,
   toAutomationsScopeFilter,
 } from "@app/components/workspace/analytics/automationsFilter";
-import { FilterCategoryNav } from "@app/components/workspace/analytics/filterPanel/FilterCategoryNav";
-import { FilterFooter } from "@app/components/workspace/analytics/filterPanel/FilterFooter";
-import { FilterOptionCheckboxList } from "@app/components/workspace/analytics/filterPanel/FilterOptionCheckboxList";
-import { FilterSelectionSummary } from "@app/components/workspace/analytics/filterPanel/FilterSelectionSummary";
 import { useAutomationsFilter } from "@app/components/workspace/analytics/useAutomationsFilter";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";

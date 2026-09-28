@@ -3,8 +3,10 @@ import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -15,11 +17,13 @@ describe("SkillSuggestionResource", () => {
   let workspace: WorkspaceType;
   let authenticator: Authenticator;
   let skill: SkillResource;
+  let testUser: UserResource;
 
   beforeEach(async () => {
     const testSetup = await createResourceTest({ role: "user" });
     workspace = testSetup.workspace;
     authenticator = testSetup.authenticator;
+    testUser = testSetup.user;
 
     skill = await SkillFactory.create(authenticator);
 
@@ -163,6 +167,13 @@ describe("SkillSuggestionResource", () => {
     });
 
     it("should create and fetch an availability suggestion by id", async () => {
+      // Suggesting an availability change requires the `publish` capability.
+      await grantWorkspacePermission(workspace, testUser, {
+        grantType: "publish",
+        resourceType: "skill",
+      });
+      await authenticator.refresh();
+
       const suggestion = await SkillSuggestionFactory.create(
         authenticator,
         skill,

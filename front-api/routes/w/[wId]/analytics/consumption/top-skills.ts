@@ -5,7 +5,6 @@ import {
 } from "@app/lib/api/analytics/consumption/schema";
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
 import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/top_skills";
-import logger from "@app/logger/logger";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { consumptionAnalyticsApp } from "./context";
@@ -46,20 +45,17 @@ app.post(
       sortOrder,
     });
     if (result.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          err: result.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve top skills",
+          },
         },
-        "[ConsumptionAnalytics] Failed to retrieve top-skills."
+        result.error
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to retrieve top skills",
-        },
-      });
     }
 
     return ctx.json(result.value);

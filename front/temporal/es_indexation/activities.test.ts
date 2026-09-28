@@ -1,3 +1,4 @@
+import * as agentIndex from "@app/lib/agent_search";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -9,6 +10,7 @@ import {
   listWorkspaceIdsActivity,
   refreshWorkspaceSearchUsageActivity,
 } from "@app/temporal/es_indexation/activities";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -83,7 +85,7 @@ describe("skill search indexation", () => {
     await refreshWorkspaceSearchUsageActivity({
       workspaceId: workspace.sId,
     });
-    expect(usage).toHaveBeenCalledExactlyOnceWith(expect.any(Authenticator), {
+    expect(usage).toHaveBeenNthCalledWith(1, expect.any(Authenticator), {
       dimension: "skill",
       evaluatedAtMs,
     });
@@ -99,6 +101,68 @@ describe("skill search indexation", () => {
       ],
       activeUsers: { [skill.sId]: 3, "go-deep": 4 },
     });
+  });
+
+  it("refreshes workspace usage including restricted and unused agents for zero resets", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.regular(workspace);
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const restricted = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Restricted agent",
+      requestedSpaceIds: [space.id],
+    });
+    const agentActiveUsers = { [agent.sId]: 5, dust: 2 };
+    const usage = vi
+      .spyOn(searchUsage, "fetchSearchActiveUsers")
+      .mockImplementation(
+        async (_auth, { dimension }) =>
+          new Ok(dimension === "agent" ? agentActiveUsers : {})
+      );
+    vi.spyOn(skillIndex, "updateSkillSearchActiveUsers").mockResolvedValue(
+      new Ok(undefined)
+    );
+    const updated = vi
+      .spyOn(agentIndex, "updateAgentSearchActiveUsers")
+      .mockResolvedValue(new Ok(undefined));
+    const evaluatedAtMs = Date.parse("2026-09-08T03:00:00Z");
+    vi.spyOn(Date, "now").mockReturnValue(evaluatedAtMs);
+
+    await refreshWorkspaceSearchUsageActivity({ workspaceId: workspace.sId });
+
+    expect(usage).toHaveBeenCalledTimes(2);
+    expect(usage).toHaveBeenLastCalledWith(expect.any(Authenticator), {
+      dimension: "agent",
+      evaluatedAtMs,
+    });
+    expect(updated).toHaveBeenCalledExactlyOnceWith({
+      workspaceId: workspace.sId,
+      agentIds: expect.arrayContaining([agent.sId, restricted.sId]),
+      activeUsers: agentActiveUsers,
+    });
+    expect(updated.mock.calls[0][0].agentIds).toHaveLength(2);
+  });
+
+  it("propagates an agent usage failure so Temporal retries", async () => {
+    const { workspace } = await createResourceTest({ role: "admin" });
+    const error = new ElasticsearchError("query_error", "Usage refresh failed");
+    vi.spyOn(searchUsage, "fetchSearchActiveUsers").mockImplementation(
+      async (_auth, { dimension }) =>
+        dimension === "agent" ? new Err(error) : new Ok({})
+    );
+    vi.spyOn(skillIndex, "updateSkillSearchActiveUsers").mockResolvedValue(
+      new Ok(undefined)
+    );
+    const updated = vi
+      .spyOn(agentIndex, "updateAgentSearchActiveUsers")
+      .mockResolvedValue(new Ok(undefined));
+
+    await expect(
+      refreshWorkspaceSearchUsageActivity({ workspaceId: workspace.sId })
+    ).rejects.toBe(error);
+
+    expect(updated).not.toHaveBeenCalled();
   });
 
   it("deletes the requested skill and propagates errors so Temporal retries", async () => {

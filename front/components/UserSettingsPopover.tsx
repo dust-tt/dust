@@ -23,7 +23,6 @@ import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
-import { useActivationPod } from "@app/lib/swr/activation";
 import {
   usePatchUser,
   usePendingInvitations,
@@ -550,22 +549,14 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const showNotificationPreferences = Boolean(user?.subscriberHash);
-  const { activationPodId, isActivationPodLoading } = useActivationPod({
-    workspaceId: owner.sId,
-    disabled: !showNotificationPreferences,
-  });
-  const displayForYouOption = activationPodId !== null;
   const notif = useNotificationPreferencesForm({
     owner,
     disabled: !showNotificationPreferences,
-    displayForYouOption,
   });
 
   const isDirty = sound.isDirty || notif.isDirty;
   const isLoading =
-    sound.isLoading ||
-    (showNotificationPreferences &&
-      (notif.isLoading || isActivationPodLoading));
+    sound.isLoading || (showNotificationPreferences && notif.isLoading);
 
   const handleSave = async () => {
     setIsSubmitting(true);
@@ -630,7 +621,6 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
               <NotificationPreferences
                 control={notif.control}
                 displaySlackOption={notif.displaySlackOption}
-                displayForYouOption={displayForYouOption}
                 workflowEnabled={notif.workflowEnabled}
                 conversationExternalNotificationsEnabled={areConversationExternalNotificationsEnabled(
                   owner

@@ -125,3 +125,23 @@ export const UpdateMCPToolSettingsBodySchema = z
       message: "At least one of 'permission' or 'enabled' must be provided.",
     }
   );
+
+const MAX_MCP_TOOLS_PER_BATCH = 1000;
+
+export const UpdateMCPToolsSettingsBodySchema = z.object({
+  tools: z
+    .array(
+      z.object({
+        toolName: z.string(),
+        permission: z.enum(MCP_TOOL_STAKE_LEVELS),
+        enabled: z.boolean(),
+      })
+    )
+    .min(1)
+    .max(MAX_MCP_TOOLS_PER_BATCH)
+    .refine(
+      (tools) =>
+        new Set(tools.map(({ toolName }) => toolName)).size === tools.length,
+      { message: "Tool names must be unique." }
+    ),
+});

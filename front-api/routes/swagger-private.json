@@ -7976,7 +7976,8 @@
     "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events/poll": {
       "get": {
         "summary": "Poll message events",
-        "description": "Wait up to 25 seconds for events after the supplied Redis stream event ID. Returns an empty array when a non-terminal message has no newer events, or a serialized end-of-stream event when the message has ended with no newer events. A closed channel may return before the timeout.",
+        "deprecated": true,
+        "description": "Deprecated on 2026-09-24; use the equivalent endpoint under /api/sse. Wait up to 25 seconds for events after the supplied Redis stream event ID. Returns an empty array when a non-terminal message has no newer events, or a serialized end-of-stream event when the message has ended with no newer events. A closed channel may return before the timeout.",
         "tags": [
           "Private Events"
         ],
@@ -12596,9 +12597,12 @@
                 "type": "string",
                 "enum": [
                   "none",
-                  "light",
+                  "minimal",
+                  "low",
                   "medium",
-                  "high"
+                  "high",
+                  "xhigh",
+                  "maximal"
                 ]
               }
             }
@@ -12638,6 +12642,10 @@
             "items": {
               "type": "string"
             }
+          },
+          "ignoreCreditSpendThresholdAlert": {
+            "type": "boolean",
+            "description": "Whether the agent keeps running past the workspace credit spend threshold alert"
           },
           "canRead": {
             "type": "boolean"
@@ -15148,6 +15156,11 @@
             "nullable": true,
             "description": "ID of the template used for this configuration",
             "example": "b4e2f1a9c7"
+          },
+          "ignoreCreditSpendThresholdAlert": {
+            "type": "boolean",
+            "description": "Whether the agent keeps running past the workspace credit spend threshold alert",
+            "example": false
           }
         }
       },
@@ -15453,11 +15466,15 @@
             "type": "string",
             "enum": [
               "none",
-              "light",
+              "minimal",
+              "low",
               "medium",
-              "high"
+              "high",
+              "xhigh",
+              "maximal",
+              "light"
             ],
-            "description": "Optional reasoning effort. Honored only if the resolved model supports it.",
+            "description": "Optional reasoning effort. Honored only if the resolved model supports it. `light` is a deprecated alias of `low`.",
             "example": "medium"
           }
         }

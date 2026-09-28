@@ -176,8 +176,12 @@ And one that is **not** compile-forced, so nothing turns red if you skip it:
 | File | What to add |
 |------|-------------|
 | `sdks/js/src/types.ts` | Add the id to the `KnownModelLLMId` union. **Then rebuild the SDK types** (`cd sdks/js && npm run build:types`) — `front`'s `sdk_drift.test.ts` type-imports the built `@dust-tt/client`, so `tsgo` reads stale declarations until you do. |
-| `front/components/providers/model_configs.ts` | Add config to `USED_MODEL_CONFIGS` so it shows in the UI, and **evict the family's older versions down to two** (see below). |
+| `front/types/assistant/models/used_model_configs.ts` | Add config to `USED_MODEL_CONFIGS` **at the right position** (see below), and **evict the family's older versions down to two** (see below). |
 
+> **Array order is picker order.** Insert into the provider's block by release date, then by
+> strength — newest generation on top, strongest first within it (Sol → Terra → Luna,
+> Pro → Flash → Flash Lite). Appending puts the new model *below* the one it supersedes.
+>
 > **At most two versions of a family in `USED_MODEL_CONFIGS`.** The picker groups by maker,
 > so every version left in the list is another near-identical row a user has to read past
 > ("Gemini 3.5 Flash / 3.6 Flash / 3.7 Flash / 3.8 Flash"). When you add a model, keep only
@@ -398,7 +402,7 @@ added / K2.5 deprecated (`f2824da5c5e`, #28834).
 | File | What to change |
 |------|----------------|
 | `front/types/assistant/models/{provider}.ts` | Set `isLegacy: true` + `isLatest: false` on the old config, and strip "flagship"/"latest" from its `description`. |
-| `front/components/providers/model_configs.ts` | Remove it from `USED_MODEL_CONFIGS` — that is what drops it from the model picker, the workspace model-providers page, and `workspace_capabilities`. |
+| `front/types/assistant/models/used_model_configs.ts` | Remove it from `USED_MODEL_CONFIGS` — that is what drops it from the model picker, the workspace model-providers page, and `workspace_capabilities`. |
 | `front/types/assistant/models/auto.ts` | Replace it in any `MODEL_STREAMS` candidate list with the new model. |
 | `front/lib/api/assistant/models.ts` | Replace it in `ORDERED_FAST_MODEL_CONFIGS` / `ORDERED_SMALL_MODEL_CONFIGS` / `ORDERED_LARGE_MODEL_CONFIGS` — the whitelisted-model ladders behind `getFastestWhitelistedModel` & co. |
 | `front/lib/api/assistant/conversation/title.ts` | Replace it in `getFastModelConfig`, the per-provider ladder picking the model that names conversations. |
@@ -514,7 +518,8 @@ on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models
 - [ ] Every `*_eu_agent_platform.ts` added carries `EU_AGENT_PLATFORM_ENDPOINT_FILTER` (NOT
       compile-forced — `{}` silently routes ineligible workspaces to EU hosting and makes the
       picker's region flag lie)
-- [ ] UI `model_configs.ts`; SDK union updated **and types rebuilt before `tsgo`**
+- [ ] UI `used_model_configs.ts`; SDK union updated **and types rebuilt before `tsgo`**
+- [ ] New config inserted in `USED_MODEL_CONFIGS` by release date then strength, not appended
 - [ ] `USED_MODEL_CONFIGS` holds at most two versions of the family; every model evicted by
       that rule is `isLegacy: true` + `isLatest: false` and no longer named by any hardcoded
       ladder (`ORDERED_*_MODEL_CONFIGS`, `getFastModelConfig`, `dust-*` global agents,
@@ -539,6 +544,7 @@ Retiring the superseded model (same PR):
 - **`tsgo` on `setups.ts` / index files** → you added an endpoint to `STREAM_ENDPOINTS` without a matching setup, or vice-versa. Register both.
 - **`model_tiers.test.ts` fails** → `static_model_reasoning_efforts.ts` disagrees with the config's `supportedReasoningEfforts`, or `STATIC_MODEL_TIERS` is missing an effort the config supports.
 - **Model not in UI** → missing from `USED_MODEL_CONFIGS`.
+- **Model sorted below the one it replaces** → appended to `USED_MODEL_CONFIGS` instead of inserted at the top of its provider block.
 - **Live test rejects a config** → check the bucket first (§4). A provider `invalid_request_error` means narrow `configSchema` and mark the case `INPUT_CONFIGURATION_ERROR`; an `input_configuration_error` under the widened scaffold means a converter or base client is rejecting it, not the API.
 - **A case you expected to fail passes** → the model accepts that input. Fix the expectation (and any comment claiming otherwise) rather than keeping the marker.
 - **Live suite 401s** → check the key you actually exported. A shell profile can define the same `DUST_MANAGED_*_API_KEY` twice; the last export wins interactively, so grepping for the first match can hand you a stale key.

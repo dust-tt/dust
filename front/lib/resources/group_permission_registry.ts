@@ -126,6 +126,12 @@ export const ROLE_REGISTRY: Record<
   trigger: {
     use_workspace_pool: { verbs: ["use_workspace_pool"], levels: ["type"] },
   },
+  group: {
+    group_manager: {
+      verbs: ["read", "write", "read_usage", "set_usage_limits"],
+      levels: ["instance"],
+    },
+  },
 };
 
 interface GrantSpec {
@@ -239,7 +245,7 @@ export function allWorkspacePermissions(): WorkspacePermissions {
 
 // The held verb set for a (resourceType, resourceId) is stored as a bitmask integer rather than a
 // `Set<GrantVerb>`, to keep the per-request footprint small — one primitive per entry instead of a
-// heap Set. There are <10 verbs, so a single bit each fits comfortably in an int.
+// heap Set. The verbs fit comfortably in a single integer.
 const VERB_BIT = new Map<GrantVerb, number>(
   GRANT_VERBS.map((verb, index): [GrantVerb, number] => [verb, 1 << index])
 );
@@ -410,7 +416,8 @@ export class GroupPermissions {
   // sourced ACLs carry this as `grantedVerbs`.
   resolvedVerbsForResource(
     resourceType: ConcreteResourceType,
-    resourceId: number
+    resourceId: number,
+    grantLevel: GrantLevel
   ): GrantVerb[] {
     const byId = this.grants.get(resourceType);
     if (!byId) {
@@ -420,7 +427,9 @@ export class GroupPermissions {
     for (const key of new Set([resourceId, WHOLE_TYPE_RESOURCE_ID])) {
       mask |= byId.get(key) ?? 0;
     }
-    return maskToVerbs(mask);
+    return maskToVerbs(mask).filter(
+      (verb) => grantTypesForVerb(resourceType, verb, grantLevel).length > 0
+    );
   }
 
   // The instances of `resourceType` on which the caller holds `verb` — the reverse of
@@ -435,6 +444,10 @@ export class GroupPermissions {
     resourceType: ConcreteResourceType,
     verb: GrantVerb
   ): ResourcesWithVerb {
+    assert(
+      grantTypesForVerb(resourceType, verb, "instance").length > 0,
+      `Verb "${verb}" is type-level only on "${resourceType}" and has no instances to enumerate (use hasWorkspacePermission).`
+    );
     const bit = VERB_BIT.get(verb) ?? 0;
     const byId = this.grants.get(resourceType);
     if (!byId || bit === 0) {

@@ -125,6 +125,18 @@ export function getActiveSlashSubMenuFrame(
   return storage.menuStack[storage.menuStack.length - 1] ?? null;
 }
 
+export const ATTACH_CONTEXT_QUERY_PLACEHOLDER = "Type to search";
+
+// Ghost text shown after the "/" while a sub-menu with an empty query is open.
+export function getSlashSubMenuQueryPlaceholder(
+  storage: SlashMenuNavigationStorage
+): string | null {
+  return getActiveSlashSubMenuFrame(storage)?.subMenuId ===
+    ATTACH_CONTEXT_SUB_MENU_ID
+    ? ATTACH_CONTEXT_QUERY_PLACEHOLDER
+    : null;
+}
+
 export function enterSlashSubMenu({
   command,
   editor,

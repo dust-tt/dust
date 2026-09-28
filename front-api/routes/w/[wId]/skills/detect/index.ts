@@ -9,8 +9,8 @@ import type {
   DetectedSkillSummary,
   DetectSkillsResponseBody,
 } from "@app/lib/skill_detection";
-import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
@@ -35,7 +35,6 @@ app.post(
   ),
   async (ctx): HandlerResult<DetectSkillsResponseBody> => {
     const auth = ctx.get("auth");
-    const owner = auth.getNonNullableWorkspace();
 
     const body = await ctx.req.json().catch(() => null);
     const repoUrl = body?.repoUrl;
@@ -93,17 +92,17 @@ app.post(
             },
           });
         case "github_api_error":
-          logger.error(
-            { error, workspaceId: owner.sId },
-            "Error detecting skills from GitHub repo"
-          );
-          return apiError(ctx, {
-            status_code: 500,
-            api_error: {
-              type: "invalid_request_error",
-              message: error.message,
+          return apiError(
+            ctx,
+            {
+              status_code: 500,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
             },
-          });
+            normalizeError(error)
+          );
         case "validation_error":
           return apiError(ctx, {
             status_code: 400,

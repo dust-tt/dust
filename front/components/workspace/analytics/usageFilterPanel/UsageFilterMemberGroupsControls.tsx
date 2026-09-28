@@ -1,5 +1,5 @@
+import { FilterSection } from "@app/components/shared/filter_panel/FilterSection";
 import type { UsageFilterGroup } from "@app/components/workspace/analytics/usageFilter";
-import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import {
   Button,
   Chip,
@@ -34,7 +34,7 @@ export function UsageFilterMemberGroupsControls({
   };
 
   return (
-    <UsageFilterSection
+    <FilterSection
       title="Groups"
       action={
         <Button
@@ -79,6 +79,6 @@ export function UsageFilterMemberGroupsControls({
           ))}
         </div>
       )}
-    </UsageFilterSection>
+    </FilterSection>
   );
 }

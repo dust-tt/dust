@@ -156,15 +156,31 @@ export async function importSkillsFromFiles(
 
   const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
 
+  const skillsToUpsert = selectedSkills.filter((skill) => {
+    const existing = existingSkillsMap.get(skill.name);
+    return !(
+      existing &&
+      existing.source !== source &&
+      onConflict !== "override"
+    );
+  });
+
+  const nonWritableSkillNames = removeNulls(
+    skillsToUpsert.map((skill) => existingSkillsMap.get(skill.name) ?? null)
+  )
+    .filter((existing) => !auth.can("write", existing))
+    .map((existing) => existing.name);
+  if (nonWritableSkillNames.length > 0) {
+    return new Err(
+      new Error(
+        `You don't have permission to update the following skills: ${[
+          ...new Set(nonWritableSkillNames),
+        ].join(", ")}.`
+      )
+    );
+  }
+
   if (availability !== undefined) {
-    const skillsToUpsert = selectedSkills.filter((skill) => {
-      const existing = existingSkillsMap.get(skill.name);
-      return !(
-        existing &&
-        existing.source !== source &&
-        onConflict !== "override"
-      );
-    });
     const existingSkillsWithAvailabilityChange = removeNulls(
       skillsToUpsert.map((skill) => existingSkillsMap.get(skill.name) ?? null)
     ).filter((skill) => skill.availability !== availability);

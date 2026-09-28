@@ -1,31 +1,19 @@
-import { loadFramePublicationDescriptor } from "@app/lib/api/frames/publication_storage";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { FileResource } from "@app/lib/resources/file_resource";
-import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import {
-  getFramePublicationBasePath,
-  getFramePublicationsBasePath,
-  isSafeFrameStorageSegment,
-} from "@app/types/api/frame_storage";
+import { getFramePublicationBasePath } from "@app/types/api/frame_storage";
 import assert from "assert";
-import sumBy from "lodash/sumBy";
 
 const FRAME_PUBLICATION_PURGE_CONCURRENCY = 4;
 
 export type StaleFramePublicationPurgeResult = {
   deletedFunctionCount: number;
   deletedPublicationCount: number;
-  unreadablePublicationCount: number;
 };
-
-type PublicationOutcome =
-  | { outcome: "kept" }
-  | { outcome: "unreadable" }
-  | { outcome: "deleted"; deletedFunctionCount: number };
 
 /**
  * @cc [owner:davidebbo,label:product] retention-keeps-the-active-publication
@@ -40,13 +28,19 @@ type PublicationOutcome =
  * waiting always terminates.
  */
 /**
- * Delete the superseded publications of one Frame: their function rows and their whole GCS
- * prefix. Publications are enumerated from storage rather than from `sandbox_functions`, because
- * a publication that declares no function leaves no row behind to find it by.
+ * @cc [owner:davidebbo,label:backend] retention-deletes-publication-row-last
+ * A purged publication's `frame_publications` row MUST be deleted only after its function rows and
+ * its GCS prefix. Retention finds publications through that row, so a crash before the row is
+ * gone leaves it for the next sweep to finish, where deleting it first would strand the rest.
+ */
+/**
+ * Delete the superseded publications of one Frame: their function rows, their whole GCS prefix and
+ * their `frame_publications` row. Publications are enumerated from `frame_publications`, whose row
+ * `storeFramePublication` commits before writing any object, and aged by the row's `createdAt`.
  *
- * The age check reads `publishedAt` from the publication's own descriptor, which also keeps the
- * window between `storeFramePublication` and `activateFramePublication` safe: a publication
- * written seconds ago is not yet active, and is far too recent to be eligible.
+ * Aging by the row also covers a publish that failed mid-upload (row, but no `publication.json`),
+ * and keeps the window between `storeFramePublication` and `activateFramePublication` safe: a
+ * publication stored seconds ago is not yet active, and is far too recent to be eligible.
  */
 export async function purgeStaleFramePublications(
   auth: Authenticator,
@@ -64,106 +58,63 @@ export async function purgeStaleFramePublications(
     "Publication retention requires a Frames v2 file of the auth's workspace."
   );
 
-  const storage = getPrivateUploadBucket();
-  const publicationIds = await storage.listSubdirectoryNames({
-    prefix: getFramePublicationsBasePath({
-      workspaceId: owner.sId,
-      frameId: frame.sId,
-    }),
-  });
+  const [publications, publicationIdsWithInvocations] = await Promise.all([
+    FramePublicationResource.listForFrame(auth, frame),
+    SandboxFunctionResource.listFramePublicationIdsWithInvocations(auth, frame),
+  ]);
 
   const activePublicationId = frame.useCaseMetadata?.activePublicationId;
   const cutoffDate = new Date(Date.now() - retentionMs);
-  const logContext = { frameId: frame.sId, workspaceId: owner.sId };
+  const stalePublications = publications.filter(
+    ({ createdAt, publicationId }) =>
+      publicationId !== activePublicationId &&
+      createdAt < cutoffDate &&
+      !publicationIdsWithInvocations.has(publicationId)
+  );
+  if (stalePublications.length === 0) {
+    return { deletedFunctionCount: 0, deletedPublicationCount: 0 };
+  }
 
-  const outcomes = await concurrentExecutor(
-    publicationIds,
-    async (publicationId): Promise<PublicationOutcome> => {
-      if (publicationId === activePublicationId) {
-        return { outcome: "kept" };
-      }
+  const stalePublicationIds = stalePublications.map(
+    ({ publicationId }) => publicationId
+  );
+  const deletedFunctionCount =
+    await SandboxFunctionResource.deleteAllForFramePublications(auth, {
+      frame,
+      publicationIds: stalePublicationIds,
+    });
 
-      // Publication ids are UUIDs we wrote ourselves, so anything else under the prefix is
-      // foreign data the path builders would refuse: report it rather than touch it.
-      if (!isSafeFrameStorageSegment(publicationId)) {
-        logger.warn(
-          { ...logContext, publicationId },
-          "[Frames Retention] Skipped a Frame publication directory with an unsafe name."
-        );
-
-        return { outcome: "unreadable" };
-      }
-
-      // The indexed DB check comes before the GCS descriptor read: a superseded publication whose
-      // runs are still on record is kept on every daily run until its invocations expire.
-      const invocationCount =
-        await SandboxFunctionInvocationResource.countForFramePublication(auth, {
-          frame,
-          publicationId,
-        });
-      if (invocationCount > 0) {
-        return { outcome: "kept" };
-      }
-
-      const descriptor = await loadFramePublicationDescriptor(auth, {
-        frame,
-        publicationId,
-      });
-      if (descriptor.isErr()) {
-        // A publication whose descriptor cannot be read has no trustworthy age, and an
-        // uncommitted one (bundles written, descriptor never was) has none at all. Report it
-        // rather than guessing: deleting on a read failure would turn a transient GCS error into
-        // data loss.
-        logger.warn(
-          { ...logContext, error: descriptor.error.message, publicationId },
-          "[Frames Retention] Skipped a Frame publication with an unreadable descriptor."
-        );
-
-        return { outcome: "unreadable" };
-      }
-
-      if (new Date(descriptor.value.publishedAt) >= cutoffDate) {
-        return { outcome: "kept" };
-      }
-
-      // Rows first: a crash between the two leaves a GCS prefix the next sweep collects, where
-      // the reverse would leave rows describing bundles that no longer exist.
-      const deletedFunctionCount =
-        await SandboxFunctionResource.deleteAllForFramePublication(auth, {
-          frame,
-          publicationId,
-        });
-      await storage.deleteByPrefix(
+  const storage = getPrivateUploadBucket();
+  await concurrentExecutor(
+    stalePublicationIds,
+    (publicationId) =>
+      storage.deleteByPrefix(
         getFramePublicationBasePath({
           workspaceId: owner.sId,
           frameId: frame.sId,
           publicationId,
         })
-      );
-
-      logger.info(
-        {
-          ...logContext,
-          deletedFunctionCount,
-          publicationId,
-          publishedAt: descriptor.value.publishedAt,
-        },
-        "[Frames Retention] Purged a superseded Frame publication."
-      );
-
-      return { outcome: "deleted", deletedFunctionCount };
-    },
+      ),
     { concurrency: FRAME_PUBLICATION_PURGE_CONCURRENCY }
   );
 
+  await FramePublicationResource.deleteForFramePublications(auth, {
+    frame,
+    publicationIds: stalePublicationIds,
+  });
+
+  logger.info(
+    {
+      deletedFunctionCount,
+      frameId: frame.sId,
+      publicationIds: stalePublicationIds,
+      workspaceId: owner.sId,
+    },
+    "[Frames Retention] Purged superseded Frame publications."
+  );
+
   return {
-    deletedFunctionCount: sumBy(outcomes, (o) =>
-      o.outcome === "deleted" ? o.deletedFunctionCount : 0
-    ),
-    deletedPublicationCount: outcomes.filter((o) => o.outcome === "deleted")
-      .length,
-    unreadablePublicationCount: outcomes.filter(
-      (o) => o.outcome === "unreadable"
-    ).length,
+    deletedFunctionCount,
+    deletedPublicationCount: stalePublicationIds.length,
   };
 }

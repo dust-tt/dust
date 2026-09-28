@@ -12,7 +12,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ReactNode } from "react";
 
-const DEFAULT_VISUAL = (
+export const DEFAULT_SUGGESTION_VISUAL = (
   <Avatar
     icon={PuzzlePiece01}
     size="sm"
@@ -23,6 +23,7 @@ const DEFAULT_VISUAL = (
 
 interface ConversationalSuggestionCardProps {
   title: string;
+  titleAside?: ReactNode;
   analysis?: string | null;
   /** Overrides the default icon chip, e.g. to show the agent's picture. */
   visual?: React.ReactElement<ComponentProps<typeof Avatar>>;
@@ -31,6 +32,7 @@ interface ConversationalSuggestionCardProps {
   onAccept?: () => void;
   onReject?: () => void;
   onPreview?: () => void;
+  secondaryAction?: ReactNode;
   acceptLabel?: string;
   rejectLabel?: string;
   disabled?: boolean;
@@ -40,12 +42,14 @@ interface ConversationalSuggestionCardProps {
 
 export function ConversationalSuggestionCard({
   title,
+  titleAside,
   analysis,
-  visual = DEFAULT_VISUAL,
+  visual = DEFAULT_SUGGESTION_VISUAL,
   collapsibleContent,
   onAccept,
   onReject,
   onPreview,
+  secondaryAction,
   acceptLabel = "Accept",
   rejectLabel = "Decline",
   disabled = false,
@@ -65,6 +69,11 @@ export function ConversationalSuggestionCard({
         <div className="flex items-center gap-2">
           {visual}
           <span className="heading-base text-foreground">{title}</span>
+          {titleAside && (
+            <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+              {titleAside}
+            </span>
+          )}
         </div>
 
         {analysis && (
@@ -72,35 +81,38 @@ export function ConversationalSuggestionCard({
         )}
 
         {(hasActions || onPreview) && (
-          <div className="flex justify-end gap-2">
-            {onPreview && (
-              <Button
-                variant="ghost"
-                size="sm"
-                label="View in builder"
-                onClick={onPreview}
-              />
-            )}
-            {hasActions && (
-              <>
+          <div className="flex items-center gap-2">
+            {secondaryAction}
+            <div className="ml-auto flex gap-2">
+              {onPreview && (
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  label={rejectLabel}
-                  onClick={onReject}
-                  disabled={disabled}
-                  isLoading={isDeclining}
+                  label="View in builder"
+                  onClick={onPreview}
                 />
-                <Button
-                  variant="highlight"
-                  size="sm"
-                  label={acceptLabel}
-                  onClick={onAccept}
-                  disabled={disabled}
-                  isLoading={isAccepting}
-                />
-              </>
-            )}
+              )}
+              {hasActions && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    label={rejectLabel}
+                    onClick={onReject}
+                    disabled={disabled}
+                    isLoading={isDeclining}
+                  />
+                  <Button
+                    variant="highlight"
+                    size="sm"
+                    label={acceptLabel}
+                    onClick={onAccept}
+                    disabled={disabled}
+                    isLoading={isAccepting}
+                  />
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

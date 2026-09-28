@@ -1,150 +1,51 @@
 import { CONVERSATIONS_RETENTION_MIN_DAYS } from "@app/lib/conversations_retention";
 import { EMPTY_PLAN_LIMIT_OVERRIDE } from "@app/lib/plans/plan_limit_overrides";
-import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { getNamespace } from "@app/tests/utils/test_cls";
-import type { Result } from "@app/types/shared/result";
 import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
 const deletedKeys = vi.hoisted(() => [] as string[]);
 const cacheReadFailure = vi.hoisted(() => ({ current: null as Error | null }));
 
-vi.mock("@app/lib/utils/cache", () => ({
-  buildCacheWithRedisKey: (cacheId: string, resolverKey: string) =>
-    `cacheWithRedis-${cacheId}-${resolverKey}`,
-  cacheWithRedis: vi.fn().mockImplementation(
-    <T, Args extends unknown[]>(
-      fn: CacheableFunction<JsonSerializable<T>, Args>,
-      resolver: (...args: Args) => string,
-      options?: {
-        cacheId?: string;
-        cacheNullValues?: boolean;
-        migration?: {
-          previousKey: {
-            cacheId: string;
-            resolver: (...args: Args) => string;
-          };
-          readFrom: "previous" | "new";
-          copyToOtherKey: "after_load" | "after_read";
-        };
-      }
-    ) => {
-      return async (...args: Args): Promise<JsonSerializable<T>> => {
+vi.mock("@app/lib/utils/cache", async () =>
+  vi.importActual("@app/lib/utils/cache")
+);
+vi.mock("@app/lib/api/redis", async () => {
+  const { redisMock } = await import("@app/tests/utils/mocks/redis");
+  return {
+    ...redisMock.mock(),
+    getRedisCacheClient: vi.fn().mockImplementation(async () => ({
+      ...redisMock.cacheClient,
+      get: vi.fn(async (key: string) => inMemoryCache.get(key) ?? null),
+      set: vi.fn(async (key: string, value: string) => {
+        inMemoryCache.set(key, value);
+        return "OK";
+      }),
+      mGet: vi.fn(async (keys: string[]) => {
         if (cacheReadFailure.current) {
           throw cacheReadFailure.current;
         }
-        const newKey = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
-        const previousKey = options?.migration
-          ? `cacheWithRedis-${options.migration.previousKey.cacheId}-${options.migration.previousKey.resolver(...args)}`
-          : null;
-        const readKey =
-          options?.migration?.readFrom === "previous" && previousKey
-            ? previousKey
-            : newKey;
-        const otherKey = previousKey
-          ? readKey === newKey
-            ? previousKey
-            : newKey
-          : null;
-        const cached = inMemoryCache.get(readKey);
-        if (cached) {
-          if (otherKey && options?.migration?.copyToOtherKey === "after_read") {
-            inMemoryCache.set(otherKey, cached);
-          }
-          return JSON.parse(cached) as JsonSerializable<T>;
+        return keys.map((key) => inMemoryCache.get(key) ?? null);
+      }),
+      mSet: vi.fn(async (entries: [string, string][]) => {
+        for (const [key, value] of entries) {
+          inMemoryCache.set(key, value);
         }
-        const result = await fn(...args);
-        if ((options?.cacheNullValues ?? true) || result !== null) {
-          const serializedResult = JSON.stringify(result);
-          inMemoryCache.set(readKey, serializedResult);
-          if (otherKey) {
-            inMemoryCache.set(otherKey, serializedResult);
-          }
-        }
-        return result;
-      };
-    }
-  ),
-  cacheWithRedisResult: vi
-    .fn()
-    .mockImplementation(
-      <T, E, Args extends unknown[]>(
-        fn: (...args: Args) => Promise<Result<JsonSerializable<T>, E>>
-      ) => {
-        return async (
-          ...args: Args
-        ): Promise<Result<JsonSerializable<T>, E>> => {
-          return fn(...args);
-        };
-      }
-    ),
-  invalidateCacheWithRedis: vi.fn().mockImplementation(
-    <T, Args extends unknown[]>(
-      fn: CacheableFunction<JsonSerializable<T>, Args>,
-      resolver: (...args: Args) => string,
-      options?: {
-        cacheId?: string;
-        migration?: {
-          previousKey: {
-            cacheId: string;
-            resolver: (...args: Args) => string;
-          };
-        };
-      }
-    ) => {
-      return (...args: Args): Promise<void> => {
-        const newKey = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
-        inMemoryCache.delete(newKey);
-        deletedKeys.push(newKey);
-        if (options?.migration) {
-          const previousKey = `cacheWithRedis-${options.migration.previousKey.cacheId}-${options.migration.previousKey.resolver(...args)}`;
-          inMemoryCache.delete(previousKey);
-          deletedKeys.push(previousKey);
-        }
-        return Promise.resolve();
-      };
-    }
-  ),
-  bestEffortInvalidateCacheWithRedis: vi
-    .fn()
-    .mockImplementation(
-      <T, Args extends unknown[]>(
-        fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
-      ) => {
-        return (...args: Args): Promise<void> => {
-          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+        return "OK";
+      }),
+      del: vi.fn(async (keyOrKeys: string | string[]) => {
+        const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+        for (const key of keys) {
           inMemoryCache.delete(key);
           deletedKeys.push(key);
-          return Promise.resolve();
-        };
-      }
-    ),
-  batchInvalidateCacheWithRedis: vi
-    .fn()
-    .mockImplementation(
-      <T, Args extends unknown[]>(
-        fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
-      ) => {
-        return async (argsList: Args[]): Promise<void> => {
-          for (const args of argsList) {
-            const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
-            inMemoryCache.delete(key);
-            deletedKeys.push(key);
-          }
-        };
-      }
-    ),
-  invalidateCacheAfterCommit: vi
-    .fn()
-    .mockImplementation(
-      (_transaction: unknown, invalidateFn: () => Promise<void>): void => {
-        void invalidateFn();
-      }
-    ),
-}));
+        }
+        return keys.length;
+      }),
+    })),
+  };
+});
 
 vi.mock("@app/lib/api/workos/organization_primitives", async () => {
   const actual = await vi.importActual(
@@ -278,6 +179,15 @@ describe("WorkspaceResource", () => {
           "openai",
           "anthropic",
         ]);
+
+        listEnabledKillSwitches.mockResolvedValue([
+          "global_blacklist_anthropic",
+        ]);
+
+        const [cachedBatchFetch] = await WorkspaceResource.fetchByIds([
+          workspace.sId,
+        ]);
+        expect(cachedBatchFetch.whiteListedProviders).toEqual(["openai"]);
       });
 
       // A v3 snapshot exactly as the previous deploy wrote it. Guards two things: entries written
@@ -325,12 +235,102 @@ describe("WorkspaceResource", () => {
         await WorkspaceResource.fetchById(workspace.sId);
 
         const cachedFetch = await WorkspaceResource.fetchById(workspace.sId);
-        const [databaseFetch] = await WorkspaceResource.fetchByIds([
+        const databaseFetch = await WorkspaceResource.fetchById(
           workspace.sId,
-        ]);
+          getNamespace("test-namespace")?.get("transaction")
+        );
 
         expect(cachedFetch?.blob).toEqual(databaseFetch?.blob);
       });
+    });
+
+    it("loads ten workspaces with two cache hits in one query for the eight misses", async () => {
+      const workspaces = [workspace];
+      for (let i = 0; i < 9; i++) {
+        workspaces.push(await WorkspaceFactory.basic());
+      }
+      const ids = workspaces.map((w) => w.sId).reverse();
+      // Factory setup reads each workspace through its authenticator.
+      inMemoryCache.clear();
+      await WorkspaceResource.fetchById(ids[2]);
+      await WorkspaceResource.fetchById(ids[7]);
+      const findAll = vi.spyOn(WorkspaceModel, "findAll");
+      try {
+        const resources = await WorkspaceResource.fetchByIds([...ids, ids[0]]);
+
+        expect(resources.map((r) => r.sId)).toEqual(ids);
+        expect(findAll).toHaveBeenCalledExactlyOnceWith({
+          where: { sId: { [Op.in]: ids.filter((_, i) => i !== 2 && i !== 7) } },
+          transaction: undefined,
+        });
+        await WorkspaceResource.fetchById(ids[0]);
+        await WorkspaceResource.fetchByIds(ids);
+        expect(findAll).toHaveBeenCalledTimes(1);
+      } finally {
+        findAll.mockRestore();
+      }
+    });
+
+    it("selects list IDs in database order and reuses individual cached entries", async () => {
+      const other = await WorkspaceFactory.basic();
+      const ids = [workspace.sId, other.sId];
+      await WorkspaceResource.fetchByIds(ids);
+      const findAll = vi.spyOn(WorkspaceModel, "findAll");
+      try {
+        const resources = await WorkspaceResource.listAll("DESC", {
+          where: { sId: ids },
+        });
+
+        expect(resources.map((r) => r.sId)).toEqual([other.sId, workspace.sId]);
+        expect(findAll).toHaveBeenCalledExactlyOnceWith({
+          attributes: ["sId"],
+          order: [["id", "DESC"]],
+          where: { sId: ids },
+        });
+      } finally {
+        findAll.mockRestore();
+      }
+    });
+
+    it("batches database fallback and omits missing IDs", async () => {
+      const other = await WorkspaceFactory.basic();
+      cacheReadFailure.current = new Error("Redis unavailable");
+      const findAll = vi.spyOn(WorkspaceModel, "findAll");
+      try {
+        await expect(WorkspaceResource.fetchByIds([])).resolves.toEqual([]);
+        expect(findAll).not.toHaveBeenCalled();
+        const resources = await WorkspaceResource.fetchByIds([
+          other.sId,
+          "missing-workspace",
+          workspace.sId,
+        ]);
+        expect(resources.map((r) => r.sId)).toEqual([other.sId, workspace.sId]);
+        expect(findAll).toHaveBeenCalledTimes(1);
+      } finally {
+        findAll.mockRestore();
+      }
+    });
+
+    it("bypasses cached entries for the entire batch in a transaction", async () => {
+      const other = await WorkspaceFactory.basic();
+      const ids = [other.sId, workspace.sId];
+      await WorkspaceResource.fetchByIds(ids);
+      const transaction: Transaction | undefined =
+        getNamespace("test-namespace")?.get("transaction");
+      if (!transaction) {
+        throw new Error("Expected the test transaction to be available.");
+      }
+      const findAll = vi.spyOn(WorkspaceModel, "findAll");
+      try {
+        const resources = await WorkspaceResource.fetchByIds(ids, transaction);
+        expect(resources.map((r) => r.sId)).toEqual(ids);
+        expect(findAll).toHaveBeenCalledExactlyOnceWith({
+          where: { sId: { [Op.in]: ids } },
+          transaction,
+        });
+      } finally {
+        findAll.mockRestore();
+      }
     });
 
     describe("makeNew", () => {

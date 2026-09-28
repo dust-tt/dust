@@ -1,13 +1,9 @@
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
-import {
-  AgentConfigurationModel,
-  AgentUserRelationModel,
-} from "@app/lib/models/agent/agent";
 import { UserMessageModel } from "@app/lib/models/agent/conversation";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
-import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -318,27 +314,6 @@ export async function mergeUserIdentities({
     );
   }
 
-  // Migrate authorship from the secondary user to the primary user. `returning` yields the reassigned
-  // rows so their cached AgentResource entries can be invalidated (authorship is a snapshot field).
-  const [agentConfigurationsCount, reassignedConfigurations] =
-    await AgentConfigurationModel.update(
-      {
-        authorId: primaryUser.id,
-      },
-      {
-        where: {
-          authorId: secondaryUser.id,
-          workspaceId,
-        },
-        returning: ["sId"],
-      }
-    );
-
-  await invalidateAgentResourceCaches(
-    workspaceId,
-    reassignedConfigurations.map((configuration) => configuration.sId)
-  );
-
   const userIdValues = {
     userId: primaryUser.id,
   };
@@ -388,26 +363,13 @@ export async function mergeUserIdentities({
     }
   );
 
-  // Delete all agent-user relations for the secondary user that already have a relation.
-  const agentConfigurations = await AgentUserRelationModel.findAll({
-    where: {
-      userId: primaryUser.id,
-      workspaceId,
-    },
-    attributes: ["agentConfiguration"],
-  });
-  await AgentUserRelationModel.destroy({
-    where: {
-      userId: secondaryUser.id,
-      agentConfiguration: agentConfigurations.map((p) => p.agentConfiguration),
-      workspaceId,
-    },
-  });
-  // Migrate agent-user relations from the secondary user to the primary user.
-  const [agentUserRelationsCount] = await AgentUserRelationModel.update(
-    userIdValues,
-    userIdOptions
-  );
+  // Runs after the group membership migration, which moves the secondary user's agent editor
+  // grants: the agents it reindexes must see the final editors.
+  const { agentConfigurationsCount, agentUserRelationsCount } =
+    await AgentResource.mergeUsers(auth, {
+      primaryUserModelId: primaryUser.id,
+      secondaryUserModelId: secondaryUser.id,
+    });
 
   // Migrate authorship of keys from the secondary user to the primary user.
   const [keysCount] = await KeyModel.update(userIdValues, userIdOptions);

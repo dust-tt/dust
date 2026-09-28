@@ -46,7 +46,7 @@ export function MCPServerMetaFields() {
         ))}
       </div>
       <Button
-        className="mt-4"
+        className="mt-4 self-start"
         variant="outline"
         label="Add Meta Field"
         onClick={() => append({ key: "", value: "" })}

@@ -447,6 +447,38 @@ describe("POST /api/w/:wId/assistant/agent_configurations - draft", () => {
   });
 });
 
+describe("POST /api/w/:wId/assistant/agent_configurations - reasoning effort", () => {
+  async function postAgentWithEffort(reasoningEffort: string) {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "POST",
+    });
+    await SpaceFactory.defaults(auth);
+
+    return postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        model: { ...TEST_MODEL, reasoningEffort },
+        editors: [{ sId: user.sId }],
+      },
+    });
+  }
+
+  it("rejects an effort the model does not support", async () => {
+    const response = await postAgentWithEffort("none");
+
+    expect(response.status).toBe(400);
+  });
+
+  it("accepts the legacy light effort as low", async () => {
+    const response = await postAgentWithEffort("light");
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration.model.reasoningEffort).toBe("low");
+  });
+});
+
 describe("POST /api/w/:wId/assistant/agent_configurations - additionalRequestedSpaceIds", () => {
   it("should include additionalRequestedSpaceIds when creating agent", async () => {
     const { workspace, user, auth, globalGroup } =
@@ -972,6 +1004,49 @@ describe("POST /api/w/:wId/assistant/agent_configurations - tools in spaces the 
     expect(data.agentConfiguration.requestedSpaceIds).toEqual([
       restrictedSpace.sId,
     ]);
+  });
+});
+
+describe("POST /api/w/:wId/assistant/agent_configurations - ignoreCreditSpendThresholdAlert", () => {
+  it("defaults to false when not provided", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "POST",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const response = await postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        name: "Test Agent Without Cost Override",
+        editors: [{ sId: user.sId }],
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration.ignoreCreditSpendThresholdAlert).toBe(false);
+  });
+
+  it("persists an explicit true value", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "POST",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const response = await postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        name: "Test Agent With Cost Override",
+        editors: [{ sId: user.sId }],
+        ignoreCreditSpendThresholdAlert: true,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration.ignoreCreditSpendThresholdAlert).toBe(true);
   });
 });
 

@@ -1,4 +1,8 @@
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import {
+  MAX_SKILL_SEARCH_RESULTS,
+  MAX_SKILL_SEARCH_WINDOW,
+} from "@app/lib/skill_search/query";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -7,6 +11,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
 import { SkillListItemSchema } from "@app/types/assistant/skill_configuration";
+import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
@@ -27,6 +32,21 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
     ) => new Ok(await fn({ search: mockSearch })),
   };
 });
+
+function mockIndexedHits(hits: { _source: SkillSearchDocument }[]) {
+  mockSearch.mockImplementation(async (request: estypes.SearchRequest) => {
+    const matching = hits.filter((hit) =>
+      matchesSkillSearchFilters(hit._source, request.query!)
+    );
+    const from = request.from ?? 0;
+    return {
+      hits: {
+        total: { value: matching.length, relation: "eq" },
+        hits: matching.slice(from, from + (request.size ?? matching.length)),
+      },
+    };
+  });
+}
 
 function searchRequest(
   workspaceId: string,
@@ -79,7 +99,10 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     );
     assert(global);
     mockSearch.mockResolvedValue({
-      hits: { hits: [{ _source: document }, { _source: global }] },
+      hits: {
+        total: { value: 2, relation: "eq" },
+        hits: [{ _source: document }, { _source: global }],
+      },
     });
 
     const response = await searchRequest(workspace.sId);
@@ -94,29 +117,35 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
   it.each([
     "usage",
     "relevance",
-  ] as const)("sorts by %s and preserves the sort tuple across pages", async (sortBy) => {
+  ] as const)("sorts by %s and keeps the sort on every offset page", async (sortBy) => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "user",
     });
     await FeatureFlagFactory.basic(auth, "skills_search");
     const skill = await SkillFactory.create(auth);
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
-    const sort = sortBy === "usage" ? [42, skill.sId] : [1, 42, skill.sId];
     mockSearch.mockResolvedValue({
-      hits: { hits: [{ _source: document, sort }] },
+      hits: {
+        total: { value: 2, relation: "eq" },
+        hits: [{ _source: document }],
+      },
     });
 
     const first = await searchRequest(workspace.sId, { sortBy, limit: 1 });
     expect(first.status).toBe(200);
-    const { nextCursor } = await first.json();
+    expect(await first.json()).toMatchObject({ total: 2, hasMore: true });
     const second = await searchRequest(workspace.sId, {
       sortBy,
       limit: 1,
-      cursor: nextCursor,
+      offset: 1,
     });
     expect(second.status).toBe(200);
+    expect(await second.json()).toMatchObject({ total: 2, hasMore: false });
+    expect(mockSearch.mock.calls[1][0]).not.toHaveProperty("search_after");
     expect(mockSearch.mock.calls[1][0]).toMatchObject({
-      search_after: sort,
+      from: 1,
+      size: 1,
+      track_total_hits: true,
       sort: [
         ...(sortBy === "relevance" ? [{ _score: { order: "desc" } }] : []),
         { active_users_count: { order: "desc", missing: "_last" } },
@@ -126,13 +155,12 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
   });
 
   it.each([
-    { sortBy: "name", field: "name.keyword", value: "resume" },
-    { sortBy: "usage", field: "active_users_count", value: 42 },
-    { sortBy: "updatedAt", field: "updated_at", value: null },
+    { sortBy: "name", field: "name.keyword" },
+    { sortBy: "usage", field: "active_users_count" },
+    { sortBy: "updatedAt", field: "updated_at" },
   ] as const)("sorts by $sortBy in both directions and preserves pagination", async ({
     sortBy,
     field,
-    value,
   }) => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "user",
@@ -140,9 +168,11 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     await FeatureFlagFactory.basic(auth, "skills_search");
     const skill = await SkillFactory.create(auth);
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
-    const sort = [value, skill.sId];
     mockSearch.mockResolvedValue({
-      hits: { hits: [{ _source: document, sort }] },
+      hits: {
+        total: { value: 2, relation: "eq" },
+        hits: [{ _source: document }],
+      },
     });
 
     for (const sortOrder of ["asc", "desc"] as const) {
@@ -152,17 +182,18 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
         limit: 1,
       });
       expect(first.status).toBe(200);
-      const { nextCursor } = await first.json();
+      expect(mockSearch.mock.lastCall?.[0]).toMatchObject({ from: 0, size: 1 });
 
       const second = await searchRequest(workspace.sId, {
         sortBy,
         sortOrder,
         limit: 1,
-        cursor: nextCursor,
+        offset: 1,
       });
       expect(second.status).toBe(200);
       expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
-        search_after: sort,
+        from: 1,
+        size: 1,
         sort: [
           {
             [field]: {
@@ -177,23 +208,17 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     }
   });
 
-  it("uses the encoded cursor from the last returned hit for the next page", async () => {
+  it("returns the requested offset page with the exact total", async () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "user",
     });
     await FeatureFlagFactory.basic(auth, "skills_search");
     const skill = await SkillFactory.create(auth, { name: "RésuméBot" });
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
-    const hits = [
-      { _source: document, sort: [3.25, "résumébot", skill.sId, true, null] },
-      {
-        _source: { ...document, skill_id: "next-skill" },
-        sort: [2, "résumébot", "next-skill"],
-      },
-    ];
-    mockSearch
-      .mockResolvedValueOnce({ hits: { hits } })
-      .mockResolvedValueOnce({ hits: { hits: hits.slice(1) } });
+    mockIndexedHits([
+      { _source: document },
+      { _source: { ...document, skill_id: "next-skill" } },
+    ]);
 
     const first = await searchRequest(workspace.sId, { limit: 1 });
     expect(first.status).toBe(200);
@@ -201,36 +226,44 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     expect(firstPage.skills.map(({ sId }: { sId: string }) => sId)).toEqual([
       skill.sId,
     ]);
-    expect(firstPage.hasMore).toBe(true);
-    expect(firstPage.nextCursor).toBe(
-      Buffer.from(JSON.stringify(hits[0].sort)).toString("base64url")
-    );
+    expect(firstPage).toMatchObject({ total: 2, hasMore: true });
 
     const second = await searchRequest(workspace.sId, {
       limit: 1,
-      cursor: firstPage.nextCursor,
+      offset: 1,
     });
     expect(second.status).toBe(200);
     const secondPage = await second.json();
     expect(secondPage.skills.map(({ sId }: { sId: string }) => sId)).toEqual([
       "next-skill",
     ]);
-    expect(secondPage.hasMore).toBe(false);
-    expect(mockSearch.mock.calls[1][0].search_after).toEqual(hits[0].sort);
+    expect(secondPage).toMatchObject({ total: 2, hasMore: false });
+    expect(mockSearch.mock.calls[1][0]).toMatchObject({
+      from: 1,
+      size: 1,
+      track_total_hits: true,
+    });
   });
 
   it.each([
-    "invalid",
-    Buffer.from("[{}]").toString("base64url"),
-  ])("returns 400 for malformed cursor %s without querying Elasticsearch", async (cursor) => {
+    { offset: MAX_SKILL_SEARCH_WINDOW - MAX_SKILL_SEARCH_RESULTS + 1 },
+    { offset: MAX_SKILL_SEARCH_WINDOW - 1, limit: 2 },
+    { offset: MAX_SKILL_SEARCH_WINDOW },
+  ])("returns 400 for out-of-range pagination %s without querying Elasticsearch", async (pagination) => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "user",
     });
     await FeatureFlagFactory.basic(auth, "skills_search");
 
-    const response = await searchRequest(workspace.sId, { cursor });
+    const response = await searchRequest(workspace.sId, pagination);
 
     expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: {
+        type: "invalid_request_error",
+        message: "Skill search offset is out of range",
+      },
+    });
     expect(mockSearch).not.toHaveBeenCalled();
   });
 
@@ -308,15 +341,8 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
         mcp_server_view_ids: ["indexed-tool-view-id"],
         fileAttachments: ["Never expose indexed attachments"],
       },
-      sort: [80, document.name, document.skill_id],
     }));
-    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
-      hits: {
-        hits: hits.filter((hit) =>
-          matchesSkillSearchFilters(hit._source, request.query!)
-        ),
-      },
-    }));
+    mockIndexedHits(hits);
     const requestBody = { query: "RedactionTest", status: [status] };
 
     const strict = await searchRequest(workspace.sId, requestBody);
@@ -344,10 +370,9 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
           },
         ],
       })),
+      total: 3,
       hasMore: false,
-      nextCursor: Buffer.from(JSON.stringify(hits[2].sort)).toString(
-        "base64url"
-      ),
+      facets: {},
     });
     for (const hit of body.skills) {
       expect(SkillListItemSchema.strict().parse(hit)).toEqual(hit);
@@ -420,29 +445,13 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
       (document) => document.skill_id === "go-deep"
     );
     assert(global);
-    const hits = [
-      {
-        sort: [9, "workspace analytics", "workspace-analytics"],
-        _source: { ...global, skill_id: "workspace-analytics" },
-      },
-      {
-        sort: [8, "deleted", "removed-code-defined-skill"],
-        _source: { ...global, skill_id: "removed-code-defined-skill" },
-      },
-      { sort: [7, "foreign", foreign.sId], _source: foreignDocument },
-      {
-        sort: [6, "go deep", "go-deep"],
-        _source: { ...global, name: "Indexed Go Deep" },
-      },
-      { sort: [5, "custom", custom.sId], _source: customDocument },
-    ];
-    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
-      hits: {
-        hits: hits.filter((hit) =>
-          matchesSkillSearchFilters(hit._source, request.query!)
-        ),
-      },
-    }));
+    mockIndexedHits([
+      { _source: { ...global, skill_id: "workspace-analytics" } },
+      { _source: { ...global, skill_id: "removed-code-defined-skill" } },
+      { _source: foreignDocument },
+      { _source: { ...global, name: "Indexed Go Deep" } },
+      { _source: customDocument },
+    ]);
     const response = await searchRequest(workspace.sId);
     expect(response.status).toBe(200);
     const body = await response.json();
@@ -453,11 +462,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
       }),
       expect.objectContaining({ sId: custom.sId }),
     ]);
-    expect(body.nextCursor).toBe(
-      Buffer.from(JSON.stringify([5, "custom", custom.sId])).toString(
-        "base64url"
-      )
-    );
+    expect(body.total).toBe(2);
     expect(body.hasMore).toBe(false);
     expect(mockSearch).toHaveBeenCalledOnce();
   });
@@ -467,13 +472,16 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
       role: "user",
     });
     await FeatureFlagFactory.basic(auth, "skills_search");
-    mockSearch.mockResolvedValue({ hits: { hits: [] } });
+    mockSearch.mockResolvedValue({
+      hits: { total: { value: 0, relation: "eq" }, hits: [] },
+    });
     const response = await searchRequest(workspace.sId, { query: "deep" });
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       skills: [],
+      total: 0,
       hasMore: false,
-      nextCursor: null,
+      facets: {},
     });
   });
 });

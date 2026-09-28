@@ -9,6 +9,9 @@ import type {
 import type { estypes } from "@elastic/elasticsearch";
 
 export const MAX_SKILL_SEARCH_RESULTS = 100;
+// Elasticsearch's default `index.max_result_window`: `offset + limit` cannot go past it.
+export const MAX_SKILL_SEARCH_WINDOW = 10_000;
+export const MAX_SKILL_SEARCH_FACET_VALUES = 1_000;
 
 // Null represents a type-wide read grant; do not enumerate resources in that case.
 export function getSkillSearchReadableSpaceIds(auth: Authenticator) {
@@ -76,6 +79,9 @@ function buildSelectionFilters(
   for (const [field, values] of [
     ["mcp_server_view_ids", filters.mcpServerViewIds],
     ["availability", filters.availability],
+    ["editor_ids", filters.editorIds],
+    ["child_skill_ids", filters.childSkillIds],
+    ["requested_space_ids", filters.spaceIds],
   ] as const) {
     if (values?.length) {
       selected.push({ terms: { [field]: values } });
@@ -86,6 +92,10 @@ function buildSelectionFilters(
   }
   if (filters.codeDefinedOnly) {
     selected.push({ term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID } });
+  }
+  const { min, max } = filters.activeUsersCount ?? {};
+  if (min !== undefined || max !== undefined) {
+    selected.push({ range: { active_users_count: { gte: min, lte: max } } });
   }
   return selected;
 }

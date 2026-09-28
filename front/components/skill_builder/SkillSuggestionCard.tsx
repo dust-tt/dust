@@ -1,6 +1,5 @@
-import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
-import { getBlockOuterHtml } from "@app/components/shared/utils";
-import { SkillFieldEditSection } from "@app/components/skill_builder/SkillFieldEditSection";
+import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
+import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
 import { SuggestedSkillEditors } from "@app/components/skill_builder/SuggestedSkillEditors";
 import { SuggestedSkillName } from "@app/components/skill_builder/SuggestedSkillName";
@@ -11,7 +10,6 @@ import { useSkill } from "@app/lib/swr/skill_configurations";
 import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
-  SkillInstructionEditItemType,
   SkillSuggestionState,
   SkillSuggestionType,
 } from "@app/types/suggestions/skill_suggestion";
@@ -21,53 +19,29 @@ import {
   CheckCircle,
   Chip,
   Clock,
-  DiffBlock,
   Hoverable,
   LoadingBlock,
   Tooltip,
   XCircle,
 } from "@dust-tt/sparkle";
-import { EditorContent, useEditor } from "@tiptap/react";
 import type { ComponentType, KeyboardEvent } from "react";
-import { useMemo } from "react";
 
 const MAX_VISIBLE_CONVERSATIONS = 3;
 
-function getStatusChip(
-  state: SkillSuggestionState,
-  { actor, when }: { actor: string | undefined; when: string }
-): {
+export function getSuggestionStateChip(state: SkillSuggestionState): {
   color: "success" | "warning" | "primary";
   icon: ComponentType;
   label: string;
-  tooltip: string;
 } | null {
-  const by = actor ? ` by ${actor}` : "";
-
   switch (state) {
     case "pending":
       return null;
     case "approved":
-      return {
-        color: "success",
-        icon: CheckCircle,
-        label: "Accepted",
-        tooltip: `Accepted${by} ${when}`,
-      };
+      return { color: "success", icon: CheckCircle, label: "Accepted" };
     case "rejected":
-      return {
-        color: "warning",
-        icon: XCircle,
-        label: "Declined",
-        tooltip: `Declined${by} ${when}`,
-      };
+      return { color: "warning", icon: XCircle, label: "Declined" };
     case "outdated":
-      return {
-        color: "primary",
-        icon: Clock,
-        label: "Outdated",
-        tooltip: `Superseded by a later suggestion`,
-      };
+      return { color: "primary", icon: Clock, label: "Outdated" };
     default:
       assertNeverAndIgnore(state);
       return null;
@@ -75,19 +49,26 @@ function getStatusChip(
 }
 
 interface ReviewedSuggestionCardProps {
-  suggestion: SkillSuggestionType;
+  state: SkillSuggestionState;
+  title: string;
+  updatedAt: number;
+  /** Named in the tooltip when known. */
+  updatedBy?: { sId: string; fullName: string } | null;
 }
 
-function ReviewedSuggestionCard({ suggestion }: ReviewedSuggestionCardProps) {
-  const { state, title, updatedAt, updatedBy } = suggestion;
+export function ReviewedSuggestionCard({
+  state,
+  title,
+  updatedAt,
+  updatedBy,
+}: ReviewedSuggestionCardProps) {
   const { user } = useAuth();
 
   const isCurrentUser = !!updatedBy && updatedBy.sId === user?.sId;
 
-  const chip = getStatusChip(state, {
-    actor: isCurrentUser ? "you" : updatedBy?.fullName,
-    when: formatRelativeTime(updatedAt),
-  });
+  const chip = getSuggestionStateChip(state);
+  const actor = isCurrentUser ? "you" : updatedBy?.fullName;
+  const by = actor ? ` by ${actor}` : "";
 
   return (
     <Card variant="primary" size="sm" className="flex-col gap-1">
@@ -102,62 +83,16 @@ function ReviewedSuggestionCard({ suggestion }: ReviewedSuggestionCardProps) {
                 label={chip.label}
               />
             }
-            label={chip.tooltip}
+            label={
+              state === "outdated"
+                ? "Superseded by a later suggestion"
+                : `${chip.label}${by} ${formatRelativeTime(updatedAt)}`
+            }
           />
         )}
-        <span className="truncate text-sm text-muted-foreground">
-          {title ?? "Suggestion"}
-        </span>
+        <span className="truncate text-sm text-muted-foreground">{title}</span>
       </div>
     </Card>
-  );
-}
-
-interface InstructionEditDiffBlockProps {
-  edit: SkillInstructionEditItemType;
-  getSkillInstructionsHtml: () => string;
-}
-
-function InstructionEditDiffBlock({
-  edit,
-  getSkillInstructionsHtml,
-}: InstructionEditDiffBlockProps) {
-  const { targetBlockId, content } = edit;
-
-  const blockHtml = useMemo(() => {
-    const instructionsHtml = getSkillInstructionsHtml();
-    if (!instructionsHtml) {
-      return "";
-    }
-    return getBlockOuterHtml(instructionsHtml, targetBlockId);
-  }, [targetBlockId, getSkillInstructionsHtml]);
-
-  const editor = useEditor(
-    {
-      extensions: [...buildSkillInstructionsExtensions(true)],
-      editable: false,
-      content: blockHtml,
-      immediatelyRender: false,
-      onCreate: ({ editor: e }) => {
-        if (!content) {
-          return;
-        }
-        e.commands.applySuggestion({
-          id: targetBlockId,
-          targetBlockId,
-          content,
-        });
-        e.commands.setHighlightedSuggestion(targetBlockId);
-      },
-    },
-    [blockHtml]
-  );
-
-  // The diff box's border is not configurable, so it is overridden here.
-  return (
-    <DiffBlock className="[&_.rounded-2xl.border]:border-0">
-      {editor && <EditorContent editor={editor} />}
-    </DiffBlock>
   );
 }
 
@@ -290,7 +225,7 @@ function SuggestionDetails({
       return (
         <>
           {agentFacingDescriptionEdit && (
-            <SkillFieldEditSection
+            <SuggestionFieldEditSection
               label="Description"
               currentValue={getCurrentAgentFacingDescription()}
               newValue={agentFacingDescriptionEdit.content}
@@ -303,10 +238,12 @@ function SuggestionDetails({
                 Instructions
               </span>
               {instructionEdits.map((edit, index) => (
-                <InstructionEditDiffBlock
+                <SuggestionInstructionsDiffBlock
                   key={index}
-                  edit={edit}
-                  getSkillInstructionsHtml={getSkillInstructionsHtml}
+                  instructionsHtml={getSkillInstructionsHtml()}
+                  targetBlockId={edit.targetBlockId}
+                  content={edit.content}
+                  extensions={buildSkillInstructionsExtensions(true)}
                 />
               ))}
             </div>
@@ -347,43 +284,20 @@ function SuggestionDetails({
   }
 }
 
-interface SkillSuggestionCardProps {
+interface PendingSkillSuggestionDetailsProps {
   suggestion: SkillSuggestionType;
-  onAccept?: (suggestion: SkillSuggestionType) => void;
-  onDecline?: (suggestion: SkillSuggestionType) => void;
-  onPreview?: () => void;
   getSkillInstructionsHtml: () => string;
   getCurrentAgentFacingDescription: () => string;
-  isSelected?: boolean;
-  onSelect?: () => void;
   workspaceId: string;
-  disabled?: boolean;
-  isAccepting?: boolean;
-  isDeclining?: boolean;
 }
 
-export function SkillSuggestionCard({
+export function PendingSkillSuggestionDetails({
   suggestion,
-  onAccept,
-  onDecline,
-  onPreview,
   getSkillInstructionsHtml,
   getCurrentAgentFacingDescription,
-  isSelected = false,
-  onSelect,
   workspaceId,
-  disabled = false,
-  isAccepting = false,
-  isDeclining = false,
-}: SkillSuggestionCardProps) {
-  const isClickable = !!onSelect;
-  const hasActions = !!onAccept && !!onDecline;
-
-  if (suggestion.state !== "pending") {
-    return <ReviewedSuggestionCard suggestion={suggestion} />;
-  }
-
-  const details = (
+}: PendingSkillSuggestionDetailsProps) {
+  return (
     <>
       <SuggestionDetails
         suggestion={suggestion}
@@ -401,6 +315,48 @@ export function SkillSuggestionCard({
       )}
     </>
   );
+}
+
+interface SkillSuggestionCardProps {
+  suggestion: SkillSuggestionType;
+  onAccept?: (suggestion: SkillSuggestionType) => void;
+  onDecline?: (suggestion: SkillSuggestionType) => void;
+  getSkillInstructionsHtml: () => string;
+  getCurrentAgentFacingDescription: () => string;
+  isSelected?: boolean;
+  onSelect?: () => void;
+  workspaceId: string;
+  disabled?: boolean;
+  isAccepting?: boolean;
+  isDeclining?: boolean;
+}
+
+export function SkillSuggestionCard({
+  suggestion,
+  onAccept,
+  onDecline,
+  getSkillInstructionsHtml,
+  getCurrentAgentFacingDescription,
+  isSelected = false,
+  onSelect,
+  workspaceId,
+  disabled = false,
+  isAccepting = false,
+  isDeclining = false,
+}: SkillSuggestionCardProps) {
+  const isClickable = !!onSelect;
+  const hasActions = !!onAccept && !!onDecline;
+
+  if (suggestion.state !== "pending") {
+    return (
+      <ReviewedSuggestionCard
+        state={suggestion.state}
+        title={suggestion.title ?? "Suggestion"}
+        updatedAt={suggestion.updatedAt}
+        updatedBy={suggestion.updatedBy}
+      />
+    );
+  }
 
   const wrapperClassName = `rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300" : ""}`;
 
@@ -417,22 +373,6 @@ export function SkillSuggestionCard({
         },
       }
     : {};
-
-  if (suggestion.source === "conversational") {
-    return (
-      <ConversationalSuggestionCard
-        title={suggestion.title ?? "Suggestion"}
-        analysis={suggestion.analysis}
-        onAccept={hasActions ? () => onAccept(suggestion) : undefined}
-        onReject={hasActions ? () => onDecline(suggestion) : undefined}
-        onPreview={onPreview}
-        disabled={disabled}
-        isAccepting={isAccepting}
-        isDeclining={isDeclining}
-        collapsibleContent={details}
-      />
-    );
-  }
 
   return (
     <div className={wrapperClassName} {...wrapperProps}>
@@ -467,7 +407,12 @@ export function SkillSuggestionCard({
           <p className="text-sm text-muted-foreground">{suggestion.analysis}</p>
         )}
 
-        {details}
+        <PendingSkillSuggestionDetails
+          suggestion={suggestion}
+          getSkillInstructionsHtml={getSkillInstructionsHtml}
+          getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
+          workspaceId={workspaceId}
+        />
       </Card>
     </div>
   );

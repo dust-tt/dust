@@ -4,6 +4,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { serializeSkillTag } from "@app/lib/skills/format";
+import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -126,6 +127,30 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
 
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("skill_not_found");
+  });
+
+  it("returns 400 for a suggestion that belongs to a batch", async () => {
+    const { workspace, auth, skill } = await setup();
+    const batch = await BatchSuggestionFactory.createEmpty(auth);
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      source: "conversational",
+      batchModelId: batch.id,
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "rejected",
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "belong to a batch"
+    );
+    const reloaded = await SkillSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(reloaded?.state).toBe("pending");
   });
 
   it("returns 400 for missing suggestionIds", async () => {
@@ -1842,10 +1867,11 @@ describe("PATCH with applyToSkill (availability)", () => {
     expect((await skill.listVersions(auth)).length).toBe(versionsBefore);
   });
 
-  it("returns 400 when the approving editor lacks the publish capability", async () => {
+  it("returns 403 when the approving editor lacks the publish capability", async () => {
     const { workspace, auth, skill } = await setupWithFlag("user");
+    // Recording an availability suggestion also requires `publish`: a workspace admin records it.
     const suggestion = await availabilitySuggestion(
-      auth,
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
       skill,
       "workspace_users"
     );
@@ -1856,10 +1882,7 @@ describe("PATCH with applyToSkill (availability)", () => {
       applyToSkill: true,
     });
 
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toContain(
-      "change this skill's availability"
-    );
+    expect(response.status).toBe(403);
 
     const reloaded = await SkillSuggestionResource.fetchById(
       auth,

@@ -1,4 +1,3 @@
-import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -21,25 +20,15 @@ export const discoverToolsSkill = {
       await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
         auth,
         spaceIds,
-        {
-          includeGlobalSpace: true,
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
-        }
+        { includeGlobalSpace: true }
       );
 
-    const availableToolsets = allToolsets.filter((toolset) => {
-      const mcpServerView = toolset.toJSON();
-      return (
-        isJITMCPServerView(mcpServerView) &&
-        mcpServerView.server.availability !== "auto_hidden_builder"
-      );
-    });
+    const availableToolsets = allToolsets.filter(
+      (toolset) =>
+        toolset.isJITAttachable() &&
+        toolset.getServerDisplayMetadata().availability !==
+          "auto_hidden_builder"
+    );
 
     return buildDiscoverToolsInstructions(availableToolsets);
   },

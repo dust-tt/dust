@@ -1267,7 +1267,7 @@ export async function getIssueAttachments({
   return new Ok(attachments);
 }
 
-async function downloadAttachmentContent({
+export async function downloadAttachmentContent({
   baseUrl,
   accessToken,
   attachmentId,
@@ -1356,51 +1356,4 @@ export async function extractTextFromAttachment({
   }
 
   return textResult;
-}
-
-export async function getAttachmentContent({
-  baseUrl,
-  accessToken,
-  attachmentId,
-  mimeType,
-}: {
-  baseUrl: string;
-  accessToken: string;
-  attachmentId: string;
-  mimeType: string;
-}): Promise<
-  Result<
-    { content: string; contentType: string; size: number },
-    JiraErrorResult
-  >
-> {
-  const downloadResult = await downloadAttachmentContent({
-    baseUrl,
-    accessToken,
-    attachmentId,
-  });
-
-  if (downloadResult.isErr()) {
-    return downloadResult;
-  }
-
-  const buffer = downloadResult.value;
-
-  // For text files, return the content directly
-  if (mimeType.startsWith("text/")) {
-    const content = buffer.toString("utf-8");
-    return new Ok({
-      content,
-      contentType: mimeType,
-      size: buffer.length,
-    });
-  }
-
-  // For other file types, return as base64
-  const base64Content = buffer.toString("base64");
-  return new Ok({
-    content: base64Content,
-    contentType: mimeType,
-    size: buffer.length,
-  });
 }

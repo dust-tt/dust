@@ -1,3 +1,4 @@
+import { prewarmFrameSandbox } from "@app/lib/api/frames/prewarm_frame_sandbox";
 import { createFrameSession } from "@app/lib/api/share/frame_session";
 import { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -21,6 +22,10 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock(import("@app/lib/api/frames/prewarm_frame_sandbox"), () => ({
+  prewarmFrameSandbox: vi.fn().mockResolvedValue(undefined),
+}));
 
 // Mock resolveOptionalAuth to control authentication per test.
 vi.mock("@front-api/routes/v1/public/frames/shared_auth", () => ({
@@ -677,7 +682,9 @@ describe("GET /api/v1/public/frames/[token]", () => {
     });
 
     it("returns 200 for an authenticated workspace member", async () => {
-      const { token } = await createFrameV2WithFunction("workspace_and_emails");
+      const { frame, token } = await createFrameV2WithFunction(
+        "workspace_and_emails"
+      );
       vi.mocked(resolveOptionalAuth).mockResolvedValue(auth);
 
       const response = await requestFrame(token);
@@ -685,6 +692,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual(
         expect.objectContaining({ hasFunctions: true })
+      );
+      expect(prewarmFrameSandbox).toHaveBeenCalledWith(
+        auth,
+        expect.objectContaining({ sId: frame.sId })
       );
     });
 
@@ -700,6 +711,7 @@ describe("GET /api/v1/public/frames/[token]", () => {
       await expect(response.json()).resolves.toEqual(
         expect.objectContaining({ hasFunctions: false })
       );
+      expect(prewarmFrameSandbox).not.toHaveBeenCalled();
     });
 
     it("stays public for a Frame v2 declaring no function", async () => {

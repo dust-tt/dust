@@ -4,8 +4,10 @@ import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import type { WriteFileParams } from "@viz/app/types";
 
 /**
- * Data API for public frames viewed by an authenticated workspace member:
- * code and files are served from the SSR cache, callFunction goes over RPC.
+ * @cc [owner:flvndvd,label:security] shared-frame-file-access
+ * Authenticated shared views MUST read current files and write through RPC, which enforces
+ * the viewer's file permissions. Unavailable source files MAY fall back to the shared snapshot,
+ * which MUST remain read-only without revision metadata. Frame code MUST stay in the SSR cache.
  */
 export class HybridDataAPI implements VisualizationDataAPI {
   constructor(
@@ -22,11 +24,12 @@ export class HybridDataAPI implements VisualizationDataAPI {
   }
 
   async fetchFile(fileId: string) {
-    return this.cache.fetchFile(fileId);
+    const file = await this.rpc.fetchFile(fileId);
+    return file ?? this.cache.fetchFile(fileId);
   }
 
   async writeFile(params: WriteFileParams) {
-    return this.cache.writeFile(params);
+    return this.rpc.writeFile(params);
   }
 
   async fetchCode(): Promise<string | null> {

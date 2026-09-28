@@ -106,6 +106,52 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata", () => {
       expect(result.value.token_endpoint_auth_method).toBe(registeredMethod);
     }
   });
+
+  it.each([
+    {
+      supportedMethods: ["client_secret_post", "client_secret_basic", "none"],
+      requestedMethod: "none",
+    },
+    {
+      supportedMethods: ["client_secret_post", "client_secret_basic"],
+      requestedMethod: "client_secret_post",
+    },
+    {
+      supportedMethods: ["client_secret_basic", "client_secret_post"],
+      requestedMethod: "client_secret_basic",
+    },
+    {
+      supportedMethods: undefined,
+      requestedMethod: "none",
+    },
+  ])("requests $requestedMethod at registration when the server supports $supportedMethods", async ({
+    supportedMethods,
+    requestedMethod,
+  }) => {
+    oauthMocks.discoverAuthorizationServerMetadata.mockResolvedValue({
+      authorization_endpoint: "https://auth.example.com/authorize",
+      registration_endpoint: "https://auth.example.com/register",
+      token_endpoint: "https://auth.example.com/token",
+      token_endpoint_auth_methods_supported: supportedMethods,
+    });
+    oauthMocks.registerClient.mockResolvedValue({
+      client_id: "registered-client",
+    });
+
+    await RemoteMCPServerResource.discoverOAuthMetadata({
+      serverUrl: "https://mcp.example.com/mcp",
+      provider: oauthProvider,
+    });
+
+    expect(oauthMocks.registerClient).toHaveBeenCalledWith(
+      "https://mcp.example.com/mcp",
+      expect.objectContaining({
+        clientMetadata: expect.objectContaining({
+          token_endpoint_auth_method: requestedMethod,
+        }),
+      })
+    );
+  });
 });
 
 describe("getMCPAuthorizationScope", () => {

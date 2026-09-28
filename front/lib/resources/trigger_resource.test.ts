@@ -1,7 +1,11 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import {
+  TriggerAgentNotReadableError,
+  TriggerResource,
+} from "@app/lib/resources/trigger_resource";
 import * as temporalClient from "@app/temporal/triggers/schedule_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -10,9 +14,61 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { Ok } from "@app/types/shared/result";
+import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
 
+async function fetchAgent(
+  auth: Authenticator,
+  agentId: string
+): Promise<AgentResource> {
+  const agent = await AgentResource.fetchById(auth, agentId);
+  assert(agent, `Agent ${agentId} not found`);
+  return agent;
+}
+
 describe("TriggerResource", () => {
+  describe("makeNew", () => {
+    it("refuses a trigger on an agent the caller cannot read, even as an admin", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const owner = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, owner, { role: "user" });
+      const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        owner.sId,
+        workspace.sId
+      );
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        ownerAuth,
+        { scope: "hidden" }
+      );
+
+      const result = await TriggerResource.makeNew(authenticator, {
+        workspaceId: workspace.id,
+        name: "Unreadable Agent Trigger",
+        kind: "schedule",
+        agent: await fetchAgent(authenticator, agentConfig.sId),
+        editor: authenticator.getNonNullableUser().id,
+        customPrompt: null,
+        status: "disabled",
+        configuration: { cron: "0 9 * * 1", timezone: "UTC" },
+        origin: "user",
+        executionMode: "user_pool",
+      });
+
+      expect(result.isErr()).toBe(true);
+      expect(result.isErr() && result.error).toBeInstanceOf(
+        TriggerAgentNotReadableError
+      );
+      expect(
+        await TriggerResource.listByAgentConfigurationId(
+          ownerAuth,
+          agentConfig.sId
+        )
+      ).toEqual([]);
+    });
+  });
+
   describe("disableAllForWorkspace", () => {
     it("should successfully disable all enabled triggers in a workspace", async () => {
       // Mock temporal workflow operations to avoid failures in test environment
@@ -40,7 +96,7 @@ describe("TriggerResource", () => {
         workspaceId: workspace.id,
         name: "Enabled Trigger 1",
         kind: "schedule",
-        agentConfigurationId: agentConfig.sId,
+        agent: await fetchAgent(authenticator, agentConfig.sId),
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
         status: "enabled",
@@ -57,7 +113,7 @@ describe("TriggerResource", () => {
         workspaceId: workspace.id,
         name: "Enabled Trigger 2",
         kind: "schedule",
-        agentConfigurationId: agentConfig.sId,
+        agent: await fetchAgent(authenticator, agentConfig.sId),
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
         status: "enabled",
@@ -74,7 +130,7 @@ describe("TriggerResource", () => {
         workspaceId: workspace.id,
         name: "Disabled Trigger",
         kind: "schedule",
-        agentConfigurationId: agentConfig.sId,
+        agent: await fetchAgent(authenticator, agentConfig.sId),
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
         status: "disabled",
@@ -228,6 +284,15 @@ describe("TriggerResource", () => {
           name: "Archived Agent",
         });
 
+      const activeAgent = await fetchAgent(
+        authenticator,
+        activeAgentConfig.sId
+      );
+      const archivedAgent = await fetchAgent(
+        authenticator,
+        archivedAgentConfig.sId
+      );
+
       // Mock AgentConfiguration.findAll to return different statuses
       const mockAgentConfigFindAll = vi
         .spyOn(AgentConfigurationModel, "findAll")
@@ -252,7 +317,7 @@ describe("TriggerResource", () => {
           workspaceId: workspace.id,
           name: "Disabled Active Agent Trigger",
           kind: "schedule",
-          agentConfigurationId: activeAgentConfig.sId,
+          agent: activeAgent,
           editor: authenticator.getNonNullableUser().id,
           customPrompt: null,
           status: "disabled",
@@ -272,7 +337,7 @@ describe("TriggerResource", () => {
           workspaceId: workspace.id,
           name: "Disabled Archived Agent Trigger",
           kind: "schedule",
-          agentConfigurationId: archivedAgentConfig.sId,
+          agent: archivedAgent,
           editor: authenticator.getNonNullableUser().id,
           customPrompt: null,
           status: "disabled",
@@ -292,7 +357,7 @@ describe("TriggerResource", () => {
           workspaceId: workspace.id,
           name: "Already Enabled Trigger",
           kind: "schedule",
-          agentConfigurationId: activeAgentConfig.sId,
+          agent: activeAgent,
           editor: authenticator.getNonNullableUser().id,
           customPrompt: null,
           status: "enabled",
@@ -390,7 +455,7 @@ describe("TriggerResource", () => {
         workspaceId: workspace.id,
         name: "Schedule Trigger",
         kind: "schedule",
-        agentConfigurationId: agentConfig.sId,
+        agent: await fetchAgent(authenticator, agentConfig.sId),
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
         status: "enabled",
@@ -452,7 +517,7 @@ describe("TriggerResource", () => {
         workspaceId: workspace.id,
         name: "Already Disabled Trigger",
         kind: "schedule",
-        agentConfigurationId: agentConfig.sId,
+        agent: await fetchAgent(authenticator, agentConfig.sId),
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
         status: "disabled",
@@ -549,7 +614,7 @@ describe("TriggerResource", () => {
         workspaceId: workspace.id,
         name: "Legacy user pool trigger",
         kind: "schedule",
-        agentConfigurationId: agentConfig.sId,
+        agent: await fetchAgent(authenticator, agentConfig.sId),
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
         status: "disabled",
@@ -575,7 +640,7 @@ describe("TriggerResource", () => {
         workspaceId: workspace.id,
         name: "Legacy user pool trigger",
         kind: "schedule",
-        agentConfigurationId: agentConfig.sId,
+        agent: await fetchAgent(authenticator, agentConfig.sId),
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
         status: "disabled",

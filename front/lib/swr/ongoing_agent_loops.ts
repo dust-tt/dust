@@ -5,7 +5,7 @@ import type {
   OngoingAgentLoopType,
 } from "@app/types/api/assistant/conversation/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
@@ -46,16 +46,38 @@ export function useOngoingAgentLoops({
           ? ACTIVE_AGENT_LOOPS_REFRESH_INTERVAL_MS
           : IDLE_AGENT_LOOPS_REFRESH_INTERVAL_MS,
       refreshWhenHidden: true,
+      revalidateOnFocus: false,
     }
   );
   const refreshOngoingAgentLoops = useCallback(() => {
     void mutate().catch((error: unknown) => {
       datadogLogger.warn(
-        { err: normalizeError(error), workspaceId },
+        { err: normalizeError(error), workspaceId, conversationId: null },
         "Failed to refresh ongoing agent loops."
       );
     });
   }, [mutate, workspaceId]);
+  const lastWakeRefreshAt = useRef(-Infinity);
+
+  useEffect(() => {
+    const refreshOnWake = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      const now = Date.now();
+      if (now - lastWakeRefreshAt.current < 1_000) {
+        return;
+      }
+      lastWakeRefreshAt.current = now;
+      refreshOngoingAgentLoops();
+    };
+    document.addEventListener("visibilitychange", refreshOnWake);
+    window.addEventListener("focus", refreshOnWake);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshOnWake);
+      window.removeEventListener("focus", refreshOnWake);
+    };
+  }, [refreshOngoingAgentLoops]);
 
   return {
     ongoingAgentLoops: data?.agentLoops ?? emptyArray(),

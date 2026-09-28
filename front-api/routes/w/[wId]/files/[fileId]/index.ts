@@ -1,4 +1,5 @@
 import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { prewarmFrameSandbox } from "@app/lib/api/frames/prewarm_frame_sandbox";
 import { addFileToProject } from "@app/lib/api/projects/context";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -223,6 +224,9 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const action = getSecureFileAction(ctx.req.query("action"), file);
   if (action === "view") {
     if (file.isFrameV2 && (await hasFeatureFlag(auth, "frames_v2"))) {
+      // Start waking the Frame's sandbox while its UI loads; the pre-warm gates itself.
+      void prewarmFrameSandbox(auth, file);
+
       const owner = renderLightWorkspaceType({
         workspace: auth.getNonNullableWorkspace(),
       });

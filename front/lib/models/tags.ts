@@ -1,10 +1,13 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
-import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { TagKind } from "@app/types/tag";
 import type { CreationOptional } from "sequelize";
 
-export class TagModel extends WorkspaceAwareModel<TagModel> {
+// Tags are soft-deletable: a deleted tag keeps its row (so historical `tag_agents` links stay
+// FK-valid) but is excluded from every read by the base class. Recreating a tag with the same name
+// restores (undeletes) this row (see `TagResource.makeNew`).
+export class TagModel extends SoftDeletableWorkspaceAwareModel<TagModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -23,6 +26,9 @@ TagModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
     },
     kind: {
       type: DataTypes.STRING,

@@ -179,6 +179,11 @@ describe("IconForAttachmentCitation", () => {
     expect(el).toHaveAttribute("data-secondary", "ProviderLogo(github,false)");
   });
 
+  it("renders a plain icon without provider overlay for pod files", () => {
+    render(<TestIcon provider="dust_project" nodeType="folder" />);
+    expect(screen.queryByTestId("double-icon")).toBeNull();
+  });
+
   it("renders Image icon for image/* content types", () => {
     render(<TestIcon contentType="image/jpeg" />);
     const el = screen.getByTestId("icon");

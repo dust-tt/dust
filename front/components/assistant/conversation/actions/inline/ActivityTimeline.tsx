@@ -52,7 +52,7 @@ export function ActivityTimeline({
 }: ActivityTimelineProps) {
   const [isCollapsed, setIsCollapsed] = useState(isDone);
 
-  const showActiveCoT = !isDone && activeCotContent.length > 0;
+  const showActiveCoT = !isDone && activeCotContent.trim().length > 0;
   const hasRunningRows = runningToolRows.length > 0;
 
   const toggleCollapse = () => {

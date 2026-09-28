@@ -1,10 +1,19 @@
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import {
   generateFrameOtpChallenge,
+  getFrameFunctionSharingConflict,
   sendFrameOtpEmail,
   validateFrameOtpChallenge,
 } from "@app/lib/api/share/frame_sharing";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import { frameV2ContentType } from "@app/types/files";
+import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/utils/rate_limiter", () => ({
@@ -243,5 +252,106 @@ describe("sendFrameOtpEmail", () => {
     expect(call.body).toContain("Alice");
     expect(call.body).toContain("123456");
     expect(call.body).toContain("15 minutes");
+  });
+});
+
+describe("getFrameFunctionSharingConflict", () => {
+  const DECLARES_FUNCTIONS = { declaresFunctions: true };
+
+  async function setupFrame() {
+    const { authenticator: auth, user } = await createResourceTest({
+      role: "admin",
+    });
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: 32,
+      status: "ready",
+      useCase: "conversation",
+    });
+    await frame.ensureShareableFrame(auth);
+
+    return { auth, frame, user };
+  }
+
+  it("returns no conflict for a Frame shared with the workspace only", async () => {
+    const { auth, frame } = await setupFrame();
+    await frame.setShareScope(auth, "workspace_and_emails");
+
+    expect(
+      await getFrameFunctionSharingConflict(auth, frame, DECLARES_FUNCTIONS)
+    ).toBeNull();
+  });
+
+  it("reports a conflict when the Frame is shared publicly", async () => {
+    const { auth, frame } = await setupFrame();
+    await frame.setShareScope(auth, "public");
+
+    const conflict = await getFrameFunctionSharingConflict(
+      auth,
+      frame,
+      DECLARES_FUNCTIONS
+    );
+    assert(conflict, "Expected a sharing conflict");
+    expect(conflict).toContain("anyone holding its link");
+    expect(conflict).toContain("restrict the Frame's sharing");
+  });
+
+  it("reports a conflict when a grant reaches an email outside the workspace", async () => {
+    const { auth, frame } = await setupFrame();
+    await frame.setShareScope(auth, "workspace_and_emails");
+    await SharingGrantFactory.create(auth, frame, {
+      kind: "email",
+      value: "outsider@example.com",
+    });
+
+    const conflict = await getFrameFunctionSharingConflict(
+      auth,
+      frame,
+      DECLARES_FUNCTIONS
+    );
+    assert(conflict, "Expected a sharing conflict");
+    expect(conflict).toContain("1 recipient outside the workspace");
+  });
+
+  it("returns no conflict when every grant is a workspace member", async () => {
+    const { auth, frame, user } = await setupFrame();
+    await frame.setShareScope(auth, "workspace_and_emails");
+    await SharingGrantFactory.create(auth, frame, {
+      kind: "email",
+      value: user.email,
+    });
+
+    expect(
+      await getFrameFunctionSharingConflict(auth, frame, DECLARES_FUNCTIONS)
+    ).toBeNull();
+  });
+
+  it("returns no conflict for a publicly shared Frame whose update declares no function", async () => {
+    const { auth, frame } = await setupFrame();
+    await frame.setShareScope(auth, "public");
+
+    expect(
+      await getFrameFunctionSharingConflict(auth, frame, {
+        declaresFunctions: false,
+      })
+    ).toBeNull();
+  });
+
+  it("reports a conflict for a publicly shared Frame whose active publication already declares functions", async () => {
+    const {
+      authenticator: auth,
+      user,
+      workspace,
+    } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace, user.id);
+    const { frame } = await createTestFrameFunction(auth, { space });
+    await frame.setShareScope(auth, "public");
+
+    expect(
+      await getFrameFunctionSharingConflict(auth, frame, DECLARES_FUNCTIONS)
+    ).toContain("anyone holding its link");
   });
 });

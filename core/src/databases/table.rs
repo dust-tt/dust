@@ -305,7 +305,7 @@ impl Table {
 
         info!(
             table_id = self.table_id(),
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             "DSSTRUCTSTAT [delete] Table deleted"
         );
         Ok(())
@@ -430,7 +430,7 @@ impl LocalTable {
             .await??;
         }
         info!(
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             table_id = self.table.table_id(),
             row_count = rows.len(),
             first_row_id = rows.get(0).map(|row| row.row_id()).unwrap_or(""),
@@ -527,7 +527,7 @@ impl LocalTable {
             },
         };
         info!(
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             table_id = self.table.table_id(),
             row_count = rows.len(),
             "DSSTRUCTSTAT [upsert_rows_gcs] table schema"
@@ -543,7 +543,7 @@ impl LocalTable {
             )
             .await?;
         info!(
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             table_id = self.table.table_id(),
             "DSSTRUCTSTAT [upsert_rows_gcs] update table_schema"
         );
@@ -566,7 +566,7 @@ impl LocalTable {
                 .await?;
         }
         info!(
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             table_id = self.table.table_id(),
             "DSSTRUCTSTAT [upsert_rows_gcs] invalidate table schema"
         );
@@ -583,7 +583,7 @@ impl LocalTable {
             .await?;
 
         info!(
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             table_id = self.table.table_id(),
             row_count = rows.len(),
             "DSSTRUCTSTAT [upsert_rows_gcs] rows upsert"
@@ -621,7 +621,7 @@ impl LocalTable {
         )
         .await?;
         info!(
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             table_id = self.table.table_id(),
             "DSSTRUCTSTAT [upsert_rows_gcs] invalidate dbs"
         );
@@ -678,7 +678,7 @@ impl LocalTable {
             .await?;
 
         info!(
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             table_id = self.table.table_id(),
             row_count = rows_arc.len(),
             "DSSTRUCTSTAT [schedule_background_upsert_or_delete]"
@@ -804,7 +804,7 @@ impl LocalTable {
         let (rows, _) = self.list_rows(databases_store, None).await?;
         let rows = Arc::new(rows);
         info!(
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             table_id = self.table.table_id(),
             row_count = rows.len(),
             "DSSTRUCTSTAT [compute_schema] list rows"
@@ -812,7 +812,7 @@ impl LocalTable {
         now = utils::now();
         let schema = TableSchema::from_rows_async(rows).await?;
         info!(
-            duration = utils::now() - now,
+            duration_ms = utils::now() - now,
             table_id = self.table.table_id(),
             "DSSTRUCTSTAT [compute_schema] compute schema"
         );

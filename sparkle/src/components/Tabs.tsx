@@ -75,7 +75,8 @@ TabsList.displayName = TabsPrimitive.List.displayName;
 /**
  * A single tab button rendered as a Sparkle `Button`, with a `label`, optional `icon`,
  * and a `tooltip` — always provide the tooltip for icon-only triggers so they remain
- * identifiable. Supports link navigation props (`href`, `target`, ...) and counters.
+ * identifiable. Supports link navigation props (`href`, `target`, ...), counters, and a
+ * trailing `iconRight` element such as a Chip.
  *
  * @summary Tab trigger button.
  */
@@ -85,7 +86,13 @@ const TabsTrigger = React.forwardRef<
     Partial<
       Pick<
         React.ComponentProps<typeof Button>,
-        "label" | "tooltip" | "icon" | "isCounter" | "counterValue" | "variant"
+        | "label"
+        | "tooltip"
+        | "icon"
+        | "iconRight"
+        | "isCounter"
+        | "counterValue"
+        | "variant"
       >
     > & {
       isLoading?: boolean;
@@ -97,6 +104,7 @@ const TabsTrigger = React.forwardRef<
       label,
       tooltip,
       icon,
+      iconRight,
       href,
       target,
       rel,
@@ -124,6 +132,7 @@ const TabsTrigger = React.forwardRef<
           label={label}
           tooltip={tooltip}
           icon={icon}
+          iconRight={iconRight}
           disabled={disabled}
           href={href}
           target={target}

@@ -3,6 +3,7 @@ import { AccessSection } from "@app/components/agent_builder/settings/AccessSect
 import { AgentBuilderAvatarSection } from "@app/components/agent_builder/settings/AgentBuilderAvatarSection";
 import { AgentBuilderDescriptionSection } from "@app/components/agent_builder/settings/AgentBuilderDescriptionSection";
 import { AgentBuilderNameSection } from "@app/components/agent_builder/settings/AgentBuilderNameSection";
+import { CostManagementSection } from "@app/components/agent_builder/settings/CostManagementSection";
 import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
 
 interface AgentBuilderSettingsBlockProps {
@@ -38,6 +39,7 @@ export function AgentBuilderSettingsBlock({
           onAddSelfAsEditor={onAddSelfAsEditor}
         />
         <TagsSection />
+        <CostManagementSection />
       </div>
     </AgentBuilderSectionContainer>
   );

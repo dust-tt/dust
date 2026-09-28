@@ -5,7 +5,6 @@ import {
 } from "@app/lib/api/analytics/consumption/schema";
 import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
 import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
-import logger from "@app/logger/logger";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { consumptionAnalyticsApp } from "./context";
@@ -77,20 +76,17 @@ app.post(
       },
     });
     if (result.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          err: result.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve timeseries.",
+          },
         },
-        "[ConsumptionAnalytics] Failed to retrieve timeseries."
+        result.error
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to retrieve timeseries.",
-        },
-      });
     }
 
     return ctx.json(result.value);

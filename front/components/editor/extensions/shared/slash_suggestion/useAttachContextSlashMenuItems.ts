@@ -79,15 +79,21 @@ export function useAttachContextSlashMenuItems({
     [spaces]
   );
 
-  const spaceIds = useMemo(() => {
-    if (spaceId) {
-      return spaces
-        .filter((space) => space.sId === spaceId || space.kind === "global")
-        .map((space) => space.sId);
-    }
+  // Within a pod, only the pod itself and the global space are searchable and browsable.
+  const scopedSpaces = useMemo(
+    () =>
+      spaceId
+        ? spaces.filter(
+            (space) => space.sId === spaceId || space.kind === "global"
+          )
+        : spaces,
+    [spaceId, spaces]
+  );
 
-    return spaces.map((space) => space.sId);
-  }, [spaceId, spaces]);
+  const spaceIds = useMemo(
+    () => scopedSpaces.map((space) => space.sId),
+    [scopedSpaces]
+  );
 
   const projectId =
     spaceId && spacesMap[spaceId]?.kind === "project" ? spaceId : undefined;
@@ -176,6 +182,7 @@ export function useAttachContextSlashMenuItems({
     includeFiles,
     isLoading,
     items,
+    spaces: scopedSpaces,
   };
 }
 

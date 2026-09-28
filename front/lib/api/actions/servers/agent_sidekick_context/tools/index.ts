@@ -13,6 +13,7 @@ import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers
 import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
+import { markDuplicateSuggestionsAsOutdated } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -82,33 +83,6 @@ import type { z } from "zod";
 const UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT =
   "Please mark some existing suggestions as outdated using update_suggestions_state before " +
   "adding new ones.";
-
-/**
- * Finds and marks as outdated any existing pending suggestions that match the predicate.
- * Returns the remaining pending suggestions after marking duplicates as outdated.
- */
-async function markDuplicateSuggestionsAsOutdated(
-  auth: Authenticator,
-  pendingSuggestions: AgentSuggestionResource[],
-  isDuplicate: (suggestion: AgentSuggestionResource) => boolean
-): Promise<AgentSuggestionResource[]> {
-  const duplicates: AgentSuggestionResource[] = [];
-  const remaining: AgentSuggestionResource[] = [];
-
-  for (const suggestion of pendingSuggestions) {
-    if (isDuplicate(suggestion)) {
-      duplicates.push(suggestion);
-    } else {
-      remaining.push(suggestion);
-    }
-  }
-
-  if (duplicates.length > 0) {
-    await AgentSuggestionResource.bulkUpdateState(auth, duplicates, "outdated");
-  }
-
-  return remaining;
-}
 
 type InstructionSuggestionInput = z.infer<typeof InstructionsSuggestionSchema>;
 

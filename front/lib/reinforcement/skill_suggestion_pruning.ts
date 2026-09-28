@@ -4,8 +4,10 @@ import {
   getAllBlockIds,
   instructionBlockSetsConflict,
 } from "@app/lib/editor/instructions_block_conflict";
+import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillAvailabilitySuggestionData,
@@ -129,11 +131,7 @@ export async function pruneConflictingSkillEditSuggestions(
       (e) => e.targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
     )
   ) {
-    await SkillSuggestionResource.bulkUpdateState(
-      auth,
-      existingPending,
-      "outdated"
-    );
+    await outdateSkillSuggestions(auth, existingPending);
     return;
   }
 
@@ -168,11 +166,7 @@ export async function pruneConflictingSkillEditSuggestions(
     );
   });
 
-  await SkillSuggestionResource.bulkUpdateState(
-    auth,
-    toMarkOutdated,
-    "outdated"
-  );
+  await outdateSkillSuggestions(auth, toMarkOutdated);
 }
 
 /**
@@ -219,11 +213,7 @@ export async function pruneConflictingSkillEditorsSuggestions(
     );
   });
 
-  await SkillSuggestionResource.bulkUpdateState(
-    auth,
-    toMarkOutdated,
-    "outdated"
-  );
+  await outdateSkillSuggestions(auth, toMarkOutdated);
 }
 
 /**
@@ -253,11 +243,7 @@ export async function pruneConflictingSkillUserFacingDescriptionSuggestions(
     .filter(isUserFacingDescriptionSkillSuggestion)
     .filter((s) => !excluded.has(s.sId));
 
-  await SkillSuggestionResource.bulkUpdateState(
-    auth,
-    toMarkOutdated,
-    "outdated"
-  );
+  await outdateSkillSuggestions(auth, toMarkOutdated);
 }
 
 export async function pruneConflictingSkillNameSuggestions(
@@ -280,11 +266,7 @@ export async function pruneConflictingSkillNameSuggestions(
     .filter(isNameSkillSuggestion)
     .filter((s) => !excluded.has(s.sId));
 
-  await SkillSuggestionResource.bulkUpdateState(
-    auth,
-    toMarkOutdated,
-    "outdated"
-  );
+  await outdateSkillSuggestions(auth, toMarkOutdated);
 }
 
 /**
@@ -305,7 +287,7 @@ export async function pruneConflictingSkillDeletionSuggestions(
     })
   ).filter((s) => s.sId !== newSuggestion.sId);
 
-  await SkillSuggestionResource.bulkUpdateState(auth, conflicting, "outdated");
+  await outdateSkillSuggestions(auth, conflicting);
 }
 
 /**
@@ -335,11 +317,7 @@ export async function pruneConflictingSkillAvailabilitySuggestions(
     .filter(isAvailabilitySkillSuggestion)
     .filter((s) => !excluded.has(s.sId));
 
-  await SkillSuggestionResource.bulkUpdateState(
-    auth,
-    toMarkOutdated,
-    "outdated"
-  );
+  await outdateSkillSuggestions(auth, toMarkOutdated);
 }
 
 /**
@@ -385,5 +363,28 @@ export async function pruneOutdatedSkillEditSuggestions(
     return false;
   });
 
-  await SkillSuggestionResource.bulkUpdateState(auth, outdated, "outdated");
+  await outdateSkillSuggestions(auth, outdated);
+}
+
+/**
+ * @cc [owner:fabiencelier,label:product] outdate-through-batch
+ * Every skill suggestion pruning outdates MUST go through `outdateSkillSuggestions`: a suggestion
+ * that belongs to a batch outdates its whole batch the others are outdated on their own.
+ */
+export async function outdateSkillSuggestions(
+  auth: Authenticator,
+  suggestions: SkillSuggestionResource[]
+): Promise<void> {
+  if (suggestions.length === 0) {
+    return;
+  }
+
+  await SkillSuggestionResource.bulkUpdateState(
+    auth,
+    suggestions.filter((s) => s.batchId === null),
+    "outdated"
+  );
+  await BatchSuggestionResource.outdateBatchesOf(auth, [
+    ...new Set(removeNulls(suggestions.map((s) => s.batchId))),
+  ]);
 }

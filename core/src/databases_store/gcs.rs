@@ -230,7 +230,7 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
         info!(
             truncate,
             row_count = rows_ref.len(),
-            duration = merge_rows_duration + write_rows_to_csv_duration,
+            duration_ms = merge_rows_duration + write_rows_to_csv_duration,
             merge_rows_duration,
             write_rows_to_csv_duration,
             table_id = table.table_id(),

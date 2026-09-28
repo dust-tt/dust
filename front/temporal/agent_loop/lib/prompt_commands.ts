@@ -4,6 +4,7 @@ import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { StepContext } from "@app/lib/actions/types";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
+import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
@@ -21,13 +22,21 @@ import type { AgentLoopRuntimeData } from "@app/types/assistant/agent_run";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 
-// Matches the command (/run or /list), optionally preceded by an agent mention.
-const COMMAND_REGEX = /^(?:\S+\s+)?\/(run|list)\b/;
+// Matches the command (/run, /list or /bash), optionally preceded by an agent mention.
+const COMMAND_REGEX = /^(?:\S+\s+)?\/(run|list|bash)\b/;
+
+// Tool called by the /bash shortcut.
+const SANDBOX_BASH_TOOL_NAME = `${SANDBOX_TOOL_NAME}${TOOL_NAME_SEPARATOR}bash`;
+const BASH_COMMAND_DESCRIPTION = "Run a /bash command";
 
 // Matches the start of a tool call: tool_name followed by optional whitespace and '('.
 const TOOL_CALL_START_REGEX = /(\w+)\s*\(/g;
 
-type PromptCommand = "run" | "list";
+// Matches the backslash escapes the input bar's markdown serializer (@tiptap/markdown) adds in
+// front of inline markdown characters, e.g. `sandbox\_\_bash` for `sandbox__bash`.
+const MARKDOWN_ESCAPE_REGEX = /\\([\\`*_[\]~])/g;
+
+type PromptCommand = "run" | "list" | "bash";
 
 interface ParsedToolCall {
   toolName: string;
@@ -37,12 +46,20 @@ interface ParsedToolCall {
 /**
  * Extract the body after the command word in the user message.
  */
+/**
+ * @cc [owner:davidebbo,label:product] unescaped-body
+ * The returned body MUST have markdown backslash escapes of `` \ ` * _ [ ] ~ `` removed, so a
+ * body typed in the input bar parses the same as the raw text the user entered.
+ */
 function getBodyAfterCommand(content: string): string {
   const match = content.match(COMMAND_REGEX);
   if (!match) {
     return "";
   }
-  return content.slice(match[0].length).trim();
+  return content
+    .slice(match[0].length)
+    .trim()
+    .replace(MARKDOWN_ESCAPE_REGEX, "$1");
 }
 
 /**
@@ -130,6 +147,27 @@ function parseToolCalls(body: string): ParsedToolCall[] | { error: string } {
   }
 
   return results;
+}
+
+/**
+ * Parse the body after the /bash command into a single sandbox bash tool call.
+ */
+/**
+ * @cc [owner:davidebbo,label:product] body-is-command
+ * The whole body MUST be passed as the `command` argument of one `sandbox__bash` call, with no
+ * further parsing; an empty body MUST return an error instead of a tool call.
+ */
+function parseBashCommand(body: string): ParsedToolCall[] | { error: string } {
+  if (body.length === 0) {
+    return { error: "No command specified. Expected format: /bash <command>" };
+  }
+
+  return [
+    {
+      toolName: SANDBOX_BASH_TOOL_NAME,
+      arguments: { description: BASH_COMMAND_DESCRIPTION, command: body },
+    },
+  ];
 }
 
 /**
@@ -261,7 +299,7 @@ export async function handlePromptCommand(
     return null;
   }
 
-  // toolTestCommand === "run"
+  // toolTestCommand is "run" or "bash"
   if (step > 0) {
     await handleToolRunFinalStep(auth, runAgentData, step);
     return null;
@@ -270,6 +308,7 @@ export async function handlePromptCommand(
   const toolRunResult = await handleToolRunFirstStep(
     auth,
     runAgentData,
+    toolTestCommand,
     step,
     runIds
   );
@@ -367,12 +406,13 @@ async function handleToolListCommand(
 }
 
 /**
- * Handle step 0 of a /run command: parse the message, list available tools,
+ * Handle step 0 of a /run or /bash command: parse the message, list available tools,
  * match parsed tool calls, and create step content entries.
  */
 async function handleToolRunFirstStep(
   auth: Authenticator,
   runAgentData: AgentLoopRuntimeData,
+  command: "run" | "bash",
   step: number,
   runIds: string[]
 ): Promise<{
@@ -417,9 +457,10 @@ async function handleToolRunFirstStep(
     });
   }
 
-  // Parse the tool calls from the body after "/run".
+  // Parse the tool calls from the body after "/run" or "/bash".
   const body = getBodyAfterCommand(userMessage.content);
-  const parsed = parseToolCalls(body);
+  const parsed =
+    command === "bash" ? parseBashCommand(body) : parseToolCalls(body);
   if ("error" in parsed) {
     await publishAgentError({
       code: "tool_test_run_parse_error",

@@ -66,6 +66,63 @@ export async function wakeSleepingSandbox({
   });
 }
 
+type SandboxSleepTarget = SandboxTarget & {
+  // Must go through the owner adapter's sleep helper, which holds the lifecycle
+  // lock and runs the owner's pre-sleep state check.
+  sleepIfRunning: () => Promise<Result<void, Error>>;
+};
+
+export async function isSandboxRunning({
+  fetchSandbox,
+}: SandboxTarget): Promise<boolean> {
+  const sandbox = await fetchSandbox();
+
+  return sandbox?.status === "running" && sandbox.killRequestedAt === null;
+}
+
+/**
+ * @cc [owner:davidebbo,label:product] sleep-only-unmarked-running-sandbox
+ * `sleepRunningSandbox` must only call the owner sleep helper for an existing running sandbox
+ * without a pending kill request; it must never create, wake, or destroy a sandbox.
+ */
+export async function sleepRunningSandbox({
+  fetchSandbox,
+  sleepIfRunning,
+}: SandboxSleepTarget): Promise<Result<PluginResponse, Error>> {
+  const sandbox = await fetchSandbox();
+  if (!sandbox) {
+    return new Err(new Error("No sandbox to put to sleep."));
+  }
+  if (sandbox.killRequestedAt) {
+    return new Err(
+      new Error("Sandbox has a pending kill request and cannot be slept.")
+    );
+  }
+  if (sandbox.status !== "running") {
+    return new Err(
+      new Error(`Sandbox is ${sandbox.status}, not running — nothing to sleep.`)
+    );
+  }
+
+  const sleepResult = await sleepIfRunning();
+  if (sleepResult.isErr()) {
+    return new Err(sleepResult.error);
+  }
+
+  // The owner helper re-checks the status under the lifecycle lock and returns Ok without
+  // sleeping when it changed, or marks the sandbox deleted if the provider lost it, so
+  // report the status it actually landed in.
+  const slept = await fetchSandbox();
+  if (!slept) {
+    return new Err(new Error("Sandbox disappeared while being put to sleep."));
+  }
+
+  return new Ok({
+    display: "text",
+    value: `Sandbox is now ${slept.status}.`,
+  });
+}
+
 export async function canRequestSandboxKill({
   fetchSandbox,
 }: SandboxTarget): Promise<boolean> {

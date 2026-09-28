@@ -31,6 +31,7 @@ import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { extractToolTags } from "@app/lib/tools/format";
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -48,14 +49,12 @@ function hasSkillFieldEdits({
   agentFacingDescription,
   userFacingDescription,
   name,
-  availability,
   instructionEdits,
 }: SkillEdits): boolean {
   return (
     agentFacingDescription !== undefined ||
     userFacingDescription !== undefined ||
     name !== undefined ||
-    availability !== undefined ||
     (instructionEdits?.length ?? 0) > 0
   );
 }
@@ -192,7 +191,6 @@ async function applySkillFieldEdits(
     agentFacingDescription,
     userFacingDescription,
     name,
-    availability,
     instructionEdits,
   }: SkillEdits
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
@@ -200,10 +198,6 @@ async function applySkillFieldEdits(
   if (instructions.isErr()) {
     return instructions;
   }
-
-  // Read before the write: `updateSkill` replaces the skill, so the audit event below could no
-  // longer tell what the availability was.
-  const previousAvailability = skill.availability;
 
   // A batch that does not change the instructions keeps the attachments it already has: nothing it
   // changed can add or drop a reference.
@@ -240,7 +234,6 @@ async function applySkillFieldEdits(
     agentFacingDescription:
       agentFacingDescription ?? skill.agentFacingDescription,
     attachedKnowledge: requirements.attachedKnowledge,
-    availability,
     icon: skill.icon,
     instructions: instructions.value?.instructions ?? skill.instructions,
     instructionsHtml:
@@ -252,22 +245,35 @@ async function applySkillFieldEdits(
     userFacingDescription: userFacingDescription ?? skill.userFacingDescription,
   });
 
-  if (availability !== undefined && availability !== previousAvailability) {
-    void emitAuditLogEvent({
-      auth,
-      action: "skill.availability_updated",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        { type: "skill", id: skill.sId, name: skill.name },
-      ],
-      context: getAuditLogContext(auth),
-      metadata: {
-        skill_name: skill.name,
-        previous_availability: previousAvailability,
-        new_availability: availability,
-      },
-    });
-  }
+  return new Ok(undefined);
+}
+
+/**
+ * Availability goes through `updateAvailabilities`, not `updateSkill`: changing it requires `admin`
+ * on the skill and the `publish` capability, not `write`.
+ */
+async function applyAvailabilityChange(
+  auth: Authenticator,
+  skill: SkillResource,
+  availability: SkillAvailability
+): Promise<Result<undefined, DustError<"invalid_request_error">>> {
+  const previousAvailability = skill.availability;
+  await SkillResource.updateAvailabilities(auth, [skill], availability);
+
+  void emitAuditLogEvent({
+    auth,
+    action: "skill.availability_updated",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      { type: "skill", id: skill.sId, name: skill.name },
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      skill_name: skill.name,
+      previous_availability: previousAvailability,
+      new_availability: availability,
+    },
+  });
 
   return new Ok(undefined);
 }
@@ -340,8 +346,8 @@ export async function applySkillSuggestions(
     edits = { ...edits, name: validation.value.name };
   }
 
-  // `updateSkill` asserts the publish capabilities whenever it receives an availability, so one is
-  // only passed on when a suggestion asked for it and the value actually changes.
+  // `updateAvailabilities` asserts the publish capabilities, so an availability is only applied
+  // when a suggestion asked for it and the value actually changes.
   if (edits.availability !== undefined) {
     const validation = validateSkillAvailabilityChange(auth, skill, {
       availability: edits.availability,
@@ -398,6 +404,17 @@ export async function applySkillSuggestions(
       skill,
       suggestions.filter(isNameSkillSuggestion)
     );
+  }
+
+  if (edits.availability !== undefined) {
+    const availabilityRes = await applyAvailabilityChange(
+      auth,
+      skill,
+      edits.availability
+    );
+    if (availabilityRes.isErr()) {
+      return availabilityRes;
+    }
   }
 
   // An accepted availability suggestion whose value already matches the skill still resolves

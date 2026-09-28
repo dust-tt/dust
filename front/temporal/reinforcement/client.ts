@@ -1,7 +1,7 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { localTimeOfDayToUtc } from "@app/lib/api/timezone";
-import { Authenticator } from "@app/lib/auth";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -27,33 +27,42 @@ export function makeWorkspaceWorkflowId(workspaceId: string): string {
   return `${WORKSPACE_WORKFLOW_ID_PREFIX}${workspaceId}`;
 }
 
+const WORKSPACE_LIST_BATCH_SIZE = 1000;
+
 /**
  * List workspace sIds with an active subscription,
  * excluding workspaces on free upgraded or free trial phone plans.
  */
 async function getReinforcementWorkspaceIds(): Promise<string[]> {
-  const allWorkspaces = await WorkspaceResource.listAll();
   const reinforcementWorkspaceIds: string[] = [];
+  let lastWorkspaceModelId = 0;
 
-  for (const workspace of allWorkspaces) {
-    try {
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  while (true) {
+    const batch =
+      await WorkspaceResource.unsafeListWorkspaceIdBatchAfterModelId({
+        lastWorkspaceModelId,
+        limit: WORKSPACE_LIST_BATCH_SIZE,
+      });
+    if (batch.length === 0) {
+      break;
+    }
+    lastWorkspaceModelId = batch[batch.length - 1].workspaceModelId;
 
-      if (auth.subscription()?.status !== "active") {
-        continue;
-      }
-
-      const planCode = auth.plan()?.code;
-      if (planCode && REINFORCEMENT_EXCLUDED_PLAN_CODES.has(planCode)) {
-        continue;
-      }
-
-      reinforcementWorkspaceIds.push(workspace.sId);
-    } catch (e) {
-      logger.error(
-        { error: e, workspaceId: workspace.sId },
-        "[Reinforcement] Error checking feature flags for workspace."
+    const subscriptionByWorkspaceModelId =
+      await SubscriptionResource.fetchActiveByWorkspacesModelId(
+        batch.map(({ workspaceModelId }) => workspaceModelId)
       );
+
+    for (const { workspaceModelId, workspaceId } of batch) {
+      // Every requested workspace has an entry: those without an active subscription get a
+      // free-no-plan placeholder with status "ended", hence the status check.
+      const subscription = subscriptionByWorkspaceModelId[workspaceModelId];
+      if (
+        subscription.status === "active" &&
+        !REINFORCEMENT_EXCLUDED_PLAN_CODES.has(subscription.getPlan().code)
+      ) {
+        reinforcementWorkspaceIds.push(workspaceId);
+      }
     }
   }
 

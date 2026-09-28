@@ -1,4 +1,3 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -25,11 +24,8 @@ app.post(
     const auth = ctx.get("auth");
     const { agentConfigurationIds } = ctx.req.valid("json");
 
-    const agentConfigurations = await getAgentConfigurations(auth, {
-      agentIds: agentConfigurationIds,
-      variant: "extra_light",
-    });
-    const toDelete = agentConfigurations.filter((a) => a.status === "active");
+    const agents = await AgentResource.fetchByIds(auth, agentConfigurationIds);
+    const toDelete = agents.filter((a) => a.status === "active");
     if (toDelete.length !== agentConfigurationIds.length) {
       return apiError(ctx, {
         status_code: 404,
@@ -39,7 +35,8 @@ app.post(
         },
       });
     }
-    if (toDelete.some((agent) => !agent.canEdit && !auth.isAdmin())) {
+    // Checked for every agent before archiving any, so a rejected batch archives nothing.
+    if (toDelete.some((agent) => !auth.can("admin", agent))) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -49,26 +46,20 @@ app.post(
       });
     }
 
-    for (const agentConfiguration of toDelete) {
-      const agentToArchive = await AgentResource.fetchById(
-        auth,
-        agentConfiguration.sId
-      );
-      if (agentToArchive) {
-        const archiveResult = await agentToArchive.archive(auth);
-        if (archiveResult.isErr()) {
-          return apiError(ctx, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Could not archive one of the agent configurations.",
-            },
-          });
-        }
+    for (const agent of toDelete) {
+      const archiveResult = await agent.archive(auth);
+      if (archiveResult.isErr()) {
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Could not archive one of the agent configurations.",
+          },
+        });
       }
     }
 
-    return ctx.json({ archived: agentConfigurations.length });
+    return ctx.json({ archived: agents.length });
   }
 );
 

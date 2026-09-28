@@ -10,8 +10,8 @@ import {
   createIssue,
   createIssueLink,
   deleteIssueLink,
+  downloadAttachmentContent,
   extractTextFromAttachment,
-  getAttachmentContent,
   getConnectionInfo,
   getIssue,
   getIssueAttachments,
@@ -593,18 +593,12 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
                 attachmentId,
                 mimeType: targetAttachment.mimeType,
               }),
-            downloadContent: async () => {
-              const result = await getAttachmentContent({
+            downloadContent: async () =>
+              downloadAttachmentContent({
                 baseUrl,
                 accessToken,
                 attachmentId,
-                mimeType: targetAttachment.mimeType,
-              });
-              if (result.isErr()) {
-                return result;
-              }
-              return new Ok(Buffer.from(result.value.content, "base64"));
-            },
+              }),
           });
         } catch (error) {
           logger.error(`Error in read_attachment:`, {

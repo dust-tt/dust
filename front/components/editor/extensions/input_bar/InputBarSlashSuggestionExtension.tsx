@@ -5,18 +5,32 @@ import { createSlashSuggestionExtension } from "@app/components/editor/extension
 import {
   clearSlashSubMenuStack,
   createSlashMenuNavigationStorage,
+  getActiveSlashSubMenuFrame,
+  getSlashSubMenuQueryPlaceholder,
   handleSlashSubMenuCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
-import { isAllowedSlashQuery } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
+import {
+  getSlashTriggerText,
+  isAllowedSlashQuery,
+} from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WorkspaceType } from "@app/types/user";
+import type { ChainedCommands } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import type { RefObject } from "react";
 
 export const inputBarSlashSuggestionPluginKey = new PluginKey(
   "inputBarSlashSuggestion"
 );
+
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    inputBarSlashSuggestion: {
+      openInputBarSlashCommand: () => ReturnType;
+    };
+  }
+}
 
 interface InputBarSlashSuggestionStorage {
   dismissedTriggerStart: number | null;
@@ -29,6 +43,7 @@ interface InputBarSlashSuggestionExtensionOptions {
   enabledRef: RefObject<boolean>;
   includeAttachKnowledgeRef: RefObject<boolean>;
   includePickModelRef: RefObject<boolean>;
+  includeSelectSpacesRef: RefObject<boolean>;
   onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
   onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
   onModelSelectRef: RefObject<((selection: Selection) => void) | undefined>;
@@ -62,6 +77,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     enabledRef: { current: false },
     includeAttachKnowledgeRef: { current: false },
     includePickModelRef: { current: false },
+    includeSelectSpacesRef: { current: false },
     onModelSelectRef: { current: undefined },
     onNodeSelectRef: { current: undefined },
     onSelectRef: { current: undefined },
@@ -75,7 +91,23 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     storage.hasBeenFocused &&
     (editor.isFocused || isActive) &&
     storage.dismissedTriggerStart !== range.from &&
-    isAllowedSlashQuery(state, range),
+    // Inside a sub-menu the text after "/" is its query, so a leading space is allowed.
+    (getActiveSlashSubMenuFrame(storage) !== null ||
+      isAllowedSlashQuery(state, range)),
+  // Inserts a "/" at the cursor to open the dropdown, even if the editor was
+  // never focused or the dropdown was dismissed at this position.
+  addCommands: ({ storage, editor }) => ({
+    openInputBarSlashCommand:
+      () =>
+      ({ chain }: { chain: () => ChainedCommands }) => {
+        storage.hasBeenFocused = true;
+        storage.dismissedTriggerStart = null;
+        return chain()
+          .focus()
+          .insertContent(getSlashTriggerText(editor.state))
+          .run();
+      },
+  }),
   shouldShow: ({ transaction }) =>
     !transaction.getMeta("paste") && transaction.getMeta("uiEvent") !== "paste",
   items: () => [],
@@ -102,6 +134,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     conversationIdRef: options.conversationIdRef,
     includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
     includePickModelRef: options.includePickModelRef,
+    includeSelectSpacesRef: options.includeSelectSpacesRef,
     onDetailsRef: options.onDetailsRef,
     onModelSelectRef: options.onModelSelectRef,
     onNodeSelectRef: options.onNodeSelectRef,
@@ -122,5 +155,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   onDropdownExit: ({ storage }) => {
     clearSlashSubMenuStack(storage);
   },
+  getQueryPlaceholder: ({ storage }) =>
+    getSlashSubMenuQueryPlaceholder(storage),
   preventEscapeDefault: true,
 });

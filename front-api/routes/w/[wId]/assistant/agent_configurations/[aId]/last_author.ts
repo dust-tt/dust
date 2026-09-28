@@ -1,4 +1,4 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { UserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -26,11 +26,8 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (!agentConfiguration) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -40,12 +37,12 @@ app.get(
       });
     }
 
-    if (!agentConfiguration.versionAuthorId) {
+    if (!agent.versionAuthorId) {
       return ctx.json({ user: null });
     }
 
     const agentLastAuthor = await UserResource.fetchByModelIds([
-      agentConfiguration.versionAuthorId,
+      agent.versionAuthorId,
     ]);
 
     return ctx.json({

@@ -1,3 +1,4 @@
+import type { GroupWithAllowedActions } from "@app/types/api/groups";
 import type { GroupType } from "@app/types/groups";
 import {
   GROUP_GRANTABLE_ROLES,
@@ -16,18 +17,21 @@ export type PostGroupResponseBody = {
 };
 
 export type GetGroupResponseBody = {
-  group: GroupType;
+  group: GroupWithAllowedActions;
   members: UserType[];
+  managers: UserType[];
 };
 
 export const PatchGroupBodySchema = z.object({
   name: z.string().min(1).optional(),
   memberIds: z.array(z.string()).optional(),
+  managerIds: z.array(z.string()).optional(),
 });
 
 export type PatchGroupResponseBody = {
-  group: GroupType;
+  group: GroupWithAllowedActions;
   members: UserType[];
+  managers: UserType[];
 };
 
 export type DeleteGroupResponseBody = {

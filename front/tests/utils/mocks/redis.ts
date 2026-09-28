@@ -82,6 +82,24 @@ class RedisMock {
 
   private createStatefulClient(hashStore: Map<string, Map<string, string>>) {
     const client: Record<string, unknown> = {
+      mGet: vi.fn(async (keys: string[]) =>
+        keys.map((key) => {
+          const entry = this.stringStore.get(key);
+          if (
+            !entry ||
+            (entry.expiresAtMs > 0 && Date.now() > entry.expiresAtMs)
+          ) {
+            return null;
+          }
+          return entry.value;
+        })
+      ),
+      mSet: vi.fn(async (entries: [string, string][]) => {
+        for (const [key, value] of entries) {
+          this.stringStore.set(key, { value, expiresAtMs: 0 });
+        }
+        return "OK";
+      }),
       get: vi.fn(async (key: string) => {
         const entry = this.stringStore.get(key);
         if (!entry) {

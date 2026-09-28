@@ -1,8 +1,7 @@
 import { default as config } from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
-import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
+import { destroyAgentMCPServerConfigurationsForDataSource } from "@app/lib/resources/agent_mcp_server_views";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -524,19 +523,8 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       );
     }
 
-    await AgentDataSourceConfigurationModel.destroy({
-      where: {
-        dataSourceId: this.id,
-        workspaceId,
-      },
-      transaction,
-    });
-
-    await AgentTablesQueryConfigurationTableModel.destroy({
-      where: {
-        dataSourceId: this.id,
-        workspaceId,
-      },
+    await destroyAgentMCPServerConfigurationsForDataSource(auth, {
+      dataSourceId: this.id,
       transaction,
     });
 

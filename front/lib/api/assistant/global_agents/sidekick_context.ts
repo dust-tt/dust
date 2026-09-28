@@ -15,11 +15,9 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
-import { isFavoritePlatform } from "@app/types/favorite_platforms";
+import { parseFavoritePlatforms } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_LABELS } from "@app/types/job_type";
-import { isStringArray } from "@app/types/shared/utils/general";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 interface SidekickUserMetadata {
   jobType: JobType | null;
@@ -178,17 +176,7 @@ async function fetchSidekickUserMetadata(
     user.getMetadata("favorite_platforms", owner.id),
   ]);
 
-  let favoritePlatforms: FavoritePlatform[] = [];
-  if (platformsMeta?.value) {
-    const parsed = safeParseJSON(platformsMeta.value);
-    if (
-      parsed.isOk() &&
-      isStringArray(parsed.value) &&
-      parsed.value.every(isFavoritePlatform)
-    ) {
-      favoritePlatforms = parsed.value;
-    }
-  }
+  const favoritePlatforms = parseFavoritePlatforms(platformsMeta?.value);
 
   const jobType = isJobType(jobTypeMeta?.value) ? jobTypeMeta.value : null;
 

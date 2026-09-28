@@ -135,9 +135,10 @@ const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
 
 // Flexible so the SDK does not need updating when new efforts are added; the
 // server re-validates against the concrete set and rejects unknown values.
-// copied from reasoning.ts to avoid circular dependency
+// copied from reasoning.ts to avoid circular dependency. "light" is accepted
+// as a legacy alias of "low"; the server never returns it.
 const ReasoningEffortSchema = FlexibleEnumSchema<
-  "none" | "light" | "medium" | "high"
+  "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "maximal" | "light"
 >();
 
 // Explicit per-message model + reasoning-effort selection. Providing it makes
@@ -847,6 +848,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "audit_logs"
   | "automatic_model_health_routing"
   | "claude_4_opus_feature"
+  | "group_management"
   | "group_seat_provisioning"
   | "claude_fable_5_feature"
   | "deepseek_feature"
@@ -918,6 +920,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "similar_agents_check"
   | "skills_search"
   | "new_manage_skills_page"
+  | "new_manage_agents_page"
   | "enforce_premium_model_message_limit"
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"

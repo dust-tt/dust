@@ -29,19 +29,20 @@ function renderList() {
     ],
   }));
   const fetcherWithBody = vi.fn<FetcherWithBodyFn>(async ([, body]) => {
-    const cursor = "cursor" in body ? body.cursor : null;
+    const offset = "offset" in body ? body.offset : 0;
     return {
       skills: [
         {
-          sId: cursor ? "second" : "first",
-          name: cursor ? "Second skill" : "First skill",
+          sId: offset ? "second" : "first",
+          name: offset ? "Second skill" : "First skill",
           userFacingDescription: "",
           icon: null,
           editedBy: null,
         },
       ],
-      hasMore: !cursor,
-      nextCursor: cursor ? null : "opaque-cursor",
+      total: 51,
+      hasMore: !offset,
+      facets: {},
     };
   });
   render(
@@ -67,7 +68,7 @@ describe("DiscoverableSkillsList", () => {
       `/api/w/${owner.sId}/skills/search`,
       expect.objectContaining({
         availability: ["users_and_agents"],
-        cursor: null,
+        offset: 0,
       }),
       "POST",
     ]);
@@ -77,7 +78,7 @@ describe("DiscoverableSkillsList", () => {
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
     expect(fetcherWithBody).toHaveBeenLastCalledWith([
       `/api/w/${owner.sId}/skills/search`,
-      expect.objectContaining({ cursor: "opaque-cursor" }),
+      expect.objectContaining({ offset: 50 }),
       "POST",
     ]);
 

@@ -3,29 +3,26 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
+import {
+  recordAgentCreationSuggestion,
+  validateAgentCreation,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentCreationArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentResource } from "@app/lib/resources/agent_resource";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
-/**
- * @cc [owner:avervaet,label:product] no-direct-mutation
- * `suggestAgentCreation` MUST NOT make the proposed agent usable: the only agent it creates is a
- * `pending`, `hidden` placeholder editable solely by the caller, and the proposal is recorded as a
- * `pending` `create` suggestion targeting it. No other suggestion can target that placeholder, so
- * there are no conflicting suggestions to mark `outdated`. Turning the suggestion into a usable
- * agent is a separate, human-reviewed step.
- */
 export async function suggestAgentCreation(
   auth: Authenticator,
-  { name, description, instructions, analysis }: SuggestAgentCreationArgs
+  { name, description, instructions, analysis }: SuggestAgentCreationArgs,
+  runContext: AgentLoopRunContext
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
-  const user = auth.user();
-  if (!user) {
+  if (!auth.user()) {
     return new Err(
       new MCPError(
         "Suggesting a new agent requires an interactive user context."
@@ -33,45 +30,26 @@ export async function suggestAgentCreation(
     );
   }
 
-  if (!auth.hasWorkspacePermission("create", "agent")) {
-    return new Err(new MCPError("Creating agents is restricted."));
+  const validation = await validateAgentCreation(auth, { name });
+  if (validation.isErr()) {
+    return validation;
   }
 
-  const pendingResult = await AgentResource.createPending(auth);
-  if (pendingResult.isErr()) {
-    return new Err(new MCPError(pendingResult.error.message));
-  }
-
-  const pendingAgent = await getAgentConfiguration(auth, {
-    agentId: pendingResult.value.sId,
-    variant: "light",
+  return recordAgentCreationSuggestion(auth, {
+    create: { name: validation.value.name, description, instructions },
+    analysis: analysis ?? null,
+    conversation: runContext.conversation,
+    batch: null,
   });
-  if (!pendingAgent) {
-    return new Err(
-      new MCPError("Failed to load the newly created pending agent.")
-    );
-  }
-
-  const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
-    auth,
-    pendingAgent,
-    {
-      kind: "create",
-      suggestion: { name, description, instructions },
-      analysis: analysis ?? null,
-      state: "pending",
-      conversationId: null,
-      source: "conversational",
-    }
-  );
-  return new Ok(suggestion);
 }
 
 export async function suggestAgentCreationHandler(
   args: SuggestAgentCreationArgs,
-  { auth }: ToolHandlerExtra
+  { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const result = await suggestAgentCreation(auth, args);
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const result = await suggestAgentCreation(auth, args, runContext);
   if (result.isErr()) {
     return result;
   }

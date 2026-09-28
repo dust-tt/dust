@@ -5,6 +5,7 @@ import {
   allowSlackWorkflow,
   listSlackWorkflowSpaces,
 } from "@app/lib/api/slack/summoning_whitelist";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { AdminCommandType } from "@app/types/connectors/admin/cli";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
@@ -119,13 +120,24 @@ export const slackWhitelistBotPlugin = createPlugin({
       return new Err(new Error("Data source not found."));
     }
 
-    const spaces = await listSlackWorkflowSpaces(auth);
+    const [spaces, globalSpace] = await Promise.all([
+      listSlackWorkflowSpaces(auth),
+      SpaceResource.fetchWorkspaceGlobalSpace(auth),
+    ]);
 
     return new Ok({
-      spaceIds: spaces.map((space) => ({
-        value: space.sId,
-        label: space.name,
-      })),
+      spaceIds: [
+        {
+          value: globalSpace.sId,
+          label: globalSpace.name,
+          checked: true,
+          disabled: true,
+        },
+        ...spaces.map((space) => ({
+          value: space.sId,
+          label: space.name,
+        })),
+      ],
     });
   },
   execute: async (auth, resource, args) => {
@@ -139,9 +151,13 @@ export const slackWhitelistBotPlugin = createPlugin({
       return new Err(new Error("Bot name is required"));
     }
 
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
     const allowRes = await allowSlackWorkflow(auth, {
       botName: botName.trim(),
-      spaceIds: spaceIds ?? [],
+      spaceIds: (spaceIds ?? []).filter(
+        (spaceId) => spaceId !== globalSpace.sId
+      ),
     });
     if (allowRes.isErr()) {
       return new Err(

@@ -3,7 +3,6 @@ import { fetchAutomationsOverview } from "@app/lib/api/analytics/automations/ove
 import { AutomationsOverviewBodySchema } from "@app/lib/api/analytics/automations/schema";
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/schema";
-import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -30,20 +29,17 @@ app.post(
 
     const result = await fetchAutomationsOverview(auth, { period });
     if (result.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          err: result.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve overview.",
+          },
         },
-        "[AutomationsAnalytics] Failed to retrieve overview."
+        result.error
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to retrieve overview.",
-        },
-      });
     }
 
     return ctx.json(result.value);

@@ -1,5 +1,5 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { APIErrorResponse } from "@app/types/error";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -41,11 +41,8 @@ async function loadAgentAndMemory(
 > {
   const auth = ctx.get("auth");
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: aId,
-    variant: "light",
-  });
-  if (!agentConfiguration || !agentConfiguration.canRead) {
+  const agent = await AgentResource.fetchById(auth, aId);
+  if (!agent || !auth.can("read", agent)) {
     return {
       ok: false,
       response: apiError(ctx, {
@@ -73,7 +70,8 @@ async function loadAgentAndMemory(
     };
   }
 
-  const memory = await AgentMemoryResource.fetchByIdForUser(auth, {
+  const memory = await AgentMemoryResource.fetchByIdForAgentAndUser(auth, {
+    agent,
     memoryId: mId,
     user: user.toJSON(),
   });

@@ -7,16 +7,15 @@ import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatSkillSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestSkillUpdateArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import {
+  recordSkillSuggestion,
+  validateSkillEditSuggestion,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/skill_suggestion_changes";
 import { fetchWritableSkill } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  hasSuggestionSelfConflict,
-  pruneConflictingSkillEditSuggestions,
-} from "@app/lib/reinforcement/skill_suggestion_pruning";
-import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { isEditSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import assert from "assert";
 
 export async function suggestSkillUpdate(
@@ -44,54 +43,23 @@ export async function suggestSkillUpdate(
   }
   const skill = skillResult.value;
 
-  const hasInstructionEdits = (instructionEdits?.length ?? 0) > 0;
-  if (!hasInstructionEdits && agentFacingDescriptionEdit === undefined) {
-    return new Err(
-      new MCPError(
-        "Provide at least one of `instructionEdits` or `agentFacingDescriptionEdit`."
-      )
-    );
+  const validation = validateSkillEditSuggestion(auth, skill, {
+    instructionEdits,
+    agentFacingDescriptionEdit,
+  });
+  if (validation.isErr()) {
+    return validation;
   }
 
-  if (hasInstructionEdits && !skill.instructionsHtml) {
-    return new Err(
-      new MCPError(
-        "This skill has no block-structured instructions, so `instructionEdits` cannot be " +
-          "targeted. Suggest an `agentFacingDescriptionEdit` instead."
-      )
-    );
-  }
-
-  const suggestion = { instructionEdits, agentFacingDescriptionEdit };
-
-  if (hasSuggestionSelfConflict(suggestion, skill.instructionsHtml)) {
-    return new Err(
-      new MCPError(
-        "The suggested instruction edits overlap (a block and one of its descendants are " +
-          "both targeted). Target each region of the instructions only once."
-      )
-    );
-  }
-
-  const created = await SkillSuggestionResource.createSuggestionForSkill(
-    auth,
-    skill,
-    {
-      kind: "edit",
-      suggestion,
+  return new Ok(
+    await recordSkillSuggestion(auth, skill, {
+      data: { kind: "edit", suggestion: validation.value },
       analysis: analysis ?? null,
       title: title ?? null,
-      state: "pending",
-      source: "conversational",
-      sourceConversationIds: [runContext.conversation.id],
-    }
+      conversation: runContext.conversation,
+      batch: null,
+    })
   );
-
-  if (isEditSkillSuggestion(created)) {
-    await pruneConflictingSkillEditSuggestions(auth, skill, created);
-  }
-
-  return new Ok(created);
 }
 
 export async function suggestSkillUpdateHandler(

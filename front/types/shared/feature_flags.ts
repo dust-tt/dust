@@ -1,4 +1,10 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  group_management: {
+    description:
+      "Delegate group membership and usage management to group managers",
+    stage: "dust_only",
+    owner: "philipperolet",
+  },
   skills_search: {
     description: "Enable Elasticsearch-backed skill search",
     stage: "dust_only",
@@ -9,6 +15,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the search-backed Manage Skills page (requires skills_search)",
     stage: "dust_only",
     owner: "aubin-tchoi",
+  },
+  new_manage_agents_page: {
+    description: "Enable the search-backed Manage Agents page",
+    stage: "dust_only",
+    owner: "tdraier",
   },
   dust_lean_agent: {
     description:
@@ -249,7 +260,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   agent_stream_long_polling: {
     description:
       "Start agent event streams with long polling for this workspace",
-    stage: "dust_only",
+    stage: "self_serve",
     owner: "id13",
   },
   discord_bot: {

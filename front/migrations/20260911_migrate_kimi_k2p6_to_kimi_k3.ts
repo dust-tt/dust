@@ -26,7 +26,8 @@ const TO_MODEL_ID = "accounts/fireworks/models/kimi-k3";
 // `light` also absorbs the stored `none` rows: K3 has no `none` (it always
 // thinks), and `resolveModel` would fall back to its `defaultReasoningEffort`,
 // which is `light` anyway. Setting it explicitly keeps the stored value honest.
-const TO_REASONING_EFFORT = "light";
+// "light" was renamed "low" once the product adopted the router vocabulary.
+const TO_REASONING_EFFORT = "low";
 
 // `active` rows only, so version history keeps showing the model each version
 // actually ran on. Known gap: `restoreAgentConfiguration` un-archives the

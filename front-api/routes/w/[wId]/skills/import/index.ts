@@ -1,11 +1,11 @@
 import { importSkillsFromGitHub } from "@app/lib/api/skills/detection/github/import_skills";
-import logger from "@app/logger/logger";
 import type {
   ImportSkillsRequestBody,
   ImportSkillsResponseBody,
 } from "@app/types/api/skills/detection/github/import_skills";
 import { ImportSkillsRequestBodySchema } from "@app/types/api/skills/detection/github/import_skills";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureHasWorkspacePermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -35,7 +35,6 @@ app.post(
   ),
   async (ctx): HandlerResult<ImportSkillsResponseBody> => {
     const auth = ctx.get("auth");
-    const owner = auth.getNonNullableWorkspace();
 
     const { repoUrl, names } = ctx.req.valid("json");
 
@@ -68,17 +67,17 @@ app.post(
             },
           });
         case "github_api_error":
-          logger.error(
-            { error, workspaceId: owner.sId },
-            "Error detecting skills from GitHub repo during import"
-          );
-          return apiError(ctx, {
-            status_code: 500,
-            api_error: {
-              type: "invalid_request_error",
-              message: error.message,
+          return apiError(
+            ctx,
+            {
+              status_code: 500,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
             },
-          });
+            normalizeError(error)
+          );
         case "validation_error":
           return apiError(ctx, {
             status_code: 400,

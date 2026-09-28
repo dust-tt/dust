@@ -28,11 +28,27 @@ const ConversationPage = withSuspense(
   "ConversationPage"
 );
 
+function ForYouRedirect() {
+  const { wId } = useParams();
+  const location = useLocation();
+  return (
+    <Navigate
+      to={`/w/${wId}/conversation/new${location.search}${location.hash}`}
+      replace
+    />
+  );
+}
+
 export const conversationRoutes: RouteObject[] = [
   // Workspace index redirects to conversation/new
   {
     index: true,
     element: <RedirectWithSearchParams to="conversation/new" />,
+  },
+  // Old For You emails and bookmarks land on the homepage.
+  {
+    path: "for-you",
+    element: <ForYouRedirect />,
   },
   {
     path: "conversation",

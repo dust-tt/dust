@@ -43,17 +43,17 @@ app.post("/", async (ctx) => {
   });
 
   if (result.isErr()) {
-    logger.error(
-      { error: result.error, workspaceId: owner.sId },
-      "Error fetching similar skills"
-    );
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: result.error.message,
+    return apiError(
+      ctx,
+      {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: result.error.message,
+        },
       },
-    });
+      result.error
+    );
   }
   const similarSkills = result.value.similar_skills;
   if (similarSkills.length > 0) {

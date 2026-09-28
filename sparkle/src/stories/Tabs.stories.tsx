@@ -65,6 +65,33 @@ export const Default: Story = {
 };
 
 /**
+ * `iconRight` accepts an element, so a trigger can carry a trailing dot to
+ * flag the tab, here marking edited content.
+ * @summary Trigger with a trailing dot.
+ */
+export const WithTrailingDot: Story = {
+  render: () => (
+    <div className="w-80">
+      <Tabs defaultValue="info">
+        <TabsList className="px-2">
+          <TabsTrigger value="info" label="Info" icon={Command} />
+          <TabsTrigger
+            value="editors"
+            label="Editors"
+            icon={Lightbulb04}
+            iconRight={
+              <span className="inline-block size-2 rounded-full bg-gradient-to-b from-highlight-400 to-highlight-500" />
+            }
+          />
+        </TabsList>
+        <TabsContent value="info">Info</TabsContent>
+        <TabsContent value="editors">Editors</TabsContent>
+      </Tabs>
+    </div>
+  ),
+};
+
+/**
  * Because TabsList is a flex row, arbitrary controls can share it with the
  * triggers — here a flex spacer pushes a **Button** to the trailing edge, a
  * common pattern for a section-level action next to many tabs.

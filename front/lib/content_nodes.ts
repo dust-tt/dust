@@ -5,10 +5,15 @@ import {
   CONNECTOR_UI_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers_ui";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
 import type { ContentNodeType } from "@app/types/core/content_node";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { isConnectorProvider } from "@app/types/data_source";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import type {
+  DataSourceViewContentNode,
+  DataSourceViewType,
+} from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
@@ -146,4 +151,33 @@ export function getLocationForDataSourceViewContentNodeWithSpace(
   return spaceName
     ? `${spaceName} › ${locationWithoutSpace}`
     : locationWithoutSpace;
+}
+
+/**
+ * @cc [owner:smb2268,label:product] view-root-node-matches-search
+ * The returned node MUST carry `DATA_SOURCE_NODE_ID` as `internalId`, `DATA_SOURCE_MIME_TYPE`
+ * and type `folder`, the identity the search API gives a data source hit and the content-fragment
+ * path resolves, so attaching a whole data source view from the browser is stored and rendered
+ * like attaching it from a search result. The title is the data source's display name.
+ */
+export function getDataSourceViewRootNode(
+  dataSourceView: DataSourceViewType
+): DataSourceViewContentNode {
+  return {
+    childrenCount: 1,
+    dataSourceView,
+    expandable: true,
+    internalId: DATA_SOURCE_NODE_ID,
+    lastUpdatedAt: dataSourceView.dataSource.createdAt,
+    mimeType: DATA_SOURCE_MIME_TYPE,
+    parentInternalId: null,
+    parentInternalIds: [],
+    parentTitle: null,
+    permission: "read",
+    preventSelection: false,
+    providerVisibility: null,
+    sourceUrl: null,
+    title: getDataSourceNameFromView(dataSourceView),
+    type: "folder",
+  };
 }

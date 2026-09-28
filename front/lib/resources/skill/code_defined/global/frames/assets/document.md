@@ -6,7 +6,7 @@ Keep the explanation in editable JSON text and use TSX for supporting charts and
 ## Create or edit
 
 For an existing document, read its current TSX and JSON first so you include the user's latest
-saved changes. Make focused edits and preserve the other text, visual names and layout.
+saved changes. Make focused edits and preserve the other text, comments, visual names and layout.
 
 For a new document, read `document.example.tsx` and `document.example.json` beside this guide.
 Copy them into your Frame folder as `index.tsx` and `content.json`, then replace the illustrative
@@ -24,7 +24,7 @@ directly using regular file operations. The example shows headings, paragraphs, 
 a list and a visual block. For an empty document, use:
 
 ```json
-{ "type": "doc", "content": [{ "type": "paragraph" }] }
+{ "type": "doc", "attrs": { "comments": [] }, "content": [{ "type": "paragraph" }] }
 ```
 
 - Text lives in `{"type":"text","text":"Your text"}` nodes inside paragraphs or headings.
@@ -36,8 +36,19 @@ a list and a visual block. For an empty document, use:
   Links use `{"type":"link","attrs":{"href":"https://example.com"}}` in the text node's `marks`.
 
 Convert Markdown into these nodes when using it as source material. The component reads JSON.
-For tables or images, use a named visual block. Comments and collaborative editing are not
-available yet.
+For tables or images, use a named visual block.
+
+## Comments and review
+
+Workspace users with write access can select text and choose **Comment**, then reply, resolve,
+reopen or delete threads. The component supplies the user's identity and saves comments alongside
+the text. Keep its built-in review controls. Read-only views still show existing comments.
+When handing over a document for review, point the user to the selected-text Comment action.
+
+Threads and their replies live in the root `attrs.comments` array. Text anchors use
+`{"type":"comment","attrs":{"id":"<thread-id>"}}` in a text node's `marks`. When editing an
+existing document, preserve its threads, replies, IDs and matching marks unless asked to change
+them. New documents start with an empty comments array, as in the example.
 
 ## Add custom visuals
 
@@ -58,9 +69,14 @@ For a shared visual direction, use the Frame's theme and semantic colors in your
 ## Saving and later edits
 
 The editor autosaves after three seconds of inactivity. `autosaveDebounceMs` changes that delay.
-`readOnly` disables editing. Shared public views and PDF exports are read-only automatically.
+`readOnly` disables editing. Anonymous shared views and PDF exports are read-only. Signed-in
+workspace members can edit through a shared link when they have write access to the document file.
 
 Republish after changing the Frame's files. The user can reopen the Frame to load the new version.
 
-If the file changed while the user was editing, saving reports a conflict and keeps their draft.
-Ask them to copy unsaved changes before reopening. Treat this as a single-editor document for now.
+Concurrent saves that only add comments or replies can be combined when the document body and
+existing comments are unchanged. Other save conflicts keep the draft and pause autosave. Ask the
+user to copy unsaved changes before reopening in that case.
+
+Other people's changes load when reopening or recovering from a comment save conflict. Text edits
+are not synchronized live.

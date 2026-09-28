@@ -447,7 +447,8 @@ describe("VisualizationActionIframe", () => {
 });
 
 const renderFileFrame = (
-  visualization?: VisualizationActionIframeProps["visualization"]
+  visualization?: VisualizationActionIframeProps["visualization"],
+  identity: ScopedWorkspaceUserIdentity | null = scopedUserIdentity
 ) => {
   const { container } = render(
     createElement(VisualizationActionIframe, {
@@ -456,7 +457,7 @@ const renderFileFrame = (
       conversationId: "c_test",
       frameId: "fil_frame",
       framePackageRoot: "conversation-c_test/report",
-      scopedUserIdentity,
+      scopedUserIdentity: identity ?? undefined,
       viewer: null,
       visualization: visualization ?? {
         code: "export default function App() {}",
@@ -489,9 +490,20 @@ const fileWriteMessage = {
   },
 };
 
+const sharedVisualization = {
+  accessToken: "shared-frame",
+  complete: true,
+  identifier: "viz-fil_frame",
+};
+
 describe("Frame file RPC", () => {
-  it("adds revision metadata to the existing getFile response", async () => {
-    const { iframe, postMessage } = renderFileFrame();
+  it.each([
+    false,
+    true,
+  ])("adds revision metadata to getFile, shared: %s", async (shared) => {
+    const { iframe, postMessage } = renderFileFrame(
+      shared ? sharedVisualization : undefined
+    );
     const headers = {
       [DUST_FILE_REVISION_HEADER]: "123",
       [DUST_FILE_CAN_WRITE_HEADER]: "true",
@@ -529,8 +541,13 @@ describe("Frame file RPC", () => {
     );
   });
 
-  it("accepts writes only from the mounted Frame window and identifier", async () => {
-    const { iframe, postMessage } = renderFileFrame();
+  it.each([
+    false,
+    true,
+  ])("accepts writes only from the mounted Frame, shared: %s", async (shared) => {
+    const { iframe, postMessage } = renderFileFrame(
+      shared ? sharedVisualization : undefined
+    );
     mocks.clientFetch.mockResolvedValue(
       new Response(null, { headers: { [DUST_FILE_REVISION_HEADER]: "124" } })
     );
@@ -614,12 +631,14 @@ describe("Frame file RPC", () => {
     expect(mocks.clientFetch).not.toHaveBeenCalled();
   });
 
-  it("rejects writes from shared Frames even for workspace members", async () => {
-    const { iframe, postMessage } = renderFileFrame({
-      accessToken: "shared-frame",
-      complete: true,
-      identifier: "viz-fil_frame",
-    });
+  it.each([
+    null,
+    { ...scopedUserIdentity, workspaceId: "w_other" },
+  ])("rejects shared writes without membership in the Frame workspace: %j", async (identity) => {
+    const { iframe, postMessage } = renderFileFrame(
+      sharedVisualization,
+      identity
+    );
     window.dispatchEvent(
       new MessageEvent("message", {
         source: iframe.contentWindow,
@@ -638,5 +657,33 @@ describe("Frame file RPC", () => {
       )
     );
     expect(mocks.clientFetch).not.toHaveBeenCalled();
+  });
+
+  it("enforces current file permissions when a shared-view write is denied", async () => {
+    const { iframe, postMessage } = renderFileFrame(sharedVisualization);
+    mocks.clientFetch.mockResolvedValueOnce(
+      new Response(null, { status: 403 })
+    );
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: fileWriteMessage,
+      })
+    );
+    await waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: {
+            success: false,
+            error: { code: "read_only", message: "You cannot edit this file." },
+          },
+        }),
+        { targetOrigin: "*" }
+      )
+    );
+    expect(mocks.clientFetch).toHaveBeenCalledExactlyOnceWith(
+      "/api/w/w_current/files/path/conversation-c_test/report/notes.json",
+      expect.objectContaining({ method: "PUT" })
+    );
   });
 });

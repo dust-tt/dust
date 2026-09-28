@@ -8,7 +8,6 @@ import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/per
 import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/schema";
 import { CARDINALITY_PRECISION_THRESHOLD } from "@app/lib/api/analytics/consumption/scope";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
-import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
@@ -84,20 +83,17 @@ app.post(
       filter,
     });
     if (result.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          err: result.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve triggers.",
+          },
         },
-        "[AutomationsAnalytics] Failed to retrieve triggers."
+        result.error
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to retrieve triggers.",
-        },
-      });
     }
 
     switch (format) {

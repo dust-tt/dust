@@ -18,7 +18,6 @@ import {
   conversationRedirectRoutes,
   conversationRoutes,
 } from "@spa/app/routes/conversationRoutes";
-import { getStartedRoutes } from "@spa/app/routes/getStartedRoutes";
 import { labsRoutes } from "@spa/app/routes/labsRoutes";
 import {
   loginAuthenticatedRoutes,
@@ -71,7 +70,6 @@ export const routes: RouteObject[] = [
                 children: [
                   ...conversationRoutes,
                   ...podsRoutes,
-                  ...getStartedRoutes,
                   ...builderAgentSurfaceRoutes,
                   ...labsRoutes,
                 ],

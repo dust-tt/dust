@@ -17,6 +17,7 @@ import type {
   MCPServerViewType,
   RemoteMCPServerType,
 } from "@app/lib/api/mcp";
+import { DustError } from "@app/lib/error";
 import {
   dangerouslyMakeSIdWithCustomFirstPrefix,
   getResourceNameAndIdFromSId,
@@ -28,6 +29,8 @@ import type {
   TemplateActionPreset,
 } from "@app/types/assistant/templates";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import {
   asDisplayName,
   asDisplayToolName,
@@ -76,29 +79,46 @@ export function isMcpTimeoutError(e: unknown): e is McpError {
   return e instanceof McpError && e.code === MCP_REQUEST_TIMEOUT_ERROR_CODE;
 }
 
-export const getServerTypeAndIdFromSId = (
-  mcpServerId: string
-): {
+type MCPServerTypeAndId = {
   serverType: "internal" | "remote";
   id: number;
-} => {
+};
+
+export const parseServerTypeAndIdFromSId = (
+  mcpServerId: string
+): Result<MCPServerTypeAndId, DustError<"invalid_id">> => {
   const sIdParts = getResourceNameAndIdFromSId(mcpServerId);
   if (!sIdParts) {
-    throw new Error(`Invalid MCP server ID: ${mcpServerId}`);
+    return new Err(
+      new DustError("invalid_id", `Invalid MCP server ID: ${mcpServerId}`)
+    );
   }
 
   const { resourceName, resourceModelId } = sIdParts;
 
   switch (resourceName) {
     case "internal_mcp_server":
-      return { serverType: "internal" as const, id: resourceModelId };
+      return new Ok({ serverType: "internal", id: resourceModelId });
     case "remote_mcp_server":
-      return { serverType: "remote" as const, id: resourceModelId };
+      return new Ok({ serverType: "remote", id: resourceModelId });
     default:
-      throw new Error(
-        `Invalid MCP server ID: ${mcpServerId} resourceName: ${resourceName}`
+      return new Err(
+        new DustError(
+          "invalid_id",
+          `Invalid MCP server ID: ${mcpServerId} resourceName: ${resourceName}`
+        )
       );
   }
+};
+
+export const getServerTypeAndIdFromSId = (
+  mcpServerId: string
+): MCPServerTypeAndId => {
+  const result = parseServerTypeAndIdFromSId(mcpServerId);
+  if (result.isErr()) {
+    throw result.error;
+  }
+  return result.value;
 };
 
 export const internalMCPServerNameToSId = ({

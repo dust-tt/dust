@@ -5,7 +5,6 @@ import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_acti
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { _getAnalystGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/analyst";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
-import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SKILL_COMPANY_DATA_SERVER_NAME } from "@app/lib/resources/skill/code_defined/shared";
@@ -15,8 +14,8 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 describe("resolveSkillMCPServers", () => {
@@ -65,14 +64,9 @@ describe("resolveSkillMCPServers", () => {
     if (!discoverKnowledge) {
       throw new Error("Expected Discover Knowledge skill.");
     }
-    const agentResource = await AgentResource.fetchById(
-      authenticator,
-      agentConfiguration.sId
-    );
-    assert(agentResource !== null);
-    await SkillResource.addManyToAgent(authenticator, {
-      agentResource,
-      skills: [discoverKnowledge],
+    await SkillFactory.linkGlobalSkillToAgent(authenticator, {
+      globalSkillId: "discover_knowledge",
+      agentConfigurationId: agentConfiguration.id,
     });
 
     const { hasSelectedSpacesOutsideAgentScope } =
@@ -248,15 +242,12 @@ describe("resolveSkillMCPServers", () => {
       throw new Error("Expected Discover Knowledge and Go Deep skills.");
     }
 
-    const agentResource = await AgentResource.fetchById(
-      authenticator,
-      agentConfiguration.sId
-    );
-    assert(agentResource !== null);
-    await SkillResource.addManyToAgent(authenticator, {
-      agentResource,
-      skills: [discoverKnowledge, goDeep],
-    });
+    for (const globalSkillId of ["discover_knowledge", "go-deep"] as const) {
+      await SkillFactory.linkGlobalSkillToAgent(authenticator, {
+        globalSkillId,
+        agentConfigurationId: agentConfiguration.id,
+      });
+    }
     await goDeep.enableForAgent(authenticator, {
       agentConfiguration,
       conversation,

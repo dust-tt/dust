@@ -54,16 +54,10 @@ export async function listFrameSharing(
     file.getViewerSummaries(),
     frameRequiresMembership(auth, file),
   ]);
-  const blockedGrantIds = new Set<string>();
-  if (membersOnly && grants.length > 0) {
-    const emails = removeNulls(grants.map((grant) => grant.email));
-    const memberEmails = await getFrameWorkspaceMemberEmails(auth, emails);
-    for (const grant of grants) {
-      if (grant.email === null || !memberEmails.has(grant.email)) {
-        blockedGrantIds.add(grant.sId);
-      }
-    }
-  }
+  const externalGrants = membersOnly
+    ? await getExternalFrameGrants(auth, grants)
+    : [];
+  const blockedGrantIds = new Set(externalGrants.map((grant) => grant.sId));
   const canGrantDomains = canGrantFrameDomains(auth, { membersOnly });
   return {
     grants,
@@ -195,6 +189,67 @@ export async function checkFrameShareScopePermission(
   return new Ok(undefined);
 }
 
+/**
+ * Who a share scope lets in beyond the workspace members its grants name. A new scope has to be
+ * classified here, or the exhaustive Record stops compiling.
+ */
+const SHARE_SCOPE_AUDIENCE: Record<
+  FileShareScope,
+  "anyone_with_link" | "grantees_only"
+> = {
+  emails_only: "grantees_only",
+  public: "anyone_with_link",
+  workspace: "grantees_only",
+  workspace_and_emails: "grantees_only",
+};
+
+export type FrameFunctionSharingConflictParams = {
+  /** Whether the publication about to go live declares at least one function. */
+  declaresFunctions: boolean;
+};
+
+/**
+ * Declaring functions narrows a Frame to workspace users, per
+ * [shared-frame-with-functions-needs-workspace-user], silently breaking the links its external
+ * viewers already hold. Publishing writes no sharing, so neither permission check runs to refuse
+ * it. Returns why the publication is refused, or null when every viewer can open it.
+ */
+export async function getFrameFunctionSharingConflict(
+  auth: Authenticator,
+  file: FileResource,
+  { declaresFunctions }: FrameFunctionSharingConflictParams
+): Promise<string | null> {
+  if (!declaresFunctions) {
+    return null;
+  }
+
+  const shareInfo = await file.getShareInfo();
+  if (!shareInfo) {
+    return null;
+  }
+
+  const grants = await SharingGrantResource.listForFile(file);
+  const externalGrants = await getExternalFrameGrants(auth, grants);
+
+  const reachesAnyoneWithLink =
+    SHARE_SCOPE_AUDIENCE[shareInfo.scope] === "anyone_with_link";
+  if (!reachesAnyoneWithLink && externalGrants.length === 0) {
+    return null;
+  }
+
+  const audience = reachesAnyoneWithLink
+    ? "publicly, with anyone holding its link"
+    : `with ${externalGrants.length} recipient${externalGrants.length === 1 ? "" : "s"} outside the workspace`;
+
+  return (
+    `Not published: this Frame is shared ${audience}, and a Frame that declares functions is ` +
+    "only served to signed-in workspace members, so those viewers get a not-found page on the " +
+    "share link they have. The current version stays live. Do not retry this publish. Tell the " +
+    "user that to add functions, they must first restrict the Frame's sharing to workspace " +
+    "members in the Dust UI, or ask whether to go on without the functions."
+  );
+}
+
 export async function checkFrameEmailGrantPermission(
   auth: Authenticator,
   rawEmails: string[],
@@ -244,6 +299,21 @@ export async function checkFrameEmailGrantPermission(
     : "You do not have permission to invite people outside the workspace. Only workspace members can be invited.";
 
   return new Err(new DustError("unauthorized", errorMessage));
+}
+
+/**
+ * Grants that let in someone outside the workspace. A domain grant carries no email and admits
+ * non-members by design, so it always counts.
+ */
+async function getExternalFrameGrants(
+  auth: Authenticator,
+  grants: SharingGrantResource[]
+): Promise<SharingGrantResource[]> {
+  const emails = removeNulls(grants.map((grant) => grant.email));
+  const memberEmails = await getFrameWorkspaceMemberEmails(auth, emails);
+  return grants.filter(
+    (grant) => grant.email === null || !memberEmails.has(grant.email)
+  );
 }
 
 async function getFrameWorkspaceMemberEmails(

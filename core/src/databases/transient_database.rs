@@ -54,7 +54,7 @@ impl TransientDatabase {
             );
             worker.invalidate_database(self.unique_id()).await?;
             info!(
-                duration = utils::now() - now,
+                duration_ms = utils::now() - now,
                 db_id = self.unique_id(),
                 worker_url = worker.url(),
                 "After invalidate_database())"
@@ -113,7 +113,7 @@ pub async fn execute_query_on_transient_database(
     let result_rows = Arc::new(result_rows);
 
     info!(
-        duration = utils::now() - time_query_start,
+        duration_ms = utils::now() - time_query_start,
         "DSSTRUCTSTAT Finished executing user query on worker"
     );
 
@@ -121,11 +121,11 @@ pub async fn execute_query_on_transient_database(
     let table_schema = TableSchema::from_rows_async(result_rows.clone()).await?;
 
     info!(
-        duration = utils::now() - infer_result_schema_start,
+        duration_ms = utils::now() - infer_result_schema_start,
         "DSSTRUCTSTAT Finished inferring schema"
     );
     info!(
-        duration = utils::now() - time_query_start,
+        duration_ms = utils::now() - time_query_start,
         "DSSTRUCTSTAT Finished query database"
     );
 
@@ -220,7 +220,7 @@ pub async fn get_transient_database_tables_info(
     }
 
     info!(
-        duration = utils::now() - time_query_start,
+        duration_ms = utils::now() - time_query_start,
         "DSSTRUCTSTAT Finished retrieving tables info from worker"
     );
 

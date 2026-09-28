@@ -3,7 +3,6 @@ import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import {
@@ -562,22 +561,13 @@ export async function runModel(
     const allToolsets =
       await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(auth, [], {
         includeGlobalSpace: true,
-        // isJITMCPServerView inspects tool input schemas.
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
       });
-    const filteredToolsets = allToolsets.filter((toolset) => {
-      const mcpServerView = toolset.toJSON();
-      return (
-        isJITMCPServerView(mcpServerView) &&
-        mcpServerView.server.availability !== "auto_hidden_builder"
-      );
-    });
+    const filteredToolsets = allToolsets.filter(
+      (toolset) =>
+        toolset.isJITAttachable() &&
+        toolset.getServerDisplayMetadata().availability !==
+          "auto_hidden_builder"
+    );
     toolsetsContext = buildToolsetsContext(filteredToolsets);
   }
 

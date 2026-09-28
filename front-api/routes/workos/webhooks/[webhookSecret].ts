@@ -76,14 +76,17 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     signatureHeader: sigHeader,
   });
   if (result.isErr()) {
-    logger.error({ error: result.error }, "Invalid WorkOS webhook event");
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: result.error.message,
+    return apiError(
+      ctx,
+      {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: result.error.message,
+        },
       },
-    });
+      result.error
+    );
   }
 
   const workflowId = await launchWorkOSEventsWorkflow({

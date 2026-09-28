@@ -1,10 +1,12 @@
 import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
+import { getGroupAllowedActions } from "@app/lib/api/groups/management_actions";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import type { GetGroupsResponseBody } from "@app/types/api/groups";
 import {
   CreateGroupBodySchema,
   type PostGroupResponseBody,
 } from "@app/types/api/groups/manage";
-import type { GroupKind, GroupType } from "@app/types/groups";
+import type { GroupKind } from "@app/types/groups";
 import {
   GroupKindCodec,
   isUserVisibleGroupKind,
@@ -15,16 +17,13 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import assert from "assert";
 import { z } from "zod";
 
 import groupDetail from "./[groupId]";
 import grantedRole from "./[groupId]/granted_role";
 import grantedSeatType from "./[groupId]/granted_seat_type";
 import spendLimit from "./[groupId]/spend_limit";
-
-export type GetGroupsResponseBody = {
-  groups: (GroupType & { memberCount: number })[];
-};
 
 const GetGroupsQuerySchema = z.object({
   kind: z.union([GroupKindCodec, z.array(GroupKindCodec)]).optional(),
@@ -59,11 +58,26 @@ app.get(
       groupKinds,
     });
 
+    const serializedGroups =
+      withMembers === "true"
+        ? await GroupResource.fetchJSONWithMembers(auth, groups)
+        : await GroupResource.toJSONWithMemberCounts(auth, groups);
+    const groupsById = new Map(groups.map((group) => [group.sId, group]));
+    const isGroupManagementEnabled =
+      await auth.hasFeatureFlag("group_management");
     return ctx.json({
-      groups:
-        withMembers === "true"
-          ? await GroupResource.fetchJSONWithMembers(auth, groups)
-          : await GroupResource.toJSONWithMemberCounts(auth, groups),
+      groups: serializedGroups.map((serialized) => {
+        const group = groupsById.get(serialized.sId);
+        assert(group);
+        return {
+          ...serialized,
+          allowedActions: getGroupAllowedActions(
+            auth,
+            group,
+            isGroupManagementEnabled
+          ),
+        };
+      }),
     });
   }
 );

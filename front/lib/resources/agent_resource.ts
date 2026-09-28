@@ -1,6 +1,7 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
@@ -11,6 +12,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { DustError } from "@app/lib/error";
 import { getEffectiveReasoningEffort } from "@app/lib/llms/model_configurations";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
@@ -37,6 +39,7 @@ import {
   validateAgentSaveInputs,
   writeAgentConfigurationRow,
 } from "@app/lib/resources/agent_configuration_save";
+import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_requested_spaces";
 import type { AgentResourceCacheKey } from "@app/lib/resources/agent_resource_cache";
 import {
   AGENT_RESOURCE_CACHE_ID,
@@ -49,6 +52,7 @@ import { launchAgentSearchIndexation } from "@app/lib/resources/agent_resource_i
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { CachedResourceMode } from "@app/lib/resources/cached_resource_store";
 import { defineCachedResourceValue } from "@app/lib/resources/cached_resource_store";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -56,6 +60,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { SkillFetchContext } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
+import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -67,7 +73,11 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchDeleteAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
-import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
+import type {
+  AgentSearchDocument,
+  AgentSearchListItemType,
+} from "@app/types/agent_search/agent_search";
+import type { DiscoveryAgentType } from "@app/types/api/discovery";
 import type {
   AgentConfigurationBaseType,
   AgentConfigurationScope,
@@ -94,14 +104,19 @@ import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { UserType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import assert from "assert";
 import isEqual from "lodash/isEqual";
 import uniq from "lodash/uniq";
-import type { Attributes, Transaction } from "sequelize";
+import type {
+  Attributes,
+  Includeable,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { Op, UniqueConstraintError, ValidationError } from "sequelize";
 
 // A draft belongs to its current author until it is published. This is ownership, not an editor
@@ -153,6 +168,7 @@ export type AgentResourceContent = {
   instructions: string | null;
   instructionsHtml: string | null;
   maxStepsPerRun: number;
+  creditSpendCheckpointThresholdAwuCredits: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -185,6 +201,7 @@ export type SaveAgentConfigurationParams = {
   editors: UserType[];
   authorId: ModelId;
   reinforcement?: AgentReinforcementMode;
+  ignoreCreditSpendThresholdAlert?: boolean;
   // MCP action configurations to create atomically with the agent version. Created inside the same
   // transaction as the configuration row (see `agent-save-atomic`), so a failure rolls the whole
   // save back and no partial version is ever committed. Defaults to none.
@@ -249,6 +266,7 @@ const AGENT_CONFIGURATION_KEYS = [
   "templateId",
   "requestedSpaceIds",
   "reinforcement",
+  "ignoreCreditSpendThresholdAlert",
   "tags",
   "actions",
   "skills",
@@ -302,8 +320,10 @@ export type AgentResourceSnapshot = {
   content: SerializedAgentResourceContent;
 };
 
-// Ship the cache dark: wired end to end but touching no Redis. Flip to `false` to turn it on.
-const AGENT_RESOURCE_CACHE_DRY_RUN = true;
+// Rollout mode for the agent read cache. Progression: "dryRun" (wired end to end but touching no
+// Redis) -> "compare" (warm the cache and log any divergence from the database, which stays
+// authoritative) -> "live" (serve from the cache).
+const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "live";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentResource
@@ -463,6 +483,8 @@ export class AgentResource
       instructions: agentConfiguration.instructions,
       instructionsHtml: agentConfiguration.instructionsHtml,
       maxStepsPerRun: agentConfiguration.maxStepsPerRun,
+      creditSpendCheckpointThresholdAwuCredits:
+        agentConfiguration.creditSpendCheckpointThresholdAwuCredits,
       createdAt: agentConfiguration.createdAt,
       updatedAt: agentConfiguration.updatedAt,
     };
@@ -531,6 +553,8 @@ export class AgentResource
         responseFormat: configuration.model.responseFormat,
         pictureUrl: configuration.pictureUrl,
         maxStepsPerRun: configuration.maxStepsPerRun,
+        creditSpendCheckpointThresholdAwuCredits:
+          CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
         templateId: null,
         reinforcement: configuration.reinforcement ?? "auto",
         lastReinforcementAnalysisAt: null,
@@ -629,7 +653,18 @@ export class AgentResource
       return [];
     }
 
-    return this.fetchCurrentVersions(auth, { id: agentModelIds });
+    const agents = await AgentModel.findAll({
+      attributes: ["id", "sId"],
+      where: {
+        id: agentModelIds,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    const idsByModelId = new Map(agents.map((agent) => [agent.id, agent.sId]));
+    return this.fetchByIds(
+      auth,
+      removeNulls(agentModelIds.map((id) => idsByModelId.get(id)))
+    );
   }
 
   // Named `...WithAuth` because `BaseResource.fetchByModelId` already occupies the bare name with an
@@ -642,6 +677,12 @@ export class AgentResource
     return resource ?? null;
   }
 
+  /**
+   * @cc [owner:flvndvd,label:backend;security] agent-batch-reads
+   * Results MUST follow first-occurrence input order, omitting missing and unfetchable agents.
+   * All custom-agent cache misses in a call MUST load together, scoped to the caller's workspace.
+   * Both cache hits and misses MUST undergo caller-dependent materialization and permission checks.
+   */
   static async fetchByIds(
     auth: Authenticator,
     agentIds: string[]
@@ -650,17 +691,26 @@ export class AgentResource
       return [];
     }
 
-    const globalAgentIds = agentIds.filter(isGlobalAgentId);
-    const customAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
+    const uniqueAgentIds = uniq(agentIds);
+    const globalAgentIds = uniqueAgentIds.filter(isGlobalAgentId);
+    const customAgentIds = uniqueAgentIds.filter((id) => !isGlobalAgentId(id));
 
     const [customResources, globalResources] = await Promise.all([
-      customAgentIds.length > 0
-        ? this.fetchCurrentVersions(auth, { sId: customAgentIds })
-        : [],
+      this.fetchManyFromStore(auth, customAgentIds),
       this.fetchGlobalAgents(auth, globalAgentIds),
     ]);
 
-    return [...customResources, ...globalResources];
+    const resourcesById = new Map(
+      [
+        ...customResources.map((resource) =>
+          this.materializeResource(auth, resource)
+        ),
+        ...globalResources,
+      ]
+        .filter((resource) => resource.canFetch(auth))
+        .map((resource) => [resource.sId, resource])
+    );
+    return removeNulls(uniqueAgentIds.map((id) => resourcesById.get(id)));
   }
 
   // Global agents are code-defined and have no `agent`/configuration rows, so they cannot be
@@ -684,31 +734,224 @@ export class AgentResource
     auth: Authenticator,
     agentId: string
   ): Promise<AgentResource | null> {
-    // Global agents have no configuration rows and are never cached; resolve them through the
-    // uncached global path (`fetchByIds` -> `fetchGlobalAgents`).
-    if (isGlobalAgentId(agentId)) {
-      const [resource] = await this.fetchByIds(auth, [agentId]);
-      return resource ?? null;
-    }
+    const [resource] = await this.fetchByIds(auth, [agentId]);
+    return resource ?? null;
+  }
 
-    const cachedResource = await this.cache.fetch({
-      workspaceModelId: auth.getNonNullableWorkspace().id,
-      id: agentId,
+  // -- List resolvers: resolve matching agent ids, then hydrate through `fetchByIds` --
+
+  /**
+   * @cc [owner:tdraier,label:backend] agent-list-through-fetch-by-ids
+   * The `listBy*`/`fetchByName` resolvers MUST NOT build resources themselves: they run a
+   * lightweight id-only query for the matching agents, then hydrate through the shared
+   * access-controlled resolver `fetchByIds`, so current-version resolution and access control stay
+   * centralized (see `fetch-current-version`). Predicates on head fields (`name`, `status`, `scope`)
+   * read the denormalized `agents` row directly; predicates on a version's rows (skills/tools/tags)
+   * match the agent's CURRENT version only, joined via `agent.currentVersion`. The id queries against
+   * `agents` never yield global agents; ids sourced elsewhere (e.g. favorites) may include globals,
+   * which `fetchByIds` resolves through its global path.
+   */
+  private static async listCurrentVersionAgentIds(
+    auth: Authenticator,
+    {
+      agentWhere,
+      configurationWhere,
+      configurationInclude,
+    }: {
+      agentWhere?: WhereOptions<AgentModel>;
+      configurationWhere?: WhereOptions<AgentConfigurationModel>;
+      configurationInclude?: Includeable[];
+    } = {}
+  ): Promise<string[]> {
+    // Only join the configuration when a predicate targets the current version; head-field lists stay
+    // on the `agents` row alone.
+    const matchesCurrentVersion =
+      configurationWhere !== undefined || configurationInclude !== undefined;
+
+    const agents = await AgentModel.findAll({
+      attributes: ["sId"],
+      where: {
+        ...agentWhere,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: matchesCurrentVersion
+        ? [
+            {
+              model: AgentConfigurationModel,
+              required: true,
+              // Resolve the single current row via `agent.currentVersion` (mirrors `loadResource`).
+              where: {
+                version: { [Op.col]: "agent.currentVersion" },
+                ...configurationWhere,
+              },
+              attributes: [],
+              include: configurationInclude,
+            },
+          ]
+        : undefined,
     });
-    if (!cachedResource) {
-      return null;
+
+    // A `hasMany` join (skills/tools/tags) can repeat an agent row per matching link; dedupe.
+    return [...new Set(agents.map((agent) => agent.sId))];
+  }
+
+  // The single active agent whose current version bears this exact name (active names are unique per
+  // workspace), or null when none matches or the caller cannot fetch it.
+  static async fetchByName(
+    auth: Authenticator,
+    name: string
+  ): Promise<AgentResource | null> {
+    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+      agentWhere: { name, status: "active" },
+    });
+    const [resource] = await this.fetchByIds(auth, agentIds);
+    return resource ?? null;
+  }
+
+  // Every agent of the authed workspace whose current status is in `status` (active by default),
+  // filtered to what the caller can fetch.
+  static async listByWorkspace(
+    auth: Authenticator,
+    { status = "active" }: { status?: AgentStatus | AgentStatus[] } = {}
+  ): Promise<AgentResource[]> {
+    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+      agentWhere: { status },
+    });
+    return this.fetchByIds(auth, agentIds);
+  }
+
+  // Agents the current user has favorited. Favorites are keyed by agent `sId` (stable across
+  // versions) and may include global agents, which `fetchByIds` resolves through its global path.
+  static async listFavoritesForCurrentUser(
+    auth: Authenticator
+  ): Promise<AgentResource[]> {
+    const user = auth.user();
+    if (!user) {
+      return [];
     }
 
-    // `canFetch` and the read-access downgrade are caller-dependent, so they run here on a fresh
-    // instance, never cached. A caller holding no verb on the agent gets nothing.
-    const resource = this.materializeResource(auth, cachedResource);
-    return resource.canFetch(auth) ? resource : null;
+    const relations = await AgentUserRelationModel.findAll({
+      attributes: ["agentConfiguration"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user.id,
+        favorite: true,
+      },
+    });
+
+    return this.fetchByIds(
+      auth,
+      relations.map((relation) => relation.agentConfiguration)
+    );
+  }
+
+  // Agents `authorModelId` authored any version of (matches the legacy "created by me" view; the
+  // current version's author may differ). The author lives on the configuration, not the denormalized
+  // agent row, so this one predicate cannot read `AgentModel` alone.
+  static async listByAuthor(
+    auth: Authenticator,
+    { authorModelId }: { authorModelId: ModelId }
+  ): Promise<AgentResource[]> {
+    const configurations = await AgentConfigurationModel.findAll({
+      attributes: ["sId"],
+      group: ["sId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        authorId: authorModelId,
+      },
+    });
+
+    return this.fetchByIds(
+      auth,
+      configurations.map((configuration) => configuration.sId)
+    );
+  }
+
+  // Agents whose current version references one of the given skills (custom and/or code-defined).
+  static async listBySkills(
+    auth: Authenticator,
+    {
+      customSkillModelIds = [],
+      globalSkillIds = [],
+    }: { customSkillModelIds?: ModelId[]; globalSkillIds?: string[] }
+  ): Promise<AgentResource[]> {
+    if (customSkillModelIds.length === 0 && globalSkillIds.length === 0) {
+      return [];
+    }
+
+    const skillMatchers = [
+      ...(customSkillModelIds.length > 0
+        ? [{ customSkillId: customSkillModelIds }]
+        : []),
+      ...(globalSkillIds.length > 0 ? [{ globalSkillId: globalSkillIds }] : []),
+    ];
+    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+      configurationInclude: [
+        {
+          model: AgentSkillModel,
+          as: "skillAgentLinks",
+          required: true,
+          where: { [Op.or]: skillMatchers },
+          attributes: [],
+        },
+      ],
+    });
+
+    return this.fetchByIds(auth, agentIds);
+  }
+
+  // Agents whose current version references one of the given MCP server views.
+  static async listByMCPServerViewIds(
+    auth: Authenticator,
+    mcpServerViewModelIds: ModelId[]
+  ): Promise<AgentResource[]> {
+    if (mcpServerViewModelIds.length === 0) {
+      return [];
+    }
+
+    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+      configurationInclude: [
+        {
+          model: AgentMCPServerConfigurationModel,
+          as: "mcpServerConfigurations",
+          required: true,
+          where: { mcpServerViewId: mcpServerViewModelIds },
+          attributes: [],
+        },
+      ],
+    });
+
+    return this.fetchByIds(auth, agentIds);
+  }
+
+  // Agents whose current version carries one of the given tags.
+  static async listByTag(
+    auth: Authenticator,
+    tagModelIds: ModelId[]
+  ): Promise<AgentResource[]> {
+    if (tagModelIds.length === 0) {
+      return [];
+    }
+
+    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+      configurationInclude: [
+        {
+          model: TagAgentModel,
+          as: "agentTagLinks",
+          required: true,
+          where: { tagId: tagModelIds },
+          attributes: [],
+        },
+      ],
+    });
+
+    return this.fetchByIds(auth, agentIds);
   }
 
   // Caller-independent query: the current `full` resource of each identified agent — the row whose
   // `version` equals the agent's `currentVersion` pointer, joined via the unique `(agentId, version)`
   // index — one per agent, scoped to the workspace. No read-access decision is folded in; that is the
-  // caller's job (see `fetchCurrentVersions`/`fetchById`). Takes a bare `workspaceId` so both the
+  // caller's job (see `fetchByIds`). Takes a bare `workspaceId` so both the
   // access-controlled resolvers and the cache seam can share it.
   private static async loadResource(
     workspaceId: ModelId,
@@ -746,20 +989,27 @@ export class AgentResource
     });
   }
 
-  // The access-controlled resolver: each current-version resource, downgraded to `light` when the
-  // caller cannot read it and dropped when the caller holds no verb on it (`canFetch`).
-  private static async fetchCurrentVersions(
-    auth: Authenticator,
-    identityWhere: { id: ModelId[] } | { sId: string[] }
-  ): Promise<AgentResource[]> {
-    const cachedResources = await this.loadResource(
-      auth.getNonNullableWorkspace().id,
-      identityWhere
+  /**
+   * @cc [owner:flvndvd,label:backend] agent-batch-loader-alignment
+   * Inputs MUST be a nonempty batch from one workspace. Results MUST preserve input positions,
+   * returning null for each missing agent.
+   */
+  private static async loadManyFromDatabase(
+    inputs: readonly AgentResourceCacheKey[]
+  ): Promise<(FullAgentResource | null)[]> {
+    assert(inputs.length > 0, "Agent cache batches must not be empty");
+    const { workspaceModelId } = inputs[0];
+    assert(
+      inputs.every((input) => input.workspaceModelId === workspaceModelId),
+      "Agent cache batches must belong to one workspace"
     );
-
-    return cachedResources
-      .map((cachedResource) => this.materializeResource(auth, cachedResource))
-      .filter((resource) => resource.canFetch(auth));
+    const resources = await this.loadResource(workspaceModelId, {
+      sId: inputs.map(({ id }) => id),
+    });
+    const resourcesById = new Map(
+      resources.map((resource) => [resource.sId, resource])
+    );
+    return inputs.map(({ id }) => resourcesById.get(id) ?? null);
   }
 
   /**
@@ -771,7 +1021,7 @@ export class AgentResource
    * `invalidateAgentResourceCaches` helpers that lower-level write and deletion paths can import
    * without forming a cycle back to this resource.
    */
-  private static readonly cache = defineCachedResourceValue<
+  private static readonly store = defineCachedResourceValue<
     AgentResourceCacheKey,
     AgentResourceSnapshot,
     FullAgentResource
@@ -779,19 +1029,26 @@ export class AgentResource
     id: AGENT_RESOURCE_CACHE_ID,
     version: AGENT_RESOURCE_CACHE_VERSION,
     key: agentResourceCacheKey,
-    dryRun: AGENT_RESOURCE_CACHE_DRY_RUN,
-    loadFromDatabase: async ({ workspaceModelId, id }) => {
-      const [cachedResource] = await AgentResource.loadResource(
-        workspaceModelId,
-        {
-          sId: [id],
-        }
-      );
-      return cachedResource ?? null;
-    },
+    mode: AGENT_RESOURCE_CACHE_MODE,
+    loadManyFromDatabase: (inputs) =>
+      AgentResource.loadManyFromDatabase(inputs),
     toSnapshot: (cachedResource) => cachedResource.toSnapshot(),
     fromSnapshot: (snapshot) => AgentResource.fromSnapshot(snapshot),
   });
+
+  /**
+   * @cc [owner:flvndvd,label:backend;security] agent-store-workspace
+   * Batch reads MUST derive the workspace for every lookup key from the supplied Authenticator.
+   */
+  private static fetchManyFromStore(
+    auth: Authenticator,
+    agentIds: readonly string[]
+  ): Promise<FullAgentResource[]> {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    return this.store.fetchMany(
+      agentIds.map((id) => ({ workspaceModelId, id }))
+    );
+  }
 
   static async invalidateCache(
     workspaceId: ModelId,
@@ -901,6 +1158,8 @@ export class AgentResource
         pictureUrl: snapshot.pictureUrl,
         authorId: snapshot.versionAuthorId,
         maxStepsPerRun: content.maxStepsPerRun,
+        creditSpendCheckpointThresholdAwuCredits:
+          content.creditSpendCheckpointThresholdAwuCredits,
         templateId: snapshot.templateId,
         reinforcement: snapshot.reinforcement,
         lastReinforcementAnalysisAt,
@@ -998,6 +1257,50 @@ export class AgentResource
         removeNulls(
           memberModelIds.map((userModelId) => userByModelId.get(userModelId))
         )
+      );
+    }
+
+    return result;
+  }
+
+  async listTags(auth: Authenticator): Promise<TagResource[]> {
+    const tagsByConfigurationModelId = await AgentResource.batchListTags(auth, [
+      this,
+    ]);
+    const tags = tagsByConfigurationModelId.get(this.agentConfigurationModelId);
+    assert(tags !== undefined);
+
+    return tags;
+  }
+
+  /**
+   * @cc [owner:tdraier,label:backend] tag-results-by-version
+   * Keyed by `agentConfigurationModelId`: tags attach to a configuration version, not to the agent
+   * across versions. Each input agent has an entry, `[]` when it has no tag. Global agents MUST get
+   * `[]` without a tag lookup: they hold no tag row and share a sentinel configuration id.
+   */
+  static async batchListTags(
+    auth: Authenticator,
+    agents: AgentResource[]
+  ): Promise<Map<ModelId, TagResource[]>> {
+    const result = new Map<ModelId, TagResource[]>(
+      agents.map((agent) => [agent.agentConfigurationModelId, []])
+    );
+    const customConfigurationModelIds = agents
+      .filter((agent) => agent.scope !== "global")
+      .map((agent) => agent.agentConfigurationModelId);
+    if (customConfigurationModelIds.length === 0) {
+      return result;
+    }
+
+    const tagsByConfigurationModelId = await TagResource.listForAgents(
+      auth,
+      customConfigurationModelIds
+    );
+    for (const configurationModelId of customConfigurationModelIds) {
+      result.set(
+        configurationModelId,
+        tagsByConfigurationModelId[configurationModelId] ?? []
       );
     }
 
@@ -1145,6 +1448,38 @@ export class AgentResource
     return new Ok(undefined);
   }
 
+  /**
+   * @cc [owner:tdraier,label:backend;architecture] agent-skill-links-created-by-agent-save
+   * Runtime code MUST create `AgentSkillModel` rows only through this helper, called by the agent
+   * save to link the given skills to the configuration version it writes. It performs no agent
+   * refresh: the save owns the cache invalidation and search reindex of the saved agent.
+   */
+  private static async createSkillLinks(
+    auth: Authenticator,
+    {
+      agentConfigurationModelId,
+      skills,
+      transaction,
+    }: {
+      agentConfigurationModelId: ModelId;
+      skills: SkillResource[];
+      transaction: Transaction;
+    }
+  ): Promise<void> {
+    if (skills.length === 0) {
+      return;
+    }
+
+    await AgentSkillModel.bulkCreate(
+      skills.map((skill) => ({
+        ...skill.skillReference,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfigurationId: agentConfigurationModelId,
+      })),
+      { transaction }
+    );
+  }
+
   // Delegates to the standalone launcher shared with the write paths that cannot import this
   // resource (see the `agent-search-after-commit` contract).
   static async launchSearchIndexation(
@@ -1168,6 +1503,115 @@ export class AgentResource
         favorite: true,
       },
     });
+  }
+
+  static async batchCountFavorites(
+    auth: Authenticator,
+    agents: AgentResource[]
+  ): Promise<Map<string, number>> {
+    const favoriteCountByAgentId = new Map<string, number>(
+      agents.map((agent) => [agent.sId, 0])
+    );
+    if (agents.length === 0) {
+      return favoriteCountByAgentId;
+    }
+
+    const rows = await AgentUserRelationModel.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfiguration: agents.map((agent) => agent.sId),
+        favorite: true,
+      },
+      group: ["agentConfiguration"],
+    });
+    for (const { agentConfiguration, count } of rows) {
+      if (isString(agentConfiguration)) {
+        favoriteCountByAgentId.set(agentConfiguration, count);
+      }
+    }
+
+    return favoriteCountByAgentId;
+  }
+
+  /**
+   * @cc [owner:tdraier,label:backend;performance] agent-user-merge-through-agent-domain
+   * A user identity merge MUST move the secondary user's agent authorship (`authorId` on every
+   * configuration version) and agent-user relations to the primary user through this method, so the
+   * cache invalidation of every reassigned agent and the search reindex of every reassigned agent
+   * and every agent whose duplicate relation was dropped stay owned by the agent domain. When both
+   * users hold a relation to the same agent, the primary's is kept and the secondary's is deleted.
+   * Callers MUST invoke it after migrating the secondary user's group memberships (which carry agent
+   * editor grants), so the reindex sees the final editors. Returns the number of configuration
+   * versions and relations transferred.
+   */
+  static async mergeUsers(
+    auth: Authenticator,
+    {
+      primaryUserModelId,
+      secondaryUserModelId,
+    }: {
+      primaryUserModelId: ModelId;
+      secondaryUserModelId: ModelId;
+    }
+  ): Promise<{
+    agentConfigurationsCount: number;
+    agentUserRelationsCount: number;
+  }> {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+
+    const [agentConfigurationsCount, reassignedConfigurations] =
+      await AgentConfigurationModel.update(
+        { authorId: primaryUserModelId },
+        {
+          where: {
+            authorId: secondaryUserModelId,
+            workspaceId: workspaceModelId,
+          },
+          returning: ["sId"],
+        }
+      );
+    const reassignedAgentIds = reassignedConfigurations.map(
+      (configuration) => configuration.sId
+    );
+    await invalidateAgentResourceCaches(workspaceModelId, reassignedAgentIds);
+
+    const primaryRelations = await AgentUserRelationModel.findAll({
+      attributes: ["agentConfiguration"],
+      where: { userId: primaryUserModelId, workspaceId: workspaceModelId },
+    });
+    const duplicateRelations = await AgentUserRelationModel.findAll({
+      attributes: ["agentConfiguration"],
+      where: {
+        userId: secondaryUserModelId,
+        workspaceId: workspaceModelId,
+        agentConfiguration: primaryRelations.map(
+          (relation) => relation.agentConfiguration
+        ),
+      },
+    });
+    const deduplicatedAgentIds = duplicateRelations.map(
+      (relation) => relation.agentConfiguration
+    );
+    await AgentUserRelationModel.destroy({
+      where: {
+        userId: secondaryUserModelId,
+        workspaceId: workspaceModelId,
+        agentConfiguration: deduplicatedAgentIds,
+      },
+    });
+    const [agentUserRelationsCount] = await AgentUserRelationModel.update(
+      { userId: primaryUserModelId },
+      { where: { userId: secondaryUserModelId, workspaceId: workspaceModelId } }
+    );
+
+    // The indexed `last_edited_by_user_id` follows the version author and `favorite_count` drops
+    // with a deleted duplicate favorite.
+    await AgentResource.launchSearchIndexation(auth, [
+      ...reassignedAgentIds,
+      ...deduplicatedAgentIds,
+    ]);
+
+    return { agentConfigurationsCount, agentUserRelationsCount };
   }
 
   // Applies the same partial change to a batch of agents by running each through `updateConfiguration`,
@@ -1233,7 +1677,7 @@ export class AgentResource
     }
 
     const [tags, editors, skills] = await Promise.all([
-      TagResource.listForAgent(auth, this.agentConfigurationModelId),
+      this.listTags(auth),
       this.listEditors(auth),
       // No space filtering: tools and skills are carried over as-is, so re-saving an agent behind a
       // space the caller cannot read keeps them rather than dropping them.
@@ -1265,6 +1709,8 @@ export class AgentResource
       // Preserve the version's author rather than re-attributing it to the caller.
       authorId: this.versionAuthorId ?? auth.getNonNullableUser().id,
       reinforcement: this.reinforcement,
+      ignoreCreditSpendThresholdAlert:
+        this.content.creditSpendCheckpointThresholdAwuCredits === null,
       actions,
       skills,
     };
@@ -1388,6 +1834,19 @@ export class AgentResource
     }, transaction);
   }
 
+  // Front door for the requested-spaces cascade. The write, cache invalidation and reindex live in
+  // the leaf `agent_requested_spaces` module (see `requested-spaces-cascade-through-agent-domain`),
+  // which callers below `AgentResource` in the module graph (e.g. `SkillResource`) import directly —
+  // they cannot value-import this class without forming a cycle (`agent_resource` already depends on
+  // `skill_resource`). Callers that can import the class should prefer this method.
+  static async updateRequestedSpaceIdsInPlace(
+    auth: Authenticator,
+    args: { agentConfigurationModelId: ModelId; newSpaceIds: ModelId[] },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<boolean, Error>> {
+    return updateAgentRequestedSpaceIdsInPlace(auth, args, { transaction });
+  }
+
   /**
    * Deletes the agent's permission rows and their regular_auto groups.
    * Only call after deleting the last configuration of the logical agent.
@@ -1473,8 +1932,10 @@ export class AgentResource
    * @cc [owner:tdraier,label:security] agent-archive-restore-requires-admin
    * Archiving, restoring, or hard-deleting a custom agent MUST require the agent `admin` verb,
    * checked inside the resource (`auth.can("admin", this)`) and never delegated to the caller: no
-   * caller may archive, restore, or delete an agent it does not hold `admin` on. Editors and
-   * workspace admins hold it; a Poke superuser session holds it through its admin role.
+   * caller may archive, restore, or delete an agent it does not hold `admin` on, and `write` alone
+   * MUST NOT suffice. `admin` alone MUST be enough, whether or not the caller can `read` the agent,
+   * and callers MUST NOT add a space-read check on top. Editors and workspace admins hold it; a Poke
+   * superuser session holds it through its admin role.
    */
   /**
    * @cc [owner:tdraier,label:product] archive-disables-triggers
@@ -1791,10 +2252,11 @@ export class AgentResource
 
   // Hard-deletes the agent: every version and its satellites (tools and their data-source / table /
   // child-agent links, tags, skills, suggestions), the scoped resources (triggers, wake-ups,
-  // favorites), the agent's permission grants and groups, and finally the `agents` identity row. The
-  // cached entry is invalidated on commit and the agent is removed from the search index. This
-  // permanently destroys the agent. Like archive/restore, it requires the agent `admin` verb (checked
-  // in `batchDelete`, regardless of any caller-side gate; see `agent-archive-restore-requires-admin`).
+  // favorites, agent memories, group discovery pins), the agent's permission grants and groups, and
+  // finally the `agents` identity row. The cached entry is invalidated on commit and the agent is
+  // removed from the search index. This permanently destroys the agent. Like archive/restore, it
+  // requires the agent `admin` verb (checked in `batchDelete`, regardless of any caller-side gate;
+  // see `agent-archive-restore-requires-admin`).
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     return AgentResource.batchDelete(auth, [this]);
   }
@@ -1803,8 +2265,9 @@ export class AgentResource
    * @cc [owner:tdraier,label:backend] batch-delete-atomic
    * `batchDelete` MUST hard-delete every passed agent as a set: for each agent it destroys all of its
    * configuration versions and their satellites (tools and their data-source / table / child-agent
-   * links, tags, skills, suggestions), the permission grants and groups, and the `agents` identity
-   * row. All of these database deletions MUST run in a single transaction so the batch commits
+   * links, tags, skills, suggestions), the rows keyed off the stable `sId` with no FK to cascade
+   * (agent memories, group discovery pins), the permission grants and groups, and the `agents`
+   * identity row. All of these database deletions MUST run in a single transaction so the batch commits
    * all-or-nothing (destroying every version before its identity keeps the delete valid for any agent,
    * not only single-version pending drafts). Because the whole identity is removed, `batchDelete` MUST
    * NOT be called with two resources sharing an `id`. Scoped resources (triggers, wake-ups, favorites)
@@ -1941,6 +2404,21 @@ export class AgentResource
         });
       }
 
+      // Agent memories are keyed by the stable `sId` (not by version) and have no FK to `agents`,
+      // so they are removed here along with the identities.
+      await AgentMemoryModel.destroy({
+        where: { workspaceId, agentConfigurationId: { [Op.in]: sIds } },
+        transaction: t,
+      });
+
+      // Group discovery pins reference the agent by its stable `sId` with no FK to cascade, so they
+      // are removed here along with the identities. Deleted through the model (not
+      // `DiscoveryItemResource`) to avoid an import cycle back into `AgentResource`.
+      await GroupPinnedItemModel.destroy({
+        where: { workspaceId, type: "agent", itemId: { [Op.in]: sIds } },
+        transaction: t,
+      });
+
       // The `agent_configurations` rows (and their FK to `agents`) are gone, so the grants, groups
       // and the identity rows can be removed.
       await AgentResource.batchDestroyPermissionsAndGroups(auth, agents, {
@@ -1979,13 +2457,17 @@ export class AgentResource
     return new Ok(undefined);
   }
 
+  requestedSpaceModelIds(): readonly ModelId[] {
+    return this.requestedSpaceIds;
+  }
+
   // Whether the caller can read every space backing the agent's tools/skills/data. Space read comes
   // from the caller's governance snapshot (`getReadableSpaceModelIds`), so this needs no extra query.
   // A `kind: "all"` result is the type-wide wildcard grant (a full system key) and reads every space;
   // a system key downscoped to a group subset (see `Authenticator.fromKey` with `requestedGroupIds`)
   // enumerates only what those groups grant, so it is checked like any other caller. A missing or
   // deleted space is absent from the snapshot and therefore fails closed.
-  requestedSpacesReadable(auth: Authenticator): boolean {
+  private requestedSpacesReadable(auth: Authenticator): boolean {
     const readableSpaces = auth.getReadableSpaceModelIds();
     return (
       readableSpaces.kind === "all" ||
@@ -2102,13 +2584,15 @@ export class AgentResource
 
   /**
    * @cc [owner:sfriquet,label:backend;security] agent-search-serialization
-   * Serialize a custom agent from its core fields, deriving user sIds from supplied editor
+   * Serialize listing metadata from the core fields, deriving user sIds from supplied editor
    * resources; perform no I/O and never include private agent content. `model.reasoning_effort`
    * MUST always carry the effort the agent runs at, never null: an agent that configures none
    * runs at its model's default.
+   * Custom agents use the authenticator's workspace; global agents use the global namespace, as
+   * always active and without workspace-specific relationships, usage or dates.
    */
   toSearchDocument(
-    workspace: LightWorkspaceType,
+    auth: Authenticator,
     {
       activeUsersCount,
       editors,
@@ -2131,14 +2615,13 @@ export class AgentResource
       tagIds: string[];
     }
   ): AgentSearchDocument {
-    assert(
-      this.scope !== "global" && this.workspaceId === workspace.id,
-      "Search documents require a custom agent in the workspace."
-    );
+    const isGlobal = this.scope === "global";
     return {
-      workspace_id: workspace.sId,
+      workspace_id: isGlobal
+        ? GLOBAL_AGENTS_WORKSPACE_ID
+        : auth.getNonNullableWorkspace().sId,
       agent_id: this.sId,
-      status: this.status,
+      status: isGlobal ? "active" : this.status,
       scope: this.scope,
       model: {
         provider_id: this.modelConfiguration.providerId,
@@ -2147,21 +2630,33 @@ export class AgentResource
       },
       name: this.name,
       picture_url: this.pictureUrl,
-      last_edited_by_user_id: lastEditedByUser?.sId ?? null,
-      editor_ids: uniq(editors.map((editor) => editor.sId)).sort(),
-      requested_space_ids: this.requestedSpaceIds.map((id) =>
-        SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
-      ),
-      created_at: this.createdAt.toISOString(),
-      updated_at: this.updatedAt.toISOString(),
+      last_edited_by_user_id: isGlobal ? null : (lastEditedByUser?.sId ?? null),
+      editor_ids: isGlobal
+        ? []
+        : uniq(editors.map((editor) => editor.sId)).sort(),
+      requested_space_ids: isGlobal
+        ? []
+        : this.requestedSpaceIds.map((id) =>
+            SpaceResource.modelIdToSId({ id, workspaceId: this.workspaceId })
+          ),
+      created_at: isGlobal ? null : this.createdAt.toISOString(),
+      updated_at: isGlobal ? null : this.updatedAt.toISOString(),
       description: this.description,
       skill_ids: uniq(skillIds).sort(),
-      mcp_server_view_ids: uniq(mcpServerViewIds).sort(),
-      tag_ids: uniq(tagIds).sort(),
-      feedback_positive_count: feedbackPositiveCount,
-      feedback_negative_count: feedbackNegativeCount,
-      active_users_count: activeUsersCount,
-      favorite_count: favoriteCount,
+      mcp_server_view_ids: isGlobal ? [] : uniq(mcpServerViewIds).sort(),
+      tag_ids: isGlobal ? [] : uniq(tagIds).sort(),
+      feedback_positive_count: isGlobal ? 0 : feedbackPositiveCount,
+      feedback_negative_count: isGlobal ? 0 : feedbackNegativeCount,
+      active_users_count: isGlobal ? null : activeUsersCount,
+      favorite_count: isGlobal ? 0 : favoriteCount,
+    };
+  }
+
+  toSearchModelJSON(): NonNullable<AgentSearchListItemType["model"]> {
+    return {
+      providerId: this.modelConfiguration.providerId,
+      modelId: this.modelConfiguration.modelId,
+      reasoningEffort: getEffectiveReasoningEffort(this.modelConfiguration),
     };
   }
 
@@ -2203,12 +2698,23 @@ export class AgentResource
       reinforcement: this.reinforcement,
       lastReinforcementAnalysisAt:
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
+      ignoreCreditSpendThresholdAlert:
+        content.creditSpendCheckpointThresholdAwuCredits === null,
       canRead: this._verbs.has("read"),
       // Regular API keys hold `write` from the admin role but may only edit an active version
       // (see the `regular-key-agent-editability` contract on `enrichAgentConfigurations`).
       canEdit:
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
+    };
+  }
+
+  toDiscoveryJSON(): DiscoveryAgentType {
+    return {
+      sId: this.sId,
+      name: this.name,
+      description: this.description,
+      pictureUrl: this.pictureUrl,
     };
   }
 
@@ -2267,8 +2773,9 @@ export class AgentResource
    * @cc [owner:tdraier,label:security;product] agent-edit-in-place
    * Saving an existing agent MUST route each changed property by kind and gate it on its own
    * permission: a definition field other than the model and tags (name, description, instructions,
-   * picture, status, template, requested spaces, reinforcement, tools or skills) creates a new
-   * version and MUST require `write`; the `model` creates a new version but MUST require `write` OR
+   * picture, status, template, requested spaces, reinforcement, credit spend alert bypass, tools or
+   * skills) creates a new version and MUST require `write`; the `model` creates a new version but
+   * MUST require `write` OR
    * `admin`, and `tags` a new version requiring `write` OR workspace-admin (see
    * `model-change-requires-edit`/`tags-change-requires-edit`); `scope` is
    * applied in place (no new version) and MUST satisfy
@@ -2587,6 +3094,11 @@ export class AgentResource
    * transaction owned by this method, so a failure in any part leaves no partial agent version behind
    * and needs no external rollback.
    */
+  /**
+   * @cc [owner:avervaet,label:security;product] credit-spend-alert-bypass-manager-only
+   * Only workspace admins and managers MAY change whether an agent bypasses the credit spend
+   * threshold alert; a save by anyone else MUST keep the previously stored value.
+   */
   private static async _saveConfiguration(
     auth: Authenticator,
     {
@@ -2605,6 +3117,7 @@ export class AgentResource
       editors,
       authorId,
       reinforcement,
+      ignoreCreditSpendThresholdAlert,
       actions = [],
       skills = [],
     }: {
@@ -2623,6 +3136,7 @@ export class AgentResource
       editors: UserType[];
       authorId: ModelId;
       reinforcement?: AgentReinforcementMode;
+      ignoreCreditSpendThresholdAlert?: boolean;
       actions?: ServerSideMCPServerConfigurationType[];
       skills?: SkillResource[];
     }
@@ -2709,6 +3223,9 @@ export class AgentResource
           templateModelId: template?.id,
           requestedSpaceIds,
           reinforcement,
+          ignoreCreditSpendThresholdAlert: auth.isManager()
+            ? ignoreCreditSpendThresholdAlert
+            : undefined,
           owner,
           transaction: t,
         });
@@ -2781,13 +3298,11 @@ export class AgentResource
             throw actionRes.error;
           }
         }
-        if (skills.length > 0) {
-          await SkillResource.addManyToAgent(
-            auth,
-            { agentResource: savedResource, skills },
-            { transaction: t }
-          );
-        }
+        await AgentResource.createSkillLinks(auth, {
+          agentConfigurationModelId: savedResource.agentConfigurationModelId,
+          skills,
+          transaction: t,
+        });
 
         return agentConfigurationInstance;
       };

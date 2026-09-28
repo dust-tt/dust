@@ -1,11 +1,16 @@
+import { isAuthorizedToApplyAgentSuggestions } from "@app/lib/api/assistant/agent_suggestion_authorization";
 import { applyAgentSuggestions } from "@app/lib/api/assistant/apply_agent_suggestions";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
   GetSuggestionsResponseBody,
   PatchSuggestionResponseBody,
 } from "@app/types/api/assistant/agent_suggestion";
 import { PatchSuggestionRequestBodySchema } from "@app/types/api/assistant/agent_suggestion";
+import { isString } from "@app/types/shared/utils/general";
+import { AGENT_SUGGESTION_SOURCES } from "@app/types/suggestions/agent_suggestion";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -14,14 +19,14 @@ import { z } from "zod";
 
 const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
 
-const stringOrArrayToArray = z.preprocess(
-  (v) => (typeof v === "string" ? [v] : v),
-  z.array(StateSchema)
-);
+const stringOrArrayToArray = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((v) => (isString(v) ? [v] : v), z.array(schema));
 
 const GetSuggestionsQuerySchema = z.object({
-  states: stringOrArrayToArray.optional(),
+  states: stringOrArrayToArray(StateSchema).optional(),
   kind: z.enum(["instructions", "tools", "skills", "model"]).optional(),
+  sources: stringOrArrayToArray(z.enum(AGENT_SUGGESTION_SOURCES)).optional(),
+  conversationId: z.string().optional(),
   limit: z.string().optional(),
 });
 
@@ -65,7 +70,8 @@ app.get(
       });
     }
 
-    const { states, kind, limit } = ctx.req.valid("query");
+    const { states, kind, sources, conversationId, limit } =
+      ctx.req.valid("query");
 
     const parsedLimit = limit ? parseInt(limit, 10) : undefined;
     if (parsedLimit !== undefined && isNaN(parsedLimit)) {
@@ -78,10 +84,26 @@ app.get(
       });
     }
 
+    // Resolved through `ConversationResource` so the filter only ever matches a conversation the
+    // caller can access; an unknown or inaccessible one yields no suggestions.
+    let conversationModelId: number | undefined;
+    if (conversationId) {
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        conversationId
+      );
+      if (!conversation) {
+        return ctx.json({ suggestions: [] });
+      }
+      conversationModelId = conversation.id;
+    }
+
     const suggestions =
       await AgentSuggestionResource.listByAgentConfigurationId(auth, aId, {
         states,
         kind,
+        sources,
+        conversationModelId,
         limit: parsedLimit,
       });
 
@@ -161,6 +183,19 @@ app.patch(
       }
     }
 
+    const batchedSuggestionIds = suggestions
+      .filter((suggestion) => suggestion.batchId !== null)
+      .map((suggestion) => suggestion.sId);
+    if (batchedSuggestionIds.length > 0) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `The following suggestions belong to a batch and must be reviewed with it: ${batchedSuggestionIds.join(", ")}.`,
+        },
+      });
+    }
+
     if (applyToAgent) {
       const alreadyReviewedIds = suggestions
         .filter((suggestion) => suggestion.state !== "pending")
@@ -175,8 +210,23 @@ app.patch(
         });
       }
 
+      const agentResource = await AgentResource.fetchById(auth, agent.sId);
+      if (
+        !agentResource ||
+        !isAuthorizedToApplyAgentSuggestions(auth, agentResource, suggestions)
+      ) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "agent_group_permission_error",
+            message:
+              "You are not allowed to apply one or more of these suggestions to this agent.",
+          },
+        });
+      }
+
       const applyRes = await applyAgentSuggestions(auth, {
-        agent,
+        agent: agentResource,
         suggestions,
       });
       if (applyRes.isErr()) {

@@ -61,7 +61,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       .filter((flag) => isWhitelistableFeature(flag.name));
   }
 
-  private static readonly listForWorkspaceCache = defineCachedResourceList<
+  private static readonly store = defineCachedResourceList<
     ModelId,
     CachedFeatureFlagData[],
     FeatureFlagResource
@@ -95,7 +95,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
     workspace: WorkspaceResource | WorkspaceType | LightWorkspaceType
   ): Promise<FeatureFlagResource[]> {
     return listForWorkspaceQuery.get(workspace.id, () =>
-      FeatureFlagResource.listForWorkspaceCache.fetch(workspace.id)
+      FeatureFlagResource.store.fetch(workspace.id)
     );
   }
 
@@ -121,7 +121,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       workspaceId: workspace.id,
       name,
     });
-    await FeatureFlagResource.listForWorkspaceCache.invalidate(workspace.id);
+    await FeatureFlagResource.store.invalidate(workspace.id);
   }
 
   static async disable(
@@ -134,7 +134,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
         name,
       },
     });
-    await FeatureFlagResource.listForWorkspaceCache.invalidate(workspace.id);
+    await FeatureFlagResource.store.invalidate(workspace.id);
     return count > 0;
   }
 
@@ -156,7 +156,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
           name,
         }))
       );
-      await FeatureFlagResource.listForWorkspaceCache.invalidate(workspace.id);
+      await FeatureFlagResource.store.invalidate(workspace.id);
       listForWorkspaceQuery.invalidate(workspace.id);
     }
   }
@@ -171,7 +171,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
         name: names,
       },
     });
-    await FeatureFlagResource.listForWorkspaceCache.invalidate(workspace.id);
+    await FeatureFlagResource.store.invalidate(workspace.id);
     listForWorkspaceQuery.invalidate(workspace.id);
   }
 
@@ -201,9 +201,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
-    await FeatureFlagResource.listForWorkspaceCache.invalidateMany(
-      workspaceModelIds
-    );
+    await FeatureFlagResource.store.invalidateMany(workspaceModelIds);
 
     return deleted;
   }
@@ -276,10 +274,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       where: { workspaceId: workspace.id },
       transaction,
     });
-    await FeatureFlagResource.listForWorkspaceCache.invalidate(
-      workspace.id,
-      transaction
-    );
+    await FeatureFlagResource.store.invalidate(workspace.id, transaction);
   }
 
   // Count/delete rows for a flag name that is no longer in WHITELISTABLE_FEATURES.
@@ -302,10 +297,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       },
       transaction,
     });
-    await FeatureFlagResource.listForWorkspaceCache.invalidate(
-      this.workspaceId,
-      transaction
-    );
+    await FeatureFlagResource.store.invalidate(this.workspaceId, transaction);
     return new Ok(this.id);
   }
 }

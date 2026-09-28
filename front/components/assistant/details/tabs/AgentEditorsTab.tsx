@@ -1,3 +1,4 @@
+import { useIsAgentSuggestionPreview } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
@@ -38,7 +39,10 @@ export function AgentEditorsTab({
     agentConfigurationId: agentConfiguration.sId,
   });
 
-  const canManageEditors = agentConfiguration.canEdit || isAdmin(owner);
+  const isPreview = useIsAgentSuggestionPreview();
+
+  const canManageEditors =
+    (agentConfiguration.canEdit || isAdmin(owner)) && !isPreview;
   const formValues = useMemo<EditorsFormData>(() => ({ editors }), [editors]);
   const form = useForm<EditorsFormData>({
     defaultValues: { editors: [] },

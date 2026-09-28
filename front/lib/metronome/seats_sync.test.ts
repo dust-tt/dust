@@ -77,6 +77,7 @@ function activeSchedule(minSeats: number, maxSeats: number | null = null) {
 // Cache wrappers run at import time and (for invalidate) in `syncSeatCount`'s
 // finally block — stub them so the test never touches Redis.
 vi.mock("@app/lib/utils/cache", () => ({
+  cacheManyWithRedis: (fn: unknown) => fn,
   cacheWithRedis: (fn: unknown) => fn,
   cacheWithRedisResult: (fn: unknown) => fn,
   invalidateCacheWithRedis: () => async () => {},
