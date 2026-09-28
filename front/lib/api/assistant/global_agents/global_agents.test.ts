@@ -164,6 +164,8 @@ describe("getGlobalAgents custom model agents", () => {
         GLOBAL_AGENTS_SID.DUST_NEXT,
         GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
         GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+        GLOBAL_AGENTS_SID.DUST_NEXT_NONE,
+        GLOBAL_AGENTS_SID.DUST_NEXT_XHIGH,
       ],
       "light"
     );
@@ -194,7 +196,35 @@ describe("getGlobalAgents custom model agents", () => {
         modelId: CUSTOM_MODEL_ID,
         reasoningEffort: "high",
       },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_NONE,
+        providerId: "openai",
+        modelId: CUSTOM_MODEL_ID,
+        reasoningEffort: "none",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_XHIGH,
+        providerId: "openai",
+        modelId: CUSTOM_MODEL_ID,
+        reasoningEffort: "xhigh",
+      },
     ]);
+  });
+
+  it("hides a custom Dust agent variant whose effort the custom model does not support", async () => {
+    const auth = await createAuthenticatorWithFlags([
+      "dust_internal_global_agents",
+      "custom_model_feature",
+    ]);
+
+    // The mocked custom model (GPT-5.5) has no "maximal" effort.
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DUST_NEXT_MAX],
+      "light"
+    );
+
+    expect(agents).toEqual([]);
   });
 
   it("resolves retired chawi agent variants to the GPT-5.5 fallback", async () => {

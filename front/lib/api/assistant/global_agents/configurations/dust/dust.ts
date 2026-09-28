@@ -1236,6 +1236,30 @@ const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       preferredReasoningEffort: "high",
     },
   ],
+  [
+    GLOBAL_AGENTS_SID.DUST_NEXT_NONE,
+    {
+      name: "dust-next-none",
+      customModelIndex: 0,
+      preferredReasoningEffort: "none",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_NEXT_XHIGH,
+    {
+      name: "dust-next-xhigh",
+      customModelIndex: 0,
+      preferredReasoningEffort: "xhigh",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_NEXT_MAX,
+    {
+      name: "dust-next-max",
+      customModelIndex: 0,
+      preferredReasoningEffort: "maximal",
+    },
+  ],
 ]);
 
 export function isCustomModelDustGlobalAgent(
@@ -1244,8 +1268,8 @@ export function isCustomModelDustGlobalAgent(
   return CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.has(agentId);
 }
 
-// Null when the agent is not bound to a custom model, or when its index is missing from the
-// generated custom models.
+// Null when the agent is not bound to a custom model, when its index is missing from the
+// generated custom models, or when that model does not support the agent's effort.
 export function getCustomModelForDustGlobalAgent(
   agentId: GLOBAL_AGENTS_SID
 ): ModelConfigurationType | null {
@@ -1253,5 +1277,11 @@ export function getCustomModelForDustGlobalAgent(
   if (!config) {
     return null;
   }
-  return CUSTOM_MODEL_CONFIGS[config.customModelIndex] ?? null;
+  const customModel = CUSTOM_MODEL_CONFIGS[config.customModelIndex];
+  if (
+    !customModel?.supportedReasoningEfforts[config.preferredReasoningEffort]
+  ) {
+    return null;
+  }
+  return customModel;
 }
