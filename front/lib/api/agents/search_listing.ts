@@ -1,5 +1,6 @@
 import { searchAgents } from "@app/lib/api/agents/search";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -14,6 +15,11 @@ import { removeNulls } from "@app/types/shared/utils/general";
  * through resources, and only name skills and spaces the caller can read: unreadable ones are
  * dropped from the facets.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:security] agent-search-live-edit-permissions
+ * Return `canEdit` from the caller's grants and the current agent configuration, never indexed
+ * editor or space metadata. Missing and global agents MUST have `canEdit: false`.
+ */
 export async function searchAgentListings(
   auth: Authenticator,
   options: Parameters<typeof searchAgents>[1]
@@ -22,6 +28,11 @@ export async function searchAgentListings(
   if (result.isErr()) {
     return result;
   }
+
+  const canEditByAgentId = await AgentResource.batchFetchCanEdit(
+    auth,
+    result.value.agents.map((agent) => agent.sId)
+  );
 
   const { facets: facetValues } = result.value;
   const editorIds = [
@@ -124,6 +135,7 @@ export async function searchAgentListings(
     },
     agents: result.value.agents.map((agent) => ({
       ...agent,
+      canEdit: canEditByAgentId.get(agent.sId) ?? false,
       editors: removeNulls(
         [...new Set(agent.editorIds)].map((id) => editorsById.get(id))
       ),

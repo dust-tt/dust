@@ -741,6 +741,54 @@ export class AgentResource
     return resource ?? null;
   }
 
+  /**
+   * @cc [owner:aubin-tchoi,label:security;performance] batch-can-edit-matches-configuration
+   * Return the same `canEdit` as the current configuration for each requested custom agent in
+   * the caller's workspace, using current grants and required spaces. Missing and global agents
+   * return false. Read only permission fields in one batch, never instructions or full resources.
+   */
+  static async batchFetchCanEdit(
+    auth: Authenticator,
+    agentIds: string[]
+  ): Promise<Map<string, boolean>> {
+    const canEditByAgentId = new Map(agentIds.map((id) => [id, false]));
+    const customAgentIds = [...canEditByAgentId.keys()].filter(
+      (id) => !isGlobalAgentId(id)
+    );
+    if (customAgentIds.length === 0) {
+      return canEditByAgentId;
+    }
+
+    const configurations = await AgentConfigurationModel.findAll({
+      attributes: [
+        "sId",
+        "agentId",
+        "workspaceId",
+        "status",
+        "scope",
+        "authorId",
+        "requestedSpaceIds",
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: customAgentIds,
+        version: { [Op.col]: "agent.currentVersion" },
+      },
+      include: [{ model: AgentModel, required: true, attributes: [] }],
+    });
+    for (const configuration of configurations) {
+      const verbs = this.customAgentAllowedVerbs(auth, configuration);
+      canEditByAgentId.set(
+        configuration.sId,
+        verbs.has("write") &&
+          (!auth.isKey() ||
+            auth.isSystemKey() ||
+            configuration.status === "active")
+      );
+    }
+    return canEditByAgentId;
+  }
+
   // -- List resolvers: resolve matching agent ids, then hydrate through `fetchByIds` --
 
   /**
@@ -2520,22 +2568,6 @@ export class AgentResource
     return this.requestedSpaceIds;
   }
 
-  // Whether the caller can read every space backing the agent's tools/skills/data. Space read comes
-  // from the caller's governance snapshot (`getReadableSpaceModelIds`), so this needs no extra query.
-  // A `kind: "all"` result is the type-wide wildcard grant (a full system key) and reads every space;
-  // a system key downscoped to a group subset (see `Authenticator.fromKey` with `requestedGroupIds`)
-  // enumerates only what those groups grant, so it is checked like any other caller. A missing or
-  // deleted space is absent from the snapshot and therefore fails closed.
-  private requestedSpacesReadable(auth: Authenticator): boolean {
-    const readableSpaces = auth.getReadableSpaceModelIds();
-    return (
-      readableSpaces.kind === "all" ||
-      this.requestedSpaceIds.every((spaceId) =>
-        readableSpaces.resourceIds.includes(spaceId)
-      )
-    );
-  }
-
   /**
    * @cc [owner:philipperolet,label:security] admin-key-agent-write
    * The admin role grants `write` on custom agents to regular API keys only; human and system-key
@@ -2574,19 +2606,40 @@ export class AgentResource
 
     assert(this.versionAuthorId !== null);
 
+    return AgentResource.customAgentAllowedVerbs(auth, {
+      agentId: this.id,
+      workspaceId: this.workspaceId,
+      status: this.status,
+      scope: this.scope,
+      authorId: this.versionAuthorId,
+      requestedSpaceIds: this.requestedSpaceIds,
+    });
+  }
+
+  private static customAgentAllowedVerbs(
+    auth: Authenticator,
+    agent: {
+      agentId: ModelId;
+      workspaceId: ModelId;
+      status: AgentConfigurationStatus;
+      scope: AgentConfigurationScope;
+      authorId: ModelId;
+      requestedSpaceIds: readonly ModelId[];
+    }
+  ): Set<GrantVerb> {
     const grants = auth.getGovernanceGrantVerbs(
       "agent",
-      this.id,
-      this.workspaceId
+      agent.agentId,
+      agent.workspaceId
     );
     const isDraftOwner =
-      this.status === "draft" &&
-      auth.workspace()?.id === this.workspaceId &&
-      auth.user()?.id === this.versionAuthorId;
+      agent.status === "draft" &&
+      auth.workspace()?.id === agent.workspaceId &&
+      auth.user()?.id === agent.authorId;
     const roles =
-      this.status !== "draft" &&
-      this.status !== "pending" &&
-      this.scope === "visible"
+      agent.status !== "draft" &&
+      agent.status !== "pending" &&
+      agent.scope === "visible"
         ? VISIBLE_AGENT_ROLE_GRANTS
         : HIDDEN_AGENT_ROLE_GRANTS;
     const roleGrants: RoleGrant[] =
@@ -2596,12 +2649,18 @@ export class AgentResource
 
     const verbs = new Set([
       ...(isDraftOwner ? [...grants, ...DRAFT_OWNER_VERBS] : grants),
-      ...verbsFromRoleGrants(auth, roleGrants, this.workspaceId),
+      ...verbsFromRoleGrants(auth, roleGrants, agent.workspaceId),
     ]);
 
-    // `read` additionally requires read access to every space backing the agent (see
-    // `requestedSpacesReadable`): a caller who cannot read one of them cannot read the agent.
-    if (!this.requestedSpacesReadable(auth)) {
+    // Space access comes from the caller's current grants. A type-wide read grant covers all
+    // spaces; otherwise every required space must be present, so deleted spaces fail closed too.
+    const readableSpaces = auth.getReadableSpaceModelIds();
+    if (
+      readableSpaces.kind !== "all" &&
+      !agent.requestedSpaceIds.every((spaceId) =>
+        readableSpaces.resourceIds.includes(spaceId)
+      )
+    ) {
       verbs.delete("read");
       verbs.delete("write");
     }

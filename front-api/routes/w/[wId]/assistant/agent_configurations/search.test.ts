@@ -1,9 +1,14 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
+import type { AgentSearchListItemType } from "@app/types/agent_search/agent_search";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const searchAgents = vi.hoisted(() => vi.fn());
@@ -30,6 +35,28 @@ function searchRequest(
   );
 }
 
+function makeAgentSearchItem(
+  overrides: Partial<AgentSearchListItemType> = {}
+): AgentSearchListItemType {
+  return {
+    sId: "search-result",
+    status: "active",
+    scope: "visible",
+    name: "Search result",
+    description: "Description",
+    pictureUrl: "https://dust.tt/static/agent.png",
+    model: null,
+    feedbacks: { up: 0, down: 0 },
+    requestedSpaceIds: [],
+    tagIds: [],
+    editorIds: [],
+    editedBy: null,
+    activeUsersCount: null,
+    updatedAt: null,
+    ...overrides,
+  };
+}
+
 const noFilters = {
   status: undefined,
   editorIds: undefined,
@@ -48,22 +75,9 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
 
   it("routes search results with their deduplicated editors", async () => {
     const { workspace, user } = await setup();
-    const agent = {
-      sId: "search-result",
-      status: "active",
-      scope: "visible",
-      name: "Search result",
-      description: "Description",
-      pictureUrl: "https://dust.tt/static/agent.png",
-      model: null,
-      feedbacks: { up: 0, down: 0 },
-      requestedSpaceIds: [],
-      tagIds: [],
+    const agent = makeAgentSearchItem({
       editorIds: [user.sId, user.sId, "missing-user"],
-      editedBy: null,
-      activeUsersCount: null,
-      updatedAt: null,
-    };
+    });
     searchAgents.mockResolvedValue(
       new Ok({ agents: [agent], total: 30, hasMore: true, facets: {} })
     );
@@ -92,6 +106,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       agents: [
         {
           ...agent,
+          canEdit: false,
           tags: [],
           editors: [
             {
@@ -102,6 +117,75 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
           ],
         },
       ],
+    });
+  });
+
+  it.each([
+    "user",
+    "admin",
+  ] as const)("uses live editor grants for a %s even when indexed editors are stale", async (role) => {
+    const { workspace, user, auth } = await setup(role);
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const resource = await AgentResource.fetchById(auth, agent.sId);
+    assert(resource);
+    searchAgents.mockResolvedValue(
+      new Ok({
+        agents: [
+          makeAgentSearchItem({ sId: agent.sId, editorIds: [user.sId] }),
+        ],
+        total: 1,
+        hasMore: false,
+        facets: {},
+      })
+    );
+
+    const before = await searchRequest(workspace.sId);
+    expect(before.status).toBe(200);
+    expect(await before.json()).toMatchObject({
+      agents: [{ sId: agent.sId, canEdit: true }],
+    });
+
+    const removed = await resource.updateEditorsFromDelta(auth, {
+      usersToAdd: [],
+      usersToRemove: [user],
+    });
+    expect(removed.isOk()).toBe(true);
+
+    const after = await searchRequest(workspace.sId);
+    expect(after.status).toBe(200);
+    expect(await after.json()).toMatchObject({
+      agents: [{ sId: agent.sId, editorIds: [user.sId], canEdit: false }],
+    });
+  });
+
+  it("uses current required spaces even when indexed spaces are stale", async () => {
+    const { workspace, auth } = await setup();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const deniedSpace = await SpaceFactory.regular(workspace);
+    searchAgents.mockResolvedValue(
+      new Ok({
+        agents: [makeAgentSearchItem({ sId: agent.sId })],
+        total: 1,
+        hasMore: false,
+        facets: {},
+      })
+    );
+
+    const before = await searchRequest(workspace.sId);
+    expect(await before.json()).toMatchObject({
+      agents: [{ sId: agent.sId, canEdit: true }],
+    });
+
+    const updated = await AgentResource.updateRequestedSpaceIdsInPlace(auth, {
+      agentConfigurationModelId: agent.id,
+      newSpaceIds: [deniedSpace.id],
+    });
+    expect(updated.isOk()).toBe(true);
+
+    const after = await searchRequest(workspace.sId);
+    expect(after.status).toBe(200);
+    expect(await after.json()).toMatchObject({
+      agents: [{ sId: agent.sId, requestedSpaceIds: [], canEdit: false }],
     });
   });
 
