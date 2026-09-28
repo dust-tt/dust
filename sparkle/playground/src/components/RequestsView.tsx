@@ -287,7 +287,7 @@ export function RequestsView({
 
   return (
     <div className="flex h-full w-full flex-col overflow-x-clip overflow-y-auto bg-background">
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 pt-6 pb-8">
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 pt-3 pb-8">
         {renderContent()}
       </div>
     </div>
