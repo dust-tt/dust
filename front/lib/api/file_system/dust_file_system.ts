@@ -1030,12 +1030,10 @@ export class DustFileSystem {
    * No-ops when `newFileName` is identical to the current filename, returning
    * `Ok({ dest: scopedPath, sourceDeletionFailed: false })`.
    */
-  async rename(
-    scopedPath: string,
+  /** The name a `rename` accepts: non-empty, without path separators. */
+  static validateFileName(
     newFileName: string
-  ): Promise<
-    Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
-  > {
+  ): Result<void, DustFileSystemError> {
     if (
       !newFileName ||
       newFileName.includes("/") ||
@@ -1047,6 +1045,19 @@ export class DustFileSystem {
           "newFileName must be a non-empty string without path separators."
         )
       );
+    }
+    return new Ok(undefined);
+  }
+
+  async rename(
+    scopedPath: string,
+    newFileName: string
+  ): Promise<
+    Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
+  > {
+    const validName = DustFileSystem.validateFileName(newFileName);
+    if (validName.isErr()) {
+      return validName;
     }
 
     const lastSlash = scopedPath.lastIndexOf("/");

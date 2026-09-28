@@ -470,6 +470,11 @@ export async function renameCanonicalFile(
         });
   }
 
+  const validName = DustFileSystem.validateFileName(newFileName);
+  if (validName.isErr()) {
+    return validName;
+  }
+
   // Resolve the full destination the way the file system will, so the lookup and the row update
   // agree with where the bytes land (control characters are stripped, `.` segments collapsed).
   const resolvedDest = DustFileSystem.resolveScopedPath(
@@ -479,11 +484,13 @@ export async function renameCanonicalFile(
     return resolvedDest;
   }
   const dest = resolvedDest.value;
-  if (dest !== scopedPath) {
-    const isDestRegistered = await isDestinationRegistered(auth, dustFs, dest);
-    if (isDestRegistered) {
-      return new Err(registeredDestinationError());
-    }
+  if (dest === scopedPath) {
+    return new Ok({ dest, sourceDeletionFailed: false });
+  }
+
+  const isDestRegistered = await isDestinationRegistered(auth, dustFs, dest);
+  if (isDestRegistered) {
+    return new Err(registeredDestinationError());
   }
 
   const linkedFileResource = await fetchLinkedFileResource(

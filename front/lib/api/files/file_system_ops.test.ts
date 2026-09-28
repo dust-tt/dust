@@ -142,6 +142,38 @@ describe("moving onto a path a FileResource still claims", () => {
     expect(reloaded?.fileName).toBe("a.txt");
   });
 
+  it("renameCanonicalFile rejects a name with a separator before looking up the destination", async () => {
+    const { auth, dustFs, projectId, basePath, copyFile } = await setup();
+    const lookup = vi.spyOn(FileResource, "fetchByMountFilePaths");
+
+    const result = await renameCanonicalFile(
+      auth,
+      dustFs,
+      `pod-${projectId}/a.txt`,
+      "sub/b.txt"
+    );
+
+    assert(result.isErr());
+    expect(result.error.code).toBe("invalid_path");
+    expect(lookup).not.toHaveBeenCalledWith(auth, [`${basePath}sub/b.txt`]);
+    expect(copyFile).not.toHaveBeenCalled();
+  });
+
+  it("renameCanonicalFile is a no-op when the name resolves to the current one", async () => {
+    const { auth, dustFs, projectId, copyFile } = await setup();
+
+    const result = await renameCanonicalFile(
+      auth,
+      dustFs,
+      `pod-${projectId}/a.txt`,
+      "a\t.txt"
+    );
+
+    assert(result.isOk(), result.isErr() ? result.error.message : undefined);
+    expect(result.value.dest).toBe(`pod-${projectId}/a.txt`);
+    expect(copyFile).not.toHaveBeenCalled();
+  });
+
   it("renameCanonicalFile resolves control characters before checking registration", async () => {
     const { auth, dustFs, projectId, copyFile } = await setup();
 
