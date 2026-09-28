@@ -1,5 +1,5 @@
 import { useBatchArchiveSkills } from "@app/lib/swr/skill_configurations";
-import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
+import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -15,8 +15,12 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+export type ArchivableSkill = Pick<SkillListItemType, "sId"> & {
+  usage?: number | null;
+};
+
 interface ArchiveSkillsDialogProps {
-  skills: GetSkillsWithRelationsResponseBody["skills"];
+  skills: ArchivableSkill[];
   disabled: boolean;
   owner: LightWorkspaceType;
   onSave: () => void;

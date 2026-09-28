@@ -51,6 +51,25 @@ vi.mock("@app/components/assistant/details/AgentDetailsSheet", () => ({
   AgentDetailsSheet: () => null,
 }));
 
+interface BatchAvailabilityDialogMockProps {
+  action: { availability: string };
+  onConfirm: () => Promise<void>;
+}
+
+vi.mock("@app/components/skills/SkillsBatchEdit", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@app/components/skills/SkillsBatchEdit")
+  >()),
+  BatchAvailabilityDialog: ({
+    action,
+    onConfirm,
+  }: BatchAvailabilityDialogMockProps) => (
+    <button type="button" onClick={() => void onConfirm()}>
+      Confirm {action.availability}
+    </button>
+  ),
+}));
+
 afterEach(() => {
   window.history.replaceState({}, "", "/");
   vi.unstubAllGlobals();
@@ -156,7 +175,11 @@ async function setup({
         ],
       };
     }
-    if (init?.method === "DELETE" || url.endsWith("/restore")) {
+    if (
+      init?.method === "DELETE" ||
+      url.endsWith("/restore") ||
+      url.endsWith("/skills/availability")
+    ) {
       await mutation();
       return {};
     }
@@ -872,6 +895,93 @@ describe("search-backed Manage Skills", () => {
       screen.queryByRole("button", { name: /Weekly report/ })
     ).not.toBeInTheDocument();
     expect(mutation).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the selection across pages and updates its availability in batch", async () => {
+    const { skill, search, fetcher, mutation, mount } = await setup();
+    search.mockResolvedValueOnce({
+      skills: [skill],
+      total: 60,
+      hasMore: true,
+      facets: {},
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Select Weekly report" })
+    );
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Set availability" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument();
+    expect(screen.queryByText(/Select all/)).not.toBeInTheDocument();
+
+    search.mockResolvedValue({
+      skills: [{ ...skill, sId: "second", name: "Second page" }],
+      total: 60,
+      hasMore: false,
+      facets: {},
+    });
+    await userEvent.click(screen.getByRole("button", { name: "2" }));
+    await screen.findByRole("button", { name: /Second page/ });
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Select Second page" })
+    );
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Set availability" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Editors only" })
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Confirm editors" })
+    );
+
+    await waitFor(() => expect(mutation).toHaveBeenCalled());
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringMatching(/\/skills\/availability$/),
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({
+          skillIds: [skill.sId, "second"],
+          availability: "editors",
+        }),
+      })
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(/^\d+ selected$/)).not.toBeInTheDocument()
+    );
+  });
+
+  it("offers selection only on the active skills the user administrates", async () => {
+    const { skill, search, mount } = await setup();
+    search.mockResolvedValue({
+      skills: [
+        skill,
+        {
+          ...skill,
+          sId: "not-mine",
+          name: "Not mine",
+          canAdministrate: false,
+        },
+      ],
+      total: 2,
+      hasMore: false,
+      facets: {},
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    expect(
+      screen.getByRole("checkbox", { name: "Select Weekly report" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "Select Not mine" })
+    ).not.toBeInTheDocument();
   });
 
   it("requests page offsets from arrows and page numbers, preserves server order and resets pagination when searching", async () => {
