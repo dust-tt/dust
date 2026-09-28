@@ -202,7 +202,13 @@ async function resolveStep(
 async function applyStep(
   auth: Authenticator,
   step: ResolvedStep,
-  skillsById: Map<string, SkillResource>
+  {
+    agentsById,
+    skillsById,
+  }: {
+    agentsById: Map<string, AgentResource>;
+    skillsById: Map<string, SkillResource>;
+  }
 ): Promise<Result<undefined, ApplyBatchSuggestionsError>> {
   switch (step.type) {
     case "skill": {
@@ -210,8 +216,11 @@ async function applyStep(
       assert(skill, "The skill this suggestion targets disappeared.");
       return writeSkillChange(auth, skill, step.change);
     }
-    case "agent":
-      return writeAgentChange(auth, step.change);
+    case "agent": {
+      const agent = agentsById.get(step.agentId);
+      assert(agent, "The agent this suggestion targets disappeared.");
+      return writeAgentChange(auth, agent, step.change);
+    }
     default:
       return assertNever(step);
   }
@@ -268,7 +277,7 @@ export async function applyBatchSuggestions(
   }
 
   for (const step of resolvedSteps) {
-    const res = await applyStep(auth, step, skillsById);
+    const res = await applyStep(auth, step, { agentsById, skillsById });
     if (res.isErr()) {
       return res;
     }
