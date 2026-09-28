@@ -63,12 +63,11 @@ export function CommandPaletteActionPhase({
     item.agent.scope !== "global"
       ? item.agent.sId
       : null;
-  const { agentConfiguration, isAgentConfigurationLoading } =
-    useAgentConfiguration({
-      workspaceId,
-      agentConfigurationId: agentId,
-      disabled: !agentId,
-    });
+  const { agentConfiguration } = useAgentConfiguration({
+    workspaceId,
+    agentConfigurationId: agentId,
+    disabled: !agentId,
+  });
   const canEditAgent = agentConfiguration?.canEdit ?? false;
 
   const actions = useMemo(() => {
@@ -194,11 +193,6 @@ export function CommandPaletteActionPhase({
             </div>
           </div>
         ))}
-        {isAgentConfigurationLoading && (
-          <div className="px-3 py-2.5 text-sm text-muted-foreground">
-            Loading actions...
-          </div>
-        )}
       </div>
       <KeyboardHints
         hints={[
