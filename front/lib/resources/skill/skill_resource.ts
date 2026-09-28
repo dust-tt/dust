@@ -126,6 +126,7 @@ import assert from "assert";
 import groupBy from "lodash/groupBy";
 import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
+import range from "lodash/range";
 import uniq from "lodash/uniq";
 import type {
   Attributes,
@@ -792,6 +793,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async createPending(
     auth: Authenticator
   ): Promise<Result<SkillResource, Error>> {
+    const pendingSkills = await this.createPendings(auth, 1);
+    if (pendingSkills.isErr()) {
+      return pendingSkills;
+    }
+
+    return new Ok(pendingSkills.value[0]);
+  }
+
+  static async createPendings(
+    auth: Authenticator,
+    count: number
+  ): Promise<Result<SkillResource[], Error>> {
+    if (count === 0) {
+      return new Ok([]);
+    }
+
     if (!auth.hasWorkspacePermission("create", "skill")) {
       return new Err(new Error("Creating skills is restricted."));
     }
@@ -799,22 +816,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const user = auth.getNonNullableUser();
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
-    const pendingSkill = await this.makeNew(
-      auth,
-      {
-        name: `__PENDING__${randomUUID()}`,
-        agentFacingDescription: "",
-        userFacingDescription: "",
-        instructions: "",
-        status: "pending",
-        availability: "editors",
-        editedBy: user.id,
-        requestedSpaceIds: [globalSpace.id],
-      },
-      { mcpServerViews: [] }
+    const pendingSkills = await concurrentExecutor(
+      range(count),
+      () =>
+        this.makeNew(
+          auth,
+          {
+            name: `__PENDING__${randomUUID()}`,
+            agentFacingDescription: "",
+            userFacingDescription: "",
+            instructions: "",
+            status: "pending",
+            availability: "editors",
+            editedBy: user.id,
+            requestedSpaceIds: [globalSpace.id],
+          },
+          { mcpServerViews: [] }
+        ),
+      { concurrency: 8 }
     );
 
-    return new Ok(pendingSkill);
+    return new Ok(pendingSkills);
   }
 
   /**

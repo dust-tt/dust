@@ -47,10 +47,12 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { fetchCustomSkillById } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillReference } from "@app/lib/skills/format";
 import {
   extractSkillRefs,
   hasUnparsableSkillRefTag,
+  resolveSkillRefTags,
 } from "@app/lib/skills/format";
 import type {
   AgentConfigurationType,
@@ -87,7 +89,11 @@ type PlannedChange =
       } | null;
       skills: SkillsSuggestionType[];
     }
-  | { type: "skill_creation"; create: SkillCreateSuggestionType }
+  | {
+      type: "skill_creation";
+      ref: string | null;
+      create: SkillCreateSuggestionType;
+    }
   | { type: "skill"; skill: SkillResource; rows: SkillSuggestionData[] };
 
 async function fetchAgentForSuggestion(
@@ -132,12 +138,21 @@ async function planAgentCreation(
 async function planSkillCreation(
   auth: Authenticator,
   {
+    ref,
     name,
     userFacingDescription,
     agentFacingDescription,
     instructions,
   }: CreateSkillSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
+  if (ref && /["<>]/.test(name)) {
+    return new Err(
+      new MCPError(
+        `The skill "${name}" is cited by a ref, so its name cannot contain ", < or >.`
+      )
+    );
+  }
+
   const validation = await validateSkillCreation(auth, { name });
   if (validation.isErr()) {
     return validation;
@@ -145,6 +160,7 @@ async function planSkillCreation(
 
   return new Ok({
     type: "skill_creation",
+    ref: ref ?? null,
     create: {
       name,
       userFacingDescription,
@@ -571,13 +587,93 @@ function findDuplicateTarget(suggestions: Suggestion[]): string | null {
   return null;
 }
 
+/**
+ * Creates the pending skill of each skill creation, before any row is written, so that a skill tag
+ * using the ref of one can be rewritten with its id, whatever the order of the suggestions.
+ */
+async function createPendingSkills(
+  auth: Authenticator,
+  changes: PlannedChange[]
+): Promise<
+  Result<
+    {
+      pendingSkillByChange: Map<PlannedChange, SkillResource>;
+      skillReferenceByRef: Map<string, SkillReference>;
+    },
+    MCPError
+  >
+> {
+  const skillCreations = changes.filter(
+    (change): change is Extract<PlannedChange, { type: "skill_creation" }> =>
+      change.type === "skill_creation"
+  );
+  const pendingSkills = await SkillResource.createPendings(
+    auth,
+    skillCreations.length
+  );
+  if (pendingSkills.isErr()) {
+    return new Err(new MCPError(pendingSkills.error.message));
+  }
+
+  const pendingSkillByChange = new Map<PlannedChange, SkillResource>();
+  const skillReferenceByRef = new Map<string, SkillReference>();
+  skillCreations.forEach((change, i) => {
+    const pendingSkill = pendingSkills.value[i];
+    pendingSkillByChange.set(change, pendingSkill);
+    if (change.ref) {
+      skillReferenceByRef.set(change.ref, {
+        id: pendingSkill.sId,
+        name: change.create.name,
+        icon: null,
+      });
+    }
+  });
+
+  return new Ok({ pendingSkillByChange, skillReferenceByRef });
+}
+
+function resolveSkillRow(
+  row: SkillSuggestionData,
+  skillReferenceByRef: Map<string, SkillReference>
+): SkillSuggestionData {
+  switch (row.kind) {
+    case "edit":
+      return {
+        kind: "edit",
+        suggestion: {
+          ...row.suggestion,
+          instructionEdits: row.suggestion.instructionEdits?.map((edit) => ({
+            ...edit,
+            content: resolveSkillRefTags(edit.content, skillReferenceByRef),
+          })),
+        },
+      };
+    case "editors":
+    case "user_facing_description":
+    case "create":
+    case "name":
+    case "delete":
+    case "availability":
+      return row;
+    default:
+      assertNever(row);
+  }
+}
+
 async function recordPlannedChange(
   auth: Authenticator,
   change: PlannedChange,
   {
     batch,
     conversation,
-  }: { batch: BatchSuggestionResource; conversation: ConversationType }
+    pendingSkillByChange,
+    skillReferenceByRef,
+  }: {
+    batch: BatchSuggestionResource;
+    conversation: ConversationType;
+    pendingSkillByChange: Map<PlannedChange, SkillResource>;
+    skillReferenceByRef: Map<string, SkillReference>;
+  }
 ): Promise<Result<undefined, MCPError>> {
   switch (change.type) {
     case "agent_creation": {
@@ -620,18 +716,28 @@ async function recordPlannedChange(
     }
 
     case "skill_creation": {
-      const res = await recordSkillCreationSuggestion(auth, {
-        create: change.create,
+      const pendingSkill = pendingSkillByChange.get(change);
+      assert(pendingSkill, "Missing pending skill.");
+      await recordSkillCreationSuggestion(auth, pendingSkill, {
+        create: {
+          ...change.create,
+          instructions: resolveSkillRefTags(
+            change.create.instructions,
+            skillReferenceByRef
+          ),
+        },
         analysis: null,
         conversation,
         batch,
       });
-      return res.isErr() ? res : new Ok(undefined);
+      return new Ok(undefined);
     }
 
     case "skill": {
       await recordSkillSuggestions(auth, change.skill, {
-        data: change.rows,
+        data: change.rows.map((row) =>
+          resolveSkillRow(row, skillReferenceByRef)
+        ),
         analysis: null,
         title: null,
         conversation,
@@ -651,6 +757,12 @@ async function recordPlannedChange(
  * them: when one suggestion is invalid or unsupported, or two suggestions target the same agent or
  * skill, or a skill is both deleted and added to an agent, or a ref is declared twice or used without being declared, the call fails and no batch,
  * placeholder agent or skill, or suggestion row is created.
+ */
+/**
+ * @cc [owner:achilleburah,label:product;mcp] refs-resolved-before-storage
+ * Every ref used by a `suggest` call MUST be rewritten to the id of the pending skill of the skill
+ * creation that declares it before any suggestion row is stored: all pending skills are created
+ * first, then rows are written with real ids only. No stored row holds a ref.
  */
 export async function suggest(
   auth: Authenticator,
@@ -701,10 +813,17 @@ export async function suggest(
     sourceConversation: conversation,
   });
 
+  const pendingSkills = await createPendingSkills(auth, plannedChanges);
+  if (pendingSkills.isErr()) {
+    await batch.updateState(auth, "outdated");
+    return pendingSkills;
+  }
+
   for (const change of plannedChanges) {
     const recorded = await recordPlannedChange(auth, change, {
       batch,
       conversation,
+      ...pendingSkills.value,
     });
     if (recorded.isErr()) {
       const partialBatch = await BatchSuggestionResource.fetchById(
