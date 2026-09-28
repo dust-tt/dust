@@ -625,31 +625,6 @@ export async function recordSingletonAgentSuggestions(
   return suggestions;
 }
 
-export async function recordSingletonAgentSuggestion(
-  auth: Authenticator,
-  agent: AgentResource,
-  {
-    data,
-    analysis,
-    conversation,
-    batch,
-  }: {
-    data: SingletonAgentSuggestionData;
-    analysis: string | null;
-    conversation: ConversationType;
-    batch: BatchSuggestionResource | null;
-  }
-): Promise<AgentSuggestionResource> {
-  const [suggestion] = await recordSingletonAgentSuggestions(auth, agent, {
-    data: [data],
-    analysis,
-    conversation,
-    batch,
-  });
-
-  return suggestion;
-}
-
 /**
  * @cc [owner:avervaet,label:product] no-direct-mutation
  * Recording an agent creation MUST NOT make the proposed agent usable: the only agent it creates

@@ -326,7 +326,7 @@ export async function recordSkillSuggestions(
   return created;
 }
 
-export async function recordSkillSuggestion(
+async function recordSkillSuggestion(
   auth: Authenticator,
   skill: SkillResource,
   {
