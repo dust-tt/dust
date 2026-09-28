@@ -288,6 +288,34 @@ function inferDestMountInfo(
   return null;
 }
 
+/**
+ * @cc [owner:flvndvd,label:backend;product] registered-destination-refused-before-bytes-move
+ * A move or rename onto a path that a FileResource still claims MUST be refused before any bytes
+ * move, whether or not bytes exist there. Repointing the moved file's row would fail on the mount
+ * path unique index, and moving the bytes first would leave that row stranded at the source.
+ */
+async function isDestinationRegistered(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  dest: string
+): Promise<boolean> {
+  const destGcsPath = dustFs.toMountFilePath(dest);
+  if (!destGcsPath) {
+    return false;
+  }
+  const [registered] = await FileResource.fetchByMountFilePaths(auth, [
+    destGcsPath,
+  ]);
+  return registered !== undefined;
+}
+
+function registeredDestinationError(): DustFileSystemError {
+  return new DustFileSystemError(
+    "already_exists",
+    "A registered file already uses the destination path."
+  );
+}
+
 function toDustFileSystemError(
   error: MoveFrameV2SourceError
 ): DustFileSystemError {
@@ -423,6 +451,14 @@ export async function renameCanonicalFile(
     scopedPath
   );
 
+  const dest = path.posix.join(path.posix.dirname(scopedPath), newFileName);
+  if (
+    dest !== scopedPath &&
+    (await isDestinationRegistered(auth, dustFs, dest))
+  ) {
+    return new Err(registeredDestinationError());
+  }
+
   const renameResult = await dustFs.rename(scopedPath, newFileName);
   if (renameResult.isErr()) {
     return renameResult;
@@ -467,6 +503,10 @@ export async function moveCanonicalFile(
 
   // Look up the linked FileResource before the bytes move.
   const linkedFileResource = await fetchLinkedFileResource(auth, dustFs, src);
+
+  if (await isDestinationRegistered(auth, dustFs, dest)) {
+    return new Err(registeredDestinationError());
+  }
 
   const moveResult = await dustFs.move({ src, dest });
   if (moveResult.isErr()) {
