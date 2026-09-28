@@ -20,7 +20,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -131,12 +131,16 @@ function ProvisionedGroupDetails({
     owner,
     groupId: group.sId,
   });
-  const rows: MemberRowData[] = members.map((member) => ({
-    sId: member.sId,
-    fullName: member.fullName,
-    email: member.email,
-    image: member.image ?? "",
-  }));
+  const rows: MemberRowData[] = useMemo(
+    () =>
+      members.map((member) => ({
+        sId: member.sId,
+        fullName: member.fullName,
+        email: member.email,
+        image: member.image ?? "",
+      })),
+    [members]
+  );
 
   const saveManagers = async () => {
     const result = await doUpdateGroup({
