@@ -4,25 +4,37 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+
+beforeAll(() => {
+  setupSkillInstructionsMarkdownPipeline();
+});
 
 describe("applyBatchSuggestions", () => {
   let auth: Authenticator;
+  let user: UserResource;
   let workspace: WorkspaceType;
 
   beforeEach(async () => {
-    ({ authenticator: auth, workspace } = await createResourceTest({
+    ({
+      authenticator: auth,
+      user,
+      workspace,
+    } = await createResourceTest({
       role: "user",
     }));
   });
@@ -377,6 +389,66 @@ describe("applyBatchSuggestions", () => {
     await SkillSuggestionFactory.create(auth, otherSkill, {
       kind: "name",
       suggestion: { name: "Taken Name" },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    expect(await fetchAgentName(agent.sId)).toBe(agent.name);
+    expect(await fetchSkillName(skill.sId)).toBe(skill.name);
+  });
+
+  const SKILL_CREATION = {
+    name: "Meeting Notes",
+    userFacingDescription: "Summarizes meeting notes.",
+    agentFacingDescription: "Use to summarize meeting notes.",
+    instructions: "<p>Summarize the notes.</p>",
+  };
+
+  async function grantSkillCreation() {
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "skill",
+    });
+    await auth.refresh();
+  }
+
+  it("creates a skill from its create suggestion", async () => {
+    await grantSkillCreation();
+    const pendingRes = await SkillResource.createPending(auth);
+    assert(pendingRes.isOk());
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await SkillSuggestionFactory.create(auth, pendingRes.value, {
+      kind: "create",
+      suggestion: SKILL_CREATION,
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const created = await SkillResource.fetchById(auth, pendingRes.value.sId);
+    expect(created?.status).toBe("active");
+    expect(created?.name).toBe("Meeting Notes");
+    expect(created?.availability).toBe("editors");
+  });
+
+  it("writes nothing when a create suggestion targets a skill that already exists", async () => {
+    await grantSkillCreation();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const skill = await SkillFactory.create(auth);
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "create",
+      suggestion: SKILL_CREATION,
       batchModelId,
     });
 

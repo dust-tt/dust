@@ -40,6 +40,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 import {
   getSkillSuggestionAction,
@@ -47,6 +48,7 @@ import {
   isEditorsSkillSuggestion,
   isNameSkillSuggestion,
   isUserFacingDescriptionSkillSuggestion,
+  SkillSuggestionDataSchema,
 } from "@app/types/suggestions/skill_suggestion";
 import uniq from "lodash/uniq";
 
@@ -194,6 +196,7 @@ async function resolveInstructionRequirements(
  * are fully computed.
  */
 export type ResolvedSkillChange =
+  | { type: "create"; skillId: string; update: UpdateSkillParams }
   | {
       type: "edit";
       skillId: string;
@@ -408,6 +411,65 @@ async function resolveSkillEdits(
   });
 }
 
+async function resolveSkillCreation(
+  auth: Authenticator,
+  skill: SkillResource,
+  suggestions: SkillSuggestionResource[]
+): Promise<Result<ResolvedSkillChange, DustError<"invalid_request_error">>> {
+  if (skill.status !== "pending") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The skill this suggestion targets has already been created."
+      )
+    );
+  }
+
+  const [suggestion] = suggestions;
+  const parsed = SkillSuggestionDataSchema.safeParse({
+    kind: suggestion.kind,
+    suggestion: suggestion.suggestion,
+  });
+  if (
+    suggestions.length > 1 ||
+    !parsed.success ||
+    parsed.data.kind !== "create"
+  ) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "A skill is created from a single valid create suggestion."
+      )
+    );
+  }
+  const { name, userFacingDescription, agentFacingDescription, instructions } =
+    parsed.data.suggestion;
+
+  // The placeholder is empty, so the suggested skill is resolved as an edit of every field: the
+  // instructions are HTML and replace the whole (empty) document.
+  const update = await resolveSkillFieldEdits(auth, skill, {
+    name,
+    userFacingDescription,
+    agentFacingDescription,
+    instructionEdits: [
+      {
+        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+        content: instructions,
+        type: "replace",
+      },
+    ],
+  });
+  if (update.isErr()) {
+    return update;
+  }
+
+  return new Ok({
+    type: "create",
+    skillId: skill.sId,
+    update: { ...update.value, status: "active" },
+  });
+}
+
 function resolveSkillDeletion(
   auth: Authenticator,
   skill: SkillResource
@@ -444,12 +506,7 @@ export async function resolveSkillSuggestions(
 
   switch (action) {
     case "create":
-      return new Err(
-        new DustError(
-          "invalid_request_error",
-          "Skill creation suggestions cannot be applied to the skill yet."
-        )
-      );
+      return resolveSkillCreation(auth, skill, suggestions);
     case "edit":
       return resolveSkillEdits(auth, skill, suggestions);
     case "delete":
@@ -465,6 +522,9 @@ export async function writeSkillChange(
   change: ResolvedSkillChange
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
   switch (change.type) {
+    case "create":
+      await skill.updateSkill(auth, change.update);
+      return new Ok(undefined);
     case "edit": {
       // TODO(achilleburah): make the editor change and skill update atomic so if editors changes
       //  fails, the skill update is rolled back.
