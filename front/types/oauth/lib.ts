@@ -557,7 +557,7 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "Default Snowflake Role",
             value: undefined,
             helpMessage:
-              "The default Snowflake role (e.g., ANALYST or test@company.com). Wrap the name in double quotes to match a case-sensitive role exactly. Users can override this during their personal authentication.",
+              'The default Snowflake role (e.g., ANALYST or test@company.com). Simple names like analyst are uppercased; wrap them in double quotes (e.g., "analyst") to keep their exact case. Users can override this during their personal authentication.',
             validator: isValidSnowflakeRole,
             overridableAtPersonalAuth: true,
             personalAuthLabel: "Snowflake Role",
