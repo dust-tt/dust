@@ -12,6 +12,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
@@ -52,7 +53,13 @@ export function formatAvailableModels(
             reasoningEfforts.length > 1
               ? ` (supported reasoning efforts: ${reasoningEfforts.join(", ")})`
               : "";
-          return `- **${m.displayName}** (modelId: ${m.modelId}): ${m.description}${m.supportsVision ? " (vision)" : " (no vision)"}${reasoningInfo}`;
+          // Tier models route to concrete models: their own vision flag means nothing.
+          const visionInfo = isModelStreamId(m.modelId)
+            ? ""
+            : m.supportsVision
+              ? " (vision)"
+              : " (no vision)";
+          return `- **${m.displayName}** (modelId: ${m.modelId}): ${m.description}${visionInfo}${reasoningInfo}`;
         })
         .join("\n");
       return `<provider id="${provider}">\n${modelLines}\n</provider>`;

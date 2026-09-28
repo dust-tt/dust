@@ -342,6 +342,24 @@ export function validateFinalToolCall(
       return { success: true };
     }
 
+    case "suggestAgentModelChange": {
+      const found = findSuggestion(finalToolCall, "edit_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.agentKey),
+        label: `agent "${assertion.agentKey}"`,
+      });
+      if (!found.success) {
+        return found;
+      }
+      if (found.item.modelId !== assertion.modelId) {
+        return {
+          success: false,
+          error: `Expected modelId "${assertion.modelId}", got ${JSON.stringify(found.item.modelId)}`,
+        };
+      }
+      return { success: true };
+    }
+
     default:
       assertNever(assertion);
   }
@@ -372,7 +390,10 @@ export function validateEntityMention(
     return { success: true };
   }
 
-  if (assertion.type === "suggestAgentInstructionsChange") {
+  if (
+    assertion.type === "suggestAgentInstructionsChange" ||
+    assertion.type === "suggestAgentModelChange"
+  ) {
     const expectedAgentId = resolveAgentId(scenario, assertion.agentKey);
     const mentioned = mentionedIds(responseText, BUILD_AGENT_REGEX);
     if (!mentioned.includes(expectedAgentId)) {

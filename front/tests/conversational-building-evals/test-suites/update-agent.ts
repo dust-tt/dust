@@ -2,6 +2,8 @@ import type {
   TestSuite,
   WorkspaceSeed,
 } from "@app/tests/conversational-building-evals/lib/types";
+import { CLAUDE_SONNET_5_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import { AUTO_FAST_MODEL_ID } from "@app/types/assistant/models/auto";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 const CONCIERGE_AGENT_KEY = "support-concierge";
@@ -68,7 +70,7 @@ const WORKSPACE_WITH_CONCIERGE: WorkspaceSeed = {
 export const updateAgentSuite: TestSuite = {
   name: "update-agent",
   description:
-    "The user asks for a change that lives in one section of an agent's instructions.",
+    "The user asks for a change to an existing agent: one section of its instructions, or its model.",
   testCases: [
     {
       scenarioId: "formal-tone",
@@ -92,6 +94,57 @@ export const updateAgentSuite: TestSuite = {
 - Score 0-1 if any block other than the Tone paragraph is targeted, or if the whole instructions
   are rewritten.
 - The closing message must surface the recorded suggestion directive to the user.
+`.trim(),
+    },
+    {
+      scenarioId: "switch-model-to-sonnet",
+      workspaceSeed: WORKSPACE_WITH_CONCIERGE,
+      userMessage: "Update the model of SupportConcierge to be Sonnet 5.0.",
+      expectedFinalToolCall: {
+        type: "suggestAgentModelChange",
+        agentKey: CONCIERGE_AGENT_KEY,
+        modelId: CLAUDE_SONNET_5_MODEL_ID,
+      },
+      judgeCriteria: `
+- The agent must have listed the workspace models (list_models) to resolve "Sonnet 5.0" to its
+  exact modelId, instead of guessing it.
+- The suggestion must only change the model: no instruction edits, name, description, scope,
+  skills or tools changes.
+- Score 0-1 if the suggested model is not Claude Sonnet 5, or if the instructions are edited.
+`.trim(),
+    },
+    {
+      scenarioId: "switch-model-to-basic-tier",
+      workspaceSeed: WORKSPACE_WITH_CONCIERGE,
+      userMessage: "Set the model of SupportConcierge to the basics tier.",
+      expectedFinalToolCall: {
+        type: "suggestAgentModelChange",
+        agentKey: CONCIERGE_AGENT_KEY,
+        modelId: AUTO_FAST_MODEL_ID,
+      },
+      judgeCriteria: `
+- "Basics tier" names the Basic auto-routing model, not a concrete model: the suggestion must set
+  the model to it (modelId ${AUTO_FAST_MODEL_ID}), not to a specific cheap model such as Haiku.
+- The suggestion must only change the model: no instruction edits, name, description, scope,
+  skills or tools changes.
+- Score 0-1 if the suggested model is not the Basic tier, or if the instructions are edited.
+`.trim(),
+    },
+    {
+      scenarioId: "cheaper-model-uses-basic-tier",
+      workspaceSeed: WORKSPACE_WITH_CONCIERGE,
+      userMessage: "Change the model of SupportConcierge to be cheaper.",
+      expectedFinalToolCall: {
+        type: "suggestAgentModelChange",
+        agentKey: CONCIERGE_AGENT_KEY,
+        modelId: AUTO_FAST_MODEL_ID,
+      },
+      judgeCriteria: `
+- The user names no specific model, so the suggestion must use the Basic tier model
+  (modelId ${AUTO_FAST_MODEL_ID}), not a concrete cheap model such as Haiku or a mini model.
+- The suggestion must only change the model: no instruction edits, name, description, scope,
+  skills or tools changes.
+- Score 0-1 if the suggested model is not the Basic tier, or if the instructions are edited.
 `.trim(),
     },
   ],
