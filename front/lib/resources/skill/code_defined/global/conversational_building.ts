@@ -185,6 +185,14 @@ ${KNOWLEDGE_GUIDANCE_SECTION}
 ${MODEL_GUIDANCE_LINE}
 </agent_guidance>`,
 
+  agentCapabilities: `<agent_capabilities>
+Skills and tools are added to or removed from an agent with the \`skills\` and \`tools\` fields of \`edit_agent\`, never by writing about them in its instructions.
+- Skills: take the ids of the skills to add from \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\`; only active skills can be added, and an unpublished skill only by one of its editors. Take the ids of the skills to remove from the agent's skills in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`.
+- Tools: take the ids of the tools to add from \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`, and the ids of the tools to remove from the agent's tools in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`. Only tools that need no configuration can be added or removed: for a knowledge tool, a sub-agent (Run Agent) or a tool with settings to pick, tell the user to change it from the agent builder.
+- Prefer adding a skill that wraps a tool over adding the tool alone (see <skills_tools_guidance>).
+- When the agent needs instructions telling it when to use the new skill or tool, put the instruction edits and the addition in the same call (see <batching>).
+</agent_capabilities>`,
+
   skillGuidance: `<skill_guidance>
 This section applies to skills only. Skills are shared across agents and users: every suggestion MUST be useful for all agents using the skill. Skills SHOULD be single purpose and not overloaded with multiple responsibilities.
 
@@ -217,7 +225,7 @@ Suggestions: \`${SUGGEST}\`, with:
 - \`analysis\`: why these changes are needed (max 255 characters).
 - \`suggestions\`: the changes, one item per entity, discriminated by \`kind\`:
   - \`create_agent\`: a new agent from a \`name\`, a \`description\` and \`instructions\` (HTML).
-  - \`edit_agent\`: changes to an existing agent, by \`agentId\`: \`name\`, \`description\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`modelId\` with an optional \`reasoningEffort\`, \`scope\` (\`visible\` to publish, \`hidden\` to unpublish).
+  - \`edit_agent\`: changes to an existing agent, by \`agentId\`: \`name\`, \`description\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`modelId\` with an optional \`reasoningEffort\`, \`scope\` (\`visible\` to publish, \`hidden\` to unpublish), \`skills\` (\`addSkillIds\` / \`removeSkillIds\`) and \`tools\` (\`addToolIds\` / \`removeToolIds\`), see <agent_capabilities>.
   - \`delete_agent\`: deletes an existing agent, by \`agentId\`.
   - \`create_skill\`: a new skill from a \`name\`, a \`userFacingDescription\`, an \`agentFacingDescription\` and \`instructions\` (HTML).
   - \`edit_skill\`: changes to an existing custom skill, by \`skillId\`: \`name\` (unique among the workspace's active skills), \`userFacingDescription\`, \`agentFacingDescription\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`availability\` (\`editors\`, \`workspace_users\` or \`users_and_agents\`, requires the workspace permission to publish skills), \`addEditorUserIds\` / \`removeEditorUserIds\` (a change leaving the skill without any editor is refused).
@@ -250,6 +258,7 @@ const CONVERSATIONAL_BUILDING_INSTRUCTIONS = [
   SECTIONS.blockAwareEditing,
   SECTIONS.companyDataGuidance,
   SECTIONS.agentGuidance,
+  SECTIONS.agentCapabilities,
   SECTIONS.skillGuidance,
   SECTIONS.workflowVisualization,
   SECTIONS.tools,
