@@ -291,12 +291,19 @@ function inferDestMountInfo(
 /**
  * @cc [owner:flvndvd,label:backend;product] registered-destination-refused-before-bytes-move
  * A move or rename onto a path that a FileResource still claims MUST be refused before any bytes
- * move, whether or not bytes exist there. The lookup MUST use the destination as the file system
- * will resolve it, so an unnormalized spelling of the same path cannot bypass it, and MUST NOT run
- * before the caller's write access to the destination mount is verified, so a refusal cannot reveal
- * registrations in mounts the caller cannot reach. Repointing the moved file's row would fail on
- * the mount path unique index, and moving the bytes first would leave that row stranded at the
- * source.
+ * move, whether or not bytes exist there. Repointing the moved file's row would fail on the mount
+ * path unique index, and moving the bytes first would leave that row stranded at the source.
+ */
+/**
+ * @cc [owner:flvndvd,label:backend;product] registration-lookup-uses-resolved-path
+ * The lookup MUST use the destination as the file system will resolve it, control characters
+ * stripped and dot segments collapsed, so an unnormalized spelling of the same path cannot bypass
+ * the refusal.
+ */
+/**
+ * @cc [owner:flvndvd,label:backend;security] access-verified-before-registration-lookup
+ * The lookup MUST NOT run before the caller's write access to the destination mount is verified,
+ * so a refusal cannot reveal registrations in mounts the caller cannot reach.
  */
 async function isDestinationRegistered(
   auth: Authenticator,
