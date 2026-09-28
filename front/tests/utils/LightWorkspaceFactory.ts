@@ -21,6 +21,7 @@ export class LightWorkspaceFactory {
       regionalModelsOnly: false,
       metadata: {},
       sharingPolicy: "workspace_only",
+      locale: "en-US",
       metronomeCustomerId: null,
       ...overrides,
     };

@@ -137,6 +137,10 @@
  *         regionalModelsOnly:
  *           type: boolean
  *           description: When true, only models whose regionalAvailability includes the workspace's region are usable.
+ *         locale:
+ *           type: string
+ *           enum: [en-US, fr-FR]
+ *           description: Default language of the product UI for the workspace members
  *         metadata:
  *           type: object
  *           nullable: true

@@ -5,6 +5,8 @@ import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
+import type { SupportedLocale } from "@app/types/locale";
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@app/types/locale";
 import type {
   WorkspaceSegmentationType,
   WorkspaceSharingPolicy,
@@ -33,6 +35,7 @@ export class WorkspaceModel extends BaseModel<WorkspaceModel> {
   declare defaultEmbeddingProvider: EmbeddingProviderIdType | null;
   declare metadata: Record<string, string | number | boolean | object> | null;
   declare sharingPolicy: CreationOptional<WorkspaceSharingPolicy>;
+  declare locale: CreationOptional<SupportedLocale>;
   declare conversationsRetentionDays: number | null;
   declare metronomeCustomerId: string | null;
   declare poolCreditState: CreationOptional<WorkspacePoolCreditState>;
@@ -115,6 +118,14 @@ WorkspaceModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: DEFAULT_SHARING_POLICY,
+    },
+    locale: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: DEFAULT_LOCALE,
+      validate: {
+        isIn: [[...SUPPORTED_LOCALES]],
+      },
     },
     poolCreditState: {
       type: DataTypes.STRING,

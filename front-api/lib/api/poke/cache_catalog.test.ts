@@ -10,16 +10,16 @@ describe("Poke cache catalog", () => {
     const activeSeats = getPokeCacheOperations("workspace_active_seats");
 
     expect(workspace?.buildKey({ wId: "workspace-1" })).toBe(
-      "cacheWithRedis-workspace_by_sid-v3:workspace-1"
+      "cacheWithRedis-workspace_by_sid-v4:workspace-1"
     );
-    expect(workspace?.keyPattern).toBe("cacheWithRedis-workspace_by_sid-v3:*");
+    expect(workspace?.keyPattern).toBe("cacheWithRedis-workspace_by_sid-v4:*");
     expect(workspace?.buildKeysToDelete({ wId: "workspace-1" })).toEqual([
+      "cacheWithRedis-workspace_by_sid-v4:workspace-1",
       "cacheWithRedis-workspace_by_sid-v3:workspace-1",
-      "cacheWithRedis-_fetchByIdUncached-workspace:v2:workspace-1",
     ]);
     expect(workspace?.keyPatternsToDelete).toEqual([
+      "cacheWithRedis-workspace_by_sid-v4:*",
       "cacheWithRedis-workspace_by_sid-v3:*",
-      "cacheWithRedis-_fetchByIdUncached-workspace:v2:*",
     ]);
     expect(activeSeats?.buildKey({ workspaceId: "workspace-1" })).toBe(
       "cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:workspace-1"

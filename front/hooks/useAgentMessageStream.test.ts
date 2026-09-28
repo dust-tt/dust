@@ -141,6 +141,7 @@ const mockOwner: LightWorkspaceType = {
   defaultEmbeddingProvider: null,
   regionalModelsOnly: false,
   sharingPolicy: "workspace_only",
+  locale: "en-US",
   metronomeCustomerId: null,
 };
 

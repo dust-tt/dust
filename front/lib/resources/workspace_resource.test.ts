@@ -74,7 +74,7 @@ function getCacheKeyForWorkspace(workspaceId: string): string {
 }
 
 function getPreviousCacheKeyForWorkspace(workspaceId: string): string {
-  return `cacheWithRedis-_fetchByIdUncached-workspace:v2:${workspaceId}`;
+  return `cacheWithRedis-workspace_by_sid-v3:${workspaceId}`;
 }
 
 const INVALID_RETENTION_DAYS = CONVERSATIONS_RETENTION_MIN_DAYS - 1;
@@ -190,14 +190,14 @@ describe("WorkspaceResource", () => {
         expect(cachedBatchFetch.whiteListedProviders).toEqual(["openai"]);
       });
 
-      // A v3 snapshot exactly as the previous deploy wrote it. Guards two things: entries written
+      // A v4 snapshot exactly as the previous deploy wrote it. Guards two things: entries written
       // before a deploy must keep parsing (the cache has no TTL), and the fixture's key set must
       // match the model's attributes. When the keys assertion fails, the model changed shape and
       // WORKSPACE_CACHE_KEY_VERSION must be bumped along with this fixture.
       it("parses snapshots written by the previous deploy", async () => {
-        const v3Snapshot = {
+        const v4Snapshot = {
           id: 987654321,
-          sId: "ws_fixture_v3",
+          sId: "ws_fixture_v4",
           name: "fixture-workspace",
           description: null,
           segmentation: null,
@@ -208,6 +208,7 @@ describe("WorkspaceResource", () => {
           defaultEmbeddingProvider: null,
           metadata: { fixtureKey: "fixtureValue" },
           sharingPolicy: "all_scopes",
+          locale: "en-US",
           conversationsRetentionDays: null,
           metronomeCustomerId: null,
           poolCreditState: "active",
@@ -215,13 +216,13 @@ describe("WorkspaceResource", () => {
           updatedAt: 1755000000000,
         };
         inMemoryCache.set(
-          getCacheKeyForWorkspace(v3Snapshot.sId),
-          JSON.stringify(v3Snapshot)
+          getCacheKeyForWorkspace(v4Snapshot.sId),
+          JSON.stringify(v4Snapshot)
         );
 
-        const resource = await WorkspaceResource.fetchById(v3Snapshot.sId);
+        const resource = await WorkspaceResource.fetchById(v4Snapshot.sId);
 
-        expect(Object.keys(v3Snapshot).sort()).toEqual(
+        expect(Object.keys(v4Snapshot).sort()).toEqual(
           Object.keys(WorkspaceModel.getAttributes()).sort()
         );
         expect(resource?.name).toBe("fixture-workspace");

@@ -1446,6 +1446,7 @@ export class Authenticator {
           metadata: this._workspace.metadata,
           metronomeCustomerId: this._workspace.metronomeCustomerId ?? null,
           sharingPolicy: this._workspace.sharingPolicy ?? "all_scopes",
+          locale: this._workspace.locale,
         }
       : null;
   }

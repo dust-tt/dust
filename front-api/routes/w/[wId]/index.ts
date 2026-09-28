@@ -23,6 +23,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
+import { SUPPORTED_LOCALES } from "@app/types/locale";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
@@ -216,6 +217,10 @@ const WorkspaceDefaultAgentUpdateBodySchema = z.object({
   workspaceDefaultAgentId: z.string().nullable(),
 });
 
+const WorkspaceLocaleUpdateBodySchema = z.object({
+  locale: z.enum(SUPPORTED_LOCALES),
+});
+
 const WorkspaceInactiveAgentArchivalUpdateBodySchema = z.object({
   // Null turns automatic archival off: the policy is opt-in and has no default threshold.
   inactiveAgentArchivalThresholdDays: z
@@ -254,6 +259,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspacePublishedAgentsRestrictedModelsUpdateBodySchema,
   WorkspaceDefaultAgentUpdateBodySchema,
   WorkspaceSlackPersonalFooterRemovalUpdateBodySchema,
+  WorkspaceLocaleUpdateBodySchema,
 ]);
 
 const app = workspaceApp();
@@ -1022,6 +1028,20 @@ app.post(
           enabled: String(body.allowConversationExternalNotifications),
         },
       });
+    } else if ("locale" in body) {
+      if (!(await hasFeatureFlag(auth, "localisation"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "feature_flag_not_found",
+            message:
+              "The localisation feature is not enabled for this workspace.",
+          },
+        });
+      }
+
+      await workspace.updateWorkspaceSettings({ locale: body.locale });
+      owner.locale = body.locale;
     }
 
     return ctx.json({ workspace: owner });

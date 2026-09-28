@@ -21,6 +21,7 @@ import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibilit
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useUserLocale } from "@app/hooks/useUserLocale";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import {
@@ -39,6 +40,8 @@ import {
   MAX_USER_MEMORY_CHARS,
   MAX_USER_MEMORY_CONTENT_LENGTH,
 } from "@app/types/api/me/memory";
+import type { SupportedLocale } from "@app/types/locale";
+import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@app/types/locale";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -59,6 +62,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   Edit04,
@@ -359,7 +364,11 @@ const CONVERSATION_FONT_OPTIONS: OptionTile<ConversationFont>[] =
     ),
   }));
 
-function CustomizationSection() {
+interface CustomizationSectionProps {
+  owner: WorkspaceType;
+}
+
+function CustomizationSection({ owner }: CustomizationSectionProps) {
   const { theme: currentTheme, setTheme } = useTheme();
   // Null outside ConversationFontProvider: this
   // popover also renders on pages without conversations (e.g. /no-workspace,
@@ -374,6 +383,17 @@ function CustomizationSection() {
   const [localAgentsSectionVisible, setLocalAgentsSectionVisible] = useState(
     isAgentsSectionVisible
   );
+  const { hasFeature } = useFeatureFlags();
+  const hasLocalisation = hasFeature("localisation");
+  const {
+    userLocale,
+    isSaving: isSavingLocale,
+    doUpdateUserLocale,
+  } = useUserLocale({
+    owner,
+    disabled: !hasLocalisation,
+  });
+  const [localLocale, setLocalLocale] = useState<SupportedLocale | null>(null);
 
   const modEnterLabel = useMemo(
     () => (isMac ? "Cmd + Enter (⌘ + ↵)" : "Ctrl + Enter"),
@@ -410,7 +430,8 @@ function CustomizationSection() {
       (typeof window !== "undefined"
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
         : "enter") ||
-    localAgentsSectionVisible !== isAgentsSectionVisible;
+    localAgentsSectionVisible !== isAgentsSectionVisible ||
+    (localLocale !== null && localLocale !== userLocale);
 
   const handleSave = () => {
     if (localTheme !== currentTheme) {
@@ -449,6 +470,13 @@ function CustomizationSection() {
           }
         });
     }
+    if (localLocale !== null && localLocale !== userLocale) {
+      void doUpdateUserLocale(localLocale).then((saved) => {
+        if (saved) {
+          setLocalLocale(null);
+        }
+      });
+    }
   };
 
   return (
@@ -461,11 +489,44 @@ function CustomizationSection() {
           variant="primary"
           type="button"
           onClick={handleSave}
-          disabled={!isDirty}
+          disabled={!isDirty || isSavingLocale}
+          isLoading={isSavingLocale}
         />
       }
     >
       <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
+        {hasLocalisation && (
+          <SettingsList.Row
+            title="Language"
+            description="Language used by Dust for you, across all your workspaces"
+            action={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    label={LOCALE_LABELS[localLocale ?? userLocale]}
+                    isSelect
+                    disabled={isSavingLocale}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent mountPortalContainer={portalContainer}>
+                  <DropdownMenuRadioGroup value={localLocale ?? userLocale}>
+                    {SUPPORTED_LOCALES.map((locale) => (
+                      <DropdownMenuRadioItem
+                        key={locale}
+                        value={locale}
+                        label={LOCALE_LABELS[locale]}
+                        onClick={() => setLocalLocale(locale)}
+                      />
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            }
+          />
+        )}
+
         <SettingsList.Row
           title="Theme"
           description="Choose how Dust looks on this device"
@@ -891,7 +952,9 @@ export function UserSettingsPopover({
             {activeSection === "personal" && (
               <PersonalInfoSection owner={owner} />
             )}
-            {activeSection === "customization" && <CustomizationSection />}
+            {activeSection === "customization" && (
+              <CustomizationSection owner={owner} />
+            )}
             {activeSection === "notifications" && (
               <NotificationsSection owner={owner} />
             )}

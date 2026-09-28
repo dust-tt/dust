@@ -321,6 +321,7 @@ export function mockConversation(
       whiteListedProviders: null,
       defaultEmbeddingProvider: null,
       sharingPolicy: "workspace_only",
+      locale: "en-US",
       metronomeCustomerId: null,
       regionalModelsOnly: false,
     },

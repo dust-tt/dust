@@ -16,6 +16,7 @@ function makeWorkspace(sId: string): LightWorkspaceType {
     regionalModelsOnly: false,
     metronomeCustomerId: null,
     sharingPolicy: "workspace_only",
+    locale: "en-US",
   };
 }
 

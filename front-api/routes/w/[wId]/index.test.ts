@@ -338,3 +338,48 @@ describe("POST /api/w/:wId (inactive agent archival)", () => {
     ).toBeUndefined();
   });
 });
+
+describe("POST /api/w/:wId (workspace locale)", () => {
+  it("updates the locale when the flag is enabled", async () => {
+    const { workspace, auth } = await setup();
+    await FeatureFlagFactory.basic(auth, "localisation");
+
+    const response = await post(workspace, { locale: "fr-FR" });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).workspace.locale).toBe("fr-FR");
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.locale).toBe("fr-FR");
+  });
+
+  it("returns 403 and keeps the default locale when the flag is disabled", async () => {
+    const { workspace } = await setup();
+
+    const response = await post(workspace, { locale: "fr-FR" });
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe("feature_flag_not_found");
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.locale).toBe("en-US");
+  });
+
+  it("returns 400 for an unsupported locale", async () => {
+    const { workspace, auth } = await setup();
+    await FeatureFlagFactory.basic(auth, "localisation");
+
+    const response = await post(workspace, { locale: "de-DE" });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 403 for non-admin users", async () => {
+    const { workspace, auth } = await setup("user");
+    await FeatureFlagFactory.basic(auth, "localisation");
+
+    const response = await post(workspace, { locale: "fr-FR" });
+
+    expect(response.status).toBe(403);
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.locale).toBe("en-US");
+  });
+});
