@@ -355,7 +355,7 @@ export function ConversationContainerVirtuoso({
     goToHome,
     isOpeningDiscover,
     scrollerRef,
-  } = useDiscoverScroll({ isLockEnabled: isDiscoveryHomepage && !isMobile });
+  } = useDiscoverScroll();
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.

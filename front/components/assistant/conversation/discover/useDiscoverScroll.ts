@@ -1,16 +1,8 @@
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // Fallback for browsers without `scrollend`, and for a scroll that never
 // starts because Discover is already in view.
 const TRANSITION_FALLBACK_MS = 800;
-
-// `transition` swallows wheel ticks so they cannot interrupt the smooth scroll midway.
-type DiscoverStage = "home" | "transition" | "discover";
-
-interface UseDiscoverScrollParams {
-  isLockEnabled: boolean;
-}
 
 function onScrollSettled(
   target: HTMLElement | Window,
@@ -30,43 +22,28 @@ function onScrollSettled(
   return cancel;
 }
 
-export function useDiscoverScroll({ isLockEnabled }: UseDiscoverScrollParams) {
+/**
+ * @cc [owner:aubin-tchoi,label:product] allow-native-discovery-scrolling
+ * Outside the button's opening transition, scrolling between Home and Discover
+ * must remain enabled and must not force the viewport back to Home.
+ */
+export function useDiscoverScroll() {
   // State rather than a ref: the scroller comes and goes with the new-conversation route,
   // and the listeners below have to rebind to whichever node is on screen.
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   const discoverRef = useRef<HTMLDivElement>(null);
-  const [stage, setStage] = useState<DiscoverStage>("home");
+  const [isOpeningDiscover, setIsOpeningDiscover] = useState(false);
   const endTransitionRef = useRef<(() => void) | null>(null);
-
-  // Radix rewrites the viewport's inline overflow on every scroll-state change, so the lock
-  // has to outrank it.
-  useEffect(() => {
-    if (!scroller) {
-      return;
-    }
-    if (isLockEnabled && stage === "home") {
-      scroller.style.setProperty("overflow-y", "hidden", "important");
-    } else {
-      scroller.style.removeProperty("overflow-y");
-    }
-
-    return () => {
-      scroller.style.removeProperty("overflow-y");
-    };
-  }, [isLockEnabled, scroller, stage]);
 
   // No scroller on mobile, where the button still has to move the page.
   const goToDiscover = useCallback(() => {
     endTransitionRef.current?.();
-    setStage("transition");
-    // The lock effect has not run for the new stage yet, and scrollIntoView needs a scroller
-    // that can move.
-    scroller?.style.removeProperty("overflow-y");
+    setIsOpeningDiscover(true);
     discoverRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
     const cancel = onScrollSettled(scroller ?? window, () => {
       endTransitionRef.current = null;
-      setStage("discover");
+      setIsOpeningDiscover(false);
     });
     endTransitionRef.current = () => {
       cancel();
@@ -115,11 +92,11 @@ export function useDiscoverScroll({ isLockEnabled }: UseDiscoverScrollParams) {
     if (!scroller) {
       return;
     }
-    setStage("home");
+    setIsOpeningDiscover(false);
   }, [scroller]);
 
   useEffect(() => {
-    if (!scroller || stage !== "transition") {
+    if (!scroller || !isOpeningDiscover) {
       return;
     }
 
@@ -127,43 +104,14 @@ export function useDiscoverScroll({ isLockEnabled }: UseDiscoverScrollParams) {
 
     scroller.addEventListener("wheel", handleWheel, { passive: false });
     return () => scroller.removeEventListener("wheel", handleWheel);
-  }, [scroller, stage]);
-
-  useEffect(() => {
-    if (!scroller || !isLockEnabled) {
-      return;
-    }
-
-    const handleScroll = () => {
-      switch (stage) {
-        case "discover":
-          if (scroller.scrollTop <= 0) {
-            setStage("home");
-          }
-          return;
-        case "home":
-          // The scroller is locked, but focus() and scrollIntoView() still move it.
-          if (scroller.scrollTop > 0) {
-            scroller.scrollTop = 0;
-          }
-          return;
-        case "transition":
-          return;
-        default:
-          assertNever(stage);
-      }
-    };
-
-    scroller.addEventListener("scroll", handleScroll, { passive: true });
-    return () => scroller.removeEventListener("scroll", handleScroll);
-  }, [isLockEnabled, scroller, stage]);
+  }, [scroller, isOpeningDiscover]);
 
   return {
     alignDiscover,
     discoverRef,
     goToDiscover,
     goToHome,
-    isOpeningDiscover: stage === "transition",
+    isOpeningDiscover,
     scrollerRef: setScroller,
   };
 }
