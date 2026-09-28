@@ -1107,7 +1107,10 @@ describe("PATCH with applyToAgent", () => {
 
   it("returns 400 for kinds that cannot be applied server-side", async () => {
     const { workspace, auth, agent } = await setupTest();
-    const suggestion = await AgentSuggestionFactory.createSubAgent(auth, agent);
+    const suggestion = await AgentSuggestionFactory.createKnowledge(
+      auth,
+      agent
+    );
 
     const response = await patchSuggestions(workspace, agent.sId, {
       suggestionIds: [suggestion.sId],

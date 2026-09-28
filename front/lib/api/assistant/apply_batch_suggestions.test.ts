@@ -1,6 +1,7 @@
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { applyBatchSuggestions } from "@app/lib/api/assistant/apply_batch_suggestions";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { fetchRunAgentTool } from "@app/lib/api/assistant/suggestable_sub_agents";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
@@ -22,6 +23,7 @@ import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory"
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -1024,5 +1026,128 @@ describe("applyBatchSuggestions", () => {
     const batch = await fetchBatch(sId);
     expect(batch.state).toBe("pending");
     expect(batch.agentSuggestions.map((s) => s.state)).toEqual(["pending"]);
+  });
+
+  async function applySubAgentChange(
+    agent: LightAgentConfigurationType,
+    suggestion: { action: "add" | "remove"; childAgentId: string }
+  ) {
+    const runAgentTool = await fetchRunAgentTool(auth);
+    assert(runAgentTool);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createSubAgent(auth, agent, {
+      suggestion: { ...suggestion, toolId: runAgentTool.sId },
+      source: "conversational",
+      batchModelId,
+    });
+    return applyBatchSuggestions(auth, await fetchBatch(sId));
+  }
+
+  async function fetchAgentSubAgentActions(agentId: string) {
+    const agent = await getAgentConfiguration(auth, {
+      agentId,
+      variant: "full",
+    });
+    return (agent?.actions ?? [])
+      .filter(isServerSideMCPServerConfiguration)
+      .filter((action) => action.childAgentId !== null);
+  }
+
+  it("adds a sub-agent as a run_agent action named after it", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const subAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Pricing Helper",
+    });
+
+    const res = await applySubAgentChange(agent, {
+      action: "add",
+      childAgentId: subAgent.sId,
+    });
+
+    if (res.isErr()) {
+      throw res.error;
+    }
+    expect(await fetchAgentSubAgentActions(agent.sId)).toMatchObject([
+      { childAgentId: subAgent.sId, name: "run_pricing_helper" },
+    ]);
+  });
+
+  it("removes a sub-agent", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const subAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Helper",
+    });
+    const added = await applySubAgentChange(agent, {
+      action: "add",
+      childAgentId: subAgent.sId,
+    });
+    assert(added.isOk());
+
+    const res = await applySubAgentChange(agent, {
+      action: "remove",
+      childAgentId: subAgent.sId,
+    });
+
+    if (res.isErr()) {
+      throw res.error;
+    }
+    expect(await fetchAgentSubAgentActions(agent.sId)).toEqual([]);
+  });
+
+  it("writes nothing when an added sub-agent was archived since", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const subAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Archived Helper",
+    });
+    const subAgentResource = await AgentResource.fetchById(auth, subAgent.sId);
+    assert(subAgentResource);
+    await subAgentResource.archive(auth);
+
+    const res = await applySubAgentChange(agent, {
+      action: "add",
+      childAgentId: subAgent.sId,
+    });
+
+    assert(res.isErr());
+    expect(res.error.message).toContain("invalid or not accessible");
+    expect(await fetchAgentSubAgentActions(agent.sId)).toEqual([]);
+  });
+
+  it("keeps a space the agent was restricted to by hand when a sub-agent is removed", async () => {
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const addMembers = await restrictedSpace.addMembers(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      { userIds: [auth.getNonNullableUser().sId] }
+    );
+    assert(addMembers.isOk());
+    await auth.refresh();
+    // No capability of the agent requires the space: it was picked by hand.
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const subAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Helper",
+    });
+    const added = await applySubAgentChange(agent, {
+      action: "add",
+      childAgentId: subAgent.sId,
+    });
+    assert(added.isOk());
+
+    const res = await applySubAgentChange(agent, {
+      action: "remove",
+      childAgentId: subAgent.sId,
+    });
+
+    if (res.isErr()) {
+      throw res.error;
+    }
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(updated?.requestedSpaceIds).toEqual([restrictedSpace.sId]);
+    expect(await fetchAgentSubAgentActions(agent.sId)).toEqual([]);
   });
 });
