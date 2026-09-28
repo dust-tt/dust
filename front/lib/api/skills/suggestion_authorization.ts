@@ -1,10 +1,14 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { SkillSuggestionKind } from "@app/types/suggestions/skill_suggestion";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type {
+  SkillSuggestionKind,
+  SkillSuggestionType,
+} from "@app/types/suggestions/skill_suggestion";
+import { isAvailabilitySkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 
-// `publish` is a workspace-wide capability: it is held on the `skill` type, never on an instance,
-// so `auth.can("publish", skill)` is always false and it is checked with `hasWorkspacePermission`.
-type SkillSuggestionRequiredVerb = "write" | "admin" | "publish";
+type SkillSuggestionRequiredVerb = "write" | "admin";
+type SkillSuggestionCapability = "create" | "publish" | "make_discoverable";
 
 /**
  * @cc [owner:avervaet,label:security] skill-suggestion-kind-required-verb
@@ -27,27 +31,49 @@ const SKILL_SUGGESTION_KIND_REQUIRED_VERBS: Record<
   name: ["write"],
   editors: ["admin"],
   delete: ["admin"],
-  // `make_discoverable` is not listed: it depends on the values (either side being `users_and_agents`)
-  availability: ["admin", "publish"],
+  availability: ["admin"],
 };
 
-function holdsVerb(
-  auth: Authenticator,
+function getRequiredCapabilities(
   skill: SkillResource,
-  verb: SkillSuggestionRequiredVerb
-): boolean {
-  return verb === "publish"
-    ? auth.hasWorkspacePermission("publish", "skill")
-    : auth.can(verb, skill);
+  suggestion: Pick<SkillSuggestionType, "kind" | "suggestion">
+): SkillSuggestionCapability[] {
+  switch (suggestion.kind) {
+    case "create":
+      return ["create"];
+    case "availability":
+      // Moving a skill to or off `users_and_agents` also requires `make_discoverable` (see
+      // `updateAvailabilities`).
+      return isAvailabilitySkillSuggestion(suggestion) &&
+        (suggestion.suggestion.availability === "users_and_agents" ||
+          skill.availability === "users_and_agents")
+        ? ["publish", "make_discoverable"]
+        : ["publish"];
+    case "edit":
+    case "editors":
+    case "user_facing_description":
+    case "name":
+    case "delete":
+      return [];
+    default:
+      return assertNever(suggestion.kind);
+  }
 }
 
-export function isAuthorizedForSkillSuggestionKind(
+export function isAuthorizedForSkillSuggestion(
   auth: Authenticator,
   skill: SkillResource,
-  kind: SkillSuggestionKind
+  suggestion: Pick<SkillSuggestionType, "kind" | "suggestion">
 ): boolean {
-  return SKILL_SUGGESTION_KIND_REQUIRED_VERBS[kind].every((verb) =>
-    holdsVerb(auth, skill, verb)
+  const holdsCapabilities = getRequiredCapabilities(skill, suggestion).every(
+    (capability) => auth.hasWorkspacePermission(capability, "skill")
+  );
+  if (!holdsCapabilities) {
+    return false;
+  }
+
+  return SKILL_SUGGESTION_KIND_REQUIRED_VERBS[suggestion.kind].every((verb) =>
+    auth.can(verb, skill)
   );
 }
 
@@ -67,9 +93,9 @@ export function skillSuggestionsRequireAdmin(
 export function isAuthorizedToApplySkillSuggestions(
   auth: Authenticator,
   skill: SkillResource,
-  suggestions: { kind: SkillSuggestionKind }[]
+  suggestions: Pick<SkillSuggestionType, "kind" | "suggestion">[]
 ): boolean {
   return suggestions.every((s) =>
-    isAuthorizedForSkillSuggestionKind(auth, skill, s.kind)
+    isAuthorizedForSkillSuggestion(auth, skill, s)
   );
 }

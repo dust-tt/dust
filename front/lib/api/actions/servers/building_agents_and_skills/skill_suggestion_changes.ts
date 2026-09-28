@@ -3,7 +3,7 @@ import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availabilit
 import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
-import { isAuthorizedForSkillSuggestionKind } from "@app/lib/api/skills/suggestion_authorization";
+import { isAuthorizedForSkillSuggestion } from "@app/lib/api/skills/suggestion_authorization";
 import { checkSkillWritable } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
 import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
@@ -223,7 +223,7 @@ export function checkSkillSuggestionKindAuthorized(
   skill: SkillResource,
   data: SkillSuggestionData
 ): Result<undefined, MCPError> {
-  if (!isAuthorizedForSkillSuggestionKind(auth, skill, data.kind)) {
+  if (!isAuthorizedForSkillSuggestion(auth, skill, data)) {
     return new Err(
       new MCPError(
         `You are not allowed to suggest a "${data.kind}" change on this skill.`
