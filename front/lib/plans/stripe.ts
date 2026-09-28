@@ -590,9 +590,7 @@ export const getStripeSubscription = async (
     } else {
       return await stripe.subscriptions.retrieve(stripeSubscriptionId);
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (error) {
+  } catch {
     return null;
   }
 };

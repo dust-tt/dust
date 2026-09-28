@@ -50,9 +50,7 @@ export function RequestFeatureAccessModal({
           "Your request was sent to the Dust support team. We'll get back to you as soon as possible.",
       });
       setMessage("");
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (e) {
+    } catch {
       sendNotification({
         type: "error",
         title: "Error sending email",
