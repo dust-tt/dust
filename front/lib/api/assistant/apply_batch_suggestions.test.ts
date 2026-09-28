@@ -519,8 +519,8 @@ describe("applyBatchSuggestions", () => {
     expect(edited?.instructions).toContain(SKILL_CREATION.name);
   });
 
-  it.skip("requests the restricted spaces of a skill created in the same batch", async () => {
-    await grantSkillCreation();
+  // A tool of a restricted space the caller belongs to: a skill using it requests that space.
+  async function createToolViewInRestrictedSpace() {
     const restrictedSpace = await SpaceFactory.regular(workspace);
     await restrictedSpace.addMembers(
       await Authenticator.internalAdminForWorkspace(workspace.sId),
@@ -535,6 +535,33 @@ describe("applyBatchSuggestions", () => {
       server.sId,
       restrictedSpace
     );
+
+    return {
+      restrictedSpace,
+      toolHtml: `<tool id="${view.sId}" name="GitHub"></tool>`,
+    };
+  }
+
+  function skillReferenceHtml(skillId: string, name: string) {
+    return serializeSkillTag({ icon: null, id: skillId, name }, { html: true });
+  }
+
+  function replaceInstructions(content: string) {
+    return {
+      instructionEdits: [
+        {
+          targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+          content,
+          type: "replace" as const,
+        },
+      ],
+    };
+  }
+
+  it("requests the restricted spaces of a skill created in the same batch", async () => {
+    await grantSkillCreation();
+    const { restrictedSpace, toolHtml } =
+      await createToolViewInRestrictedSpace();
     const pendingRes = await SkillResource.createPending(auth);
     assert(pendingRes.isOk());
     const pending = pendingRes.value;
@@ -542,29 +569,18 @@ describe("applyBatchSuggestions", () => {
     await auth.refresh();
     const { id: batchModelId, sId } =
       await BatchSuggestionFactory.createEmpty(auth);
-    // The created skill uses a tool of the restricted space, so it requests that space.
     await SkillSuggestionFactory.create(auth, pending, {
       kind: "create",
       suggestion: {
         ...SKILL_CREATION,
-        instructions: `<p>Use <tool id="${view.sId}" name="GitHub"></tool> then summarize.</p>`,
+        instructions: `<p>Use ${toolHtml} then summarize.</p>`,
       },
       batchModelId,
     });
-    const reference = serializeSkillTag(
-      { icon: null, id: pending.sId, name: SKILL_CREATION.name },
-      { html: true }
-    );
     await SkillSuggestionFactory.create(auth, skill, {
-      suggestion: {
-        instructionEdits: [
-          {
-            targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
-            content: `<p>Start with ${reference}.</p>`,
-            type: "replace",
-          },
-        ],
-      },
+      suggestion: replaceInstructions(
+        `<p>Start with ${skillReferenceHtml(pending.sId, SKILL_CREATION.name)}.</p>`
+      ),
       batchModelId,
     });
 
@@ -840,5 +856,93 @@ describe("applyBatchSuggestions", () => {
     assert(res.isErr());
     expect(res.error.message).toContain("invalid or not accessible");
     expect(await fetchAgentToolIds(agent.sId)).toEqual([]);
+  });
+
+  it("requests the restricted spaces a skill edited earlier in the same batch gains", async () => {
+    const { restrictedSpace, toolHtml } =
+      await createToolViewInRestrictedSpace();
+    const child = await SkillFactory.create(auth, { name: "Child Skill" });
+    const parent = await SkillFactory.create(auth, { name: "Parent Skill" });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    // Edits apply in batch order: the child gains the restricted tool before the parent is edited.
+    await SkillSuggestionFactory.create(auth, child, {
+      suggestion: replaceInstructions(`<p>Use ${toolHtml}.</p>`),
+      batchModelId,
+    });
+    await SkillSuggestionFactory.create(auth, parent, {
+      suggestion: replaceInstructions(
+        `<p>Start with ${skillReferenceHtml(child.sId, child.name)}.</p>`
+      ),
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const edited = await SkillResource.fetchById(auth, parent.sId);
+    expect(edited?.requestedSpaceIds).toContain(restrictedSpace.id);
+  });
+
+  it("lifts a space from a skill referencing one that loses it in the same batch", async () => {
+    const { restrictedSpace } = await createToolViewInRestrictedSpace();
+    const child = await SkillFactory.create(auth, {
+      name: "Child Skill",
+      requestedSpaceIds: [globalSpace.id, restrictedSpace.id],
+    });
+    const parent = await SkillFactory.create(auth, {
+      name: "Parent Skill",
+      instructions: `Start with ${serializeSkillTag({ icon: null, id: child.sId, name: child.name })}.`,
+      requestedSpaceIds: [globalSpace.id, restrictedSpace.id],
+    });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    // The child no longer uses anything of the restricted space; the parent is only renamed.
+    await SkillSuggestionFactory.create(auth, child, {
+      suggestion: replaceInstructions("<p>Summarize.</p>"),
+      batchModelId,
+    });
+    await SkillSuggestionFactory.create(auth, parent, {
+      kind: "name",
+      suggestion: { name: "Renamed Parent" },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const edited = await SkillResource.fetchById(auth, parent.sId);
+    expect(edited?.name).toBe("Renamed Parent");
+    expect(edited?.requestedSpaceIds).not.toContain(restrictedSpace.id);
+  });
+
+  it("writes nothing when an editor added with a restricted space cannot read it", async () => {
+    const { toolHtml } = await createToolViewInRestrictedSpace();
+    const newEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, newEditor, { role: "user" });
+    const skill = await SkillFactory.create(auth);
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    // The new editor can read the skill as it is, but not the space the edit pulls in.
+    await SkillSuggestionFactory.create(auth, skill, {
+      suggestion: replaceInstructions(`<p>Use ${toolHtml}.</p>`),
+      batchModelId,
+    });
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "editors",
+      suggestion: { addUserIds: [newEditor.sId], removeUserIds: [] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    const unchanged = await SkillResource.fetchById(auth, skill.sId);
+    expect(unchanged?.instructions).toBe(skill.instructions);
+    const editors = (await unchanged?.listEditors(auth)) ?? [];
+    expect(editors.map((user) => user.sId)).not.toContain(newEditor.sId);
   });
 });
