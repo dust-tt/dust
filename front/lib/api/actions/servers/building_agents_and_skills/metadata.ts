@@ -399,7 +399,7 @@ export const CreateAgentSuggestionSchema = z.object({
     .describe("Ids of the active skills to give the agent."),
 });
 
-export type CreateAgentSuggestion =z.infer<typeof CreateAgentSuggestionSchema>;
+export type CreateAgentSuggestion = z.infer<typeof CreateAgentSuggestionSchema>;
 
 export const CreateSkillSuggestionSchema = z.object({
   kind: z.literal("create_skill"),
