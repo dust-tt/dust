@@ -26,6 +26,7 @@ jobs:
           # marker. It is meant to shrink over time, never to be copied.
           # Comparing added against removed lets refactors move an existing
           # suppression without being flagged.
+          # TODO: delete this workflow once no marker is left in the codebase.
           git diff -U0 origin/main...HEAD -- ':!.github/' | awk -v marker='ignored using `--suppress`' '
             /^\+\+\+ / { file = substr($0, 7) }
             !index($0, marker) { next }
