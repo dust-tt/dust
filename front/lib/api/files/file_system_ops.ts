@@ -292,9 +292,11 @@ function inferDestMountInfo(
  * @cc [owner:flvndvd,label:backend;product] registered-destination-refused-before-bytes-move
  * A move or rename onto a path that a FileResource still claims MUST be refused before any bytes
  * move, whether or not bytes exist there. The lookup MUST use the destination as the file system
- * will resolve it, so an unnormalized spelling of the same path cannot bypass it. Repointing the
- * moved file's row would fail on the mount path unique index, and moving the bytes first would
- * leave that row stranded at the source.
+ * will resolve it, so an unnormalized spelling of the same path cannot bypass it, and MUST NOT run
+ * before the caller's write access to the destination mount is verified, so a refusal cannot reveal
+ * registrations in mounts the caller cannot reach. Repointing the moved file's row would fail on
+ * the mount path unique index, and moving the bytes first would leave that row stranded at the
+ * source.
  */
 async function isDestinationRegistered(
   auth: Authenticator,
@@ -429,6 +431,13 @@ export async function renameCanonicalFile(
   }
   const scopedPath = resolvedScopedPath.value;
 
+  // Verify access before any lookup, so a refusal cannot reveal what is registered in a mount the
+  // caller cannot reach. The destination is a sibling, so it lives in the same mount.
+  const writable = dustFs.checkWriteAccess(scopedPath);
+  if (writable.isErr()) {
+    return writable;
+  }
+
   // A Frames v2 package is a folder whose registered resource is the manifest inside it, so a
   // plain folder rename would move the bytes and leave that resource pointing at nothing.
   if (await fetchFrameV2PackageAt(auth, dustFs, scopedPath)) {
@@ -513,6 +522,17 @@ export async function moveCanonicalFile(
   }
   const src = resolvedSrc.value;
   const dest = resolvedDest.value;
+
+  // Verify access before any lookup, so a refusal cannot reveal what is registered in a mount the
+  // caller cannot reach.
+  const srcWritable = dustFs.checkWriteAccess(src);
+  if (srcWritable.isErr()) {
+    return srcWritable;
+  }
+  const destWritable = dustFs.checkWriteAccess(dest);
+  if (destWritable.isErr()) {
+    return destWritable;
+  }
 
   if (await fetchFrameV2PackageAt(auth, dustFs, src)) {
     return moveFrameV2PackageFolder(auth, dustFs, {

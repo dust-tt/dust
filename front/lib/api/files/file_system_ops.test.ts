@@ -106,6 +106,23 @@ describe("moving onto a path a FileResource still claims", () => {
     expect(copyFile).not.toHaveBeenCalled();
   });
 
+  it("moveCanonicalFile checks access to the destination before looking anything up", async () => {
+    const { auth, dustFs, projectId, copyFile } = await setup();
+    const lookup = vi.spyOn(FileResource, "fetchByMountFilePaths");
+
+    const result = await moveCanonicalFile(
+      auth,
+      dustFs,
+      `pod-${projectId}/a.txt`,
+      "pod-vlt_notmounted/archive/a.txt"
+    );
+
+    assert(result.isErr());
+    expect(result.error.code).toBe("invalid_path");
+    expect(lookup).not.toHaveBeenCalled();
+    expect(copyFile).not.toHaveBeenCalled();
+  });
+
   it("renameCanonicalFile refuses with already_exists and moves nothing", async () => {
     const { auth, dustFs, projectId, basePath, moved, copyFile } =
       await setup();
