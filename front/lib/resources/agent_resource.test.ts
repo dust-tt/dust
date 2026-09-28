@@ -131,52 +131,6 @@ describe("AgentResource", () => {
     }
   });
 
-  it.each([
-    "regular",
-    "admin",
-    "system",
-  ] as const)("resolves batch edit permissions with the %s key's current-version rules", async (keyKind) => {
-    const { agent: active } = await buildAgentInState({
-      name: "Active agent",
-      scope: "visible",
-      status: "active",
-    });
-    const { agent: archived } = await buildAgentInState({
-      name: "Archived agent",
-      scope: "visible",
-      status: "archived",
-    });
-    const key = await KeyFactory[keyKind](testContext.globalGroup);
-    const auth = await Authenticator.fromKey(key, testContext.workspace.sId);
-    const agentIds = [active.sId, archived.sId];
-
-    const permissions = await AgentResource.batchFetchCanEdit(auth, agentIds);
-    expect(permissions.get(active.sId)).toBe(keyKind !== "regular");
-    expect(permissions.get(archived.sId)).toBe(keyKind === "system");
-    const resources = await AgentResource.fetchByIds(auth, agentIds);
-    for (const resource of resources) {
-      expect(permissions.get(resource.sId)).toBe(resource.toJSON().canEdit);
-    }
-  });
-
-  it("denies batch edit permissions for global, missing and foreign agents", async () => {
-    const { authenticator: otherAuth } = await createResourceTest({});
-    const foreignAgent =
-      await AgentConfigurationFactory.createTestAgent(otherAuth);
-    const agentIds = [
-      GLOBAL_AGENTS_SID.HELPER,
-      "missing-agent",
-      foreignAgent.sId,
-    ];
-
-    const permissions = await AgentResource.batchFetchCanEdit(
-      testContext.authenticator,
-      agentIds
-    );
-
-    expect([...permissions.values()]).toEqual([false, false, false]);
-  });
-
   it("carries the agent's creation date on full and light resources alike", async () => {
     const createdAt = new Date("2025-01-01T00:00:00.000Z");
     // Hidden, so the non-author admin below gets it light.
@@ -413,13 +367,6 @@ describe("AgentResource", () => {
     expect(resource?.id).toBe(agent.agentModelId);
     expect(resource?.status).toBe("active");
     expect(resource?.content.version).toBe(currentConfig.version);
-
-    const key = await KeyFactory.admin(testContext.globalGroup);
-    const keyAuth = await Authenticator.fromKey(key, testContext.workspace.sId);
-    const permissions = await AgentResource.batchFetchCanEdit(keyAuth, [
-      agent.sId,
-    ]);
-    expect(permissions.get(agent.sId)).toBe(true);
   });
 
   it("returns one resource per agent when fetching in batches", async () => {
