@@ -10,6 +10,8 @@ interface SuggestionInstructionsDiffBlockProps {
   content: string;
   // Must include the instruction suggestion extension, which provides the diff commands.
   extensions: Extensions;
+  // Shown in a conversation: the whole diff stays visible and blends into its section.
+  isConversational?: boolean;
 }
 
 export function SuggestionInstructionsDiffBlock({
@@ -17,6 +19,7 @@ export function SuggestionInstructionsDiffBlock({
   targetBlockId,
   content,
   extensions,
+  isConversational = false,
 }: SuggestionInstructionsDiffBlockProps) {
   const blockHtml = useMemo(
     () =>
@@ -48,7 +51,10 @@ export function SuggestionInstructionsDiffBlock({
   );
 
   return (
-    <DiffBlock variant="borderless">
+    <DiffBlock
+      isCollapsible={!isConversational}
+      variant={isConversational ? "plain" : "borderless"}
+    >
       {editor && <EditorContent editor={editor} />}
     </DiffBlock>
   );

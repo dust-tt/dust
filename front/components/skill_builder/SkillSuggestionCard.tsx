@@ -191,6 +191,7 @@ interface SuggestionDetailsProps {
   getSkillInstructionsHtml: () => string;
   getCurrentAgentFacingDescription: () => string;
   workspaceId: string;
+  isConversational: boolean;
 }
 
 function SuggestionDetails({
@@ -198,6 +199,7 @@ function SuggestionDetails({
   getSkillInstructionsHtml,
   getCurrentAgentFacingDescription,
   workspaceId,
+  isConversational,
 }: SuggestionDetailsProps) {
   switch (suggestion.kind) {
     case "availability":
@@ -265,6 +267,7 @@ function SuggestionDetails({
               label="Description"
               currentValue={getCurrentAgentFacingDescription()}
               newValue={agentFacingDescriptionEdit.content}
+              isConversational={isConversational}
             />
           )}
 
@@ -279,7 +282,10 @@ function SuggestionDetails({
                   instructionsHtml={getSkillInstructionsHtml()}
                   targetBlockId={edit.targetBlockId}
                   content={edit.content}
-                  extensions={buildSkillInstructionsExtensions(true)}
+                  extensions={buildSkillInstructionsExtensions(true, [], {
+                    hideUnchangedSuggestionBlocks: isConversational,
+                  })}
+                  isConversational={isConversational}
                 />
               ))}
             </div>
@@ -302,6 +308,7 @@ function SuggestionDetails({
           suggestion={suggestion.suggestion}
           skillId={suggestion.skillConfigurationId}
           workspaceId={workspaceId}
+          isConversational={isConversational}
         />
       );
 
@@ -311,6 +318,7 @@ function SuggestionDetails({
           suggestion={suggestion.suggestion}
           skillId={suggestion.skillConfigurationId}
           workspaceId={workspaceId}
+          isConversational={isConversational}
         />
       );
 
@@ -325,6 +333,9 @@ interface PendingSkillSuggestionDetailsProps {
   getSkillInstructionsHtml: () => string;
   getCurrentAgentFacingDescription: () => string;
   workspaceId: string;
+  // Shown in a conversation: diffs stay fully visible, with word-level highlights and
+  // unchanged instruction blocks hidden.
+  isConversational?: boolean;
 }
 
 export function PendingSkillSuggestionDetails({
@@ -332,6 +343,7 @@ export function PendingSkillSuggestionDetails({
   getSkillInstructionsHtml,
   getCurrentAgentFacingDescription,
   workspaceId,
+  isConversational = false,
 }: PendingSkillSuggestionDetailsProps) {
   return (
     <>
@@ -340,6 +352,7 @@ export function PendingSkillSuggestionDetails({
         getSkillInstructionsHtml={getSkillInstructionsHtml}
         getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
         workspaceId={workspaceId}
+        isConversational={isConversational}
       />
 
       {suggestion.source !== "conversational" && (

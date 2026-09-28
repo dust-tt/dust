@@ -48,7 +48,7 @@ function NewInstructionsBlock({ instructionsHtml }: NewInstructionsBlockProps) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">Instructions</span>
-      <DiffBlock variant="borderless">
+      <DiffBlock isCollapsible={false} variant="plain">
         {editor && <EditorContent editor={editor} />}
       </DiffBlock>
     </div>
@@ -173,11 +173,13 @@ export function AgentSuggestionDetails({
       return (
         <div className="flex flex-col gap-3">
           <SuggestionFieldEditSection
+            isConversational
             label="Name"
             currentValue=""
             newValue={name}
           />
           <SuggestionFieldEditSection
+            isConversational
             label="Description"
             currentValue=""
             newValue={description}
@@ -223,6 +225,7 @@ export function AgentSuggestionDetails({
     case "description":
       return (
         <SuggestionFieldEditSection
+          isConversational
           label="Description"
           currentValue={agentConfiguration?.description ?? ""}
           newValue={suggestion.suggestion.description}
@@ -234,12 +237,14 @@ export function AgentSuggestionDetails({
         <div className="flex flex-col gap-2">
           <span className="text-sm text-muted-foreground">Instructions</span>
           <SuggestionInstructionsDiffBlock
+            isConversational
             instructionsHtml={agentConfiguration?.instructionsHtml ?? ""}
             targetBlockId={suggestion.suggestion.targetBlockId}
             content={suggestion.suggestion.content}
             extensions={[
               ...buildAgentInstructionsReadOnlyExtensions(),
               InstructionSuggestionExtension.configure({
+                hideUnchangedBlocks: true,
                 showBlockHighlight: false,
               }),
             ]}
@@ -251,6 +256,7 @@ export function AgentSuggestionDetails({
       const { modelId, reasoningEffort } = suggestion.suggestion;
       return (
         <SuggestionFieldEditSection
+          isConversational
           label="Model"
           currentValue={
             agentConfiguration
@@ -268,6 +274,7 @@ export function AgentSuggestionDetails({
     case "name":
       return (
         <SuggestionFieldEditSection
+          isConversational
           label="Name"
           currentValue={agentConfiguration?.name ?? ""}
           newValue={suggestion.suggestion.name}
@@ -277,6 +284,7 @@ export function AgentSuggestionDetails({
     case "scope":
       return (
         <SuggestionFieldEditSection
+          isConversational
           label="Visibility"
           currentValue={
             agentConfiguration
