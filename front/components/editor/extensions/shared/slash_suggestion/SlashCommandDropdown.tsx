@@ -7,6 +7,7 @@ import { SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME } from "@app/components/editor/e
 import {
   ArrowLeft,
   Button,
+  Chip,
   cn,
   DotsHorizontal,
   DropdownMenu,
@@ -96,6 +97,8 @@ export interface SlashCommand {
   // (e.g. isSkillSlashCommand) when handling selection or details.
   data?: unknown;
   description?: string;
+  // A mini chip at the row's end, always visible (e.g. a model row's reasoning effort).
+  endChipLabel?: string;
   // A secondary action shown at the row's end on hover or highlight (e.g. "Add" on a folder row
   // whose main action navigates into it).
   endAction?: SlashCommandEndAction;
@@ -215,7 +218,12 @@ function getSlashCommandEndComponent({
   onItemDetails?: (item: SlashCommand) => void;
 }): React.ReactNode | undefined {
   const canShowDetails = !!onItemDetails && !!item.hasDetails;
-  if (!canShowDetails && !item.endAction && !item.endIcon) {
+  if (
+    !canShowDetails &&
+    !item.endAction &&
+    !item.endIcon &&
+    !item.endChipLabel
+  ) {
     return undefined;
   }
   const revealClassName = cn(
@@ -253,6 +261,9 @@ function getSlashCommandEndComponent({
         >
           {item.endAction.label}
         </button>
+      ) : null}
+      {item.endChipLabel ? (
+        <Chip size="mini" label={item.endChipLabel} />
       ) : null}
       {item.endIcon ? (
         <Icon

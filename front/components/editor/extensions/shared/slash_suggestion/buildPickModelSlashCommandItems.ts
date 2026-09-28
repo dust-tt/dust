@@ -7,7 +7,7 @@ import {
   buildTierSelection,
   getEffortStops,
   getInitialEffort,
-  getModelWithReasoningEffortLabel,
+  getReasoningEffortLabel,
   getTierLockReason,
   getTierResolvedModelLabel,
   isModelLocked,
@@ -280,15 +280,17 @@ export function buildPickModelSlashCommandItems({
         display: { kind: "model", model, effort },
         toSend: buildModelSelection(model, effort),
       };
-      const label = getModelWithReasoningEffortLabel(selection.display);
+      const effortLabel = getReasoningEffortLabel(effort)?.toLowerCase();
 
       items.push({
         action: SELECT_MODEL_SLASH_COMMAND_ACTION,
         data: { selection },
         description: getModelMakerDisplayName(getModelMaker(model)),
+        // A model that cannot reason has a single row, left without a chip.
+        endChipLabel: effortLabel ?? (efforts.length > 1 ? "none" : undefined),
         icon,
         id: `${model.providerId}/${model.modelId}/${effort}`,
-        label,
+        label: model.displayName,
       });
     }
   }

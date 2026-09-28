@@ -4,7 +4,7 @@ import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { render, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-const LABEL_PATTERN = /^(None|Minimal|Low|Medium|High|XHigh|Max)$/;
+const LABEL_PATTERN = /^(none|minimal|low|medium|high|xHigh|max)$/;
 
 function availableStops(efforts: ReasoningEffort[]): EffortStop[] {
   return efforts.map((effort) => ({ effort, unavailabilityReason: null }));
@@ -31,7 +31,7 @@ describe("ReasoningEffortSlider", () => {
   it("labels every stop when three fit", () => {
     expect(
       renderedLabels(availableStops(["low", "medium", "high"]), "low")
-    ).toEqual(["Low", "Medium", "High"]);
+    ).toEqual(["low", "medium", "high"]);
   });
 
   it("labels only the ends and the selected stop when more do not fit", () => {
@@ -48,6 +48,6 @@ describe("ReasoningEffortSlider", () => {
         ]),
         "medium"
       )
-    ).toEqual(["None", "Medium", "Max"]);
+    ).toEqual(["none", "medium", "max"]);
   });
 });

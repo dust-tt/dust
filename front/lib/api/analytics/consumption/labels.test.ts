@@ -50,7 +50,7 @@ describe("resolveDimensionDisplayNames", () => {
 
     expect([...names.values()]).toEqual([
       "Low",
-      "XHigh",
+      "xHigh",
       "Max",
       "Unknown_effort",
     ]);

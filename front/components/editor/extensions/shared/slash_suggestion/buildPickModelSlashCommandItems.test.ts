@@ -2,6 +2,7 @@ import {
   buildPickModelSlashCommandItems,
   getDefaultPickModelSlashCommandItemId,
 } from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionType,
@@ -31,16 +32,25 @@ import { describe, expect, it } from "vitest";
 
 const Icon = () => null;
 
-const SONNET_5_EFFORT_LABELS = ["", "Low", "Medium", "High", "XHigh", "Max"];
+const SONNET_5_EFFORT_LABELS = [
+  "none",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+];
 
-// Row labels of a model at the given effort labels; the `none` row has no suffix.
 function rowLabels(
   model: ModelConfigurationType,
   effortLabels: string[]
 ): string[] {
-  return effortLabels.map((label) =>
-    label ? `${model.displayName} ${label}` : model.displayName
-  );
+  return effortLabels.map((label) => `${model.displayName} ${label}`);
+}
+
+// A row as read on screen: its label, then its effort chip.
+function rowText(item: SlashCommand): string {
+  return item.endChipLabel ? `${item.label} ${item.endChipLabel}` : item.label;
 }
 
 function asSelectable(
@@ -59,16 +69,16 @@ describe("buildPickModelSlashCommandItems", () => {
       streams: null,
     });
 
-    expect(items.map((item) => item.label)).toEqual([
+    expect(items.map(rowText)).toEqual([
       "Basic",
       "Standard",
       "Premium",
-      CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName,
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Low`,
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} XHigh`,
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Max`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} none`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} low`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} medium`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} high`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} xhigh`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} max`,
     ]);
     expect(
       items
@@ -89,7 +99,7 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(
       items
         .filter((item) => item.data.selection.display.kind === "model")
-        .map((item) => item.label)
+        .map(rowText)
     ).toEqual([GPT_4_1_MODEL_CONFIG.displayName]);
     expect(
       items.find((item) => item.data.selection.display.kind === "model")?.data
@@ -146,17 +156,17 @@ describe("buildPickModelSlashCommandItems", () => {
         ],
         query,
         streams: null,
-      }).map((item) => item.label);
+      }).map(rowText);
 
     // "gpt6" is a substring of "gpt6astra" and only a subsequence of "gpt5.6luna". Within a
     // model, efforts keep their slider order.
     expect(labelsFor("gpt6")).toEqual([
       ...rowLabels(GPT_6_ASTRA_MODEL_CONFIG, [
-        "Low",
-        "Medium",
-        "High",
-        "XHigh",
-        "Max",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
       ]),
       ...rowLabels(GPT_5_6_LUNA_MODEL_CONFIG, SONNET_5_EFFORT_LABELS),
     ]);
@@ -180,29 +190,29 @@ describe("buildPickModelSlashCommandItems", () => {
         ],
         query,
         streams: null,
-      }).map((item) => item.label);
+      }).map(rowText);
 
-    const haikuHigh = `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} High`;
+    const haikuHigh = `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} high`;
     expect(labelsFor("haiku h")).toEqual([haikuHigh]);
     expect(labelsFor("claudehaiku h")).toEqual([haikuHigh]);
     expect(labelsFor("HAIKU High")).toEqual([haikuHigh]);
     expect(labelsFor("gptluna l")).toEqual([
-      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Low`,
+      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} low`,
     ]);
     // A displayed name can be typed as is, hyphen included.
     expect(labelsFor(`${GPT_5_4_MINI_MODEL_CONFIG.displayName} h`)).toEqual([
-      `${GPT_5_4_MINI_MODEL_CONFIG.displayName} High`,
+      `${GPT_5_4_MINI_MODEL_CONFIG.displayName} high`,
     ]);
     expect(labelsFor("claude h")).toEqual([
       haikuHigh,
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} high`,
     ]);
     // An effort word alone keeps every row at that effort.
     expect(labelsFor("me")).toEqual([
-      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} Medium`,
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
-      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Medium`,
-      `${GPT_5_4_MINI_MODEL_CONFIG.displayName} Medium`,
+      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} medium`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} medium`,
+      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} medium`,
+      `${GPT_5_4_MINI_MODEL_CONFIG.displayName} medium`,
     ]);
   });
 
@@ -217,11 +227,11 @@ describe("buildPickModelSlashCommandItems", () => {
         ],
         query,
         streams: null,
-      }).map((item) => item.label);
+      }).map(rowText);
 
     // Mistral Medium 3.5 only offers the none and high efforts.
-    const mistralMediumNone = MISTRAL_MEDIUM_3_5_MODEL_CONFIG.displayName;
-    const mistralMediumHigh = `${MISTRAL_MEDIUM_3_5_MODEL_CONFIG.displayName} High`;
+    const mistralMediumNone = `${MISTRAL_MEDIUM_3_5_MODEL_CONFIG.displayName} none`;
+    const mistralMediumHigh = `${MISTRAL_MEDIUM_3_5_MODEL_CONFIG.displayName} high`;
     expect(labelsFor("mistral medium")).toEqual([
       mistralMediumNone,
       mistralMediumHigh,
@@ -234,12 +244,12 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(labelsFor("mistral h")).toEqual([mistralMediumHigh]);
     // Other models still read the trailing word as the effort.
     expect(labelsFor("claude me")).toEqual([
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} medium`,
     ]);
     // An effort word alone never reaches into names.
     for (const query of ["m", "me", "medium"]) {
       expect(labelsFor(query)).toEqual([
-        `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
+        `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} medium`,
       ]);
     }
   });
@@ -252,14 +262,14 @@ describe("buildPickModelSlashCommandItems", () => {
         models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
         query,
         streams: null,
-      }).map((item) => item.label);
+      }).map(rowText);
 
     const sonnet = CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName;
-    expect(labelsFor("sonnet m")).toEqual([`${sonnet} Medium`]);
-    expect(labelsFor("sonnet ma")).toEqual([`${sonnet} Max`]);
-    expect(labelsFor("sonnet maximal")).toEqual([`${sonnet} Max`]);
-    expect(labelsFor("sonnet x")).toEqual([`${sonnet} XHigh`]);
-    expect(labelsFor("sonnet n")).toEqual([sonnet]);
+    expect(labelsFor("sonnet m")).toEqual([`${sonnet} medium`]);
+    expect(labelsFor("sonnet ma")).toEqual([`${sonnet} max`]);
+    expect(labelsFor("sonnet maximal")).toEqual([`${sonnet} max`]);
+    expect(labelsFor("sonnet x")).toEqual([`${sonnet} xhigh`]);
+    expect(labelsFor("sonnet n")).toEqual([`${sonnet} none`]);
     expect(labelsFor("sonnet mi")).toEqual([]);
   });
 
@@ -276,22 +286,22 @@ describe("buildPickModelSlashCommandItems", () => {
         ],
         query,
         streams: null,
-      }).map((item) => item.label);
+      }).map(rowText);
 
     const gpt5MiniRows = rowLabels(GPT_5_MINI_MODEL_CONFIG, [
-      "Min",
-      "Low",
-      "Medium",
-      "High",
+      "min",
+      "low",
+      "medium",
+      "high",
     ]);
     const gpt54MiniRows = rowLabels(GPT_5_4_MINI_MODEL_CONFIG, [
-      "",
-      "Low",
-      "Medium",
-      "High",
-      "XHigh",
+      "none",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
     ]);
-    const gpt5Min = `${GPT_5_MODEL_CONFIG.displayName} Min`;
+    const gpt5Min = `${GPT_5_MODEL_CONFIG.displayName} min`;
     expect(labelsFor("gpt mini")).toEqual([
       ...gpt5MiniRows,
       ...gpt54MiniRows,
@@ -304,7 +314,7 @@ describe("buildPickModelSlashCommandItems", () => {
     ]);
     expect(labelsFor("mini")).toEqual([
       gpt5Min,
-      `${GPT_5_MINI_MODEL_CONFIG.displayName} Min`,
+      `${GPT_5_MINI_MODEL_CONFIG.displayName} min`,
     ]);
   });
 
@@ -328,13 +338,13 @@ describe("buildPickModelSlashCommandItems", () => {
         },
       });
 
-    // Every tier description ends with "High", none of it is searched.
+    // Every tier description ends with "high", none of it is searched.
     expect(itemsFor("").map((item) => item.description)).toContain(
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`
     );
-    expect(itemsFor("prem").map((item) => item.label)).toEqual(["Premium"]);
-    expect(itemsFor("high").map((item) => item.label)).toEqual([
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
+    expect(itemsFor("prem").map(rowText)).toEqual(["Premium"]);
+    expect(itemsFor("high").map(rowText)).toEqual([
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} high`,
     ]);
   });
 
@@ -353,7 +363,7 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(
       items
         .filter((item) => item.data.selection.display.kind === "tier")
-        .map((item) => item.label)
+        .map(rowText)
     ).toEqual(["Basic", "Standard"]);
   });
 
@@ -366,10 +376,14 @@ describe("buildPickModelSlashCommandItems", () => {
       streams: null,
     });
 
-    expect(items.map((item) => item.label)).toEqual([
+    expect(items.map(rowText)).toEqual([
       "Basic",
       "Standard",
-      ...rowLabels(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, ["", "Low", "Medium"]),
+      ...rowLabels(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, [
+        "none",
+        "low",
+        "medium",
+      ]),
     ]);
   });
 });

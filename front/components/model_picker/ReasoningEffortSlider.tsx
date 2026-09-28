@@ -65,7 +65,9 @@ export function ReasoningEffortSlider({
         stepTooltips={stops.map(
           (stop) =>
             getEffortStopTooltip(stop) ??
-            (labelsEveryStop ? null : REASONING_EFFORT_LABELS[stop.effort])
+            (labelsEveryStop
+              ? null
+              : REASONING_EFFORT_LABELS[stop.effort].toLowerCase())
         )}
         onChange={(index) => {
           const next = stops[index];
@@ -116,7 +118,7 @@ export function ReasoningEffortSlider({
                     : "translateX(-50%)",
               }}
             >
-              {REASONING_EFFORT_LABELS[stop.effort]}
+              {REASONING_EFFORT_LABELS[stop.effort].toLowerCase()}
             </button>
           );
         })}
