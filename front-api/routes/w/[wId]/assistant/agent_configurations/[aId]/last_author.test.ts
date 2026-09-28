@@ -26,6 +26,21 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/last_author", () =
     expect(response.status).toBe(404);
   });
 
+  it("returns not found to a manager for a hidden agent they do not edit", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "manager",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await getLastAuthor(workspace, agent.sId);
+
+    expect(response.status).toBe(404);
+  });
+
   it("returns the last author to an admin for an agent built on a space they cannot read", async () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(

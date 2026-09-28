@@ -52,7 +52,10 @@ app.get(
     // agents built on spaces they are not a member of); other members get it only when they can read
     // it.
     const agentResource = await AgentResource.fetchById(auth, aId);
-    if (!agentResource) {
+    if (
+      !agentResource ||
+      (!auth.can("read", agentResource) && !auth.can("admin", agentResource))
+    ) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

@@ -257,6 +257,7 @@ describe("verbsForGrantAtLevels", () => {
       "read",
       "write",
       "admin",
+      "list",
     ]);
   });
 });
@@ -310,7 +311,7 @@ describe("GroupPermissions wildcard grant", () => {
     ).toEqual(["admin", "read", "write"]);
     expect(
       perms.resolvedVerbsForResource("agent", 42, "instance").sort()
-    ).toEqual(["admin", "read", "write"]);
+    ).toEqual(["admin", "list", "read", "write"]);
     // `billing` has no instance-level role, so instance resolution is empty.
     expect(perms.resolvedVerbsForResource("billing", 1, "instance")).toEqual(
       []
@@ -342,7 +343,7 @@ describe("GroupPermissions wildcard grant", () => {
     ]);
     expect(
       perms.resolvedVerbsForResource("agent", 42, "instance").sort()
-    ).toEqual(["admin", "read", "write"]);
+    ).toEqual(["admin", "list", "read", "write"]);
   });
 
   it("round-trips through toJSON / fromJSON", () => {
