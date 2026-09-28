@@ -855,7 +855,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     const limitCheck = canAddPendingSuggestions({
       kind: "sub_agent",
       newPendingCount: 1,
-      currentPendingCount: remainingPending.length,
+      // Conversational sub-agent suggestions have no limit and cannot be resolved from the
+      // sidekick: only the sidekick's own count.
+      currentPendingCount: remainingPending.filter(
+        (s) => s.source === "sidekick"
+      ).length,
       resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
     });
     if (!limitCheck.allowed) {

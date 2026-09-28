@@ -1,3 +1,5 @@
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import {
@@ -5,6 +7,7 @@ import {
   DESCRIBE_SKILL_TOOL_NAME,
   SUGGEST_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import { applyBatchSuggestions } from "@app/lib/api/assistant/apply_batch_suggestions";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
@@ -22,6 +25,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -1379,6 +1383,258 @@ describe("building_agents_and_skills tools", () => {
             { states: ["pending"] }
           );
         expect(pending).toHaveLength(0);
+      });
+    });
+
+    describe("sub-agent changes", () => {
+      const editSubAgents = (
+        agentId: string,
+        subAgents: { addAgentIds?: string[]; removeAgentIds?: string[] }
+      ) => ({
+        title: "Update sub-agents",
+        analysis: "The agent needs to delegate.",
+        suggestions: [{ kind: "edit_agent", agentId, subAgents }],
+      });
+
+      // Gives `agent` the sub-agent through the apply path, as no factory creates one.
+      const addSubAgent = async (
+        auth: Authenticator,
+        agent: LightAgentConfigurationType,
+        subAgentId: string
+      ) => {
+        const batchId = extractBatchId(
+          await runSuggest(
+            auth,
+            editSubAgents(agent.sId, { addAgentIds: [subAgentId] })
+          )
+        );
+        const batch = await BatchSuggestionResource.fetchById(auth, batchId);
+        assert(batch);
+        const applied = await applyBatchSuggestions(auth, batch);
+        assert(applied.isOk());
+      };
+
+      it("records one pending suggestion per added or removed sub-agent", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const currentSubAgent = await AgentConfigurationFactory.createTestAgent(
+          authenticator,
+          { name: "CurrentHelper" }
+        );
+        await addSubAgent(authenticator, agent, currentSubAgent.sId);
+        const newSubAgent = await AgentConfigurationFactory.createTestAgent(
+          authenticator,
+          { name: "NewHelper" }
+        );
+
+        const batchId = extractBatchId(
+          await runSuggest(
+            authenticator,
+            editSubAgents(agent.sId, {
+              addAgentIds: [newSubAgent.sId],
+              removeAgentIds: [currentSubAgent.sId],
+            })
+          )
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          authenticator,
+          batchId
+        );
+        expect(batch?.agentSuggestions.map((s) => s.toJSON())).toMatchObject([
+          {
+            kind: "sub_agent",
+            state: "pending",
+            suggestion: {
+              action: "add",
+              childAgentId: newSubAgent.sId,
+              toolId: expect.any(String),
+            },
+          },
+          {
+            kind: "sub_agent",
+            state: "pending",
+            suggestion: { action: "remove", childAgentId: currentSubAgent.sId },
+          },
+        ]);
+      });
+
+      it("outdates a pending suggestion on the same sub-agent", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const subAgent = await AgentConfigurationFactory.createTestAgent(
+          authenticator,
+          { name: "Helper" }
+        );
+        const previous = await AgentSuggestionFactory.createSubAgent(
+          authenticator,
+          agent,
+          {
+            suggestion: {
+              action: "add",
+              toolId: "run_agent",
+              childAgentId: subAgent.sId,
+            },
+          }
+        );
+
+        extractBatchId(
+          await runSuggest(
+            authenticator,
+            editSubAgents(agent.sId, { addAgentIds: [subAgent.sId] })
+          )
+        );
+
+        const pending =
+          await AgentSuggestionResource.listByAgentConfigurationId(
+            authenticator,
+            agent.sId,
+            { states: ["pending"], kind: "sub_agent" }
+          );
+        expect(pending).toHaveLength(1);
+        expect(pending[0].sId).not.toBe(previous.sId);
+      });
+
+      it("refuses an agent as its own sub-agent", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+
+        const result = await runSuggest(
+          authenticator,
+          editSubAgents(agent.sId, { addAgentIds: [agent.sId] })
+        );
+
+        expectMcpError(result, "its own sub-agent");
+      });
+
+      it("offers the global agents the builder lists, not internal ones", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editSubAgents(agent.sId, {
+              addAgentIds: [GLOBAL_AGENTS_SID.SIDEKICK],
+            })
+          ),
+          "invalid or not accessible"
+        );
+        extractBatchId(
+          await runSuggest(
+            authenticator,
+            editSubAgents(agent.sId, { addAgentIds: [GLOBAL_AGENTS_SID.DUST] })
+          )
+        );
+      });
+
+      it("refuses an archived or unknown sub-agent", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const archived = await AgentConfigurationFactory.createTestAgent(
+          authenticator,
+          { name: "ArchivedHelper" }
+        );
+        const archivedResource = await AgentResource.fetchById(
+          authenticator,
+          archived.sId
+        );
+        assert(archivedResource);
+        await archivedResource.archive(authenticator);
+
+        for (const subAgentId of [archived.sId, "unknown_agent"]) {
+          expectMcpError(
+            await runSuggest(
+              authenticator,
+              editSubAgents(agent.sId, { addAgentIds: [subAgentId] })
+            ),
+            "invalid or not accessible"
+          );
+        }
+      });
+
+      it("refuses to add as a sub-agent an agent that the same call deletes", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const subAgent = await AgentConfigurationFactory.createTestAgent(
+          authenticator,
+          { name: "Helper" }
+        );
+
+        const result = await runSuggest(authenticator, {
+          title: "Update sub-agents",
+          analysis: "Replace the helper.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              subAgents: { addAgentIds: [subAgent.sId] },
+            },
+            { kind: "delete_agent", agentId: subAgent.sId },
+          ],
+        });
+
+        expectMcpError(result, "both deleted and added as a sub-agent");
+      });
+
+      it("refuses an admin who is not an editor of the agent", async () => {
+        const { authenticator, workspace } = await createResourceTest({
+          role: "user",
+        });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const subAgent = await AgentConfigurationFactory.createTestAgent(
+          authenticator,
+          { name: "Helper" }
+        );
+        const admin = await addMember(workspace, "admin");
+        const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          admin.sId,
+          workspace.sId
+        );
+
+        const result = await runSuggest(
+          adminAuth,
+          editSubAgents(agent.sId, { addAgentIds: [subAgent.sId] })
+        );
+
+        expectMcpError(result, "Only editors");
+      });
+
+      it("refuses to add a sub-agent the agent has, or remove one it does not have", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const currentSubAgent = await AgentConfigurationFactory.createTestAgent(
+          authenticator,
+          { name: "CurrentHelper" }
+        );
+        await addSubAgent(authenticator, agent, currentSubAgent.sId);
+        const otherAgent = await AgentConfigurationFactory.createTestAgent(
+          authenticator,
+          { name: "OtherHelper" }
+        );
+
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editSubAgents(agent.sId, { addAgentIds: [currentSubAgent.sId] })
+          ),
+          "already has the sub-agent"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editSubAgents(agent.sId, { removeAgentIds: [otherAgent.sId] })
+          ),
+          "does not have the sub-agent"
+        );
       });
     });
 
