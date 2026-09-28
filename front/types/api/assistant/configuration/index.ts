@@ -1,10 +1,13 @@
 // Shared contract types and schemas for the agent configurations API,
 // imported by the agent configurations API routes.
-import { LightAgentConfigurationSchema } from "@app/types/assistant/agent";
+import {
+  DecoratedLightAgentConfigurationSchema,
+  LightAgentConfigurationSchema,
+} from "@app/types/assistant/agent";
 import { z } from "zod";
 
 export const GetAgentConfigurationsResponseBodySchema = z.object({
-  agentConfigurations: z.array(LightAgentConfigurationSchema),
+  agentConfigurations: z.array(DecoratedLightAgentConfigurationSchema),
 });
 export type GetAgentConfigurationsResponseBody = z.infer<
   typeof GetAgentConfigurationsResponseBodySchema

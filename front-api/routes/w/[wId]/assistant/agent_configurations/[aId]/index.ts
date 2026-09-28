@@ -5,7 +5,7 @@ import {
   toAgentConfigurations,
 } from "@app/lib/resources/agent_resource_serialization";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/agent_configuration";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentConfigurationWithLastAuthorsType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -36,7 +36,7 @@ const ParamsSchema = z.object({
 });
 
 export type GetAgentConfigurationResponseBody = {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: AgentConfigurationWithLastAuthorsType;
   // Set by the PATCH handler: whether the save persisted a change. False on a no-op (the incoming
   // configuration matched the current version and no scope/editor change). True for a new version
   // AND for an in-place scope/editor change that creates no new version. Absent on GET.

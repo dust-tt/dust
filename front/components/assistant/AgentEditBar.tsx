@@ -2,7 +2,7 @@ import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
 import { useBatchUpdateAgentTags } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { DecoratedLightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -22,7 +22,7 @@ import { SetModelAssistantsDialog } from "./SetModelAssistantsDialog";
 import { UnpublishAssistantsDialog } from "./UnpublishAssistantsDialog";
 
 export type BatchEditableAgent = Pick<
-  LightAgentConfigurationType,
+  DecoratedLightAgentConfigurationType,
   "sId" | "name" | "pictureUrl" | "usage"
 > & { tagIds: string[] };
 
