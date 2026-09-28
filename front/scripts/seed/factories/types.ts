@@ -11,6 +11,7 @@ import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import type { AgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillAvailabilitySuggestionType,
+  SkillCreateSuggestionType,
   SkillDeleteSuggestionType,
   SkillEditorsSuggestionType,
   SkillEditSuggestionType,
@@ -83,6 +84,13 @@ interface BaseSkillSuggestionAsset {
   state: SkillSuggestionState;
   source: SkillSuggestionSource;
   sourceConversationIds?: string[];
+  // Key of the `SuggestionBatchAsset` the suggestion belongs to.
+  batch?: string;
+}
+
+export interface SkillCreateSuggestionAsset extends BaseSkillSuggestionAsset {
+  kind: "create";
+  suggestion: SkillCreateSuggestionType;
 }
 
 export interface SkillEditSuggestionAsset extends BaseSkillSuggestionAsset {
@@ -119,12 +127,19 @@ export interface SkillAvailabilitySuggestionAsset
 }
 
 export type SkillSuggestionAsset =
+  | SkillCreateSuggestionAsset
   | SkillEditSuggestionAsset
   | SkillEditorsSuggestionAsset
   | SkillUserFacingDescriptionSuggestionAsset
   | SkillNameSuggestionAsset
   | SkillDeleteSuggestionAsset
   | SkillAvailabilitySuggestionAsset;
+
+export interface SuggestionBatchAsset {
+  id: string;
+  title: string;
+  analysis: string;
+}
 
 export interface SuggestedSkillAsset {
   name: string;

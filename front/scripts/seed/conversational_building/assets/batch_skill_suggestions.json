@@ -1,0 +1,95 @@
+[
+  {
+    "id": "batchCreateActionItemTracker",
+    "skillName": "ActionItemTracker",
+    "batch": "actionItemTracker",
+    "kind": "create",
+    "title": "Create ActionItemTracker",
+    "analysis": null,
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "name": "ActionItemTracker",
+      "userFacingDescription": "Keep track of the action items from your meetings, with their owner, due date and status.",
+      "agentFacingDescription": "Tracks action items extracted from meeting notes: owner, due date and status, and reminds owners of overdue items.",
+      "instructions": "<div data-type=\"instructions-root\" data-block-id=\"instructions-root\"><h1 data-block-id=\"ai01titl\">Action Item Tracker</h1><p data-block-id=\"ai02intr\">Keep a list of action items, each with an owner, a due date and a status (open, done or blocked).</p><ol data-block-id=\"ai03list\"><li>When given new action items, add them to the list without duplicating existing ones.</li><li>When asked for a status, list the open items grouped by owner, overdue items first.</li><li>When an item is done or blocked, update its status and keep it in the list.</li></ol></div>"
+    }
+  },
+  {
+    "id": "batchEditHandOverActionItems",
+    "skillName": "StandupDigest",
+    "batch": "actionItemTracker",
+    "kind": "edit",
+    "title": "Hand standup action items over to ActionItemTracker",
+    "analysis": null,
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "instructionEdits": [
+        {
+          "targetBlockId": "sd04outr",
+          "content": "<p>Keep it under ten lines and do not repeat updates that did not change. Once the digest is written, pass the action items to <skill id=\"__ACTION_ITEM_TRACKER_SKILL_SID__\" name=\"ActionItemTracker\" /> so they are tracked until done.</p>",
+          "type": "replace"
+        }
+      ]
+    }
+  },
+  {
+    "id": "batchEditGroupByOwner",
+    "skillName": "StandupDigest",
+    "batch": "groupByOwner",
+    "kind": "edit",
+    "title": "Group standup action items by owner",
+    "analysis": null,
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "instructionEdits": [
+        {
+          "targetBlockId": "sd03list",
+          "content": "<ol><li><strong>Progress</strong>: What moved since the last standup, one line per person.</li><li><strong>Blockers</strong>: Anything someone is stuck on, with who can unblock it.</li><li><strong>Action items</strong>: Tasks that came out of the standup, grouped by owner.</li></ol>",
+          "type": "replace"
+        }
+      ]
+    }
+  },
+  {
+    "id": "batchRenameToTeamDigest",
+    "skillName": "StandupDigest",
+    "batch": "renameToTeamDigest",
+    "kind": "name",
+    "title": "Rename to TeamDigest",
+    "analysis": null,
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "name": "TeamDigest"
+    }
+  },
+  {
+    "id": "batchDescribeTeamDigest",
+    "skillName": "StandupDigest",
+    "batch": "renameToTeamDigest",
+    "kind": "user_facing_description",
+    "title": "Describe TeamDigest for members",
+    "analysis": null,
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "userFacingDescription": "Summarize standups, weekly syncs or Slack threads into progress, blockers and action items."
+    }
+  },
+  {
+    "id": "batchMembersOnly",
+    "skillName": "StandupDigest",
+    "batch": "membersOnly",
+    "kind": "availability",
+    "title": "Keep StandupDigest for members only",
+    "analysis": null,
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "availability": "workspace_users"
+    }
+  }
+]
