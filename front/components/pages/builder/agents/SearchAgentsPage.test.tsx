@@ -264,7 +264,7 @@ describe("search-backed Manage Agents", () => {
 
     for (const { tab, filters } of [
       {
-        tab: "Editable by me",
+        tab: "Editable",
         filters: {
           status: ["active"],
           editedByMe: true,
