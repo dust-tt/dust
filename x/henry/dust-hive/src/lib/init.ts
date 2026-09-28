@@ -254,7 +254,8 @@ async function initElasticsearchTS(
     { path: "./scripts/reindex_global_agents.ts", description: "global agents" },
   ];
   for (const { path, description } of reindexScripts) {
-    if (!(await Bun.file(`${frontDir}/${path}`).exists())) {
+    const scriptExists = await Bun.file(`${frontDir}/${path}`).exists();
+    if (!scriptExists) {
       continue;
     }
 
