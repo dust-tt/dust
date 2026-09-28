@@ -1599,6 +1599,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     };
   }
 
+  toSearchFacetJSON(count: number) {
+    return {
+      sId: this.sId,
+      mcpServerId: this.mcpServerId,
+      name: this.getDisplayName(),
+      icon: this.getServerDisplayMetadata().icon,
+      count,
+    };
+  }
+
   /**
    * JIT-hydrate the requested heavy attributes on the views' remote servers, e.g. before
    * serializing a filtered subset with `toJSON`.

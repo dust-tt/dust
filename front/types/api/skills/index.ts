@@ -1,3 +1,4 @@
+import type { MCPServerType } from "@app/lib/api/mcp";
 import type { SkillPermissionFilteringMode } from "@app/lib/resources/skill/skill_resource";
 import type {
   SkillAvailability,
@@ -44,6 +45,7 @@ export const SKILL_SEARCH_TERMS_FACETS = [
   "editors",
   "childSkills",
   "spaces",
+  "mcpServerViews",
 ] as const;
 export type SkillSearchTermsFacet = (typeof SKILL_SEARCH_TERMS_FACETS)[number];
 
@@ -100,6 +102,13 @@ export type SearchSkillsResponseBody = {
       count: number;
     }[];
     spaces?: { sId: string; name: string; kind: SpaceKind; count: number }[];
+    mcpServerViews?: {
+      sId: string;
+      mcpServerId: string;
+      name: string;
+      icon: MCPServerType["icon"];
+      count: number;
+    }[];
     usage?: SkillSearchRangeFacetValue;
   };
 };

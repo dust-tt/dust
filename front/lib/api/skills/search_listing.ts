@@ -1,5 +1,6 @@
 import { searchSkills } from "@app/lib/api/skills/search";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -23,9 +24,9 @@ function facetCountsById(
 
 /**
  * @cc [owner:tdraier,label:security] skill-search-listing-names
- * Resolve editor, child skill and space names for `searchSkills` results (listed skills and facets)
- * through resources, and only name child skills and spaces the caller can read: unreadable ones are
- * dropped from the facets.
+ * Resolve editor, child skill, space and tool names for `searchSkills` results (listed skills and
+ * facets) through resources, and only name child skills, spaces and tools the caller can read:
+ * unreadable ones are dropped from the facets.
  */
 export async function searchSkillListings(
   auth: Authenticator,
@@ -43,7 +44,7 @@ export async function searchSkillListings(
       ...facetIds(facetValues.editors),
     ]),
   ];
-  const [users, childSkills, spaces] = await Promise.all([
+  const [users, childSkills, spaces, mcpServerViews] = await Promise.all([
     UserResource.fetchByIds(editorIds),
     facetValues.childSkills?.length
       ? SkillResource.fetchByIds(auth, facetIds(facetValues.childSkills), {
@@ -54,6 +55,12 @@ export async function searchSkillListings(
       : [],
     facetValues.spaces?.length
       ? SpaceResource.fetchByIds(auth, facetIds(facetValues.spaces))
+      : [],
+    facetValues.mcpServerViews?.length
+      ? MCPServerViewResource.fetchByIds(
+          auth,
+          facetIds(facetValues.mcpServerViews)
+        )
       : [],
   ]);
 
@@ -66,6 +73,7 @@ export async function searchSkillListings(
   const usersById = new Map(users.map((user) => [user.sId, user]));
   const childSkillCounts = facetCountsById(facetValues.childSkills);
   const spaceCounts = facetCountsById(facetValues.spaces);
+  const mcpServerViewCounts = facetCountsById(facetValues.mcpServerViews);
 
   return new Ok<SearchSkillsResponseBody>({
     ...result.value,
@@ -108,6 +116,16 @@ export async function searchSkillListings(
               .filter((space) => auth.can("read", space))
               .map((space) =>
                 space.toSearchFacetJSON(spaceCounts.get(space.sId) ?? 0)
+              )
+              .toSorted((a, b) => a.name.localeCompare(b.name)),
+          }
+        : {}),
+      ...(facetValues.mcpServerViews
+        ? {
+            mcpServerViews: mcpServerViews
+              .filter((view) => auth.can("read", view))
+              .map((view) =>
+                view.toSearchFacetJSON(mcpServerViewCounts.get(view.sId) ?? 0)
               )
               .toSorted((a, b) => a.name.localeCompare(b.name)),
           }
