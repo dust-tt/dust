@@ -13,9 +13,11 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AvatarCellSkeleton,
+  Checkbox,
   ChipCellSkeleton,
   DataTable,
   DataTableSkeleton,
+  Label,
   LoadingBlock,
   TextCellSkeleton,
 } from "@dust-tt/sparkle";
@@ -26,10 +28,10 @@ import type {
 } from "@tanstack/react-table";
 import { useMemo } from "react";
 
-// Leave room for Usage and Actions, then Editors/Last edited at sm, Availability at md and Used by
-// at lg.
+// Leave room for Select, Usage and Actions, then Editors/Last edited at sm, Availability at md and
+// Used by at lg.
 const SKILL_SEARCH_NAME_COLUMN_WIDTH =
-  "w-[calc(100%-9.5rem)] sm:w-[calc(100%-25.5rem)] md:w-[calc(100%-35.5rem)] lg:w-[calc(100%-43.5rem)]";
+  "w-[calc(100%-12rem)] sm:w-[calc(100%-28rem)] md:w-[calc(100%-38rem)] lg:w-[calc(100%-46rem)]";
 
 interface SkillSearchTableProps {
   owner: LightWorkspaceType;
@@ -43,10 +45,60 @@ interface SkillSearchTableProps {
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
   isLoading: boolean;
+  selectedSkillIds: string[];
+  setSelectedSkillIds: (skillIds: string[]) => void;
+  canSelect: (skill: SkillListItemType) => boolean;
 }
 
 type SkillSearchRow = SkillListItemType & { onClick: () => void };
 
+interface SkillSearchUsedByCellProps {
+  owner: LightWorkspaceType;
+  skillId: string;
+  pageSkillIds: string[];
+  onAgentClick: (agentId: string) => void;
+  onSkillClick: (skillId: string) => void;
+}
+
+// Every cell of the page requests the same key, which SWR deduplicates into one call.
+function SkillSearchUsedByCell({
+  owner,
+  skillId,
+  pageSkillIds,
+  onAgentClick,
+  onSkillClick,
+}: SkillSearchUsedByCellProps) {
+  const { usedBy, isUsedByLoading } = useSkillsUsedBy({
+    owner,
+    skillIds: pageSkillIds,
+  });
+  const usage = usedBy?.[skillId];
+
+  return (
+    <div className="flex h-12 w-full items-center justify-center">
+      {isUsedByLoading ? (
+        <LoadingBlock className="h-5 w-14 rounded-md" />
+      ) : usage ? (
+        <UsedByButton
+          usage={usage}
+          onItemClick={onAgentClick}
+          onSkillClick={onSkillClick}
+        />
+      ) : (
+        "-"
+      )}
+    </div>
+  );
+}
+
+// Cells render as components, so a new `columns` identity remounts every cell: an open menu
+// closes and an in-flight checkbox click is lost.
+/**
+ * @cc [owner:tdraier,label:react;performance] stable-columns
+ * `columns` MUST only be rebuilt when `onSelect`, `onAgentClick`, `onRefresh` or `owner` change,
+ * never on data the table loads itself. Callers MUST keep `onSelect`, `onAgentClick` and
+ * `onRefresh` referentially stable while the search inputs are unchanged.
+ */
 export function SkillSearchTable({
   owner,
   skills,
@@ -59,14 +111,80 @@ export function SkillSearchTable({
   sorting,
   setSorting,
   isLoading,
+  selectedSkillIds,
+  setSelectedSkillIds,
+  canSelect,
 }: SkillSearchTableProps) {
-  const { usedBy, isUsedByLoading } = useSkillsUsedBy({
-    owner,
-    skillIds: skills.map((skill) => skill.sId),
-  });
   const columns = useMemo(
     () =>
       [
+        {
+          id: "select" as const,
+          header: ({ table }) => {
+            const areAllPageRowsSelected = table.getIsAllPageRowsSelected();
+            const hasSelection = Object.values(
+              table.getState().rowSelection
+            ).some((isSelected) => isSelected);
+
+            return (
+              <DataTable.CellContent className="size-full items-center justify-center">
+                <Checkbox
+                  checked={
+                    areAllPageRowsSelected
+                      ? true
+                      : hasSelection
+                        ? "partial"
+                        : false
+                  }
+                  disabled={
+                    !table.getRowModel().rows.some((row) => row.getCanSelect())
+                  }
+                  tooltip={
+                    areAllPageRowsSelected
+                      ? "Clear selection"
+                      : "Select all on page"
+                  }
+                  onClick={(event) => event.stopPropagation()}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      table.toggleAllPageRowsSelected(true);
+                    } else {
+                      // Unticking clears the whole selection across pages.
+                      table.resetRowSelection();
+                    }
+                  }}
+                />
+              </DataTable.CellContent>
+            );
+          },
+          cell: ({ row }) => {
+            if (!row.getCanSelect()) {
+              return null;
+            }
+            const checkboxId = `select-skill-${row.id}`;
+            return (
+              // Keep the click from reaching the row, which opens the skill details.
+              <Label
+                htmlFor={checkboxId}
+                className="flex size-full cursor-pointer items-center justify-center hover:bg-muted-background"
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                <Checkbox
+                  id={checkboxId}
+                  aria-label={
+                    row.getIsSelected()
+                      ? `Deselect ${row.original.name}`
+                      : `Select ${row.original.name}`
+                  }
+                  checked={row.getIsSelected()}
+                  onCheckedChange={(checked) => row.toggleSelected(!!checked)}
+                />
+              </Label>
+            );
+          },
+          meta: { className: "w-10 p-0" },
+        },
         {
           id: "name" as const,
           accessorKey: "name",
@@ -95,24 +213,15 @@ export function SkillSearchTable({
           header: () => (
             <div className="flex w-full justify-center">Used by</div>
           ),
-          cell: ({ row: { original: skill } }) => {
-            const usage = usedBy?.[skill.sId];
-            return (
-              <div className="flex h-12 w-full items-center justify-center">
-                {isUsedByLoading ? (
-                  <LoadingBlock className="h-5 w-14 rounded-md" />
-                ) : usage ? (
-                  <UsedByButton
-                    usage={usage}
-                    onItemClick={onAgentClick}
-                    onSkillClick={onSelect}
-                  />
-                ) : (
-                  "-"
-                )}
-              </div>
-            );
-          },
+          cell: ({ row: { original: skill }, table }) => (
+            <SkillSearchUsedByCell
+              owner={owner}
+              skillId={skill.sId}
+              pageSkillIds={table.options.data.map(({ sId }) => sId)}
+              onAgentClick={onAgentClick}
+              onSkillClick={onSelect}
+            />
+          ),
           meta: { className: "hidden w-32 px-0 lg:table-cell" },
         },
         {
@@ -169,7 +278,7 @@ export function SkillSearchTable({
           meta: { className: "w-14" },
         },
       ] satisfies ColumnDef<SkillSearchRow>[],
-    [isUsedByLoading, onAgentClick, onRefresh, onSelect, owner, usedBy]
+    [onAgentClick, onRefresh, onSelect, owner]
   );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
@@ -181,6 +290,8 @@ export function SkillSearchTable({
           rowHeight={64}
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
+              case "select":
+                return <LoadingBlock className="h-4 w-4 rounded-sm" />;
               case "name":
                 return (
                   <AvatarCellSkeleton avatarClassName="h-9 w-9 rounded-lg">
@@ -225,6 +336,16 @@ export function SkillSearchTable({
       }))}
       columns={columns}
       getRowId={(skill) => skill.sId}
+      enableRowSelection={(row) => canSelect(row.original)}
+      disableRowClickSelection
+      rowSelection={Object.fromEntries(
+        selectedSkillIds.map((skillId) => [skillId, true])
+      )}
+      setRowSelection={(rowSelection) =>
+        setSelectedSkillIds(
+          Object.keys(rowSelection).filter((skillId) => rowSelection[skillId])
+        )
+      }
       isLoading={isLoading}
       pagination={pagination}
       setPagination={setPagination}
