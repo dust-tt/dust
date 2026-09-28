@@ -17,6 +17,7 @@ import {
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import {
+  _getCustomModelDustGlobalAgent,
   _getDustAntGlobalAgent,
   _getDustAntHighGlobalAgent,
   _getDustAntHighOmittedGlobalAgent,
@@ -53,9 +54,6 @@ import {
   _getDustMinimaxMediumGlobalAgent,
   _getDustMistralMediumHighGlobalAgent,
   _getDustMistralMediumNoneGlobalAgent,
-  _getDustNextGlobalAgent,
-  _getDustNextHighGlobalAgent,
-  _getDustNextMediumGlobalAgent,
   _getDustOaiGlobalAgent,
   _getDustOaiHighGlobalAgent,
   _getDustOaiLunaGlobalAgent,
@@ -793,31 +791,19 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_NEXT:
-      agentConfiguration = _getDustNextGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-        featureFlags,
-      });
-      break;
     case GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM:
-      agentConfiguration = _getDustNextMediumGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-        featureFlags,
-      });
-      break;
     case GLOBAL_AGENTS_SID.DUST_NEXT_HIGH:
-      agentConfiguration = _getDustNextHighGlobalAgent(auth, {
-        settings,
-        preFetchedDataSources,
-        mcpServerViews,
-        hasDeepDive,
-        featureFlags,
-      });
+      agentConfiguration = _getCustomModelDustGlobalAgent(
+        auth,
+        {
+          settings,
+          preFetchedDataSources,
+          mcpServerViews,
+          hasDeepDive,
+          featureFlags,
+        },
+        sId
+      );
       break;
     case GLOBAL_AGENTS_SID.DUST_LIONEL:
       agentConfiguration = _getDustLionelGlobalAgent(auth, {

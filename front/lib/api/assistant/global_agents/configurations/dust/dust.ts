@@ -1084,51 +1084,24 @@ export function _getDustQuickMediumGlobalAgent(
   });
 }
 
-export function _getDustNextGlobalAgent(
+// Builds a custom-model dust-* agent from its entry in `CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS`.
+export function _getCustomModelDustGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
+  args: DustLikeGlobalAgentArgs,
+  agentId: GLOBAL_AGENTS_SID
 ): AgentConfigurationType | null {
-  const customModel = getCustomModelForDustGlobalAgent(
-    GLOBAL_AGENTS_SID.DUST_NEXT
-  );
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_NEXT,
-    name: "dust-next",
-    preferredModelConfiguration:
-      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "low",
-  });
-}
+  const config = CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId);
+  if (!config) {
+    return null;
+  }
 
-export function _getDustNextMediumGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  const customModel = getCustomModelForDustGlobalAgent(
-    GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM
-  );
   return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
-    name: "dust-next-medium",
+    agentId,
+    name: config.name,
     preferredModelConfiguration:
-      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "medium",
-  });
-}
-
-export function _getDustNextHighGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  const customModel = getCustomModelForDustGlobalAgent(
-    GLOBAL_AGENTS_SID.DUST_NEXT_HIGH
-  );
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
-    name: "dust-next-high",
-    preferredModelConfiguration:
-      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "high",
+      getCustomModelForDustGlobalAgent(agentId) ??
+      CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: config.preferredReasoningEffort,
   });
 }
 
