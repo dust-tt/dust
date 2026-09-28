@@ -71,6 +71,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     owner,
     searchTerm: searchQuery.trim(),
     limit: MAX_DISPLAYED_AGENTS,
+    sortBy: "nameWithGlobalFirst",
     disabled: !isOpen || !isAgentsSearchEnabled,
   });
   const isAgentsLoading = isAgentsSearchEnabled
