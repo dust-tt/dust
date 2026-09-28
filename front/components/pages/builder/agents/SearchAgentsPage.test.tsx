@@ -7,7 +7,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
 import type { MembershipRoleType } from "@app/types/memberships";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import assert from "assert";
 import { SWRConfig } from "swr";
@@ -144,7 +144,10 @@ async function setup({
     total: 1,
     hasMore: false,
     facets: {
-      editors: [{ sId, fullName, image, count: 1 }],
+      editors: [
+        { sId: "other-editor", fullName: "Alice Other", image: null, count: 1 },
+        { sId, fullName, image, count: 1 },
+      ],
       models: [{ modelId: "claude-sonnet-5", count: 1 }],
       tags: [],
     },
@@ -484,9 +487,16 @@ describe("search-backed Manage Agents", () => {
       screen.getByRole("checkbox", { name: "Not published" })
     );
     await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
-    await userEvent.click(
-      await screen.findByRole("checkbox", { name: editor.fullName })
+    const meCheckbox = await screen.findByRole("checkbox", { name: "Me" });
+    const editorCheckboxes = within(screen.getByRole("dialog")).getAllByRole(
+      "checkbox"
     );
+    expect(editorCheckboxes).toHaveLength(2);
+    expect(editorCheckboxes[0]).toBe(meCheckbox);
+    expect(
+      screen.queryByRole("checkbox", { name: editor.fullName })
+    ).not.toBeInTheDocument();
+    await userEvent.click(meCheckbox);
     await userEvent.click(screen.getByRole("tab", { name: "Models" }));
     await userEvent.click(
       await screen.findByRole("checkbox", {

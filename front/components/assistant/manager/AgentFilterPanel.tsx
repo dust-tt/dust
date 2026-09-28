@@ -13,6 +13,7 @@ import { FilterPanel } from "@app/components/shared/filter_panel/FilterPanel";
 import { clearFilterCategory } from "@app/components/shared/filter_panel/filterState";
 import { useFilterPanel } from "@app/components/shared/filter_panel/useFilterPanel";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type {
   AgentSearchFacet,
   AgentSearchFilters,
@@ -58,6 +59,7 @@ export function AgentFilterPanel({
   filter,
   onFilterChange,
 }: AgentFilterPanelProps) {
+  const { user } = useAuth();
   const panel = useFilterPanel<AgentFilterCategory, AgentFilterOption>(
     filter,
     categories
@@ -84,13 +86,20 @@ export function AgentFilterPanel({
 
   const categoryOptions: Record<AgentFilterCategory, AgentFilterOption[]> = {
     access: AGENT_ACCESS_FILTER_OPTIONS,
-    editor: (facets?.editors ?? []).map((editor) => ({
-      category: "editor",
-      id: editor.sId,
-      name: editor.fullName,
-      image: editor.image,
-      disabled: false,
-    })),
+    // The current user is listed first, as "Me".
+    editor: (facets?.editors ?? [])
+      .map(
+        (editor): AgentFilterOption => ({
+          category: "editor",
+          id: editor.sId,
+          name: editor.sId === user.sId ? "Me" : editor.fullName,
+          image: editor.image,
+          disabled: false,
+        })
+      )
+      .toSorted(
+        (a, b) => Number(b.id === user.sId) - Number(a.id === user.sId)
+      ),
     model: (facets?.models ?? [])
       .map(
         ({ modelId }): AgentFilterOption => ({
