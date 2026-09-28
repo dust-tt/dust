@@ -57,6 +57,7 @@ interface MemberSelectionTableProps {
   onSelectionChange: (ids: Set<string>, users: SearchMemberType[]) => void;
   extraColumns?: ColumnDef<MemberRowData>[];
   initialMembers?: SearchMemberType[];
+  disabled?: boolean;
 }
 
 export function MemberSelectionTable({
@@ -65,6 +66,7 @@ export function MemberSelectionTable({
   onSelectionChange,
   extraColumns,
   initialMembers,
+  disabled = false,
 }: MemberSelectionTableProps) {
   const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
@@ -118,6 +120,9 @@ export function MemberSelectionTable({
   );
 
   const handleRowSelectionChange = (newSelection: RowSelectionState) => {
+    if (disabled) {
+      return;
+    }
     const newIds = new Set(
       Object.entries(newSelection)
         .filter(([, selected]) => selected)
@@ -201,7 +206,7 @@ export function MemberSelectionTable({
             totalRowCount={searchText ? totalMembersCount : rows.length}
             rowSelection={rowSelectionState}
             setRowSelection={handleRowSelectionChange}
-            enableRowSelection
+            enableRowSelection={!disabled}
             getRowId={(row) => row.sId}
           />
         )}
