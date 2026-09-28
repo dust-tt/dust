@@ -100,6 +100,7 @@ export function GroupManagerUsagePage() {
         : "name",
     orderDirection: sort?.desc ? "desc" : "asc",
     groupId: groupId ?? undefined,
+    disabled: tab !== "members",
   });
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   // The effective limit already includes the seat allowance. Show the

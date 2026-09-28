@@ -177,6 +177,26 @@ export type SidebarNavigation = {
   menus: AppLayoutNavigation[];
 };
 
+export function getAdminSectionHref(
+  owner: WorkspaceType,
+  hasPermission: (
+    verb: GrantVerb,
+    resourceType: ConcreteResourceType
+  ) => boolean,
+  canManageUsage: boolean
+): string | null {
+  if (isManager(owner)) {
+    return `/w/${owner.sId}/members`;
+  }
+  if (hasPermission("admin", "billing")) {
+    return `/w/${owner.sId}/billing`;
+  }
+  if (hasPermission("admin", "security")) {
+    return `/w/${owner.sId}/identity-and-provisioning`;
+  }
+  return canManageUsage ? `/w/${owner.sId}/usage` : null;
+}
+
 export const getTopNavigationTabs = (
   owner: WorkspaceType,
   spaceMenuButtonRef: React.RefObject<HTMLDivElement>,

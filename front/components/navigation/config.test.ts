@@ -1,4 +1,7 @@
-import { subNavigationAdmin } from "@app/components/navigation/config";
+import {
+  getAdminSectionHref,
+  subNavigationAdmin,
+} from "@app/components/navigation/config";
 import { LightSubscriptionFactory } from "@app/tests/utils/LightSubscriptionFactory";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -99,4 +102,14 @@ describe("subNavigationAdmin delegated Usage entry", () => {
       true
     );
   });
+});
+
+it("links group managers to Usage from the Admin tab", () => {
+  const owner = ownerWithRole("user");
+  const hasPermission = () => false;
+
+  expect(getAdminSectionHref(owner, hasPermission, false)).toBeNull();
+  expect(getAdminSectionHref(owner, hasPermission, true)).toBe(
+    `/w/${owner.sId}/usage`
+  );
 });
