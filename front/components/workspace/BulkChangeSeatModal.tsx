@@ -1,5 +1,4 @@
 import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
-import { BulkMembersModalHeader } from "@app/components/workspace/BulkMembersModalHeader";
 import {
   formatPriceCents,
   getAvailableFrequencies,
@@ -10,6 +9,7 @@ import {
   sortSeatTypes,
   stripYearlySuffix,
 } from "@app/components/workspace/SeatCard";
+import { SelectedMembersAvatarStack } from "@app/components/workspace/SelectedMembersAvatarStack";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type {
@@ -28,7 +28,10 @@ import {
   Dialog,
   DialogContainer,
   DialogContent,
+  DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Icon,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -544,14 +547,23 @@ function BulkChangeSeatForm({
 
   return (
     <>
-      <BulkMembersModalHeader
-        selectedMembers={selectedMembers}
-        title={
-          title ??
-          `Change seat for ${(preview?.memberCount ?? memberCount).toLocaleString("en-US")} members`
-        }
-        subtitle={subtitle}
-      />
+      <DialogHeader>
+        <div className="flex flex-col gap-2">
+          {selectedMembers.length > 0 && (
+            <SelectedMembersAvatarStack
+              selectedMembers={selectedMembers}
+              size="md"
+            />
+          )}
+          <div className="flex flex-col gap-1">
+            <DialogTitle>
+              {title ??
+                `Change seat for ${(preview?.memberCount ?? memberCount).toLocaleString("en-US")} members`}
+            </DialogTitle>
+            <DialogDescription>{subtitle}</DialogDescription>
+          </div>
+        </div>
+      </DialogHeader>
       <DialogContainer>
         {isSubscriptionCancelled && (
           <p className="mb-3 text-xs text-warning-600">

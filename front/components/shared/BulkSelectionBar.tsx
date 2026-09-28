@@ -46,7 +46,7 @@ export function BulkSelectionBar({
       >
         <div className="flex items-center gap-2 text-xs">
           {selectionPreview}
-          <span>{selectedCount} selected.</span>
+          <span>{selectedCount} selected</span>
           {canSelectAll && (
             <Hoverable variant="highlight" onClick={onSelectAll}>
               Select all {totalCount} {itemLabel}

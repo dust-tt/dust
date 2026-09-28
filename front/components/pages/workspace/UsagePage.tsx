@@ -702,9 +702,7 @@ export function UsagePage() {
     setIsBulkChangeSeatOpen(true);
   }, []);
 
-  // The selection only holds ids and a page only loads its own rows: remember
-  // every loaded member so picks from other pages keep their avatar. Updated
-  // during render (the React-recommended alternative to an effect).
+  // Remember loaded members so picks from other pages keep their avatar.
   const [loadedMembersById, setLoadedMembersById] = useState(
     () => new Map(membersUsage.map((m) => [m.sId, m]))
   );
@@ -720,10 +718,8 @@ export function UsagePage() {
     });
   }
 
-  // Selected members, for the avatar rows of the selection bar and bulk modals.
-  // Remembered members may predate the current filter, so an "all across
-  // pages" selection only shows the current page. Kept in pick order so the
-  // first avatars stay put as more members are added.
+  // In pick order so avatars stay put. "Select all" sticks to the current page:
+  // remembered members may predate the filter.
   const selectedVisibleMembers = useMemo(() => {
     const descriptor = selection.descriptor();
     if (descriptor.mode === "all") {

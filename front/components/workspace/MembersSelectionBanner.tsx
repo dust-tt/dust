@@ -1,11 +1,10 @@
 import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
-import { SelectedMembersAvatarStack } from "@app/components/workspace/BulkMembersModalHeader";
+import { SelectedMembersAvatarStack } from "@app/components/workspace/SelectedMembersAvatarStack";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { Button } from "@dust-tt/sparkle";
 
 interface MembersSelectionBannerProps {
   selectedCount: number;
-  // Selected members visible on the current page, for the avatar preview.
   selectedMembers: MemberUsageType[];
   totalCount: number;
   hasMorePagesToSelect: boolean;
