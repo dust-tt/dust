@@ -29,16 +29,12 @@ interface BulkEditSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
   memberCount: number;
-  // Selected members visible on the current page, for the header avatar row.
-  // With an "all across pages" selection this is only the visible subset.
   selectedMembers: MemberUsageType[];
   owner: LightWorkspaceType;
   // Whether any seat on the workspace's contract carries a built-in credit
   // allowance. When it doesn't (e.g. pooled plans with no per-seat allowance),
   // the pool limit is the member's whole monthly budget rather than a top-up.
   seatsHaveBuiltInAllowance: boolean;
-  // The workspace default applies to every member, so editing it is reserved
-  // to admins even where managers may edit personal limits.
   canEditDefaultLimit: boolean;
   defaultUserSpendLimit: DefaultUserSpendLimitState;
   onValidate: (limit: UserSpendLimit) => Promise<boolean>;
@@ -55,8 +51,6 @@ export function BulkEditSpendLimitModal({
   defaultUserSpendLimit,
   onValidate,
 }: BulkEditSpendLimitModalProps) {
-  // A successful save clears the selection upstream: keep showing the last
-  // targeted members while the dialog closes rather than "0 members".
   const lastSelectionRef = useRef({ memberCount, selectedMembers });
   useEffect(() => {
     if (memberCount > 0) {
@@ -78,8 +72,6 @@ export function BulkEditSpendLimitModal({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <BulkEditSpendLimitForm
-          // Remounts with fresh draft state on every open instead of
-          // unmounting, so the content stays visible while the dialog closes.
           key={String(isOpen)}
           onClose={onClose}
           memberCount={displayed.memberCount}
@@ -126,8 +118,6 @@ function BulkEditSpendLimitForm({
   });
 
   const [personalLimitInput, setPersonalLimitInput] = useState<string>("");
-  // The field starts empty, so emptiness alone can't mean "remove": removal
-  // must be asked for explicitly before it can be validated.
   const [removeRequested, setRemoveRequested] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(
@@ -151,8 +141,6 @@ function BulkEditSpendLimitForm({
               (body) => body !== null
             )
           : true,
-        // A requested removal leaves the field empty, which falls back to the
-        // workspace default.
         isPersonalLimitChanged
           ? onValidate(toSpendLimit(result.awuCredits))
           : true,
