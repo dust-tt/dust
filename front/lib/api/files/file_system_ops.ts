@@ -452,10 +452,11 @@ export async function renameCanonicalFile(
   );
 
   const dest = path.posix.join(path.posix.dirname(scopedPath), newFileName);
-  const isDestRegistered =
-    dest !== scopedPath && (await isDestinationRegistered(auth, dustFs, dest));
-  if (isDestRegistered) {
-    return new Err(registeredDestinationError());
+  if (dest !== scopedPath) {
+    const isDestRegistered = await isDestinationRegistered(auth, dustFs, dest);
+    if (isDestRegistered) {
+      return new Err(registeredDestinationError());
+    }
   }
 
   const renameResult = await dustFs.rename(scopedPath, newFileName);
