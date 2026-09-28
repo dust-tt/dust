@@ -468,7 +468,7 @@ describe("search-backed Manage Agents", () => {
     );
     fireEvent.click(checkbox);
 
-    expect(await screen.findByText("1 selected.")).toBeInTheDocument();
+    expect(await screen.findByText("1 selected")).toBeInTheDocument();
   });
 
   it("keeps the selection across pages and offers batch actions", async () => {
