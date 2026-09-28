@@ -1453,7 +1453,7 @@ describe("building_agents_and_skills tools", () => {
         { agentId: agent.sId, modelId: "gpt-4o-mini" },
         makeExtra(authenticator)
       );
-      expectMcpError(result, "Invalid model ID");
+      expectMcpError(result, "is not available in this workspace");
     });
   });
 

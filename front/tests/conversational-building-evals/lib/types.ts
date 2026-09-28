@@ -115,6 +115,11 @@ export type FinalToolCallAssertion =
       // The edit must target one of these block ids (from the seeded HTML). Guards against a
       // rewrite of the root or of an unrelated block when the change fits in one block.
       allowedTargetBlockIds?: string[];
+    }
+  | {
+      type: "suggestAgentModelChange";
+      agentKey: string;
+      modelId: ModelIdType;
     };
 
 interface BaseTestCase {
