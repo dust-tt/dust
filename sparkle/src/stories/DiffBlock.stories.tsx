@@ -95,9 +95,8 @@ export const Default: Story = {
 };
 
 /**
- * A diff tall enough to collapse: when the rendered content exceeds
- * `collapsedLines` lines (default 6), the block clamps to a preview and
- * shows an expand control.
+ * A diff tall enough to collapse: when the rendered content exceeds 6
+ * lines, the block clamps to a preview and shows an expand control.
  * @summary Long diff collapsed to a preview.
  */
 export const CollapsedPreview: Story = {

@@ -39,9 +39,7 @@ export type DiffBlockProps = {
   /** Controls rendered in the block's action slot (e.g. a "view changes" Button). */
   actions?: ReactElement;
   className?: string;
-  /** Number of lines shown before the diff collapses behind a "Show more" toggle (default 6). */
-  collapsedLines?: number;
-  /** When false, the whole diff always shows, with no "Show more" toggle (default true). */
+  /** When false, the whole diff always shows; otherwise it collapses past 6 lines behind a "Show more" toggle (default true). */
   isCollapsible?: boolean;
   /**
    * Box around the diff: "default" has a border and background, "borderless" keeps only the
@@ -54,21 +52,17 @@ export type DiffBlockProps = {
   children?: React.ReactNode;
 };
 
-const DEFAULT_COLLAPSED_LINES = 6;
+const COLLAPSED_LINES = 6;
 
 /** Rough CSS estimate to prevent flash before measurement */
-function getEstimatedCollapsedHeight(collapsedLines: number) {
-  return `calc(${collapsedLines} * 1.5em + 1rem)`;
-}
+const ESTIMATED_COLLAPSED_HEIGHT = `calc(${COLLAPSED_LINES} * 1.5em + 1rem)`;
 
-// Clamps a container to a number of content lines. The real line height is only known once
+// Clamps a container to a fixed number of content lines. The real line height is only known once
 // mounted, so an estimate clamps the first paint, and content resizes trigger a re-measure.
 function useClampedHeight({
-  collapsedLines,
   hasContent,
   isEnabled,
 }: {
-  collapsedLines: number;
   hasContent: boolean;
   isEnabled: boolean;
 }) {
@@ -101,7 +95,7 @@ function useClampedHeight({
         lineHeight = fontSize * 1.5;
       }
 
-      const nextCollapsedHeight = lineHeight * collapsedLines + paddingY;
+      const nextCollapsedHeight = lineHeight * COLLAPSED_LINES + paddingY;
       setCollapsedHeight(nextCollapsedHeight);
 
       const fullHeight = element.scrollHeight + paddingY;
@@ -125,13 +119,13 @@ function useClampedHeight({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [collapsedLines, hasContent, isEnabled]);
+  }, [hasContent, isEnabled]);
 
   let containerStyle: CSSProperties | undefined;
   if (isEnabled && !isMeasured) {
     containerStyle = {
       overflow: "hidden",
-      maxHeight: getEstimatedCollapsedHeight(collapsedLines),
+      maxHeight: ESTIMATED_COLLAPSED_HEIGHT,
     };
   } else if (isEnabled && isOverflowing && collapsedHeight !== undefined) {
     containerStyle = {
@@ -172,7 +166,6 @@ export function DiffBlock({
   children,
   actions,
   className,
-  collapsedLines = DEFAULT_COLLAPSED_LINES,
   isCollapsible = true,
   variant = "default",
 }: DiffBlockProps) {
@@ -186,7 +179,6 @@ export function DiffBlock({
     isOverflowing,
     toggleExpanded,
   } = useClampedHeight({
-    collapsedLines,
     hasContent,
     isEnabled: isCollapsible,
   });
