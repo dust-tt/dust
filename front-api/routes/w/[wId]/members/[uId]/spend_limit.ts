@@ -13,10 +13,7 @@ import {
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import {
-  ensureHasAnyGroupPermission,
-  ensureIsManager,
-} from "@front-api/middlewares/ensure_role";
+import { ensureHasAnyGroupPermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -46,6 +43,14 @@ function spendLimitErrorToApiError(
         status_code: 404,
         api_error: {
           type: "workspace_user_not_found",
+          message: error.message,
+        },
+      };
+    case "unauthorized":
+      return {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
           message: error.message,
         },
       };
@@ -107,11 +112,13 @@ app.get(
 app.put(
   "/",
   validate("param", ParamsSchema),
-  ensureIsManager(),
   validate("json", UpdateUserSpendLimitBodySchema),
+  ensureHasAnyGroupPermission(
+    "set_usage_limits",
+    "Only workspace managers and group managers can change member limits."
+  ),
   async (ctx): HandlerResult<PutUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");
-
     if (!auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled) {
       return apiError(ctx, {
         status_code: 403,

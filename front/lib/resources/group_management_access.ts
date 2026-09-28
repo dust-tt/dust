@@ -102,35 +102,56 @@ export async function getMemberScopeWithGroupVerb(
   };
 }
 
+export type MemberVerbAuthority =
+  | { kind: "none" }
+  | { kind: "workspace" }
+  | { kind: "group"; group: GroupResource };
+
 /**
  * @cc [owner:philipperolet,label:security;backend] current-member-authority
- * A member MUST have an active membership in the caller's workspace. Non-workspace managers
- * MUST also have a current active membership in a group on which the caller holds `verb`.
- * Use at action time for one member: `set_usage_limits` when editing a personal limit or
- * resolving a request, and `read_usage` for an individual usage lookup. This returns only a
- * boolean; an audit event that names the authorizing group needs that group resolved too.
+ * Callers MUST check the member's active workspace membership before using workspace-role
+ * authority. Non-workspace managers MUST have a current active workspace membership and group
+ * membership on which the caller holds `verb`.
+ * Use at action time for one member. The returned group identifies the grant used for an audit
+ * event; workspace managers/admins have no authorizing group.
  */
-export async function hasGroupVerbForMember(
+export async function getMemberVerbAuthority(
   auth: Authenticator,
   member: UserResource,
   verb: GroupMemberVerb
-): Promise<boolean> {
+): Promise<MemberVerbAuthority> {
+  if (auth.isManager() || auth.isAdmin()) {
+    return { kind: "workspace" };
+  }
+
   const workspace = auth.getNonNullableWorkspace();
   const { memberships } = await MembershipResource.getActiveMemberships({
     users: [member],
     workspace,
   });
   if (memberships.length === 0) {
-    return false;
+    return { kind: "none" };
   }
-  if (auth.isManager() || auth.isAdmin()) {
-    return true;
-  }
-
   const groups = await GroupResource.listUserGroupsInWorkspace({
     auth,
     user: member,
     groupKinds: [...MANAGEABLE_GROUP_KINDS],
   });
-  return groups.some((group) => canUseGroupVerb(auth, group, verb));
+  const group = groups.find((group) => canUseGroupVerb(auth, group, verb));
+  return group ? { kind: "group", group } : { kind: "none" };
+}
+
+export async function hasGroupVerbForMember(
+  auth: Authenticator,
+  member: UserResource,
+  verb: GroupMemberVerb
+): Promise<boolean> {
+  if (auth.isManager() || auth.isAdmin()) {
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      users: [member],
+      workspace: auth.getNonNullableWorkspace(),
+    });
+    return memberships.length > 0;
+  }
+  return (await getMemberVerbAuthority(auth, member, verb)).kind !== "none";
 }

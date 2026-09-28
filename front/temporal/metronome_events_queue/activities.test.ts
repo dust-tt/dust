@@ -1,5 +1,6 @@
 import * as spendLimit from "@app/lib/api/users/spend_limit";
 import { setSpendLimitForUsersActivity } from "@app/temporal/metronome_events_queue/activities";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
@@ -18,11 +19,32 @@ let actorUserId: string;
 beforeEach(async () => {
   const workspace = await WorkspaceFactory.basic();
   const user = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, user, { role: "manager" });
   workspaceId = workspace.sId;
   actorUserId = user.sId;
 });
 
 describe("setSpendLimitForUsersActivity", () => {
+  it("records a member authorization failure after the actor loses their workspace role", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    vi.mocked(spendLimit.setUserSpendLimit).mockResolvedValue(
+      new Err(new spendLimit.UserSpendLimitError("unauthorized", "not allowed"))
+    );
+
+    const result = await setSpendLimitForUsersActivity({
+      workspaceId: workspace.sId,
+      actorUserId: user.sId,
+      userIds: ["member"],
+      limit: { kind: "unlimited" },
+    });
+    expect(result).toEqual({
+      succeeded: 0,
+      failures: [{ userId: "member", message: "not allowed" }],
+    });
+  });
+
   it("records permanent (non-retriable) failures without throwing", async () => {
     vi.mocked(spendLimit.setUserSpendLimit).mockImplementation(
       async (_auth, { userId }) =>

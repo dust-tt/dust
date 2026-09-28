@@ -77,6 +77,9 @@ describe("group management scope", () => {
     expect(await hasGroupVerbForMember(auth, former, "set_usage_limits")).toBe(
       false
     );
+    expect(
+      await hasGroupVerbForMember(adminAuth, former, "set_usage_limits")
+    ).toBe(false);
     const remainingScope = await getMemberScopeWithGroupVerb(
       auth,
       "read_usage"

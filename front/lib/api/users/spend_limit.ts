@@ -27,6 +27,7 @@ import {
 } from "@app/lib/metronome/constants";
 import type { BillingCycle } from "@app/lib/plans/billing_cycle";
 import {
+  getMemberVerbAuthority,
   hasAnyGroupPermission,
   hasGroupVerbForMember,
 } from "@app/lib/resources/group_management_access";
@@ -56,6 +57,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 type UserSpendLimitErrorType =
   | "user_not_found"
+  | "unauthorized"
   | "workspace_not_metronome_billed"
   | "metronome_error";
 
@@ -195,8 +197,23 @@ export async function setUserSpendLimit(
     );
   }
 
+  const authority = await getMemberVerbAuthority(
+    auth,
+    user,
+    "set_usage_limits"
+  );
+  if (authority.kind === "none") {
+    return new Err(
+      new UserSpendLimitError(
+        "unauthorized",
+        "You cannot change this member's spend limit."
+      )
+    );
+  }
+
   // The membership is the source of truth for the per-user cap; the Redis
   // rate-limiter reads this override at enforcement time. Persist it directly.
+  const previousAwuCredits = membership.poolCapOverrideAwuCredits;
   await membership.updatePoolCapOverride({
     poolCapOverrideAwuCredits:
       limit.kind === "limited" ? limit.awuCredits : null,
@@ -235,6 +252,11 @@ export async function setUserSpendLimit(
       kind: limit.kind,
       awu_credits:
         limit.kind === "limited" ? String(limit.awuCredits) : "unlimited",
+      previous_kind: previousAwuCredits === null ? "unlimited" : "limited",
+      previous_awu_credits:
+        previousAwuCredits === null ? "unlimited" : String(previousAwuCredits),
+      authorizing_group_id:
+        authority.kind === "group" ? authority.group.sId : "workspace_role",
     },
   });
 
