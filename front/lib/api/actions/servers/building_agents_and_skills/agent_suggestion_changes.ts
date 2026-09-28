@@ -1,3 +1,4 @@
+import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
@@ -472,13 +473,13 @@ export async function validateAgentSkillChanges(
  */
 export async function validateAgentToolChanges(
   auth: Authenticator,
-  agent: AgentConfigurationType,
+  agent: AgentResource,
   {
     addToolIds,
     removeToolIds,
   }: { addToolIds: string[]; removeToolIds: string[] }
 ): Promise<Result<ToolsSuggestionType[], MCPError>> {
-  if (!agent.canEdit) {
+  if (!auth.can("write", agent)) {
     return new Err(
       new MCPError("Only editors can suggest changing an agent's tools.")
     );
@@ -497,7 +498,14 @@ export async function validateAgentToolChanges(
     );
   }
 
-  const actions = agent.actions.filter(isServerSideMCPServerConfiguration);
+  const actionsByConfigurationModelId =
+    await fetchMCPServerActionConfigurations(auth, {
+      configurationModelIds: [agent.agentConfigurationModelId],
+      variant: "full",
+    });
+  const actions = (
+    actionsByConfigurationModelId.get(agent.agentConfigurationModelId) ?? []
+  ).filter(isServerSideMCPServerConfiguration);
   const suggestable = await fetchSuggestableTools(auth, toolIds);
 
   for (const toolId of removeToolIds) {
@@ -720,7 +728,7 @@ export async function recordAgentSkillSuggestions(
  */
 export async function recordAgentToolSuggestions(
   auth: Authenticator,
-  agent: LightAgentConfigurationType,
+  agent: AgentResource,
   {
     tools,
     conversation,
