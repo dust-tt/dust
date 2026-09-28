@@ -28,10 +28,15 @@ import type {
 } from "@tanstack/react-table";
 import { createContext, useContext, useMemo } from "react";
 
-// Leave room for Select, Usage and Actions, then Editors/Last edited at sm, Availability at md and
-// Used by at lg.
+// Leave room for Select, Usage and Actions, then Editors/Last edited at @sm, Availability at @md and
+// Used by at @lg.
+/**
+ * @cc [owner:aubin-tchoi,label:product] skill-name-column-visibility
+ * Secondary columns MUST hide based on available container width to keep skill names
+ * visible.
+ */
 const SKILL_SEARCH_NAME_COLUMN_WIDTH =
-  "w-[calc(100%-12rem)] sm:w-[calc(100%-28rem)] md:w-[calc(100%-38rem)] lg:w-[calc(100%-46rem)]";
+  "w-[calc(100%-12rem)] @sm:w-[calc(100%-28rem)] @md:w-[calc(100%-38rem)] @lg:w-[calc(100%-46rem)]";
 
 interface SkillSearchTableProps {
   owner: LightWorkspaceType;
@@ -212,7 +217,7 @@ export function SkillSearchTable({
           cell: ({ row: { original: skill } }) => (
             <SkillAvailabilityCell availability={skill.availability} />
           ),
-          meta: { className: "hidden w-40 md:table-cell" },
+          meta: { className: "hidden w-40 @md:table-cell" },
         },
         {
           id: "usedBy" as const,
@@ -227,7 +232,7 @@ export function SkillSearchTable({
               onSkillClick={onSelect}
             />
           ),
-          meta: { className: "hidden w-32 px-0 lg:table-cell" },
+          meta: { className: "hidden w-32 px-0 @lg:table-cell" },
         },
         {
           id: "usage" as const,
@@ -255,7 +260,7 @@ export function SkillSearchTable({
               editors={isDustProvidedSkill(skill) ? null : skill.editors}
             />
           ),
-          meta: { className: "hidden w-32 sm:table-cell" },
+          meta: { className: "hidden w-32 @sm:table-cell" },
         },
         {
           id: "updatedAt" as const,
@@ -266,7 +271,7 @@ export function SkillSearchTable({
           cell: ({ row: { original: skill } }) => (
             <SkillLastEditedCell updatedAt={skill.updatedAt} emptyLabel="-" />
           ),
-          meta: { className: "hidden w-32 sm:table-cell" },
+          meta: { className: "hidden w-32 @sm:table-cell" },
         },
         {
           id: "actions" as const,
