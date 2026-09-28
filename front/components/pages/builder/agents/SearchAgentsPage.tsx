@@ -339,6 +339,7 @@ export function SearchAgentsPage() {
               <AgentFilterPanel
                 owner={owner}
                 categories={filterCategories}
+                searchTerm={searchTerm}
                 tabFilters={activeTab.filters}
                 permissionFiltering={getPermissionFiltering(activeTab.id)}
                 filter={filter}

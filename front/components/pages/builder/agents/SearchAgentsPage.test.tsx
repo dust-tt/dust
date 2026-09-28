@@ -471,7 +471,7 @@ describe("search-backed Manage Agents", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("loads filter options on open and applies Access, Editors and Models", async () => {
+  it("narrows filter options by the other selections and applies Access, Editors and Models", async () => {
     const { editor, fetcherWithBody, mount } = await setup();
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
@@ -493,12 +493,18 @@ describe("search-backed Manage Agents", () => {
         name: getAgentModelDisplayName("claude-sonnet-5"),
       })
     );
-    expect(
-      fetcherWithBody.mock.calls.find(([[, body]]) => body.limit === 0)?.[0][1]
-    ).toMatchObject({
-      limit: 0,
-      facets: ["editors", "models", "tags"],
-      scope: ["visible", "hidden"],
+    const facetBodies = fetcherWithBody.mock.calls
+      .map(([[, body]]) => body)
+      .filter((body) => body.limit === 0);
+    expect(facetBodies[0]).toMatchObject({
+      facets: ["editors"],
+      scope: ["hidden"],
+    });
+    expect(facetBodies[0]).not.toHaveProperty("editorIds");
+    expect(facetBodies.at(-1)).toMatchObject({
+      facets: ["models"],
+      scope: ["hidden"],
+      editorIds: [editor.sId],
     });
 
     await userEvent.click(screen.getByRole("button", { name: "Apply" }));
