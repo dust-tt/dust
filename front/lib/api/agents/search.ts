@@ -148,7 +148,18 @@ export async function searchAgents(
     client.search<AgentSearchDocument, AgentSearchAggregations>({
       index: AGENT_SEARCH_ALIAS_NAME,
       _source: true,
-      query,
+      query:
+        sortBy === "nameWithGlobalFirst"
+          ? {
+              function_score: {
+                query,
+                functions: [
+                  { filter: { term: { scope: "global" } }, weight: 2 },
+                ],
+                boost_mode: "replace",
+              },
+            }
+          : query,
       from: offset,
       size: limit,
       track_total_hits: true,

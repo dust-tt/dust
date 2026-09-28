@@ -36,16 +36,7 @@ export function buildAgentDefaultSort({
       ];
     case "nameWithGlobalFirst":
       return [
-        {
-          _script: {
-            type: "number",
-            script: {
-              lang: "painless",
-              source: "doc['scope'].value == 'global' ? 0 : 1",
-            },
-            order: "asc",
-          },
-        },
+        { _score: { order: "desc" } },
         { "name.keyword": { order: sortOrder, missing: "_last" } },
         { agent_id: { order: "asc" } },
       ];
