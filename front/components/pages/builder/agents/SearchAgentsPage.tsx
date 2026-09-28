@@ -3,7 +3,6 @@ import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdo
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterPanel";
 import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
-import type { AgentFilter } from "@app/components/assistant/manager/agentFilter";
 import {
   AGENT_FILTER_CATEGORIES,
   toAgentSearchFilters,
@@ -14,10 +13,12 @@ import {
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
 import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
+import { useSearchFilterHashParam } from "@app/components/shared/filter_panel/searchFilterHash";
 import {
   useSetContentWidth,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
@@ -252,8 +253,12 @@ export function SearchAgentsPage() {
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
-  const [showHiddenAgents, setShowHiddenAgents] = useState(false);
-  const [filter, setFilter] = useState<AgentFilter>({});
+  const [hiddenAgentsParam, setHiddenAgentsParam] =
+    useHashParam("hiddenAgents");
+  const showHiddenAgents = hiddenAgentsParam === "true";
+  const setShowHiddenAgents = (isShown: boolean) =>
+    setHiddenAgentsParam(isShown ? "true" : undefined);
+  const [filter, setFilter] = useSearchFilterHashParam(AGENT_FILTER_CATEGORIES);
   // Default agents all share the global scope, so Access does not apply to them.
   const filterCategories = AGENT_FILTER_CATEGORIES.filter(
     (category) => selectedTab !== "default" || category !== "access"
