@@ -273,13 +273,8 @@ export function AgentSearchTable({
                       <div>
                         <Avatar visual={agent.pictureUrl} size="sm" />
                       </div>
-                      <div className="flex min-w-0 grow flex-col">
-                        <div className="heading-sm overflow-hidden truncate text-foreground">
-                          {agent.name}
-                        </div>
-                        <div className="overflow-hidden truncate text-sm text-muted-foreground">
-                          {agent.description}
-                        </div>
+                      <div className="heading-sm min-w-0 grow overflow-hidden truncate text-foreground">
+                        {agent.name}
                       </div>
                     </div>
                   </button>
