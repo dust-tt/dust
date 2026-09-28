@@ -1,21 +1,17 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
-import type { DefaultUserSpendLimitState } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import { UsageMembersSection } from "@app/components/workspace/UsageMembersSection";
+import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { useGroups } from "@app/lib/swr/groups";
 import { useMembersUsage } from "@app/lib/swr/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   Page,
-  SearchInput,
   Tabs,
   TabsContent,
   TabsList,
@@ -81,7 +77,11 @@ export function GroupManagerUsagePage() {
     [editableGroupNames]
   );
 
-  const sort = sorting[0];
+  const effectiveSorting: SortingState =
+    sorting.length === 0
+      ? [{ id: "consumedFromPoolAwuCredits", desc: true }]
+      : sorting;
+  const sort = effectiveSorting[0];
   const {
     membersUsage,
     totalMembersUsage,
@@ -137,86 +137,52 @@ export function GroupManagerUsagePage() {
             <TabsTrigger value="groups" label="Groups" />
           </TabsList>
           <TabsContent value="members" className="block min-h-panel">
-            <div className="flex flex-col gap-4">
-              <SearchInput
-                placeholder="Search members"
-                value={searchTerm}
-                name="search"
-                onChange={(value) => {
-                  setSearchTerm(value);
-                  setPagination((current) => ({ ...current, pageIndex: 0 }));
-                }}
-                className="w-full"
-              />
-              <div className="flex justify-end">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      label={
-                        visibleGroups.find((group) => group.sId === groupId)
-                          ?.name ?? "All managed groups"
-                      }
-                      size="sm"
-                      isSelect
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      label="All managed groups"
-                      onClick={() => {
-                        setGroupId(null);
-                        setPagination((current) => ({
-                          ...current,
-                          pageIndex: 0,
-                        }));
-                      }}
-                    />
-                    {visibleGroups.map((group) => (
-                      <DropdownMenuItem
-                        key={group.sId}
-                        label={group.name}
-                        onClick={() => {
-                          setGroupId(group.sId);
-                          setPagination((current) => ({
-                            ...current,
-                            pageIndex: 0,
-                          }));
-                        }}
-                      />
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <MembersUsageTable
-                members={membersUsage}
-                isLoading={isMembersUsageLoading}
-                isRefreshing={isMembersUsageRefreshing}
-                totalAllowedUsagePendingMemberIds={EMPTY_IDS}
-                seatChangePendingMemberIds={EMPTY_IDS}
-                isSeatBased={false}
-                showSpendLimit={isCreditPriced}
-                canEditSpendLimit={canEditMember}
-                showSeatAndCredits={isCreditPriced}
-                showSeatActions={false}
-                showGroupsColumn={visibleGroups.length > 0}
-                onChangeSeat={NOOP_MEMBER_ACTION}
-                onRemoveSeat={NOOP_MEMBER_ACTION}
-                onEditSpendLimit={setSelectedMember}
-                onOpenSpendLimitRecap={setSelectedMember}
-                pagination={pagination}
-                setPagination={setPagination}
-                totalRowCount={totalMembersUsage}
-                sorting={sorting}
-                setSorting={(next) => {
-                  setSorting(next);
-                  setPagination((current) => ({
-                    ...current,
-                    pageIndex: 0,
-                  }));
-                }}
-              />
-            </div>
+            <UsageMembersSection
+              searchTerm={searchTerm}
+              onSearchChange={(value) => {
+                setSearchTerm(value);
+                setPagination((current) => ({ ...current, pageIndex: 0 }));
+              }}
+              groups={visibleGroups}
+              groupId={groupId}
+              onGroupChange={(value) => {
+                setGroupId(value);
+                setPagination((current) => ({ ...current, pageIndex: 0 }));
+              }}
+              allGroupsLabel="All managed groups"
+              membersTable={
+                <MembersUsageTable
+                  members={membersUsage}
+                  isLoading={isMembersUsageLoading}
+                  isRefreshing={isMembersUsageRefreshing}
+                  totalAllowedUsagePendingMemberIds={EMPTY_IDS}
+                  seatChangePendingMemberIds={EMPTY_IDS}
+                  isSeatBased={false}
+                  showSpendLimit={
+                    isCreditPriced && !isFreePlan(subscription.plan.code)
+                  }
+                  canEditSpendLimit={canEditMember}
+                  showSeatAndCredits={isCreditPriced}
+                  showSeatActions={false}
+                  showGroupsColumn={visibleGroups.length > 0}
+                  onChangeSeat={NOOP_MEMBER_ACTION}
+                  onRemoveSeat={NOOP_MEMBER_ACTION}
+                  onEditSpendLimit={setSelectedMember}
+                  onOpenSpendLimitRecap={setSelectedMember}
+                  pagination={pagination}
+                  setPagination={setPagination}
+                  totalRowCount={totalMembersUsage}
+                  sorting={effectiveSorting}
+                  setSorting={(next) => {
+                    setSorting(next);
+                    setPagination((current) => ({
+                      ...current,
+                      pageIndex: 0,
+                    }));
+                  }}
+                />
+              }
+            />
           </TabsContent>
           <TabsContent value="groups" className="block min-h-panel">
             <GroupsUsageTable
