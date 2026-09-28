@@ -718,20 +718,15 @@ export function UsagePage() {
     });
   }
 
-  // In pick order so avatars stay put. "Select all" sticks to the current page:
-  // remembered members may predate the filter.
+  // In pick order so avatars stay put. A "select all" spans members never
+  // loaded, so no avatars are shown rather than a misleading subset.
   const selectedVisibleMembers = useMemo(() => {
     const descriptor = selection.descriptor();
     if (descriptor.mode === "all") {
-      return membersUsage.filter((m) => selection.rowSelection[m.sId]);
+      return [];
     }
     return descriptor.ids.flatMap((id) => loadedMembersById.get(id) ?? []);
-  }, [
-    loadedMembersById,
-    membersUsage,
-    selection.descriptor,
-    selection.rowSelection,
-  ]);
+  }, [loadedMembersById, selection.descriptor]);
 
   // Translate the cross-page selection into the descriptor the bulk member
   // endpoints expect: explicit ids, or the current filter minus exclusions.
