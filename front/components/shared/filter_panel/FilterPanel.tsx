@@ -177,7 +177,7 @@ export function FilterPanel<
             </FilterSection>
             <div
               ref={setContentScrollContainer}
-              className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
+              className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto"
             >
               {isError ? (
                 <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
