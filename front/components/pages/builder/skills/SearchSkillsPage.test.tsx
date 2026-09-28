@@ -51,6 +51,11 @@ vi.mock("@app/components/assistant/details/AgentDetailsSheet", () => ({
   AgentDetailsSheet: () => null,
 }));
 
+interface BatchAvailabilityDialogMockProps {
+  action: { availability: string };
+  onConfirm: () => Promise<void>;
+}
+
 vi.mock("@app/components/skills/SkillsBatchEdit", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@app/components/skills/SkillsBatchEdit")
@@ -58,10 +63,7 @@ vi.mock("@app/components/skills/SkillsBatchEdit", async (importOriginal) => ({
   BatchAvailabilityDialog: ({
     action,
     onConfirm,
-  }: {
-    action: { availability: string };
-    onConfirm: () => Promise<void>;
-  }) => (
+  }: BatchAvailabilityDialogMockProps) => (
     <button type="button" onClick={() => void onConfirm()}>
       Confirm {action.availability}
     </button>

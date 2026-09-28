@@ -136,8 +136,9 @@ function SkillsList({
     });
 
   // Prefer the freshly loaded row so batch actions see the skill's current state.
+  const pageSkillsById = new Map(skills.map((skill) => [skill.sId, skill]));
   const currentSelectedSkills = selectedSkills.map(
-    (selected) => skills.find((skill) => skill.sId === selected.sId) ?? selected
+    (selected) => pageSkillsById.get(selected.sId) ?? selected
   );
 
   const setSelectedSkillIds = (skillIds: string[]) => {

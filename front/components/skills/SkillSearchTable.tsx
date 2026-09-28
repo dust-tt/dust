@@ -26,7 +26,7 @@ import type {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { createContext, useContext, useMemo } from "react";
 
 // Leave room for Select, Usage and Actions, then Editors/Last edited at sm, Availability at md and
 // Used by at lg.
@@ -52,10 +52,12 @@ interface SkillSearchTableProps {
 
 type SkillSearchRow = SkillListItemType & { onClick: () => void };
 
+// The ids of the displayed page, computed once per page rather than in every cell.
+const PageSkillIdsContext = createContext<string[]>([]);
+
 interface SkillSearchUsedByCellProps {
   owner: LightWorkspaceType;
   skillId: string;
-  pageSkillIds: string[];
   onAgentClick: (agentId: string) => void;
   onSkillClick: (skillId: string) => void;
 }
@@ -64,10 +66,10 @@ interface SkillSearchUsedByCellProps {
 function SkillSearchUsedByCell({
   owner,
   skillId,
-  pageSkillIds,
   onAgentClick,
   onSkillClick,
 }: SkillSearchUsedByCellProps) {
+  const pageSkillIds = useContext(PageSkillIdsContext);
   const { usedBy, isUsedByLoading } = useSkillsUsedBy({
     owner,
     skillIds: pageSkillIds,
@@ -115,6 +117,10 @@ export function SkillSearchTable({
   setSelectedSkillIds,
   canSelect,
 }: SkillSearchTableProps) {
+  const pageSkillIds = useMemo(
+    () => skills.map((skill) => skill.sId),
+    [skills]
+  );
   const columns = useMemo(
     () =>
       [
@@ -213,11 +219,10 @@ export function SkillSearchTable({
           header: () => (
             <div className="flex w-full justify-center">Used by</div>
           ),
-          cell: ({ row: { original: skill }, table }) => (
+          cell: ({ row: { original: skill } }) => (
             <SkillSearchUsedByCell
               owner={owner}
               skillId={skill.sId}
-              pageSkillIds={table.options.data.map(({ sId }) => sId)}
               onAgentClick={onAgentClick}
               onSkillClick={onSelect}
             />
@@ -329,30 +334,32 @@ export function SkillSearchTable({
   }
 
   return (
-    <DataTable
-      data={skills.map((skill) => ({
-        ...skill,
-        onClick: () => onSelect(skill.sId),
-      }))}
-      columns={columns}
-      getRowId={(skill) => skill.sId}
-      enableRowSelection={(row) => canSelect(row.original)}
-      disableRowClickSelection
-      rowSelection={Object.fromEntries(
-        selectedSkillIds.map((skillId) => [skillId, true])
-      )}
-      setRowSelection={(rowSelection) =>
-        setSelectedSkillIds(
-          Object.keys(rowSelection).filter((skillId) => rowSelection[skillId])
-        )
-      }
-      isLoading={isLoading}
-      pagination={pagination}
-      setPagination={setPagination}
-      sorting={sorting}
-      setSorting={setSorting}
-      isServerSideSorting
-      totalRowCount={total}
-    />
+    <PageSkillIdsContext.Provider value={pageSkillIds}>
+      <DataTable
+        data={skills.map((skill) => ({
+          ...skill,
+          onClick: () => onSelect(skill.sId),
+        }))}
+        columns={columns}
+        getRowId={(skill) => skill.sId}
+        enableRowSelection={(row) => canSelect(row.original)}
+        disableRowClickSelection
+        rowSelection={Object.fromEntries(
+          selectedSkillIds.map((skillId) => [skillId, true])
+        )}
+        setRowSelection={(rowSelection) =>
+          setSelectedSkillIds(
+            Object.keys(rowSelection).filter((skillId) => rowSelection[skillId])
+          )
+        }
+        isLoading={isLoading}
+        pagination={pagination}
+        setPagination={setPagination}
+        sorting={sorting}
+        setSorting={setSorting}
+        isServerSideSorting
+        totalRowCount={total}
+      />
+    </PageSkillIdsContext.Provider>
   );
 }
