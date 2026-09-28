@@ -514,6 +514,44 @@ describe("search-backed Manage Skills", () => {
     );
   });
 
+  it("marks retained filter options as updating while their facets reload", async () => {
+    const { facetSearch, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: "Slack" })
+    );
+    let resolveFacets: (response: SearchSkillsResponseBody) => void = () => {};
+    facetSearch.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFacets = resolve;
+        })
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "Availability" }));
+
+    expect(await screen.findByText("Updating…")).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Members" })
+    ).toBeInTheDocument();
+    await act(async () =>
+      resolveFacets({
+        skills: [],
+        total: 1,
+        hasMore: false,
+        facets: {
+          availability: [{ availability: "workspace_users", count: 1 }],
+        },
+      })
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("Updating…")).not.toBeInTheDocument()
+    );
+  });
+
   it("discards unapplied filter selections when the panel is reopened", async () => {
     const { fetcherWithBody, mount } = await setup();
     mount();

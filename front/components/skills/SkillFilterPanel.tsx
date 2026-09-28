@@ -261,7 +261,13 @@ export function SkillFilterPanel({
                   selectAllLabel="Select all"
                   hasSelectableOptions={unselectedOptions.length > 0}
                   renderIcon={renderOptionIcon}
-                  status={isSkillsLoading ? "loading" : "idle"}
+                  status={
+                    isSkillsLoading
+                      ? filteredOptions.length > 0
+                        ? "updating"
+                        : "loading"
+                      : "idle"
+                  }
                   scrollContainer={contentScrollContainer}
                 />
               )}
