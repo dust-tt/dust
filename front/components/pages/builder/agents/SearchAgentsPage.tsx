@@ -56,7 +56,7 @@ const SEARCH_TABS = [
   },
   {
     id: "editable_by_me",
-    label: "Editable by me",
+    label: "Editable",
     filters: { status: ["active"], editedByMe: true },
   },
   {
@@ -287,9 +287,10 @@ export function SearchAgentsPage() {
               )}
             </div>
           }
+          description="Build and manage agents that work with your team's knowledge and tools."
           noTopPadding
         />
-        <div className="w-full">
+        <div className="w-full md:w-1/2">
           <label htmlFor="agent-search" className="sr-only">
             Search agents
           </label>

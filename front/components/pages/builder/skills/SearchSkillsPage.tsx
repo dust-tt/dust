@@ -8,10 +8,7 @@ import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillFilterPanel } from "@app/components/skills/SkillFilterPanel";
-import {
-  SKILL_SEARCH_NAME_COLUMN_WIDTH,
-  SkillSearchTable,
-} from "@app/components/skills/SkillSearchTable";
+import { SkillSearchTable } from "@app/components/skills/SkillSearchTable";
 import type { SkillFilter } from "@app/components/skills/skillFilter";
 import {
   SKILL_FILTER_CATEGORIES,
@@ -211,7 +208,7 @@ export function SearchSkillsPage() {
           description="Reusable packages of instructions and tools that agents can share."
           noTopPadding
         />
-        <div className={SKILL_SEARCH_NAME_COLUMN_WIDTH}>
+        <div className="w-full md:w-1/2">
           <label htmlFor="skill-search" className="sr-only">
             Search skills
           </label>

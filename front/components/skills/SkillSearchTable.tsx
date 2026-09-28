@@ -28,7 +28,7 @@ import { useMemo } from "react";
 
 // Leave room for Usage and Actions, then Editors/Last edited at sm, Availability at md and Used by
 // at lg.
-export const SKILL_SEARCH_NAME_COLUMN_WIDTH =
+const SKILL_SEARCH_NAME_COLUMN_WIDTH =
   "w-[calc(100%-9.5rem)] sm:w-[calc(100%-25.5rem)] md:w-[calc(100%-35.5rem)] lg:w-[calc(100%-43.5rem)]";
 
 interface SkillSearchTableProps {
