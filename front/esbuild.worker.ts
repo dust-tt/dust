@@ -1,6 +1,10 @@
 import esbuild from "esbuild";
 import fs from "fs";
 
+// esbuild ignores the tsconfig "preserve" JSX mode and would fall back to the
+// classic runtime, which crashes at runtime in any JSX file lacking a React
+// binding. Force the automatic runtime so JSX never depends on an import.
+
 async function buildWorker() {
   try {
     console.log("Building worker with esbuild...");
@@ -10,6 +14,7 @@ async function buildWorker() {
       bundle: true,
       platform: "node",
       target: "node22",
+      jsx: "automatic",
       outfile: "dist/start_worker.js",
       sourcemap: true,
       alias: {
@@ -61,6 +66,7 @@ async function buildMigrate() {
       bundle: true,
       platform: "node",
       target: "node22",
+      jsx: "automatic",
       outfile: "dist/migrate.js",
       sourcemap: true,
       alias: {
