@@ -197,17 +197,6 @@ function GroupForm({
             disabled={readOnly}
             autoFocus
           />
-          <MemberSelectionTable
-            owner={owner}
-            selectedMemberIds={selectedMemberIds}
-            onSelectionChange={(ids) => {
-              if (readOnly) {
-                return;
-              }
-              setSelectedMemberIds(ids);
-            }}
-            initialMembers={initialMembers}
-          />
           {group && canManageManagers && (
             <GroupManagersField
               owner={owner}
@@ -217,6 +206,16 @@ function GroupForm({
               disabled={isSubmitting}
             />
           )}
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold">Group members</h3>
+            <MemberSelectionTable
+              owner={owner}
+              selectedMemberIds={selectedMemberIds}
+              onSelectionChange={setSelectedMemberIds}
+              initialMembers={initialMembers}
+              disabled={readOnly || isSubmitting}
+            />
+          </div>
         </div>
       </DialogContainer>
       <DialogFooter

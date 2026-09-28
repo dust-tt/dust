@@ -152,6 +152,16 @@ function ProvisionedGroupDetails({
           <p className="text-sm italic text-muted-foreground">
             {PROVISIONED_GROUP_TOOLTIP}
           </p>
+          {group.allowedActions?.canAssignManagers && (
+            <GroupManagersField
+              owner={owner}
+              group={group}
+              managers={selectedManagers}
+              onChange={setSelectedManagers}
+              disabled={isUpdating}
+            />
+          )}
+          <h3 className="text-sm font-semibold">Group members</h3>
           {rows.length > 0 ? (
             <DataTable
               data={rows}
@@ -164,15 +174,6 @@ function ProvisionedGroupDetails({
             <div className="text-sm text-muted-foreground">
               This group has no members.
             </div>
-          )}
-          {group.allowedActions?.canAssignManagers && (
-            <GroupManagersField
-              owner={owner}
-              group={group}
-              managers={selectedManagers}
-              onChange={setSelectedManagers}
-              disabled={isUpdating}
-            />
           )}
         </div>
       </DialogContainer>
