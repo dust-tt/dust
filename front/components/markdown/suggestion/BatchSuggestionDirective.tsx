@@ -33,6 +33,7 @@ import {
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { BatchSuggestionType } from "@app/types/suggestions/batch_suggestion";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import { isCreateSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -216,7 +217,7 @@ function SkillSuggestionsDiff({
 }: SkillSuggestionsDiffProps) {
   const { openPanel } = useConversationSidePanelContext();
   // A created skill is a pending placeholder: its name is the suggested one.
-  const creation = suggestions.find((s) => s.kind === "create");
+  const creation = suggestions.find(isCreateSkillSuggestion);
   const { skill, isSkillLoading } = useSkill({
     workspaceId: owner.sId,
     skillId,
@@ -240,11 +241,7 @@ function SkillSuggestionsDiff({
   return (
     <SuggestionTargetSection
       targetLabel="Skill"
-      name={
-        creation?.kind === "create"
-          ? creation.suggestion.name
-          : (skill?.name ?? "Skill")
-      }
+      name={creation ? creation.suggestion.name : (skill?.name ?? "Skill")}
       visual={<SkillAvatar size="3xs" />}
       onOpen={() =>
         openPanel({

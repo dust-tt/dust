@@ -1,4 +1,3 @@
-import { NewInstructionsBlock } from "@app/components/markdown/suggestion/AgentSuggestionDetails";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
@@ -11,6 +10,7 @@ import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillSuggestionState,
   SkillSuggestionType,
@@ -233,10 +233,15 @@ function SuggestionDetails({
             currentValue=""
             newValue={agentFacingDescription}
           />
-          <NewInstructionsBlock
-            instructionsHtml={instructions}
-            extensions={buildSkillInstructionsExtensions(true)}
-          />
+          <div className="flex flex-col gap-2">
+            <span className="text-sm text-muted-foreground">Instructions</span>
+            <SuggestionInstructionsDiffBlock
+              instructionsHtml=""
+              targetBlockId={INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}
+              content={instructions}
+              extensions={buildSkillInstructionsExtensions(true)}
+            />
+          </div>
         </div>
       );
     }

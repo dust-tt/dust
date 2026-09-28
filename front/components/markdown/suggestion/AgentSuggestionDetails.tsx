@@ -14,7 +14,6 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { AgentSkillsSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, DiffBlock } from "@dust-tt/sparkle";
-import type { Extensions } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useMemo } from "react";
 
@@ -27,16 +26,12 @@ function formatModel(modelId: string, reasoningEffort?: ReasoningEffort) {
 
 interface NewInstructionsBlockProps {
   instructionsHtml: string;
-  extensions: Extensions;
 }
 
-export function NewInstructionsBlock({
-  instructionsHtml,
-  extensions,
-}: NewInstructionsBlockProps) {
+function NewInstructionsBlock({ instructionsHtml }: NewInstructionsBlockProps) {
   const editor = useEditor(
     {
-      extensions,
+      extensions: buildAgentInstructionsReadOnlyExtensions(),
       editable: false,
       content: instructionsHtml,
       immediatelyRender: false,
@@ -115,10 +110,7 @@ export function AgentSuggestionDetails({
             currentValue=""
             newValue={description}
           />
-          <NewInstructionsBlock
-            instructionsHtml={instructions}
-            extensions={buildAgentInstructionsReadOnlyExtensions()}
-          />
+          <NewInstructionsBlock instructionsHtml={instructions} />
         </div>
       );
     }
