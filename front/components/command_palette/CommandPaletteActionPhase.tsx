@@ -1,7 +1,6 @@
 import { KeyboardHints } from "@app/components/command_palette/CommandPaletteItems";
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import {
   ArrowLeft,
   Avatar,
@@ -22,7 +21,6 @@ export type ActionPhaseItem = Extract<
 >;
 
 interface CommandPaletteActionPhaseProps {
-  workspaceId: string;
   item: ActionPhaseItem;
   onAction: (action: CommandPaletteAction) => void;
   onBack: () => void;
@@ -36,10 +34,10 @@ interface ActionDefinition {
   icon: typeof Eye;
 }
 
-function canEdit(item: ActionPhaseItem, canEditAgent: boolean): boolean {
+function canEdit(item: ActionPhaseItem): boolean {
   switch (item.kind) {
     case "agent":
-      return "canEdit" in item.agent ? item.agent.canEdit : canEditAgent;
+      return item.agent.canEdit ?? false;
     case "skill":
       return item.skill.canAdministrate;
   }
@@ -47,30 +45,15 @@ function canEdit(item: ActionPhaseItem, canEditAgent: boolean): boolean {
 
 /**
  * @cc [owner:aubin-tchoi,label:security] command-palette-agent-edit-permission
- * For search results, show Edit only when the selected agent's fetched configuration
- * grants `canEdit`; indexed editor metadata must not grant editing permission.
+ * Show Edit for an agent only when its response grants `canEdit`; a missing flag
+ * or indexed editor metadata must not grant editing permission.
  */
 export function CommandPaletteActionPhase({
-  workspaceId,
   item,
   onAction,
   onBack,
   onClose,
 }: CommandPaletteActionPhaseProps) {
-  const agentId =
-    item.kind === "agent" &&
-    !("canEdit" in item.agent) &&
-    item.agent.scope !== "global"
-      ? item.agent.sId
-      : null;
-  const { agentConfiguration, isAgentConfigurationLoading } =
-    useAgentConfiguration({
-      workspaceId,
-      agentConfigurationId: agentId,
-      disabled: !agentId,
-    });
-  const canEditAgent = agentConfiguration?.canEdit ?? false;
-
   const actions = useMemo(() => {
     const result: ActionDefinition[] = [];
     if (item.kind === "agent") {
@@ -87,7 +70,7 @@ export function CommandPaletteActionPhase({
       description: "View description and settings",
       icon: Eye,
     });
-    if (canEdit(item, canEditAgent)) {
+    if (canEdit(item)) {
       result.push({
         action: "edit",
         label: "Edit",
@@ -96,7 +79,7 @@ export function CommandPaletteActionPhase({
       });
     }
     return result;
-  }, [item, canEditAgent]);
+  }, [item]);
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -194,11 +177,6 @@ export function CommandPaletteActionPhase({
             </div>
           </div>
         ))}
-        {isAgentConfigurationLoading && (
-          <div className="px-3 py-2.5 text-sm text-muted-foreground">
-            Loading actions...
-          </div>
-        )}
       </div>
       <KeyboardHints
         hints={[

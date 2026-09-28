@@ -308,7 +308,6 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             />
           ) : selectedItem ? (
             <CommandPaletteActionPhase
-              workspaceId={owner.sId}
               item={selectedItem}
               onAction={handleAction}
               onBack={handleBack}
