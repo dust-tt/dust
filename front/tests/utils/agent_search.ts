@@ -12,6 +12,11 @@ export function matchesAgentSearchFilters(
   document: AgentSearchDocument,
   query: estypes.QueryDslQueryContainer
 ): boolean {
+  if (query.function_score) {
+    assert(!Array.isArray(query.function_score));
+    assert(query.function_score.query);
+    return matchesAgentSearchFilters(document, query.function_score.query);
+  }
   const values = (field: string): unknown[] => {
     let value: unknown = document;
     for (const key of field.split(".")) {

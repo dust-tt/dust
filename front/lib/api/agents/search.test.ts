@@ -415,12 +415,16 @@ describe("searchAgents", () => {
       }),
     ]);
 
-    expect(await searchAgentIds(auth)).toEqual([
+    const accessibleAgentIds = [
       "visible",
       "hidden-editor",
       "readable-spaces",
       GLOBAL_AGENTS_SID.HELPER,
-    ]);
+    ];
+    expect(await searchAgentIds(auth)).toEqual(accessibleAgentIds);
+    expect(
+      await searchAgentIds(auth, { sortBy: "nameWithGlobalFirst" })
+    ).toEqual(accessibleAgentIds);
     expect(
       await searchAgentIds(auth, { filters: { status: ["archived"] } })
     ).toEqual(["archived"]);
