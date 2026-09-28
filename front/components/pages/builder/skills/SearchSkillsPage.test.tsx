@@ -14,6 +14,7 @@ import type {
   SearchSkillsResponseBody,
 } from "@app/types/api/skills";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
+import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
@@ -124,6 +125,27 @@ async function setup({
     spaceId: "sp_2",
     server: serverView.server,
   });
+  const facetSearch = vi
+    .fn<(body: object) => Promise<SearchSkillsResponseBody>>()
+    .mockResolvedValue({
+      skills: [],
+      total: 1,
+      hasMore: false,
+      facets: {
+        availability: SKILL_AVAILABILITIES.map((availability) => ({
+          availability,
+          count: 1,
+        })),
+        editors: [{ sId, fullName, image, count: 1 }],
+        mcpServerViews: [serverView, otherSpaceServerView].map((view) => ({
+          sId: view.sId,
+          mcpServerId: view.server.sId,
+          name: "Slack",
+          icon: view.server.icon,
+          count: 1,
+        })),
+      },
+    });
   const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith("/mcp")) {
       return {
@@ -175,7 +197,9 @@ async function setup({
             fetcherWithBody={([url, body, method]) =>
               url.endsWith("/skills/used_by")
                 ? usedBy(body)
-                : fetcherWithBody([url, body, method])
+                : "limit" in body && body.limit === 0
+                  ? facetSearch(body)
+                  : fetcherWithBody([url, body, method])
             }
           >
             <AuthContext.Provider value={context}>
@@ -192,6 +216,7 @@ async function setup({
     search,
     fetcher,
     fetcherWithBody,
+    facetSearch,
     usedBy,
     mutation,
     mount,
@@ -417,6 +442,113 @@ describe("search-backed Manage Skills", () => {
     );
     await waitFor(() =>
       expect(screen.queryByText("Editor")).not.toBeInTheDocument()
+    );
+  });
+
+  it("lists only the filter options held by matching skills, narrowed by the other selections", async () => {
+    const { facetSearch, mount } = await setup();
+    facetSearch.mockResolvedValue({
+      skills: [],
+      total: 1,
+      hasMore: false,
+      facets: {
+        availability: [{ availability: "workspace_users", count: 1 }],
+        editors: [],
+        mcpServerViews: [
+          {
+            sId: "view",
+            mcpServerId: "server",
+            name: "Slack",
+            icon: "SlackLogo",
+            count: 1,
+          },
+        ],
+      },
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    await userEvent.type(
+      screen.getByPlaceholderText("Search skills by name"),
+      "Week"
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: "Members" })
+    );
+    expect(
+      screen.queryByRole("checkbox", { name: "Editors only" })
+    ).not.toBeInTheDocument();
+    expect(facetSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        query: "Week",
+        status: ["active"],
+        facets: ["availability"],
+      })
+    );
+    expect(facetSearch.mock.lastCall?.[0]).not.toHaveProperty("availability");
+
+    await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
+    await waitFor(() =>
+      expect(facetSearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          query: "Week",
+          availability: ["workspace_users"],
+          facets: ["editors"],
+        })
+      )
+    );
+    expect(
+      screen.queryByRole("checkbox", { name: "Me" })
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
+    expect(
+      await screen.findByRole("checkbox", { name: "Slack" })
+    ).toBeInTheDocument();
+    expect(facetSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        availability: ["workspace_users"],
+        facets: ["mcpServerViews"],
+      })
+    );
+  });
+
+  it("marks retained filter options as updating while their facets reload", async () => {
+    const { facetSearch, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: "Slack" })
+    );
+    let resolveFacets: (response: SearchSkillsResponseBody) => void = () => {};
+    facetSearch.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFacets = resolve;
+        })
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "Availability" }));
+
+    expect(await screen.findByText("Updating…")).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Members" })
+    ).toBeInTheDocument();
+    await act(async () =>
+      resolveFacets({
+        skills: [],
+        total: 1,
+        hasMore: false,
+        facets: {
+          availability: [{ availability: "workspace_users", count: 1 }],
+        },
+      })
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("Updating…")).not.toBeInTheDocument()
     );
   });
 
