@@ -45,6 +45,7 @@ type GroupRowData = {
   groupId: string;
   name: string;
   memberCount: number;
+  managers: { fullName: string; image: string | null }[];
   kind: GroupKind;
   grantedRole: GroupGrantableRole | null;
   onClick?: () => void;
@@ -69,6 +70,30 @@ const columns: ColumnDef<GroupRowData>[] = [
           description={`${memberCount} member${pluralize(memberCount)}`}
         >
           {name}
+        </DataTable.CellContent>
+      );
+    },
+  },
+  {
+    id: "managers",
+    header: "Group Manager",
+    meta: { className: "w-[240px]" },
+    cell: ({ row }) => {
+      const { managers } = row.original;
+      if (managers.length === 0) {
+        return null;
+      }
+      return (
+        <DataTable.CellContent
+          avatarStack={{
+            items: managers.map(({ fullName, image }) => ({
+              name: fullName,
+              visual: image ?? undefined,
+            })),
+            nbVisibleItems: 3,
+          }}
+        >
+          {managers.length === 1 ? managers[0].fullName : null}
         </DataTable.CellContent>
       );
     },
@@ -140,6 +165,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
+    withManagers: true,
   });
 
   const router = useAppRouter();
@@ -190,6 +216,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
         groupId: group.sId,
         name: group.name,
         memberCount: group.memberCount,
+        managers: group.managers ?? [],
         kind: group.kind,
         grantedRole: group.grantedRole,
         onClick: isManual
