@@ -121,9 +121,9 @@ export function ConversationalSuggestionCard({
         <Collapsible>
           {/* Padding lives on an inner element: padding on the animated one
               can't shrink with its height, which makes the toggle jump.
-              Diff boxes are not configurable, so they are made to take the section's background. */}
+              Diff boxes are not configurable, so they are made to blend into the section. */}
           <CollapsibleContent className="bg-muted-background">
-            <div className="p-3 [&_.rounded-2xl.border]:bg-transparent">
+            <div className="p-3 [&_.rounded-2xl.border]:border-0 [&_.rounded-2xl.border]:bg-transparent">
               {collapsibleContent}
             </div>
           </CollapsibleContent>
