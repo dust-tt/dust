@@ -37,8 +37,8 @@ const groupColumns: ColumnDef<GroupLimitRow, string>[] = [
         }
       >
         <div className="flex items-center gap-2">
-          {row.original.name}
           {row.original.isActive && <ActiveLimitDot />}
+          {row.original.name}
         </div>
       </DataTable.CellContent>
     ),
