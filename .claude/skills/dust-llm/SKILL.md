@@ -104,12 +104,20 @@ And one that is **not** compile-forced, so nothing turns red if you skip it:
 > charge 10% over global for both Anthropic and Google, so a new Gemini registered on
 > `eu/agent-platform` belongs in the list just as much as a Claude does. OpenAI uplifts only
 > the models whose pricing page lists a data-residency premium (gpt-5.4/5.5/5.6/6 yes,
-> gpt-5/5.1/5.2 no). Mistral's EU endpoints are its native region with no global sibling, so
-> nothing to add.
+> gpt-5/5.1/5.2 no). Mistral's own models are EU-only with no global sibling, so nothing to
+> add for them.
 >
 > `EU_MODEL_PRICING` derives every field by multiplying the global entry by
 > `EU_PRICING_MULTIPLIER`, so it is only correct when the EU endpoint is a flat 1.1× of global.
-> A non-uniform regional price needs an explicit entry, not the multiplier.
+> A non-uniform regional price needs an explicit entry in `EU_HOST_MODEL_PRICING`, not the
+> multiplier — always the case when the EU host differs from the global one (GLM-5.3:
+> Fireworks global, Mistral EU).
+
+> **Third-party model on a lab's own host** (e.g. GLM-5.3 on Mistral): set `lab` on the
+> endpoint (a host serving several labs leaves it off its base client), map the host's model
+> name with `modelToHostModel`, and check `PROVIDER_ID_TO_HOST` in `front/lib/api/llm/index.ts`.
+> Routing matches `lab ∈ whitelisted labs OR host ∈ whitelisted hosts`, so an endpoint whose
+> lab and host are both unmapped is silently unreachable.
 
 > **Gating is inherited, and lives in two unlinked places.** A new version of a gated model
 > stays gated — being newer is not a reason to release it. Copy the predecessor's

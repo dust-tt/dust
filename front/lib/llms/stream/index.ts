@@ -82,6 +82,7 @@ import { DustThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/llms/
 import { DustXaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_five_global_xai";
 import { DustXaiGrokFourDotSevenGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_seven_global_xai";
 import { DustXaiGrokFourDotSixGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_six_global_xai";
+import { DustZAiGlmFiveDotThreeEuropeMistralStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_three_eu_mistral";
 import { DustZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
 import { DustZAiGlmFiveDotThreeGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_three_global_fireworks";
 import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
@@ -161,6 +162,8 @@ export const DUST_STREAM_ENDPOINTS = {
   [DustDeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream.id]:
     DustDeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream,
 
+  [DustZAiGlmFiveDotThreeEuropeMistralStream.id]:
+    DustZAiGlmFiveDotThreeEuropeMistralStream,
   [DustZAiGlmFiveDotThreeGlobalFireworksStream.id]:
     DustZAiGlmFiveDotThreeGlobalFireworksStream,
   [DustZAiGlmFiveDotThreeFlashGlobalFireworksStream.id]:

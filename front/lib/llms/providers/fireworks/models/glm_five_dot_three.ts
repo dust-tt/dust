@@ -8,7 +8,7 @@ export function WithDustZAiGlm53Config<
   abstract class DustZAiGlm53 extends Base {
     static readonly displayName = "GLM-5.3";
     static readonly description =
-      "Z.ai's flagship GLM-5.3 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context, served via Fireworks).";
+      "Z.ai's flagship GLM-5.3 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context).";
     // Rounded down from the model's native 1,048,576 / 131,072.
     static readonly contextSize = 1_000_000;
     static readonly maxOutputTokens = 128_000;
