@@ -246,6 +246,7 @@ export function SearchSkillsPage() {
             </div>
           </TabsList>
           <FilterSummaryChips
+            className="mb-4"
             summaries={getFilterSummaries(
               filter,
               SKILL_FILTER_CATEGORIES,

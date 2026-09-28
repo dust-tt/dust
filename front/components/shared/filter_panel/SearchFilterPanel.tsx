@@ -13,6 +13,7 @@ import {
 import type { FilterPanelState } from "@app/components/shared/filter_panel/useFilterPanel";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { Avatar, Icon } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 
 function renderOptionIcon(option: SearchFilterOption) {
   switch (option.category) {
@@ -39,6 +40,9 @@ interface SearchFilterPanelProps<Category extends SearchFilterCategory> {
   idPrefix: string;
   warning?: string;
   applyDisabled?: boolean;
+  categoryNavFooter?: ReactNode;
+  onOpen?: () => void;
+  onClearAll?: () => void;
 }
 
 export function SearchFilterPanel<Category extends SearchFilterCategory>({
@@ -52,6 +56,9 @@ export function SearchFilterPanel<Category extends SearchFilterCategory>({
   idPrefix,
   warning,
   applyDisabled,
+  categoryNavFooter,
+  onOpen,
+  onClearAll,
 }: SearchFilterPanelProps<Category>) {
   const { user } = useAuth();
 
@@ -73,6 +80,9 @@ export function SearchFilterPanel<Category extends SearchFilterCategory>({
       renderIcon={renderOptionIcon}
       warning={warning}
       applyDisabled={applyDisabled}
+      categoryNavFooter={categoryNavFooter}
+      onOpen={onOpen}
+      onClearAll={onClearAll}
     />
   );
 }
