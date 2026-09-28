@@ -117,10 +117,19 @@ export function streamErrorToErrorEvent(
   });
 }
 
+type PendingToolCall = {
+  id: string;
+  name: string;
+  arguments: ToolCall["function"]["arguments"];
+};
+
 type Accumulator = {
   textParts: string;
   reasoningParts: string;
   toolCallIndex: number;
+  // Keyed by the delta's `index`: third-party models (GLM-5.3) stream one call
+  // across deltas, whose continuations carry `id: "null"` and an empty name.
+  pendingToolCalls: Map<number, PendingToolCall>;
 };
 
 // Flushes pending reasoning then text as accumulated events, appending them to
@@ -201,38 +210,62 @@ function contentToEvents(
   return events;
 }
 
-function toolCallToEvents(
+function toolCallDeltaToEvents(
   toolCall: ToolCall,
   acc: Accumulator,
-  metadata: EndpointMetadata,
-  aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[]
+  metadata: EndpointMetadata
 ): ModelResponseEvent[] {
+  const index = toolCall.index ?? acc.pendingToolCalls.size;
+  const pending = acc.pendingToolCalls.get(index);
+
+  if (pending) {
+    const { arguments: args } = toolCall.function;
+    pending.arguments =
+      isString(pending.arguments) && isString(args)
+        ? pending.arguments + args
+        : args;
+    return [];
+  }
+
   if (!toolCall.id) {
     return [];
   }
-  const args = isString(toolCall.function.arguments)
-    ? parseToolArguments(toolCall.function.arguments)
-    : toolCall.function.arguments;
-
-  const events: ModelResponseEvent[] = [
-    {
-      type: "tool_call_started",
-      content: {
-        id: toolCall.id,
-        index: acc.toolCallIndex,
-        name: toolCall.function.name,
-      },
-      metadata,
+  acc.pendingToolCalls.set(index, {
+    id: toolCall.id,
+    name: toolCall.function.name,
+    arguments: toolCall.function.arguments,
+  });
+  const started: ModelResponseEvent = {
+    type: "tool_call_started",
+    content: {
+      id: toolCall.id,
+      index: acc.toolCallIndex,
+      name: toolCall.function.name,
     },
-  ];
-  const toolCallEvent: ToolCallEvent = {
-    type: "tool_call",
-    content: { id: toolCall.id, name: toolCall.function.name, arguments: args },
     metadata,
   };
-  aggregated.push(toolCallEvent);
-  events.push(toolCallEvent);
   acc.toolCallIndex += 1;
+  return [started];
+}
+
+function flushToolCalls(
+  acc: Accumulator,
+  metadata: EndpointMetadata,
+  aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[]
+): ToolCallEvent[] {
+  const events = [...acc.pendingToolCalls.values()].map(
+    ({ id, name, arguments: args }): ToolCallEvent => ({
+      type: "tool_call",
+      content: {
+        id,
+        name,
+        arguments: isString(args) ? parseToolArguments(args) : args,
+      },
+      metadata,
+    })
+  );
+  acc.pendingToolCalls.clear();
+  aggregated.push(...events);
   return events;
 }
 
@@ -247,6 +280,7 @@ export async function* rawOutputToEvents(
     textParts: "",
     reasoningParts: "",
     toolCallIndex: 0,
+    pendingToolCalls: new Map(),
   };
   let hasYieldedResponseId = false;
   let usage: UsageInfo | undefined;
@@ -287,7 +321,7 @@ export async function* rawOutputToEvents(
         yield e;
       }
       for (const toolCall of delta.toolCalls) {
-        for (const e of toolCallToEvents(toolCall, acc, metadata, aggregated)) {
+        for (const e of toolCallDeltaToEvents(toolCall, acc, metadata)) {
           yield e;
         }
       }
@@ -318,8 +352,12 @@ export async function* rawOutputToEvents(
           message: "Mistral reported an error during completion.",
         });
         return;
-      // Stop / ToolCalls: flush any pending text/reasoning before success.
+      // Stop / ToolCalls: flush completed tool calls, then any pending
+      // text/reasoning, before success.
       default:
+        for (const e of flushToolCalls(acc, metadata, aggregated)) {
+          yield e;
+        }
         for (const e of flushAccumulated(acc, metadata, aggregated)) {
           yield e;
         }
@@ -327,6 +365,10 @@ export async function* rawOutputToEvents(
     }
   }
 
+  // A stream can end without a finish reason; do not drop its tool calls.
+  for (const e of flushToolCalls(acc, metadata, aggregated)) {
+    yield e;
+  }
   yield usageToTokenUsageEvent(metadata, usage);
   yield {
     type: "success",
@@ -387,6 +429,7 @@ export function responseToEvents(
     textParts: "",
     reasoningParts: "",
     toolCallIndex: 0,
+    pendingToolCalls: new Map(),
   };
 
   if (response.id) {
@@ -415,17 +458,10 @@ export function responseToEvents(
   }
 
   if (message?.toolCalls) {
+    // Complete calls: flush each one so calls sharing an `index` stay apart.
     for (const toolCall of message.toolCalls) {
-      for (const event of toolCallToEvents(
-        toolCall,
-        acc,
-        metadata,
-        aggregated
-      )) {
-        if (isNonDeltaEvent(event)) {
-          events.push(event);
-        }
-      }
+      toolCallDeltaToEvents(toolCall, acc, metadata);
+      events.push(...flushToolCalls(acc, metadata, aggregated));
     }
   }
 
