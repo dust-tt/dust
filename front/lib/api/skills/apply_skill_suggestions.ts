@@ -485,13 +485,13 @@ async function findEditorsWithoutAccess(
   }
 ): Promise<string | null> {
   const removedUserIds = new Set(
-    editorsChange?.usersToRemove.map((user) => user.id)
+    editorsChange?.usersToRemove.map((user) => user.sId)
   );
   const editors = [
     ...((await skill.listEditors(auth)) ?? []),
     auth.getNonNullableUser(),
     ...(editorsChange?.usersToAdd ?? []),
-  ].filter((user) => !removedUserIds.has(user.id));
+  ].filter((user) => !removedUserIds.has(user.sId));
 
   return findSkillEditorsWithoutSpaceAccess(auth, {
     editors: uniqBy(editors, "id"),
