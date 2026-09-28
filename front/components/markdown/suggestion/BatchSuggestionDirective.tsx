@@ -71,8 +71,7 @@ interface SuggestionTargetSectionProps {
   children: ReactNode;
 }
 
-// One collapsible block per edited agent or skill, open by default. Only the chevron toggles it:
-// the name opens the target in the side panel.
+// One collapsible block per edited agent or skill, open by default.
 function SuggestionTargetSection({
   targetLabel,
   name,
