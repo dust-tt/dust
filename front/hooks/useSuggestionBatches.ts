@@ -12,8 +12,10 @@ import type {
   PatchSuggestionBatchResponseBody,
   SuggestionBatchReviewState,
 } from "@app/types/api/assistant/suggestion_batches";
+import { MAX_SUGGESTION_BATCH_IDS_PER_REQUEST } from "@app/types/api/assistant/suggestion_batches";
 import { isString } from "@app/types/shared/utils/general";
 import type { BatchSuggestionType } from "@app/types/suggestions/batch_suggestion";
+import chunk from "lodash/chunk";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
@@ -23,20 +25,36 @@ interface UseSuggestionBatchesParams {
   workspaceId: string;
 }
 
-/** Fetches the given batches in one request, at most `MAX_SUGGESTION_BATCH_IDS_PER_REQUEST`. */
+/**
+ * Fetches the given batches, however many: the endpoint caps the ids per request, so they are
+ * requested in sequential chunks under one SWR key.
+ */
 export function useSuggestionBatches({
   batchIds,
   workspaceId,
 }: UseSuggestionBatchesParams) {
   const { fetcher } = useFetcher();
-  const batchesFetcher: Fetcher<GetSuggestionBatchesResponseBody> = fetcher;
+  const chunkFetcher: Fetcher<GetSuggestionBatchesResponseBody, string> =
+    fetcher;
 
   const query = new URLSearchParams(batchIds.map((id) => ["ids", id]));
   const { data, error, mutate } = useSWRWithDefaults(
     batchIds.length > 0
       ? `/api/w/${workspaceId}/assistant/suggestion_batches?${query}`
       : null,
-    batchesFetcher
+    async (key: string) => {
+      const [path, search] = key.split("?");
+      const ids = new URLSearchParams(search).getAll("ids");
+      const batches: BatchSuggestionType[] = [];
+      for (const idsChunk of chunk(ids, MAX_SUGGESTION_BATCH_IDS_PER_REQUEST)) {
+        const chunkQuery = new URLSearchParams(
+          idsChunk.map((id) => ["ids", id])
+        );
+        const res = await chunkFetcher(`${path}?${chunkQuery}`);
+        batches.push(...res.batches);
+      }
+      return { batches };
+    }
   );
 
   return {

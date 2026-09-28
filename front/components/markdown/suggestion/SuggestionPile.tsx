@@ -232,12 +232,15 @@ export function ConversationSuggestionPile({
   ) => {
     setInFlight({ batchId, state });
     try {
-      const results = await Promise.all(
-        toReview.map((b) => patchBatch(b.id, state))
-      );
-      const reviewedById = new Map(
-        results.flatMap((r) => (r ? [[r.batch.id, r.batch] as const] : []))
-      );
+      // Reviewed one at a time, in pile order: approving rewrites the whole target configuration
+      // from a fresh read, so concurrent approvals of the same target would overwrite each other.
+      const reviewedById = new Map<string, BatchSuggestionType>();
+      for (const b of toReview) {
+        const result = await patchBatch(b.id, state);
+        if (result) {
+          reviewedById.set(result.batch.id, result.batch);
+        }
+      }
       if (state === "approved") {
         reviewedById.forEach(revalidateBatchTargets);
       }
