@@ -6,6 +6,7 @@ import type {
 const SUPPORT_REPLY_SKILL_KEY = "support-reply";
 const BUG_TRIAGE_SKILL_KEY = "bug-triage";
 const LINEAR_TOOL_KEY = "linear";
+const TICKET_FILER_SKILL_KEY = "ticket-filer";
 const REFUND_POLICY_KEY = "refund-policy";
 
 const BUG_TRIAGE_SKILL = {
@@ -122,6 +123,35 @@ const WORKSPACE_WITH_SUPPORT_SKILLS: WorkspaceSeed = {
   ],
 };
 
+// The parent skill needs a capability a second skill already owns, so the right fix is a
+// sub-skill reference rather than restating that skill's rules (or re-adding its tool).
+const WORKSPACE_WITH_TICKET_FILER: WorkspaceSeed = {
+  skills: [
+    BUG_TRIAGE_SKILL,
+    {
+      key: TICKET_FILER_SKILL_KEY,
+      name: "Support Ticket Filer",
+      agentFacingDescription:
+        "Use when filing an issue in the support tracker, with the severity, component and reproduction details the support team requires.",
+      instructions: [
+        "# Support Ticket Filer",
+        "",
+        "File an issue in the support tracker.",
+        "",
+        "## Required fields",
+        "",
+        "1. A title of the form `<component>: <symptom>`.",
+        "2. The affected component.",
+        "3. A severity: sev1 (outage), sev2 (degraded), sev3 (cosmetic).",
+        "4. Reproduction steps, the expected result and the observed result.",
+        "",
+        "Never file an issue with only a one-line description: the support team bounces those back.",
+        "Report the issue reference back to whoever asked for it.",
+      ].join("\n"),
+    },
+  ],
+};
+
 export const updateSkillSuite: TestSuite = {
   name: "update-skill",
   description:
@@ -198,6 +228,34 @@ export const updateSkillSuite: TestSuite = {
 - Score 0-1 if the suggestion targets any skill other than "Customer Support Reply", or if the
   agent-facing description is rewritten (the user did not ask for it).
 - The closing message must surface the recorded suggestion (the tool output) to the user.
+`.trim(),
+    },
+    {
+      scenarioId: "inline-sub-skill",
+      workspaceSeed: WORKSPACE_WITH_TICKET_FILER,
+      userMessage:
+        "Update the Bug Triage skill so that once a bug is classified it files a ticket for it. " +
+        "We already have a Support Ticket Filer skill that knows how we want tickets written — " +
+        "use that rather than spelling the rules out again.",
+      expectedFinalToolCall: {
+        type: "suggestSkillUpdate",
+        skillKey: BUG_TRIAGE_SKILL_KEY,
+        edits: ["instructionEdits"],
+        references: { skillKeys: [TICKET_FILER_SKILL_KEY] },
+      },
+      judgeCriteria: `
+- The edit must add a step, after classification, that delegates the filing to the
+  "Support Ticket Filer" skill, referenced inline with a \`<skill id=... name=.../>\` tag whose
+  id is the seeded Support Ticket Filer id.
+- The agent must have looked the skill up (list_skills and/or describe_skill) rather than
+  inventing an id.
+- The edit MUST NOT restate the ticket-filing rules (title format, severity scale, component,
+  reproduction steps) inside Bug Triage: those belong to the referenced skill, and duplicating
+  them is exactly what the user asked to avoid.
+- The existing triage steps (reproduction steps, severity, component) must be preserved.
+- Score 0-1 if no <skill> tag is inlined, if the id is invented, if the suggestion targets
+  another skill, or if the filing rules are copied into Bug Triage instead of delegated.
+- The closing message must surface the recorded suggestion directive to the user.
 `.trim(),
     },
   ],

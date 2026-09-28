@@ -8,6 +8,7 @@ import {
   CONVERSATION_SID,
   LUKE_USER_SID,
   SKILL_NAME,
+  SUB_SKILL_NAME,
   seedConversationalBuilding,
 } from "@app/scripts/seed/conversational_building/seedConversationalBuilding";
 import type { SeedContext } from "@app/scripts/seed/factories";
@@ -72,8 +73,8 @@ describe("conversational building seed script integration test", () => {
       [user.sId, LUKE_USER_SID].toSorted()
     );
 
-    // Nine pending conversational suggestions.
-    expect(skillSuggestions.size).toBe(9);
+    // Ten pending conversational suggestions.
+    expect(skillSuggestions.size).toBe(10);
     const listed = await SkillSuggestionResource.listBySkillConfigurationId(
       authenticator,
       skill!.sId,
@@ -82,6 +83,7 @@ describe("conversational building seed script integration test", () => {
     expect(listed.map((s) => s.toJSON().kind).toSorted()).toEqual([
       "availability",
       "delete",
+      "edit",
       "edit",
       "edit",
       "edit",
@@ -110,6 +112,17 @@ describe("conversational building seed script integration test", () => {
         knowledgeSuggestion.suggestion.instructionEdits![0].content;
       expect(content).toContain(`dsv="${knowledgeView.sId}"`);
       expect(content).toContain(`space="${knowledgeView.space.sId}"`);
+    }
+
+    // The sub-skill edit references the seeded Team Directory Lookup skill inline.
+    const subSkill = skills.get(SUB_SKILL_NAME);
+    expect(subSkill).toBeDefined();
+    const subSkillSuggestion = skillSuggestions.get("skillEditSubSkill")!;
+    expect(isEditSkillSuggestion(subSkillSuggestion)).toBe(true);
+    if (isEditSkillSuggestion(subSkillSuggestion)) {
+      expect(
+        subSkillSuggestion.suggestion.instructionEdits![0].content
+      ).toContain(`<skill id="${subSkill!.sId}" name="${SUB_SKILL_NAME}" />`);
     }
 
     const editorsSuggestion = skillSuggestions.get("skillEditors")!.toJSON();
@@ -162,7 +175,7 @@ describe("conversational building seed script integration test", () => {
       authenticator,
       conversation!
     );
-    expect(agentMessageIds).toHaveLength(7);
+    expect(agentMessageIds).toHaveLength(8);
     expect(text).not.toContain("__");
     for (const suggestion of skillSuggestions.values()) {
       expect(text).toContain(
@@ -174,7 +187,7 @@ describe("conversational building seed script integration test", () => {
     const rerun = await seedConversationalBuilding(ctx);
     expect(rerun.skills.get(SKILL_NAME)!.sId).toBe(skill!.sId);
     expect(rerun.toolView!.sId).toBe(toolView!.sId);
-    expect(rerun.skillSuggestions.size).toBe(9);
+    expect(rerun.skillSuggestions.size).toBe(10);
     for (const [id, suggestion] of skillSuggestions) {
       expect(rerun.skillSuggestions.get(id)!.sId).not.toBe(suggestion.sId);
     }
@@ -186,7 +199,7 @@ describe("conversational building seed script integration test", () => {
           { sources: ["conversational"] }
         )
       ).length
-    ).toBe(9);
+    ).toBe(10);
 
     const rerunConversation = await ConversationResource.fetchById(
       authenticator,
