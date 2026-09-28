@@ -1,3 +1,7 @@
+import {
+  type GroupManagementVerb,
+  listGroupsWithVerb,
+} from "@app/lib/resources/group_management_access";
 import type { APIErrorType } from "@app/types/error";
 import type {
   ConcreteResourceType,
@@ -80,6 +84,30 @@ export const ensureHasWorkspacePermission = (
           type: errorType,
           message,
         },
+      });
+    }
+
+    await next();
+  });
+
+/**
+ * Checks whether the caller holds a verb on at least one manageable group.
+ * A route acting on a member or group must still check that specific target.
+ */
+export const ensureHasAnyGroupPermission = (
+  verb: GroupManagementVerb,
+  message: string
+) =>
+  createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
+    const auth = ctx.get("auth");
+    if (
+      !auth.isManager() &&
+      (!(await auth.hasFeatureFlag("group_management")) ||
+        (await listGroupsWithVerb(auth, verb)).length === 0)
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: { type: "workspace_auth_error", message },
       });
     }
 
