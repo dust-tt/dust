@@ -37,7 +37,8 @@ app.post(
         },
       });
     }
-    if (!isFramesV2FunctionsEnabled(await getFeatureFlags(auth))) {
+    const featureFlags = await getFeatureFlags(auth);
+    if (!isFramesV2FunctionsEnabled(featureFlags)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

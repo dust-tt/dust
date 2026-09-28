@@ -76,7 +76,8 @@ async function checkFrameFunctionsFeature(
   if (manifest.functions.length === 0 && manifest.databases.length === 0) {
     return new Ok(undefined);
   }
-  if (isFramesV2FunctionsEnabled(await getFeatureFlags(auth))) {
+  const featureFlags = await getFeatureFlags(auth);
+  if (isFramesV2FunctionsEnabled(featureFlags)) {
     return new Ok(undefined);
   }
   return frameError(

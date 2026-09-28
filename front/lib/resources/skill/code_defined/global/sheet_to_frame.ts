@@ -175,10 +175,14 @@ export const sheetToFrameSkill = {
   // first step of the workflow is enabling it rather than duplicating half of it here.
   mcpServers: [],
   // The workflow is Computer-driven from the moment the sheet has been read.
-  warmsConversationSandbox: async (auth: Authenticator) =>
-    isFramesV2FunctionsEnabled(await getFeatureFlags(auth)),
+  warmsConversationSandbox: async (auth: Authenticator) => {
+    const featureFlags = await getFeatureFlags(auth);
+    return isFramesV2FunctionsEnabled(featureFlags);
+  },
   version: 1,
   icon: "ActionTableIcon",
-  isRestricted: async (auth: Authenticator) =>
-    !isFramesV2FunctionsEnabled(await getFeatureFlags(auth)),
+  isRestricted: async (auth: Authenticator) => {
+    const featureFlags = await getFeatureFlags(auth);
+    return !isFramesV2FunctionsEnabled(featureFlags);
+  },
 } as const satisfies GlobalSkillDefinition;

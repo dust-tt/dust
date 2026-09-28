@@ -23,7 +23,8 @@ export async function resolveSandboxFunctionWithCapability(
     allowInactiveFramePublication = false,
   }: { allowInactiveFramePublication?: boolean } = {}
 ): Promise<SandboxFunctionResource | null> {
-  if (!isFramesV2FunctionsEnabled(await getFeatureFlags(auth))) {
+  const featureFlags = await getFeatureFlags(auth);
+  if (!isFramesV2FunctionsEnabled(featureFlags)) {
     return null;
   }
 
@@ -77,8 +78,9 @@ export async function resolveActiveFrameFunctionForUse(
     functionName: string;
   }
 ): Promise<SandboxFunctionResource | null> {
+  const featureFlags = await getFeatureFlags(auth);
   if (
-    !isFramesV2FunctionsEnabled(await getFeatureFlags(auth)) ||
+    !isFramesV2FunctionsEnabled(featureFlags) ||
     !isResourceSId("file", frameId) ||
     !isValidSandboxFunctionSlug(functionName)
   ) {
