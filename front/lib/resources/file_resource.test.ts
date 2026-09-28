@@ -1030,9 +1030,8 @@ describe("FileResource", () => {
         useCaseMetadata: { spaceId: "spc-1" },
         mountFilePath,
       });
-      const release = vi.spyOn(FileResource, "releaseMountFilePath");
 
-      const result = await file.moveMount(auth, {
+      const result = await file.moveMount({
         destFileName: "notes.md",
         destMountFilePath: mountFilePath,
         destUseCase: "project_context",
@@ -1040,11 +1039,8 @@ describe("FileResource", () => {
       });
 
       expect(result.isOk()).toBe(true);
-      expect(release).not.toHaveBeenCalled();
-      const row = await FileModel.findOne({
-        where: { id: file.id, workspaceId: workspace.id },
-      });
-      expect(row?.mountFilePath).toBe(mountFilePath);
+      const reloaded = await FileResource.fetchById(auth, file.sId);
+      expect(reloaded?.mountFilePath).toBe(mountFilePath);
     });
   });
 

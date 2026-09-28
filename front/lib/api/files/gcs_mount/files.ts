@@ -514,6 +514,16 @@ export async function moveFile(
 ): Promise<Result<void, Error>> {
   const destGcsPath = `${resolvePrefix(auth.getNonNullableWorkspace(), destScope)}${destRelativeFilePath}`;
 
+  // The copy below replaces whatever is stored at dest, so a file registered there is stale once
+  // it lands. Release it first: a pending upload there is a conflict, not something to overwrite.
+  const reserved = await FileResource.releaseStaleMountFilePath(
+    auth,
+    destGcsPath
+  );
+  if (reserved.isErr()) {
+    return reserved;
+  }
+
   const moveRes = await moveGCSMountFile({
     sourceGcsPath,
     destGcsPath,
@@ -522,11 +532,8 @@ export async function moveFile(
     return moveRes;
   }
 
-  // The copy replaced whatever was stored at dest, so a file still registered there is stale.
-  if (!file) {
-    await FileResource.releaseMountFilePath(auth, destGcsPath);
-  } else {
-    const moved = await file.moveMount(auth, {
+  if (file) {
+    const moved = await file.moveMount({
       destFileName,
       destMountFilePath: destGcsPath,
       destUseCase,

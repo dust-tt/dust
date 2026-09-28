@@ -149,6 +149,8 @@ const FRAME_CONTENT_TYPES = new Set([
 
 const BATCH_DESTROY_SIZE = 10_000;
 const FRAME_FUNCTION_DELETE_BATCH_SIZE = 1_000;
+// Covers an upload's window between claiming its mount path and copying its bytes there.
+const MOUNT_PATH_RELEASE_GRACE_MS = 60 * 1000;
 
 export interface FileUploadedRequestResponseBody {
   file: FileType & {
@@ -583,20 +585,42 @@ export class FileResource extends BaseResource<FileModel> {
 
   /**
    * @cc [owner:flvndvd,label:backend;product] release-mount-path-only-when-bytes-gone
-   * Clears `mountFilePath` on the file registered at `mountFilePath`, if any, so another file can
-   * claim the path. Callers MUST only release a path whose mount object is absent or has just been
-   * overwritten by the file about to claim it. The released file keeps its own storage and stays
+   * Clears `mountFilePath` on the file registered at `mountFilePath` so another file can claim the
+   * path. A registration younger than the grace period MUST be treated as a pending upload, whose
+   * bytes may still be on their way, and reported as `Err` instead of released. Callers MUST only
+   * call this for a path whose mount object is absent or about to be replaced by their own file,
+   * and MUST do so before moving any bytes there. A released file keeps its own storage and stays
    * fetchable by id; it MUST NOT be deleted here, since messages may still reference it.
    */
-  static async releaseMountFilePath(
+  static async releaseStaleMountFilePath(
     auth: Authenticator,
     mountFilePath: string
-  ): Promise<void> {
+  ): Promise<Result<undefined, Error>> {
     const owner = auth.getNonNullableWorkspace();
     await this.model.update(
       { mountFilePath: null },
-      { where: { workspaceId: owner.id, mountFilePath } }
+      {
+        where: {
+          workspaceId: owner.id,
+          mountFilePath,
+          updatedAt: {
+            [Op.lt]: new Date(Date.now() - MOUNT_PATH_RELEASE_GRACE_MS),
+          },
+        },
+      }
     );
+
+    const pending = await this.model.findOne({
+      attributes: ["id"],
+      where: { workspaceId: owner.id, mountFilePath },
+    });
+    if (pending) {
+      return new Err(
+        new Error("A registered file already uses the destination path.")
+      );
+    }
+
+    return new Ok(undefined);
   }
 
   static async fetchFrameV2Descendants(
@@ -2100,31 +2124,24 @@ export class FileResource extends BaseResource<FileModel> {
 
   /**
    * @cc [owner:flvndvd,label:backend;product] stale-destination-row-does-not-block-move
-   * Repoints this file to `destMountFilePath` once its bytes moved there. A file still registered
-   * at that path is stale, since the caller's move verified nothing was stored there or replaced
-   * it, and MUST be released first so the repoint succeeds instead of failing on the mount path
-   * unique index. A concurrent claim of the path MUST surface as `Err`, never as a thrown
-   * constraint error.
+   * Repoints this file to `destMountFilePath` once its bytes moved there. Callers MUST have
+   * reserved the path with `releaseStaleMountFilePath` before moving the bytes. A claim of the
+   * path that slipped in since MUST surface as `Err`, never as a thrown constraint error.
    */
-  async moveMount(
-    auth: Authenticator,
-    {
-      destFileName,
-      destMountFilePath,
-      destUseCase,
-      destUseCaseMetadata,
-    }: {
-      destFileName: string;
-      destMountFilePath: string;
-      destUseCase: FileUseCase;
-      destUseCaseMetadata?: FileUseCaseMetadata;
-    }
-  ): Promise<Result<undefined, Error>> {
+  async moveMount({
+    destFileName,
+    destMountFilePath,
+    destUseCase,
+    destUseCaseMetadata,
+  }: {
+    destFileName: string;
+    destMountFilePath: string;
+    destUseCase: FileUseCase;
+    destUseCaseMetadata?: FileUseCaseMetadata;
+  }): Promise<Result<undefined, Error>> {
     if (destMountFilePath === this.mountFilePath) {
       return new Ok(undefined);
     }
-
-    await FileResource.releaseMountFilePath(auth, destMountFilePath);
 
     try {
       await this.updateMount({

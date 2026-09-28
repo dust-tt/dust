@@ -542,14 +542,17 @@ describe("renameGCSMountFile", () => {
 });
 
 describe("moveFile", () => {
+  const STALE_AGE_MS = 10 * 60 * 1000;
   let auth: Authenticator;
   let prefix: string;
+  let copyFile: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
-    vi.mocked(getPrivateUploadBucket).mockReturnValue({
-      copyFile: vi.fn().mockResolvedValue(undefined),
-      delete: vi.fn().mockResolvedValue(undefined),
-    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+    // Earlier suites pin their own bucket stub; go back to the shared storage mock.
+    vi.mocked(getPrivateUploadBucket).mockReset();
+    const storage = getPrivateUploadBucket();
+    vi.mocked(getPrivateUploadBucket).mockReturnValue(storage);
+    copyFile = vi.spyOn(storage, "copyFile");
 
     const { authenticator } = await createResourceTest({});
     auth = authenticator;
@@ -560,23 +563,30 @@ describe("moveFile", () => {
     vi.restoreAllMocks();
   });
 
-  const registerAt = (relativePath: string) =>
-    FileFactory.create(auth, null, {
-      contentType: "text/plain",
-      fileName: relativePath.split("/").pop() ?? relativePath,
-      fileSize: 1,
-      status: "ready",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: "proj123" },
-      mountFilePath: `${prefix}${relativePath}`,
-    });
+  // A row registered `ageMs` ago. Uploads claim their path right before copying bytes, so only an
+  // old registration counts as stale.
+  const registerAt = async (relativePath: string, { ageMs = 0 } = {}) => {
+    const registeredAt = new Date(Date.now() - ageMs);
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(registeredAt);
+    try {
+      return await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: relativePath.split("/").pop() ?? relativePath,
+        fileSize: 1,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: "proj123" },
+        mountFilePath: `${prefix}${relativePath}`,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  };
 
-  it("releases a stale file registered at the destination and repoints the moved one", async () => {
-    const moved = await registerAt("a.txt");
-    const stale = await registerAt("archive/a.txt");
-
-    const result = await moveFile(auth, {
-      file: moved,
+  const moveToArchive = (file: FileResource) =>
+    moveFile(auth, {
+      file,
       sourceGcsPath: `${prefix}a.txt`,
       destScope: { useCase: "pod", podId: "proj123" },
       destRelativeFilePath: "archive/a.txt",
@@ -584,6 +594,12 @@ describe("moveFile", () => {
       destUseCase: "project_context",
       destUseCaseMetadata: { spaceId: "proj123" },
     });
+
+  it("releases a stale registration at the destination and repoints the moved file", async () => {
+    const moved = await registerAt("a.txt");
+    const stale = await registerAt("archive/a.txt", { ageMs: STALE_AGE_MS });
+
+    const result = await moveToArchive(moved);
 
     expect(result.isOk()).toBe(true);
     const [reloadedMoved] = await FileResource.fetchByMountFilePaths(auth, [
@@ -594,20 +610,27 @@ describe("moveFile", () => {
     expect(reloadedStale?.mountFilePath).toBeNull();
   });
 
+  it("treats a fresh registration as a pending upload and copies nothing", async () => {
+    const moved = await registerAt("a.txt");
+    const pending = await registerAt("archive/a.txt");
+    copyFile.mockClear();
+
+    const result = await moveToArchive(moved);
+
+    expect(result.isErr()).toBe(true);
+    expect(copyFile).not.toHaveBeenCalled();
+    const reloadedPending = await FileResource.fetchById(auth, pending.sId);
+    expect(reloadedPending?.mountFilePath).toBe(`${prefix}archive/a.txt`);
+  });
+
   it("returns Err when the destination is claimed during the move", async () => {
     const moved = await registerAt("a.txt");
     await registerAt("archive/a.txt");
-    vi.spyOn(FileResource, "releaseMountFilePath").mockResolvedValue(undefined);
+    vi.spyOn(FileResource, "releaseStaleMountFilePath").mockResolvedValue(
+      new Ok(undefined)
+    );
 
-    const result = await moveFile(auth, {
-      file: moved,
-      sourceGcsPath: `${prefix}a.txt`,
-      destScope: { useCase: "pod", podId: "proj123" },
-      destRelativeFilePath: "archive/a.txt",
-      destFileName: "a.txt",
-      destUseCase: "project_context",
-      destUseCaseMetadata: { spaceId: "proj123" },
-    });
+    const result = await moveToArchive(moved);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {

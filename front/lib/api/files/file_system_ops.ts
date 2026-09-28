@@ -417,26 +417,22 @@ export async function renameCanonicalFile(
         });
   }
 
-  const linkedFileResource = await fetchLinkedFileResource(
-    auth,
-    dustFs,
-    scopedPath
-  );
-
-  const renameResult = await dustFs.rename(scopedPath, newFileName);
-  if (renameResult.isErr()) {
-    return renameResult;
+  if (!newFileName || newFileName.includes("/") || newFileName.includes("\\")) {
+    return new Err(
+      new DustFileSystemError(
+        "invalid_path",
+        "newFileName must be a non-empty string without path separators."
+      )
+    );
   }
 
-  const synced = await syncLinkedFileAfterMove(auth, dustFs, {
-    linkedFileResource,
-    dest: renameResult.value.dest,
-  });
-  if (synced.isErr()) {
-    return synced;
+  const dest = path.posix.join(path.posix.dirname(scopedPath), newFileName);
+  if (dest === scopedPath) {
+    return new Ok({ dest, sourceDeletionFailed: false });
   }
 
-  return renameResult;
+  const moved = await moveLinkedFile(auth, dustFs, { src: scopedPath, dest });
+  return moved.isErr() ? moved : new Ok({ dest, ...moved.value });
 }
 
 /**
@@ -458,61 +454,88 @@ export async function moveCanonicalFile(
     });
   }
 
+  return moveLinkedFile(auth, dustFs, { src, dest });
+}
+
+/**
+ * @cc [owner:flvndvd,label:backend;product] destination-reserved-before-bytes-move
+ * The destination mount path MUST be reserved before any bytes move there: bytes already stored
+ * at `dest` are a conflict, a stale registration is released, and a pending upload's registration
+ * is a conflict too. Moving the bytes first and sorting out the registration afterwards is not
+ * allowed, since a pending upload would then overwrite the moved content.
+ */
+async function reserveMountDestination(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  { dest, destGcsPath }: { dest: string; destGcsPath: string }
+): Promise<Result<void, DustFileSystemError>> {
+  const exists = await dustFs.exists(dest);
+  if (exists.isErr()) {
+    return exists;
+  }
+  if (exists.value) {
+    return new Err(
+      new DustFileSystemError(
+        "already_exists",
+        "File name already exists in the destination directory."
+      )
+    );
+  }
+
+  const released = await FileResource.releaseStaleMountFilePath(
+    auth,
+    destGcsPath
+  );
+  if (released.isErr()) {
+    return new Err(
+      new DustFileSystemError("already_exists", released.error.message)
+    );
+  }
+
+  return new Ok(undefined);
+}
+
+/** Move a non-Frame file and keep its linked FileResource, if any, pointing at the new path. */
+async function moveLinkedFile(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  { src, dest }: { src: string; dest: string }
+): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
   // Look up the linked FileResource before the bytes move.
   const linkedFileResource = await fetchLinkedFileResource(auth, dustFs, src);
+  const destGcsPath = dustFs.toMountFilePath(dest);
+  const destInfo = inferDestMountInfo(dest);
+
+  if (destGcsPath) {
+    const reserved = await reserveMountDestination(auth, dustFs, {
+      dest,
+      destGcsPath,
+    });
+    if (reserved.isErr()) {
+      return reserved;
+    }
+  }
 
   const moveResult = await dustFs.move({ src, dest });
   if (moveResult.isErr()) {
     return moveResult;
   }
 
-  const synced = await syncLinkedFileAfterMove(auth, dustFs, {
-    linkedFileResource,
-    dest,
-  });
-  if (synced.isErr()) {
-    return synced;
+  if (linkedFileResource && destGcsPath && destInfo) {
+    const moved = await linkedFileResource.moveMount({
+      destFileName: path.posix.basename(dest),
+      destMountFilePath: destGcsPath,
+      destUseCase: destInfo.useCase,
+      destUseCaseMetadata: destInfo.useCaseMetadata,
+    });
+    if (moved.isErr()) {
+      return new Err(
+        new DustFileSystemError("already_exists", moved.error.message)
+      );
+    }
   }
 
   return moveResult;
-}
-
-/**
- * Sync the linked FileResource, if any, after the bytes moved to `dest`. The move verified nothing
- * was stored at `dest`, so a file still registered there is stale and gets released.
- */
-async function syncLinkedFileAfterMove(
-  auth: Authenticator,
-  dustFs: DustFileSystem,
-  {
-    linkedFileResource,
-    dest,
-  }: { linkedFileResource: FileResource | undefined; dest: string }
-): Promise<Result<void, DustFileSystemError>> {
-  const destGcsPath = dustFs.toMountFilePath(dest);
-  const destInfo = inferDestMountInfo(dest);
-  if (!destGcsPath || !destInfo) {
-    return new Ok(undefined);
-  }
-
-  if (!linkedFileResource) {
-    await FileResource.releaseMountFilePath(auth, destGcsPath);
-    return new Ok(undefined);
-  }
-
-  const moved = await linkedFileResource.moveMount(auth, {
-    destFileName: path.posix.basename(dest),
-    destMountFilePath: destGcsPath,
-    destUseCase: destInfo.useCase,
-    destUseCaseMetadata: destInfo.useCaseMetadata,
-  });
-  if (moved.isErr()) {
-    return new Err(
-      new DustFileSystemError("already_exists", moved.error.message)
-    );
-  }
-
-  return new Ok(undefined);
 }
 
 /**
