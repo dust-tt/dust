@@ -41,6 +41,7 @@ interface EditMemberSpendLimitModalProps {
   member: MemberUsageType | null;
   owner: LightWorkspaceType;
   groups: GroupType[];
+  editableGroupIds?: ReadonlySet<string>;
   readOnly?: boolean;
   // The workspace default applies to every member, so editing it is reserved
   // to admins even where managers may edit personal and group limits.
@@ -56,6 +57,7 @@ interface MemberSpendLimitFormProps {
   member: MemberUsageType | null;
   owner: LightWorkspaceType;
   groups: GroupType[];
+  editableGroupIds?: ReadonlySet<string>;
   readOnly: boolean;
   canEditDefaultLimit: boolean;
   defaultUserSpendLimit: DefaultUserSpendLimitState;
@@ -68,6 +70,7 @@ function MemberSpendLimitForm({
   member,
   owner,
   groups,
+  editableGroupIds,
   readOnly,
   canEditDefaultLimit,
   defaultUserSpendLimit,
@@ -156,10 +159,12 @@ function MemberSpendLimitForm({
     const personalResult = parseCreditsInput(personalLimitInput);
     setValidationMessage(personalResult.ok ? null : personalResult.message);
 
-    const groupResults = memberGroupRows.map((row) => ({
-      row,
-      result: parseCreditsInput(groupLimitInputs[row.groupId] ?? ""),
-    }));
+    const groupResults = memberGroupRows
+      .filter((row) => !editableGroupIds || editableGroupIds.has(row.groupId))
+      .map((row) => ({
+        row,
+        result: parseCreditsInput(groupLimitInputs[row.groupId] ?? ""),
+      }));
     setGroupValidationMessages(
       Object.fromEntries(
         groupResults.map(({ row, result }) => [
@@ -306,6 +311,11 @@ function MemberSpendLimitForm({
                 : undefined
             }
           />
+          {editableGroupIds && (
+            <span className="copy-xs text-muted-foreground">
+              A personal limit applies to this member across the workspace.
+            </span>
+          )}
 
           {memberGroupRows.length > 0 && (
             <Page.Vertical gap="xs" align="stretch">
@@ -315,6 +325,7 @@ function MemberSpendLimitForm({
               <MemberGroupLimitTable
                 rows={memberGroupRows}
                 readOnly={readOnly}
+                editableGroupIds={editableGroupIds}
                 groupLimitInputs={groupLimitInputs}
                 groupValidationMessages={groupValidationMessages}
                 onChange={handleGroupLimitChange}
@@ -347,6 +358,7 @@ export function EditMemberSpendLimitModal({
   member,
   owner,
   groups,
+  editableGroupIds,
   readOnly = false,
   canEditDefaultLimit = false,
   defaultUserSpendLimit,
@@ -376,6 +388,7 @@ export function EditMemberSpendLimitModal({
           member={displayedMember}
           owner={owner}
           groups={groups}
+          editableGroupIds={editableGroupIds}
           readOnly={readOnly}
           canEditDefaultLimit={canEditDefaultLimit}
           defaultUserSpendLimit={defaultUserSpendLimit}
