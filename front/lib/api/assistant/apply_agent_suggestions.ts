@@ -432,7 +432,7 @@ async function resolveAgentFieldEdits(
 
   const resolvedModel = await resolveModelEdit(
     auth,
-    agentConfiguration.model,
+    agent.modelConfiguration,
     model
   );
   if (resolvedModel.isErr()) {

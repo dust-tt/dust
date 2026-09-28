@@ -970,7 +970,7 @@ describe("PATCH with applyToAgent", () => {
       description: agent.description,
       scope: "visible",
       instructions: agent.instructions,
-      version: agent.version + 1,
+      version: agent.version,
     });
   });
 
