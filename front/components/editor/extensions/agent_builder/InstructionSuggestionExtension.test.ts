@@ -1616,7 +1616,9 @@ describe("Root-targeting suggestions", () => {
     ).map((el) => el.textContent);
     expect(hiddenTexts).toEqual(["Keep A", "Keep B", "Tail"]);
     // Only the run between two edits gets a separator, not the trailing one.
-    expect(editor.view.dom.querySelectorAll(".border-dashed")).toHaveLength(1);
+    expect(
+      editor.view.dom.querySelectorAll(".suggestion-separator")
+    ).toHaveLength(1);
     expect(getAdditions().map((a) => a.text)).toEqual([" edited", " edited"]);
   });
 
@@ -1632,7 +1634,9 @@ describe("Root-targeting suggestions", () => {
     });
 
     expect(editor.view.dom.querySelectorAll(".hidden")).toHaveLength(0);
-    expect(editor.view.dom.querySelectorAll(".border-dashed")).toHaveLength(0);
+    expect(
+      editor.view.dom.querySelectorAll(".suggestion-separator")
+    ).toHaveLength(0);
   });
 
   it("should accept a root-targeting suggestion and replace all content", () => {

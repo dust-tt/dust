@@ -43,7 +43,7 @@ function NewInstructionsBlock({ instructionsHtml }: NewInstructionsBlockProps) {
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">Instructions</span>
       <DiffBlock
-        className="[&_.rounded-2xl.border]:border-0"
+        className="[&_.rounded-2xl.border]:border-0 [&_.rounded-2xl.border]:bg-transparent"
         collapsedLines={Number.POSITIVE_INFINITY}
       >
         {editor && <EditorContent editor={editor} />}
@@ -135,13 +135,16 @@ export function AgentSuggestionDetails({
           isCollapsible={false}
           label="Description"
           currentValue={agentConfiguration?.description ?? ""}
+          showWordDiff
           newValue={suggestion.suggestion.description}
         />
       );
 
     case "instructions":
       return (
-        <div className="flex flex-col gap-2">
+        // The diff box's background is not configurable, so it is overridden here to blend in
+        // with the surrounding section.
+        <div className="flex flex-col gap-2 [&_.rounded-2xl.border]:bg-transparent">
           <span className="text-sm text-muted-foreground">Instructions</span>
           <SuggestionInstructionsDiffBlock
             isCollapsible={false}
@@ -184,6 +187,7 @@ export function AgentSuggestionDetails({
           isCollapsible={false}
           label="Name"
           currentValue={agentConfiguration?.name ?? ""}
+          showWordDiff
           newValue={suggestion.suggestion.name}
         />
       );

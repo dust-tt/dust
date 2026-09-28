@@ -62,7 +62,14 @@ const CLASSES = {
     "suggestion-addition rounded bg-highlight-50 text-muted-foreground cursor-default",
   blockHighlightDimmed: "suggestion-highlight rounded bg-muted cursor-default",
   hidden: "hidden",
-  unchangedSeparator: "my-2 border-t border-dashed border-border",
+  unchangedSeparator:
+    "suggestion-separator my-2 h-px w-full shrink-0 bg-separator",
+};
+
+// Shared so plain-text field diffs look the same as instruction diffs.
+export const SUGGESTION_DIFF_CLASSES = {
+  add: CLASSES.add,
+  remove: CLASSES.remove,
 };
 
 // Addition widgets are built by serializing the new nodes through `toDOM`
