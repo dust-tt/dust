@@ -6,6 +6,11 @@ import {
 } from "@app/lib/api/assistant/apply_agent_suggestions";
 import type { BatchApplicationStep } from "@app/lib/api/assistant/batch_application_plan";
 import { planBatchApplication } from "@app/lib/api/assistant/batch_application_plan";
+import type { ResolvedSkillChange } from "@app/lib/api/skills/apply_skill_suggestions";
+import {
+  resolveSkillSuggestions,
+  writeSkillChange,
+} from "@app/lib/api/skills/apply_skill_suggestions";
 import { isAuthorizedToApplySkillSuggestions } from "@app/lib/api/skills/suggestion_authorization";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -25,8 +30,9 @@ type SkillStep = Extract<BatchApplicationStep, { type: "skill" }>;
 type AgentStep = Extract<BatchApplicationStep, { type: "agent" }>;
 
 // A step resolved against the current state of its target into the writes it applies.
+type ResolvedSkillStep = SkillStep & { change: ResolvedSkillChange };
 type ResolvedAgentStep = AgentStep & { change: ResolvedAgentChange };
-type ResolvedStep = SkillStep | ResolvedAgentStep;
+type ResolvedStep = ResolvedSkillStep | ResolvedAgentStep;
 
 function getStepTargetId(step: BatchApplicationStep): string {
   switch (step.type) {
@@ -136,10 +142,21 @@ async function checkPermissions(
 
 async function resolveSkillStep(
   auth: Authenticator,
-  step: SkillStep
-): Promise<Result<SkillStep, ApplyBatchSuggestionsError>> {
-  // TODO: resolve the step's suggestions against the current state of its skill.
-  return new Ok(step);
+  step: SkillStep,
+  skillsById: Map<string, SkillResource>
+): Promise<Result<ResolvedSkillStep, ApplyBatchSuggestionsError>> {
+  const skill = skillsById.get(step.skillId);
+  assert(skill, "The skill this suggestion targets disappeared.");
+
+  const change = await resolveSkillSuggestions(auth, {
+    skill,
+    suggestions: step.suggestions,
+  });
+  if (change.isErr()) {
+    return change;
+  }
+
+  return new Ok({ ...step, change: change.value });
 }
 
 async function resolveAgentStep(
@@ -164,11 +181,17 @@ async function resolveAgentStep(
 async function resolveStep(
   auth: Authenticator,
   step: BatchApplicationStep,
-  agentsById: Map<string, AgentResource>
+  {
+    agentsById,
+    skillsById,
+  }: {
+    agentsById: Map<string, AgentResource>;
+    skillsById: Map<string, SkillResource>;
+  }
 ): Promise<Result<ResolvedStep, ApplyBatchSuggestionsError>> {
   switch (step.type) {
     case "skill":
-      return resolveSkillStep(auth, step);
+      return resolveSkillStep(auth, step, skillsById);
     case "agent":
       return resolveAgentStep(auth, step, agentsById);
     default:
@@ -176,21 +199,17 @@ async function resolveStep(
   }
 }
 
-async function applySkillStep(
-  auth: Authenticator,
-  step: SkillStep
-): Promise<Result<undefined, ApplyBatchSuggestionsError>> {
-  // TODO: apply the step's suggestions to its skill.
-  return new Ok(undefined);
-}
-
 async function applyStep(
   auth: Authenticator,
-  step: ResolvedStep
+  step: ResolvedStep,
+  skillsById: Map<string, SkillResource>
 ): Promise<Result<undefined, ApplyBatchSuggestionsError>> {
   switch (step.type) {
-    case "skill":
-      return applySkillStep(auth, step);
+    case "skill": {
+      const skill = skillsById.get(step.skillId);
+      assert(skill, "The skill this suggestion targets disappeared.");
+      return writeSkillChange(auth, skill, step.change);
+    }
     case "agent":
       return writeAgentChange(auth, step.change);
     default:
@@ -241,7 +260,7 @@ export async function applyBatchSuggestions(
 
   const resolvedSteps: ResolvedStep[] = [];
   for (const step of steps) {
-    const res = await resolveStep(auth, step, agentsById);
+    const res = await resolveStep(auth, step, { agentsById, skillsById });
     if (res.isErr()) {
       return res;
     }
@@ -249,7 +268,7 @@ export async function applyBatchSuggestions(
   }
 
   for (const step of resolvedSteps) {
-    const res = await applyStep(auth, step);
+    const res = await applyStep(auth, step, skillsById);
     if (res.isErr()) {
       return res;
     }
