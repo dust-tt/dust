@@ -373,16 +373,14 @@ export function UsageFilterPanelView({
                 />
               )}
               {activeCategory === "agent" && (
-                <div className="mb-1">
-                  <UsageFilterAgentScopeControls
-                    scopes={USAGE_FILTER_AGENT_SCOPES}
-                    activeScope={activeScope}
-                    onScopeChange={(scope) => {
-                      setActiveScope(scope);
-                      resetContentScroll();
-                    }}
-                  />
-                </div>
+                <UsageFilterAgentScopeControls
+                  scopes={USAGE_FILTER_AGENT_SCOPES}
+                  activeScope={activeScope}
+                  onScopeChange={(scope) => {
+                    setActiveScope(scope);
+                    resetContentScroll();
+                  }}
+                />
               )}
               {isFacetsError ? (
                 <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
