@@ -266,7 +266,9 @@ export const DUST_STREAM_ENDPOINTS = {
     DustXaiGrokFourDotSevenGlobalXaiStream,
 } as const satisfies Record<StreamEndpointId, DustStreamEndpointConstructor>;
 
-const CUSTOM_DUST_STREAM_ENDPOINTS = CUSTOM_MODELS.map(createCustomStreamEndpoint);
+const CUSTOM_DUST_STREAM_ENDPOINTS = CUSTOM_MODELS.map(
+  createCustomStreamEndpoint
+);
 
 export function getStreamEndpoints(
   workspaceConfiguration: WorkspaceConfig,
