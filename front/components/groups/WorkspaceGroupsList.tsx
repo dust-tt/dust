@@ -7,7 +7,7 @@ import {
   ROLES_DATA,
 } from "@app/components/members/Roles";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
 import { useDeleteGroup, useGroups } from "@app/lib/swr/groups";
@@ -20,6 +20,7 @@ import {
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  Avatar,
   Button,
   Chip,
   DataTable,
@@ -45,6 +46,7 @@ type GroupRowData = {
   groupId: string;
   name: string;
   memberCount: number;
+  managers: { fullName: string; image: string | null }[];
   kind: GroupKind;
   grantedRole: GroupGrantableRole | null;
   onClick?: () => void;
@@ -69,6 +71,34 @@ const columns: ColumnDef<GroupRowData>[] = [
           description={`${memberCount} member${pluralize(memberCount)}`}
         >
           {name}
+        </DataTable.CellContent>
+      );
+    },
+  },
+  {
+    id: "managers",
+    header: "Group Manager",
+    meta: { className: "w-[240px]" },
+    cell: ({ row }) => {
+      const { managers } = row.original;
+      if (managers.length === 0) {
+        return null;
+      }
+      return (
+        <DataTable.CellContent>
+          <div className="flex items-center gap-2">
+            <Avatar.Stack
+              avatars={managers.map(({ fullName, image }) => ({
+                name: fullName,
+                visual: image ?? undefined,
+                isRounded: true,
+              }))}
+              nbVisibleItems={4}
+              size="xs"
+              hasMagnifier={false}
+            />
+            {managers.length === 1 && managers[0].fullName}
+          </div>
         </DataTable.CellContent>
       );
     },
@@ -135,11 +165,17 @@ const columns: ColumnDef<GroupRowData>[] = [
     },
   },
 ];
+const columnsWithoutManagers = columns.filter(
+  (column) => column.id !== "managers"
+);
 
 export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
+  const { hasFeature } = useFeatureFlags();
+  const isGroupManagementEnabled = hasFeature("group_management");
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
+    withManagers: isGroupManagementEnabled,
   });
 
   const router = useAppRouter();
@@ -190,6 +226,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
         groupId: group.sId,
         name: group.name,
         memberCount: group.memberCount,
+        managers: group.managers ?? [],
         kind: group.kind,
         grantedRole: group.grantedRole,
         onClick: isManual
@@ -247,7 +284,9 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
             </div>
             <DataTable
               data={rows}
-              columns={columns}
+              columns={
+                isGroupManagementEnabled ? columns : columnsWithoutManagers
+              }
               filter={searchTerm}
               filterColumn="name"
               pagination={pagination}

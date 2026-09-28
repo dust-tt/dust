@@ -71,6 +71,51 @@ describe("GET /api/w/:wId/groups", () => {
     ]);
   });
 
+  it("returns each group's managers only when enabled and requested", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const sales = await GroupFactory.regularManual(workspace, "Sales");
+    const support = await GroupFactory.regularManual(workspace, "Support");
+    const grant = await GroupPermissionResource.grantToUser(adminAuth, {
+      user: user.toJSON(),
+      grantType: "group_manager",
+      resourceType: "group",
+      resourceId: sales.id,
+    });
+    expect(grant.isOk()).toBe(true);
+
+    const disabledResponse = await getGroupsRequest(workspace.sId, {
+      kind: "regular_manual",
+      withManagers: "true",
+    });
+    expect(disabledResponse.status).toBe(200);
+    expect((await disabledResponse.json()).groups[0].managers).toBeUndefined();
+
+    await FeatureFlagFactory.basic(auth, "group_management");
+
+    const response = await getGroupsRequest(workspace.sId, {
+      kind: "regular_manual",
+      withManagers: "true",
+    });
+
+    expect(response.status).toBe(200);
+    const groups = (await response.json()).groups;
+    expect(
+      groups.find((group: { sId: string }) => group.sId === sales.sId)
+    ).toHaveProperty("managers", [
+      {
+        sId: user.sId,
+        fullName: user.toJSON().fullName,
+        image: user.toJSON().image,
+      },
+    ]);
+    expect(
+      groups.find((group: { sId: string }) => group.sId === support.sId)
+    ).toHaveProperty("managers", []);
+  });
+
   it("advertises delegated actions only while group management is enabled", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest();
     const adminAuth = await Authenticator.internalAdminForWorkspace(
