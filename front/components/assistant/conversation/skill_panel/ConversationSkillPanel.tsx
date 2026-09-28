@@ -16,6 +16,7 @@ import {
 } from "@app/hooks/useSkillSuggestions";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { useUser } from "@app/lib/swr/user";
+import { isCreateSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Spinner } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
@@ -74,6 +75,7 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
       {hasPreview ? (
         <SuggestionPreviewHeader
           isApplied={isApplied}
+          hasCreation={previewSuggestions.some(isCreateSkillSuggestion)}
           onToggle={() => setHiddenPreviewData(isApplied ? data : undefined)}
           onClose={closePanel}
         />
