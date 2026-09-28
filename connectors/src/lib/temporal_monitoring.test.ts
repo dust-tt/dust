@@ -228,6 +228,34 @@ describe("ActivityInboundLogInterceptor", () => {
     });
   });
 
+  it("pauses the connector when the workspace was relocated", async () => {
+    const interceptor = new ActivityInboundLogInterceptor(
+      makeActivityContext(),
+      logger,
+      "webcrawler"
+    );
+    const error = new Error(
+      `Function failed after 3 attempts:\nAttempt 1: Error: ${JSON.stringify({
+        type: "workspace_not_found",
+        message: "The workspace was not found. [relocation-done]",
+      })}`
+    );
+    const input = {
+      args: [],
+      headers: {},
+    } satisfies ActivityExecuteInput;
+    const next = vi.fn(async () => {
+      throw error;
+    }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+
+    await expect(interceptor.execute(input, next)).rejects.toBe(error);
+
+    expect(mocks.syncFailed).toHaveBeenCalledWith(42, "workspace_relocated");
+    expect(mocks.pauseAndStop).toHaveBeenCalledWith({
+      reason: "Stopped on workspace relocation",
+    });
+  });
+
   it("pauses BigQuery when its activity encounters a policy violation", async () => {
     mocks.fetchById.mockResolvedValue({
       dataSourceId: "data-source-id",

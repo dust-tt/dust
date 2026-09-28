@@ -66,6 +66,7 @@ export const CONNECTORS_ERROR_TYPES = [
   "remote_database_connection_not_readonly",
   "remote_database_network_error",
   "workspace_plan_no_api_access",
+  "workspace_relocated",
 ] as const;
 
 export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];

@@ -38,8 +38,25 @@ function isWorkspacePlanNoApiAccessError(err: unknown): err is Error {
   );
 }
 
+// After a relocation the workspace row stays in the source region with the
+// `relocation-done` maintenance flag, and front answers every API call with
+// this 404 until the source is purged.
+function isWorkspaceRelocatedError(err: unknown): err is Error {
+  return (
+    err instanceof Error &&
+    err.message.includes("workspace_not_found") &&
+    err.message.includes("[relocation-done]")
+  );
+}
+
 // Errors the connector cannot make progress on without a human action: it gets
 // marked as failed and paused instead of being retried.
+/**
+ * @cc [owner:fontanierh,label:product] relocated-workspace-is-final
+ * A `workspace_not_found` error carrying the `[relocation-done]` marker MUST be categorized as a
+ * final error (`workspace_relocated`) so the connector is paused instead of retrying forever
+ * against a workspace that now lives in another region.
+ */
 function categorizeFinalConnectorError(err: unknown): {
   connectorErrorType: ConnectorErrorType;
   logMessage: string;
@@ -86,6 +103,15 @@ function categorizeFinalConnectorError(err: unknown): {
       logMessage:
         "Stopping connector manager because the workspace plan does not allow API access.",
       pauseReason: "Stopped on workspace_can_use_product_required_error",
+    };
+  }
+
+  if (isWorkspaceRelocatedError(err)) {
+    return {
+      connectorErrorType: "workspace_relocated",
+      logMessage:
+        "Stopping connector manager because the workspace was relocated to another region.",
+      pauseReason: "Stopped on workspace relocation",
     };
   }
 
