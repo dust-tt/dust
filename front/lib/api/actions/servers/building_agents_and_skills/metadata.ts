@@ -386,6 +386,17 @@ export const CreateAgentSuggestionSchema = z.object({
     .trim()
     .min(1)
     .describe("The agent's instructions, as HTML."),
+  toolIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Ids of the tools to give the agent. Only tools that need no configuration (no " +
+        "knowledge, sub-agent or settings to pick) can be added."
+    ),
+  skillIds: z
+    .array(z.string())
+    .optional()
+    .describe("Ids of the active skills to give the agent."),
 });
 
 export type CreateAgentSuggestion = z.infer<typeof CreateAgentSuggestionSchema>;

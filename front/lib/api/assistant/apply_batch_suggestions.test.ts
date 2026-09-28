@@ -734,6 +734,90 @@ describe("applyBatchSuggestions", () => {
     expect(await fetchAgentToolIds(agent.sId)).toEqual([view.sId, view.sId]);
   });
 
+  async function createPendingAgent() {
+    const pending = await AgentResource.createPending(auth);
+    if (pending.isErr()) {
+      throw pending.error;
+    }
+    const agent = await getAgentConfiguration(auth, {
+      agentId: pending.value.sId,
+      variant: "light",
+    });
+    assert(agent);
+    return agent;
+  }
+
+  it("creates the agent with the suggested tools and skills", async () => {
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "agent",
+    });
+    await auth.refresh();
+    const agent = await createPendingAgent();
+    const view = await createToolView(globalSpace, { name: "Ticket Tracker" });
+    const skill = await SkillFactory.create(auth, { name: "Triage" });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createCreate(auth, agent, {
+      suggestion: {
+        name: "IncidentHelper",
+        description: "Helps triage incidents.",
+        instructions: "<p>Triage incidents.</p>",
+        toolIds: [view.sId],
+        skillIds: [skill.sId],
+      },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    if (res.isErr()) {
+      throw res.error;
+    }
+    const created = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "full",
+    });
+    expect(created).toMatchObject({ status: "active", name: "IncidentHelper" });
+    expect(
+      created?.actions.filter(isServerSideMCPServerConfiguration)
+    ).toMatchObject([{ mcpServerViewId: view.sId, name: "ticket_tracker" }]);
+    expect(await fetchAgentSkillIds(agent.sId)).toEqual([skill.sId]);
+  });
+
+  it("creates nothing when a tool of the creation needs a configuration", async () => {
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "agent",
+    });
+    await auth.refresh();
+    const agent = await createPendingAgent();
+    const searchView = await MCPServerViewFactory.internal(
+      workspace,
+      "search",
+      globalSpace
+    );
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createCreate(auth, agent, {
+      suggestion: {
+        name: "Searcher",
+        description: "Searches things.",
+        instructions: "<p>Search things.</p>",
+        toolIds: [searchView.sId],
+      },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    assert(res.isErr());
+    expect(res.error.message).toContain("needs a configuration");
+    const unchanged = await AgentResource.fetchById(auth, agent.sId);
+    expect(unchanged?.status).toBe("pending");
+  });
+
   it("writes nothing when an added tool is restricted to skills", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const view = await createToolView(globalSpace);

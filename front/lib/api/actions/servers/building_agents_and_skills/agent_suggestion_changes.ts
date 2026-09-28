@@ -398,6 +398,42 @@ export async function validateAgentCreation(
 }
 
 /**
+ * Checks each tool and skill a new agent is created with could be added to an existing agent (see
+ * `checkToolAddition` and `checkSkillAddition`), so the creation can be applied later.
+ */
+export async function validateAgentCreationCapabilities(
+  auth: Authenticator,
+  { toolIds, skillIds }: { toolIds: string[]; skillIds: string[] }
+): Promise<Result<undefined, MCPError>> {
+  if (new Set(toolIds).size !== toolIds.length) {
+    return new Err(new MCPError("Each tool can only be added once."));
+  }
+  if (new Set(skillIds).size !== skillIds.length) {
+    return new Err(new MCPError("Each skill can only be added once."));
+  }
+
+  const [suggestableTools, suggestableSkills] = await Promise.all([
+    fetchSuggestableTools(auth, toolIds),
+    fetchSuggestableSkills(auth, skillIds),
+  ]);
+
+  for (const toolId of toolIds) {
+    const addition = checkToolAddition(toolId, suggestableTools);
+    if (addition.isErr()) {
+      return new Err(new MCPError(addition.error));
+    }
+  }
+  for (const skillId of skillIds) {
+    const addition = checkSkillAddition(skillId, suggestableSkills);
+    if (addition.isErr()) {
+      return new Err(new MCPError(addition.error));
+    }
+  }
+
+  return new Ok(undefined);
+}
+
+/**
  * Checks each skill can be added to or removed from the agent. An added skill is one the builder
  * offers (see `checkSkillAddition`) that the agent does not have yet; a removed skill is one of the
  * agent's skills. Only editors can suggest it, as only editors can apply it. Returns one suggestion

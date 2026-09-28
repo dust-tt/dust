@@ -17,13 +17,10 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type {
-  AgentSkillsSuggestionType,
-  AgentToolsSuggestionType,
-} from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Avatar, Chip, DiffBlock } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 
 function formatModel(modelId: string, reasoningEffort?: ReasoningEffort) {
@@ -58,13 +55,15 @@ function NewInstructionsBlock({ instructionsHtml }: NewInstructionsBlockProps) {
   );
 }
 
+type SuggestedAction = "add" | "remove";
+
 interface SuggestedSkillRowProps {
   owner: LightWorkspaceType;
-  suggestion: AgentSkillsSuggestionType;
+  action: SuggestedAction;
+  skillId: string;
 }
 
-function SuggestedSkillRow({ owner, suggestion }: SuggestedSkillRowProps) {
-  const { action, skillId } = suggestion.suggestion;
+function SuggestedSkillRow({ owner, action, skillId }: SuggestedSkillRowProps) {
   const { skill, isSkillLoading } = useSkill({
     workspaceId: owner.sId,
     skillId,
@@ -95,11 +94,11 @@ function SuggestedSkillRow({ owner, suggestion }: SuggestedSkillRowProps) {
 
 interface SuggestedToolRowProps {
   owner: LightWorkspaceType;
-  suggestion: AgentToolsSuggestionType;
+  action: SuggestedAction;
+  toolId: string;
 }
 
-function SuggestedToolRow({ owner, suggestion }: SuggestedToolRowProps) {
-  const { action, toolId } = suggestion.suggestion;
+function SuggestedToolRow({ owner, action, toolId }: SuggestedToolRowProps) {
   const { serverView, isMCPServerViewLoading } = useMCPServerView({
     owner,
     viewId: toolId,
@@ -134,6 +133,23 @@ function SuggestedToolRow({ owner, suggestion }: SuggestedToolRowProps) {
   );
 }
 
+interface NewCapabilitiesSectionProps {
+  label: string;
+  children: ReactNode;
+}
+
+function NewCapabilitiesSection({
+  label,
+  children,
+}: NewCapabilitiesSectionProps) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <div className="divide-y divide-border">{children}</div>
+    </div>
+  );
+}
+
 interface AgentSuggestionDetailsProps {
   owner: LightWorkspaceType;
   suggestion: AgentActionCardSuggestionType;
@@ -147,7 +163,13 @@ export function AgentSuggestionDetails({
 }: AgentSuggestionDetailsProps) {
   switch (suggestion.kind) {
     case "create": {
-      const { name, description, instructions } = suggestion.suggestion;
+      const {
+        name,
+        description,
+        instructions,
+        toolIds = [],
+        skillIds = [],
+      } = suggestion.suggestion;
       return (
         <div className="flex flex-col gap-3">
           <SuggestionFieldEditSection
@@ -161,6 +183,30 @@ export function AgentSuggestionDetails({
             newValue={description}
           />
           <NewInstructionsBlock instructionsHtml={instructions} />
+          {skillIds.length > 0 && (
+            <NewCapabilitiesSection label="Skills">
+              {skillIds.map((skillId) => (
+                <SuggestedSkillRow
+                  key={skillId}
+                  owner={owner}
+                  action="add"
+                  skillId={skillId}
+                />
+              ))}
+            </NewCapabilitiesSection>
+          )}
+          {toolIds.length > 0 && (
+            <NewCapabilitiesSection label="Tools">
+              {toolIds.map((toolId) => (
+                <SuggestedToolRow
+                  key={toolId}
+                  owner={owner}
+                  action="add"
+                  toolId={toolId}
+                />
+              ))}
+            </NewCapabilitiesSection>
+          )}
         </div>
       );
     }
@@ -242,10 +288,22 @@ export function AgentSuggestionDetails({
       );
 
     case "skills":
-      return <SuggestedSkillRow owner={owner} suggestion={suggestion} />;
+      return (
+        <SuggestedSkillRow
+          owner={owner}
+          action={suggestion.suggestion.action}
+          skillId={suggestion.suggestion.skillId}
+        />
+      );
 
     case "tools":
-      return <SuggestedToolRow owner={owner} suggestion={suggestion} />;
+      return (
+        <SuggestedToolRow
+          owner={owner}
+          action={suggestion.suggestion.action}
+          toolId={suggestion.suggestion.toolId}
+        />
+      );
 
     default:
       assertNeverAndIgnore(suggestion);
