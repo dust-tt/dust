@@ -283,6 +283,16 @@ describe("getGlobalAgents custom model agents", () => {
     ]);
   });
 
+  it("keeps custom Dust agents invocable rather than retired", () => {
+    expect(
+      [
+        GLOBAL_AGENTS_SID.DUST_NEXT,
+        GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+        GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
+      ].filter(isRetiredGlobalAgent)
+    ).toEqual([]);
+  });
+
   it("hides agents whose model index is missing from the generated config", async () => {
     const auth = await createAuthenticatorWithFlags([
       "dust_internal_global_agents",
