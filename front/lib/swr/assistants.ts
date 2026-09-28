@@ -33,7 +33,7 @@ import type { PostAgentUserFavoriteRequestBody } from "@app/types/api/assistant/
 import type { GetMemberResponseBody } from "@app/types/api/user";
 import type {
   AgentConfigurationType,
-  AgentConfigurationWithLastAuthorsType,
+  AgentLastAuthorsEnrichment,
   AgentsGetViewType,
   DecoratedLightAgentConfigurationType,
   LightAgentConfigurationType,
@@ -253,7 +253,7 @@ export function useAgentConfiguration({
 }) {
   const { fetcher } = useFetcher();
   const agentConfigurationFetcher: Fetcher<{
-    agentConfiguration: AgentConfigurationWithLastAuthorsType;
+    agentConfiguration: AgentConfigurationType & AgentLastAuthorsEnrichment;
   }> = fetcher;
 
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
