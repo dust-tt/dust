@@ -5,6 +5,7 @@ import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorErrorType } from "@connectors/types";
 import { WithRetriesError } from "@connectors/types";
+import { normalizeError } from "@connectors/types/api";
 import type { ConnectorProvider } from "@dust-tt/client";
 import type { Context } from "@temporalio/activity";
 import { ApplicationFailure } from "@temporalio/activity";
@@ -41,11 +42,13 @@ function isWorkspacePlanNoApiAccessError(err: unknown): err is Error {
 // After a relocation the workspace row stays in the source region with the
 // `relocation-done` maintenance flag, and front answers every API call with
 // this 404 until the source is purged.
-function isWorkspaceRelocatedError(err: unknown): err is Error {
+function isWorkspaceRelocatedError(err: unknown): boolean {
+  // Some DustAPI call sites throw the raw API error object, normalizeError
+  // serializes it into the message like WithRetriesError does.
+  const { message } = normalizeError(err);
   return (
-    err instanceof Error &&
-    err.message.includes("workspace_not_found") &&
-    err.message.includes("[relocation-done]")
+    message.includes("workspace_not_found") &&
+    message.includes("[relocation-done]")
   );
 }
 
@@ -111,7 +114,7 @@ function categorizeFinalConnectorError(err: unknown): {
       connectorErrorType: "workspace_relocated",
       logMessage:
         "Stopping connector manager because the workspace was relocated to another region.",
-      pauseReason: "Stopped on workspace relocation",
+      pauseReason: "Stopped on workspace_not_found [relocation-done]",
     };
   }
 

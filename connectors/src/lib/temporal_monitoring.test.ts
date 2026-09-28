@@ -252,7 +252,33 @@ describe("ActivityInboundLogInterceptor", () => {
 
     expect(mocks.syncFailed).toHaveBeenCalledWith(42, "workspace_relocated");
     expect(mocks.pauseAndStop).toHaveBeenCalledWith({
-      reason: "Stopped on workspace relocation",
+      reason: "Stopped on workspace_not_found [relocation-done]",
+    });
+  });
+
+  it("pauses the connector when the relocated error is a raw API error object", async () => {
+    const interceptor = new ActivityInboundLogInterceptor(
+      makeActivityContext(),
+      logger,
+      "webcrawler"
+    );
+    const error = {
+      type: "workspace_not_found",
+      message: "The workspace was not found. [relocation-done]",
+    };
+    const input = {
+      args: [],
+      headers: {},
+    } satisfies ActivityExecuteInput;
+    const next = vi.fn(async () => {
+      throw error;
+    }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+
+    await expect(interceptor.execute(input, next)).rejects.toBe(error);
+
+    expect(mocks.syncFailed).toHaveBeenCalledWith(42, "workspace_relocated");
+    expect(mocks.pauseAndStop).toHaveBeenCalledWith({
+      reason: "Stopped on workspace_not_found [relocation-done]",
     });
   });
 
