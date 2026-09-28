@@ -8,6 +8,7 @@ import { useCommandPalette } from "@app/components/command_palette/CommandPalett
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -31,11 +32,18 @@ interface CommandPaletteProps {
   user: UserType;
 }
 
+const MAX_DISPLAYED_AGENTS = 5;
 const MAX_DISPLAYED_SKILLS = 5;
 
+/**
+ * @cc [owner:aubin-tchoi,label:product;performance] command-palette-agent-search
+ * With `new_manage_agents_page`, fetch at most five agents through search and preserve
+ * server ranking without fetching the full listing. Otherwise retain the legacy listing.
+ */
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const { isOpen, close } = useCommandPalette();
   const { hasFeature } = useFeatureFlags();
+  const isAgentsSearchEnabled = hasFeature("new_manage_agents_page");
   const isSkillsSearchEnabled = hasFeature("skills_search");
   const router = useAppRouter();
 
@@ -52,12 +60,27 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const [skillDetailsId, setSkillDetailsId] = useState<string | null>(null);
 
   // Fetch agents and skills only when the palette is open.
-  const { agentConfigurations, isAgentConfigurationsLoading } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "list",
-      disabled: !isOpen,
-    });
+  const {
+    agentConfigurations,
+    isAgentConfigurationsLoading: isListedAgentsLoading,
+  } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+    disabled: !isOpen || isAgentsSearchEnabled,
+  });
+  const {
+    agents: searchAgents,
+    hasMore: hasMoreSearchAgents,
+    isAgentsLoading: isSearchAgentsLoading,
+  } = useSearchAgents({
+    owner,
+    searchTerm: searchQuery.trim(),
+    limit: MAX_DISPLAYED_AGENTS,
+    disabled: !isOpen || !isAgentsSearchEnabled,
+  });
+  const isAgentsLoading = isAgentsSearchEnabled
+    ? isSearchAgentsLoading
+    : isListedAgentsLoading;
 
   const { skills, isSkillsLoading: isListedSkillsLoading } = useSkills({
     owner,
@@ -112,7 +135,6 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   // Cap the number of rendered items to avoid slow DOM rendering on large workspaces.
   // This is a temporary measure until the command palette moves to Sparkle with
   // proper list virtualization (@tanstack/react-virtual).
-  const MAX_DISPLAYED_AGENTS = 5;
   const MAX_DISPLAYED_PODS = 5;
 
   const allFilteredAgents = useMemo(
@@ -150,12 +172,16 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     hasMoreSkills,
   } = useMemo(
     () => ({
-      filteredAgents: allFilteredAgents.slice(0, MAX_DISPLAYED_AGENTS),
+      filteredAgents: isAgentsSearchEnabled
+        ? searchAgents
+        : allFilteredAgents.slice(0, MAX_DISPLAYED_AGENTS),
       filteredPods: allFilteredPods.slice(0, MAX_DISPLAYED_PODS),
       filteredSkills: isSkillsSearchEnabled
         ? searchSkills
         : allFilteredSkills.slice(0, MAX_DISPLAYED_SKILLS),
-      hasMoreAgents: allFilteredAgents.length > MAX_DISPLAYED_AGENTS,
+      hasMoreAgents: isAgentsSearchEnabled
+        ? hasMoreSearchAgents
+        : allFilteredAgents.length > MAX_DISPLAYED_AGENTS,
       hasMorePods: allFilteredPods.length > MAX_DISPLAYED_PODS,
       hasMoreSkills: isSkillsSearchEnabled
         ? hasMoreSearchSkills
@@ -165,6 +191,9 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
       allFilteredAgents,
       allFilteredPods,
       allFilteredSkills,
+      isAgentsSearchEnabled,
+      searchAgents,
+      hasMoreSearchAgents,
       isSkillsSearchEnabled,
       searchSkills,
       hasMoreSearchSkills,
@@ -172,10 +201,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   );
 
   const isLoading =
-    isAgentConfigurationsLoading ||
-    isSkillsLoading ||
-    isSpacesLoading ||
-    isDebouncing;
+    isAgentsLoading || isSkillsLoading || isSpacesLoading || isDebouncing;
 
   // Reset state when dialog opens/closes.
   useEffect(() => {
@@ -282,6 +308,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             />
           ) : selectedItem ? (
             <CommandPaletteActionPhase
+              workspaceId={owner.sId}
               item={selectedItem}
               onAction={handleAction}
               onBack={handleBack}

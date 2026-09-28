@@ -6,6 +6,7 @@ import {
 } from "@app/components/command_palette/CommandPaletteItems";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
+import type { AgentSearchListItemType } from "@app/types/agent_search/agent_search";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   SkillListItemType,
@@ -19,15 +20,19 @@ type CommandPaletteSkill =
   | SkillListItemType
   | SkillWithoutInstructionsAndToolsType;
 
+type CommandPaletteAgent =
+  | LightAgentConfigurationType
+  | AgentSearchListItemType;
+
 export type CommandPaletteItem =
-  | { kind: "agent"; agent: LightAgentConfigurationType }
+  | { kind: "agent"; agent: CommandPaletteAgent }
   | { kind: "pod"; pod: PodType }
   | { kind: "skill"; skill: CommandPaletteSkill };
 
 interface CommandPaletteSearchPhaseProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
-  agents: LightAgentConfigurationType[];
+  agents: CommandPaletteAgent[];
   pods: PodType[];
   skills: CommandPaletteSkill[];
   hasMoreAgents: boolean;
@@ -41,7 +46,7 @@ interface CommandPaletteSearchPhaseProps {
 }
 
 function getFlatItems(
-  agents: LightAgentConfigurationType[],
+  agents: CommandPaletteAgent[],
   pods: PodType[],
   skills: CommandPaletteSkill[]
 ): CommandPaletteItem[] {
