@@ -452,10 +452,9 @@ export async function renameCanonicalFile(
   );
 
   const dest = path.posix.join(path.posix.dirname(scopedPath), newFileName);
-  if (
-    dest !== scopedPath &&
-    (await isDestinationRegistered(auth, dustFs, dest))
-  ) {
+  const isDestRegistered =
+    dest !== scopedPath && (await isDestinationRegistered(auth, dustFs, dest));
+  if (isDestRegistered) {
     return new Err(registeredDestinationError());
   }
 
@@ -504,7 +503,8 @@ export async function moveCanonicalFile(
   // Look up the linked FileResource before the bytes move.
   const linkedFileResource = await fetchLinkedFileResource(auth, dustFs, src);
 
-  if (await isDestinationRegistered(auth, dustFs, dest)) {
+  const isDestRegistered = await isDestinationRegistered(auth, dustFs, dest);
+  if (isDestRegistered) {
     return new Err(registeredDestinationError());
   }
 
