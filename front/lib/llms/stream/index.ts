@@ -1,4 +1,4 @@
-import { buildCustomStreamEndpoints } from "@app/lib/llms/stream/custom_endpoints";
+import { createCustomStreamEndpoint } from "@app/lib/llms/stream/custom_endpoints";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { DustAnthropicClaudeFableFiveDotOneGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_fable_five_dot_one_global_anthropic";
 import { DustAnthropicClaudeFableFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_fable_five_global_anthropic";
@@ -266,7 +266,7 @@ export const DUST_STREAM_ENDPOINTS = {
     DustXaiGrokFourDotSevenGlobalXaiStream,
 } as const satisfies Record<StreamEndpointId, DustStreamEndpointConstructor>;
 
-const CUSTOM_DUST_STREAM_ENDPOINTS = buildCustomStreamEndpoints(CUSTOM_MODELS);
+const CUSTOM_DUST_STREAM_ENDPOINTS = CUSTOM_MODELS.map(createCustomStreamEndpoint);
 
 export function getStreamEndpoints(
   workspaceConfiguration: WorkspaceConfig,

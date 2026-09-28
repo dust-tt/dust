@@ -216,34 +216,22 @@ export function validateCustomModelEndpoint(
   }
 }
 
-export function createCustomStreamEndpoint(
-  customModel: CustomModelType
-): Result<DustStreamEndpointConstructor, string> {
-  const { modelId } = customModel.modelConfig;
-  if (!isModel(modelId)) {
-    return new Err(`model ${modelId} is missing from MODELS`);
-  }
-
-  switch (customModel.endpoint.host) {
-    case ANTHROPIC_HOST:
-      return createCustomAnthropicStreamEndpoint(customModel, modelId);
-    default:
-      return unsupportedHost(customModel.endpoint.host);
-  }
-}
-
 // Throws: the generator already rejects unsupported entries, so a failure here means the
 // generated custom models file is inconsistent.
-export function buildCustomStreamEndpoints(
-  customModels: CustomModelType[]
-): DustStreamEndpointConstructor[] {
-  return customModels.map((customModel) => {
-    const streamEndpoint = createCustomStreamEndpoint(customModel);
-    if (streamEndpoint.isErr()) {
-      throw new Error(
-        `Custom model ${customModel.modelConfig.modelId}: ${streamEndpoint.error}.`
-      );
-    }
-    return streamEndpoint.value;
-  });
+export function createCustomStreamEndpoint(
+  customModel: CustomModelType
+): DustStreamEndpointConstructor {
+  const { modelId } = customModel.modelConfig;
+  if (!isModel(modelId)) {
+    throw new Error(`Custom model ${modelId}: missing from MODELS.`);
+  }
+
+  const streamEndpoint =
+    customModel.endpoint.host === ANTHROPIC_HOST
+      ? createCustomAnthropicStreamEndpoint(customModel, modelId)
+      : unsupportedHost(customModel.endpoint.host);
+  if (streamEndpoint.isErr()) {
+    throw new Error(`Custom model ${modelId}: ${streamEndpoint.error}.`);
+  }
+  return streamEndpoint.value;
 }

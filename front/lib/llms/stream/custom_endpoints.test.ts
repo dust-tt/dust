@@ -1,7 +1,5 @@
 // @vitest-environment node
 
-import assert from "node:assert";
-
 import {
   createCustomStreamEndpoint,
   validateCustomModelEndpoint,
@@ -40,12 +38,10 @@ const WORKSPACE: WorkspaceConfig = {
 // Reuses a known model config: the factory only accepts ids present in `MODELS`, and the
 // committed generated file has no custom ids.
 function createEndpoint(endpoint: CustomModelEndpointType = ENDPOINT) {
-  const streamEndpoint = createCustomStreamEndpoint({
+  return createCustomStreamEndpoint({
     modelConfig: CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG,
     endpoint,
   });
-  assert(streamEndpoint.isOk(), "expected the custom endpoint to be created");
-  return streamEndpoint.value;
 }
 
 describe("createCustomStreamEndpoint on the Anthropic host", () => {
