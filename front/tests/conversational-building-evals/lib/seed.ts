@@ -9,6 +9,7 @@ import type {
   TestCase,
 } from "@app/tests/conversational-building-evals/lib/types";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { runInCommittedTransaction } from "@app/tests/utils/eval_workspace";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -34,7 +35,7 @@ export function getSeededDocuments(dataSourceIds: string[]): CoreAPIDocument[] {
 /**
  * Creates the scenario's workspace, an admin member, and the seeded members, tools, knowledge
  * and skills, then returns that member's authenticator. One workspace per scenario keeps the
- * listing tools isolated when scenarios run concurrently. The `suggest_*` tools need an
+ * listing tools isolated when scenarios run concurrently. The `suggest` tool needs an
  * interactive user with write access, which is why the skills are created by (and the run
  * executes as) a real member rather than the internal admin.
  */
@@ -152,6 +153,12 @@ export async function seedScenario(
     // Pick up the editor group memberships created alongside the skills.
     await auth.refresh();
 
+    // Tools run in an agent loop: `suggest` needs the conversation it is called from.
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "dust",
+      messagesCreatedAt: [],
+    });
+
     return {
       auth,
       skillIdsByKey,
@@ -159,6 +166,7 @@ export async function seedScenario(
       toolIdsByKey,
       knowledgeByKey,
       agentIdsByKey,
+      conversation,
     };
   });
 }
