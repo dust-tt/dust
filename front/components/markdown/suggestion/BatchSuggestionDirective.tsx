@@ -17,19 +17,20 @@ import {
   ReviewedSuggestionCard,
 } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
-  usePatchSuggestionBatch,
-  useRevalidateBatchTargets,
+  useReviewSuggestionBatches,
   useSuggestionBatch,
 } from "@app/hooks/useSuggestionBatches";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { SuggestionBatchReviewState } from "@app/types/api/assistant/suggestion_batches";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type { BatchSuggestionType } from "@app/types/suggestions/batch_suggestion";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
 import partition from "lodash/partition";
+import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 
 function toBatchProperties(attributes: Record<string, string>) {
@@ -160,46 +161,33 @@ function SkillSuggestionsDiff({
   );
 }
 
-interface BatchSuggestionProps {
-  owner: LightWorkspaceType;
-  batchId: string;
+export function getBatchSuggestionTitle(batch: BatchSuggestionType): string {
+  return batch.title ?? "Suggested changes";
 }
 
-function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
-  const { batch, isBatchLoading, mutateBatch } = useSuggestionBatch({
-    batchId,
-    workspaceId: owner.sId,
-  });
-  const { patchBatch } = usePatchSuggestionBatch({ workspaceId: owner.sId });
-  const revalidateBatchTargets = useRevalidateBatchTargets({
-    workspaceId: owner.sId,
-  });
-  const [pendingState, setPendingState] =
-    useState<SuggestionBatchReviewState | null>(null);
+interface PendingBatchSuggestionCardProps {
+  owner: LightWorkspaceType;
+  batch: BatchSuggestionType;
+  onAccept: () => void;
+  onReject: () => void;
+  disabled?: boolean;
+  isAccepting?: boolean;
+  isDeclining?: boolean;
+  titleAside?: ReactNode;
+  secondaryAction?: ReactNode;
+}
 
-  const review = async (state: SuggestionBatchReviewState) => {
-    setPendingState(state);
-    const result = await patchBatch(batchId, state);
-    if (result) {
-      await mutateBatch({ batches: [result.batch] }, { revalidate: false });
-      if (state === "approved") {
-        revalidateBatchTargets(result.batch);
-      }
-    } else {
-      // The batch may have been reviewed from another flow: resync with the server.
-      await mutateBatch();
-    }
-    setPendingState(null);
-  };
-
-  if (isBatchLoading) {
-    return <LoadingBlock className="h-24 w-full" />;
-  }
-
-  if (!batch) {
-    return null;
-  }
-
+export function PendingBatchSuggestionCard({
+  owner,
+  batch,
+  onAccept,
+  onReject,
+  disabled = false,
+  isAccepting = false,
+  isDeclining = false,
+  titleAside,
+  secondaryAction,
+}: PendingBatchSuggestionCardProps) {
   const agentSuggestionsByAgentId = groupBy(
     batch.agentSuggestions,
     (s) => s.agentId
@@ -209,22 +197,10 @@ function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
     (s) => s.skillConfigurationId
   );
 
-  const title = batch.title ?? "Suggested changes";
-
-  // A reviewed batch is shown like a reviewed suggestion: its state chip and title only.
-  if (batch.state !== "pending") {
-    return (
-      <ReviewedSuggestionCard
-        state={batch.state}
-        title={title}
-        updatedAt={batch.updatedAt}
-      />
-    );
-  }
-
   return (
     <ConversationalSuggestionCard
-      title={title}
+      title={getBatchSuggestionTitle(batch)}
+      titleAside={titleAside}
       analysis={batch.analysis}
       collapsibleContent={
         <div className="flex flex-col gap-4">
@@ -250,6 +226,65 @@ function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
           )}
         </div>
       }
+      onAccept={onAccept}
+      onReject={onReject}
+      secondaryAction={secondaryAction}
+      disabled={disabled}
+      isAccepting={isAccepting}
+      isDeclining={isDeclining}
+    />
+  );
+}
+
+interface BatchSuggestionProps {
+  owner: LightWorkspaceType;
+  batchId: string;
+}
+
+function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
+  const { batch, isBatchLoading, mutateBatch } = useSuggestionBatch({
+    batchId,
+    workspaceId: owner.sId,
+  });
+  const reviewBatches = useReviewSuggestionBatches({
+    workspaceId: owner.sId,
+    mutateBatches: mutateBatch,
+  });
+  const [pendingState, setPendingState] =
+    useState<SuggestionBatchReviewState | null>(null);
+
+  const review = async (state: SuggestionBatchReviewState) => {
+    setPendingState(state);
+    try {
+      await reviewBatches([batchId], state);
+    } finally {
+      setPendingState(null);
+    }
+  };
+
+  if (isBatchLoading) {
+    return <LoadingBlock className="h-24 w-full" />;
+  }
+
+  if (!batch) {
+    return null;
+  }
+
+  // A reviewed batch is shown like a reviewed suggestion: its state chip and title only.
+  if (batch.state !== "pending") {
+    return (
+      <ReviewedSuggestionCard
+        state={batch.state}
+        title={getBatchSuggestionTitle(batch)}
+        updatedAt={batch.updatedAt}
+      />
+    );
+  }
+
+  return (
+    <PendingBatchSuggestionCard
+      owner={owner}
+      batch={batch}
       onAccept={() => void review("approved")}
       onReject={() => void review("rejected")}
       disabled={pendingState !== null}

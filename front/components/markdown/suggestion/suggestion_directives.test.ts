@@ -4,73 +4,79 @@ import {
 } from "@app/components/markdown/suggestion/suggestion_directives";
 import { describe, expect, it } from "vitest";
 
+const batchDirective = (sId: string) => `:batch_edit[]{sId=${sId}}`;
 const agentDirective = (sId: string) =>
   `:agent_suggestion[]{sId=${sId} kind=name agentId=agent_1}`;
-const skillDirective = (sId: string) =>
-  `:skill_suggestion[]{sId=${sId} kind=edit skillId=skill_1}`;
 
 describe("extractSuggestionPile", () => {
-  it("keeps a single suggestion inline", () => {
-    const content = `Here is my change:\n\n${agentDirective("s1")}`;
+  it("keeps a single batch inline", () => {
+    const content = `Here is my change:\n\n${batchDirective("b1")}`;
 
     expect(extractSuggestionPile(content)).toEqual({
       content,
-      pileDirectives: [],
+      pileBatchIds: [],
       recap: null,
     });
   });
 
-  it("moves two or more suggestions into the pile, in order", () => {
+  it("moves two or more batches into the pile, in order", () => {
     const content = [
       "First:",
-      skillDirective("s1"),
+      batchDirective("b1"),
       "Then:",
-      agentDirective("s2"),
+      batchDirective("b2"),
     ].join("\n\n");
 
     const result = extractSuggestionPile(content);
 
-    expect(result.pileDirectives).toEqual([
-      { type: "skill", sId: "s1", skillId: "skill_1" },
-      { type: "agent", sId: "s2", kind: "name", agentId: "agent_1" },
-    ]);
-    expect(result.content).not.toContain("_suggestion");
+    expect(result.pileBatchIds).toEqual(["b1", "b2"]);
+    expect(result.content).not.toContain("batch_edit");
     expect(result.content).toContain("First:");
     expect(result.content).toContain("Then:");
   });
 
+  it("counts a repeated batch once", () => {
+    const result = extractSuggestionPile(
+      "Done.\n\n:batch_edit[]{sId=b1}\n\n:batch_edit[]{sId=b1}\n"
+    );
+    expect(result.pileBatchIds).toEqual([]);
+    expect(result.content).toContain(":batch_edit[]{sId=b1}");
+
+    const piled = extractSuggestionPile(
+      ":batch_edit[]{sId=b1}\n:batch_edit[]{sId=b2}\n:batch_edit[]{sId=b1}\n"
+    );
+    expect(piled.pileBatchIds).toEqual(["b1", "b2"]);
+    expect(piled.content).not.toContain("batch_edit");
+  });
+
   it("handles directives glued to the previous word", () => {
-    const content = `issues:${agentDirective("s1")} and ${agentDirective("s2")}`;
+    const content = `issues:${batchDirective("b1")} and ${batchDirective("b2")}`;
 
     const result = extractSuggestionPile(content);
 
-    expect(result.pileDirectives.map((d) => d.sId)).toEqual(["s1", "s2"]);
+    expect(result.pileBatchIds).toEqual(["b1", "b2"]);
     expect(result.content).toBe("issues and ");
   });
 
-  it("leaves directives missing an identifier untouched", () => {
-    const sidekickDirective = ":agent_suggestion[]{sId=s3 kind=name}";
+  it("leaves directives missing a batch id untouched", () => {
     const content = [
-      agentDirective("s1"),
-      agentDirective("s2"),
-      sidekickDirective,
+      batchDirective("b1"),
+      batchDirective("b2"),
+      ":batch_edit[]{}",
     ].join("\n\n");
 
     const result = extractSuggestionPile(content);
 
-    expect(result.pileDirectives.map((d) => d.sId)).toEqual(["s1", "s2"]);
-    expect(result.content).toContain(sidekickDirective);
+    expect(result.pileBatchIds).toEqual(["b1", "b2"]);
+    expect(result.content).toContain(":batch_edit[]{}");
   });
 
-  it("does not pile kinds that have no conversational card", () => {
-    const content = [
-      agentDirective("s1"),
-      ":agent_suggestion[]{sId=s2 kind=tools agentId=agent_1}",
-    ].join("\n\n");
+  it("does not pile individual suggestions", () => {
+    const content = [agentDirective("s1"), agentDirective("s2")].join("\n\n");
 
     expect(extractSuggestionPile(content)).toEqual({
       content,
-      pileDirectives: [],
+      pileBatchIds: [],
       recap: null,
     });
   });
@@ -78,8 +84,8 @@ describe("extractSuggestionPile", () => {
   it("returns the first recap with the pile and strips every recap", () => {
     const content = [
       ":suggestion_recap[Rename the skill and sharpen its description.]",
-      agentDirective("s1"),
-      skillDirective("s2"),
+      batchDirective("b1"),
+      batchDirective("b2"),
       ":suggestion_recap[Ignored second recap.]",
     ].join("\n\n");
 
@@ -92,8 +98,8 @@ describe("extractSuggestionPile", () => {
   it("caps a long recap", () => {
     const content = [
       `:suggestion_recap[${"a".repeat(200)}]`,
-      agentDirective("s1"),
-      agentDirective("s2"),
+      batchDirective("b1"),
+      batchDirective("b2"),
     ].join("\n\n");
 
     const { recap } = extractSuggestionPile(content);
@@ -103,40 +109,36 @@ describe("extractSuggestionPile", () => {
   });
 
   it("strips a recap without returning it when there is no pile", () => {
-    const content = `:suggestion_recap[One change.]\n\n${agentDirective("s1")}`;
+    const content = `:suggestion_recap[One change.]\n\n${batchDirective("b1")}`;
 
     expect(extractSuggestionPile(content)).toEqual({
-      content: `\n\n${agentDirective("s1")}`,
-      pileDirectives: [],
+      content: `\n\n${batchDirective("b1")}`,
+      pileBatchIds: [],
       recap: null,
     });
   });
 
   it("reads quoted attribute values", () => {
-    const content = [
-      ':agent_suggestion[]{sId="s1" kind="name" agentId="agent_1"}',
-      ":skill_suggestion[]{sId='s2' skillId='skill_1'}",
-    ].join("\n\n");
+    const content = [':batch_edit[]{sId="b1"}', ":batch_edit[]{sId='b2'}"].join(
+      "\n\n"
+    );
 
     const result = extractSuggestionPile(content);
 
-    expect(result.pileDirectives).toEqual([
-      { type: "agent", sId: "s1", kind: "name", agentId: "agent_1" },
-      { type: "skill", sId: "s2", skillId: "skill_1" },
-    ]);
-    expect(result.content).not.toContain("_suggestion");
+    expect(result.pileBatchIds).toEqual(["b1", "b2"]);
+    expect(result.content).not.toContain("batch_edit");
   });
 
   it("ignores directives inside code spans and fences", () => {
     const content = [
-      agentDirective("s1"),
-      `Syntax: \`${agentDirective("s2")}\``,
-      `\`\`\`\n${agentDirective("s3")}\n\`\`\``,
+      batchDirective("b1"),
+      `Syntax: \`${batchDirective("b2")}\``,
+      `\`\`\`\n${batchDirective("b3")}\n\`\`\``,
     ].join("\n\n");
 
     expect(extractSuggestionPile(content)).toEqual({
       content,
-      pileDirectives: [],
+      pileBatchIds: [],
       recap: null,
     });
   });
