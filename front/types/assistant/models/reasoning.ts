@@ -16,7 +16,7 @@ export const REASONING_EFFORT_LABELS: Record<ReasoningEffort, string> = {
   low: "Low",
   medium: "Medium",
   high: "High",
-  xhigh: "XHigh",
+  xhigh: "xHigh",
   maximal: "Max",
 };
 
