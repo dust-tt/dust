@@ -42,7 +42,10 @@ function NewInstructionsBlock({ instructionsHtml }: NewInstructionsBlockProps) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">Instructions</span>
-      <DiffBlock className="[&_.rounded-2xl.border]:border-0">
+      <DiffBlock
+        className="[&_.rounded-2xl.border]:border-0"
+        collapsedLines={Number.POSITIVE_INFINITY}
+      >
         {editor && <EditorContent editor={editor} />}
       </DiffBlock>
     </div>
@@ -101,11 +104,13 @@ export function AgentSuggestionDetails({
       return (
         <div className="flex flex-col gap-3">
           <SuggestionFieldEditSection
+            isCollapsible={false}
             label="Name"
             currentValue=""
             newValue={name}
           />
           <SuggestionFieldEditSection
+            isCollapsible={false}
             label="Description"
             currentValue=""
             newValue={description}
@@ -127,6 +132,7 @@ export function AgentSuggestionDetails({
     case "description":
       return (
         <SuggestionFieldEditSection
+          isCollapsible={false}
           label="Description"
           currentValue={agentConfiguration?.description ?? ""}
           newValue={suggestion.suggestion.description}
@@ -138,12 +144,14 @@ export function AgentSuggestionDetails({
         <div className="flex flex-col gap-2">
           <span className="text-sm text-muted-foreground">Instructions</span>
           <SuggestionInstructionsDiffBlock
+            isCollapsible={false}
             instructionsHtml={agentConfiguration?.instructionsHtml ?? ""}
             targetBlockId={suggestion.suggestion.targetBlockId}
             content={suggestion.suggestion.content}
             extensions={[
               ...buildAgentInstructionsReadOnlyExtensions(),
               InstructionSuggestionExtension.configure({
+                hideUnchangedBlocks: true,
                 showBlockHighlight: false,
               }),
             ]}
@@ -155,6 +163,7 @@ export function AgentSuggestionDetails({
       const { modelId, reasoningEffort } = suggestion.suggestion;
       return (
         <SuggestionFieldEditSection
+          isCollapsible={false}
           label="Model"
           currentValue={
             agentConfiguration
@@ -172,6 +181,7 @@ export function AgentSuggestionDetails({
     case "name":
       return (
         <SuggestionFieldEditSection
+          isCollapsible={false}
           label="Name"
           currentValue={agentConfiguration?.name ?? ""}
           newValue={suggestion.suggestion.name}
@@ -181,6 +191,7 @@ export function AgentSuggestionDetails({
     case "scope":
       return (
         <SuggestionFieldEditSection
+          isCollapsible={false}
           label="Visibility"
           currentValue={
             agentConfiguration

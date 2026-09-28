@@ -61,6 +61,8 @@ const CLASSES = {
   addDimmed:
     "suggestion-addition rounded bg-highlight-50 text-muted-foreground cursor-default",
   blockHighlightDimmed: "suggestion-highlight rounded bg-muted cursor-default",
+  hidden: "hidden",
+  unchangedSeparator: "my-2 border-t border-dashed border-border",
 };
 
 // Addition widgets are built by serializing the new nodes through `toDOM`
@@ -204,6 +206,7 @@ function inlineContentForInsertion(slice: Slice): Fragment {
 }
 
 // Create inline diff decorations for a single block (deletion + addition widgets).
+// Returns whether the block has any change.
 function buildBlockDecorations({
   applyBlockHighlight,
   blockPos,
@@ -222,7 +225,7 @@ function buildBlockDecorations({
   oldNode: PMNode;
   schema: Schema;
   suggestionId: string;
-}): void {
+}): boolean {
   const changes = diffBlockContent(oldNode, newNode, schema);
   const contentStart = blockPos + 1;
 
@@ -301,6 +304,8 @@ function buildBlockDecorations({
       );
     }
   }
+
+  return changes.length > 0;
 }
 
 function addBlockAdditionWidget(
@@ -345,9 +350,12 @@ function addBlockAdditionWidget(
 // Create per-child-block decorations for root-level targets. Matches old and
 // new children by position and diffs each pair for word-level inline diffs.
 // Extra new blocks are shown as full additions, extra old blocks as deletions.
+// When hiding unchanged blocks, a separator marks each hidden run that sits
+// between two changes.
 function buildRootDecorations({
   applyBlockHighlight,
   decorations,
+  hideUnchangedBlocks,
   isHighlighted,
   newRoot,
   oldRoot,
@@ -357,6 +365,7 @@ function buildRootDecorations({
 }: {
   applyBlockHighlight: boolean;
   decorations: Decoration[];
+  hideUnchangedBlocks: boolean;
   isHighlighted: boolean;
   newRoot: PMNode;
   oldRoot: PMNode;
@@ -381,6 +390,8 @@ function buildRootDecorations({
 
   const maxLen = Math.max(oldChildren.length, newChildren.length);
   let oldOffset = 0;
+  let hasSeenChange = false;
+  let hiddenRunStart: number | null = null;
 
   for (let i = 0; i < maxLen; i++) {
     const oldChild = oldChildren[i];
@@ -390,7 +401,7 @@ function buildRootDecorations({
 
     if (oldChild && newChild) {
       if (oldChild.content.size > 0) {
-        buildBlockDecorations({
+        const hasChanges = buildBlockDecorations({
           applyBlockHighlight: false, // Root handles the highlight as a single decoration.
           blockPos: childPos,
           newNode: newChild,
@@ -400,6 +411,18 @@ function buildRootDecorations({
           isHighlighted,
           decorations,
         });
+        if (!hasChanges) {
+          if (hideUnchangedBlocks) {
+            decorations.push(
+              Decoration.node(childPos, childPos + oldChild.nodeSize, {
+                class: CLASSES.hidden,
+              })
+            );
+            hiddenRunStart ??= childPos;
+          }
+          oldOffset += oldChild.nodeSize;
+          continue;
+        }
       } else {
         // Old block is empty (e.g. the default placeholder paragraph in a new editor).
         // Skip pairing — pairing would place the addition widget *after* the empty block,
@@ -441,14 +464,37 @@ function buildRootDecorations({
         suggestionId
       );
     }
+
+    if (hiddenRunStart !== null && hasSeenChange) {
+      decorations.push(
+        Decoration.widget(
+          hiddenRunStart,
+          () => {
+            const separator = document.createElement("div");
+            separator.className = CLASSES.unchangedSeparator;
+            separator.contentEditable = "false";
+            return separator;
+          },
+          { side: -1 }
+        )
+      );
+    }
+    hiddenRunStart = null;
+    hasSeenChange = true;
   }
+}
+
+interface SuggestionDisplayOptions {
+  // Hides unchanged blocks of a root-level target, to show only its edits.
+  hideUnchangedBlocks: boolean;
+  showBlockHighlight: boolean;
 }
 
 function buildDecorations(
   state: EditorState,
   suggestions: Map<string, StoredSuggestion>,
   highlightedId: string | null,
-  showBlockHighlight: boolean
+  { hideUnchangedBlocks, showBlockHighlight }: SuggestionDisplayOptions
 ): DecorationSet {
   if (suggestions.size === 0) {
     return DecorationSet.empty;
@@ -490,6 +536,7 @@ function buildDecorations(
       ) {
         buildRootDecorations({
           applyBlockHighlight,
+          hideUnchangedBlocks,
           oldRoot: blockNode,
           newRoot: newNodes[0],
           rootPos: blockPos,
@@ -547,7 +594,7 @@ function stepModifiesRange(
 
 function createPlugin(
   getHighlightedId: () => string | null,
-  showBlockHighlight: boolean
+  displayOptions: SuggestionDisplayOptions
 ) {
   return new Plugin<PluginState>({
     key: pluginKey,
@@ -600,7 +647,7 @@ function createPlugin(
               newState,
               suggestions,
               effectiveHighlightedId,
-              showBlockHighlight
+              displayOptions
             ),
           };
         }
@@ -721,12 +768,14 @@ export function getSuggestionPosition(
 }
 
 export const InstructionSuggestionExtension = Extension.create<{
+  hideUnchangedBlocks: boolean;
   showBlockHighlight: boolean;
 }>({
   name: "instructionSuggestion",
 
   addOptions() {
     return {
+      hideUnchangedBlocks: false,
       showBlockHighlight: true,
     };
   },
@@ -739,10 +788,7 @@ export const InstructionSuggestionExtension = Extension.create<{
 
   addProseMirrorPlugins() {
     return [
-      createPlugin(
-        () => this.storage.highlightedSuggestionId,
-        this.options.showBlockHighlight
-      ),
+      createPlugin(() => this.storage.highlightedSuggestionId, this.options),
     ];
   },
 
