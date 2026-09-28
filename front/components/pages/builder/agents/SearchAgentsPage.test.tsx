@@ -41,14 +41,19 @@ beforeEach(() => {
   }
 });
 
+const { routerQuery, replace } = vi.hoisted(() => ({
+  routerQuery: { current: {} as Record<string, string | string[] | undefined> },
+  replace: vi.fn(),
+}));
+
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({
     isReady: true,
     pathname: "/w/workspace/builder/agents",
     asPath: "/w/workspace/builder/agents",
-    query: {},
+    query: routerQuery.current,
     push: vi.fn(),
-    replace: vi.fn(),
+    replace,
     events: { on: vi.fn(), off: vi.fn() },
   }),
 }));
@@ -215,6 +220,71 @@ function lastSearchBody(fetcherWithBody: ReturnType<typeof vi.fn>) {
 }
 
 describe("search-backed Manage Agents", () => {
+  afterEach(() => {
+    routerQuery.current = {};
+    replace.mockClear();
+  });
+
+  it("restores a shared search URL and resolves selected editor names", async () => {
+    const { editor, fetcherWithBody, mount } = await setup();
+    routerQuery.current = {
+      q: "report",
+      tab: "archived",
+      access: "hidden",
+      editor: editor.sId,
+      model: "claude-sonnet-5",
+      tag: "saved-tag",
+      space: "saved-space",
+    };
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    expect(screen.getByRole("textbox", { name: "Search agents" })).toHaveValue(
+      "report"
+    );
+    expect(screen.getByRole("tab", { name: "Archived" })).toHaveAttribute(
+      "data-state",
+      "active"
+    );
+    await screen.findByText("Me");
+    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+      query: "report",
+      status: ["archived"],
+      scope: ["hidden"],
+      editorIds: [editor.sId],
+      modelIds: ["claude-sonnet-5"],
+      tagIds: ["saved-tag"],
+      spaceIds: ["saved-space"],
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    expect(replace).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        query: expect.objectContaining({
+          q: "report",
+          tab: "archived",
+          access: undefined,
+          editor: undefined,
+          model: undefined,
+          tag: undefined,
+          space: undefined,
+        }),
+      }),
+      undefined,
+      { shallow: true }
+    );
+  });
+
+  it("does not grant non-admins unrestricted search through the URL", async () => {
+    const { fetcherWithBody, mount } = await setup({ role: "user" });
+    routerQuery.current = { hidden: "1" };
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+      permissionFiltering: "strict",
+    });
+    expect(
+      screen.queryByRole("checkbox", { name: "Hidden agents" })
+    ).not.toBeInTheDocument();
+  });
   it("keeps the legacy page when the flag is off", async () => {
     const { fetcherWithBody, fetcher, mount } = await setup({
       pageEnabled: false,
@@ -309,7 +379,7 @@ describe("search-backed Manage Agents", () => {
 
   it("lets admins show hidden agents with unrestricted search", async () => {
     const { fetcherWithBody, mount } = await setup();
-    mount();
+    const page = mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
     await userEvent.click(screen.getByRole("button", { name: "Filters" }));
@@ -326,6 +396,16 @@ describe("search-backed Manage Agents", () => {
         permissionFiltering: "unrestricted",
       })
     );
+    expect(replace).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        query: expect.objectContaining({ hidden: "1" }),
+      }),
+      undefined,
+      { shallow: true }
+    );
+    page.unmount();
+    routerQuery.current = { hidden: "1" };
+    mount();
 
     expect(screen.getByText("Hidden agents")).toBeInTheDocument();
     expect(

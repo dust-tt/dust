@@ -3,9 +3,10 @@ import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdo
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterPanel";
 import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
-import type { AgentFilter } from "@app/components/assistant/manager/agentFilter";
 import {
   AGENT_FILTER_CATEGORIES,
+  agentFilterQuery,
+  readAgentFilter,
   toAgentSearchFilters,
 } from "@app/components/assistant/manager/agentFilter";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
@@ -13,12 +14,16 @@ import {
   clearFilterCategory,
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
-import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
+import {
+  resolveSearchFilter,
+  SEARCH_FILTER_CATEGORY_SINGULAR_LABEL,
+} from "@app/components/shared/filter_panel/searchFilter";
 import {
   useSetContentWidth,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
+import { useSearchPageState } from "@app/hooks/useSearchPageState";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useTags } from "@app/lib/swr/tags";
@@ -250,10 +255,21 @@ export function SearchAgentsPage() {
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
-  const [showHiddenAgents, setShowHiddenAgents] = useState(false);
-  const [filter, setFilter] = useState<AgentFilter>({});
+  const {
+    searchTerm,
+    setSearchTerm,
+    selectedTab,
+    setSelectedTab,
+    showHiddenAgents,
+    setShowHiddenAgents,
+    filter: savedFilter,
+    setFilter,
+  } = useSearchPageState({
+    tabs: SEARCH_TABS,
+    readFilter: readAgentFilter,
+    filterQuery: agentFilterQuery,
+    withHiddenAgents: true,
+  });
   // Default agents all share the global scope, so Access does not apply to them.
   const filterCategories = AGENT_FILTER_CATEGORIES.filter(
     (category) => selectedTab !== "default" || category !== "access"
@@ -272,6 +288,24 @@ export function SearchAgentsPage() {
     isAdmin && ((tabId === "all" && showHiddenAgents) || tabId === "archived")
       ? "unrestricted"
       : "strict";
+
+  const { facets, isAgentsLoading: isFilterLoading } = useSearchAgents({
+    owner,
+    searchTerm: "",
+    limit: 0,
+    filters: toAgentSearchFilters(savedFilter, activeTab.filters),
+    permissionFiltering: getPermissionFiltering(activeTab.id),
+    facets: ["editors", "tags", "spaces"],
+    disabled: ![savedFilter.editor, savedFilter.tag, savedFilter.space].some(
+      (options) => options?.some(({ id, name }) => id === name)
+    ),
+  });
+  const filter = resolveSearchFilter(
+    savedFilter,
+    AGENT_FILTER_CATEGORIES,
+    facets,
+    user.sId
+  );
 
   return (
     <>
@@ -301,6 +335,7 @@ export function SearchAgentsPage() {
             placeholder="Search agents by name"
             value={searchTerm}
             onChange={setSearchTerm}
+            isLoading={isFilterLoading}
             className="w-full"
           />
         </div>

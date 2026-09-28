@@ -1,5 +1,10 @@
 import type { SearchFilter } from "@app/components/shared/filter_panel/searchFilter";
-import { getSearchFilterIds } from "@app/components/shared/filter_panel/searchFilter";
+import {
+  getSearchFilterIds,
+  readSearchFilter,
+  searchFilterQuery,
+} from "@app/components/shared/filter_panel/searchFilter";
+import type { SearchPageQuery } from "@app/hooks/useSearchPageState";
 import type {
   AgentSearchFacet,
   AgentSearchFilters,
@@ -17,6 +22,14 @@ export const AGENT_FILTER_CATEGORIES = [
 export type AgentFilterCategory = (typeof AGENT_FILTER_CATEGORIES)[number];
 
 export type AgentFilter = SearchFilter<AgentFilterCategory>;
+
+export function readAgentFilter(query: SearchPageQuery): AgentFilter {
+  return readSearchFilter(query, AGENT_FILTER_CATEGORIES);
+}
+
+export function agentFilterQuery(filter: AgentFilter): SearchPageQuery {
+  return searchFilterQuery(filter, AGENT_FILTER_CATEGORIES);
+}
 
 // Access options are static, so it has no facet.
 export const AGENT_FILTER_CATEGORY_FACET: Partial<
