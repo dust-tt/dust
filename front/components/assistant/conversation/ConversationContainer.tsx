@@ -354,8 +354,9 @@ export function ConversationContainerVirtuoso({
     goToDiscover,
     goToHome,
     isOpeningDiscover,
+    isScrollLocked,
     scrollerRef,
-  } = useDiscoverScroll();
+  } = useDiscoverScroll({ isLockEnabled: isDiscoveryHomepage && !isMobile });
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
@@ -535,7 +536,13 @@ export function ConversationContainerVirtuoso({
   ) : isMobile ? (
     <div className="px-4">{body}</div>
   ) : (
-    <ScrollArea className="px-4 md:px-8" viewportRef={scrollerRef}>
+    <ScrollArea
+      className="px-4 md:px-8"
+      hideScrollBar={isScrollLocked}
+      // biome-ignore lint/plugin/noCssImportant: Radix's inline overflow must not re-enable scrolling on Home.
+      viewportClassName={isScrollLocked ? "overflow-y-hidden!" : undefined}
+      viewportRef={scrollerRef}
+    >
       {body}
     </ScrollArea>
   );
