@@ -6,9 +6,11 @@ import { SuggestedSkillName } from "@app/components/skill_builder/SuggestedSkill
 import { SuggestedSkillUserFacingDescription } from "@app/components/skill_builder/SuggestedSkillUserFacingDescription";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
+import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillSuggestionState,
   SkillSuggestionType,
@@ -207,8 +209,42 @@ function SuggestionDetails({
         />
       );
 
-    case "create":
-      return null;
+    case "create": {
+      const {
+        name,
+        userFacingDescription,
+        agentFacingDescription,
+        instructions,
+      } = suggestion.suggestion;
+      return (
+        <div className="flex flex-col gap-3">
+          <SuggestionFieldEditSection
+            label="Name"
+            currentValue=""
+            newValue={name}
+          />
+          <SuggestionFieldEditSection
+            label="Description"
+            currentValue=""
+            newValue={userFacingDescription}
+          />
+          <SuggestionFieldEditSection
+            label={SKILL_INVOCATION_LABEL}
+            currentValue=""
+            newValue={agentFacingDescription}
+          />
+          <div className="flex flex-col gap-2">
+            <span className="text-sm text-muted-foreground">Instructions</span>
+            <SuggestionInstructionsDiffBlock
+              instructionsHtml=""
+              targetBlockId={INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}
+              content={instructions}
+              extensions={buildSkillInstructionsExtensions(true)}
+            />
+          </div>
+        </div>
+      );
+    }
 
     case "delete":
       return (
