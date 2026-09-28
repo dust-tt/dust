@@ -32,7 +32,7 @@ type UserMentionSuggestionsResponseBody = {
 /**
  * @cc [owner:aubin-tchoi,label:react;product] mention-agent-search-order
  * Agent suggestions MUST use the agent search endpoint, including for an empty query,
- * and retain its order when interleaved with user mentions.
+ * request alphabetical name order, and retain it when interleaved with user mentions.
  */
 /**
  * @cc [owner:aubin-tchoi,label:react;product] disabled-mention-types
@@ -70,6 +70,8 @@ export function useMentionSuggestions({
     owner,
     searchTerm: query,
     limit: SUGGESTION_DISPLAY_LIMIT,
+    sortBy: "name",
+    sortOrder: "asc",
     permissionFiltering: "strict",
     disabled: disabled || !select.agents,
   });

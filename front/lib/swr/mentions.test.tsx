@@ -13,7 +13,7 @@ const searchResponse = {
   agents: [
     {
       sId: "agent_2",
-      name: "Zebra",
+      name: "Alpha Sales",
       description: "Sales reporting",
       pictureUrl: "/agent_2.png",
     },
@@ -70,7 +70,7 @@ describe("useMentionSuggestions", () => {
   it.each([
     "",
     "sales",
-  ])("uses agent search for query %j and preserves ranking alongside participants", async (query) => {
+  ])("requests alphabetical agents for query %j alongside participants", async (query) => {
     const { fetcher, fetcherWithBody, wrapper } = setup();
     const { result, rerender } = renderHook(
       () =>
@@ -91,6 +91,8 @@ describe("useMentionSuggestions", () => {
       expect.objectContaining({
         query,
         limit: 20,
+        sortBy: "name",
+        sortOrder: "asc",
         permissionFiltering: "strict",
       }),
       "POST",
@@ -106,7 +108,7 @@ describe("useMentionSuggestions", () => {
     expect(result.current.suggestions[1]).toEqual({
       id: "agent_2",
       type: "agent",
-      label: "Zebra",
+      label: "Alpha Sales",
       description: "Sales reporting",
       pictureUrl: "/agent_2.png",
     });
