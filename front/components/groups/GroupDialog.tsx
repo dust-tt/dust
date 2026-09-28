@@ -102,92 +102,6 @@ interface GroupFormProps {
   onClose: () => void;
 }
 
-interface SaveExistingGroupProps {
-  name: string;
-  memberIds: string[];
-  managerIds: string[];
-  hasGroupChanges: boolean;
-  hasManagerChanges: boolean;
-  confirmAppointment: () => Promise<boolean>;
-  doUpdateGroup: ReturnType<typeof useUpdateGroup>["doUpdateGroup"];
-}
-
-/**
- * @cc [owner:philipperolet,label:product;security] manager-save-order
- * Manager assignments MUST only be updated after appointment review succeeds and any
- * group details update succeeds. A failed step MUST stop later updates.
- */
-async function saveExistingGroup({
-  name,
-  memberIds,
-  managerIds,
-  hasGroupChanges,
-  hasManagerChanges,
-  confirmAppointment,
-  doUpdateGroup,
-}: SaveExistingGroupProps): Promise<boolean> {
-  if (!(await confirmAppointment())) {
-    return false;
-  }
-  if (hasGroupChanges && !(await doUpdateGroup({ name, memberIds }))) {
-    return false;
-  }
-  if (hasManagerChanges && !(await doUpdateGroup({ managerIds }))) {
-    return false;
-  }
-  return true;
-}
-
-interface GroupFormStatusProps {
-  groupId: string | null;
-  name: string;
-  initialName: string;
-  selectedMemberIds: Set<string>;
-  initialMembers: SearchMemberType[];
-  selectedManagers: SearchMemberType[];
-  initialManagers: SearchMemberType[];
-  canManageManagers: boolean;
-  readOnly: boolean;
-  isSubmitting: boolean;
-  isReviewBlocked: boolean;
-}
-
-function getGroupFormStatus({
-  groupId,
-  name,
-  initialName,
-  selectedMemberIds,
-  initialMembers,
-  selectedManagers,
-  initialManagers,
-  canManageManagers,
-  readOnly,
-  isSubmitting,
-  isReviewBlocked,
-}: GroupFormStatusProps) {
-  const initialMemberIds = new Set(initialMembers.map((member) => member.sId));
-  const hasGroupChanges =
-    name.trim() !== initialName ||
-    selectedMemberIds.size !== initialMemberIds.size ||
-    [...selectedMemberIds].some((id) => !initialMemberIds.has(id));
-  const initialManagerIds = new Set(
-    initialManagers.map((manager) => manager.sId)
-  );
-  const hasManagerChanges =
-    canManageManagers &&
-    (selectedManagers.length !== initialManagerIds.size ||
-      selectedManagers.some((manager) => !initialManagerIds.has(manager.sId)));
-  const shouldDisableButton =
-    readOnly ||
-    isSubmitting ||
-    isReviewBlocked ||
-    name.trim().length === 0 ||
-    (!groupId && selectedMemberIds.size === 0) ||
-    (hasGroupChanges && selectedMemberIds.size === 0);
-
-  return { hasGroupChanges, hasManagerChanges, shouldDisableButton };
-}
-
 function GroupForm({
   owner,
   groupId,
@@ -220,42 +134,70 @@ function GroupForm({
       initialMembers,
       selectedMemberIds,
     });
-  const { hasGroupChanges, hasManagerChanges, shouldDisableButton } =
-    getGroupFormStatus({
-      groupId,
-      name,
-      initialName,
-      selectedMemberIds,
-      initialMembers,
-      selectedManagers,
-      initialManagers,
-      canManageManagers,
-      readOnly,
-      isSubmitting,
-      isReviewBlocked,
-    });
+  const initialMemberIds = new Set(initialMembers.map((member) => member.sId));
+  const hasGroupChanges =
+    name.trim() !== initialName ||
+    selectedMemberIds.size !== initialMemberIds.size ||
+    [...selectedMemberIds].some((id) => !initialMemberIds.has(id));
+  const initialManagerIds = new Set(
+    initialManagers.map((manager) => manager.sId)
+  );
+  const hasManagerChanges =
+    canManageManagers &&
+    (selectedManagers.length !== initialManagerIds.size ||
+      selectedManagers.some((manager) => !initialManagerIds.has(manager.sId)));
+  const shouldDisableButton =
+    readOnly ||
+    isSubmitting ||
+    isReviewBlocked ||
+    name.trim().length === 0 ||
+    (!groupId && selectedMemberIds.size === 0) ||
+    (hasGroupChanges && selectedMemberIds.size === 0);
+
+  /**
+   * @cc [owner:philipperolet,label:product;security] manager-save-order
+   * Manager assignments MUST only be updated after appointment review succeeds and any
+   * group details update succeeds. A failed step MUST stop later updates.
+   */
+  async function saveExistingGroup(): Promise<boolean> {
+    if (!(await confirmAppointment())) {
+      return false;
+    }
+    if (hasGroupChanges) {
+      const result = await doUpdateGroup({
+        name: name.trim(),
+        memberIds: Array.from(selectedMemberIds),
+      });
+      if (!result) {
+        return false;
+      }
+    }
+    if (hasManagerChanges) {
+      const result = await doUpdateGroup({
+        managerIds: selectedManagers.map((manager) => manager.sId),
+      });
+      if (!result) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   const handleSubmit = async (e: MouseEvent) => {
     // Prevent DialogClose from auto-closing so we only close on success.
     e.preventDefault();
-    const trimmedName = name.trim();
-    const memberIds = Array.from(selectedMemberIds);
     if (groupId) {
-      const saved = await saveExistingGroup({
-        name: trimmedName,
-        memberIds,
-        managerIds: selectedManagers.map((manager) => manager.sId),
-        hasGroupChanges,
-        hasManagerChanges,
-        confirmAppointment,
-        doUpdateGroup,
-      });
+      const saved = await saveExistingGroup();
       if (saved) {
         onClose();
       }
       return;
     }
 
-    const result = await doCreateGroup({ name: trimmedName, memberIds });
+    const result = await doCreateGroup({
+      name: name.trim(),
+      memberIds: Array.from(selectedMemberIds),
+    });
     if (result) {
       onCreated?.(result.group);
       onClose();
