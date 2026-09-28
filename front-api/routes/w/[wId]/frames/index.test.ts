@@ -15,11 +15,26 @@ describe("canonical Frames v2 route namespace", () => {
     expect(response.status).toBe(403);
   });
 
+  it("gates function routes on frames_v2_functions", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/frames/fil_frame/functions/run/invocations`,
+      { method: "POST" }
+    );
+
+    expect(response.status).toBe(403);
+  });
+
   it("falls through unmatched canonical routes when enabled", async () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "admin",
     });
     await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
 
     const response = await honoApp.request(
       `/api/w/${workspace.sId}/frames/fil_frame/functions/run/invocations`,

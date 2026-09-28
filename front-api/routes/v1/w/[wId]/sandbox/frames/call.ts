@@ -3,8 +3,9 @@ import {
   callFrameFunctionFromSource,
 } from "@app/lib/api/frames/call_frame_function";
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
-import { hasFeatureFlag } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -36,12 +37,12 @@ app.post(
         },
       });
     }
-    if (!(await hasFeatureFlag(auth, "frames_v2"))) {
+    if (!isFramesV2FunctionsEnabled(await getFeatureFlags(auth))) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "invalid_request_error",
-          message: "Frames v2 is not enabled for this workspace.",
+          message: "Frame functions are not enabled for this workspace.",
         },
       });
     }

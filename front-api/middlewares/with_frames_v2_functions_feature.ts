@@ -1,4 +1,5 @@
 import { getFeatureFlags } from "@app/lib/auth";
+import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 import type {
   PublicApiCtx,
   WorkspaceAwareCtx,
@@ -6,16 +7,20 @@ import type {
 import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 
-export function withSandboxFunctionInvocationFeature() {
+/**
+ * Gate a route on Frame functions (frames_v2 + frames_v2_functions). Apply after any auth
+ * middleware that sets `ctx.get("auth")`.
+ */
+export function withFramesV2FunctionsFeature() {
   return createMiddleware<PublicApiCtx | WorkspaceAwareCtx>(
     async (ctx, next) => {
       const featureFlags = await getFeatureFlags(ctx.get("auth"));
-      if (!featureFlags.includes("frames_v2")) {
+      if (!isFramesV2FunctionsEnabled(featureFlags)) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "feature_flag_not_found",
-            message: "Frames are not enabled for this workspace.",
+            message: "Frame functions are not enabled for this workspace.",
           },
         });
       }

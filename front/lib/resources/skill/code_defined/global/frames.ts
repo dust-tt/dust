@@ -9,12 +9,20 @@ import { buildFramesV2Instructions } from "@app/lib/resources/skill/code_defined
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
+import {
+  isComputerFeatureEnabled,
+  isFramesV2FunctionsEnabled,
+} from "@app/types/shared/feature_flags";
 
 /**
  * @cc [owner:flvndvd,label:product] frame-document-disclosure
  * Document authoring instructions and attachments MUST require both frames_v2 and frame_documents.
  * Disabling discovery MUST NOT change the runtime behavior of existing Frames.
+ */
+/**
+ * @cc [owner:davidebbo,label:product] frame-functions-disclosure
+ * Under frames_v2, function, database and persistent-file authoring guidance MUST be included
+ * only when Frame functions are enabled (see isFramesV2FunctionsEnabled).
  */
 export const framesSkill = {
   sId: "frames",
@@ -47,6 +55,7 @@ export const framesSkill = {
     if (flags.includes("frames_v2")) {
       return buildFramesV2Instructions({
         hasDocuments: flags.includes("frame_documents"),
+        hasFunctions: isFramesV2FunctionsEnabled(flags),
       });
     }
 

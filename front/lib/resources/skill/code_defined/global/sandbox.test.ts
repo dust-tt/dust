@@ -49,9 +49,23 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("Never use `dsbx frame`");
   });
 
+  it("allows the Frames CLI without Frame function guidance under Frames v2 alone", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+
+    const instructions = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).not.toContain("Never use `dsbx frame`");
+    expect(instructions).not.toContain("`publish_interactive_content_file`");
+    expect(instructions).not.toContain("tools.call");
+  });
+
   it("allows the Frames CLI only when Frames v2 is enabled", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
 
     const instructions = await sandboxSkill.fetchInstructions(auth, {
       spaceIds: [],

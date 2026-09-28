@@ -868,6 +868,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "fireworks_new_model_feature"
   | "frame_documents"
   | "frames_v2"
+  | "frames_v2_functions"
   | "google_sheets_tool"
   | "gpt_5_6_terra_long_context"
   | "http_client_tool"

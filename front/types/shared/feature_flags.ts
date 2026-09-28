@@ -50,6 +50,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fontanierh",
   },
+  frames_v2_functions: {
+    description:
+      "Let Frames v2 declare server functions, databases and persistent files (requires frames_v2)",
+    stage: "ask_owner",
+    owner: "davidebbo",
+  },
   frame_documents: {
     description:
       "Expose editable Document guidance and examples in the Frame skill",
@@ -529,6 +535,24 @@ export function isComputerFeatureEnabled(
   featureFlags: WhitelistableFeature[]
 ): boolean {
   return !featureFlags.includes(DISABLE_COMPUTER_FEATURE);
+}
+
+const FRAMES_V2_FEATURE = "frames_v2" as const satisfies WhitelistableFeature;
+const FRAMES_V2_FUNCTIONS_FEATURE =
+  "frames_v2_functions" as const satisfies WhitelistableFeature;
+
+/**
+ * @cc [owner:davidebbo,label:product] frames-v2-functions-requires-frames-v2
+ * Frame functions MUST be reported enabled only when both frames_v2 and frames_v2_functions are
+ * on; frames_v2_functions alone MUST NOT enable anything.
+ */
+export function isFramesV2FunctionsEnabled(
+  featureFlags: WhitelistableFeature[]
+): boolean {
+  return (
+    featureFlags.includes(FRAMES_V2_FEATURE) &&
+    featureFlags.includes(FRAMES_V2_FUNCTIONS_FEATURE)
+  );
 }
 
 export function isWhitelistableFeature(

@@ -140,6 +140,7 @@ describe("createSandboxTools", () => {
   it("keeps request_egress_domain but omits self-serve add_egress_domain by default", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
 
     const tools = await createSandboxTools(auth);
     const names = tools.map((tool) => tool.name);
@@ -158,6 +159,7 @@ describe("createSandboxTools", () => {
       workspace.sId
     );
     await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
 
     const tools = await createSandboxTools(auth);
     const names = tools.map((tool) => tool.name);
@@ -176,6 +178,7 @@ describe("createSandboxTools", () => {
       workspace.sId
     );
     await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
 
     const tools = await createSandboxTools(auth);
@@ -185,7 +188,7 @@ describe("createSandboxTools", () => {
     expect(names).not.toContain("request_egress_domain");
   });
 
-  it("omits request_egress_domain when frames_v2 is off", async () => {
+  it("omits request_egress_domain when frames_v2_functions is off", async () => {
     const { workspace, user } = await createResourceTest({});
     await WorkspaceResource.updateMetadata(workspace.id, {
       sandboxAllowAgentEgressRequests: true,
@@ -194,6 +197,7 @@ describe("createSandboxTools", () => {
       user.sId,
       workspace.sId
     );
+    await FeatureFlagFactory.basic(auth, "frames_v2");
 
     const tools = await createSandboxTools(auth);
     const names = tools.map((tool) => tool.name);
@@ -209,6 +213,7 @@ describe("createSandboxTools", () => {
       workspace.sId
     );
     await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
 
     const tools = await createSandboxTools(auth);
     const names = tools.map((tool) => tool.name);

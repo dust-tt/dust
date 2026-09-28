@@ -36,6 +36,7 @@ import type {
 } from "@app/types/api/spaces";
 import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
 import { resolveDefaultAgentId } from "@app/types/user";
 import {
@@ -103,17 +104,18 @@ export function PodSettingsTab({
   const [isGroupsPanelOpen, setIsGroupsPanelOpen] = useState(false);
 
   const confirm = useContext(ConfirmContext);
-  const { hasFeature } = useFeatureFlags();
+  const { featureFlags, hasFeature } = useFeatureFlags();
   const { isAdmin } = useAuth();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
   // The pod env vars section stays workspace-admin only (matching the API,
   // which keeps env-vars admin-only). Mirrors that gate — change both together.
-  const isPodSandboxAdminEnabled = isAdmin && hasFeature("frames_v2");
+  const hasFramesV2Functions = isFramesV2FunctionsEnabled(featureFlags);
+  const isPodSandboxAdminEnabled = isAdmin && hasFramesV2Functions;
   // The pod network section is visible to anyone who can open this page once
   // the feature is on (the API opens the egress GET to Pod readers); editing
   // stays workspace-admin only. Mirrors the egress-policy route gates — change
   // both together.
-  const canViewPodNetwork = hasFeature("frames_v2");
+  const canViewPodNetwork = hasFramesV2Functions;
   const canEditPodNetwork = isPodSandboxAdminEnabled;
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({

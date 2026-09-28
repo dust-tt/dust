@@ -33,6 +33,7 @@ async function setupTest({
 
   if (!withoutSandboxFunctionsFeature) {
     await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
   }
 
   const pod = await SpaceFactory.project(workspace, user.id);
@@ -68,7 +69,7 @@ describe("GET/POST /api/w/:wId/spaces/:spaceId/sandbox/env-vars", () => {
     });
   });
 
-  it("returns 403 without the frames_v2 feature", async () => {
+  it("returns 403 without Frame functions", async () => {
     const { workspace, pod } = await setupTest({
       withoutSandboxFunctionsFeature: true,
     });

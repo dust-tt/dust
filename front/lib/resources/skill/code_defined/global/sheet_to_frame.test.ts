@@ -95,8 +95,9 @@ describe("sheetToFrameSkill", () => {
     expect(instructions).toContain("Do not ask which columns are calculated");
   });
 
-  it("is restricted without the frames_v2 flag", async () => {
+  it("is restricted with frames_v2 but without frames_v2_functions", async () => {
     const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2");
 
     await expect(sheetToFrameSkill.isRestricted(auth)).resolves.toBe(true);
     await expect(
@@ -104,9 +105,10 @@ describe("sheetToFrameSkill", () => {
     ).resolves.toBe(false);
   });
 
-  it("is available and warms the Computer with the frames_v2 flag", async () => {
+  it("is available and warms the Computer with Frame functions", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frames_v2");
+    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
 
     await expect(sheetToFrameSkill.isRestricted(auth)).resolves.toBe(false);
     await expect(

@@ -4,6 +4,7 @@ import { PodSettingsGeneralTab } from "@app/components/pod/settings/PodSettingsG
 import { PodSettingsParticipantsTab } from "@app/components/pod/settings/PodSettingsParticipantsTab";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { RichSpaceType } from "@app/types/api/spaces";
+import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ContentMessage,
@@ -33,11 +34,12 @@ export function PodSettingsSection({
   onOpenMembersPanel,
 }: PodSettingsSectionProps) {
   const [activeTab, setActiveTab] = useState("general");
-  const { hasFeature } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
 
-  // The advanced tab is only visible when the frames_v2 feature is enabled
+  // The advanced tab is only visible when Frame functions are enabled
   const visibleTabs = POD_SETTINGS_TABS.filter(
-    (tab) => tab.value !== "advanced" || hasFeature("frames_v2")
+    (tab) =>
+      tab.value !== "advanced" || isFramesV2FunctionsEnabled(featureFlags)
   );
 
   return (

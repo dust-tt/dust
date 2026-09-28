@@ -33,6 +33,8 @@ async function setupTest({
 
   await FeatureFlagFactory.basic(auth, "frames_v2");
 
+  await FeatureFlagFactory.basic(auth, "frames_v2_functions");
+
   const pod = await SpaceFactory.project(workspace, user.id);
 
   return { workspace, auth, user, pod, ...rest };

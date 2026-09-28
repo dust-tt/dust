@@ -2,6 +2,7 @@ import { PodNetworkSection } from "@app/components/pod/settings/PodNetworkSectio
 import { SandboxEnvVarsSection } from "@app/components/sandbox/SandboxEnvVarsSection";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { RichSpaceType } from "@app/types/api/spaces";
+import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
 
 interface PodSettingsAdvancedTabProps {
@@ -13,17 +14,18 @@ export function PodSettingsAdvancedTab({
   owner,
   pod,
 }: PodSettingsAdvancedTabProps) {
-  const { hasFeature } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
   const { isAdmin } = useAuth();
 
   // The pod env vars section stays workspace-admin only (matching the API,
   // which keeps env-vars admin-only). Mirrors that gate — change both together.
-  const isPodSandboxAdminEnabled = isAdmin && hasFeature("frames_v2");
+  const hasFramesV2Functions = isFramesV2FunctionsEnabled(featureFlags);
+  const isPodSandboxAdminEnabled = isAdmin && hasFramesV2Functions;
   // The pod network section is visible to anyone who can open this page once
   // the feature is on (the API opens the egress GET to Pod readers); editing
   // stays workspace-admin only. Mirrors the egress-policy route gates — change
   // both together.
-  const canViewPodNetwork = hasFeature("frames_v2");
+  const canViewPodNetwork = hasFramesV2Functions;
   const canEditPodNetwork = isPodSandboxAdminEnabled;
 
   return (

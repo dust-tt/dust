@@ -4,11 +4,17 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
+import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 
 /**
  * Resolve a caller-facing Frame function. Frames v2 accepts `<frameId>/<slug>` for new
  * invocations and function ids for an active publication (or an explicitly allowed in-flight
  * publication), with use rights read from the Frame's sharing record.
+ */
+/**
+ * @cc [owner:davidebbo,label:product;security] frame-functions-require-feature
+ * Frame function resolution MUST return null unless Frame functions are enabled for the workspace
+ * (see isFramesV2FunctionsEnabled), whatever publication or sharing state the Frame is in.
  */
 export async function resolveSandboxFunctionWithCapability(
   auth: Authenticator,
@@ -17,9 +23,7 @@ export async function resolveSandboxFunctionWithCapability(
     allowInactiveFramePublication = false,
   }: { allowInactiveFramePublication?: boolean } = {}
 ): Promise<SandboxFunctionResource | null> {
-  const featureFlags = await getFeatureFlags(auth);
-  const isFramesV2Enabled = featureFlags.includes("frames_v2");
-  if (!isFramesV2Enabled) {
+  if (!isFramesV2FunctionsEnabled(await getFeatureFlags(auth))) {
     return null;
   }
 
@@ -57,6 +61,11 @@ async function resolveFrameV2FunctionReference(
   });
 }
 
+/**
+ * @cc [owner:davidebbo,label:product;security] frame-functions-require-feature
+ * Frame function resolution MUST return null unless Frame functions are enabled for the workspace
+ * (see isFramesV2FunctionsEnabled), whatever publication or sharing state the Frame is in.
+ */
 /** Resolve one function from the active publication of a Frame the caller may use. */
 export async function resolveActiveFrameFunctionForUse(
   auth: Authenticator,
@@ -69,6 +78,7 @@ export async function resolveActiveFrameFunctionForUse(
   }
 ): Promise<SandboxFunctionResource | null> {
   if (
+    !isFramesV2FunctionsEnabled(await getFeatureFlags(auth)) ||
     !isResourceSId("file", frameId) ||
     !isValidSandboxFunctionSlug(functionName)
   ) {

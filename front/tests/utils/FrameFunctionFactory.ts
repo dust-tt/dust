@@ -119,10 +119,12 @@ export async function createTestFrameFunction(
 
 export async function makeTestFrameFunction({
   enableFramesV2 = true,
+  enableFramesV2Functions = enableFramesV2,
   isSuperUser = false,
   shareScope = "workspace_and_emails",
 }: {
   enableFramesV2?: boolean;
+  enableFramesV2Functions?: boolean;
   isSuperUser?: boolean;
   shareScope?: "emails_only" | "workspace_and_emails";
 } = {}) {
@@ -137,6 +139,9 @@ export async function makeTestFrameFunction({
   });
   if (enableFramesV2) {
     await FeatureFlagFactory.basic(adminAuth, "frames_v2");
+  }
+  if (enableFramesV2Functions) {
+    await FeatureFlagFactory.basic(adminAuth, "frames_v2_functions");
   }
   const space = await SpaceFactory.project(workspace);
   const publicationId = "publication-1";
@@ -204,15 +209,18 @@ export async function makeTestFrameFunction({
 
 export async function makeTestFrameInvocation({
   enableFramesV2 = true,
+  enableFramesV2Functions = enableFramesV2,
   isSuperUser = false,
   shareScope = "workspace_and_emails",
 }: {
   enableFramesV2?: boolean;
+  enableFramesV2Functions?: boolean;
   isSuperUser?: boolean;
   shareScope?: "emails_only" | "workspace_and_emails";
 } = {}) {
   const setup = await makeTestFrameFunction({
     enableFramesV2,
+    enableFramesV2Functions,
     isSuperUser,
     shareScope,
   });

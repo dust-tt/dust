@@ -1,5 +1,8 @@
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
+import {
+  isComputerFeatureEnabled,
+  isFramesV2FunctionsEnabled,
+} from "@app/types/shared/feature_flags";
 
 // The single client-side capability check for administrating Computer
 // settings. Mirrors the API gates (`ensureIsAdmin` + the Computer feature on
@@ -10,10 +13,10 @@ export function useComputerAdminAccess() {
   const { featureFlags } = useFeatureFlags();
   const isComputerEnabled = isComputerFeatureEnabled(featureFlags);
   const canAdministrateComputer = isAdmin && isComputerEnabled;
-  const hasFramesV2 = featureFlags.includes("frames_v2");
-  // The multi-Pod scope selector and Pod network editing ride the Frames v2
-  // flag (frames_v2), on top of Computer admin access.
-  const canAdministratePodNetwork = canAdministrateComputer && hasFramesV2;
+  // The multi-Pod scope selector and Pod network editing ride Frame functions
+  // (frames_v2 + frames_v2_functions), on top of Computer admin access.
+  const canAdministratePodNetwork =
+    canAdministrateComputer && isFramesV2FunctionsEnabled(featureFlags);
 
   return {
     isAdmin,

@@ -60,7 +60,10 @@ import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
 import { isDevelopment } from "@app/types/shared/env";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
+import {
+  isComputerFeatureEnabled,
+  isFramesV2FunctionsEnabled,
+} from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -304,7 +307,7 @@ export async function createSandboxTools(
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
 
   // Both require Computer. add_egress_domain is also gated on the self-serve
-  // toggle; request_egress_domain on frames_v2 instead — so it only
+  // toggle; request_egress_domain on Frame functions instead — so it only
   // appears where its Pod/workspace review settings exist, never the toggle.
   const flags = await getFeatureFlags(auth);
   const computerEnabled = isComputerFeatureEnabled(flags);
@@ -312,7 +315,7 @@ export async function createSandboxTools(
   if (!computerEnabled || !isSandboxAgentEgressRequestsAllowed(auth)) {
     excluded.add(ADD_EGRESS_DOMAIN_TOOL_NAME);
   }
-  if (!computerEnabled || !flags.includes("frames_v2")) {
+  if (!computerEnabled || !isFramesV2FunctionsEnabled(flags)) {
     excluded.add(REQUEST_EGRESS_DOMAIN_TOOL_NAME);
   }
 

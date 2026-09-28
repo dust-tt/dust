@@ -5,8 +5,10 @@
  */
 export const buildInteractiveContentAuthoringProseV2 = ({
   hasDocuments,
+  hasFunctions,
 }: {
   hasDocuments: boolean;
+  hasFunctions: boolean;
 }) => `\
 ### Rendering Context
 
@@ -178,7 +180,7 @@ The same decision rule applies regardless of where the data came from:
 - Import \`useUserIdentity\` from \`@dust/react-hooks\` to know who is viewing the Frame.
 - It returns \`{ isAuthenticated, isWorkspaceMember, isFrameAuthor, isPodMember, isPodEditor, user, isLoading, error }\`. When \`isAuthenticated\` is true, \`user\` is \`{ sId, firstName, lastName, fullName, image }\`; otherwise \`user\` is \`null\`.
 - \`isAuthenticated\` is only true for a signed-in member of the workspace that owns the Frame. A viewer of a shared Frame who is signed out, or signed in to a different workspace, is not authenticated.
-- \`isFrameAuthor\` is true when the viewer can modify the Frame v2 source files. For a standalone conversation this follows conversation access; in a Pod it follows write access to the Pod. Use it to show author-only controls, and declare the functions behind those controls with \`frame_author_required\` so the server enforces the same capability.
+- \`isFrameAuthor\` is true when the viewer can modify the Frame v2 source files. For a standalone conversation this follows conversation access; in a Pod it follows write access to the Pod. Use it to show author-only controls${hasFunctions ? ", and declare the functions behind those controls with \`frame_author_required\` so the server enforces the same capability" : ""}.
 - \`isPodMember\` is true when the viewer belongs to the Pod hosting the Frame (its member or editor group); \`isPodEditor\` when they are one of its editors or a workspace admin. Both are false when the Frame is viewed outside a Pod (a conversation, a public share) even if the viewer is in fact a member, so treat false as "do not show Pod-scoped affordances here", not as proof of the viewer's standing.
 - Render the \`isLoading\` state, and treat \`error\` and the unauthenticated case identically: fall back to the unauthenticated view rather than showing an error.
 - A Frame cannot sign anyone in. The viewer is already authenticated to Dust or they are not, and nothing the Frame renders can change that. When a Frame only makes sense for an authenticated member, render a plain view saying the content is unavailable to them, rather than a login prompt or a button that will not work.
@@ -199,7 +201,7 @@ return (
 \`\`\`
 
 - Use it for presentation: greet the viewer, highlight their rows, or hide author-only controls.
-- Client-side conditions are not access control: whatever a Frame renders, its viewer can inspect. Protect every author-only operation with a server function declared \`frame_author_required\`.
+- Client-side conditions are not access control: whatever a Frame renders, its viewer can inspect.${hasFunctions ? " Protect every author-only operation with a server function declared \`frame_author_required\`." : " Do not put data in a Frame that some of its viewers must not see."}
 
 ### Interaction Rules
 
