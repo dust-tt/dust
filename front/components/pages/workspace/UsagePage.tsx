@@ -817,12 +817,7 @@ export function UsagePage() {
           selection: buildBulkSelectionBody(),
           limit,
         });
-        if (!body) {
-          return false;
-        }
-
-        selection.clearSelection();
-        return true;
+        return body !== null;
       } finally {
         setTotalAllowedUsagePendingMemberIds((prev) => {
           const next = new Set(prev);
@@ -831,12 +826,7 @@ export function UsagePage() {
         });
       }
     },
-    [
-      selection,
-      buildBulkSelectionBody,
-      getBulkPendingMemberIds,
-      doBulkSetSpendLimit,
-    ]
+    [buildBulkSelectionBody, getBulkPendingMemberIds, doBulkSetSpendLimit]
   );
 
   const handleBulkSeatChangePreview = useCallback(
@@ -1494,6 +1484,7 @@ export function UsagePage() {
           canEditDefaultLimit={isWorkspaceAdmin}
           defaultUserSpendLimit={defaultUserSpendLimitState}
           onValidate={handleBulkSpendLimitValidate}
+          onSaved={clearSelection}
         />
         <BulkChangeSeatModal
           isOpen={isBulkChangeSeatOpen}

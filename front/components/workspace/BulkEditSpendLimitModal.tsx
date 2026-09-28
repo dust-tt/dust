@@ -38,6 +38,7 @@ interface BulkEditSpendLimitModalProps {
   canEditDefaultLimit: boolean;
   defaultUserSpendLimit: DefaultUserSpendLimitState;
   onValidate: (limit: UserSpendLimit) => Promise<boolean>;
+  onSaved: () => void;
 }
 
 export function BulkEditSpendLimitModal({
@@ -50,6 +51,7 @@ export function BulkEditSpendLimitModal({
   canEditDefaultLimit,
   defaultUserSpendLimit,
   onValidate,
+  onSaved,
 }: BulkEditSpendLimitModalProps) {
   const lastSelectionRef = useRef({ memberCount, selectedMembers });
   useEffect(() => {
@@ -81,6 +83,7 @@ export function BulkEditSpendLimitModal({
           canEditDefaultLimit={canEditDefaultLimit}
           defaultUserSpendLimit={defaultUserSpendLimit}
           onValidate={onValidate}
+          onSaved={onSaved}
         />
       </DialogContent>
     </Dialog>
@@ -96,6 +99,7 @@ interface BulkEditSpendLimitFormProps {
   canEditDefaultLimit: boolean;
   defaultUserSpendLimit: DefaultUserSpendLimitState;
   onValidate: (limit: UserSpendLimit) => Promise<boolean>;
+  onSaved: () => void;
 }
 
 function BulkEditSpendLimitForm({
@@ -107,6 +111,7 @@ function BulkEditSpendLimitForm({
   canEditDefaultLimit,
   defaultUserSpendLimit,
   onValidate,
+  onSaved,
 }: BulkEditSpendLimitFormProps) {
   const { doUpdateDefaultUserSpendLimit } = useUpdateDefaultUserSpendLimit({
     workspaceId: owner.sId,
@@ -126,7 +131,8 @@ function BulkEditSpendLimitForm({
 
   const isPersonalLimitChanged = personalLimitInput !== "" || removeRequested;
 
-  async function handleValidate() {
+  async function handleValidate(event: React.MouseEvent) {
+    event.preventDefault();
     const result = parseCreditsInput(personalLimitInput);
     setValidationMessage(result.ok ? null : result.message);
     const newDefaultLimit = defaultLimitField.validate();
@@ -146,6 +152,7 @@ function BulkEditSpendLimitForm({
           : true,
       ]);
       if (outcomes.every(Boolean)) {
+        onSaved();
         onClose();
       }
     } finally {
