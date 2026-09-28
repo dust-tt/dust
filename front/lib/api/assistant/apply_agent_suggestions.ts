@@ -33,8 +33,8 @@ import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import type { AgentAuditOptions } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
@@ -61,6 +61,7 @@ import {
   AgentSuggestionDataSchema,
   getAgentSuggestionAction,
   INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+  isCreateAgentSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
@@ -387,9 +388,12 @@ async function resolveSubAgentsEdits(
       ...addedSubAgentIds,
     ]);
     for (const subAgentId of addedSubAgentIds) {
-      const addition = checkSubAgentAddition(subAgentId, suggestable, {
-        agentId,
-      });
+      const placeholder = suggestable.has(subAgentId)
+        ? null
+        : await fetchPlaceholderAgent(auth, subAgentId);
+      const addition = placeholder
+        ? new Ok(placeholder)
+        : checkSubAgentAddition(subAgentId, suggestable, { agentId });
       if (addition.isErr()) {
         return new Err(new DustError("invalid_request_error", addition.error));
       }
@@ -406,6 +410,26 @@ async function resolveSubAgentsEdits(
     actions,
     hasRemovedSubAgents: removedSubAgentIds.size > 0,
   });
+}
+
+/** A `pending` placeholder agent, named after the agent its create suggestion proposes. */
+async function fetchPlaceholderAgent(
+  auth: Authenticator,
+  agentId: string
+): Promise<{ sId: string; name: string } | null> {
+  const agent = await AgentResource.fetchById(auth, agentId);
+  if (agent?.status !== "pending") {
+    return null;
+  }
+  const [creation] = (
+    await AgentSuggestionResource.listByAgentConfigurationId(auth, agentId, {
+      states: ["pending"],
+      kind: "create",
+    })
+  )
+    .map((suggestion) => suggestion.toJSON())
+    .filter(isCreateAgentSuggestion);
+  return creation ? { sId: agentId, name: creation.suggestion.name } : null;
 }
 
 /**
@@ -437,7 +461,25 @@ async function resolveSkillsEdits(
   );
 
   const suggestable = await fetchSuggestableSkills(auth, [...addedSkillIds]);
+  const placeholderSkillIds = new Set(
+    (
+      await SkillResource.fetchByIds(
+        auth,
+        [...addedSkillIds].filter((skillId) => !suggestable.has(skillId)),
+        {
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        }
+      )
+    )
+      .filter((skill) => skill.status === "pending")
+      .map((skill) => skill.sId)
+  );
   for (const skillId of addedSkillIds) {
+    if (placeholderSkillIds.has(skillId)) {
+      continue;
+    }
     const addition = checkSkillAddition(skillId, suggestable);
     if (addition.isErr()) {
       return new Err(new DustError("invalid_request_error", addition.error));
