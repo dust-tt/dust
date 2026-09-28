@@ -5,11 +5,11 @@ import {
 import { DEFAULT_SUGGESTION_VISUAL } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import { getSuggestionStateChip } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
-  usePatchSuggestionBatch,
-  useRevalidateBatchTargets,
+  useReviewSuggestionBatches,
   useSuggestionBatches,
 } from "@app/hooks/useSuggestionBatches";
 import type { SuggestionBatchReviewState } from "@app/types/api/assistant/suggestion_batches";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { BatchSuggestionType } from "@app/types/suggestions/batch_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -27,7 +27,7 @@ import { cloneElement, useState } from "react";
 const ENTRY_VISUAL = cloneElement(DEFAULT_SUGGESTION_VISUAL, { size: "xs" });
 
 function formatEditCount(count: number): string {
-  return count === 1 ? "1 edit" : `${count} edits`;
+  return `${count} edit${pluralize(count)}`;
 }
 
 // Same text colors as the state chips, so outcome counts read like the chips listed below them.
@@ -190,19 +190,16 @@ interface ConversationSuggestionPileProps {
  */
 export function ConversationSuggestionPile({
   owner,
-  batchIds: rawBatchIds,
+  batchIds,
   recap,
 }: ConversationSuggestionPileProps) {
-  // The agent may repeat a directive; each batch is reviewed once.
-  const batchIds = [...new Set(rawBatchIds)];
-
   const { batches, isBatchesLoading, mutateBatches } = useSuggestionBatches({
     batchIds,
     workspaceId: owner.sId,
   });
-  const { patchBatch } = usePatchSuggestionBatch({ workspaceId: owner.sId });
-  const revalidateBatchTargets = useRevalidateBatchTargets({
+  const reviewBatches = useReviewSuggestionBatches({
     workspaceId: owner.sId,
+    mutateBatches,
   });
 
   const [isReviewing, setIsReviewing] = useState(false);
@@ -219,114 +216,90 @@ export function ConversationSuggestionPile({
   }
 
   const pendingBatches = pileBatches.filter((b) => b.state === "pending");
-  const positionById = new Map(
-    pileBatches.map((b, index) => [b.id, index + 1])
-  );
   const isBusy = inFlight !== null;
   const bulkState = inFlight?.batchId === null ? inFlight.state : null;
 
+  // Without a batch, every pending batch of the pile is reviewed, in pile order.
   const review = async (
-    toReview: BatchSuggestionType[],
     state: SuggestionBatchReviewState,
-    batchId: string | null
+    batch?: BatchSuggestionType
   ) => {
-    setInFlight({ batchId, state });
+    setInFlight({ batchId: batch?.id ?? null, state });
     try {
-      // Reviewed one at a time, in pile order: approving rewrites the whole target configuration
-      // from a fresh read, so concurrent approvals of the same target would overwrite each other.
-      const reviewedById = new Map<string, BatchSuggestionType>();
-      for (const b of toReview) {
-        const result = await patchBatch(b.id, state);
-        if (result) {
-          reviewedById.set(result.batch.id, result.batch);
-        }
-      }
-      if (state === "approved") {
-        reviewedById.forEach(revalidateBatchTargets);
-      }
-      // A failed review may come from a batch reviewed elsewhere: resync with the server then.
-      await mutateBatches(
-        (current) =>
-          current && {
-            batches: current.batches.map((b) => reviewedById.get(b.id) ?? b),
-          },
-        { revalidate: reviewedById.size < toReview.length }
+      await reviewBatches(
+        (batch ? [batch] : pendingBatches).map((b) => b.id),
+        state
       );
     } finally {
       setInFlight(null);
     }
   };
 
-  const reviewAll = (state: SuggestionBatchReviewState) =>
-    void review(pendingBatches, state, null);
-
-  const pendingCards = pendingBatches.map((batch) => (
-    <PendingBatchSuggestionCard
-      key={batch.id}
-      owner={owner}
-      batch={batch}
-      onAccept={() => void review([batch], "approved", batch.id)}
-      onReject={() => void review([batch], "rejected", batch.id)}
-      disabled={isBusy}
-      isAccepting={
-        inFlight?.batchId === batch.id && inFlight.state === "approved"
-      }
-      isDeclining={
-        inFlight?.batchId === batch.id && inFlight.state === "rejected"
-      }
-      titleAside={`Edit ${positionById.get(batch.id)} of ${pileBatches.length}`}
-      secondaryAction={
-        <Button
-          variant="ghost-secondary"
-          size="sm"
-          label="Accept remaining"
-          onClick={() => reviewAll("approved")}
-          disabled={isBusy}
-          isLoading={bulkState === "approved"}
+  // Only the front card is interactive; the ones behind it are drawn as decorative layers.
+  if (pendingBatches.length === 0) {
+    return (
+      <ActionCardStack cardCount={1}>
+        <SuggestionPileSummaryCard
+          title={
+            <>
+              {formatEditCount(pileBatches.length)} reviewed ·{" "}
+              {formatReviewOutcomes(pileBatches)}
+            </>
+          }
+          recap={recap}
+          batches={pileBatches}
+          showBatchState
         />
-      }
-    />
-  ));
-
-  const summaryCard = (
-    <SuggestionPileSummaryCard
-      title={
-        <>
-          {formatEditCount(pileBatches.length)} reviewed ·{" "}
-          {formatReviewOutcomes(pileBatches)}
-        </>
-      }
-      recap={recap}
-      batches={pileBatches}
-      showBatchState
-    />
-  );
+      </ActionCardStack>
+    );
+  }
 
   // The recap card is part of the pile, on top of the pending batches.
-  const recapCard = (
-    <SuggestionPileSummaryCard
-      title={`${formatEditCount(pendingBatches.length)} ready for your review`}
-      recap={recap}
-      batches={pendingBatches}
-      actions={
-        <SuggestionPileRecapActions
-          isBusy={isBusy}
-          bulkState={bulkState}
-          onReview={() => setIsReviewing(true)}
-          onAcceptAll={() => reviewAll("approved")}
-          onRejectAll={() => reviewAll("rejected")}
+  if (!isReviewing) {
+    return (
+      <ActionCardStack cardCount={pendingBatches.length + 1}>
+        <SuggestionPileSummaryCard
+          title={`${formatEditCount(pendingBatches.length)} ready for your review`}
+          recap={recap}
+          batches={pendingBatches}
+          actions={
+            <SuggestionPileRecapActions
+              isBusy={isBusy}
+              bulkState={bulkState}
+              onReview={() => setIsReviewing(true)}
+              onAcceptAll={() => void review("approved")}
+              onRejectAll={() => void review("rejected")}
+            />
+          }
         />
-      }
-    />
+      </ActionCardStack>
+    );
+  }
+
+  const batch = pendingBatches[0];
+  const cardState = inFlight?.batchId === batch.id ? inFlight.state : null;
+  return (
+    <ActionCardStack cardCount={pendingBatches.length}>
+      <PendingBatchSuggestionCard
+        owner={owner}
+        batch={batch}
+        onAccept={() => void review("approved", batch)}
+        onReject={() => void review("rejected", batch)}
+        disabled={isBusy}
+        isAccepting={cardState === "approved"}
+        isDeclining={cardState === "rejected"}
+        titleAside={`Edit ${pileBatches.indexOf(batch) + 1} of ${pileBatches.length}`}
+        secondaryAction={
+          <Button
+            variant="ghost-secondary"
+            size="sm"
+            label="Accept remaining"
+            onClick={() => void review("approved")}
+            disabled={isBusy}
+            isLoading={bulkState === "approved"}
+          />
+        }
+      />
+    </ActionCardStack>
   );
-
-  const cards =
-    pendingCards.length === 0
-      ? [summaryCard]
-      : isReviewing
-        ? pendingCards
-        : [recapCard, ...pendingCards];
-
-  // Only the front card is interactive; the ones behind it are drawn as decorative layers.
-  return <ActionCardStack cardCount={cards.length}>{cards[0]}</ActionCardStack>;
 }

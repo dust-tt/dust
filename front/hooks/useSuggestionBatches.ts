@@ -25,10 +25,7 @@ interface UseSuggestionBatchesParams {
   workspaceId: string;
 }
 
-/**
- * Fetches the given batches, however many: the endpoint caps the ids per request, so they are
- * requested in sequential chunks under one SWR key.
- */
+/** Fetches the given batches, however many: the endpoint caps the ids per request. */
 export function useSuggestionBatches({
   batchIds,
   workspaceId,
@@ -37,23 +34,18 @@ export function useSuggestionBatches({
   const chunkFetcher: Fetcher<GetSuggestionBatchesResponseBody, string> =
     fetcher;
 
-  const query = new URLSearchParams(batchIds.map((id) => ["ids", id]));
+  const path = `/api/w/${workspaceId}/assistant/suggestion_batches`;
+  const toQuery = (ids: string[]) =>
+    new URLSearchParams(ids.map((id) => ["ids", id]));
   const { data, error, mutate } = useSWRWithDefaults(
-    batchIds.length > 0
-      ? `/api/w/${workspaceId}/assistant/suggestion_batches?${query}`
-      : null,
-    async (key: string) => {
-      const [path, search] = key.split("?");
-      const ids = new URLSearchParams(search).getAll("ids");
-      const batches: BatchSuggestionType[] = [];
-      for (const idsChunk of chunk(ids, MAX_SUGGESTION_BATCH_IDS_PER_REQUEST)) {
-        const chunkQuery = new URLSearchParams(
-          idsChunk.map((id) => ["ids", id])
-        );
-        const res = await chunkFetcher(`${path}?${chunkQuery}`);
-        batches.push(...res.batches);
-      }
-      return { batches };
+    batchIds.length > 0 ? `${path}?${toQuery(batchIds)}` : null,
+    async () => {
+      const chunks = await Promise.all(
+        chunk(batchIds, MAX_SUGGESTION_BATCH_IDS_PER_REQUEST).map((ids) =>
+          chunkFetcher(`${path}?${toQuery(ids)}`)
+        )
+      );
+      return { batches: chunks.flatMap((c) => c.batches) };
     }
   );
 
@@ -92,7 +84,7 @@ interface UsePatchSuggestionBatchParams {
   workspaceId: string;
 }
 
-export function usePatchSuggestionBatch({
+function usePatchSuggestionBatch({
   workspaceId,
 }: UsePatchSuggestionBatchParams) {
   const sendNotification = useSendNotification();
@@ -143,11 +135,7 @@ export function usePatchSuggestionBatch({
  * Revalidates the agents and skills a batch targets, as fetched by `useAgentConfiguration` and
  * `useSkill` (whatever their query parameters), so the changes applied by the batch show.
  */
-export function useRevalidateBatchTargets({
-  workspaceId,
-}: {
-  workspaceId: string;
-}) {
+function useRevalidateBatchTargets({ workspaceId }: { workspaceId: string }) {
   const { mutate } = useSWRConfig();
 
   return useCallback(
@@ -165,5 +153,46 @@ export function useRevalidateBatchTargets({
       void mutate((key) => isString(key) && targetPaths.has(key.split("?")[0]));
     },
     [mutate, workspaceId]
+  );
+}
+
+interface UseReviewSuggestionBatchesParams {
+  workspaceId: string;
+  mutateBatches: ReturnType<typeof useSuggestionBatches>["mutateBatches"];
+}
+
+/**
+ * @cc [owner:avervaet,label:product] review-batches-sequential-resync
+ * Batches MUST be reviewed one at a time, in order: concurrent approvals of one target overwrite
+ * each other. A failed review MUST leave its batch pending and resync with the server.
+ */
+export function useReviewSuggestionBatches({
+  workspaceId,
+  mutateBatches,
+}: UseReviewSuggestionBatchesParams) {
+  const { patchBatch } = usePatchSuggestionBatch({ workspaceId });
+  const revalidateBatchTargets = useRevalidateBatchTargets({ workspaceId });
+
+  return useCallback(
+    async (batchIds: string[], state: SuggestionBatchReviewState) => {
+      const reviewedById = new Map<string, BatchSuggestionType>();
+      for (const batchId of batchIds) {
+        const result = await patchBatch(batchId, state);
+        if (result) {
+          reviewedById.set(result.batch.id, result.batch);
+        }
+      }
+      if (state === "approved") {
+        reviewedById.forEach(revalidateBatchTargets);
+      }
+      await mutateBatches(
+        (current) =>
+          current && {
+            batches: current.batches.map((b) => reviewedById.get(b.id) ?? b),
+          },
+        { revalidate: reviewedById.size < batchIds.length }
+      );
+    },
+    [mutateBatches, patchBatch, revalidateBatchTargets]
   );
 }

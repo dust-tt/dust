@@ -70,8 +70,9 @@ function capRecap(text: string): string {
 
 /**
  * @cc [owner:avervaet,label:product] pile-two-or-more-suggestions
- * Two or more batch directives carrying a batch id MUST all move, in order, to `pileBatchIds`; else
- * none. Directives inside code spans or fences are literal text: never counted nor removed.
+ * Two or more batch directives carrying distinct batch ids MUST all move, in order and without
+ * repeats, to `pileBatchIds`; else none. Directives inside code spans or fences are literal text:
+ * never counted nor removed.
  */
 export function extractSuggestionPile(content: string): {
   content: string;
@@ -99,7 +100,9 @@ export function extractSuggestionPile(content: string): {
       if (!batchId) {
         return match;
       }
-      pileBatchIds.push(batchId);
+      if (!pileBatchIds.includes(batchId)) {
+        pileBatchIds.push(batchId);
+      }
       return "";
     }
   );

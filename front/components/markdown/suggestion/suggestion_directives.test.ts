@@ -35,6 +35,20 @@ describe("extractSuggestionPile", () => {
     expect(result.content).toContain("Then:");
   });
 
+  it("counts a repeated batch once", () => {
+    const result = extractSuggestionPile(
+      "Done.\n\n:batch_edit[]{sId=b1}\n\n:batch_edit[]{sId=b1}\n"
+    );
+    expect(result.pileBatchIds).toEqual([]);
+    expect(result.content).toContain(":batch_edit[]{sId=b1}");
+
+    const piled = extractSuggestionPile(
+      ":batch_edit[]{sId=b1}\n:batch_edit[]{sId=b2}\n:batch_edit[]{sId=b1}\n"
+    );
+    expect(piled.pileBatchIds).toEqual(["b1", "b2"]);
+    expect(piled.content).not.toContain("batch_edit");
+  });
+
   it("handles directives glued to the previous word", () => {
     const content = `issues:${batchDirective("b1")} and ${batchDirective("b2")}`;
 

@@ -17,8 +17,7 @@ import {
   ReviewedSuggestionCard,
 } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
-  usePatchSuggestionBatch,
-  useRevalidateBatchTargets,
+  useReviewSuggestionBatches,
   useSuggestionBatch,
 } from "@app/hooks/useSuggestionBatches";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
@@ -247,26 +246,20 @@ function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
     batchId,
     workspaceId: owner.sId,
   });
-  const { patchBatch } = usePatchSuggestionBatch({ workspaceId: owner.sId });
-  const revalidateBatchTargets = useRevalidateBatchTargets({
+  const reviewBatches = useReviewSuggestionBatches({
     workspaceId: owner.sId,
+    mutateBatches: mutateBatch,
   });
   const [pendingState, setPendingState] =
     useState<SuggestionBatchReviewState | null>(null);
 
   const review = async (state: SuggestionBatchReviewState) => {
     setPendingState(state);
-    const result = await patchBatch(batchId, state);
-    if (result) {
-      await mutateBatch({ batches: [result.batch] }, { revalidate: false });
-      if (state === "approved") {
-        revalidateBatchTargets(result.batch);
-      }
-    } else {
-      // The batch may have been reviewed from another flow: resync with the server.
-      await mutateBatch();
+    try {
+      await reviewBatches([batchId], state);
+    } finally {
+      setPendingState(null);
     }
-    setPendingState(null);
   };
 
   if (isBatchLoading) {
