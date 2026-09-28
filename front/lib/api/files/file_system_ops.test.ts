@@ -76,6 +76,21 @@ describe("moving onto a path a FileResource still claims", () => {
     expect(reloaded?.mountFilePath).toBe(`${basePath}a.txt`);
   });
 
+  it("moveCanonicalFile refuses an unnormalized spelling of a registered path", async () => {
+    const { auth, dustFs, projectId, copyFile } = await setup();
+
+    const result = await moveCanonicalFile(
+      auth,
+      dustFs,
+      `pod-${projectId}/a.txt`,
+      `pod-${projectId}/dir/../archive/a.txt`
+    );
+
+    assert(result.isErr());
+    expect(result.error.code).toBe("already_exists");
+    expect(copyFile).not.toHaveBeenCalled();
+  });
+
   it("renameCanonicalFile refuses with already_exists and moves nothing", async () => {
     const { auth, dustFs, projectId, basePath, moved, copyFile } =
       await setup();

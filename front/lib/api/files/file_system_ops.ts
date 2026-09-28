@@ -291,8 +291,10 @@ function inferDestMountInfo(
 /**
  * @cc [owner:flvndvd,label:backend;product] registered-destination-refused-before-bytes-move
  * A move or rename onto a path that a FileResource still claims MUST be refused before any bytes
- * move, whether or not bytes exist there. Repointing the moved file's row would fail on the mount
- * path unique index, and moving the bytes first would leave that row stranded at the source.
+ * move, whether or not bytes exist there. The lookup MUST use the destination as the file system
+ * will resolve it, so an unnormalized spelling of the same path cannot bypass it. Repointing the
+ * moved file's row would fail on the mount path unique index, and moving the bytes first would
+ * leave that row stranded at the source.
  */
 async function isDestinationRegistered(
   auth: Authenticator,
@@ -492,8 +494,20 @@ export async function moveCanonicalFile(
   auth: Authenticator,
   dustFs: DustFileSystem,
   src: string,
-  dest: string
+  requestedDest: string
 ): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
+  // The file system normalizes paths before touching bytes; the registration lookup and the row
+  // update below must see the same path it does.
+  const dest = DustFileSystem.normalizeScopedPath(requestedDest);
+  if (!dest) {
+    return new Err(
+      new DustFileSystemError(
+        "invalid_path",
+        `Path traversal detected: \`${requestedDest}\` is not allowed.`
+      )
+    );
+  }
+
   if (await fetchFrameV2PackageAt(auth, dustFs, src)) {
     return moveFrameV2PackageFolder(auth, dustFs, {
       sourceDirectoryPath: src,
