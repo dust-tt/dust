@@ -219,16 +219,17 @@ export async function applyBatchSuggestions(
     return oneStepPerTarget;
   }
 
-  const agents = await AgentResource.fetchByIds(
-    auth,
-    steps.filter((step) => step.type === "agent").map((step) => step.agentId)
-  );
+  const [agents, skills] = await Promise.all([
+    AgentResource.fetchByIds(
+      auth,
+      steps.filter((step) => step.type === "agent").map((step) => step.agentId)
+    ),
+    SkillResource.fetchByIds(
+      auth,
+      steps.filter((step) => step.type === "skill").map((step) => step.skillId)
+    ),
+  ]);
   const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
-
-  const skills = await SkillResource.fetchByIds(
-    auth,
-    steps.filter((step) => step.type === "skill").map((step) => step.skillId)
-  );
   const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
 
   for (const step of steps) {
