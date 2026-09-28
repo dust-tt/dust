@@ -413,6 +413,13 @@ describe("AgentResource", () => {
     expect(resource?.id).toBe(agent.agentModelId);
     expect(resource?.status).toBe("active");
     expect(resource?.content.version).toBe(currentConfig.version);
+
+    const key = await KeyFactory.admin(testContext.globalGroup);
+    const keyAuth = await Authenticator.fromKey(key, testContext.workspace.sId);
+    const permissions = await AgentResource.batchFetchCanEdit(keyAuth, [
+      agent.sId,
+    ]);
+    expect(permissions.get(agent.sId)).toBe(true);
   });
 
   it("returns one resource per agent when fetching in batches", async () => {

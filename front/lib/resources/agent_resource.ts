@@ -759,32 +759,43 @@ export class AgentResource
       return canEditByAgentId;
     }
 
-    const configurations = await AgentConfigurationModel.findAll({
-      attributes: [
-        "sId",
-        "agentId",
-        "workspaceId",
-        "status",
-        "scope",
-        "authorId",
-        "requestedSpaceIds",
-      ],
+    const agents = await AgentModel.findAll({
+      attributes: ["id", "sId", "workspaceId"],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         sId: customAgentIds,
-        version: { [Op.col]: "agent.currentVersion" },
       },
-      include: [{ model: AgentModel, required: true, attributes: [] }],
+      include: [
+        {
+          model: AgentConfigurationModel,
+          required: true,
+          attributes: ["status", "scope", "authorId", "requestedSpaceIds"],
+          where: { version: { [Op.col]: "agent.currentVersion" } },
+        },
+      ],
     });
-    for (const configuration of configurations) {
-      const verbs = this.customAgentAllowedVerbs(auth, configuration);
-      canEditByAgentId.set(
-        configuration.sId,
-        verbs.has("write") &&
-          (!auth.isKey() ||
-            auth.isSystemKey() ||
-            configuration.status === "active")
-      );
+    for (const agent of agents) {
+      const { agent_configurations: configurations } =
+        agent.get() as Attributes<AgentModel> & {
+          agent_configurations: AgentConfigurationModel[];
+        };
+      for (const configuration of configurations) {
+        const verbs = this.customAgentAllowedVerbs(auth, {
+          agentId: agent.id,
+          workspaceId: agent.workspaceId,
+          status: configuration.status,
+          scope: configuration.scope,
+          authorId: configuration.authorId,
+          requestedSpaceIds: configuration.requestedSpaceIds,
+        });
+        canEditByAgentId.set(
+          agent.sId,
+          verbs.has("write") &&
+            (!auth.isKey() ||
+              auth.isSystemKey() ||
+              configuration.status === "active")
+        );
+      }
     }
     return canEditByAgentId;
   }
