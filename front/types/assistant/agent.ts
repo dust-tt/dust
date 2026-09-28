@@ -206,6 +206,9 @@ export const AgentConfigurationBaseSchema = z.object({
   ignoreCreditSpendThresholdAlert: z.boolean().optional(),
   canRead: z.boolean(),
   canEdit: z.boolean(),
+  // The private fields (instructions, skills, tools) were redacted: the caller cannot view the
+  // agent's content (see `agent-content-visibility`).
+  isRedacted: z.boolean().optional(),
   omittedThinking: z.boolean().optional(),
 });
 

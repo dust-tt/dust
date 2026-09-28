@@ -1,4 +1,5 @@
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
+import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { tagsSorter } from "@app/lib/utils";
@@ -6,6 +7,7 @@ import type {
   AgentActionsEnrichment,
   AgentConfigurationType,
   AgentFavoriteEnrichment,
+  AgentRecentAuthors,
   AgentTagsEnrichment,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
@@ -42,6 +44,28 @@ export async function enrichWithFavorites(
 
   return new Map(
     [...states].map(([sId, userFavorite]) => [sId, { userFavorite }])
+  );
+}
+
+/**
+ * @cc [owner:tdraier,label:backend] enrich-recent-authors-key-per-agent
+ * `enrichWithRecentAuthors` keys its result by `sId`: recent authors are per-agent, across versions.
+ * It is an opt-in route decoration (`lastAuthors`): the configuration builders never call it.
+ */
+export async function enrichWithRecentAuthors(
+  auth: Authenticator,
+  resources: AgentResource[]
+): Promise<Map<string, { lastAuthors: AgentRecentAuthors }>> {
+  const recentAuthors = await getAgentsRecentAuthors({
+    agents: resources,
+    auth,
+  });
+
+  return new Map(
+    resources.map((resource, index) => [
+      resource.sId,
+      { lastAuthors: recentAuthors[index] },
+    ])
   );
 }
 

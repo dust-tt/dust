@@ -2826,10 +2826,10 @@ export class AgentResource
   /**
    * @cc [owner:tdraier,label:security;backend] agent-json-redaction
    * `toJSON` serializes every resource, custom or global, `full` or `light`. A `light` resource MUST
-   * serialize with `instructions: null`, and the configuration builders built on it
-   * (`toAgentConfigurations`) MUST also give it no `instructionsHtml`, no `actions` and no
-   * `codeDefinedSkillIds`: the head fields and the version metadata are not private and are always
-   * carried.
+   * serialize with `instructions: null` and `isRedacted: true` (a `full` one with `isRedacted:
+   * false`), and the configuration builders built on it (`toAgentConfigurations`) MUST also give it
+   * no `instructionsHtml`, no `actions` and no `codeDefinedSkillIds`: the head fields and the version
+   * metadata are not private and are always carried.
    */
   toJSON(): AgentConfigurationBaseType {
     const isGlobal = this.scope === "global";
@@ -2879,6 +2879,7 @@ export class AgentResource
       canEdit:
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
+      isRedacted: this._content === null,
     };
   }
 

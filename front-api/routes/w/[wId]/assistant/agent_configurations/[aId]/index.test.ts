@@ -21,7 +21,11 @@ afterEach(() => {
 
 vi.mock("@app/lib/api/assistant/recent_authors", () => ({
   agentConfigurationWasUpdatedBy: vi.fn(),
-  getAgentRecentAuthors: vi.fn().mockResolvedValue([]),
+  getAgentsRecentAuthors: vi
+    .fn()
+    .mockImplementation(async ({ agents }: { agents: unknown[] }) =>
+      agents.map(() => [])
+    ),
 }));
 
 function patch(workspace: { sId: string }, aId: string, body: unknown) {
@@ -569,6 +573,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(data.agentConfiguration.sId).toBe(agent.sId);
     expect(data.agentConfiguration.name).toBe(agent.name);
     expect(data.agentConfiguration.canRead).toBe(false);
+    expect(data.agentConfiguration.isRedacted).toBe(true);
     expect(data.agentConfiguration.instructions).toBeNull();
     expect(data.agentConfiguration.instructionsHtml).toBeNull();
     expect(data.agentConfiguration.actions).toEqual([]);
@@ -600,6 +605,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(data.agentConfiguration.sId).toBe(agent.sId);
     expect(data.agentConfiguration.name).toBe(agent.name);
     expect(data.agentConfiguration.canRead).toBe(false);
+    expect(data.agentConfiguration.isRedacted).toBe(true);
     expect(data.agentConfiguration.instructions).toBeNull();
     expect(data.agentConfiguration.instructionsHtml).toBeNull();
     expect(data.agentConfiguration.actions).toEqual([]);
@@ -684,7 +690,9 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.agentConfiguration.sId).toBe(agent.sId);
-    expect(data.agentConfiguration.canRead).toBe(true);
+    // The flag shows the content without granting `read`.
+    expect(data.agentConfiguration.canRead).toBe(false);
+    expect(data.agentConfiguration.isRedacted).toBe(false);
     expect(data.agentConfiguration.instructions).toBe(agent.instructions);
   });
 

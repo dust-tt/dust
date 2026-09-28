@@ -18,7 +18,6 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
 import { Avatar, Chip, cn, Markdown, Page } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef } from "react";
@@ -49,8 +48,8 @@ export function AgentInfoTab({
     !isGlobalAgent && (instructionsHtml !== null || instructions.length > 0);
 
   // The API redacts the private fields (instructions, skills, knowledge) of the agents an admin
-  // cannot read, and flags it by returning `canRead: false`. Only admins ever get such a response.
-  const isRedactedForAdmin = isAdmin(owner) && !agentConfiguration.canRead;
+  // cannot read, and flags it with `isRedacted`. Only admins ever get such a response.
+  const isRedactedForAdmin = !!agentConfiguration.isRedacted;
 
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
