@@ -1377,6 +1377,29 @@ describe("AgentResource", () => {
       expect(await resource.listActions(adminAuth)).toHaveLength(1);
       expect(adminAuth.can("read", resource)).toBe(false);
     });
+
+    it("applies the same override to resources built from configuration rows", async () => {
+      const { agent, adminAuth } = await setupHiddenAgentWithTool();
+      await FeatureFlagFactory.basic(
+        adminAuth,
+        "admin_can_see_private_entities"
+      );
+      const configurations = await AgentConfigurationModel.findAll({
+        where: {
+          workspaceId: adminAuth.getNonNullableWorkspace().id,
+          sId: agent.sId,
+        },
+      });
+
+      const [resource] = await AgentResource.dangerouslyFromConfigurationModels(
+        adminAuth,
+        configurations
+      );
+
+      assert(resource?.isFull());
+      expect(resource.content.instructions).toBe(agent.instructions);
+      expect(adminAuth.can("read", resource)).toBe(false);
+    });
   });
 
   describe("batchListActions", () => {
