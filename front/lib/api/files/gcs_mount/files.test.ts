@@ -5,6 +5,7 @@ import {
   getConversationFileMountSignedUrl,
   getGCSPathFromScopedPath,
   getScopedPathFromGCSPath,
+  moveFile,
   renameGCSMountDirectory,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
@@ -12,8 +13,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS } from "@app/lib/file_storage/signed_url_cache";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";
 import assert from "assert";
@@ -535,6 +538,81 @@ describe("renameGCSMountFile", () => {
       expect(result.error.message).toContain("copy failed");
     }
     expect(deleteMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("moveFile", () => {
+  let auth: Authenticator;
+  let prefix: string;
+
+  beforeEach(async () => {
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      copyFile: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const { authenticator } = await createResourceTest({});
+    auth = authenticator;
+    prefix = `w/${auth.getNonNullableWorkspace().sId}/pods/proj123/files/`;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const registerAt = (relativePath: string) =>
+    FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: relativePath.split("/").pop() ?? relativePath,
+      fileSize: 1,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: "proj123" },
+      mountFilePath: `${prefix}${relativePath}`,
+    });
+
+  it("releases a stale file registered at the destination and repoints the moved one", async () => {
+    const moved = await registerAt("a.txt");
+    const stale = await registerAt("archive/a.txt");
+
+    const result = await moveFile(auth, {
+      file: moved,
+      sourceGcsPath: `${prefix}a.txt`,
+      destScope: { useCase: "pod", podId: "proj123" },
+      destRelativeFilePath: "archive/a.txt",
+      destFileName: "a.txt",
+      destUseCase: "project_context",
+      destUseCaseMetadata: { spaceId: "proj123" },
+    });
+
+    expect(result.isOk()).toBe(true);
+    const [reloadedMoved] = await FileResource.fetchByMountFilePaths(auth, [
+      `${prefix}archive/a.txt`,
+    ]);
+    expect(reloadedMoved?.sId).toBe(moved.sId);
+    const reloadedStale = await FileResource.fetchById(auth, stale.sId);
+    expect(reloadedStale?.mountFilePath).toBeNull();
+  });
+
+  it("returns Err when the destination is claimed during the move", async () => {
+    const moved = await registerAt("a.txt");
+    await registerAt("archive/a.txt");
+    vi.spyOn(FileResource, "releaseMountFilePath").mockResolvedValue(undefined);
+
+    const result = await moveFile(auth, {
+      file: moved,
+      sourceGcsPath: `${prefix}a.txt`,
+      destScope: { useCase: "pod", podId: "proj123" },
+      destRelativeFilePath: "archive/a.txt",
+      destFileName: "a.txt",
+      destUseCase: "project_context",
+      destUseCaseMetadata: { spaceId: "proj123" },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("destination path");
+    }
   });
 });
 

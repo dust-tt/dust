@@ -428,19 +428,12 @@ export async function renameCanonicalFile(
     return renameResult;
   }
 
-  if (linkedFileResource) {
-    const { dest } = renameResult.value;
-    const destGcsPath = dustFs.toMountFilePath(dest);
-    const destInfo = inferDestMountInfo(dest);
-
-    if (destGcsPath && destInfo) {
-      await linkedFileResource.updateMount({
-        destFileName: newFileName,
-        destMountFilePath: destGcsPath,
-        destUseCase: destInfo.useCase,
-        destUseCaseMetadata: destInfo.useCaseMetadata,
-      });
-    }
+  const synced = await syncLinkedFileAfterMove(auth, dustFs, {
+    linkedFileResource,
+    dest: renameResult.value.dest,
+  });
+  if (synced.isErr()) {
+    return synced;
   }
 
   return renameResult;
@@ -473,23 +466,53 @@ export async function moveCanonicalFile(
     return moveResult;
   }
 
-  // Update the FileResource to point to the new location.
-  if (linkedFileResource) {
-    const destGcsPath = dustFs.toMountFilePath(dest);
-    const destInfo = inferDestMountInfo(dest);
-
-    if (destGcsPath && destInfo) {
-      const destFileName = dest.split("/").pop() ?? dest;
-      await linkedFileResource.updateMount({
-        destFileName,
-        destMountFilePath: destGcsPath,
-        destUseCase: destInfo.useCase,
-        destUseCaseMetadata: destInfo.useCaseMetadata,
-      });
-    }
+  const synced = await syncLinkedFileAfterMove(auth, dustFs, {
+    linkedFileResource,
+    dest,
+  });
+  if (synced.isErr()) {
+    return synced;
   }
 
   return moveResult;
+}
+
+/**
+ * Sync the linked FileResource, if any, after the bytes moved to `dest`. The move verified nothing
+ * was stored at `dest`, so a file still registered there is stale and gets released.
+ */
+async function syncLinkedFileAfterMove(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  {
+    linkedFileResource,
+    dest,
+  }: { linkedFileResource: FileResource | undefined; dest: string }
+): Promise<Result<void, DustFileSystemError>> {
+  const destGcsPath = dustFs.toMountFilePath(dest);
+  const destInfo = inferDestMountInfo(dest);
+  if (!destGcsPath || !destInfo) {
+    return new Ok(undefined);
+  }
+
+  if (!linkedFileResource) {
+    await FileResource.releaseMountFilePath(auth, destGcsPath);
+    return new Ok(undefined);
+  }
+
+  const moved = await linkedFileResource.moveMount(auth, {
+    destFileName: path.posix.basename(dest),
+    destMountFilePath: destGcsPath,
+    destUseCase: destInfo.useCase,
+    destUseCaseMetadata: destInfo.useCaseMetadata,
+  });
+  if (moved.isErr()) {
+    return new Err(
+      new DustFileSystemError("already_exists", moved.error.message)
+    );
+  }
+
+  return new Ok(undefined);
 }
 
 /**

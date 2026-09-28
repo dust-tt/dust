@@ -11,7 +11,7 @@ import {
   MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS,
 } from "@app/lib/file_storage/signed_url_cache";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -522,13 +522,19 @@ export async function moveFile(
     return moveRes;
   }
 
-  if (file) {
-    await file.updateMount({
+  // The copy replaced whatever was stored at dest, so a file still registered there is stale.
+  if (!file) {
+    await FileResource.releaseMountFilePath(auth, destGcsPath);
+  } else {
+    const moved = await file.moveMount(auth, {
       destFileName,
       destMountFilePath: destGcsPath,
       destUseCase,
       destUseCaseMetadata,
     });
+    if (moved.isErr()) {
+      return moved;
+    }
   }
 
   const prefix = resolvePrefix(auth.getNonNullableWorkspace(), destScope);

@@ -581,6 +581,24 @@ export class FileResource extends BaseResource<FileModel> {
     return files.map((f) => new this(this.model, f.get()));
   }
 
+  /**
+   * @cc [owner:flvndvd,label:backend;product] release-mount-path-only-when-bytes-gone
+   * Clears `mountFilePath` on the file registered at `mountFilePath`, if any, so another file can
+   * claim the path. Callers MUST only release a path whose mount object is absent or has just been
+   * overwritten by the file about to claim it. The released file keeps its own storage and stays
+   * fetchable by id; it MUST NOT be deleted here, since messages may still reference it.
+   */
+  static async releaseMountFilePath(
+    auth: Authenticator,
+    mountFilePath: string
+  ): Promise<void> {
+    const owner = auth.getNonNullableWorkspace();
+    await this.model.update(
+      { mountFilePath: null },
+      { where: { workspaceId: owner.id, mountFilePath } }
+    );
+  }
+
   static async fetchFrameV2Descendants(
     auth: Authenticator,
     parent: FileResource
@@ -2078,6 +2096,53 @@ export class FileResource extends BaseResource<FileModel> {
       useCase: destUseCase,
       useCaseMetadata: destUseCaseMetadata ?? null,
     });
+  }
+
+  /**
+   * @cc [owner:flvndvd,label:backend;product] stale-destination-row-does-not-block-move
+   * Repoints this file to `destMountFilePath` once its bytes moved there. A file still registered
+   * at that path is stale, since the caller's move verified nothing was stored there or replaced
+   * it, and MUST be released first so the repoint succeeds instead of failing on the mount path
+   * unique index. A concurrent claim of the path MUST surface as `Err`, never as a thrown
+   * constraint error.
+   */
+  async moveMount(
+    auth: Authenticator,
+    {
+      destFileName,
+      destMountFilePath,
+      destUseCase,
+      destUseCaseMetadata,
+    }: {
+      destFileName: string;
+      destMountFilePath: string;
+      destUseCase: FileUseCase;
+      destUseCaseMetadata?: FileUseCaseMetadata;
+    }
+  ): Promise<Result<undefined, Error>> {
+    await FileResource.releaseMountFilePath(auth, destMountFilePath);
+
+    try {
+      await this.updateMount({
+        destFileName,
+        destMountFilePath,
+        destUseCase,
+        destUseCaseMetadata,
+      });
+    } catch (err) {
+      if (err instanceof UniqueConstraintError) {
+        logger.warn(
+          { fileId: this.sId, destMountFilePath },
+          "Destination mount path was claimed while moving a file"
+        );
+        return new Err(
+          new Error("A registered file already uses the destination path.")
+        );
+      }
+      throw err;
+    }
+
+    return new Ok(undefined);
   }
 
   // Sharing logic.
