@@ -5,6 +5,7 @@ import {
   MetronomeWebhookEventSchema,
 } from "@app/lib/metronome/webhook_events";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchMetronomeEventsWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -26,6 +27,12 @@ app.get(
   async (ctx): HandlerResult<ResponseBody> => ctx.json({ success: true })
 );
 
+/**
+ * @cc [owner:tdraier,label:product] no-processing-under-maintenance
+ * When the resolved workspace has a `maintenance` metadata value, the event MUST NOT be enqueued.
+ * `relocation-done` is acked with 200 (the workspace now lives in another region, which receives
+ * the same event); any other value returns 503 so Metronome redelivers the event later.
+ */
 app.post("/", async (ctx): HandlerResult<ResponseBody> => {
   // Read the raw body bytes once. Metronome's SDK signature verification
   // works on the exact string representation of the JSON body.
@@ -109,6 +116,33 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
 
   if (!workspace) {
     return ctx.json({ success: true });
+  }
+
+  // Both regions receive the events of a relocated workspace, and its row
+  // stays in the source region until purge. Only the destination may act on
+  // them: processing here would e.g. unpause the source connectors.
+  const maintenance = renderLightWorkspaceType({ workspace }).metadata
+    ?.maintenance;
+  if (maintenance) {
+    logger.warn(
+      {
+        eventId: event.id,
+        eventType: event.type,
+        maintenance,
+        workspaceId: workspace.sId,
+      },
+      "[Metronome Webhook] Workspace under maintenance, skipping event"
+    );
+    if (maintenance === "relocation-done") {
+      return ctx.json({ success: true });
+    }
+    return apiError(ctx, {
+      status_code: 503,
+      api_error: {
+        type: "service_unavailable",
+        message: `Workspace under maintenance. [${maintenance}]`,
+      },
+    });
   }
 
   // Hand the event off to a Temporal workflow for durable processing.
