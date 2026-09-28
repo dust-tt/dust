@@ -42,6 +42,7 @@ interface SearchFilterPanelProps<Category extends SearchFilterCategory> {
   applyDisabled?: boolean;
   categoryNavFooter?: ReactNode;
   onOpen?: () => void;
+  onClearAll?: () => void;
 }
 
 export function SearchFilterPanel<Category extends SearchFilterCategory>({
@@ -57,6 +58,7 @@ export function SearchFilterPanel<Category extends SearchFilterCategory>({
   applyDisabled,
   categoryNavFooter,
   onOpen,
+  onClearAll,
 }: SearchFilterPanelProps<Category>) {
   const { user } = useAuth();
 
@@ -80,6 +82,7 @@ export function SearchFilterPanel<Category extends SearchFilterCategory>({
       applyDisabled={applyDisabled}
       categoryNavFooter={categoryNavFooter}
       onOpen={onOpen}
+      onClearAll={onClearAll}
     />
   );
 }

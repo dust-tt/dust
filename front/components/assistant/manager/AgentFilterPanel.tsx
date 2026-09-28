@@ -16,7 +16,7 @@ import type {
   AgentSearchPermissionFiltering,
 } from "@app/types/agent_search/agent_search";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Checkbox, Label } from "@dust-tt/sparkle";
+import { Checkbox, InfoCircle, Label, Tooltip } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface AgentFilterPanelProps {
@@ -84,6 +84,7 @@ export function AgentFilterPanel({
         hiddenAgents?.onChange(draftShowHiddenAgents);
       }}
       onOpen={() => setDraftShowHiddenAgents(hiddenAgents?.isShown ?? false)}
+      onClearAll={() => setDraftShowHiddenAgents(false)}
       facets={facets}
       isLoading={!!facet && isAgentsLoading}
       isError={!!facet && isAgentsError}
@@ -104,6 +105,10 @@ export function AgentFilterPanel({
             >
               Hidden agents
             </Label>
+            <Tooltip
+              label="Shows the agents of all members you can access as an admin, even if they are not published or if they use restricted spaces"
+              trigger={<InfoCircle className="h-4 w-4 text-muted-foreground" />}
+            />
           </div>
         )
       }

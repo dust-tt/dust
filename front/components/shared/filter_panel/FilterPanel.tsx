@@ -42,8 +42,9 @@ interface FilterPanelProps<
   applyDisabled?: boolean;
   // Rendered below the categories, for settings that are not a category.
   categoryNavFooter?: ReactNode;
-  // Called when the panel opens, so the caller can reset the drafts it owns.
+  // Called when the panel opens and on "Clear filters", so the caller can reset its own drafts.
   onOpen?: () => void;
+  onClearAll?: () => void;
 }
 
 export function FilterPanel<
@@ -64,6 +65,7 @@ export function FilterPanel<
   applyDisabled,
   categoryNavFooter,
   onOpen,
+  onClearAll,
 }: FilterPanelProps<Category, Option>) {
   const {
     isOpen,
@@ -223,7 +225,10 @@ export function FilterPanel<
         )}
         <FilterFooter
           applyDisabled={applyDisabled}
-          onClearAll={clearAllCategories}
+          onClearAll={() => {
+            clearAllCategories();
+            onClearAll?.();
+          }}
           onCancel={() => setIsOpen(false)}
           onApply={() => {
             onFilterChange(draftFilter);

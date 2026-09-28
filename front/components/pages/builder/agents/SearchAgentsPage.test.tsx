@@ -314,10 +314,25 @@ describe("search-backed Manage Agents", () => {
       })
     );
 
+    expect(screen.getByText("Hidden agents")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Filters" })
+    ).not.toHaveTextContent(/\d/);
+
     await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(
       screen.getByRole("checkbox", { name: "Hidden agents" })
     ).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await waitFor(() =>
+      expect(screen.queryByText("Hidden agents")).not.toBeInTheDocument()
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Hidden agents" })
+    ).not.toBeChecked();
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await userEvent.click(screen.getByRole("tab", { name: "Default" }));
     await userEvent.click(screen.getByRole("button", { name: "Filters" }));

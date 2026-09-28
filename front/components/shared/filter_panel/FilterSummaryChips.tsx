@@ -7,6 +7,7 @@ import {
   m,
   useReducedMotion,
 } from "framer-motion";
+import type { ReactNode } from "react";
 import { Fragment } from "react";
 
 function SummaryLabel({
@@ -27,17 +28,39 @@ function SummaryLabel({
   );
 }
 
+interface FilterExtraChip {
+  key: string;
+  label: ReactNode;
+  onRemove: () => void;
+}
+
 interface FilterSummaryChipsProps<Category extends string> {
   summaries: FilterSummary<Category>[];
+  // Chips for settings outside the filter categories, shown after the category chips.
+  extraChips?: FilterExtraChip[];
   onClearCategory: (category: Category) => void;
   onClearAll: () => void;
 }
 
 export function FilterSummaryChips<Category extends string>({
   summaries,
+  extraChips = [],
   onClearCategory,
   onClearAll,
 }: FilterSummaryChipsProps<Category>) {
+  const chips: FilterExtraChip[] = [
+    ...summaries.map((summary) => ({
+      key: `category:${summary.category}`,
+      label: (
+        <SummaryLabel
+          categoryLabel={summary.categoryLabel}
+          options={summary.options}
+        />
+      ),
+      onRemove: () => onClearCategory(summary.category),
+    })),
+    ...extraChips.map((chip) => ({ ...chip, key: `extra:${chip.key}` })),
+  ];
   const shouldReduceMotion = useReducedMotion();
   const transition = shouldReduceMotion
     ? { duration: 0 }
@@ -46,7 +69,7 @@ export function FilterSummaryChips<Category extends string>({
   return (
     <LazyMotion features={domMax}>
       <AnimatePresence initial={false}>
-        {summaries.length > 0 && (
+        {chips.length > 0 && (
           <m.div
             key="filter-summary-chips"
             initial={
@@ -63,9 +86,9 @@ export function FilterSummaryChips<Category extends string>({
           >
             <div className="flex flex-wrap items-center gap-2">
               <AnimatePresence initial={false}>
-                {summaries.map((summary) => (
+                {chips.map((chip) => (
                   <m.div
-                    key={summary.category}
+                    key={chip.key}
                     layout={!shouldReduceMotion}
                     initial={
                       shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }
@@ -83,12 +106,9 @@ export function FilterSummaryChips<Category extends string>({
                       size="xs"
                       color="highlight"
                       className="max-w-full"
-                      onRemove={() => onClearCategory(summary.category)}
+                      onRemove={chip.onRemove}
                     >
-                      <SummaryLabel
-                        categoryLabel={summary.categoryLabel}
-                        options={summary.options}
-                      />
+                      {chip.label}
                     </Chip>
                   </m.div>
                 ))}

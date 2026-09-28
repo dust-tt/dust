@@ -257,6 +257,7 @@ export function SearchAgentsPage() {
   );
   const activeTab =
     SEARCH_TABS.find((tab) => tab.id === selectedTab) ?? SEARCH_TABS[0];
+  const canShowHiddenAgents = isAdmin && selectedTab === "all";
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Agents");
 
@@ -324,7 +325,7 @@ export function SearchAgentsPage() {
                 filter={filter}
                 onFilterChange={setFilter}
                 hiddenAgents={
-                  isAdmin && selectedTab === "all"
+                  canShowHiddenAgents
                     ? {
                         isShown: showHiddenAgents,
                         onChange: setShowHiddenAgents,
@@ -343,7 +344,25 @@ export function SearchAgentsPage() {
             onClearCategory={(category) =>
               setFilter(clearFilterCategory(filter, category))
             }
-            onClearAll={() => setFilter({})}
+            extraChips={
+              canShowHiddenAgents && showHiddenAgents
+                ? [
+                    {
+                      key: "hidden-agents",
+                      label: (
+                        <span className="min-w-0 truncate text-xs font-bold">
+                          Hidden agents
+                        </span>
+                      ),
+                      onRemove: () => setShowHiddenAgents(false),
+                    },
+                  ]
+                : []
+            }
+            onClearAll={() => {
+              setFilter({});
+              setShowHiddenAgents(false);
+            }}
           />
           {SEARCH_TABS.map((tab) => (
             <TabsContent key={tab.id} value={tab.id}>
