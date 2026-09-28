@@ -8,6 +8,7 @@ import type { SingletonAgentSuggestionData } from "@app/lib/api/actions/servers/
 import {
   recordAgentCreationSuggestion,
   recordAgentSkillSuggestions,
+  recordAgentToolSuggestions,
   recordSingletonAgentSuggestions,
   validateAgentCreation,
   validateAgentDeletion,
@@ -17,6 +18,7 @@ import {
   validateAgentNameChange,
   validateAgentPublishStateChange,
   validateAgentSkillChanges,
+  validateAgentToolChanges,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import { formatBatchSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type {
@@ -66,6 +68,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   CreateSuggestionType,
   SkillsSuggestionType,
+  ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillCreateSuggestionType,
@@ -88,6 +91,7 @@ type PlannedChange =
         edits: InstructionSuggestionEditInput[];
       } | null;
       skills: SkillsSuggestionType[];
+      tools: ToolsSuggestionType[];
     }
   | {
       type: "skill_creation";
@@ -173,6 +177,7 @@ async function planAgentEdit(
     reasoningEffort,
     scope,
     skills: skillChanges,
+    tools: toolChanges,
   }: EditAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const agentRes = await fetchAgentForSuggestion(auth, agentId);
@@ -252,7 +257,26 @@ async function planAgentEdit(
     skills = validation.value;
   }
 
-  if (singletons.length === 0 && instructions === null && skills.length === 0) {
+  let tools: ToolsSuggestionType[] = [];
+  const addToolIds = toolChanges?.addToolIds ?? [];
+  const removeToolIds = toolChanges?.removeToolIds ?? [];
+  if (addToolIds.length > 0 || removeToolIds.length > 0) {
+    const validation = await validateAgentToolChanges(auth, agent, {
+      addToolIds,
+      removeToolIds,
+    });
+    if (validation.isErr()) {
+      return validation;
+    }
+    tools = validation.value;
+  }
+
+  if (
+    singletons.length === 0 &&
+    instructions === null &&
+    skills.length === 0 &&
+    tools.length === 0
+  ) {
     return new Err(
       new MCPError(
         `The edit of agent "${agentId}" does not change anything: provide at least one field.`
@@ -260,7 +284,14 @@ async function planAgentEdit(
     );
   }
 
-  return new Ok({ type: "agent", agent, singletons, instructions, skills });
+  return new Ok({
+    type: "agent",
+    agent,
+    singletons,
+    instructions,
+    skills,
+    tools,
+  });
 }
 
 async function planAgentDeletion(
@@ -284,6 +315,7 @@ async function planAgentDeletion(
     singletons: [{ kind: "delete", suggestion: validation.value }],
     instructions: null,
     skills: [],
+    tools: [],
   });
 }
 
@@ -701,6 +733,11 @@ async function recordPlannedChange(
 
       await recordAgentSkillSuggestions(auth, change.agent, {
         skills: change.skills,
+        conversation,
+        batch,
+      });
+      await recordAgentToolSuggestions(auth, change.agent, {
+        tools: change.tools,
         conversation,
         batch,
       });

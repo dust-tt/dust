@@ -1,9 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  generateUniqueActionName,
-  nameToStorageFormat,
-} from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
@@ -15,6 +12,7 @@ import {
 } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
+import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";

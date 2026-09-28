@@ -16,6 +16,7 @@ import type {
   AgentScopeSuggestionType,
   AgentSkillsSuggestionType,
   AgentSuggestionState,
+  AgentToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import type { ActionCardState } from "@dust-tt/sparkle";
 import { ActionCardBlock, Avatar } from "@dust-tt/sparkle";
@@ -46,7 +47,8 @@ export type AgentActionCardSuggestionType =
   | AgentModelSuggestionType
   | AgentNameSuggestionType
   | AgentScopeSuggestionType
-  | AgentSkillsSuggestionType;
+  | AgentSkillsSuggestionType
+  | AgentToolsSuggestionType;
 
 interface AgentSuggestionActionCardProps {
   agentSuggestion: AgentActionCardSuggestionType;
@@ -147,6 +149,18 @@ export function getAgentSuggestionLabels(
         rejectedTitle: isAddition
           ? "Skill addition rejected"
           : "Skill removal rejected",
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "tools": {
+      const isAddition = agentSuggestion.suggestion.action === "add";
+      return {
+        title: isAddition ? "Add a tool" : "Remove a tool",
+        acceptedTitle: isAddition ? "Tool added" : "Tool removed",
+        rejectedTitle: isAddition
+          ? "Tool addition rejected"
+          : "Tool removal rejected",
         description: analysis ?? undefined,
       };
     }

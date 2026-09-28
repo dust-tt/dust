@@ -7,6 +7,7 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import { AgentSuggestionDataSchema } from "@app/types/suggestions/agent_suggestion";
 
@@ -17,6 +18,7 @@ export interface AgentFieldEdits {
   scope?: "hidden" | "visible";
   instructions?: InstructionsSuggestionSchemaType[];
   skills?: SkillsSuggestionType[];
+  tools?: ToolsSuggestionType[];
 }
 
 type AgentSuggestionChangeInput = Pick<
@@ -59,12 +61,14 @@ function fieldEditsForSuggestion(
     case "instructions":
       return new Ok({ instructions: [data.suggestion] });
 
+    case "tools":
+      return new Ok({ tools: [data.suggestion] });
+
     case "skills":
       return new Ok({ skills: [data.suggestion] });
 
     case "knowledge":
     case "sub_agent":
-    case "tools":
       return new Err(
         new DustError(
           "invalid_request_error",
@@ -89,12 +93,14 @@ function mergeFieldEdits(
     ...(next.instructions ?? []),
   ];
   const skills = [...(merged.skills ?? []), ...(next.skills ?? [])];
+  const tools = [...(merged.tools ?? []), ...(next.tools ?? [])];
 
   return {
     ...merged,
     ...next,
     ...(instructions.length > 0 ? { instructions } : {}),
     ...(skills.length > 0 ? { skills } : {}),
+    ...(tools.length > 0 ? { tools } : {}),
   };
 }
 

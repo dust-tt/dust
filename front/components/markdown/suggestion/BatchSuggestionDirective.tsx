@@ -8,6 +8,7 @@
  */
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { AgentSuggestionDetails } from "@app/components/markdown/suggestion/AgentSuggestionDetails";
 import { isAgentActionCardSuggestion } from "@app/components/markdown/suggestion/AgentSuggestionDirective";
 import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
@@ -26,6 +27,7 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { SuggestionBatchReviewState } from "@app/types/api/assistant/suggestion_batches";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
   AGENT_SIDE_PANEL_TYPE,
   SKILL_SIDE_PANEL_TYPE,
@@ -120,6 +122,41 @@ function SuggestionTargetSection({
   );
 }
 
+interface AgentSuggestionGroupProps {
+  owner: LightWorkspaceType;
+  label: string;
+  suggestions: AgentActionCardSuggestionType[];
+  agentConfiguration: AgentConfigurationType | null;
+}
+
+/** Suggestions of one kind, each a row, listed under a single heading. */
+function AgentSuggestionGroup({
+  owner,
+  label,
+  suggestions,
+  agentConfiguration,
+}: AgentSuggestionGroupProps) {
+  if (suggestions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <div className="divide-y divide-border">
+        {suggestions.map((suggestion) => (
+          <AgentSuggestionDetails
+            key={suggestion.sId}
+            owner={owner}
+            suggestion={suggestion}
+            agentConfiguration={agentConfiguration}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface AgentSuggestionsDiffProps {
   owner: LightWorkspaceType;
   agentId: string;
@@ -133,10 +170,15 @@ function AgentSuggestionsDiff({
 }: AgentSuggestionsDiffProps) {
   const { openPanel } = useConversationSidePanelContext();
   const displayable = suggestions.filter(isAgentActionCardSuggestion);
-  // Each skill is its own suggestion: they are listed together, under a single heading.
-  const [skillSuggestions, fieldSuggestions] = partition(
+  // Each skill and each tool is its own suggestion: they are listed together, under a single
+  // heading per kind.
+  const [skillSuggestions, otherSuggestions] = partition(
     displayable,
     (s) => s.kind === "skills"
+  );
+  const [toolSuggestions, fieldSuggestions] = partition(
+    otherSuggestions,
+    (s) => s.kind === "tools"
   );
   const { agentConfiguration, isAgentConfigurationLoading } =
     useAgentConfiguration({
@@ -185,21 +227,18 @@ function AgentSuggestionsDiff({
           agentConfiguration={agentConfiguration}
         />
       ))}
-      {skillSuggestions.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <span className="text-sm text-muted-foreground">Skills</span>
-          <div className="divide-y divide-border">
-            {skillSuggestions.map((suggestion) => (
-              <AgentSuggestionDetails
-                key={suggestion.sId}
-                owner={owner}
-                suggestion={suggestion}
-                agentConfiguration={agentConfiguration}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <AgentSuggestionGroup
+        owner={owner}
+        label="Skills"
+        suggestions={skillSuggestions}
+        agentConfiguration={agentConfiguration}
+      />
+      <AgentSuggestionGroup
+        owner={owner}
+        label="Tools"
+        suggestions={toolSuggestions}
+        agentConfiguration={agentConfiguration}
+      />
     </SuggestionTargetSection>
   );
 }

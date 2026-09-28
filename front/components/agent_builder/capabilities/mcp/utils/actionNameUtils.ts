@@ -15,14 +15,6 @@ export function nameToDisplayFormat(name: string): string {
     .join(" ");
 }
 
-// Convert display format name back to storage format
-export function nameToStorageFormat(displayName: string): string {
-  return displayName
-    .toLowerCase()
-    .replace(/\s+/g, "_")
-    .replace(/[^a-z0-9_]/g, ""); // Remove any non-alphanumeric characters except underscores
-}
-
 // TODO: refactor an make it reusable for mcp tools with data source selection.
 export function generateUniqueActionName({
   baseName,
