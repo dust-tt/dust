@@ -2,6 +2,8 @@ import { setDefaultInitResolver } from "@app/lib/api/config";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import logger from "@app/logger/logger";
+import type { GetWorkspaceAuthContextResponseType } from "@app/types/api/auth_context";
+import type { SubscriptionType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
@@ -26,6 +28,9 @@ export const useAuthHook = () => {
     string | undefined
   >();
   const [featureFlags, setFeatureFlags] = useState<WhitelistableFeature[]>([]);
+  const [subscription, setSubscription] = useState<SubscriptionType | null>(
+    null
+  );
   const { setCellInfo } = useCellContext();
 
   // Set default fetch init for the extension (overrides CellContext's credentials: "include").
@@ -74,6 +79,8 @@ export const useAuthHook = () => {
     setTokens(null);
     setWorkspace(undefined);
     setUser(null);
+    setSubscription(null);
+    setFeatureFlags([]);
     setAuthError(null);
     setForcedConnection(undefined);
     if (refreshTimerRef.current) {
@@ -211,20 +218,26 @@ export const useAuthHook = () => {
     };
   }, []);
 
-  // Fetch feature flags when workspace is ready.
+  // Fetch workspace auth context (subscription + feature flags) when ready.
+  // The model picker gates premium models on the real plan
+  // (`hasAdvancedModelAccess` / credit-priced), so a stub subscription would
+  // incorrectly lock premium models for paid workspaces.
   useEffect(() => {
     if (!isAuthenticated || !workspace || !tokens?.accessToken) {
       setFeatureFlags([]);
+      setSubscription(null);
       return;
     }
 
     void (async () => {
-      const res = await clientFetch(`/api/w/${workspace.sId}/feature-flags`);
+      const res = await clientFetch(`/api/w/${workspace.sId}/auth-context`);
       if (res.ok) {
-        const { feature_flags } = await res.json();
-        setFeatureFlags(feature_flags ?? []);
+        const data = (await res.json()) as GetWorkspaceAuthContextResponseType;
+        setFeatureFlags(data.featureFlags ?? []);
+        setSubscription(data.subscription);
       } else {
         setFeatureFlags([]);
+        setSubscription(null);
       }
     })();
   }, [workspace, tokens?.accessToken, isAuthenticated]);
@@ -290,5 +303,6 @@ export const useAuthHook = () => {
     handleLogout,
     handleSelectOrganization,
     featureFlags,
+    subscription,
   };
 };
