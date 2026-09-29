@@ -81,8 +81,8 @@ describe("PATCH /api/w/:wId/mcp/:serverId", () => {
     expect(data.server).toHaveProperty("customHeaders");
     expect(data.server.customHeaders).toBeDefined();
     expect(data.server.customHeaders).toMatchObject({
-      "test-key-1": "value1",
-      "test-key-2": "value2",
+      "test-key-1": "••••••••",
+      "test-key-2": "••••••••",
     });
   });
 

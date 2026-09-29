@@ -112,6 +112,14 @@ export function redactSecret(secret: string): string {
   );
 }
 
+export function redactObjectValues(
+  obj: Record<string, string>
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [key, redactSecret(value)])
+  );
+}
+
 export function truncate(text: string, length: number, omission = "...") {
   return text.length > length
     ? `${text.substring(0, length - omission.length)}${omission}`
