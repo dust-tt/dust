@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
+import { withBigQueryStaticIpProxy } from "@app/lib/egress/bigquery";
 import logger, { auditLog } from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { BigQueryCredentialsWithLocation } from "@app/types/oauth/lib";
@@ -78,10 +79,12 @@ export const bigqueryChangeLocationPlugin = createPlugin({
       .content as BigQueryCredentialsWithLocation;
 
     // Build a BigQuery client and collect dataset locations
-    const bq = new BigQuery({
-      credentials: content,
-      scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
-    });
+    const bq = new BigQuery(
+      withBigQueryStaticIpProxy({
+        credentials: content,
+        scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
+      })
+    );
     let datasets: Dataset[];
     try {
       [datasets] = await bq.getDatasets();
