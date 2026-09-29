@@ -84,6 +84,18 @@ app.get(
       });
     }
 
+    if (!auth.isAdmin() || !auth.can("admin", dataSource)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message:
+            "Only the users that are `admins` for the current workspace " +
+            "can read the configuration of a data source.",
+        },
+      });
+    }
+
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
       logger

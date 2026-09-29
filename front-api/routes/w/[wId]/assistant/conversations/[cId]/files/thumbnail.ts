@@ -2,7 +2,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import { isSupportedImageContentType } from "@app/types/files";
+import { getFileFormat, isSupportedImageContentType } from "@app/types/files";
 import {
   getConversationFilesBasePath,
   parseScopedFilePath,
@@ -84,7 +84,11 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
 
   // If a FileResource exists, stream its best available version (processed if available).
   if (fileResource) {
-    if (!isSupportedImageContentType(fileResource.contentType)) {
+    const fileResourceFormat = getFileFormat(fileResource.contentType);
+    if (
+      !isSupportedImageContentType(fileResource.contentType) ||
+      !fileResourceFormat?.isSafeToDisplay
+    ) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -120,7 +124,8 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const contentType = contentTypeResult.value ?? "application/octet-stream";
-  if (!isSupportedImageContentType(contentType)) {
+  const format = getFileFormat(contentType);
+  if (!isSupportedImageContentType(contentType) || !format?.isSafeToDisplay) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
