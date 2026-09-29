@@ -102,6 +102,8 @@ function fakeGithub({
   retryConclusion = null,
   retryDurationMs = 10 * 60_000,
   retryError = false,
+  pollErrors = 0,
+  historyErrorAfterRetry = false,
   jobsByRunNumber = {},
   attempts = {},
   attemptJobs = {},
@@ -118,6 +120,8 @@ function fakeGithub({
   retryConclusion?: string | null;
   retryDurationMs?: number;
   retryError?: boolean;
+  pollErrors?: number;
+  historyErrorAfterRetry?: boolean;
   jobsByRunNumber?: Record<
     number,
     Array<{ name: string; conclusion: string | null }>
@@ -130,22 +134,27 @@ function fakeGithub({
   pulls?: Array<{ number: number; html_url: string; merged_at: string | null }>;
   mergedBy?: string | null;
 }) {
-  const calls = { reruns: 0 };
+  const calls = { reruns: 0, polls: 0 };
   return {
     calls,
     rest: {
       actions: {
-        listWorkflowRuns: async () => ({
-          data: {
-            workflow_runs: (calls.reruns > 0 && otherRunsAfterRetry
-              ? otherRunsAfterRetry
-              : otherRuns
-            ).map((candidate) => ({
-              id: 1000 + candidate.run_number,
-              ...candidate,
-            })),
-          },
-        }),
+        listWorkflowRuns: async () => {
+          if (calls.reruns > 0 && historyErrorAfterRetry) {
+            throw new Error("GitHub is down");
+          }
+          return {
+            data: {
+              workflow_runs: (calls.reruns > 0 && otherRunsAfterRetry
+                ? otherRunsAfterRetry
+                : otherRuns
+              ).map((candidate) => ({
+                id: 1000 + candidate.run_number,
+                ...candidate,
+              })),
+            },
+          };
+        },
         listJobsForWorkflowRun: async ({ run_id }: { run_id: number }) => {
           if (run_id === run.id) {
             return {
@@ -177,6 +186,10 @@ function fakeGithub({
           attempt_number: number;
         }) => ({ data: attempts[attempt_number] ?? { conclusion: null } }),
         getWorkflowRun: async () => {
+          calls.polls += 1;
+          if (calls.polls <= pollErrors) {
+            throw new Error("GitHub is down");
+          }
           const attempt = {
             run_attempt: 2,
             run_started_at: new Date(RETRY_STARTED_AT_MS).toISOString(),
@@ -570,6 +583,31 @@ describe("infra retry", () => {
       otherRuns: [{ run_number: 6, conclusion: "success" }],
       jobs: infraJobs,
       retryError: true,
+    });
+    const text = (await notifyWith(github)) ?? "";
+    assert.match(text, /main is broken/);
+    assert.doesNotMatch(text, /automatic retry/);
+  });
+
+  it("keeps polling through errors until the retry completes", async () => {
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: infraJobs,
+      retryConclusion: "success",
+      pollErrors: 3,
+    });
+    assert.equal(await notifyWith(github), null);
+    assert.equal(github.calls.polls, 4);
+  });
+
+  it("reports the breakage when the history refresh after the retry errors", async () => {
+    globalThis.fetch = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: infraJobs,
+      retryConclusion: "failure",
+      historyErrorAfterRetry: true,
     });
     const text = (await notifyWith(github)) ?? "";
     assert.match(text, /main is broken/);

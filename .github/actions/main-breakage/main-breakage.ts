@@ -232,7 +232,8 @@ function isInfraStep(name: string): boolean {
  * A first-attempt breakage MUST be retried once when every failed job first failed on a
  * runner-preparation step, and notify without a retry otherwise. Only a successful retry
  * silences it: any other outcome, including a timeout or an error while retrying, notifies unless
- * a newer signal run completed meanwhile, and only a second failure is reported as retried.
+ * a newer signal run completed meanwhile, and only a second failure is reported as retried. A
+ * GitHub API error during the retry or the lookups that follow it MUST NOT drop the notification.
  */
 function isInfraFailure(jobs: Job[]): boolean {
   const failed = jobs.filter((job) => job.conclusion === "failure");
@@ -249,6 +250,8 @@ function isInfraFailure(jobs: Job[]): boolean {
 const RETRY_ACTOR = "github-actions[bot]";
 const RETRY_POLL_MS = 30_000;
 const RETRY_TIMEOUT_MS = 45 * 60_000;
+// Bounds how long after the rerun request its attempt can start, for when polls cannot see it.
+const RETRY_START_GRACE_MS = 5 * 60_000;
 
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -282,33 +285,41 @@ async function retryFailedJobs({
       ...context.repo,
       run_id: run.id,
     });
-    core.info(`Retrying the failed jobs of ${run.name} run ${run.id}.`);
-    const requestedAtMs = nowMs();
-    for (;;) {
-      await sleep(RETRY_POLL_MS);
+  } catch (error) {
+    core.warning(`Could not retry ${run.name} run ${run.id}: ${String(error)}`);
+    return null;
+  }
+  core.info(`Retrying the failed jobs of ${run.name} run ${run.id}.`);
+  const requestedAtMs = nowMs();
+  let startedAtMs: number | null = null;
+  // A failed poll must not end the wait early: a short attempt stays silent on its own, so this
+  // job has to keep watching until the attempt has run for the whole cap.
+  for (;;) {
+    await sleep(RETRY_POLL_MS);
+    try {
       const { data } = await github.rest.actions.getWorkflowRun({
         ...context.repo,
         run_id: run.id,
       });
-      const started = data.run_attempt > run.run_attempt;
-      if (started && data.status === "completed") {
-        if (isWithinRetryPoll(data)) {
-          return data.conclusion;
+      if (data.run_attempt > run.run_attempt) {
+        if (data.status === "completed") {
+          if (isWithinRetryPoll(data)) {
+            return data.conclusion;
+          }
+          break;
         }
-        break;
+        startedAtMs = Date.parse(data.run_started_at);
       }
-      const startedAtMs = started
-        ? Date.parse(data.run_started_at)
-        : requestedAtMs;
-      if (!(nowMs() - startedAtMs < RETRY_TIMEOUT_MS)) {
-        break;
-      }
+    } catch (error) {
+      core.warning(
+        `Could not poll the retry of ${run.name} run ${run.id}: ${String(error)}`
+      );
     }
-  } catch (error) {
-    core.warning(
-      `The retry of ${run.name} run ${run.id} failed: ${String(error)}`
-    );
-    return null;
+    const deadlineMs =
+      (startedAtMs ?? requestedAtMs + RETRY_START_GRACE_MS) + RETRY_TIMEOUT_MS;
+    if (!(nowMs() < deadlineMs)) {
+      break;
+    }
   }
   core.warning(
     `The retry of ${run.name} run ${run.id} did not complete in time.`
@@ -368,7 +379,8 @@ type PreviousState =
  * when that attempt carries a signal (otherwise recovery-by-rerun would stay silent forever), and
  * the previous-run lookup when it does not. An attempt started by the automatic infra retry MUST
  * stay silent when its own start-to-completion time is under the poll cap, and MUST report its own
- * transition otherwise; the job that started it MUST report its outcome in exactly the first case.
+ * transition otherwise; the job that started it MUST report its outcome in exactly the first case,
+ * so it MUST keep polling through API errors until that cap has passed.
  */
 async function getPreviousState({
   github,
@@ -548,21 +560,28 @@ export async function buildBreakageNotification({
       core.info(`No notification: ${run.name} succeeded after a retry.`);
       return null;
     }
-    const completed = await listCompletedRuns({ github, context });
-    if (await isSuperseded({ github, context }, completed)) {
-      core.info(
-        `No notification: a newer ${run.name} run completed during the retry.`
+    // A failed refresh falls back to reporting the original failure rather than dropping it.
+    try {
+      const completed = await listCompletedRuns({ github, context });
+      if (await isSuperseded({ github, context }, completed)) {
+        core.info(
+          `No notification: a newer ${run.name} run completed during the retry.`
+        );
+        return null;
+      }
+      if (conclusion === "failure") {
+        const { data } = await github.rest.actions.listJobsForWorkflowRun({
+          ...context.repo,
+          run_id: run.id,
+          per_page: JOBS_PER_PAGE,
+        });
+        jobs = data.jobs;
+        retried = true;
+      }
+    } catch (error) {
+      core.warning(
+        `Could not refresh ${run.name} run ${run.id} after the retry: ${String(error)}`
       );
-      return null;
-    }
-    if (conclusion === "failure") {
-      const { data } = await github.rest.actions.listJobsForWorkflowRun({
-        ...context.repo,
-        run_id: run.id,
-        per_page: JOBS_PER_PAGE,
-      });
-      jobs = data.jobs;
-      retried = true;
     }
   }
 
