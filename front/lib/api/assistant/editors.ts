@@ -73,15 +73,12 @@ export const getAgentsEditors = async (
       .filter((agent) => agent.scope !== "global")
       .map((agent) => agent.sId)
   );
-  const editorsByAgentId = await AgentResource.batchListEditors(
-    auth,
-    resources
-  );
+  const editorsByAgent = await AgentResource.batchListEditors(auth, resources);
 
   return Object.fromEntries(
-    [...editorsByAgentId].map(([agentId, editors]) => {
+    [...editorsByAgent].map(([agent, editors]) => {
       assert(editors !== null);
-      return [agentId, editors.map((editor) => editor.toJSON())];
+      return [agent.sId, editors.map((editor) => editor.toJSON())];
     })
   );
 };

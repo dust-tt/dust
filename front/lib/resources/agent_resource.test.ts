@@ -805,7 +805,7 @@ describe("AgentResource", () => {
     const firstEditors = await resources[0].listEditors(
       testContext.authenticator
     );
-    const editorsByAgentId = await AgentResource.batchListEditors(
+    const editorsByAgent = await AgentResource.batchListEditors(
       testContext.authenticator,
       resources
     );
@@ -814,11 +814,10 @@ describe("AgentResource", () => {
       testContext.user.id,
     ]);
     expect(
-      editorsByAgentId.get(firstAgent.sId)?.map((editor) => editor.id)
-    ).toEqual([testContext.user.id]);
-    expect(
-      editorsByAgentId.get(secondAgent.sId)?.map((editor) => editor.id)
-    ).toEqual([testContext.user.id]);
+      resources.map((resource) =>
+        editorsByAgent.get(resource)?.map((editor) => editor.id)
+      )
+    ).toEqual([[testContext.user.id], [testContext.user.id]]);
   });
 
   it("applies admin and editor permissions to active custom agents", async () => {
@@ -1397,9 +1396,9 @@ describe("AgentResource", () => {
 
       expect(counts).toEqual(
         new Map([
-          [popular.sId, 2],
-          [unfavorited.sId, 0],
-          [ignored.sId, 0],
+          [popular, 2],
+          [unfavorited, 0],
+          [ignored, 0],
         ])
       );
     });
@@ -1408,6 +1407,36 @@ describe("AgentResource", () => {
       expect(
         await AgentResource.batchCountFavorites(testContext.authenticator, [])
       ).toEqual(new Map());
+    });
+
+    it("counts and lists editors for global agents alongside custom ones", async () => {
+      const { authenticator } = testContext;
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const [custom, helper] = await AgentResource.fetchByIds(authenticator, [
+        agent.sId,
+        GLOBAL_AGENTS_SID.HELPER,
+      ]);
+      assert(custom && helper);
+      expect((await helper.setUserFavorite(authenticator, true)).isOk()).toBe(
+        true
+      );
+
+      const [counts, editors] = await Promise.all([
+        AgentResource.batchCountFavorites(authenticator, [custom, helper]),
+        AgentResource.batchListEditors(authenticator, [custom, helper]),
+      ]);
+
+      expect(counts).toEqual(
+        new Map([
+          [custom, 0],
+          [helper, 1],
+        ])
+      );
+      expect(editors.get(custom)?.map((editor) => editor.id)).toEqual([
+        testContext.user.id,
+      ]);
+      expect(editors.get(helper)).toBeNull();
     });
   });
 
@@ -1612,20 +1641,20 @@ describe("AgentResource", () => {
 
       const listForAgents = vi.spyOn(TagResource, "listForAgents");
       try {
-        const tagsByConfigurationModelId = await AgentResource.batchListTags(
+        const tagsByAgent = await AgentResource.batchListTags(
           authenticator,
           agents
         );
 
         expect(
-          [...tagsByConfigurationModelId].map(([id, tags]) => [
-            id,
+          [...tagsByAgent].map(([agent, tags]) => [
+            agent,
             tags.map((t) => t.sId),
           ])
         ).toEqual([
-          [taggedAgent.agentConfigurationModelId, [tag.sId]],
-          [untaggedAgent.agentConfigurationModelId, []],
-          [globalAgent.agentConfigurationModelId, []],
+          [taggedAgent, [tag.sId]],
+          [untaggedAgent, []],
+          [globalAgent, []],
         ]);
         expect(listForAgents).toHaveBeenCalledWith(authenticator, [
           taggedAgent.agentConfigurationModelId,

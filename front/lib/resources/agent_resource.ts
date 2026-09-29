@@ -439,6 +439,13 @@ export interface AgentResource
  * API keys are the sole exception: the admin role grants them `write` (see `admin-key-agent-write`),
  * so an admin key may edit an agent it holds no editor grant on.
  */
+/**
+ * @cc [owner:tdraier,label:backend] batch-results-by-resource
+ * Every `batch*` read (`batchListEditors`, `batchListActions`, `batchListTags`,
+ * `batchCountFavorites`) MUST accept custom and global agents alike and return a `Map` keyed by the
+ * input resource, with an entry for every input: a resource is one configuration version, whereas
+ * `sId` spans every version of an agent and global agents share one sentinel configuration id.
+ */
 export class AgentResource
   extends BaseResource<AgentModel>
   implements WithAccessControl
@@ -1242,7 +1249,7 @@ export class AgentResource
         transaction,
       }
     );
-    const editors = editorsByAgentId.get(this.sId);
+    const editors = editorsByAgentId.get(this);
     assert(editors !== undefined);
 
     return editors;
@@ -1250,9 +1257,9 @@ export class AgentResource
 
   /**
    * @cc [owner:philipperolet,label:backend] editor-results-by-agent
-   * Each input agent has a map entry: `null` for globals and active workspace members
-   * of its editor grant for custom agents, or `[]` when there are none or the caller holds
-   * neither `read` nor `admin` on it (see `editors-require-read-or-admin`).
+   * Each input agent has a map entry (see `batch-results-by-resource`): `null` for globals and
+   * active workspace members of its editor grant for custom agents, or `[]` when there are none or
+   * the caller holds neither `read` nor `admin` on it (see `editors-require-read-or-admin`).
    */
   /**
    * @cc [owner:sfriquet,label:security] editors-require-read-or-admin
@@ -1262,9 +1269,9 @@ export class AgentResource
     auth: Authenticator,
     agents: AgentResource[],
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Map<string, UserResource[] | null>> {
-    const result = new Map<string, UserResource[] | null>(
-      agents.map((agent) => [agent.sId, agent.scope === "global" ? null : []])
+  ): Promise<Map<AgentResource, UserResource[] | null>> {
+    const result = new Map<AgentResource, UserResource[] | null>(
+      agents.map((agent) => [agent, agent.scope === "global" ? null : []])
     );
     const customAgents = agents.filter(
       (agent) =>
@@ -1325,7 +1332,7 @@ export class AgentResource
         ? (membershipsByGroupId[group.id] ?? [])
         : [];
       result.set(
-        agent.sId,
+        agent,
         removeNulls(
           memberModelIds.map((userModelId) => userByModelId.get(userModelId))
         )
@@ -1349,11 +1356,9 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:security] actions-require-read
-   * Keyed by the input resource: tools belong to a configuration version, and global agents share
-   * a sentinel configuration id, so neither `sId` nor `agentConfigurationModelId` identifies a
-   * version across both kinds. Each input agent has an entry. An agent whose content the caller
-   * cannot view (see `agent-content-visibility`) MUST get `[]`: its tools carry its knowledge (data
-   * sources, tables), as private as its instructions.
+   * Tools belong to a configuration version (see `batch-results-by-resource`). An agent whose
+   * content the caller cannot view (see `agent-content-visibility`) MUST get `[]`: its tools carry
+   * its knowledge (data sources, tables), as private as its instructions.
    */
   /**
    * @cc [owner:tdraier,label:performance] actions-batched-per-kind
@@ -1413,10 +1418,8 @@ export class AgentResource
   }
 
   async listTags(auth: Authenticator): Promise<TagResource[]> {
-    const tagsByConfigurationModelId = await AgentResource.batchListTags(auth, [
-      this,
-    ]);
-    const tags = tagsByConfigurationModelId.get(this.agentConfigurationModelId);
+    const tagsByAgent = await AgentResource.batchListTags(auth, [this]);
+    const tags = tagsByAgent.get(this);
     assert(tags !== undefined);
 
     return tags;
@@ -1424,36 +1427,31 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:backend] tag-results-by-version
-   * Keyed by `agentConfigurationModelId`: tags attach to a configuration version, not to the agent
-   * across versions. Each input agent has an entry, `[]` when it has no tag. Global agents MUST get
-   * `[]` without a tag lookup: they hold no tag row and share a sentinel configuration id.
+   * Tags attach to a configuration version, not to the agent across versions (see
+   * `batch-results-by-resource`); an agent with no tag gets `[]`. Global agents MUST get `[]`
+   * without a tag lookup: they hold no tag row and share a sentinel configuration id.
    */
   static async batchListTags(
     auth: Authenticator,
     agents: AgentResource[]
-  ): Promise<Map<ModelId, TagResource[]>> {
-    const result = new Map<ModelId, TagResource[]>(
-      agents.map((agent) => [agent.agentConfigurationModelId, []])
-    );
-    const customConfigurationModelIds = agents
-      .filter((agent) => agent.scope !== "global")
-      .map((agent) => agent.agentConfigurationModelId);
-    if (customConfigurationModelIds.length === 0) {
-      return result;
-    }
+  ): Promise<Map<AgentResource, TagResource[]>> {
+    const customAgents = agents.filter((agent) => agent.scope !== "global");
+    const tagsByConfigurationModelId =
+      customAgents.length > 0
+        ? await TagResource.listForAgents(
+            auth,
+            uniq(customAgents.map((agent) => agent.agentConfigurationModelId))
+          )
+        : {};
 
-    const tagsByConfigurationModelId = await TagResource.listForAgents(
-      auth,
-      customConfigurationModelIds
+    return new Map(
+      agents.map((agent) => [
+        agent,
+        agent.scope === "global"
+          ? []
+          : (tagsByConfigurationModelId[agent.agentConfigurationModelId] ?? []),
+      ])
     );
-    for (const configurationModelId of customConfigurationModelIds) {
-      result.set(
-        configurationModelId,
-        tagsByConfigurationModelId[configurationModelId] ?? []
-      );
-    }
-
-    return result;
   }
 
   static async listEditorConfigModelIds(
@@ -1654,32 +1652,33 @@ export class AgentResource
     });
   }
 
+  // Favorites are keyed by `sId`, so each count spans every version of its agent.
   static async batchCountFavorites(
     auth: Authenticator,
     agents: AgentResource[]
-  ): Promise<Map<string, number>> {
-    const favoriteCountByAgentId = new Map<string, number>(
-      agents.map((agent) => [agent.sId, 0])
-    );
+  ): Promise<Map<AgentResource, number>> {
     if (agents.length === 0) {
-      return favoriteCountByAgentId;
+      return new Map();
     }
 
     const rows = await AgentUserRelationModel.count({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        agentConfiguration: agents.map((agent) => agent.sId),
+        agentConfiguration: uniq(agents.map((agent) => agent.sId)),
         favorite: true,
       },
       group: ["agentConfiguration"],
     });
+    const countByAgentId = new Map<string, number>();
     for (const { agentConfiguration, count } of rows) {
       if (isString(agentConfiguration)) {
-        favoriteCountByAgentId.set(agentConfiguration, count);
+        countByAgentId.set(agentConfiguration, count);
       }
     }
 
-    return favoriteCountByAgentId;
+    return new Map(
+      agents.map((agent) => [agent, countByAgentId.get(agent.sId) ?? 0])
+    );
   }
 
   /**
@@ -1877,10 +1876,10 @@ export class AgentResource
       return;
     }
 
-    const editorsByAgentId = await this.batchListEditors(auth, agents);
+    const editorsByAgent = await this.batchListEditors(auth, agents);
     const editorModelIdsByAgentId = new Map(
-      [...editorsByAgentId].map(([agentId, editors]) => [
-        agentId,
+      [...editorsByAgent].map(([agent, editors]) => [
+        agent.sId,
         new Set((editors ?? []).map((editor) => editor.id)),
       ])
     );

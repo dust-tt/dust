@@ -11,7 +11,6 @@ import type {
   AgentTagsEnrichment,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
-import type { ModelId } from "@app/types/shared/model_id";
 
 // The `enrichWith*` steps below turn statically-loaded `AgentResource`s (their `toJSON` base) into
 // full/light configuration types. `toJSON` already carries every synchronously-available field,
@@ -70,21 +69,18 @@ export async function enrichWithRecentAuthors(
 
 /**
  * @cc [owner:tdraier,label:backend] enrich-tags-key-per-version
- * `enrichWithTags` keys its result by the configuration-row id (`toJSON().id`): tags are attached to
- * a specific configuration version, so keying by `sId` would collide across versions.
+ * `enrichWithTags` keys its result by the input resource, which is one configuration version: tags
+ * are attached to a specific version, so keying by `sId` would collide across versions.
  */
 export async function enrichWithTags(
   auth: Authenticator,
   resources: AgentResource[]
-): Promise<Map<ModelId, AgentTagsEnrichment>> {
-  const tagsByConfigurationModelId = await AgentResource.batchListTags(
-    auth,
-    resources
-  );
+): Promise<Map<AgentResource, AgentTagsEnrichment>> {
+  const tagsByAgent = await AgentResource.batchListTags(auth, resources);
 
   return new Map(
-    [...tagsByConfigurationModelId].map(([id, tags]) => [
-      id,
+    [...tagsByAgent].map(([resource, tags]) => [
+      resource,
       { tags: tags.map((tag) => tag.toJSON()).sort(tagsSorter) },
     ])
   );
@@ -123,11 +119,14 @@ export async function toLightAgentConfigurations(
     enrichWithTags(auth, resources),
   ]);
 
-  return bases.map((base) => ({
-    ...base,
-    ...(favorites.get(base.sId) ?? { userFavorite: false }),
-    ...(tags.get(base.id) ?? { tags: [] }),
-  }));
+  return resources.map((resource, index) => {
+    const base = bases[index];
+    return {
+      ...base,
+      ...(favorites.get(base.sId) ?? { userFavorite: false }),
+      ...(tags.get(resource) ?? { tags: [] }),
+    };
+  });
 }
 
 /**
@@ -153,7 +152,7 @@ export async function toAgentConfigurations(
     return {
       ...base,
       ...(favorites.get(base.sId) ?? { userFavorite: false }),
-      ...(tags.get(base.id) ?? { tags: [] }),
+      ...(tags.get(resource) ?? { tags: [] }),
       instructionsHtml: resource.isFull()
         ? resource.content.instructionsHtml
         : null,

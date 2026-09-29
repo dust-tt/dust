@@ -19,7 +19,6 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
 import partition from "lodash/partition";
@@ -144,7 +143,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   const tagsPerAgent =
     variant !== "extra_light"
       ? await AgentResource.batchListTags(auth, resources)
-      : new Map<ModelId, TagResource[]>();
+      : new Map<AgentResource, TagResource[]>();
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
@@ -154,13 +153,13 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
         : [];
 
     const model = getModelForAgentConfiguration(agent);
-    const tags = tagsPerAgent.get(agent.id) ?? [];
 
     const resource = resourceByConfigurationModelId.get(agent.id);
     assert(
       resource,
       `Unexpected: missing resource for configuration ${agent.id}`
     );
+    const tags = tagsPerAgent.get(resource) ?? [];
 
     const canRead = auth.can("read", resource);
     const canEdit = isRegularApiKey

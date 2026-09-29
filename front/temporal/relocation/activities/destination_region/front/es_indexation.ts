@@ -228,13 +228,13 @@ export async function recreateAgentSearchIndex({
   const configurationModelIdSet = new Set(configurationModelIds);
 
   const [
-    editorsByAgentId,
-    tagsByConfigurationModelId,
+    editorsByAgent,
+    tagsByAgent,
     actionsByConfigurationId,
     feedbackCounts,
     lastEditors,
     agentSkills,
-    favoriteCountByAgentId,
+    favoriteCountByAgent,
   ] = await Promise.all([
     AgentResource.batchListEditors(auth, agents),
     AgentResource.batchListTags(auth, agents),
@@ -300,8 +300,8 @@ export async function recreateAgentSearchIndex({
       };
       const document = agent.toSearchDocument(auth, {
         activeUsersCount: 0,
-        editors: editorsByAgentId.get(agent.sId) ?? [],
-        favoriteCount: favoriteCountByAgentId.get(agent.sId) ?? 0,
+        editors: editorsByAgent.get(agent) ?? [],
+        favoriteCount: favoriteCountByAgent.get(agent) ?? 0,
         feedbackNegativeCount: feedback.negative,
         feedbackPositiveCount: feedback.positive,
         lastEditedByUser:
@@ -316,9 +316,7 @@ export async function recreateAgentSearchIndex({
         skillIds:
           skillIdsByConfigurationModelId.get(agent.agentConfigurationModelId) ??
           [],
-        tagIds: (
-          tagsByConfigurationModelId.get(agent.agentConfigurationModelId) ?? []
-        ).map((tag) => tag.sId),
+        tagIds: (tagsByAgent.get(agent) ?? []).map((tag) => tag.sId),
       });
       const result = await indexAgentDocument(document);
       if (result.isErr()) {
