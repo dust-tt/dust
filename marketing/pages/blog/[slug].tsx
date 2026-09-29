@@ -188,7 +188,7 @@ export default function BlogPost({
                 "@type": "WebPage",
                 "@id": canonicalUrl,
               },
-            }),
+            }).replace(/<\/script>/gi, "<\\/script>"),
           }}
         />
       </Head>
