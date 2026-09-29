@@ -83,6 +83,10 @@ type BreakageOptions = {
   slackToken: string;
 };
 
+// A run conclusion that carries information about main's state, as opposed to the raw
+// `string | null` GitHub reports, which also holds values like "cancelled" or "skipped".
+type Conclusion = "success" | "failure";
+
 export type Transition = "broken" | "recovered";
 
 /**
@@ -91,7 +95,7 @@ export type Transition = "broken" | "recovered";
  * pair, including a missing predecessor, MUST stay silent.
  */
 export function getTransition(
-  previous: string | null,
+  previous: Conclusion | null,
   current: string | null
 ): Transition | null {
   if (previous === null) {
@@ -133,7 +137,7 @@ const JOBS_PER_PAGE = 100;
 async function findSignalConclusion(
   { github, context }: Pick<BreakageOptions, "github" | "context">,
   candidates: Array<{ id: number; conclusion: string | null }>
-): Promise<string | null> {
+): Promise<Conclusion | null> {
   for (const candidate of candidates) {
     if (candidate.conclusion === "failure") {
       return "failure";
@@ -153,7 +157,7 @@ async function findSignalConclusion(
 async function getAttemptConclusion({
   github,
   context,
-}: Pick<BreakageOptions, "github" | "context">): Promise<string | null> {
+}: Pick<BreakageOptions, "github" | "context">): Promise<Conclusion | null> {
   const run = context.payload.workflow_run;
   const attempt_number = run.run_attempt - 1;
   const { data: prior } = await github.rest.actions.getWorkflowRunAttempt({
@@ -180,7 +184,7 @@ async function getAttemptConclusion({
 
 type PreviousState =
   | { superseded: true }
-  | { superseded: false; previous: string | null };
+  | { superseded: false; previous: Conclusion | null };
 
 /**
  * @cc [label:product] main-breakage-run-ordering
