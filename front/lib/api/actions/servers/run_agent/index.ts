@@ -77,6 +77,8 @@ import assert from "assert";
 import maxBy from "lodash/maxBy";
 import type z from "zod";
 
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 function canRunChildAgent(agent: LightAgentConfigurationType): boolean {
   switch (agent.status) {
     case "active":
@@ -507,9 +509,6 @@ export const runAgent = async (
       citationsOffset,
       citationsOffset + RUN_AGENT_ACTION_NUM_RESULTS
     );
-
-    const escapeRegex = (s: string) =>
-      s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     const newRefs: Record<string, CitationType> = {};
     Object.keys(refsFromAgent).forEach((refKeyFromAgent, index) => {
