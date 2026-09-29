@@ -4,6 +4,7 @@ import { makeSId } from "@app/lib/resources/string_ids";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
+import { REDACTED_HEADER_VALUES_ERROR_MESSAGE } from "@app/types/shared/utils/http_headers";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -115,6 +116,37 @@ describe("PATCH /api/w/:wId/mcp/:serverId", () => {
       "test-key-1": "••••••••",
       "test-key-2": "••••••••",
     });
+  });
+
+  it("should reject headers carrying a redacted value and keep the stored ones", async () => {
+    const { workspace, auth } = await setup("admin");
+    const server = await RemoteMCPServerFactory.create(workspace);
+    await server.updateMetadata(auth, {
+      customHeaders: { "X-Api-Key": "secret-one" },
+      lastSyncAt: new Date(),
+    });
+
+    const response = await honoApp.request(
+      serverUrl(workspace.sId, server.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customHeaders: [
+            { key: "X-Api-Key", value: "••••••••" },
+            { key: "X-New", value: "fresh" },
+          ],
+        }),
+      }
+    );
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.message).toContain(REDACTED_HEADER_VALUES_ERROR_MESSAGE);
+    const stored = await RemoteMCPServerResource.findByPk(auth, server.id, {
+      includeHeavyAttributes: ["customHeaders"],
+    });
+    expect(stored?.getCustomHeaders()).toEqual({ "X-Api-Key": "secret-one" });
   });
 
   it("should return 400 when no update fields are provided", async () => {
