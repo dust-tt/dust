@@ -508,13 +508,17 @@ export const runAgent = async (
       citationsOffset + RUN_AGENT_ACTION_NUM_RESULTS
     );
 
+    const escapeRegex = (s: string) =>
+      s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
     const newRefs: Record<string, CitationType> = {};
     Object.keys(refsFromAgent).forEach((refKeyFromAgent, index) => {
+      const escapedKey = escapeRegex(refKeyFromAgent);
       const newRef = refs[index];
       if (newRef) {
         // Replace citation references only within :cite[...] blocks
         const citationRegex = new RegExp(
-          `(:cite\\[[^\\]]*\\b)${refKeyFromAgent}\\b([^\\]]*\\])`,
+          `(:cite\\[[^\\]]*\\b)${escapedKey}\\b([^\\]]*\\])`,
           "g"
         );
         text = text.replace(citationRegex, `$1${newRef}$2`);
@@ -522,7 +526,7 @@ export const runAgent = async (
       } else {
         // Remove trailing or extra commas as we ran out of refs capacity.
         const citationRegex = new RegExp(
-          `(:cite\\[[^\\]]*\\b)${refKeyFromAgent}\\b(?:,([^\\]]*\\])|([^\\]]*\\]))`,
+          `(:cite\\[[^\\]]*\\b)${escapedKey}\\b(?:,([^\\]]*\\])|([^\\]]*\\]))`,
           "g"
         );
         text = text.replace(citationRegex, "$1$2$3");
