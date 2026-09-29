@@ -15,6 +15,10 @@ import {
   DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS,
   isAgentActionCardSuggestion,
 } from "@app/components/markdown/suggestion/suggestion_directives";
+import {
+  sortAgentSuggestionsByBuilderOrder,
+  sortSkillSuggestionsByBuilderOrder,
+} from "@app/components/markdown/suggestion/suggestion_order";
 import { makeDirective } from "@app/components/markdown/suggestion/suggestionDirective";
 import { getIcon } from "@app/components/resources/resources_icons";
 import {
@@ -51,7 +55,6 @@ import {
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
-import partition from "lodash/partition";
 import type { ReactElement, ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -159,6 +162,12 @@ function AgentSuggestionGroup({
   );
 }
 
+const GROUPED_AGENT_SUGGESTION_LABELS: Record<string, string | undefined> = {
+  skills: "Skills",
+  tools: "Tools",
+  sub_agent: "Sub-agents",
+};
+
 interface AgentSuggestionsDiffProps {
   owner: LightWorkspaceType;
   agentId: string;
@@ -171,21 +180,12 @@ function AgentSuggestionsDiff({
   suggestions,
 }: AgentSuggestionsDiffProps) {
   const { openPanel } = useConversationSidePanelContext();
-  const displayable = suggestions.filter(isAgentActionCardSuggestion);
+  const displayable = sortAgentSuggestionsByBuilderOrder(
+    suggestions.filter(isAgentActionCardSuggestion)
+  );
   // Each skill, tool and sub-agent is its own suggestion: they are listed together, under a
-  // single heading per kind.
-  const [skillSuggestions, otherSuggestions] = partition(
-    displayable,
-    (s) => s.kind === "skills"
-  );
-  const [toolSuggestions, remainingSuggestions] = partition(
-    otherSuggestions,
-    (s) => s.kind === "tools"
-  );
-  const [subAgentSuggestions, fieldSuggestions] = partition(
-    remainingSuggestions,
-    (s) => s.kind === "sub_agent"
-  );
+  // single heading per kind. Grouping keeps the sorted order of the kinds.
+  const suggestionsByKind = groupBy(displayable, (s) => s.kind);
   const { agentConfiguration, isAgentConfigurationLoading } =
     useAgentConfiguration({
       workspaceId: owner.sId,
@@ -225,32 +225,27 @@ function AgentSuggestionsDiff({
         })
       }
     >
-      {fieldSuggestions.map((suggestion) => (
-        <AgentSuggestionDetails
-          key={suggestion.sId}
-          owner={owner}
-          suggestion={suggestion}
-          agentConfiguration={agentConfiguration}
-        />
-      ))}
-      <AgentSuggestionGroup
-        owner={owner}
-        label="Skills"
-        suggestions={skillSuggestions}
-        agentConfiguration={agentConfiguration}
-      />
-      <AgentSuggestionGroup
-        owner={owner}
-        label="Tools"
-        suggestions={toolSuggestions}
-        agentConfiguration={agentConfiguration}
-      />
-      <AgentSuggestionGroup
-        owner={owner}
-        label="Sub-agents"
-        suggestions={subAgentSuggestions}
-        agentConfiguration={agentConfiguration}
-      />
+      {Object.entries(suggestionsByKind).map(([kind, kindSuggestions]) => {
+        const groupLabel = GROUPED_AGENT_SUGGESTION_LABELS[kind];
+        return groupLabel ? (
+          <AgentSuggestionGroup
+            key={kind}
+            owner={owner}
+            label={groupLabel}
+            suggestions={kindSuggestions}
+            agentConfiguration={agentConfiguration}
+          />
+        ) : (
+          kindSuggestions.map((suggestion) => (
+            <AgentSuggestionDetails
+              key={suggestion.sId}
+              owner={owner}
+              suggestion={suggestion}
+              agentConfiguration={agentConfiguration}
+            />
+          ))
+        );
+      })}
     </SuggestionTargetSection>
   );
 }
@@ -302,7 +297,7 @@ function SkillSuggestionsDiff({
         })
       }
     >
-      {suggestions.map((suggestion) => (
+      {sortSkillSuggestionsByBuilderOrder(suggestions).map((suggestion) => (
         <PendingSkillSuggestionDetails
           key={suggestion.sId}
           suggestion={suggestion}
