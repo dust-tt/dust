@@ -119,15 +119,18 @@ async function findAvailableSkillForAgentLoop({
 
   // Code-defined skills have no SkillReferenceModel rows. Only a global skill already available to
   // this agent loop may authorize one of its declared direct children.
+  const globalChildSkillIds = new Set<string>();
   for (const parentSkill of parentSkillById.values()) {
-    if (
-      parentSkill.kind === "global" &&
-      GlobalSkillsRegistry.getChildSkillIds(parentSkill.sId).includes(
-        candidate.sId
-      )
-    ) {
-      return candidate;
+    if (parentSkill.kind === "global") {
+      for (const childSkillId of GlobalSkillsRegistry.getChildSkillIds(
+        parentSkill.sId
+      )) {
+        globalChildSkillIds.add(childSkillId);
+      }
     }
+  }
+  if (globalChildSkillIds.has(candidate.sId)) {
+    return candidate;
   }
 
   const usedBySkillsByChild = await SkillResource.batchFetchUsedBySkills(auth, [
