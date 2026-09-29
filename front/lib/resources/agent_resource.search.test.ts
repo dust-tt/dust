@@ -22,8 +22,8 @@ import {
   MAX_AGENT_SEARCH_WINDOW,
 } from "@app/lib/agent_search/query";
 import { buildAgentNameAutocompleteQuery } from "@app/lib/agent_search/ranking";
-import { searchAgents } from "@app/lib/api/agents/search";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { matchesAgentSearchFilters } from "@app/tests/utils/agent_search";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -81,14 +81,17 @@ function mockHits(documents: AgentSearchDocument[]) {
 
 async function searchAgentIds(
   auth: Authenticator,
-  options: Partial<Parameters<typeof searchAgents>[1]> = {}
+  options: Partial<Parameters<typeof AgentResource.search>[1]> = {}
 ) {
-  const result = await searchAgents(auth, { searchTerm: "", ...options });
+  const result = await AgentResource.search(auth, {
+    searchTerm: "",
+    ...options,
+  });
   assert(result.isOk());
   return result.value.agents.map((agent) => agent.sId);
 }
 
-describe("searchAgents", () => {
+describe("AgentResource.search", () => {
   beforeEach(() => {
     mockSearch.mockReset();
   });
@@ -103,14 +106,17 @@ describe("searchAgents", () => {
       )
     );
 
-    await searchAgents(auth, { searchTerm: "" });
+    await AgentResource.search(auth, { searchTerm: "" });
     expect(mockSearch.mock.calls[0][0]).toMatchObject({
       from: 0,
       size: MAX_AGENT_SEARCH_RESULTS,
       track_total_hits: true,
     });
 
-    const firstPage = await searchAgents(auth, { searchTerm: "", limit: 2 });
+    const firstPage = await AgentResource.search(auth, {
+      searchTerm: "",
+      limit: 2,
+    });
     assert(firstPage.isOk());
     expect(firstPage.value).toMatchObject({ total: 3, hasMore: true });
     expect(firstPage.value.agents.map((agent) => agent.sId)).toEqual([
@@ -118,7 +124,7 @@ describe("searchAgents", () => {
       "b",
     ]);
 
-    const lastPage = await searchAgents(auth, {
+    const lastPage = await AgentResource.search(auth, {
       searchTerm: "",
       limit: 2,
       offset: 2,
@@ -133,7 +139,7 @@ describe("searchAgents", () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue({ hits: { hits: [] } });
 
-    await searchAgents(auth, { searchTerm: "  sal   mar " });
+    await AgentResource.search(auth, { searchTerm: "  sal   mar " });
 
     const nameQuery = buildAgentNameAutocompleteQuery("  sal   mar ");
     expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([nameQuery]);
@@ -192,7 +198,7 @@ describe("searchAgents", () => {
         models: { buckets: [{ key: "claude-sonnet-5", doc_count: 2 }] },
       },
     });
-    const result = await searchAgents(auth, {
+    const result = await AgentResource.search(auth, {
       searchTerm: "",
       limit: 0,
       facets: ["editors", "models"],
@@ -262,7 +268,7 @@ describe("searchAgents", () => {
       hits: { total: { value: 2, relation: "eq" }, hits: [] },
       aggregations: { usage: { count: 2, min: 2, max: 40 } },
     });
-    const result = await searchAgents(auth, {
+    const result = await AgentResource.search(auth, {
       searchTerm: "",
       limit: 0,
       facets: ["usage", "spaces"],
@@ -291,21 +297,76 @@ describe("searchAgents", () => {
       }),
     ]);
 
-    const result = await searchAgents(auth, { searchTerm: "" });
+    const result = await AgentResource.search(auth, { searchTerm: "" });
     assert(result.isOk());
     const [helper] = result.value.agents;
     expect(helper.sId).toBe(GLOBAL_AGENTS_SID.HELPER);
-    expect(helper.model).toEqual({
+    expect(helper.toSearchListItemJSON().model).toEqual({
       providerId: expect.any(String),
       modelId: expect.any(String),
       reasoningEffort: expect.any(String),
     });
   });
 
+  it("builds light listing snapshots that refuse configuration JSON and authorization", async () => {
+    const {
+      authenticator: auth,
+      workspace,
+      globalSpace,
+    } = await createResourceTest({ role: "user" });
+    mockHits([
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: "indexed",
+        name: "Indexed",
+        description: "Indexed description",
+        model: {
+          provider_id: "anthropic",
+          model_id: "claude-sonnet-5",
+          reasoning_effort: "medium",
+        },
+        requested_space_ids: [globalSpace.sId],
+        tag_ids: ["tag"],
+        editor_ids: ["alice"],
+        last_edited_by_user_id: "alice",
+        feedback_positive_count: 3,
+        feedback_negative_count: 1,
+        active_users_count: 7,
+      }),
+    ]);
+
+    const result = await AgentResource.search(auth, { searchTerm: "" });
+    assert(result.isOk());
+    const [agent] = result.value.agents;
+    expect(agent.isFull()).toBe(false);
+    expect(agent.toSearchListItemJSON()).toEqual({
+      sId: "indexed",
+      status: "active",
+      scope: "visible",
+      name: "Indexed",
+      description: "Indexed description",
+      pictureUrl: "https://dust.tt/static/agent.png",
+      model: {
+        providerId: "anthropic",
+        modelId: "claude-sonnet-5",
+        reasoningEffort: "medium",
+      },
+      feedbacks: { up: 3, down: 1 },
+      requestedSpaceIds: [globalSpace.sId],
+      tagIds: ["tag"],
+      editorIds: ["alice"],
+      editedBy: "alice",
+      activeUsersCount: 7,
+      updatedAt: new Date("2026-09-01T00:00:00.000Z").getTime(),
+    });
+    expect(() => agent.toJSON()).toThrow();
+    expect(() => auth.can("read", agent)).toThrow();
+  });
+
   it("rejects offsets past the result window without querying", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
 
-    const result = await searchAgents(auth, {
+    const result = await AgentResource.search(auth, {
       searchTerm: "",
       limit: 25,
       offset: MAX_AGENT_SEARCH_WINDOW - 24,
@@ -321,7 +382,7 @@ describe("searchAgents", () => {
   ] as const)("rejects unrestricted search for a %s without querying", async (role) => {
     const { authenticator: auth } = await createResourceTest({ role });
 
-    const result = await searchAgents(auth, {
+    const result = await AgentResource.search(auth, {
       searchTerm: "",
       permissionFiltering: "unrestricted",
     });

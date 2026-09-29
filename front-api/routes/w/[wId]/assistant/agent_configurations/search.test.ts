@@ -1,4 +1,5 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -6,11 +7,21 @@ import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const searchAgents = vi.hoisted(() => vi.fn());
+const mockSearch = vi.hoisted(() => vi.fn());
+vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/elasticsearch")>();
+  const { Ok } = await import("@app/types/shared/result");
+  return {
+    ...actual,
+    withEs: async (
+      fn: (client: { search: typeof mockSearch }) => Promise<unknown>
+    ) => new Ok(await fn({ search: mockSearch })),
+  };
+});
 
-vi.mock("@app/lib/api/agents/search", () => ({
-  searchAgents,
-}));
+const originalSearch = AgentResource.search.bind(AgentResource);
+const searchAgents = vi.spyOn(AgentResource, "search");
 
 function setup(role: MembershipRoleType = "user") {
   return createPrivateApiMockRequest({ role });
@@ -44,29 +55,43 @@ const noFilters = {
 describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   beforeEach(() => {
     searchAgents.mockReset();
+    mockSearch.mockReset();
   });
 
   it("routes search results with their deduplicated editors", async () => {
     const { workspace, user } = await setup();
-    const agent = {
-      sId: "search-result",
-      status: "active",
-      scope: "visible",
-      name: "Search result",
-      description: "Description",
-      pictureUrl: "https://dust.tt/static/agent.png",
-      model: null,
-      feedbacks: { up: 0, down: 0 },
-      requestedSpaceIds: [],
-      tagIds: [],
-      editorIds: [user.sId, user.sId, "missing-user"],
-      editedBy: null,
-      activeUsersCount: null,
-      updatedAt: null,
-    };
-    searchAgents.mockResolvedValue(
-      new Ok({ agents: [agent], total: 30, hasMore: true, facets: {} })
-    );
+    mockSearch.mockResolvedValue({
+      hits: {
+        hits: [
+          {
+            _source: {
+              workspace_id: workspace.sId,
+              agent_id: "search-result",
+              status: "active",
+              scope: "visible",
+              model: null,
+              name: "Search result",
+              picture_url: "https://dust.tt/static/agent.png",
+              last_edited_by_user_id: null,
+              requested_space_ids: [],
+              created_at: null,
+              updated_at: null,
+              description: "Description",
+              skill_ids: [],
+              mcp_server_view_ids: [],
+              tag_ids: [],
+              feedback_positive_count: 0,
+              feedback_negative_count: 0,
+              active_users_count: null,
+              favorite_count: 0,
+              editor_ids: [user.sId, user.sId, "missing-user"],
+            },
+          },
+        ],
+        total: { value: 30, relation: "eq" },
+      },
+    });
+    searchAgents.mockImplementation(originalSearch);
 
     const response = await searchRequest(workspace.sId, {
       query: "research",
@@ -91,7 +116,20 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       facets: {},
       agents: [
         {
-          ...agent,
+          sId: "search-result",
+          status: "active",
+          scope: "visible",
+          name: "Search result",
+          description: "Description",
+          pictureUrl: "https://dust.tt/static/agent.png",
+          model: null,
+          feedbacks: { up: 0, down: 0 },
+          requestedSpaceIds: [],
+          tagIds: [],
+          editorIds: [user.sId, user.sId, "missing-user"],
+          editedBy: null,
+          activeUsersCount: null,
+          updatedAt: null,
           tags: [],
           editors: [
             {

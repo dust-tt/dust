@@ -1,5 +1,5 @@
-import { searchAgents } from "@app/lib/api/agents/search";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -10,23 +10,26 @@ import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
  * @cc [owner:tdraier,label:security] agent-search-listing-names
- * Resolve editor, tag, skill and space names for `searchAgents` results (listed agents and facets)
+ * Resolve editor, tag, skill and space names for `AgentResource.search` results (listed agents and facets)
  * through resources, and only name skills and spaces the caller can read: unreadable ones are
  * dropped from the facets.
  */
 export async function searchAgentListings(
   auth: Authenticator,
-  options: Parameters<typeof searchAgents>[1]
+  options: Parameters<typeof AgentResource.search>[1]
 ) {
-  const result = await searchAgents(auth, options);
+  const result = await AgentResource.search(auth, options);
   if (result.isErr()) {
     return result;
   }
 
   const { facets: facetValues } = result.value;
+  const agents = result.value.agents.map((agent) =>
+    agent.toSearchListItemJSON()
+  );
   const editorIds = [
     ...new Set([
-      ...result.value.agents.flatMap((agent) => agent.editorIds),
+      ...agents.flatMap((agent) => agent.editorIds),
       ...(facetValues.editors ?? []).map(({ value }) => value),
     ]),
   ];
@@ -35,7 +38,7 @@ export async function searchAgentListings(
   // Tags are resolved once for both the listed agents and the tag facet.
   const tagIds = [
     ...new Set([
-      ...result.value.agents.flatMap((agent) => agent.tagIds),
+      ...agents.flatMap((agent) => agent.tagIds),
       ...facetIds(facetValues.tags),
     ]),
   ];
@@ -122,7 +125,7 @@ export async function searchAgentListings(
         : {}),
       ...(facetValues.usage ? { usage: facetValues.usage } : {}),
     },
-    agents: result.value.agents.map((agent) => ({
+    agents: agents.map((agent) => ({
       ...agent,
       editors: removeNulls(
         [...new Set(agent.editorIds)].map((id) => editorsById.get(id))

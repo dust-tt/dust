@@ -5,16 +5,31 @@ import type {
 } from "@app/lib/actions/mcp";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
+import {
+  buildAgentSearchQuery,
+  MAX_AGENT_SEARCH_FACET_VALUES,
+  MAX_AGENT_SEARCH_RESULTS,
+  MAX_AGENT_SEARCH_WINDOW,
+} from "@app/lib/agent_search/query";
+import { buildAgentDefaultSort } from "@app/lib/agent_search/ranking";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
-import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  getGlobalAgents,
+  listDefaultGlobalAgentIds,
+} from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import {
+  AGENT_SEARCH_ALIAS_NAME,
+  bucketsToArray,
+  withEs,
+} from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { DustError } from "@app/lib/error";
@@ -67,6 +82,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -79,7 +95,14 @@ import logger from "@app/logger/logger";
 import { launchDeleteAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
   AgentSearchDocument,
+  AgentSearchFacet,
+  AgentSearchFacetValues,
+  AgentSearchFilters,
   AgentSearchListItemType,
+  AgentSearchPermissionFiltering,
+  AgentSearchSort,
+  AgentSearchSortOrder,
+  AgentSearchTermsFacet,
 } from "@app/types/agent_search/agent_search";
 import type { DiscoveryAgentType } from "@app/types/api/discovery";
 import type {
@@ -97,6 +120,8 @@ import type {
 } from "@app/types/assistant/agent";
 import { isAgentStatus } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import { MODEL_IDS } from "@app/types/assistant/models/models";
+import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -112,10 +137,15 @@ import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { isString, removeNulls } from "@app/types/shared/utils/general";
+import {
+  isNumber,
+  isString,
+  removeNulls,
+} from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
 import isEqual from "lodash/isEqual";
 import partition from "lodash/partition";
@@ -143,6 +173,35 @@ const NON_INDEXABLE_AGENT_STATUSES: AgentConfigurationStatus[] = [
 // so keep the parallelism low: enough to keep a large selection responsive, not enough to flood the
 // connection pool.
 const BULK_UPDATE_CONCURRENCY = 4;
+
+const AGENT_SEARCH_TERMS_FACET_FIELDS: Record<AgentSearchTermsFacet, string> = {
+  editors: "editor_ids",
+  models: "model.model_id",
+  tags: "tag_ids",
+  skills: "skill_ids",
+  spaces: "requested_space_ids",
+};
+
+type AgentSearchAggregations = Partial<
+  Record<AgentSearchTermsFacet, estypes.AggregationsStringTermsAggregate>
+> & { usage?: estypes.AggregationsStatsAggregate };
+
+function isTermsFacet(facet: AgentSearchFacet): facet is AgentSearchTermsFacet {
+  return facet !== "usage";
+}
+
+function buildFacetAggregation(
+  facet: AgentSearchFacet
+): estypes.AggregationsAggregationContainer {
+  return isTermsFacet(facet)
+    ? {
+        terms: {
+          field: AGENT_SEARCH_TERMS_FACET_FIELDS[facet],
+          size: MAX_AGENT_SEARCH_FACET_VALUES,
+        },
+      }
+    : { stats: { field: "active_users_count" } };
+}
 
 export type EditorDeltaErrorCode =
   | "user_already_member"
@@ -367,7 +426,8 @@ export interface AgentResource
  * guarantee it is the current version — a caller deciding about the agent's current state must pass
  * that version, or use `fetch*`. (`from*` are intended to become private and enforce this.) Global
  * agents are exempt from the `id`-consistency clause: they have no `agent` row, are identified by
- * `sId`, and all share the `id: -1` sentinel.
+ * `sId`, and all share the `id: -1` sentinel. So are search snapshots (see `agent-search-snapshot`),
+ * which carry the same sentinel.
  */
 /**
  * @cc [owner:sfriquet,label:security] unreadable-agent-is-light
@@ -463,6 +523,10 @@ export class AgentResource
   private _verbs: Set<GrantVerb> = new Set();
   private _isRegularApiKey = false;
   private _adminCanSeePrivateEntities = false;
+  private _searchListing: {
+    document: AgentSearchDocument;
+    model: AgentSearchListItemType["model"];
+  } | null = null;
 
   private constructor(
     agent: Attributes<AgentModel>,
@@ -2749,6 +2813,11 @@ export class AgentResource
    * grants.
    */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
+    assert(
+      this._searchListing === null,
+      "Unexpected: authorizing against an AgentResource built from search"
+    );
+
     if (this.scope === "global") {
       assert(isGlobalAgentId(this.sId));
 
@@ -2915,6 +2984,259 @@ export class AgentResource
     };
   }
 
+  /**
+   * @cc [owner:tdraier,label:security;product] searchable-global-agents
+   * Global agents are searchable only when the workspace resolves them as `active` (not disabled by
+   * an admin, a missing data source or the plan) and the caller holds `read` on them (audience).
+   */
+  private static async listSearchableGlobalAgents(
+    auth: Authenticator
+  ): Promise<AgentResource[]> {
+    const agents = await this.fetchByIds(auth, listDefaultGlobalAgentIds());
+    return agents.filter(
+      (agent) => agent.status === "active" && auth.can("read", agent)
+    );
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security;performance] indexed-agent-search-listings
+   * Return only workspace-scoped or searchable global indexed metadata (see
+   * `workspace-scoped-agent-search`); never the agent's instructions. Global eligibility, and the
+   * model each searchable global agent resolves to for the workspace, are resolved before the query;
+   * result projection must not read the database. Permission-bearing document
+   * changes are eventually consistent; full-agent access remains separately authorized.
+   * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
+   * Preserve Elasticsearch hit order without exposing scores.
+   * Request _source and omit hits without source documents.
+   * Return at most limit agents, and the exact number of matching agents as total.
+   */
+  /**
+   * @cc [owner:tdraier,label:security] unrestricted-agent-search-requires-admin
+   * Strict permission filtering is the default. Unrestricted filtering MUST fail with
+   * `unrestricted_requires_admin`, without querying, unless the caller is a workspace admin.
+   */
+  /**
+   * @cc [owner:tdraier,label:security] agent-search-facets
+   * Facet values MUST come from the same authorized query as the returned page (including the
+   * caller's filters), so they never reveal values held only by agents the caller cannot list.
+   * Terms facets return distinct values, at most MAX_AGENT_SEARCH_FACET_VALUES each, with the number
+   * of agents matching that query (every filter included) that hold each value. The `usage` facet
+   * returns the min and max `active_users_count` of those agents, null when none has one.
+   */
+  /**
+   * @cc [owner:tdraier,label:security;product] agent-search-pagination
+   * Custom and global agents share one ES-ranked stream, paginated by offset so any page can be
+   * reached directly. `offset + limit` beyond the ES result window MUST fail with
+   * `offset_out_of_range` without querying, unless `unrestricted-agent-search-requires-admin`
+   * already failed the request (that check takes precedence). Every page re-applies the caller's grants to the indexed
+   * documents. Pagination reads the live index; concurrent index changes may cause skips or
+   * duplicates.
+   */
+  static async search(
+    auth: Authenticator,
+    {
+      limit = MAX_AGENT_SEARCH_RESULTS,
+      offset = 0,
+      sortBy,
+      sortOrder,
+      facets = [],
+      ...options
+    }: {
+      searchTerm: string;
+      facets?: AgentSearchFacet[];
+      permissionFiltering?: AgentSearchPermissionFiltering;
+      filters?: AgentSearchFilters;
+      limit?: number;
+      offset?: number;
+      sortBy?: AgentSearchSort;
+      sortOrder?: AgentSearchSortOrder;
+    }
+  ) {
+    if (options.permissionFiltering === "unrestricted" && !auth.isAdmin()) {
+      return new Err("unrestricted_requires_admin" as const);
+    }
+
+    if (offset + limit > MAX_AGENT_SEARCH_WINDOW) {
+      return new Err("offset_out_of_range" as const);
+    }
+
+    const globalAgents = await this.listSearchableGlobalAgents(auth);
+    const globalAgentIds = globalAgents.map((agent) => agent.sId);
+    const globalAgentModels = new Map(
+      globalAgents.map((agent) => [agent.sId, agent.toSearchModelJSON()])
+    );
+    const query = buildAgentSearchQuery(auth, { ...options, globalAgentIds });
+
+    const result = await withEs((client) =>
+      client.search<AgentSearchDocument, AgentSearchAggregations>({
+        index: AGENT_SEARCH_ALIAS_NAME,
+        _source: true,
+        query,
+        from: offset,
+        size: limit,
+        track_total_hits: true,
+        sort: buildAgentDefaultSort({ sortBy, sortOrder }),
+        ...(facets.length > 0
+          ? {
+              aggs: Object.fromEntries(
+                facets.map((facet) => [facet, buildFacetAggregation(facet)])
+              ),
+            }
+          : {}),
+      })
+    );
+    if (result.isErr()) {
+      return result;
+    }
+    const { hits, total } = result.value.hits;
+    const totalCount = isNumber(total) ? total : (total?.value ?? 0);
+    const { aggregations } = result.value;
+    const facetValues: AgentSearchFacetValues = Object.fromEntries(
+      facets.filter(isTermsFacet).map((facet) => [
+        facet,
+        bucketsToArray(aggregations?.[facet]?.buckets).map((bucket) => ({
+          value: String(bucket.key),
+          count: bucket.doc_count,
+        })),
+      ])
+    );
+    if (facets.includes("usage")) {
+      facetValues.usage = {
+        min: aggregations?.usage?.min ?? null,
+        max: aggregations?.usage?.max ?? null,
+      };
+    }
+
+    return new Ok({
+      agents: removeNulls(hits.map((hit) => hit._source)).map((document) =>
+        this.fromSearchDocument(
+          auth,
+          document,
+          document.workspace_id === GLOBAL_AGENTS_WORKSPACE_ID
+            ? globalAgentModels.get(document.agent_id)
+            : null
+        )
+      ),
+      total: totalCount,
+      hasMore: offset + hits.length < totalCount,
+      facets: facetValues,
+    });
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security;backend] agent-search-snapshot
+   * A resource built by `fromSearchDocument` is `light`, holds no verb, and only its identity, head
+   * fields (`name`, `description`, `pictureUrl`, `status`, `scope`), `requestedSpaceIds` and
+   * listing fields come from the document; every other field (`id`, version metadata, model
+   * configuration, ...) is a placeholder. It MUST only be serialized through
+   * `toSearchListItemJSON`, and `toJSON` and `getAllowedVerbs` (hence `auth.can`/`canFetch`) MUST
+   * fail on it rather than expose or authorize against placeholders.
+   */
+  private static fromSearchDocument(
+    auth: Authenticator,
+    document: AgentSearchDocument,
+    workspaceModel: AgentSearchListItemType["model"] = null
+  ): AgentResource {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    // Default agents are indexed without a model: `workspaceModel` is the one they resolve to.
+    const model =
+      workspaceModel ??
+      (document.model
+        ? {
+            providerId: document.model.provider_id,
+            modelId: document.model.model_id,
+            reasoningEffort: document.model.reasoning_effort,
+          }
+        : null);
+    const createdAt = new Date(document.created_at ?? 0);
+    const updatedAt = new Date(document.updated_at ?? 0);
+
+    const resource = new AgentResource(
+      {
+        id: -1,
+        workspaceId,
+        sId: document.agent_id,
+        createdAt,
+        updatedAt,
+        currentVersion: 0,
+        name: null,
+        status: null,
+        scope: null,
+        reinforcement: null,
+        lastReinforcementAnalysisAt: null,
+        templateId: null,
+      },
+      {
+        id: -1,
+        workspaceId,
+        sId: document.agent_id,
+        createdAt,
+        updatedAt,
+        version: 0,
+        agentId: -1,
+        status: "active",
+        scope: "hidden",
+        authorId: -1,
+        name: document.name,
+        description: document.description,
+        instructions: null,
+        instructionsHtml: null,
+        providerId: model?.providerId ?? MODEL_PROVIDER_IDS[0],
+        modelId: model?.modelId ?? MODEL_IDS[0],
+        temperature: 0,
+        reasoningEffort: model?.reasoningEffort ?? null,
+        responseFormat: undefined,
+        pictureUrl: document.picture_url,
+        maxStepsPerRun: 0,
+        creditSpendCheckpointThresholdAwuCredits: null,
+        templateId: null,
+        reinforcement: "auto",
+        lastReinforcementAnalysisAt: null,
+        requestedSpaceIds: removeNulls(
+          document.requested_space_ids.map(getResourceIdFromSId)
+        ),
+      }
+    );
+    Object.assign(resource, {
+      scope: document.scope,
+      status: document.status,
+    } satisfies Pick<AgentResource, "scope" | "status">);
+    resource._content = null;
+    resource._searchListing = { document, model };
+
+    return resource;
+  }
+
+  toSearchListItemJSON(): AgentSearchListItemType {
+    assert(
+      this._searchListing !== null,
+      "Unexpected: `toSearchListItemJSON` called on an AgentResource not built from search"
+    );
+    const { document, model } = this._searchListing;
+
+    return {
+      sId: this.sId,
+      status: this.status,
+      scope: this.scope,
+      name: this.name,
+      description: this.description,
+      pictureUrl: this.pictureUrl,
+      model,
+      feedbacks: {
+        up: document.feedback_positive_count,
+        down: document.feedback_negative_count,
+      },
+      requestedSpaceIds: this.requestedSpaceIds.map((id) =>
+        SpaceResource.modelIdToSId({ id, workspaceId: this.workspaceId })
+      ),
+      tagIds: document.tag_ids,
+      editorIds: document.editor_ids,
+      editedBy: document.last_edited_by_user_id,
+      activeUsersCount: document.active_users_count,
+      updatedAt: document.updated_at === null ? null : this.updatedAt.getTime(),
+    };
+  }
+
   // The code-defined skills a global agent declares; always empty for custom agents.
   get codeDefinedSkillIds(): string[] {
     return [...this._codeDefinedSkillIds];
@@ -2930,6 +3252,11 @@ export class AgentResource
    * These methods are the only place that shapes an agent's configuration JSON.
    */
   toJSON(): AgentConfigurationBaseType {
+    assert(
+      this._searchListing === null,
+      "Unexpected: `toJSON` called on an AgentResource built from search"
+    );
+
     const isGlobal = this.scope === "global";
 
     return {

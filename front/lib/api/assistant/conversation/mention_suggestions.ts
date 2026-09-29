@@ -1,4 +1,3 @@
-import { searchAgents } from "@app/lib/api/agents/search";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getLastUserMessageMentions } from "@app/lib/api/assistant/conversation";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
@@ -283,7 +282,7 @@ export const suggestionsOfMentions = async (
     const useAgentSearch = await auth.hasFeatureFlag("new_manage_agents_page");
     let activeAgents: RichAgentMentionInConversation[] | null = null;
     if (useAgentSearch) {
-      const result = await searchAgents(auth, {
+      const result = await AgentResource.search(auth, {
         searchTerm: query,
         limit: SUGGESTION_DISPLAY_LIMIT,
         sortBy: "name",
