@@ -24,6 +24,7 @@ import { UserMessage } from "@app/components/assistant/conversation/UserMessage"
 import { WakeUpMessage } from "@app/components/assistant/conversation/WakeUpMessage";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
 import { isMentionRequiringValidation } from "@app/types/assistant/conversation";
@@ -301,10 +302,19 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     }
 
     // This is hacky but in case of handover we generate a user message from the agent and we want
-    // to hide it in the conversation because it has no value to display. Its mentions requiring
-    // validation (e.g. a child agent restricted by space usage) must still be shown.
+    // to hide it in the conversation because it has no value to display. 
     const isHidden = isHiddenMessage(data);
-    if (isHidden && !hasMentionRequiringValidation(data)) {
+    // But if it requires validation we still need to show the message and hide only user message.
+    if (
+      isHidden &&
+      !(
+        hasMentionRequiringValidation(data) &&
+        canCurrentUserRespondToParentUserMessage({
+          parentUserId: triggeringUser?.sId,
+          currentUserId: context.user.sId,
+        })
+      )
+    ) {
       return null;
     }
 

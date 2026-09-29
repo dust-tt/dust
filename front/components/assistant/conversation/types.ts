@@ -186,7 +186,7 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
 export const hasMentionRequiringValidation = (
   message: VirtuosoMessage
 ): boolean =>
-  (isUserMessage(message) || isAgentMessageWithStreaming(message)) &&
+  isUserMessage(message) &&
   message.visibility !== "deleted" &&
   message.richMentions.some(
     (mention) => !mention.dismissed && isMentionRequiringValidation(mention)
