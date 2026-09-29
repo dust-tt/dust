@@ -1,7 +1,8 @@
 # gcsfuse in Docker
 
 An interactive Ubuntu container with Google's official gcsfuse package, installed the same way as
-the Dust sandbox. The package version is resolved at build time; check it with `gcsfuse --version`.
+the Dust sandbox, and ripgrep (`rg`) for search benchmarks. Package versions are resolved at build
+time; check them with `gcsfuse --version` and `rg --version`.
 
 On macOS, Docker Desktop runs this in its Linux VM. The GCS mount is accessible inside the
 container; it does not appear as a mounted directory in Finder. Docker Desktop does not support
