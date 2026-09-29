@@ -52,6 +52,8 @@ impl From<anyhow::Error> for SqliteDatabaseError {
 }
 
 const MAX_ROWS: usize = 2048;
+// Bound total result payload to prevent a single query from exhausting worker memory.
+const MAX_RESULT_BYTES: usize = 10 * 1024 * 1024; // 10 MiB
 
 impl SqliteDatabase {
     pub fn new() -> Self {
@@ -187,6 +189,24 @@ impl SqliteDatabase {
                 return Err(SqliteDatabaseError::ExceededMaxRows(MAX_ROWS));
             }
 
+            // Bound total payload size; row count alone does not prevent large TEXT/BLOB columns
+            // from exhausting worker memory.
+            let total_bytes: usize = result_rows
+                .iter()
+                .flat_map(|r| r.value.values())
+                .map(|v| match v {
+                    serde_json::Value::String(s) => s.len(),
+                    _ => 8,
+                })
+                .sum();
+            if total_bytes > MAX_RESULT_BYTES {
+                return Err(SqliteDatabaseError::InternalError(anyhow!(
+                    "Query result size ({} bytes) exceeds the {} byte limit",
+                    total_bytes,
+                    MAX_RESULT_BYTES
+                )));
+            }
+
             info!(
                 duration_ms = utils::now() - time_query_start,
                 "DSSTRUCTSTAT - WORKER Finished executing user query"
@@ -195,27 +215,24 @@ impl SqliteDatabase {
             Ok(result_rows)
         });
 
-        match timeout(std::time::Duration::from_millis(timeout_ms), query_future)
-            .await
-            .map_err(|_| SqliteDatabaseError::InternalError(anyhow!("Query timed-out")))?
-        {
-            Ok(r) => r,
-            Err(_) => {
-                let interrupt_handle =
-                    self.interrupt_handle
-                        .as_ref()
-                        .ok_or(SqliteDatabaseError::InternalError(anyhow!(
-                            "Database is not initialized"
-                        )))?;
-
-                let interrupt_handle = interrupt_handle.lock().await;
-                interrupt_handle.interrupt();
-
-                Err(SqliteDatabaseError::InternalError(anyhow!(format!(
-                    "Query execution timed out after {} ms",
+        // Timeout wraps the spawn_blocking JoinHandle. When the timeout fires tokio drops
+        // the JoinHandle, but the blocking thread keeps running until the next SQLite API
+        // call. We must call interrupt() explicitly so SQLite returns SQLITE_INTERRUPT and
+        // the thread unblocks promptly.
+        match timeout(std::time::Duration::from_millis(timeout_ms), query_future).await {
+            Err(_elapsed) => {
+                if let Some(handle) = self.interrupt_handle.as_ref() {
+                    handle.lock().await.interrupt();
+                }
+                Err(SqliteDatabaseError::InternalError(anyhow!(
+                    "Query timed-out after {} ms",
                     timeout_ms
-                ))))
+                )))
             }
+            Ok(Err(_join_err)) => Err(SqliteDatabaseError::InternalError(anyhow!(
+                "Query thread panicked"
+            ))),
+            Ok(Ok(r)) => r,
         }
     }
 }
