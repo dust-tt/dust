@@ -77,14 +77,6 @@ export function isAuthorizedForSkillSuggestion(
   );
 }
 
-export function skillSuggestionsRequireAdmin(
-  suggestions: { kind: SkillSuggestionKind }[]
-): boolean {
-  return suggestions.some((s) =>
-    SKILL_SUGGESTION_KIND_REQUIRED_VERBS[s.kind].includes("admin")
-  );
-}
-
 /**
  * @cc [owner:fabiencelier,label:security] skill-suggestions-require-every-verb
  * A set of suggestions MUST only be authorized when the caller meets the requirements of every one

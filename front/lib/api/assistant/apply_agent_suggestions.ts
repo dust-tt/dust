@@ -795,24 +795,3 @@ export async function writeAgentChange(
       return assertNever(change);
   }
 }
-
-/**
- * @cc [owner:matteotrab,label:security] callers-authorize-suggestions
- * Callers MUST authorize `suggestions` with `isAuthorizedToApplyAgentSuggestions` against the live
- * `agent` before calling this. Permissions are not re-checked here, and the write path does not
- * re-check the workspace `create` capability when it saves the existing `pending` placeholder.
- */
-export async function applyAgentSuggestions(
-  auth: Authenticator,
-  params: {
-    agent: AgentResource;
-    suggestions: AgentSuggestionResource[];
-  }
-): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
-  const change = await resolveAgentSuggestions(auth, params);
-  if (change.isErr()) {
-    return change;
-  }
-
-  return writeAgentChange(auth, params.agent, change.value);
-}

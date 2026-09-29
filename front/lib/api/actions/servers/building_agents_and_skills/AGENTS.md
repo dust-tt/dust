@@ -1,8 +1,8 @@
 # building_agents_and_skills MCP server
 
 Internal MCP server that lets an agent propose changes to skills and agents from a conversation.
-Nothing is applied directly: each tool records a `pending` suggestion that editors review (see
-`CONTRACTS`, `changes-are-suggestions`).
+Nothing is applied directly: `suggest` records `pending` suggestions, in a batch that editors review
+(see `CONTRACTS`, `changes-are-suggestions`).
 
 ## Adding a new kind of suggestion
 
@@ -25,68 +25,72 @@ and the parsed payload, and call `toJSON()`.
   and will point you to places to fix in next steps.
 
 
-### Implement the tool
+### Accept the kind in `suggest`
 
-- `metadata.ts`: `<NAME>_TOOL_NAME`, an input schema with `.describe()` on every field, and an
-  entry in `BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA`. Instructions-like inputs are HTML, not
-  markdown, for uniformity across tools.
+All changes go through the single `suggest` tool, which records them as one batch.
+
+- `metadata.ts`: add the field to the change schema it belongs to (`EditAgentSuggestionSchema`,
+  `EditSkillSuggestionSchema`, or a creation schema), with `.describe()`. Instructions-like inputs
+  are HTML, not markdown, for uniformity across fields.
 - Update the metadata snapshot (`mcp_servers_metadata.test.ts.snap`).
-- `tools/<tool_name>.ts`: a pure `(auth, args) => Result<Resource, MCPError>` plus a thin `...Handler`,
+- `tools/suggest.ts`: validate the field in the matching `plan…` function (`planAgentEdit`,
+  `planSkillEdit`, …) and turn it into a `{ kind, suggestion }` row.
 - Validation that a manual route already performs (e.g. `PATCH /skills/:sId/editors`) must be
   extracted to `front/lib/api/skills/` and shared with that route, so the apply step can re-run
   it against live state.
 - Pass `source: "conversational"` explicitly in every `createSuggestionForAgent` /
-  `createSuggestionForSkill` call from a tool (`explicit-suggestion-source` in `CONTRACTS`): the
-  column's `sidekick`/legacy default is not a fallback for new callers, and factories used by the
-  new tests need the same explicit `source` (see `AgentSuggestionFactory`/`SkillSuggestionFactory`).
-- Prune conflicting pending suggestions of the same kind and mark them `outdated`
-  (`front/lib/reinforcement/skill_suggestion_pruning.ts`). If the prune-then-insert sequence must
-  guarantee a single open pending suggestion per target (`no-direct-deletion`-style contracts),
-  serialize it with `executeWithLockResult` (`front/lib/lock.ts`) keyed by the target id — the
-  read/outdate/insert steps are not otherwise atomic.
-- Output a directive with `formatSkillSuggestionDirective`/`formatAgentSuggestionDirective`
-  (`directives.ts`) rather than hand-building the `:skill_suggestion[]{...}` /
-  `:agent_suggestion[]{...}` string: it is the one place that knows the syntax.
-- `tools/index.ts`: register the handler. Add `@cc` contracts for security-relevant invariants
-  (see `requires-skill-write`).
+  `createSuggestionForSkill` call (`explicit-suggestion-source` in `CONTRACTS`): the column's
+  `sidekick`/legacy default is not a fallback for new callers, and factories used by the new tests
+  need the same explicit `source` (see `AgentSuggestionFactory`/`SkillSuggestionFactory`).
+- Prune the pending suggestions the new one supersedes (`pruneSupersededSkillSuggestions` in
+  `skill_suggestion_changes.ts`, backed by `front/lib/reinforcement/skill_suggestion_pruning.ts`).
+- Add `@cc` contracts for security-relevant invariants (see `requires-skill-write`).
 
 ### Unit tests for the tool
 
-Extend `tools/index.test.ts` with a `describe(<NAME>_TOOL_NAME)` block reusing `getTool`,
-`makeExtra`, `seedSkill`. Cover: happy path (row, payload, directive), pruning of conflicting
-rows, non-editor caller, archived target, each validation error.
+Extend the `describe(SUGGEST_TOOL_NAME)` block of `tools/index.test.ts`, reusing `getTool`,
+`makeExtra`, `seedSkill`. Cover: happy path (rows, payload, batch directive), pruning of
+superseded rows, non-editor caller, archived target, each validation error.
 
 ### UI cards
 
-Directives carry ids only; a remark plugin resolves the suggestion via SWR and switches on `kind`.
+`suggest` outputs a `:batch_edit[]{sId=...}` directive (`formatBatchSuggestionDirective` in
+`directives.ts`), rendered by `markdown/suggestion/BatchSuggestionDirective.tsx`. It carries the
+batch id only; the card resolves the suggestions via SWR and switches on `kind`:
 
-- Skill kinds: see `markdown/suggestion/SkillSuggestionDirective.tsx` 
-- Agent kinds: `SidekickSuggestionDirective.tsx` and `SidekickSuggestionCard.tsx`.
+- Agent kinds: `AgentSuggestionDetails.tsx`.
+- Skill kinds: `skill_builder/SkillSuggestionCard.tsx`.
+
+Sidekick suggestions have their own directive and cards (`SidekickSuggestionDirective.tsx`,
+`SidekickSuggestionCard.tsx`).
 
 ### Applying on accept
 
-Skills:
-Server-side: `PATCH /w/:wId/assistant/skills/:sId/suggestions` with `applyToSkill: true` calls
-`applySkillSuggestions` (`front/lib/api/skills/apply_skill_suggestions.ts`) before
-`bulkUpdateState`. The route already enforces `approved`, `auth.can("write", skill)` and `pending`.
+`PATCH /w/:wId/assistant/suggestion_batches/:bId` with `state: "approved"` calls
+`applyBatchSuggestions` (`front/lib/api/assistant/apply_batch_suggestions.ts`): it plans the batch
+into steps, checks every step's permissions, resolves every step against the current state of its
+target, and only then writes them. The per-agent and per-skill `PATCH …/suggestions` routes only
+set suggestion states.
 
-- Add a `case "<kind>"` in `editsForSuggestion` returning the `SkillEdits` to apply (or `Err` if
-  not applicable yet) and extend `mergeSkillEdits`. `updateSkill` replaces the whole skill, so
-  carry over untouched fields.
-- Test in `front-api/routes/.../skills/[sId]/suggestions.test.ts` (`PATCH with applyToSkill`).
+Skills:
+- Add a `case "<kind>"` in `editsForSuggestion` (`front/lib/editor/merge_skill_suggestion_edits.ts`)
+  returning the `SkillEdits` to apply, and extend `mergeSkillEdits`.
+- Resolve it in `resolveSkillEdits` (`front/lib/api/skills/apply_skill_suggestions.ts`): a field of
+  `updateSkill` (versioned, carry over untouched fields), or its own write like availability and
+  editors.
+- Check the permissions of the kind in `SKILL_SUGGESTION_KIND_REQUIRED_VERBS`
+  (`front/lib/api/skills/suggestion_authorization.ts`).
 
 Agents:
-Server-side: `PATCH /w/:wId/assistant/agent_configurations/:aId/suggestions` with
-`applyToAgent: true` calls `applyAgentSuggestions`
-(`front/lib/api/assistant/apply_agent_suggestions.ts`) before `bulkUpdateState`. The route
-enforces `approved`, `agent.canEdit` and `pending`. Only the conversational kinds are applied
-today: `create` turns the `pending` placeholder into an active, hidden agent, `delete` archives the
-agent, and `name` re-saves it with only its name changed. Sidekick kinds are still patched into the
-builder form client-side and are rejected by `applyAgentSuggestions`.
+- Add a `case "<kind>"` in `fieldEditsForSuggestion`
+  (`front/lib/editor/merge_agent_suggestion_changes.ts`) and extend `AgentEdits`.
+- Resolve it in `resolveAgentEdits` (`front/lib/api/assistant/apply_agent_suggestions.ts`): a
+  definition field saved as a new version (`resolveAgentFieldEdits`), or applied in place like the
+  scope.
+- Check the permissions of the kind in `AGENT_SUGGESTION_KIND_ACCEPTED_VERBS`
+  (`front/lib/api/assistant/agent_suggestion_authorization.ts`).
 
-- Add a `case "<kind>"` in `applyAgentSuggestions`.
-- Test in `front-api/routes/.../agent_configurations/[aId]/suggestions.test.ts`
-  (`PATCH with applyToAgent`).
+Test both in `front/lib/api/assistant/apply_batch_suggestions.test.ts`.
 
 ### Update the conversational-building skill 
 
