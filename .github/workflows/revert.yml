@@ -47,8 +47,10 @@ jobs:
     if: ${{ !inputs.enforce_main || github.ref == 'refs/heads/main' }}
     steps:
       - name: Check branch condition
+        env:
+          ENFORCE_MAIN: ${{ inputs.enforce_main }}
         run: |
-          if [[ "${{ inputs.enforce_main }}" == "true" && "${{ github.ref }}" != "refs/heads/main" ]]; then
+          if [[ "$ENFORCE_MAIN" == "true" && "${{ github.ref }}" != "refs/heads/main" ]]; then
             echo "Reverts are only allowed from the main branch"
             exit 1
           fi
@@ -104,19 +106,22 @@ jobs:
         uses: "google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db" # v3.0.1
 
       - name: Validate image tag exists
+        env:
+          COMPONENT: ${{ inputs.component }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
           # The front releases run the front-api images.
-          case "${{ inputs.component }}" in
+          case "$COMPONENT" in
             front|front-sse) IMAGE="front-api" ;;
             front-edge) IMAGE="front-api-edge" ;;
-            *) IMAGE="${{ inputs.component }}" ;;
+            *) IMAGE="$COMPONENT" ;;
           esac
           IMAGE_REPO="us-central1-docker.pkg.dev/dust-infra/dust-images/${IMAGE}"
 
-          echo "Validating image tag ${{ inputs.image_tag }} exists in ${IMAGE_REPO}"
+          echo "Validating image tag ${IMAGE_TAG} exists in ${IMAGE_REPO}"
 
-          if ! gcloud container images describe "${IMAGE_REPO}:${{ inputs.image_tag }}" --quiet >/dev/null 2>&1; then
-            echo "❌ Image tag '${{ inputs.image_tag }}' not found in registry ${IMAGE_REPO}"
+          if ! gcloud container images describe "${IMAGE_REPO}:${IMAGE_TAG}" --quiet >/dev/null 2>&1; then
+            echo "❌ Image tag '${IMAGE_TAG}' not found in registry ${IMAGE_REPO}"
             echo "Available tags:"
             gcloud container images list-tags "${IMAGE_REPO}" \
               --limit=10 \
@@ -125,7 +130,7 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Image tag '${{ inputs.image_tag }}' exists in ${IMAGE_REPO}" >> "$GITHUB_STEP_SUMMARY"
+          echo "✅ Image tag '${IMAGE_TAG}' exists in ${IMAGE_REPO}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Notify Failure
         if: failure()

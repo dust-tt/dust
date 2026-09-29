@@ -81,8 +81,10 @@ jobs:
     steps:
       - name: Check if deployment is from main branch
         if: ${{ github.ref != 'refs/heads/main' && inputs.component != 'front-edge' && inputs.component != 'marketing-edge' }}
+        env:
+          COMPONENT: ${{ inputs.component }}
         run: |
-          echo "Error: Deployments for ${{ inputs.component }} are only allowed from the main branch"
+          echo "Error: Deployments for ${COMPONENT} are only allowed from the main branch"
           exit 1
 
   prepare:
@@ -151,9 +153,10 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - id: set-matrix
+        env:
+          CELLS: ${{ inputs.cells }}
         run: |
           # Marketing builds per region, and only the legacy cells have one.
-          CELLS="${{ inputs.cells }}"
           if [ "$CELLS" = "all" ]; then CELLS="cell-00000,cell-00001"; fi
           REGIONS=$(tr ',' '\n' <<< "$CELLS" \
             | sed -n 's/^cell-00000$/us-central1/p; s/^cell-00001$/europe-west1/p' \
