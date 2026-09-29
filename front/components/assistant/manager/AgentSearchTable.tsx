@@ -356,7 +356,7 @@ export function AgentSearchTable({
           },
           meta: {
             type: "numeric",
-            className: "hidden @lg:w-28 @lg:table-cell",
+            className: "hidden @lg:w-24 @lg:table-cell",
           },
         },
         {
@@ -367,7 +367,7 @@ export function AgentSearchTable({
               editors={agent.scope === "global" ? null : agent.editors}
             />
           ),
-          meta: { className: "hidden @lg:w-24 @lg:table-cell" },
+          meta: { className: "hidden pl-6 @lg:w-28 @lg:table-cell" },
         },
         {
           id: "tags" as const,
