@@ -55,7 +55,7 @@ export function GroupManagersField({
                 type="button"
                 onClick={(event) => event.stopPropagation()}
               >
-                <Chip color="info" size="xs" label="Not group member" />
+                <Chip color="highlight" size="mini" label="Not group member" />
               </button>
             }
             label={`${fullName} isn't a member of ${group.name} but can manage it. ${membershipRestriction ?? "They can grant themselves access to the group's permissions and data."}`}
