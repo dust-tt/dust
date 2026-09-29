@@ -203,29 +203,28 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     // workspace id, and `sId` is a pure derivation from the same pair. This also means a
     // suggestion whose skill was archived since (e.g. a `delete` suggestion archives its own
     // target on accept) stays visible: the permission check never depends on skill status.
+    const resources: SkillSuggestionResource[] = [];
     const inaccessible: SkillSuggestionModel[] = [];
-    const resources = removeNulls(
-      suggestions.map((suggestion) => {
-        if (
-          !SkillResource.canAdministrateCustomSkillId(auth, {
-            id: suggestion.skillConfigurationId,
-            workspaceId: owner.id,
-          })
-        ) {
-          inaccessible.push(suggestion);
-          return null;
-        }
-        const user = suggestion.updatedByUser;
-        const updatedBy = user
-          ? {
-              sId: user.sId,
-              fullName: [user.firstName, user.lastName]
-                .filter(Boolean)
-                .join(" "),
-              email: user.email,
-            }
-          : null;
-        return new this(
+    for (const suggestion of suggestions) {
+      if (
+        !SkillResource.canAdministrateCustomSkillId(auth, {
+          id: suggestion.skillConfigurationId,
+          workspaceId: owner.id,
+        })
+      ) {
+        inaccessible.push(suggestion);
+        continue;
+      }
+      const user = suggestion.updatedByUser;
+      const updatedBy = user
+        ? {
+            sId: user.sId,
+            fullName: [user.firstName, user.lastName].filter(Boolean).join(" "),
+            email: user.email,
+          }
+        : null;
+      resources.push(
+        new this(
           SkillSuggestionModel,
           suggestion.get(),
           SkillResource.modelIdToSId({
@@ -234,9 +233,9 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
           }),
           updatedBy,
           suggestion.notificationConversation?.sId ?? null
-        );
-      })
-    );
+        )
+      );
+    }
 
     // Enrich resources with visible source conversation IDs.
     const allConversationModelIds = [
