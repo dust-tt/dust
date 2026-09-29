@@ -41,6 +41,7 @@ export function GroupManagersField({
   const membershipColumns: ColumnDef<MemberRowData>[] = [
     {
       id: "membership",
+      meta: { className: "w-36" },
       cell: ({ row }) => {
         const { sId, fullName } = row.original;
         if (!managerIds.has(sId) || groupMemberIds.has(sId)) {
