@@ -28,6 +28,13 @@ import path from "path";
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
 const DUST_BASE_IMAGE_VERSION = "0.8.121";
 const DSBX_CLI_VERSION = "0.1.66";
+// Pinned SHA-256 digests for the above version, sourced from the release's
+// checksums-sha256.txt at tag dsbx-v0.1.66.
+// Verification against pinned values prevents a supply-chain attack where an
+// attacker with contents:write replaces both the binary and the remote checksum
+// file simultaneously (CWE-494).
+const DSBX_LINUX_X86_64_SHA256 =
+  "3c31d747dbeee810605fbbdcd82e670807286b8410598ec61a846f4696b2dcd8";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
 // the stable identity used when creating the workload account.
@@ -35,6 +42,10 @@ const AGENT_PROXIED_UID = SANDBOX_AGENT_PROXIED_UID;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
 const APPLY_PATCH_VERSION = "0.1.0";
+// Pinned SHA-256 digest for apply_patch-linux-x86_64 at the above version,
+// sourced from the release's checksums-sha256.txt at tag apply-patch-v0.1.0.
+const APPLY_PATCH_LINUX_X86_64_SHA256 =
+  "f08b6f40545dfcbe87ed46b5b92eda7d182bdd6b98743bdda0613a7148d07ab3";
 // Modern x86_64 build (requires AVX2). Switch to the baseline variant if a
 // future sandbox CPU lacks it.
 const BUN_VERSION = "1.3.14";
@@ -513,8 +524,11 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   })
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
-      `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
-      "grep dsbx-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/dsbx\"}' | sha256sum -c - && " +
+      // Verify against the pinned digest in source (DSBX_LINUX_X86_64_SHA256).
+      // The remote checksums-sha256.txt is NOT fetched: it lives on the same
+      // mutable release and an attacker with contents:write could replace both
+      // the binary and the checksum file simultaneously (CWE-494).
+      `echo "${DSBX_LINUX_X86_64_SHA256}  /tmp/dsbx" | sha256sum -c - && ` +
       "chmod +x /tmp/dsbx && " +
       "mv /tmp/dsbx /opt/bin/dsbx && " +
       "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx",
@@ -529,8 +543,11 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .runCmd("mkdir -p /skills && chmod 755 /skills", { user: "root" })
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/apply-patch-v${APPLY_PATCH_VERSION}/apply_patch-linux-x86_64 -o /tmp/apply_patch && ` +
-      `curl -fsSL https://github.com/dust-tt/dust/releases/download/apply-patch-v${APPLY_PATCH_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
-      "grep apply_patch-linux-x86_64 /tmp/checksums-sha256.txt | awk '{print $1 \"  /tmp/apply_patch\"}' | sha256sum -c - && " +
+      // Verify against the pinned digest in source (APPLY_PATCH_LINUX_X86_64_SHA256).
+      // The remote checksums-sha256.txt is NOT fetched: it lives on the same
+      // mutable release and an attacker with contents:write could replace both
+      // the binary and the checksum file simultaneously (CWE-494).
+      `echo "${APPLY_PATCH_LINUX_X86_64_SHA256}  /tmp/apply_patch" | sha256sum -c - && ` +
       "chmod +x /tmp/apply_patch && " +
       "mv /tmp/apply_patch /opt/bin/apply_patch",
     { user: "root" }
