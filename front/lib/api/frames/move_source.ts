@@ -89,7 +89,7 @@ function podFrameUseCaseMetadata(
   return {
     ...rest,
     spaceId: podId,
-    ...(conversationId ? { sourceConversationId: conversationId } : {}),
+    sourceConversationId: conversationId,
   };
 }
 
@@ -209,18 +209,15 @@ export async function moveFrameV2Source(
       await freshFrame.updateMount({
         destFileName: FRAME_MANIFEST_FILE,
         destMountFilePath: lockedDestinationMountPath,
-        ...(paths.savedToPodId
-          ? {
-              destUseCase: "project_context",
-              destUseCaseMetadata: podFrameUseCaseMetadata(
-                freshFrame.useCaseMetadata,
-                paths.savedToPodId
-              ),
-            }
-          : {
-              destUseCase: freshFrame.useCase,
-              destUseCaseMetadata: freshFrame.useCaseMetadata ?? undefined,
-            }),
+        destUseCase: paths.savedToPodId
+          ? "project_context"
+          : freshFrame.useCase,
+        destUseCaseMetadata: paths.savedToPodId
+          ? podFrameUseCaseMetadata(
+              freshFrame.useCaseMetadata,
+              paths.savedToPodId
+            )
+          : (freshFrame.useCaseMetadata ?? undefined),
       });
     } catch (error) {
       const normalized = normalizeError(error);

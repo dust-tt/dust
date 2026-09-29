@@ -8,7 +8,6 @@ import {
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { DustFileSystem } from "@app/lib/api/file_system";
-import { moveCanonicalFile } from "@app/lib/api/files/file_system_ops";
 import {
   deleteGCSMountFile,
   moveFile,
@@ -16,6 +15,7 @@ import {
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
+import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
 import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup";
 import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
 import type { Authenticator } from "@app/lib/auth";
@@ -448,8 +448,8 @@ export async function addFileToProject(
 
 /**
  * Saves a conversation Frames v2 package to the Pod files. A package is a folder whose registered
- * resource is the manifest inside it, so it moves through the Frame move rather than as a single
- * file, and lands at the Pod root under its folder name.
+ * resource is the manifest inside it, so it goes through the Frame move rather than moving as a
+ * single file, and lands at the Pod root under its folder name.
  */
 export async function addFrameV2ToProject(
   auth: Authenticator,
@@ -474,38 +474,28 @@ export async function addFrameV2ToProject(
     });
   }
 
-  const moveRes = await moveCanonicalFile(
-    auth,
-    fsRes.value,
+  const moved = await moveFrameV2Source(auth, {
+    dustFs: fsRes.value,
     sourceDirectoryPath,
-    podScopedPath(space.sId, path.posix.basename(sourceDirectoryPath))
-  );
-  if (moveRes.isErr()) {
+    destinationDirectoryPath: podScopedPath(
+      space.sId,
+      path.posix.basename(sourceDirectoryPath)
+    ),
+  });
+  if (moved.isErr()) {
     return new Err({
       name: "dust_error",
       code:
-        moveRes.error.code === "already_exists"
+        moved.error.code === "conflict"
           ? "invalid_request_error"
           : "internal_error",
-      message:
-        moveRes.error.code === "already_exists"
-          ? "A file with this name already exists in the Pod."
-          : moveRes.error.message,
-    });
-  }
-
-  const savedFrame = await frame.fetchFreshFrameV2(auth);
-  if (!savedFrame) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_error",
-      message: "Frame not found after saving it to the Pod.",
+      message: moved.error.message,
     });
   }
 
   requestDustProjectIncrementalSync(auth, space);
 
-  return new Ok(savedFrame);
+  return new Ok(moved.value.frame);
 }
 
 /**
