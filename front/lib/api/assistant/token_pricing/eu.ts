@@ -135,6 +135,7 @@ function applyRegionalUplift(pricing: PricingEntry): PricingEntry {
 // EU endpoints on a different host than their global sibling, so their price
 // is not a flat uplift of it. GLM-5.3: Fireworks globally, Mistral in the EU
 // (1.1x Mistral list, https://docs.mistral.ai/models/zai-glm-5-3, 2026-09-28).
+// Regional inference pricing reference: https://docs.mistral.ai/inference/regional-inference.
 const EU_HOST_MODEL_PRICING = {
   [FIREWORKS_GLM_5P3_MODEL_ID]: {
     input: 1.54,
