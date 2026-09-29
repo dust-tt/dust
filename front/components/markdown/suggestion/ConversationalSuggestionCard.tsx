@@ -29,6 +29,7 @@ interface ConversationalSuggestionCardProps {
   visual?: React.ReactElement<ComponentProps<typeof Avatar>>;
   /** Extra detail revealed behind the chevron toggle at the bottom of the card. */
   collapsibleContent?: ReactNode;
+  onCollapsibleOpen?: () => void;
   onAccept?: () => void;
   onReject?: () => void;
   onPreview?: () => void;
@@ -46,6 +47,7 @@ export function ConversationalSuggestionCard({
   analysis,
   visual = DEFAULT_SUGGESTION_VISUAL,
   collapsibleContent,
+  onCollapsibleOpen,
   onAccept,
   onReject,
   onPreview,
@@ -118,7 +120,7 @@ export function ConversationalSuggestionCard({
       </div>
 
       {collapsibleContent && (
-        <Collapsible>
+        <Collapsible onOpenChange={(open) => open && onCollapsibleOpen?.()}>
           {/* Padding lives on an inner element: padding on the animated one
               can't shrink with its height, which makes the toggle jump. */}
           <CollapsibleContent className="bg-muted-background">

@@ -7,6 +7,8 @@ import {
   PendingBatchSuggestionCard,
 } from "@app/components/markdown/suggestion/BatchSuggestionDirective";
 import { DEFAULT_SUGGESTION_VISUAL } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
+import type { SuggestionPileBulkAction } from "@app/components/markdown/suggestion/suggestionTracking";
+import { trackSuggestionPileBulkReview } from "@app/components/markdown/suggestion/suggestionTracking";
 import { getSuggestionStateChip } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
   useReviewSuggestionBatches,
@@ -241,6 +243,17 @@ export function ConversationSuggestionPile({
     }
   };
 
+  const bulkReview = (
+    state: SuggestionBatchReviewState,
+    bulkAction: SuggestionPileBulkAction
+  ) => {
+    trackSuggestionPileBulkReview({
+      bulkAction,
+      batchIds: pendingBatches.map((b) => b.id),
+    });
+    void review(state);
+  };
+
   // Only the front card is interactive; the ones behind it are drawn as decorative layers.
   if (pendingBatches.length === 0) {
     return (
@@ -273,8 +286,8 @@ export function ConversationSuggestionPile({
               isBusy={isBusy}
               bulkState={bulkState}
               onReview={() => setIsReviewing(true)}
-              onAcceptAll={() => void review("approved")}
-              onRejectAll={() => void review("rejected")}
+              onAcceptAll={() => bulkReview("approved", "allow_all")}
+              onRejectAll={() => bulkReview("rejected", "reject_all")}
             />
           }
         />
@@ -300,7 +313,7 @@ export function ConversationSuggestionPile({
             variant="ghost-secondary"
             size="sm"
             label="Allow remaining"
-            onClick={() => void review("approved")}
+            onClick={() => bulkReview("approved", "allow_remaining")}
             disabled={isBusy}
             isLoading={bulkState === "approved"}
           />
