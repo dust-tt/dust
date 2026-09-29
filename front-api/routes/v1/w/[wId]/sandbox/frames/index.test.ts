@@ -1,8 +1,11 @@
 // Legacy Frame publishing runs esbuild, whose TextEncoder invariant requires Node rather than jsdom.
 // @vitest-environment node
 
+import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
+import { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -220,6 +223,44 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
         contentRevision: published.publicationId,
       })
     );
+  });
+
+  it("publishes with a sandbox token minted from a user-owned API key", async () => {
+    const context = await setup();
+    assert(context.frame);
+    const { globalGroup } = await GroupFactory.defaults(context.workspace);
+    const key = await KeyResource.makeNew(
+      {
+        name: "frame-publish-key",
+        workspaceId: context.workspace.id,
+        isSystem: false,
+        status: "active",
+        role: "user",
+        userId: context.auth.getNonNullableUser().id,
+      },
+      [globalGroup]
+    );
+    const keyAuth = await Authenticator.fromKey(key, context.workspace.sId);
+    const token = await generateSandboxExecToken(keyAuth, {
+      agentConfiguration: context.agentConfig,
+      agentMessage: context.agentMessage,
+      conversation: context.conversation,
+      sandbox: context.sandbox,
+      execId: `key-frame-publish-${context.sandbox.sId}`,
+      sandboxAction: context.sandboxAction,
+    });
+
+    const response = await requestFramePublish(
+      context.workspace.sId,
+      token,
+      context.manifestPath
+    );
+
+    expect(response.status, JSON.stringify(await response.json())).toBe(200);
+    expect(
+      (await FileResource.fetchById(context.auth, context.frame.sId))
+        ?.useCaseMetadata?.activePublicationId
+    ).toBeTypeOf("string");
   });
 
   it("returns the existing Frame share link without changing use rights", async () => {

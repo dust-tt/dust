@@ -146,6 +146,7 @@ export async function createSandboxTokenTestContext({
     conversation,
     sandbox,
     agentMessage,
+    sandboxAction: mockAction,
     token,
   };
 }

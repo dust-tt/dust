@@ -7,6 +7,7 @@ import {
   MessageModel,
 } from "@app/lib/models/agent/conversation";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionType } from "@app/types/actions";
@@ -51,6 +52,7 @@ const SandboxTokenPayloadSchema = z
   .object({
     wId: z.string(),
     uId: z.string().optional(),
+    fileAccessUserId: z.string().optional(),
     sbId: z.string(),
     execId: z.string(),
     cId: z.string().optional(),
@@ -87,6 +89,17 @@ const SandboxTokenPayloadSchema = z
       !invocationClaims.some(isDefined) &&
       payload.aV === undefined &&
       payload.noTools === undefined;
+
+    if (
+      payload.fileAccessUserId !== undefined &&
+      (!hasAction || payload.uId !== undefined)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "A file access user ID is only valid on a userless action token.",
+      });
+    }
 
     if (actionClaims.some(isDefined) && !hasAction) {
       ctx.addIssue({
@@ -312,6 +325,11 @@ export async function revokeAllExecTokensForSandbox(
   });
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:security;backend] sandbox-key-owner-is-attribution-only
+ * For a user-owned API key without an attached user, the token MUST carry the key owner's
+ * user ID separately from `uId`. It MUST NOT turn the owner into the sandbox caller.
+ */
 export async function generateSandboxExecToken(
   auth: Authenticator,
   {
@@ -332,10 +350,15 @@ export async function generateSandboxExecToken(
     expiryMs?: number;
   }
 ): Promise<string> {
+  const keyOwnerModelId = auth.user() ? null : auth.key()?.userModelId;
+  const keyOwner = keyOwnerModelId
+    ? await UserResource.fetchByModelId(keyOwnerModelId)
+    : null;
   const payload: SandboxExecTokenPayload = {
     wId: auth.getNonNullableWorkspace().sId,
     cId: conversation.sId,
     uId: auth.user()?.sId,
+    fileAccessUserId: keyOwner?.sId,
     aId: agentConfiguration.sId,
     aV: agentConfiguration.version,
     mId: agentMessage.sId,

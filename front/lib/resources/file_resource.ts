@@ -2585,8 +2585,7 @@ export class FileResource extends BaseResource<FileModel> {
         visited: new Set(),
       });
 
-    const generatedByUserId =
-      auth.user()?.id ?? auth.key()?.userModelId ?? null;
+    const generatedByUserId = auth.authorizedFileAccessUserModelId();
     if (!generatedByUserId) {
       logger.error(
         {

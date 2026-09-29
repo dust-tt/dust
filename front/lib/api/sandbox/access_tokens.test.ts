@@ -10,10 +10,12 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -135,6 +137,53 @@ describe("sandbox access tokens", () => {
     expect(payload!.aV).toBe(agentConfig.version);
     expect(payload!.mId).toBe(agentMessage.sId);
     expect(payload!.sbId).toBe(sandbox.sId);
+  });
+
+  it("carries a user-owned API key's file author without granting that user's role", async () => {
+    const context = await setupTest();
+    const { globalGroup } = await GroupFactory.defaults(context.workspace);
+    const key = await KeyResource.makeNew(
+      {
+        name: "sandbox-file-author-test",
+        workspaceId: context.workspace.id,
+        isSystem: false,
+        status: "active",
+        role: "user",
+        userId: context.user.id,
+      },
+      [globalGroup]
+    );
+    const keyAuth = await Authenticator.fromKey(key, context.workspace.sId);
+    expect(keyAuth.user()).toBeNull();
+
+    const token = await generateSandboxExecToken(keyAuth, {
+      agentConfiguration: context.agentConfig,
+      agentMessage: context.agentMessage,
+      conversation: context.conversation,
+      sandbox: context.sandbox,
+      execId: "key-owned-exec-id",
+      sandboxAction: context.mockAction,
+    });
+    const claims = await verifySandboxExecToken(token);
+    expect(claims?.uId).toBeUndefined();
+    expect(claims?.fileAccessUserId).toBe(context.user.sId);
+    if (!claims) {
+      throw new Error("Expected a valid sandbox token.");
+    }
+
+    const sandboxAuth = await Authenticator.fromSandboxToken(
+      claims,
+      context.workspace.sId
+    );
+    expect(sandboxAuth.isOk()).toBe(true);
+    if (sandboxAuth.isOk()) {
+      expect(sandboxAuth.value.user()).toBeNull();
+      expect(sandboxAuth.value.key()).toBeNull();
+      expect(sandboxAuth.value.role()).toBe("user");
+      expect(sandboxAuth.value.authorizedFileAccessUserModelId()).toBe(
+        context.user.id
+      );
+    }
   });
 
   it("recovers the pinned agent version for legacy exec tokens", async () => {
