@@ -1205,35 +1205,49 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       return new Err({ type: "already_revoked" });
     }
 
-    // Prevent revoking the last admin of a workspace.
-    if (membership.role === "admin" && !allowLastAdminRevocation) {
-      const adminsCount = await this.getMembersCountForWorkspace({
-        workspace,
-        activeOnly: true,
-        rolesFilter: ["admin"],
-        transaction,
-      });
-
-      if (adminsCount < 2) {
-        return new Err({ type: "last_admin" });
+    // Atomically check last-admin and apply DB writes to prevent a TOCTOU race
+    // where two concurrent revocations both pass the count check.
+    const atomicRevoke = async (
+      t: Transaction
+    ): Promise<Result<null, { type: "last_admin" }>> => {
+      if (!transaction) {
+        // Serialize workspace-level admin mutations when we own the transaction.
+        await frontSequelize.query("SELECT pg_advisory_xact_lock(:wid)", {
+          replacements: { wid: workspace.id },
+          transaction: t,
+        });
       }
-    }
-
-    await MembershipModel.update(
-      { endAt },
-      { where: { id: membership.id }, transaction }
-    );
-
-    // Drop any future-scheduled seat-change rows so they don't reactivate the
-    // user after the revoke date.
-    await MembershipModel.destroy({
-      where: {
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: { [Op.gt]: new Date() },
-      },
-      transaction,
-    });
+      if (membership.role === "admin" && !allowLastAdminRevocation) {
+        const adminsCount = await this.getMembersCountForWorkspace({
+          workspace,
+          activeOnly: true,
+          rolesFilter: ["admin"],
+          transaction: t,
+        });
+        if (adminsCount < 2) {
+          return new Err({ type: "last_admin" });
+        }
+      }
+      await MembershipModel.update(
+        { endAt },
+        { where: { id: membership.id }, transaction: t }
+      );
+      // Drop any future-scheduled seat-change rows so they don't reactivate the
+      // user after the revoke date.
+      await MembershipModel.destroy({
+        where: {
+          userId: user.id,
+          workspaceId: workspace.id,
+          startAt: { [Op.gt]: new Date() },
+        },
+        transaction: t,
+      });
+      return new Ok(null);
+    };
+    const atomicRevokeResult = transaction
+      ? await atomicRevoke(transaction)
+      : await frontSequelize.transaction(atomicRevoke);
+    if (atomicRevokeResult.isErr()) return atomicRevokeResult;
 
     if (workspace.workOSOrganizationId && user.workOSUserId) {
       try {
@@ -1352,48 +1366,53 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         return new Err({ type: "already_on_role" });
       }
 
-      // If the previous role was admin, we need to check if there is another admin in the workspace.
-      if (previousRole == "admin") {
-        const adminsCount = await this.getMembersCountForWorkspace({
-          workspace,
-          activeOnly: true,
-          rolesFilter: ["admin"],
-          transaction,
-        });
-
-        if (adminsCount < 2) {
-          if (allowLastAdminRemoval) {
-            logger.warn(
-              {
-                panic: false,
-                userId: user.id,
-                workspaceId: workspace.id,
-              },
-              "Removing the last admin from the workspace, we are allowing it because canForceUserRole() returns true."
-            );
-          } else {
-            return new Err({ type: "last_admin" });
+      // Atomically check last-admin and apply DB writes to prevent TOCTOU.
+      const atomicUpdate = async (
+        t: Transaction
+      ): Promise<Result<null, { type: "last_admin" }>> => {
+        if (!transaction) {
+          await frontSequelize.query("SELECT pg_advisory_xact_lock(:wid)", {
+            replacements: { wid: workspace.id },
+            transaction: t,
+          });
+        }
+        if (previousRole === "admin") {
+          const adminsCount = await this.getMembersCountForWorkspace({
+            workspace,
+            activeOnly: true,
+            rolesFilter: ["admin"],
+            transaction: t,
+          });
+          if (adminsCount < 2) {
+            if (allowLastAdminRemoval) {
+              logger.warn(
+                { panic: false, userId: user.id, workspaceId: workspace.id },
+                "Removing the last admin from the workspace, we are allowing it because canForceUserRole() returns true."
+              );
+            } else {
+              return new Err({ type: "last_admin" });
+            }
           }
         }
-      }
-
-      await MembershipModel.update(
-        { role: newRole },
-        { where: { id: membership.id }, transaction }
-      );
-
-      const workspaceId = workspace.sId;
-      const userModelId = user.id;
-      const workspaceModelId = workspace.id;
-      invalidateCacheAfterCommit(transaction, async () => {
-        await Promise.all([
-          invalidateWorkspaceActiveSeatsCache(workspaceId),
-          MembershipResource.invalidateRoleCache({
-            userModelId,
-            workspaceModelId,
-          }),
-        ]);
-      });
+        await MembershipModel.update(
+          { role: newRole },
+          { where: { id: membership.id }, transaction: t }
+        );
+        const workspaceId = workspace.sId;
+        const userModelId = user.id;
+        const workspaceModelId = workspace.id;
+        invalidateCacheAfterCommit(t, async () => {
+          await Promise.all([
+            invalidateWorkspaceActiveSeatsCache(workspaceId),
+            MembershipResource.invalidateRoleCache({ userModelId, workspaceModelId }),
+          ]);
+        });
+        return new Ok(null);
+      };
+      const atomicUpdateResult = transaction
+        ? await atomicUpdate(transaction)
+        : await frontSequelize.transaction(atomicUpdate);
+      if (atomicUpdateResult.isErr()) return atomicUpdateResult;
 
       await this.updateWorkOSMembershipRole({
         user,
