@@ -63,13 +63,17 @@ export async function listAgents(
     cursor,
     limit,
   }: {
-    view: AgentViewType;
+    view?: AgentViewType;
     namePrefix?: string;
     cursor?: number;
     limit?: number;
   },
   { auth }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
+  // Default to `list` so the caller's own unpublished agents are found on the first call;
+  // `list` needs a user, so non-interactive callers fall back to `all`.
+  view ??= auth.user() ? "list" : "all";
+
   const viewDenied = guardAgentView(auth, view);
   if (viewDenied) {
     return new Err(viewDenied);
