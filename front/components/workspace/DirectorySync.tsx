@@ -8,6 +8,7 @@ import {
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { PlanType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -57,7 +58,10 @@ function useDirectorySyncStatus({
     if (!isUpgraded(plan)) {
       setShowUpgradePlanDialog(true);
     } else if (dsyncStatus?.setupLink) {
-      window.open(dsyncStatus.setupLink, "_blank");
+      const validated = validateUrl(dsyncStatus.setupLink);
+      if (validated.valid) {
+        window.open(validated.standardized, "_blank", "noopener,noreferrer");
+      }
     }
   }, [plan, dsyncStatus?.setupLink]);
 

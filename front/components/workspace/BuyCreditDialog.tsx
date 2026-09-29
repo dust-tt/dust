@@ -3,6 +3,7 @@ import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
 import { usePurchaseCredits } from "@app/lib/swr/credits";
 import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
   Button,
@@ -435,7 +436,16 @@ export function BuyCreditDialog({
               variant: "primary",
               onClick: () => {
                 if (paymentUrl) {
-                  window.open(paymentUrl, "_blank")?.focus();
+                  const validated = validateUrl(paymentUrl);
+                  if (validated.valid) {
+                    window
+                      .open(
+                        validated.standardized,
+                        "_blank",
+                        "noopener,noreferrer"
+                      )
+                      ?.focus();
+                  }
                 }
               },
             }}
