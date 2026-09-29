@@ -4,6 +4,10 @@ import {
   parseHTMLToBlocks,
   replaceBlock,
 } from "@app/lib/editor/instruction_blocks";
+import { KNOWLEDGE_TAG } from "@app/lib/editor/knowledge_node_constants";
+import { SKILL_TAG_NAME, UNAVAILABLE_SKILL_TAG_NAME } from "@app/lib/skills/format";
+import { TOOL_TAG_NAME } from "@app/lib/tools/format";
+import DOMPurify from "dompurify";
 import { Extension } from "@tiptap/core";
 import type { Node as PMNode, Schema, Slice } from "@tiptap/pm/model";
 import {
@@ -16,6 +20,14 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Transform } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { ChangeSet } from "prosemirror-changeset";
+
+const INSTRUCTION_PURIFY_CONFIG = {
+  ADD_TAGS: [KNOWLEDGE_TAG, SKILL_TAG_NAME, TOOL_TAG_NAME, UNAVAILABLE_SKILL_TAG_NAME],
+  ALLOW_DATA_ATTR: true,
+};
+
+const sanitizeInstructionHtml = (html: string) =>
+  DOMPurify.sanitize(html, INSTRUCTION_PURIFY_CONFIG);
 
 // A single block operation within a suggestion.
 interface BlockOperation {
@@ -421,10 +433,11 @@ function buildDecorations(
 
       const { node: blockNode, pos: blockPos } = found;
 
-      const newNodes = parseHTMLToBlocks(op.newContent, op.targetBlockId, {
-        document,
-        domParser: PMDOMParser.fromSchema(schema),
-      });
+      const newNodes = parseHTMLToBlocks(
+        sanitizeInstructionHtml(op.newContent),
+        op.targetBlockId,
+        { document, domParser: PMDOMParser.fromSchema(schema) }
+      );
       if (newNodes.length === 0) {
         continue;
       }
@@ -736,7 +749,7 @@ export const InstructionSuggestionExtension = Extension.create<{
               }
 
               const newNodes = parseHTMLToBlocks(
-                op.newContent,
+                sanitizeInstructionHtml(op.newContent),
                 op.targetBlockId,
                 { document, domParser: PMDOMParser.fromSchema(schema) }
               );
