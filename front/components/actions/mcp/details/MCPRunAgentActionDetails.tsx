@@ -42,6 +42,7 @@ import { emptyArray } from "@app/lib/swr/swr";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import type { AllSupportedWithDustSpecificFileContentType } from "@app/types/files";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
@@ -174,7 +175,8 @@ export function MCPRunAgentActionDetails({
 
   const conversationUrl = useMemo(() => {
     if (resultResource) {
-      return resultResource.resource.uri;
+      const validated = validateUrl(resultResource.resource.uri);
+      return validated.valid ? validated.standardized : null;
     }
     if (resolvedStreamIds) {
       return `/w/${owner.sId}/conversation/${resolvedStreamIds.conversationId}`;
@@ -401,7 +403,13 @@ function MCPRunAgentActionDetailsDisplay({
                         icon={LinkExternal01}
                         label="View full conversation"
                         variant="outline"
-                        onClick={() => window.open(conversationUrl, "_blank")}
+                        onClick={() =>
+                          window.open(
+                            conversationUrl,
+                            "_blank",
+                            "noopener,noreferrer"
+                          )
+                        }
                         size="xs"
                       />
                     )}

@@ -5,6 +5,7 @@ import { timeAgoFrom } from "@app/lib/utils";
 import type { PodTaskActorType, PodTaskType } from "@app/types/project_task";
 import { POD_MANAGER_AGENT_SID } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type {
   LightWorkspaceType,
   UserTypeWithWorkspaces,
@@ -232,11 +233,14 @@ export function TaskSources({
                         return;
                       }
 
-                      window.open(
-                        targetUrl.toString(),
-                        "_blank",
-                        "noopener,noreferrer"
-                      );
+                      const validated = validateUrl(targetUrl.toString());
+                      if (validated.valid) {
+                        window.open(
+                          validated.standardized,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                      }
                     } catch {
                       void router.push(source.sourceUrl);
                     }
