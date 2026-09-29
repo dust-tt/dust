@@ -150,7 +150,11 @@ export function GroupManagerUsagePage() {
             <TabsTrigger value="members" label="Members" />
             <TabsTrigger value="groups" label="Groups" />
           </TabsList>
-          <TabsContent value="members" className="block min-h-panel">
+          <TabsContent
+            value="members"
+            forceMount
+            className={tab === "members" ? "block min-h-panel" : "hidden"}
+          >
             <UsageMembersSection
               searchTerm={searchTerm}
               onSearchChange={(value) => {
