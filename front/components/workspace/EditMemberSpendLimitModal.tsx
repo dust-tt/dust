@@ -11,7 +11,6 @@ import {
   WorkspaceDefaultLimitInput,
 } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { formatCredits } from "@app/lib/client/credits";
 import { useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { useUpdateUserSpendLimit } from "@app/lib/swr/memberships";
 import { useUpdateDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
@@ -254,19 +253,11 @@ function MemberSpendLimitForm({
           <div>
             <DialogTitle>Edit spend limit for {member?.name}</DialogTitle>
             <DialogDescription>
-              {seatAllowanceAwuCredits > 0 ? (
-                <>
-                  This user can currently consume{" "}
-                  {formatCredits(seatAllowanceAwuCredits)} credits from their
-                  seat, plus {formatCredits(extraAwuCredits)} on the&nbsp;pool.
-                </>
-              ) : (
-                <>
-                  This user can currently consume{" "}
-                  {formatCredits(extraAwuCredits)} credits from the workspace
-                  credit&nbsp;pool.
-                </>
-              )}
+              {`These limits cap what each member can spend${
+                seatAllowanceAwuCredits > 0
+                  ? ", once their seat credits are used"
+                  : ""
+              }. Personal limits override workspace and group limits.`}
             </DialogDescription>
           </div>
         </div>

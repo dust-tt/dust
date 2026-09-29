@@ -1,4 +1,4 @@
-import { Button, Chip, Input, Page, Tooltip } from "@dust-tt/sparkle";
+import { Button, Input, Page, Tooltip } from "@dust-tt/sparkle";
 
 interface CreditLimitNumberInputProps {
   value: string;
@@ -32,6 +32,17 @@ export function CreditLimitNumberInput({
       messageStatus={validationMessage !== null ? "error" : undefined}
       suffix={suffix}
       isUnit
+    />
+  );
+}
+
+// Marks the limit that currently applies.
+export function ActiveLimitDot() {
+  return (
+    <span
+      role="img"
+      aria-label="Active"
+      className="inline-block h-2 w-2 shrink-0 rounded-full bg-gradient-to-b from-highlight-400 to-highlight-500"
     />
   );
 }
@@ -72,7 +83,7 @@ export function CreditLimitInput({
     <Page.Vertical gap="xs" align="stretch">
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-foreground">{label}</span>
-        {isActive && <Chip size="mini" color="highlight" label="Active" />}
+        {isActive && <ActiveLimitDot />}
         {!readOnly && action && (
           <Button
             variant="ghost"
