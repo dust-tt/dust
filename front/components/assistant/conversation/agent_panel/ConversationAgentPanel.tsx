@@ -4,15 +4,15 @@ import {
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { AgentDetailsBody } from "@app/components/assistant/details/AgentDetailsBody";
-import { AgentSuggestionPreviewProvider } from "@app/components/assistant/details/SuggestionPreviewContext";
+import {
+  AgentSuggestionPreviewProvider,
+  isPreviewedSuggestion,
+} from "@app/components/assistant/details/SuggestionPreviewContext";
 import { SuggestionPreviewHeader } from "@app/components/assistant/details/SuggestionPreviewHeader";
 import { isAgentActionCardSuggestion } from "@app/components/markdown/suggestion/suggestion_directives";
 import { useSuggestionBatch } from "@app/hooks/useSuggestionBatches";
 import { useUser } from "@app/lib/swr/user";
-import {
-  isCreateAgentSuggestion,
-  isDeleteAgentSuggestion,
-} from "@app/types/suggestions/agent_suggestion";
+import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
@@ -36,9 +36,8 @@ export function ConversationAgentPanel({ owner }: ConversationAgentPanelProps) {
       (batch?.agentSuggestions ?? []).filter(
         (s) =>
           s.agentId === agentId &&
-          s.state === "pending" &&
-          isAgentActionCardSuggestion(s) &&
-          !isDeleteAgentSuggestion(s)
+          isPreviewedSuggestion(s) &&
+          isAgentActionCardSuggestion(s)
       ),
     [batch, agentId]
   );
