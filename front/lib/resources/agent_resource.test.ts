@@ -12,6 +12,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -1614,6 +1615,171 @@ describe("AgentResource", () => {
         actionsByAgent.get(otherHelper)
       );
       expect(actionsByAgent.size).toBe(3);
+    });
+  });
+
+  describe("versions", () => {
+    it("lists every version newest first, each with its own content and tools", async () => {
+      const { authenticator, workspace, globalSpace } = testContext;
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Versioned agent", instructions: "v0 instructions" }
+      );
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const mcpServerView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+      await AgentMCPServerConfigurationFactory.create(
+        authenticator,
+        globalSpace,
+        { agent, mcpServerView }
+      );
+      await AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        agent.sId,
+        { name: "Versioned agent v1", instructions: "v1 instructions" }
+      );
+
+      const current = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(current);
+      const [latest, previous, ...rest] =
+        await current.listVersions(authenticator);
+
+      expect(rest).toEqual([]);
+      assert(latest?.isFull() && previous?.isFull());
+      expect(latest.isCurrentVersion).toBe(true);
+      expect(latest.name).toBe("Versioned agent v1");
+      expect(latest.content.instructions).toBe("v1 instructions");
+      expect(await latest.listActions(authenticator)).toEqual([]);
+      expect(previous.isCurrentVersion).toBe(false);
+      expect(previous.version).toBe(agent.version);
+      expect(previous.name).toBe("Versioned agent");
+      expect(previous.content.instructions).toBe("v0 instructions");
+      expect(await previous.listActions(authenticator)).toHaveLength(1);
+    });
+
+    it("fetches a single version", async () => {
+      const { authenticator } = testContext;
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { description: "v0" }
+      );
+      await AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        agent.sId,
+        { description: "v1" }
+      );
+      const current = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(current);
+
+      const previous = await current.fetchVersion(authenticator, agent.version);
+
+      expect(previous?.description).toBe("v0");
+      const latest = await current.fetchVersion(authenticator, current.version);
+      expect(latest?.description).toBe("v1");
+      expect(latest?.isCurrentVersion).toBe(true);
+      expect(
+        await current.fetchVersion(authenticator, current.version + 1)
+      ).toBeNull();
+    });
+
+    it("resolves versions for the supplied caller, not the one the agent was fetched for", async () => {
+      const { authenticator, workspace } = testContext;
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "hidden" }
+      );
+      const editorView = await AgentResource.fetchById(
+        authenticator,
+        agent.sId
+      );
+      assert(editorView?.isFull());
+      const { agentOwnerAuth: memberAuth } = await setupAgentOwner(
+        workspace,
+        "user"
+      );
+
+      expect(
+        await editorView.fetchVersion(memberAuth, editorView.version)
+      ).toBeNull();
+      expect(await editorView.listVersions(memberAuth)).toEqual([]);
+    });
+
+    it("reads the current-version pointer with the versions, not from a stale resource", async () => {
+      const { authenticator } = testContext;
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const stale = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(stale);
+      await AgentConfigurationFactory.updateTestAgent(authenticator, agent.sId);
+
+      const [latest, previous] = await stale.listVersions(authenticator);
+
+      expect(latest?.version).toBe(agent.version + 1);
+      expect(latest?.isCurrentVersion).toBe(true);
+      expect(previous?.version).toBe(agent.version);
+      expect(previous?.isCurrentVersion).toBe(false);
+    });
+
+    it("refuses to mutate a previous version", async () => {
+      const { authenticator } = testContext;
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      await AgentConfigurationFactory.updateTestAgent(authenticator, agent.sId);
+      const current = await AgentResource.fetchById(authenticator, agent.sId);
+      const previous = await current?.fetchVersion(
+        authenticator,
+        agent.version
+      );
+      assert(previous);
+
+      await expect(
+        previous.updateConfiguration(authenticator, { description: "stale" })
+      ).rejects.toThrow("mutating a previous version");
+      await expect(previous.restore(authenticator)).rejects.toThrow(
+        "mutating a previous version"
+      );
+    });
+
+    it("drops a version whose requested spaces the caller cannot read", async () => {
+      const { workspace } = testContext;
+      const { agentOwner } = await setupAgentOwner(workspace, "user");
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+      await restrictedSpace.addMembers(
+        await Authenticator.internalAdminForWorkspace(workspace.sId),
+        { userIds: [agentOwner.sId] }
+      );
+      const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        agentOwner.sId,
+        workspace.sId
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        agentOwnerAuth,
+        { scope: "visible", requestedSpaceIds: [restrictedSpace.id] }
+      );
+      await AgentConfigurationFactory.updateTestAgent(
+        agentOwnerAuth,
+        agent.sId,
+        {
+          requestedSpaceIds: [],
+        }
+      );
+
+      const current = await AgentResource.fetchById(
+        testContext.authenticator,
+        agent.sId
+      );
+      assert(current);
+      const versions = await current.listVersions(testContext.authenticator);
+
+      expect(versions.map((version) => version.version)).toEqual([
+        current.version,
+      ]);
+      expect(
+        await current.fetchVersion(testContext.authenticator, agent.version)
+      ).toBeNull();
     });
   });
 

@@ -1,4 +1,3 @@
-import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { makeScript } from "@app/scripts/helpers";
@@ -23,28 +22,24 @@ makeScript(
       dangerouslyRequestAllGroups: true,
     });
 
-    // Archiving flips every version row sharing the `sId` to `archived`, so a
-    // full purge must delete all versions, not just the latest one.
-    const versions = await listsAgentConfigurationVersions(auth, {
-      agentId,
-      variant: "light",
-    });
-
-    if (versions.length === 0) {
+    const agent = await AgentResource.fetchById(auth, agentId);
+    if (!agent) {
       logger.error({ workspaceId, agentId }, "Agent not found in workspace.");
       return;
     }
 
-    const [latest] = versions;
+    // Archiving flips every version row sharing the `sId` to `archived`, so a
+    // full purge must delete all versions, not just the latest one.
+    const versions = await agent.listVersions(auth);
 
     if (!execute) {
       logger.info(
         {
           workspaceId,
           agentId,
-          name: latest.name,
-          scope: latest.scope,
-          agentStatus: latest.status,
+          name: agent.name,
+          scope: agent.scope,
+          agentStatus: agent.status,
           versionCount: versions.length,
           versions: versions.map((v) => v.version),
         },
@@ -57,17 +52,11 @@ makeScript(
       {
         workspaceId,
         agentId,
-        name: latest.name,
+        name: agent.name,
         versionCount: versions.length,
       },
       "Hard-deleting all versions of the agent."
     );
-
-    const agent = await AgentResource.fetchById(auth, agentId);
-    if (!agent) {
-      logger.error({ workspaceId, agentId }, "Agent not found in workspace.");
-      return;
-    }
 
     const deleteResult = await agent.delete(auth);
     if (deleteResult.isErr()) {

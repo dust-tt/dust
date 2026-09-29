@@ -360,7 +360,9 @@ export interface AgentResource
  * The authoritative resolvers `fetchByModelIdWithAuth`/`fetchByModelIds`/`fetchById(s)` MUST resolve
  * a custom agent to its current configuration version — the row its `currentVersion` pointer
  * designates (see `fetch-current-version`) — so two fetched resources sharing an `id`
- * (= `agentModelId`) are consistent at a given time. The `from*` factories are an unchecked fast
+ * (= `agentModelId`) are consistent at a given time. `fetchVersion`/`listVersions` are the only
+ * resolvers that deliberately resolve other versions (see `agent-versions`); such a resource is told
+ * apart by `isCurrentVersion` and is read-only. The `from*` factories are an unchecked fast
  * path: they build a resource from whatever configuration the caller supplies, and do NOT yet
  * guarantee it is the current version — a caller deciding about the agent's current state must pass
  * that version, or use `fetch*`. (`from*` are intended to become private and enforce this.) Global
@@ -375,10 +377,10 @@ export interface AgentResource
  * materialized for that caller, whatever their role, key type, or superuser status. The
  * instructions are the only private fields: the head fields (`name`, `status`, `scope`,
  * `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and carried by every
- * resource. This holds for every `fetch*` resolver, for `fromModels` and for global agents, so a
- * caller allowed to enumerate agents they cannot read (an admin or manager listing hidden agents,
- * a superuser) sees identity and core fields only. Callers MUST NOT re-attach the instructions to a
- * `light` resource from another read path.
+ * resource. This holds for every `fetch*` resolver, for `listVersions`, for `fromModels` and for
+ * global agents, so a caller allowed to enumerate agents they cannot read (an admin or manager
+ * listing hidden agents, a superuser) sees identity and core fields only. Callers MUST NOT re-attach
+ * the instructions to a `light` resource from another read path.
  */
 /**
  * @cc [owner:philipperolet,label:security;product] agent-verbs
@@ -808,6 +810,95 @@ export class AgentResource
   ): Promise<AgentResource | null> {
     const [resource] = await this.fetchByIds(auth, [agentId]);
     return resource ?? null;
+  }
+
+  // -- Versions: the configuration versions of an already-resolved agent --
+
+  /**
+   * @cc [owner:tdraier,label:backend;security] agent-versions
+   * `fetchVersion`/`listVersions` resolve the configuration versions (current and previous) of this
+   * agent, in its workspace. Each version is its own resource carrying that version's head fields,
+   * version metadata, tools, tags and skills, and MUST be materialized for the supplied `auth`, like
+   * every resolved resource, whatever authenticator `this` was resolved for: the caller's verbs are
+   * those its own row grants (its stored scope, status and requested spaces, see `agent-verbs`), a
+   * version the caller holds no verb on is dropped, and it is `light` unless the caller can view its
+   * content (see `agent-content-visibility`). Their `isCurrentVersion` MUST compare against the
+   * agent's current-version pointer read together with them, not the one `this` was loaded with. A
+   * global agent is not versioned: it is its only version, resolved for `auth` as `fetchById` does.
+   * A previous version is read-only: see `isCurrentVersion`.
+   */
+  async fetchVersion(
+    auth: Authenticator,
+    version: number
+  ): Promise<AgentResource | null> {
+    const [resource] = await this.loadVersions(auth, { version });
+    return resource ?? null;
+  }
+
+  // Newest first, the `limit` newest ones when given.
+  async listVersions(
+    auth: Authenticator,
+    { limit }: { limit?: number } = {}
+  ): Promise<AgentResource[]> {
+    return this.loadVersions(auth, { limit });
+  }
+
+  private async loadVersions(
+    auth: Authenticator,
+    { version, limit }: { version?: number; limit?: number }
+  ): Promise<AgentResource[]> {
+    assert(auth.getNonNullableWorkspace().id === this.workspaceId);
+
+    if (this.scope === "global") {
+      return AgentResource.fetchGlobalAgents(auth, [this.sId]);
+    }
+
+    // One statement, so the `currentVersion` pointer and the version rows are read consistently.
+    const configurations = await AgentConfigurationModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        agentId: this.id,
+        ...(version !== undefined ? { version } : {}),
+      },
+      include: [{ model: AgentModel, required: true }],
+      order: [["version", "DESC"]],
+      limit,
+    });
+
+    const versions = configurations.map((configuration) => {
+      const { agent, ...configurationAttributes } =
+        configuration.get() as Attributes<AgentConfigurationModel> & {
+          agent: AgentModel;
+        };
+      return new AgentResource(agent.get(), configurationAttributes);
+    });
+    const adminCanSeePrivateEntities =
+      await AgentResource.resolveAdminCanSeePrivateEntities(auth, versions);
+
+    return versions
+      .map((resource) =>
+        resource.materialize(auth, { adminCanSeePrivateEntities })
+      )
+      .filter((resource) => resource.canFetch(auth));
+  }
+
+  /**
+   * @cc [owner:tdraier,label:backend] previous-version-read-only
+   * A resource built on a configuration version other than the agent's current one (from
+   * `fetchVersion`/`listVersions` or `dangerouslyFromConfigurationModels`) is read-only: the
+   * definition and lifecycle mutations that act on the current version (`buildResaveParams`,
+   * `updateConfiguration`, `updateScopeInPlace`, `archive`, `restore`) MUST refuse it, since they
+   * would rebuild or gate on a stale version.
+   */
+  get isCurrentVersion(): boolean {
+    return this.version === this.currentVersion;
+  }
+
+  private assertCurrentVersion(): void {
+    assert(
+      this.isCurrentVersion,
+      "Unexpected: mutating a previous version of an agent"
+    );
   }
 
   // -- List resolvers: resolve matching agent ids, then hydrate through `fetchByIds` --
@@ -1822,6 +1913,7 @@ export class AgentResource
     // Loaded custom agents are never global, and their stored status is always an `AgentStatus`
     // (the `disabled_*` values are global-only); narrow both from the resource's wider types.
     assert(this.scope !== "global");
+    this.assertCurrentVersion();
     if (!isAgentStatus(this.status)) {
       throw new Error(
         `Unexpected: non-global agent ${this.sId} has status "${this.status}".`
@@ -2098,6 +2190,7 @@ export class AgentResource
    */
   async archive(auth: Authenticator): Promise<Result<boolean, Error>> {
     assert(this.scope !== "global", "Global agents cannot be archived.");
+    this.assertCurrentVersion();
     if (!auth.can("admin", this)) {
       return new Err(
         new DustError(
@@ -2223,6 +2316,7 @@ export class AgentResource
     >
   > {
     assert(this.scope !== "global", "Global agents cannot be restored.");
+    this.assertCurrentVersion();
     const owner = auth.getNonNullableWorkspace();
 
     // Enforce the agent `admin` verb here regardless of any caller-side gate (see the
@@ -2938,6 +3032,60 @@ export class AgentResource
     };
   }
 
+  // What the sidekick's `get_agent_info` tool exposes; the instructions make it full-only.
+  toSidekickAgentInfoJSON(
+    this: FullAgentResource,
+    {
+      tags,
+      actions,
+      skills,
+    }: {
+      tags: TagResource[];
+      actions: MCPServerConfigurationType[];
+      skills: SkillResource[];
+    }
+  ): {
+    sId: string;
+    version: number;
+    name: string;
+    description: string;
+    instructions: string | null;
+    model: Pick<
+      AgentModelConfigurationType,
+      "providerId" | "modelId" | "temperature" | "reasoningEffort"
+    >;
+    scope: AgentConfigurationScope;
+    status: AgentConfigurationStatus;
+    tags: { sId: string; name: string }[];
+    tools: { sId: string; name: string; description: string | null }[];
+    skills: { sId: string; name: string; userFacingDescription: string }[];
+  } {
+    const { providerId, modelId, temperature, reasoningEffort } =
+      this.modelConfiguration;
+
+    return {
+      sId: this.sId,
+      version: this.version,
+      name: this.name,
+      description: this.description,
+      instructions: this.content.instructions,
+      model: { providerId, modelId, temperature, reasoningEffort },
+      scope: this.scope,
+      status: this.status,
+      tags: tags.map((tag) => ({ sId: tag.sId, name: tag.name })),
+      tools: actions.map((action) => ({
+        sId: action.sId,
+        name: action.name,
+        description: action.description,
+      })),
+      skills: skills.map((skill) => ({
+        sId: skill.sId,
+        name: skill.name,
+        userFacingDescription: skill.userFacingDescription,
+      })),
+    };
+  }
+
   toDiscoveryJSON(): DiscoveryAgentType {
     return {
       sId: this.sId,
@@ -3058,6 +3206,7 @@ export class AgentResource
     if (this.scope === "global") {
       return new Err(new Error("Global agents cannot be updated."));
     }
+    this.assertCurrentVersion();
 
     // A scope change needs no private content — `scope` is a core field carried by every resource.
     const scopeChange =
@@ -3275,6 +3424,7 @@ export class AgentResource
     auth: Authenticator,
     scope: Exclude<AgentConfigurationScope, "global">
   ): Promise<Result<undefined, Error>> {
+    this.assertCurrentVersion();
     if (this.scope === scope) {
       return new Ok(undefined);
     }

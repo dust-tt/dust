@@ -48,6 +48,7 @@ import {
   deleteActionOutputsFromGcs,
   stageMcpOutputContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -69,7 +70,6 @@ import type {
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
 import type { AttachmentCreator } from "@app/types/api/assistant/conversation/attachments";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { UNRESUMABLE_AGENT_MESSAGE_STATUSES } from "@app/types/assistant/conversation";
@@ -1757,13 +1757,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
-   * Resolves the (light) agent configuration that owns this action, via the
+   * Resolves the agent version that owns this action, via the
    * action's agent message. Returns null if the agent message can't be found.
    * Keeps the agent-message model lookup inside the resource layer.
    */
-  async getLightAgentConfiguration(
-    auth: Authenticator
-  ): Promise<LightAgentConfigurationType | null> {
+  async getAgent(auth: Authenticator): Promise<AgentResource | null> {
     const agentMessage = await AgentMessageModel.findOne({
       attributes: ["agentConfigurationId", "agentConfigurationVersion"],
       where: {
@@ -1774,17 +1772,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     if (!agentMessage) {
       return null;
     }
-    const [agentConfiguration] = await getAgentConfigurationsWithVersion(
+    const agent = await AgentResource.fetchById(
       auth,
-      [
-        {
-          agentId: agentMessage.agentConfigurationId,
-          agentVersion: agentMessage.agentConfigurationVersion,
-        },
-      ],
-      { variant: "light" }
+      agentMessage.agentConfigurationId
     );
-    return agentConfiguration ?? null;
+    return (
+      agent?.fetchVersion(auth, agentMessage.agentConfigurationVersion) ?? null
+    );
   }
 
   async markAsErrored({
