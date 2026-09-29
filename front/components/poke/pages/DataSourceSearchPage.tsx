@@ -141,7 +141,9 @@ export function DataSourceSearchPage() {
       )
     ) {
       window.open(
-        `/poke/${owner.sId}/data_sources/${dataSource.sId}/view?documentId=${encodeURIComponent(documentId)}`
+        `/poke/${owner.sId}/data_sources/${dataSource.sId}/view?documentId=${encodeURIComponent(documentId)}`,
+        "_blank",
+        "noopener,noreferrer"
       );
     }
   };

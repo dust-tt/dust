@@ -423,7 +423,8 @@ export function AppViewPage() {
                 onClick={() => {
                   window.open(
                     "https://docs.dust.tt/reference/introduction-to-dust-apps",
-                    "_blank"
+                    "_blank",
+                    "noopener,noreferrer"
                   );
                 }}
               />
@@ -469,7 +470,8 @@ export function AppViewPage() {
                 onClick={() => {
                   window.open(
                     "https://docs.dust.tt/reference/developer-platform-overview",
-                    "_blank"
+                    "_blank",
+                    "noopener,noreferrer"
                   );
                 }}
               />

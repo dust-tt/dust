@@ -117,7 +117,12 @@ export function CreateWebhookSourceWithProviderForm({
             // otherwise button is disabled
             onClick={
               connection
-                ? () => window.open(preset.webhookPageUrl, "_blank")
+                ? () =>
+                    window.open(
+                      preset.webhookPageUrl,
+                      "_blank",
+                      "noopener,noreferrer"
+                    )
                 : handleConnectToProvider
             }
             disabled={

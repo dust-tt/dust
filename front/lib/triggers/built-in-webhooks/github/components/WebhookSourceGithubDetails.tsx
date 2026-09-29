@@ -54,7 +54,7 @@ export function WebhookSourceGithubDetails({
             color="primary"
             className="m-0.5"
             onClick={() => {
-              window.open(link, "_blank");
+              window.open(link, "_blank", "noopener,noreferrer");
             }}
           />
         ))}

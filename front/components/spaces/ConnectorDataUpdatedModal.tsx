@@ -70,7 +70,11 @@ export const ConnectorDataUpdatedModal = ({
             <Hoverable
               variant="highlight"
               onClick={() => {
-                window.open("https://docs.dust.tt/docs/data", "_blank");
+                window.open(
+                  "https://docs.dust.tt/docs/data",
+                  "_blank",
+                  "noopener,noreferrer"
+                );
               }}
             >
               documentation

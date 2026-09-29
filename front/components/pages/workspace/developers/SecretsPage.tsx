@@ -301,7 +301,8 @@ export function SecretsPage() {
                 onClick={() => {
                   window.open(
                     "https://docs.dust.tt/reference/developer-platform-overview#developer-secrets",
-                    "_blank"
+                    "_blank",
+                    "noopener,noreferrer"
                   );
                 }}
               />

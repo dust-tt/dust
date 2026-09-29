@@ -39,7 +39,8 @@ export function WebhookSourceJiraDetails({
                 ? () => {
                     window.open(
                       `https://api.atlassian.com/ex/jira/${cloudId}/secure/admin/WebHookAdmin.jspa`,
-                      "_blank"
+                      "_blank",
+                      "noopener,noreferrer"
                     );
                   }
                 : undefined

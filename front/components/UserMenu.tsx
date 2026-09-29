@@ -609,7 +609,8 @@ export function UserMenu({
                           if (match) {
                             window.open(
                               `/poke/${match[1]}/conversation/${match[2]}`,
-                              "_blank"
+                              "_blank",
+                              "noopener,noreferrer"
                             );
                           }
                         }}

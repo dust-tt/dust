@@ -410,7 +410,8 @@ export function CreditsUsagePage() {
                       onClick={() => {
                         window.open(
                           `/w/${owner.sId}/subscription/manage`,
-                          "_blank"
+                          "_blank",
+                          "noopener,noreferrer"
                         );
                       }}
                     />

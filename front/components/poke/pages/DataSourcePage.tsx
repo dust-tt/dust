@@ -914,7 +914,9 @@ export function DataSourcePage() {
       )
     ) {
       window.open(
-        `/poke/${owner.sId}/data_sources/${dataSourceId}/view?documentId=${encodeURIComponent(documentId)}`
+        `/poke/${owner.sId}/data_sources/${dataSourceId}/view?documentId=${encodeURIComponent(documentId)}`,
+        "_blank",
+        "noopener,noreferrer"
       );
     }
   };

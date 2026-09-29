@@ -515,7 +515,9 @@ export const AddConnectionMenu = ({
                 variant: "highlight",
                 onClick: () => {
                   window.open(
-                    `mailto:support@dust.tt?subject=Early access to the ${showPreviewPopupForProvider.connector} connection`
+                    `mailto:support@dust.tt?subject=Early access to the ${showPreviewPopupForProvider.connector} connection`,
+                    "_blank",
+                    "noopener,noreferrer"
                   );
                 },
               }}
