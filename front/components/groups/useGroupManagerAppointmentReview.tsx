@@ -15,8 +15,8 @@ interface GroupManagerAppointmentReviewProps {
 /**
  * @cc [owner:philipperolet,label:product;security] outside-group-manager-review
  * For a regular manual group that does not grant the Admin role, appointing a new manager
- * who is not a member MUST require confirmation explaining that they can grant themselves
- * or others the group's permissions and access to shared spaces and data sources.
+ * who is not a member MUST require confirmation explaining that anyone they add gains the
+ * group's permissions and access to shared spaces and data sources.
  */
 export function useGroupManagerAppointmentReview({
   group,
@@ -44,11 +44,14 @@ export function useGroupManagerAppointmentReview({
       return true;
     }
     const isSingleManager = managersNeedingWarning.length === 1;
+    const trustMessage = isSingleManager
+      ? `Continue only if you trust ${managersNeedingWarning[0].firstName} with those permissions.`
+      : "Continue only if you trust them with those permissions.";
     return confirm({
       title: isSingleManager
         ? `${managersNeedingWarning[0].fullName} isn't a member of ${group.name}`
         : `${managersNeedingWarning.length} people you're appointing aren't members of ${group.name}`,
-      message: `As ${isSingleManager ? "manager" : "managers"}, they can grant themselves or anyone else the group's permissions, including access to every space and data source shared with it.`,
+      message: `As ${isSingleManager ? "manager" : "managers"}, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. ${trustMessage}`,
       validateLabel: "Appoint anyway",
       validateVariant: "highlight",
     });

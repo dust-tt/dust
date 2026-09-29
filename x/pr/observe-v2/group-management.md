@@ -49,13 +49,15 @@ if the person is not already an active member of that group. Follow the short co
 
 > **Alex isn't a member of Finance**
 >
-> As manager, they can grant themselves or anyone else the group's permissions, including access to
-> every space and data source shared with it.
+> As manager, they can add anyone to the group, including themselves. Anyone they add gains the
+> group's permissions and access to every space and data source shared with it. Continue only if you
+> trust Alex with those permissions.
 >
 > **Cancel** · **Appoint anyway**
 
-For several non-members, use “3 people you're appointing aren't members of Finance” and “As managers”
-in one modal. Use a blue action button. The confirmation needs no extra permissions request.
+For several non-members, use “3 people you're appointing aren't members of Finance”, “As managers”,
+and “Continue only if you trust them with those permissions” in one modal. Use a blue action button.
+The confirmation needs no extra permissions request.
 Cancel saves nothing; confirmation submits the pending changes.
 
 Existing group members skip this modal. The manager picker still explains that managing membership

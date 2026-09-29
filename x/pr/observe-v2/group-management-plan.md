@@ -70,9 +70,10 @@ by itself.
 #### PR 7 — Confirm manager appointments outside the group
 
 Before saving new managers for a manual group whose membership can be delegated, show a confirmation
-for those who are not already active group members. Explain that they can grant themselves or others
-the group's permissions, including access to shared spaces and data sources. Use the singular/plural
-copy and blue “Appoint anyway” button from the [design](group-management.md#confirm-appointments-outside-the-group).
+for those who are not already active group members. Explain that they can add anyone to the group,
+that everyone they add gains its permissions and access to shared spaces and data sources, and that
+the appointment requires trusting them with those permissions. Use the singular/plural copy and blue
+“Appoint anyway” button from the [design](group-management.md#confirm-appointments-outside-the-group).
 This depends on PRs 4–6. The initial confirmation shipped in [#33267](https://github.com/dust-tt/dust/pull/33267);
 the design follow-up simplifies its copy and removes the Governance request.
 
