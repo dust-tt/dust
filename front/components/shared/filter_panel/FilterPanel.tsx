@@ -38,6 +38,8 @@ interface FilterPanelProps<
   isError: boolean;
   idPrefix: string;
   renderIcon?: (option: Option) => ReactNode;
+  // Replaces the option search and list for categories that are not picked among options.
+  renderCategoryContent?: (category: Category) => ReactNode;
   warning?: string;
   applyDisabled?: boolean;
   // Rendered below the categories, for settings that are not a category.
@@ -61,6 +63,7 @@ export function FilterPanel<
   isError,
   idPrefix,
   renderIcon,
+  renderCategoryContent,
   warning,
   applyDisabled,
   categoryNavFooter,
@@ -107,6 +110,7 @@ export function FilterPanel<
     {}
   );
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
+  const activeCategoryContent = renderCategoryContent?.(activeCategory);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -165,15 +169,17 @@ export function FilterPanel<
                 />
               }
             >
-              <SearchInput
-                name={`${idPrefix}-search`}
-                value={searchText}
-                onChange={(value) => {
-                  setSearchText(value);
-                  resetContentScroll();
-                }}
-                placeholder={`Search ${categoryLabels[activeCategory].toLowerCase()}`}
-              />
+              {!activeCategoryContent && (
+                <SearchInput
+                  name={`${idPrefix}-search`}
+                  value={searchText}
+                  onChange={(value) => {
+                    setSearchText(value);
+                    resetContentScroll();
+                  }}
+                  placeholder={`Search ${categoryLabels[activeCategory].toLowerCase()}`}
+                />
+              )}
             </FilterSection>
             <div
               ref={setContentScrollContainer}
@@ -183,6 +189,8 @@ export function FilterPanel<
                 <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
                   Failed to load filters.
                 </div>
+              ) : activeCategoryContent ? (
+                activeCategoryContent
               ) : (
                 <FilterOptionCheckboxList
                   key={`${isOpen}|${activeCategory}|${searchText}`}

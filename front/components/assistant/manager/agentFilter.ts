@@ -1,5 +1,8 @@
 import type { SearchFilter } from "@app/components/shared/filter_panel/searchFilter";
-import { getSearchFilterIds } from "@app/components/shared/filter_panel/searchFilter";
+import {
+  getSearchFilterActiveUsersCount,
+  getSearchFilterIds,
+} from "@app/components/shared/filter_panel/searchFilter";
 import type {
   AgentSearchFacet,
   AgentSearchFilters,
@@ -13,6 +16,7 @@ export const AGENT_FILTER_CATEGORIES = [
   "skill",
   "tag",
   "space",
+  "usage",
 ] as const;
 
 export type AgentFilterCategory = (typeof AGENT_FILTER_CATEGORIES)[number];
@@ -28,6 +32,7 @@ export const AGENT_FILTER_CATEGORY_FACET: Partial<
   skill: "skills",
   tag: "tags",
   space: "spaces",
+  usage: "usage",
 };
 
 const AGENT_ACCESS_SCOPES: AgentConfigurationScope[] = ["visible", "hidden"];
@@ -50,6 +55,12 @@ export function toAgentSearchFilters(
   const skillIds = getSearchFilterIds(filter, "skill");
   const tagIds = getSearchFilterIds(filter, "tag");
   const spaceIds = getSearchFilterIds(filter, "space");
+  // Default agents have no usage, so Usage is ignored on the Default tab too.
+  const activeUsersCount = tabFilters.scope?.every(
+    (tabScope) => tabScope === "global"
+  )
+    ? undefined
+    : getSearchFilterActiveUsersCount(filter);
 
   return {
     ...tabFilters,
@@ -59,6 +70,7 @@ export function toAgentSearchFilters(
     ...(skillIds.length > 0 ? { skillIds } : {}),
     ...(tagIds.length > 0 ? { tagIds } : {}),
     ...(spaceIds.length > 0 ? { spaceIds } : {}),
+    ...(activeUsersCount ? { activeUsersCount } : {}),
   };
 }
 

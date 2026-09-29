@@ -1,10 +1,18 @@
-import { AGENT_FILTER_CATEGORIES } from "@app/components/assistant/manager/agentFilter";
+import {
+  AGENT_FILTER_CATEGORIES,
+  AGENT_SEARCH_TABS,
+  toAgentSearchFilters,
+} from "@app/components/assistant/manager/agentFilter";
 import type { SearchFilterOption } from "@app/components/shared/filter_panel/searchFilter";
 import {
   resolveSearchFilterSelection,
   toSearchFilterSelection,
+  toUsageFilterOption,
 } from "@app/components/shared/filter_panel/searchFilter";
-import { SKILL_FILTER_CATEGORIES } from "@app/components/skills/skillFilter";
+import {
+  SKILL_FILTER_CATEGORIES,
+  toSkillSearchFilters,
+} from "@app/components/skills/skillFilter";
 import { describe, expect, it } from "vitest";
 
 const CATEGORIES = [
@@ -86,5 +94,48 @@ describe("resolveSearchFilterSelection", () => {
       "model:retired-model",
       "tool:view3",
     ]);
+  });
+});
+
+describe("usage filter", () => {
+  it("names a usage range from its ID and drops invalid ranges", () => {
+    const { filter, unresolvedCategories } = resolveSearchFilterSelection({
+      selection: {
+        usage: {
+          "5-40": "Stale label",
+          "40-5": "Inverted",
+          "1-x": "Bad",
+          [`0-${"9".repeat(309)}`]: "Infinite",
+        },
+      },
+      categories: CATEGORIES,
+      knownOptions: new Map(),
+      facets: undefined,
+      currentUserId: "me",
+    });
+
+    expect(unresolvedCategories).toEqual([]);
+    expect(filter.usage).toEqual([toUsageFilterOption({ min: 5, max: 40 })]);
+    expect(filter.usage?.[0]?.name).toBe("5–40 active users");
+    expect(toUsageFilterOption({ min: 1, max: 1 }).name).toBe("1 active user");
+    expect(toSearchFilterSelection(filter, CATEGORIES)).toEqual({
+      usage: { "5-40": "5–40 active users" },
+    });
+  });
+
+  it("filters on the active users count, except for default agents", () => {
+    const filter = { usage: [toUsageFilterOption({ min: 5, max: 40 })] };
+    const [allTab, defaultTab] = AGENT_SEARCH_TABS;
+
+    expect(toAgentSearchFilters(filter, allTab.filters)).toEqual({
+      ...allTab.filters,
+      activeUsersCount: { min: 5, max: 40 },
+    });
+    expect(toAgentSearchFilters(filter, defaultTab.filters)).toEqual(
+      defaultTab.filters
+    );
+    expect(toSkillSearchFilters(filter)).toEqual({
+      activeUsersCount: { min: 5, max: 40 },
+    });
   });
 });

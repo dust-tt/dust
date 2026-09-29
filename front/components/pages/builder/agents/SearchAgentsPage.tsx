@@ -254,8 +254,11 @@ export function SearchAgentsPage() {
     defaultTabId: "all",
   });
   // Default agents all share the global scope, so Access does not apply to them.
+  // They have no usage either, so Usage does not apply to them.
   const filterCategories = AGENT_FILTER_CATEGORIES.filter(
-    (category) => selectedTab !== "default" || category !== "access"
+    (category) =>
+      selectedTab !== "default" ||
+      (category !== "access" && category !== "usage")
   );
   const activeTab =
     AGENT_SEARCH_TABS.find((tab) => tab.id === selectedTab) ??
