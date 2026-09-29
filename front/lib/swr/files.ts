@@ -445,10 +445,12 @@ export function useWriteFileContentByPath({
 
 export const getFilePathDownloadUrl = (
   owner: LightWorkspaceType,
-  filePath: string
+  filePath: string,
+  { lastModifiedMs }: { lastModifiedMs?: number | null } = {}
 ) => {
   const encoded = filePath.split("/").map(encodeURIComponent).join("/");
-  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?download=1`;
+  const version = lastModifiedMs ? `&v=${lastModifiedMs}` : "";
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?download=1${version}`;
 };
 
 export async function prepareFolderArchiveDownload({
