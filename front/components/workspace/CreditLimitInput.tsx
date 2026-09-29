@@ -42,7 +42,7 @@ export function ActiveLimitDot() {
     <span
       role="img"
       aria-label="Active"
-      className="h-2 w-2 rounded-full bg-gradient-to-b from-highlight-400 to-highlight-500"
+      className="inline-block h-2 w-2 shrink-0 rounded-full bg-gradient-to-b from-highlight-400 to-highlight-500"
     />
   );
 }
