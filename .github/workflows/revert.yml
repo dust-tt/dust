@@ -157,20 +157,28 @@ jobs:
 
       - name: Trigger dust-infra workflow
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          OWNER: ${{ github.repository_owner }}
+          CELLS: ${{ inputs.cells }}
+          COMPONENT: ${{ inputs.component }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          SLACK_THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+          CARD: ${{ needs.notify-start.outputs.card }}
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             await github.rest.repos.createDispatchEvent({
-              owner: '${{ github.repository_owner }}',
+              owner: process.env.OWNER,
               repo: 'dust-infra',
               event_type: 'trigger-component-revert',
               client_payload: {
-                cells: '${{ inputs.cells }}',
-                component: '${{ inputs.component }}',
-                image_tag: '${{ inputs.image_tag }}',
-                slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
-                card: ${{ toJSON(needs.notify-start.outputs.card) }},
-                slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}',
+                cells: process.env.CELLS,
+                component: process.env.COMPONENT,
+                image_tag: process.env.IMAGE_TAG,
+                slack_thread_ts: process.env.SLACK_THREAD_TS,
+                card: process.env.CARD,
+                slack_channel: process.env.SLACK_CHANNEL,
                 run_playwright: false,
               }
             })
