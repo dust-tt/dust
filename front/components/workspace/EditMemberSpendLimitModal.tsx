@@ -1,4 +1,4 @@
-import { CreditLimitInput } from "@app/components/workspace/CreditLimitInput";
+import { PersonalLimitInput } from "@app/components/workspace/CreditLimitInput";
 import { MemberGroupLimitTable } from "@app/components/workspace/MemberGroupLimitTable";
 import {
   groupRowsForMember,
@@ -289,8 +289,7 @@ function MemberSpendLimitForm({
             />
           )}
 
-          <CreditLimitInput
-            label="Personal limit"
+          <PersonalLimitInput
             value={personalLimitInput}
             readOnly={readOnly}
             isActive={hasPersonalOverride}
@@ -299,14 +298,11 @@ function MemberSpendLimitForm({
               setPersonalLimitInput(cleaned);
               setValidationMessage(null);
             }}
-            action={
+            onRemove={
               personalLimitInput !== ""
-                ? {
-                    label: "Remove personal limit",
-                    onClick: () => {
-                      setPersonalLimitInput("");
-                      setValidationMessage(null);
-                    },
+                ? () => {
+                    setPersonalLimitInput("");
+                    setValidationMessage(null);
                   }
                 : undefined
             }

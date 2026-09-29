@@ -94,6 +94,7 @@ import type {
 } from "@app/types/memberships";
 import {
   isMembershipSeatType,
+  isPaidSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
@@ -684,10 +685,6 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
-  const handleBatchEditSpendLimit = useCallback(() => {
-    setIsBulkSpendLimitOpen(true);
-  }, []);
-
   const { doBulkChangeSeatType } = useBulkChangeSeatType({
     workspaceId: owner.sId,
   });
@@ -695,10 +692,6 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
   const [isBulkChangeSeatOpen, setIsBulkChangeSeatOpen] = useState(false);
-
-  const handleBatchChangeSeat = useCallback(() => {
-    setIsBulkChangeSeatOpen(true);
-  }, []);
 
   // Remember loaded members so picks from other pages keep their avatar.
   const [loadedMembersById, setLoadedMembersById] = useState(
@@ -717,14 +710,48 @@ export function UsagePage() {
   }
 
   // In pick order so avatars stay put. A "select all" spans members never
-  // loaded, so no avatars are shown rather than a misleading subset.
+  // loaded, so its members are only shown once the loaded page holds the whole
+  // selection, rather than a misleading subset.
   const selectedVisibleMembers = useMemo(() => {
     const descriptor = selection.descriptor();
-    if (descriptor.mode === "all") {
-      return [];
+    if (descriptor.mode === "ids") {
+      return descriptor.ids.flatMap((id) => loadedMembersById.get(id) ?? []);
     }
-    return descriptor.ids.flatMap((id) => loadedMembersById.get(id) ?? []);
-  }, [loadedMembersById, selection.descriptor]);
+    const excludedIds = new Set(descriptor.excludedIds);
+    const selectedOnPage = membersUsage.filter((m) => !excludedIds.has(m.sId));
+    return selectedOnPage.length === selection.selectedCount
+      ? selectedOnPage
+      : [];
+  }, [
+    loadedMembersById,
+    membersUsage,
+    selection.descriptor,
+    selection.selectedCount,
+  ]);
+
+  // A single selected member gets the individual modals
+  const singleSelectedMember =
+    selection.selectedCount === 1 && selectedVisibleMembers.length === 1
+      ? selectedVisibleMembers[0]
+      : null;
+  const handleBatchChangeSeat = useCallback(() => {
+    if (singleSelectedMember) {
+      handleChangeSeatFromTable(singleSelectedMember);
+      return;
+    }
+    setIsBulkChangeSeatOpen(true);
+  }, [singleSelectedMember, handleChangeSeatFromTable]);
+
+  const handleBatchEditSpendLimit = useCallback(() => {
+    if (
+      isMembershipSeatType(singleSelectedMember?.seatType) &&
+      isPaidSeatType(singleSelectedMember.seatType)
+    ) {
+      handleEditSpendLimitFromTable(singleSelectedMember);
+      return;
+    }
+    setIsBulkSpendLimitOpen(true);
+  }, [singleSelectedMember, handleEditSpendLimitFromTable]);
 
   // Translate the cross-page selection into the descriptor the bulk member
   // endpoints expect: explicit ids, or the current filter minus exclusions.
@@ -784,6 +811,13 @@ export function UsagePage() {
     // Seat mutations can move a member in or out of the currently filtered set
     // (for example with the seat filter), which makes the cross-page selection
     // stale.
+    clearSelection();
+    handleApproveOnModalSaved();
+  }, [handleApproveOnModalSaved, clearSelection]);
+
+  const handleSpendLimitSaved = useCallback(() => {
+    // A single-member selection can be routed to this modal, so clear the
+    // selection on save like the other selection-driven mutations do.
     clearSelection();
     handleApproveOnModalSaved();
   }, [handleApproveOnModalSaved, clearSelection]);
@@ -1412,7 +1446,7 @@ export function UsagePage() {
           canEditDefaultLimit={isWorkspaceAdmin}
           defaultUserSpendLimit={defaultUserSpendLimitState}
           onSavingChange={handleUsagePendingChange}
-          onSaved={handleApproveOnModalSaved}
+          onSaved={handleSpendLimitSaved}
         />
 
         <BulkEditSpendLimitModal
