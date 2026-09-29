@@ -454,6 +454,7 @@ impl SnowflakeRemoteDatabase {
             .into_iter()
             .filter_map(|entry| match entry.operation {
                 Some(op)
+                    // to_lowercase() is kept defensively; FORBIDDEN_OPERATIONS values are already lowercase.
                     if FORBIDDEN_OPERATIONS
                         .iter()
                         .any(|forbidden_op| op.to_lowercase() == *forbidden_op) =>
@@ -517,18 +518,9 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         opaque_ids: &Vec<&str>,
     ) -> Result<Vec<Option<RemoteTableSchema>>> {
         // Construct a "DESCRIBE TABLE" query for each opaque table ID.
-        // Double-quote each identifier component to prevent SQL injection from
-        // schema-supplied opaque identifiers (e.g. `db.schema.table`).
         let queries: Vec<String> = opaque_ids
             .iter()
-            .map(|opaque_id| {
-                let quoted = opaque_id
-                    .split('.')
-                    .map(|part| format!("\"{}\"", part.replace('"', "\"\"")))
-                    .collect::<Vec<_>>()
-                    .join(".");
-                format!("DESCRIBE TABLE {}", quoted)
-            })
+            .map(|opaque_id| format!("DESCRIBE TABLE {}", quote_snowflake_identifier(opaque_id)))
             .collect();
 
         let session = self.get_session().await?;
@@ -574,5 +566,47 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
                 }))
             })
             .collect()
+    }
+}
+
+/// Double-quote each dot-delimited component of a Snowflake identifier, escaping
+/// embedded `"` as `""` per the SQL standard. Prevents injection via schema-supplied
+/// opaque identifiers (e.g. `db.schema.table`).
+fn quote_snowflake_identifier(opaque_id: &str) -> String {
+    opaque_id
+        .split('.')
+        .map(|part| format!("\"{}\"", part.replace('"', "\"\"")))
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{quote_snowflake_identifier, FORBIDDEN_OPERATIONS};
+
+    #[test]
+    fn quote_snowflake_identifier_escapes_components() {
+        assert_eq!(
+            quote_snowflake_identifier("db.schema.table"),
+            "\"db\".\"schema\".\"table\""
+        );
+        // Embedded double-quotes are escaped per SQL standard.
+        assert_eq!(
+            quote_snowflake_identifier("db.sch\"ema.ta\"ble"),
+            "\"db\".\"sch\"\"ema\".\"ta\"\"ble\""
+        );
+        // Single component (no dots).
+        assert_eq!(quote_snowflake_identifier("mytable"), "\"mytable\"");
+    }
+
+    #[test]
+    fn forbidden_operations_are_lowercase() {
+        for op in FORBIDDEN_OPERATIONS {
+            assert_eq!(
+                op,
+                op.to_lowercase(),
+                "FORBIDDEN_OPERATIONS constant '{op}' must be lowercase for comparison with op.to_lowercase()"
+            );
+        }
     }
 }
