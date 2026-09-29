@@ -118,7 +118,7 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     expect((await response.json()).error.type).toBe("skill_not_found");
   });
 
-  it("returns 400 for a suggestion that belongs to a batch", async () => {
+  it("returns 400 for a conversational suggestion", async () => {
     const { workspace, auth, skill } = await setup();
     const batch = await BatchSuggestionFactory.createEmpty(auth);
     const suggestion = await SkillSuggestionFactory.create(auth, skill, {
@@ -133,7 +133,7 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.message).toContain(
-      "belong to a batch"
+      "are not available"
     );
     const reloaded = await SkillSuggestionResource.fetchById(
       auth,
@@ -461,16 +461,11 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.message).toBe(
-      `The following skill suggestions are not available: ${suggestion.sId}.`
+      "Skill suggestions are not available in this workspace."
     );
   });
 
-  it("updates a conversational suggestion when the feature flag is on", async () => {
-    const { hasReinforcementEnabled } = await import(
-      "@app/lib/reinforcement/workspace_check"
-    );
-    vi.mocked(hasReinforcementEnabled).mockResolvedValueOnce(false);
-
+  it("returns 400 for a conversational suggestion, even with the feature flag", async () => {
     const { workspace, auth, skill } = await setup();
     await FeatureFlagFactory.basic(auth, "conversational_building");
     const suggestion = await SkillSuggestionFactory.create(auth, skill, {
@@ -483,8 +478,10 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
       state: "approved",
     });
 
-    expect(response.status).toBe(200);
-    expect((await response.json()).suggestions[0].state).toBe("approved");
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "are not available"
+    );
   });
 
   it("returns 400 for a conversational suggestion without the feature flag", async () => {
