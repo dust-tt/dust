@@ -175,7 +175,7 @@ export class OAuthAPI {
     }
     const query = params.toString();
     const response = await this._fetchWithError(
-      `${this._url}/connections/${connectionId}/access_token${
+      `${this._url}/connections/${encodeURIComponent(connectionId)}/access_token${
         query ? `?${query}` : ""
       }`
     );
@@ -192,7 +192,7 @@ export class OAuthAPI {
     }>
   > {
     const response = await this._fetchWithError(
-      `${this._url}/connections/${connectionId}/metadata`
+      `${this._url}/connections/${encodeURIComponent(connectionId)}/metadata`
     );
     return this._resultFromResponse(response);
   }
@@ -209,7 +209,7 @@ export class OAuthAPI {
     }>
   > {
     const response = await this._fetchWithError(
-      `${this._url}/connections/${connectionId}/metadata`,
+      `${this._url}/connections/${encodeURIComponent(connectionId)}/metadata`,
       {
         method: "PATCH",
         headers: {
@@ -278,7 +278,7 @@ export class OAuthAPI {
     credentialsId: string;
   }): Promise<OAuthAPIResponse<OauthAPIGetCredentialsResponse>> {
     const response = await this._fetchWithError(
-      `${this._url}/credentials/${credentialsId}`
+      `${this._url}/credentials/${encodeURIComponent(credentialsId)}`
     );
     return this._resultFromResponse(response);
   }
@@ -289,7 +289,7 @@ export class OAuthAPI {
     credentialsId: string;
   }): Promise<OAuthAPIResponse<void>> {
     const res = await this._fetchWithError(
-      `${this._url}/credentials/${credentialsId}`,
+      `${this._url}/credentials/${encodeURIComponent(credentialsId)}`,
       { method: "DELETE" }
     );
     if (res.isErr()) {
