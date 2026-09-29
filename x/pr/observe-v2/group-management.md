@@ -236,10 +236,10 @@ Give the People and Usage routes their own access guards in
 [adminRoutes](../../../front-spa/src/app/routes/adminRoutes.tsx), allowing workspace managers/admins and
 group managers. Keep the other route guards unchanged.
 
-In [UsagePage](../../../front/components/pages/workspace/UsagePage.tsx), render a restricted view for
-group managers, reusing the member/group tables and limit inputs. Do the same in
-[MembersPage](../../../front/components/pages/workspace/MembersPage.tsx) for People. Keep workspace-only
-data hooks and actions in the workspace views so group managers do not fetch hidden sections.
+At the existing Usage route, render a restricted view for group managers, reusing the shared member
+section, group table, and limit inputs. Render a restricted People view in
+[MembersPage](../../../front/components/pages/workspace/MembersPage.tsx). Keep workspace-only data
+hooks and actions in the workspace views so group managers do not fetch hidden sections.
 Use the auth-context scope and group permissions to populate filters, navigation, and edit controls.
 Keep the admin-only read-only state for admin-granting groups, alongside the delegated membership
 authorization for other manual groups.

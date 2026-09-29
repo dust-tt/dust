@@ -7,6 +7,7 @@ import {
 } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import { hasGroupManagementScope } from "@app/types/api/auth_context";
 import type { ReactElement } from "react";
 import { useMemo } from "react";
 
@@ -16,7 +17,7 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
+  const { subscription, groupManagement } = useAuth();
 
   const { featureFlags } = useFeatureFlags();
   const { hasPermission } = useWorkspacePermissions();
@@ -31,8 +32,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         featureFlags,
         subscription,
         hasPermission,
+        canManageUsage:
+          featureFlags.includes("group_management") &&
+          hasGroupManagementScope(groupManagement?.read_usage),
       }),
-    [owner, router.pathname, featureFlags, subscription, hasPermission]
+    [
+      owner,
+      router.pathname,
+      featureFlags,
+      subscription,
+      hasPermission,
+      groupManagement,
+    ]
   );
 
   useSetSubNavigation(subNavigation);

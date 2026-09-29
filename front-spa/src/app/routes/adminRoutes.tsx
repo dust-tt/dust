@@ -1,3 +1,8 @@
+import { AdminLayout } from "@dust-tt/front/components/layouts/AdminLayout";
+import Custom404 from "@dust-tt/front/components/pages/Custom404";
+import { useAuth } from "@dust-tt/front/lib/auth/AuthContext";
+import { hasGroupManagementScope } from "@dust-tt/front/types/api/auth_context";
+import { isManager } from "@dust-tt/front/types/user";
 import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayout";
 import { RequireRoleLayout } from "@spa/app/layouts/RequireRoleLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
@@ -95,6 +100,33 @@ const UsagePage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/UsagePage"),
   "UsagePage"
 );
+const GroupManagerUsagePage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/workspace/GroupManagerUsagePage"),
+  "GroupManagerUsagePage"
+);
+
+function UsageRoute() {
+  const { workspace, featureFlags, groupManagement } = useAuth();
+  if (isManager(workspace)) {
+    return (
+      <AdminLayout>
+        <UsagePage />
+      </AdminLayout>
+    );
+  }
+  if (
+    !featureFlags.includes("group_management") ||
+    !hasGroupManagementScope(groupManagement?.read_usage)
+  ) {
+    return <Custom404 />;
+  }
+  return (
+    <AdminLayout>
+      <GroupManagerUsagePage />
+    </AdminLayout>
+  );
+}
 const BillingPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/billing/BillingPage"),
   "BillingPage"
@@ -126,12 +158,12 @@ export const adminRoutes: RouteObject[] = [
         path: "automations",
         element: <AnalyticsAutomationsPage />,
       },
-      { path: "usage", element: <UsagePage /> },
       { path: "governance", element: <GovernancePage /> },
       // Legacy Workspace Settings page, merged into Settings & Governance.
       { path: "workspace", element: <Navigate to="../governance" replace /> },
     ],
   },
+  { path: "usage", element: <UsageRoute /> },
   {
     // Admin-only areas.
     element: <RequireRoleLayout requiredRole="admin" />,

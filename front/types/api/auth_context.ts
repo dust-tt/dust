@@ -8,6 +8,12 @@ export type GroupManagementScope =
   | { kind: "all" }
   | { kind: "ids"; groupIds: string[] };
 
+export function hasGroupManagementScope(
+  scope: GroupManagementScope | undefined
+): boolean {
+  return scope?.kind === "all" || (scope?.groupIds.length ?? 0) > 0;
+}
+
 export type GroupManagementAccess = {
   write: GroupManagementScope;
   read_usage: GroupManagementScope;

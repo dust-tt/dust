@@ -95,6 +95,7 @@ const EMPTY_MODEL_TIER_DEFINITION_BY_NAME = new Map<
 >();
 const NOOP_ON_MEMBER = (_member: MemberUsageType) => {};
 const ALWAYS_CAN_UPGRADE_SEAT = (_member: MemberUsageType) => true;
+const ALWAYS_CAN_EDIT_SPEND_LIMIT = (_member: MemberUsageType) => true;
 
 const DEFAULT_PREMIUM_MESSAGE_WINDOW_DAYS = 7;
 
@@ -1171,6 +1172,7 @@ interface MembersUsageTableProps {
   seatChangePendingMemberIds: ReadonlySet<string>;
   isSeatBased: boolean;
   showSpendLimit: boolean;
+  canEditSpendLimit?: (member: MemberUsageType) => boolean;
   // Disables every row action
   readOnly?: boolean;
   // Seat and credits usage columns plus the seat row actions. Off for
@@ -1221,6 +1223,7 @@ export function MembersUsageTable({
   seatChangePendingMemberIds,
   isSeatBased,
   showSpendLimit,
+  canEditSpendLimit = ALWAYS_CAN_EDIT_SPEND_LIMIT,
   readOnly = false,
   showSeatAndCredits = true,
   showSeatActions = true,
@@ -1332,7 +1335,7 @@ export function MembersUsageTable({
                   {
                     kind: "item" as const,
                     label: "Edit spend limit",
-                    disabled: readOnly,
+                    disabled: readOnly || !canEditSpendLimit(m),
                     onClick: () => onEditSpendLimit(m),
                   },
                 ]
@@ -1384,6 +1387,7 @@ export function MembersUsageTable({
       seatChangePendingMemberIds,
       isSeatBased,
       showSpendLimit,
+      canEditSpendLimit,
       showModelTiersColumn,
       userModelTierSelectionByUserId,
       userAllowedModelTiersByUserId,
