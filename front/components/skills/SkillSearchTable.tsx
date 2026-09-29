@@ -229,7 +229,7 @@ export function SkillSearchTable({
               editors={isDustProvidedSkill(skill) ? null : skill.editors}
             />
           ),
-          meta: { className: "hidden w-32 @sm:table-cell" },
+          meta: { className: "hidden w-32 pl-6 @sm:table-cell" },
         },
         {
           id: "updatedAt" as const,
