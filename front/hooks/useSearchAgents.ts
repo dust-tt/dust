@@ -85,6 +85,7 @@ export function useSearchAgents({
       (disabled ? undefined : data?.agents) ??
       emptyArray<SearchAgentsResponseBody["agents"][number]>(),
     total: data?.total ?? 0,
+    hasMore: data?.hasMore ?? false,
     facets: data?.facets,
     isAgentsError: !!error,
     isAgentsValidating: !disabled && isValidating,
