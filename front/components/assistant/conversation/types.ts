@@ -15,7 +15,6 @@ import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
   LightMessageType,
-  RichMentionWithStatus,
   UserMessageOrigin,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -24,6 +23,7 @@ import {
   isHiddenMessageOrigin,
   isLightAgentMessageType,
   isLightAgentMessageWithActionsType,
+  isMentionRequiringValidation,
   isTerminalAgentMessageStatus,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -183,22 +183,13 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   );
 };
 
-const MENTION_STATUSES_REQUIRING_VALIDATION: RichMentionWithStatus["status"][] =
-  [
-    "pending_conversation_access",
-    "pending_project_membership",
-    "agent_restricted_by_space_usage",
-  ];
-
 export const hasMentionRequiringValidation = (
   message: VirtuosoMessage
 ): boolean =>
   (isUserMessage(message) || isAgentMessageWithStreaming(message)) &&
   message.visibility !== "deleted" &&
   message.richMentions.some(
-    (mention) =>
-      !mention.dismissed &&
-      MENTION_STATUSES_REQUIRING_VALIDATION.includes(mention.status)
+    (mention) => !mention.dismissed && isMentionRequiringValidation(mention)
   );
 
 // Messages that MessageItem may render as `null`, i.e. zero-height rows in the

@@ -6,7 +6,7 @@ import { useMentionValidation } from "@app/lib/swr/mentions";
 import { useUserMemory } from "@app/lib/swr/user";
 import type {
   ConversationWithoutContentType,
-  RichMentionWithStatus,
+  RichMentionRequiringValidation,
 } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -20,20 +20,10 @@ import {
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
-type ValidatableMention = Extract<
-  RichMentionWithStatus,
-  {
-    status:
-      | "pending_conversation_access"
-      | "pending_project_membership"
-      | "agent_restricted_by_space_usage";
-  }
->;
-
 interface MentionValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
-  mention: ValidatableMention;
+  mention: RichMentionRequiringValidation;
   conversation: ConversationWithoutContentType;
   message: VirtuosoMessage;
 }

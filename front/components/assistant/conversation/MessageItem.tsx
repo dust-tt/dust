@@ -26,6 +26,7 @@ import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
+import { isMentionRequiringValidation } from "@app/types/assistant/conversation";
 import { isContentNodeContentFragment } from "@app/types/content_fragment";
 import { isSupportedImageContentType } from "@app/types/files";
 import type { UserType } from "@app/types/user";
@@ -429,11 +430,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
                 // :warning: make sure to use the index in the key, as the mention.id is the userId
 
-                if (
-                  mention.status === "pending_conversation_access" ||
-                  mention.status === "pending_project_membership" ||
-                  mention.status === "agent_restricted_by_space_usage"
-                ) {
+                if (isMentionRequiringValidation(mention)) {
                   return (
                     <MentionValidationRequired
                       key={index}
