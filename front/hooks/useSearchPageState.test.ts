@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { getSearchFilterOptions } from "@app/components/shared/filter_panel/searchFilter";
 import {
   readSkillFilter,
@@ -7,20 +8,7 @@ import type { SearchPageQuery } from "@app/hooks/useSearchPageState";
 import { useSearchPageState } from "@app/hooks/useSearchPageState";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-
-const { replace, query } = vi.hoisted(() => ({
-  replace: vi.fn(),
-  query: { current: {} as SearchPageQuery },
-}));
-
-vi.mock("@app/lib/platform", () => ({
-  useAppRouter: () => ({
-    replace,
-    pathname: "/w/workspace/builder/skills",
-    query: query.current,
-  }),
-}));
+import { afterEach, describe, expect, it } from "vitest";
 
 const tabs = [{ id: "all" }, { id: "archived" }];
 const SKILL_AVAILABILITY_FILTER_OPTIONS = getSearchFilterOptions(
@@ -41,9 +29,20 @@ const renderState = () =>
     })
   );
 
+function encodedQuery(query: SearchPageQuery): string {
+  return Buffer.from(JSON.stringify(query)).toString("base64url");
+}
+
+function hashQuery(): SearchPageQuery {
+  const encoded = new URLSearchParams(window.location.hash.split("?")[1]).get(
+    "filter"
+  );
+  return encoded
+    ? JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"))
+    : {};
+}
+
 afterEach(() => {
-  query.current = {};
-  replace.mockClear();
   window.history.replaceState({}, "", "/");
 });
 
@@ -52,17 +51,18 @@ describe("useSearchPageState", () => {
     const { result } = renderState();
     expect(result.current.searchTerm).toBe("");
     expect(result.current.selectedTab).toBe("all");
-    expect(replace).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe("");
   });
 
-  it("ignores unknown selections and bounds URL filters to the API limits", () => {
-    query.current = {
+  it("ignores unknown selections and bounds decoded filters to the API limits", () => {
+    const encoded = encodedQuery({
       q: "x".repeat(201),
       tab: "invalid",
       availability: ["invalid", "workspace_users", "workspace_users"],
       editor: ["", "editor-id", "editor-id"],
       tool: Array.from({ length: 101 }, (_, i) => `view-${i}`),
-    };
+    });
+    window.history.replaceState({}, "", `/#?filter=${encoded}`);
     const { result } = renderState();
     expect(result.current.searchTerm).toHaveLength(201);
     expect(result.current.selectedTab).toBe("all");
@@ -74,9 +74,12 @@ describe("useSearchPageState", () => {
     });
   });
 
-  it("replaces the URL with the whole selection and preserves unrelated state", () => {
-    query.current = { other: "keep" };
-    window.history.replaceState({}, "", "/#?skillId=selected-skill");
+  it("replaces one base64url hash value and preserves unrelated URL state", () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/w/workspace/builder/skills?other=keep#?skillId=selected-skill"
+    );
     const { result } = renderState();
     act(() => {
       result.current.setSearchTerm("café & report");
@@ -85,27 +88,16 @@ describe("useSearchPageState", () => {
         availability: SKILL_AVAILABILITY_FILTER_OPTIONS,
       });
     });
-    expect(replace).toHaveBeenCalledTimes(1);
-    expect(replace).toHaveBeenCalledWith(
-      {
-        pathname: "/w/workspace/builder/skills",
-        query: {
-          other: "keep",
-          q: "café & report",
-          tab: "archived",
-          availability: SKILL_AVAILABILITY_FILTER_OPTIONS.map(({ id }) => id),
-          editor: undefined,
-          tool: undefined,
-          space: undefined,
-        },
-        hash: "#?skillId=selected-skill",
-      },
-      undefined,
-      { shallow: true }
-    );
+    expect(window.location.search).toBe("?other=keep");
+    expect(
+      new URLSearchParams(window.location.hash.slice(2)).get("skillId")
+    ).toBe("selected-skill");
+    expect(hashQuery()).toMatchObject({
+      q: "café & report",
+      tab: "archived",
+      availability: SKILL_AVAILABILITY_FILTER_OPTIONS.map(({ id }) => id),
+    });
 
-    // Opening the copied query restores the same selection.
-    query.current = replace.mock.calls[0][0].query;
     const restored = renderState();
     expect(restored.result.current.searchTerm).toBe(result.current.searchTerm);
     expect(restored.result.current.selectedTab).toBe(
@@ -116,29 +108,63 @@ describe("useSearchPageState", () => {
     });
   });
 
-  it("omits oversized selections without discarding in-memory or unrelated state", () => {
-    query.current = { other: "keep", q: "report" };
+  it("follows external hash edits and browser history changes", () => {
     const { result } = renderState();
+    act(() => {
+      window.history.pushState(
+        {},
+        "",
+        `/#?filter=${encodedQuery({ q: "external", tab: "archived" })}`
+      );
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(result.current.searchTerm).toBe("external");
+    expect(result.current.selectedTab).toBe("archived");
+
+    act(() => {
+      window.history.replaceState(
+        {},
+        "",
+        `/#?filter=${encodedQuery({ availability: ["workspace_users"] })}`
+      );
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(result.current.searchTerm).toBe("");
+    expect(result.current.selectedTab).toBe("all");
+    expect(skillFilterQuery(result.current.filter).availability).toEqual([
+      "workspace_users",
+    ]);
+  });
+
+  it("ignores malformed base64 and omits oversized selections without losing local state", () => {
+    window.history.replaceState({}, "", "/#?filter=invalid!&skillId=keep");
+    const { result } = renderState();
+    expect(result.current.filter).toEqual({
+      availability: [],
+      editor: [],
+      tool: [],
+      space: [],
+    });
     act(() => {
       result.current.setFilter(readSkillFilter({ tool: "x".repeat(2_048) }));
     });
     expect(result.current.filter.tool).toHaveLength(1);
-    expect(replace).toHaveBeenLastCalledWith(
-      {
-        pathname: "/w/workspace/builder/skills",
-        query: {
-          other: "keep",
-          q: undefined,
-          tab: undefined,
-          availability: undefined,
-          editor: undefined,
-          tool: undefined,
-          space: undefined,
-        },
-        hash: "",
-      },
-      undefined,
-      { shallow: true }
-    );
+    expect(
+      new URLSearchParams(window.location.hash.slice(2)).get("filter")
+    ).toBeNull();
+    expect(
+      new URLSearchParams(window.location.hash.slice(2)).get("skillId")
+    ).toBe("keep");
+
+    act(() => {
+      window.history.replaceState(
+        {},
+        "",
+        `/#?skillId=keep&filter=${encodedQuery({ q: "new link" })}`
+      );
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(result.current.searchTerm).toBe("new link");
+    expect(result.current.filter.tool).toHaveLength(0);
   });
 });
