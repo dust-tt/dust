@@ -2571,9 +2571,17 @@ export class FileResource extends BaseResource<FileModel> {
     return { refs, unverifiableRefs };
   }
 
+  /**
+   * @cc [owner:aubin-tchoi,label:security;backend] frame-file-author-is-attribution-only
+   * An explicit file access author ID MUST only determine the stored allowlist author.
+   * File references MUST still be verified under the supplied Authenticator.
+   */
   async computeAuthorizedFileAccess(
     auth: Authenticator,
-    { frameContent }: { frameContent: string }
+    {
+      frameContent,
+      fileAccessUserId,
+    }: { frameContent: string; fileAccessUserId?: string }
   ): Promise<ComputedAuthorizedFileAccess> {
     const frameContext = await this.resolveFrameScopedPathContext(auth);
     const packageRoot = this.getFrameV2SourceDirectoryPath(auth);
@@ -2585,7 +2593,12 @@ export class FileResource extends BaseResource<FileModel> {
         visited: new Set(),
       });
 
-    const generatedByUserId = auth.authorizedFileAccessUserModelId();
+    const generatedByUserId =
+      auth.user()?.id ??
+      auth.key()?.userModelId ??
+      (fileAccessUserId
+        ? (await UserResource.fetchById(fileAccessUserId))?.id
+        : null);
     if (!generatedByUserId) {
       logger.error(
         {

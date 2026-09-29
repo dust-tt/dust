@@ -247,12 +247,14 @@ export async function buildAndPublishFramePublication(
     manifest,
     sourceFiles,
     publishedByAgentConfigurationId,
+    fileAccessUserId,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
     publishedByAgentConfigurationId?: string;
+    fileAccessUserId?: string;
   }
 ): Promise<
   Result<
@@ -276,5 +278,6 @@ export async function buildAndPublishFramePublication(
     sourceFiles,
     uiBundleCode: buildResult.value.uiBundleCode,
     publishedByAgentConfigurationId,
+    fileAccessUserId,
   });
 }

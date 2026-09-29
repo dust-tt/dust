@@ -591,10 +591,12 @@ export async function activateFramePublication(
     frame,
     publicationId,
     publishedByAgentConfigurationId,
+    fileAccessUserId,
   }: {
     frame: FileResource;
     publicationId: string;
     publishedByAgentConfigurationId?: string;
+    fileAccessUserId?: string;
   }
 ): Promise<Result<void, FramePublicationError>> {
   const descriptor = await loadFramePublicationDescriptor(auth, {
@@ -649,6 +651,7 @@ export async function activateFramePublication(
   await frame.ensureShareableFrame(auth);
   const allowlist = await computeAuthorizedFileAccessForShare(auth, frame, {
     frameContent: uiBundleCode,
+    fileAccessUserId,
   });
   if (allowlist.isErr()) {
     return new Err(
@@ -719,6 +722,7 @@ export async function publishFramePublication(
     sourceFiles,
     uiBundleCode,
     publishedByAgentConfigurationId,
+    fileAccessUserId,
   }: {
     frame: FileResource;
     functionArtifacts: FramePublicationFunctionArtifact[];
@@ -726,6 +730,7 @@ export async function publishFramePublication(
     sourceFiles: FramePublicationSourceFile[];
     uiBundleCode: string;
     publishedByAgentConfigurationId?: string;
+    fileAccessUserId?: string;
   }
 ): Promise<
   Result<
@@ -761,6 +766,7 @@ export async function publishFramePublication(
       frame,
       publicationId: storedPublication.value.publicationId,
       publishedByAgentConfigurationId,
+      fileAccessUserId,
     });
     if (activation.isErr()) {
       return activation;

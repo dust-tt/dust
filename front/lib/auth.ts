@@ -149,8 +149,6 @@ export interface AuthenticatorType {
  */
 export class Authenticator {
   _key?: KeyAuthType;
-  // Attribution only: this user does not grant the sandbox any permissions.
-  _fileAccessUserModelId: ModelId | null;
   // Attribution-only key reference. Records which API key a request should be
   // *attributed* to for usage analytics, independently of `_key`. It never
   // influences authorization (role, caps, system-key checks all read `_key`).
@@ -182,7 +180,6 @@ export class Authenticator {
     authMethod,
     subscription,
     key,
-    fileAccessUserModelId = null,
     attributionKey,
     providersHealth,
     clientIp,
@@ -198,7 +195,6 @@ export class Authenticator {
     authMethod: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
-    fileAccessUserModelId?: ModelId | null;
     attributionKey?: { id: ModelId; name: string };
     providersHealth?: ProvidersHealth | null;
     clientIp?: string;
@@ -217,7 +213,6 @@ export class Authenticator {
     this._subscription = subscription || null;
     this._authMethod = authMethod;
     this._key = key;
-    this._fileAccessUserModelId = fileAccessUserModelId;
     this._attributionKey = attributionKey;
     this._providersHealth = providersHealth ?? null;
     this._clientIp = clientIp;
@@ -680,12 +675,9 @@ export class Authenticator {
       });
     }
 
-    const [workspace, user, fileAccessUser] = await Promise.all([
+    const [workspace, user] = await Promise.all([
       WorkspaceResource.fetchById(wId),
       claims.uId ? UserResource.fetchById(claims.uId) : Promise.resolve(null),
-      claims.fileAccessUserId
-        ? UserResource.fetchById(claims.fileAccessUserId)
-        : Promise.resolve(null),
     ]);
 
     if (!workspace) {
@@ -809,7 +801,6 @@ export class Authenticator {
         authMethod: "sandbox_token",
         workspace,
         user: user ?? undefined,
-        fileAccessUserModelId: user ? null : (fileAccessUser?.id ?? null),
         role,
         // Narrowed from token claims that aren't retained, so persist it as an explicit scope.
         requestedGroupModelIds: groupModelIds,
@@ -1722,17 +1713,6 @@ export class Authenticator {
 
   key(): KeyAuthType | null {
     return this._key ?? null;
-  }
-
-  /**
-   * @cc [owner:aubin-tchoi,label:security;backend] file-access-author-is-not-authorization
-   * A forwarded API key owner ID MUST only identify the author of a Frame file allowlist.
-   * It MUST NOT grant the sandbox that user's role, groups, or permissions.
-   */
-  authorizedFileAccessUserModelId(): ModelId | null {
-    return (
-      this._user?.id ?? this._key?.userModelId ?? this._fileAccessUserModelId
-    );
   }
 
   attributionKey(): { id: ModelId; name: string } | null {

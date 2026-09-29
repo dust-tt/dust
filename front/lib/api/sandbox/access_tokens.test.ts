@@ -180,9 +180,6 @@ describe("sandbox access tokens", () => {
       expect(sandboxAuth.value.user()).toBeNull();
       expect(sandboxAuth.value.key()).toBeNull();
       expect(sandboxAuth.value.role()).toBe("user");
-      expect(sandboxAuth.value.authorizedFileAccessUserModelId()).toBe(
-        context.user.id
-      );
     }
   });
 

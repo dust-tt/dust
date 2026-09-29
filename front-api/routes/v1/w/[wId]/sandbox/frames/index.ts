@@ -86,6 +86,7 @@ app.post(
       publishedByAgentConfigurationId: claims.aId,
       sourcePath: manifestPath,
       replacesPath,
+      fileAccessUserId: claims.fileAccessUserId,
     });
     if (publication.isErr()) {
       const status = frameSourceErrorStatus(publication.error);
