@@ -84,7 +84,7 @@ export function FilterSummaryChips<Category extends string>({
                 : { opacity: 0, scale: 0.98, y: -4 }
             }
             transition={transition}
-            className={cn("mt-2 origin-top", className)}
+            className={cn("origin-top", className)}
           >
             <div className="flex flex-wrap items-center gap-2">
               <AnimatePresence initial={false}>
