@@ -195,3 +195,111 @@ real    0m33.569s
 user    0m0.003s
 sys     0m0.023s
 ```
+
+# Filesystem VFS benchmark — 2026-09-29
+
+The corpus is `gs://dust-test-data/dfs-bench/corpus/` (10,000 files, 177.5 MB). The macOS run used
+the local copy at `x/jd/filesystem-benchmark/corpus/`; its manifest SHA-256 matches the GCS manifest:
+`67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`.
+Both runs use `x/jd/filesystem-benchmark/benchmark.py --warm-runs 1`. A `first` invocation is not
+necessarily a cold OS or GCS cache; the `warm` entry is one repeated invocation. These runs use
+different Python and ripgrep versions, so wall-clock ratios also include runtime differences.
+
+## macOS native filesystem
+
+```text
+Tool versions
++-----------+-----------------------+----------------------------------------------+
+| Tool      | Version               | Executable                                   |
++-----------+-----------------------+----------------------------------------------+
+| Python    | CPython 3.14.7        | /opt/homebrew/opt/python@3.14/bin/python3.14 |
+| ripgrep   | ripgrep 15.2.0        | /opt/homebrew/Cellar/ripgrep/15.2.0/bin/rg   |
+| OS kernel | Darwin 25.6.0 (arm64) | -                                            |
++-----------+-----------------------+----------------------------------------------+
+
+Benchmark results
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 153.87    | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 166.10    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 14.32     | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 12.92     | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 227.17    | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 191.40    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1.93      | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1.57      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 236.40    | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 203.79    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 187.71    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 192.77    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 72.32     | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 48.80     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 22.26     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 19.36     | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 334.11    | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 321.77    | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 5.78      | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 7.07      | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 1.72      | OK     |
+| file sync    | fsync (32 files)                               | once  | 1.52      | OK     |
+| write        | close (32 files)                               | once  | 0.18      | OK     |
+| write        | unlink (32 files)                              | once  | 1.11      | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+First = first measured invocation, not guaranteed cold OS cache; warm = median repeat.
+Final result comparisons are outside timings; in-loop checks are included.
+Run on a fresh mount for first-touch comparisons.
+```
+
+## Docker (OrbStack) + gcsfuse
+
+The container uses image `sha256:148373b79b6c33104967dd56aa9d08ab9c83507e8073e21c4e7678d38c20e15a`
+built from `x/spolu/dfs/gcsfuse/Dockerfile`. It mounted the `dfs-bench/corpus` prefix of
+`dust-test-data` at `/mnt/gcs` using `gcsfuse --implicit-dirs --only-dir dfs-bench/corpus`.
+All workloads passed, including the scratch-object write, file-fsync, close, and unlink tests.
+File `fsync` timings do not establish crash-safe directory entries.
+
+```text
+gcsfuse version 3.12.0 (Go version go1.27.0)
+Tool versions
++-----------+-----------------------------------------------------+------------------+
+| Tool      | Version                                             | Executable       |
++-----------+-----------------------------------------------------+------------------+
+| Python    | CPython 3.12.3                                      | /usr/bin/python3 |
+| ripgrep   | ripgrep 14.1.0                                      | /usr/bin/rg      |
+| OS kernel | Linux 7.0.14-orbstack-00380-ga7e0a2dc9535 (aarch64) | -                |
++-----------+-----------------------------------------------------+------------------+
+
+Benchmark results
++--------------+------------------------------------------------+-------+------------+--------+
+| Feature      | Workload                                       | Phase | Time (ms)  | Result |
++--------------+------------------------------------------------+-------+------------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 21,517.58  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 11,339.68  | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 845.45     | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 685.27     | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 8,133.09   | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 6,783.52   | OK     |
+| metadata     | stat missing (256 paths)                       | first | 14,573.08  | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 17,608.19  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 54,335.80  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 46,947.81  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 27,389.66  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 40,995.62  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 1,596.47   | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 4,493.96   | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 345.79     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 432.04     | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 429,601.66 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 471,042.63 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 19,544.84  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 724.18     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 2,104.33   | OK     |
+| file sync    | fsync (32 files)                               | once  | 3,138.87   | OK     |
+| write        | close (32 files)                               | once  | 420.93     | OK     |
+| write        | unlink (32 files)                              | once  | 1,955.41   | OK     |
++--------------+------------------------------------------------+-------+------------+--------+
+First = first measured invocation, not guaranteed cold OS cache; warm = median repeat.
+Final result comparisons are outside timings; in-loop checks are included.
+Run on a fresh mount for first-touch comparisons.
+```
