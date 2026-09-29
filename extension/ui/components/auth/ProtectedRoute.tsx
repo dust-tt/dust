@@ -10,8 +10,14 @@ import { Outlet, useNavigate } from "react-router-dom";
 
 export const ProtectedRoute = () => {
   const platform = usePlatform();
-  const { isLoading, isAuthenticated, isUserSetup, user, workspace } =
-    useExtensionAuth();
+  const {
+    isLoading,
+    isAuthenticated,
+    isUserSetup,
+    user,
+    workspace,
+    subscription,
+  } = useExtensionAuth();
 
   const navigate = useNavigate();
 
@@ -40,7 +46,17 @@ export const ProtectedRoute = () => {
     }
   }, [navigate, isLoading, isAuthenticated, isUserSetup, user, workspace]);
 
-  if (isLoading || !isAuthenticated || !isUserSetup || !user || !workspace) {
+  // Wait for subscription too — shared front components (model picker) read
+  // plan access from AuthContext, which is only provided once subscription
+  // has been fetched from auth-context.
+  if (
+    isLoading ||
+    !isAuthenticated ||
+    !isUserSetup ||
+    !user ||
+    !workspace ||
+    !subscription
+  ) {
     return (
       <div
         className={cn(
