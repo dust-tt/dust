@@ -18,6 +18,7 @@ import { mergeAgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes"
 import {
   applyInstructionEditsToHtml,
   convertMarkdownToBlockHtml,
+  getMarkdownPipeline,
 } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
@@ -111,13 +112,14 @@ async function resolveCreateSuggestion(
   // The suggested instructions are HTML: run them through the editor schema so the stored
   // markdown and block HTML match what the builder would have saved.
   const converted = applyInstructionEditsToHtml(
-    convertMarkdownToBlockHtml(""),
+    convertMarkdownToBlockHtml("", getMarkdownPipeline("agent")),
     [
       {
         targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
         content: instructions,
       },
-    ]
+    ],
+    getMarkdownPipeline("agent")
   );
   if (converted.isErr()) {
     return converted;
@@ -217,7 +219,8 @@ function resolveInstructionsEdits(
 
   return applyInstructionEditsToHtml(
     agentConfiguration.instructionsHtml,
-    edits.map(({ targetBlockId, content }) => ({ targetBlockId, content }))
+    edits.map(({ targetBlockId, content }) => ({ targetBlockId, content })),
+    getMarkdownPipeline("agent")
   );
 }
 
