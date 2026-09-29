@@ -328,7 +328,13 @@ export type AgentResourceSnapshot = {
 // Rollout mode for the agent read cache. Progression: "dryRun" (wired end to end but touching no
 // Redis) -> "compare" (warm the cache and log any divergence from the database, which stays
 // authoritative) -> "live" (serve from the cache).
-const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "live";
+/**
+ * @cc [owner:tdraier,label:backend;performance] agent-cache-dry-run-bumps-version
+ * A change that moves this mode from "live" or "compare" to "dryRun" MUST bump
+ * `AGENT_RESOURCE_CACHE_VERSION` in the same change, so re-enabling never reads entries written
+ * before the switch.
+ */
+const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "dryRun";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentResource
