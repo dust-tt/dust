@@ -161,16 +161,16 @@ jobs:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             await github.rest.repos.createDispatchEvent({
-              owner: '${{ github.repository_owner }}',
+              owner: ${{ toJSON(github.repository_owner) }},
               repo: 'dust-infra',
               event_type: 'trigger-component-revert',
               client_payload: {
-                cells: '${{ inputs.cells }}',
-                component: '${{ inputs.component }}',
-                image_tag: '${{ inputs.image_tag }}',
-                slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
+                cells: ${{ toJSON(inputs.cells) }},
+                component: ${{ toJSON(inputs.component) }},
+                image_tag: ${{ toJSON(inputs.image_tag) }},
+                slack_thread_ts: ${{ toJSON(needs.notify-start.outputs.thread_ts) }},
                 card: ${{ toJSON(needs.notify-start.outputs.card) }},
-                slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}',
+                slack_channel: ${{ toJSON(secrets.SLACK_CHANNEL_ID) }},
                 run_playwright: false,
               }
             })
