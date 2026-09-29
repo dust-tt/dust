@@ -1,3 +1,4 @@
+import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
@@ -93,7 +94,27 @@ export async function editFrameTextsAtSource(
           )
         );
       }
-      const scopedPath = `${rootScopedPath}/${location.relPath}`;
+      /**
+       * @cc [owner:flvndvd,label:security] frame-bundle-path-containment
+       * The resolved edit path MUST remain within `rootScopedPath`. A caller-supplied
+       * `relPath` containing `..` segments MUST NOT be allowed to escape the bundle
+       * root and address files outside it.
+       */
+      const resolved = path.normalize(
+        path.join(rootScopedPath, location.relPath)
+      );
+      if (
+        !resolved.startsWith(rootScopedPath + "/") &&
+        resolved !== rootScopedPath
+      ) {
+        return new Err(
+          new EditFrameTextError(
+            "invalid_source",
+            `Source path escapes bundle root: ${location.relPath}.`
+          )
+        );
+      }
+      const scopedPath = resolved;
       const list = editsByPath.get(scopedPath) ?? [];
       list.push({
         line: location.line,

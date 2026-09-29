@@ -916,6 +916,14 @@ export async function convertCanonicalFileToPdf(
 }
 
 /**
+ * @cc [owner:flvndvd,label:security] delete-requires-write-access
+ * `deleteCanonicalFile` MUST verify write access on `scopedPath` before
+ * deleting, regardless of whether the file has a linked FileResource. The
+ * `DustFileSystem.delete` path enforces this implicitly, but the FileResource
+ * fast-path MUST apply the same guard explicitly so Pod readers cannot delete
+ * Pod files through the registered resource.
+ */
+/**
  * Delete a file at `scopedPath` and delete the linked FileResource record when
  * the path corresponds to one. If no FileResource exists (for example a file
  * created directly in the sandbox), falls back to deleting the raw GCS object.
@@ -926,6 +934,11 @@ export async function deleteCanonicalFile(
   dustFs: DustFileSystem,
   scopedPath: string
 ): Promise<Result<void, DustFileSystemError>> {
+  const writeAccess = dustFs.checkWriteAccess(scopedPath);
+  if (writeAccess.isErr()) {
+    return writeAccess;
+  }
+
   const linkedFileResource = await fetchLinkedFileResource(
     auth,
     dustFs,

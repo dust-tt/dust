@@ -86,8 +86,18 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
     parent_id = upsertArgs.parent_id ?? null;
     parents = upsertArgs.parents ?? [documentId];
   }
-  const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
-  const title = upsertTitle ?? file.fileName;
+  /**
+   * @cc [owner:flvndvd,label:security] document-upsert-no-mass-assignment
+   * Only caller-supplied fields that are safe to override (title, tags,
+   * light_document_output) MUST be forwarded from `upsertArgs`. Trusted
+   * server-side fields (dataSource, auth, document_id, source_url, text,
+   * parent_id, parents, mime_type) MUST NOT be overridable by the caller.
+   */
+  const title = upsertArgs?.title ?? file.fileName;
+  const callerTags = upsertArgs?.tags ?? [];
+  const lightDocumentOutput = isUpsertDocumentArgs(upsertArgs)
+    ? (upsertArgs.light_document_output ?? true)
+    : true;
   const content = await getFileContent(auth, file);
   if (!content) {
     return new Err<DustError>({
@@ -99,21 +109,22 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   }
 
   const upsertDocumentRes = await upsertDocument({
-    // Beware, most values here are default values that are overridden by the ...restArgs below.
     document_id: documentId,
     source_url: sourceUrl,
     text: content,
     parent_id,
     parents,
-    tags: [`title:${title}`, `fileId:${file.sId}`, `fileName:${file.fileName}`],
-    light_document_output: true,
+    tags: [
+      `title:${title}`,
+      `fileId:${file.sId}`,
+      `fileName:${file.fileName}`,
+      ...callerTags,
+    ],
+    light_document_output: lightDocumentOutput,
     dataSource,
     auth,
     mime_type: file.contentType,
     title,
-
-    // Used to override defaults.
-    ...restArgs,
   });
 
   if (upsertDocumentRes.isErr()) {
@@ -167,7 +178,6 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
       `fileName:${file.fileName}`,
     ],
     light_document_output: true,
-    ...upsertArgs,
   });
 
   if (upsertDocumentRes.isErr()) {
@@ -231,23 +241,31 @@ const upsertTableToDatasource: ProcessingFunction = async (
   }
   tableId = upsertArgs?.tableId ?? tableId;
 
-  const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
-  const title = upsertTitle ?? file.fileName;
+  /**
+   * @cc [owner:flvndvd,label:security] table-upsert-no-mass-assignment
+   * Only caller-supplied fields that are safe to override (title, name,
+   * description, tags) MUST be forwarded from `upsertArgs`. Trusted server-side
+   * fields (auth, dataSource, tableId, fileId, mimeType, truncate, async,
+   * parentId, parents, sourceUrl) MUST NOT be overridable by the caller.
+   */
+  const title = upsertArgs?.title ?? file.fileName;
+  const callerName = upsertArgs?.name;
+  const callerDescription = upsertArgs?.description;
+  const callerTags = upsertArgs?.tags ?? [];
 
   const upsertTableRes = await upsertTable({
     auth,
     params: {
-      // Beware, most values here are default values that are overridden by the ...restArgs below,
-      // including description.
       tableId,
-      name: slugify(file.fileName),
-      description: "Table uploaded from file",
+      name: callerName ?? slugify(file.fileName),
+      description: callerDescription ?? "Table uploaded from file",
       truncate: true,
       fileId: file.sId,
       tags: [
         `title:${title}`,
         `fileId:${file.sId}`,
         `fileName:${file.fileName}`,
+        ...callerTags,
       ],
       parentId: upsertArgs?.parentId ?? null,
       parents: upsertArgs?.parents ?? [tableId],
@@ -255,9 +273,6 @@ const upsertTableToDatasource: ProcessingFunction = async (
       title,
       mimeType: file.contentType,
       sourceUrl: file.getPrivateUrl(auth),
-
-      // Used to override defaults, for manual file uploads where some fields are user-defined.
-      ...restArgs,
     },
     dataSource,
   });
