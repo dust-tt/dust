@@ -528,10 +528,11 @@ export function isUserMessageContextValid(
 
 /**
  * @cc [owner:frankaloia,label:security;api] authenticated-message-user-attribution
- * A posted message MUST use the authenticated user as its author when one exists. A caller-supplied
- * `context.email` MAY resolve a workspace user only for a system API key. Regular API keys and
- * other userless authenticators MUST remain unattributed, and `doNotAssociateUser` MUST always
- * produce an unattributed message.
+ * A posted message MUST use the authenticated user as its author when one exists, except when
+ * `doNotAssociateUser` is set or an agentic message inherits an unattributed originating run; both
+ * cases MUST remain unattributed. A caller-supplied `context.email` MAY resolve a workspace user
+ * only for a system API key. Regular API keys and other userless authenticators MUST remain
+ * unattributed.
  */
 export async function postUserMessage(
   auth: Authenticator,
