@@ -12,6 +12,7 @@ import {
 } from "@app/components/shared/filter_panel/searchFilter";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { useMemo, useState } from "react";
 import { z } from "zod";
@@ -91,7 +92,7 @@ export function parseSearchPageHash<
     );
     const entries = Object.entries(labels.success ? labels.data : {})
       .flatMap(([id, label]) =>
-        id.length > 0 && typeof label === "string" ? [[id, label]] : []
+        id.length > 0 && isString(label) ? [[id, label]] : []
       )
       .slice(0, MAX_SELECTED_IDS);
     if (entries.length > 0) {

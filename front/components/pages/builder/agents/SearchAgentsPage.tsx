@@ -286,17 +286,18 @@ export function SearchAgentsPage() {
       ? "unrestricted"
       : "strict";
   // Names of the selections restored from a link come from the agents they match.
-  const { facets: selectionFacets } = useSearchAgents({
-    owner,
-    searchTerm: "",
-    limit: 0,
-    filters: toAgentSearchFilters(pendingFilter, activeTab.filters),
-    permissionFiltering: getPermissionFiltering(activeTab.id),
-    facets: unresolvedCategories.flatMap(
-      (category) => AGENT_FILTER_CATEGORY_FACET[category] ?? []
-    ),
-    disabled: unresolvedCategories.length === 0,
-  });
+  const { facets: selectionFacets, isAgentsLoading: isSelectionLoading } =
+    useSearchAgents({
+      owner,
+      searchTerm: "",
+      limit: 0,
+      filters: toAgentSearchFilters(pendingFilter, activeTab.filters),
+      permissionFiltering: getPermissionFiltering(activeTab.id),
+      facets: unresolvedCategories.flatMap(
+        (category) => AGENT_FILTER_CATEGORY_FACET[category] ?? []
+      ),
+      disabled: unresolvedCategories.length === 0,
+    });
   const filter = resolveFilter(selectionFacets);
 
   return (
@@ -366,6 +367,7 @@ export function SearchAgentsPage() {
               </div>
             </TabsList>
             <FilterSummaryChips
+              isLoading={isSelectionLoading}
               summaries={getFilterSummaries(
                 filter,
                 filterCategories,

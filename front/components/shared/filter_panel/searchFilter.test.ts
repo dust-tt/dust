@@ -5,7 +5,7 @@ import {
 } from "@app/components/shared/filter_panel/searchFilter";
 import { describe, expect, it } from "vitest";
 
-const CATEGORIES = ["access", "editor", "tool"] as const;
+const CATEGORIES = ["access", "editor", "model", "tool"] as const;
 
 const SLACK_VIEWS = [
   { sId: "view1", mcpServerId: "slack", name: "Slack", icon: "SlackLogo" },
@@ -58,6 +58,7 @@ describe("resolveSearchFilterSelection", () => {
       resolveSearchFilterSelection({
         selection: {
           editor: { user1: "Old name", user2: "Bob" },
+          model: { "retired-model": "Retired model" },
           tool: { view3: "Notion" },
         },
         categories: CATEGORIES,
@@ -67,6 +68,7 @@ describe("resolveSearchFilterSelection", () => {
       });
 
     expect(filter.editor?.map(({ name }) => name)).toEqual(["Alice", "Bob"]);
+    expect(filter.model?.map(({ name }) => name)).toEqual(["Retired model"]);
     expect(filter.tool?.[0]).toEqual(
       expect.objectContaining({
         id: "view3",
@@ -74,7 +76,11 @@ describe("resolveSearchFilterSelection", () => {
         mcpServerViewIds: ["view3"],
       })
     );
-    expect(unresolvedCategories).toEqual(["editor", "tool"]);
-    expect([...unresolvedKeys]).toEqual(["editor:user2", "tool:view3"]);
+    expect(unresolvedCategories).toEqual(["editor", "model", "tool"]);
+    expect([...unresolvedKeys]).toEqual([
+      "editor:user2",
+      "model:retired-model",
+      "tool:view3",
+    ]);
   });
 });

@@ -307,17 +307,18 @@ export function SearchSkillsPage() {
   const permissionFiltering =
     isAdmin && showHiddenSkills ? "redact_unreadable" : undefined;
   // Names of the selections restored from a link come from the skills they match.
-  const { facets: selectionFacets } = useSearchSkills({
-    owner,
-    searchTerm: "",
-    limit: 0,
-    filters: { ...activeTab.filters, ...toSkillSearchFilters(pendingFilter) },
-    permissionFiltering,
-    facets: unresolvedCategories.map(
-      (category) => SKILL_FILTER_CATEGORY_FACET[category]
-    ),
-    disabled: unresolvedCategories.length === 0,
-  });
+  const { facets: selectionFacets, isSkillsLoading: isSelectionLoading } =
+    useSearchSkills({
+      owner,
+      searchTerm: "",
+      limit: 0,
+      filters: { ...activeTab.filters, ...toSkillSearchFilters(pendingFilter) },
+      permissionFiltering,
+      facets: unresolvedCategories.map(
+        (category) => SKILL_FILTER_CATEGORY_FACET[category]
+      ),
+      disabled: unresolvedCategories.length === 0,
+    });
   const filter = resolveFilter(toSkillSearchFilterFacets(selectionFacets));
   const searchFilters = toSkillSearchFilters(filter);
   useSetContentWidth("wide");
@@ -389,6 +390,7 @@ export function SearchSkillsPage() {
               </div>
             </TabsList>
             <FilterSummaryChips
+              isLoading={isSelectionLoading}
               summaries={getFilterSummaries(
                 filter,
                 SKILL_FILTER_CATEGORIES,

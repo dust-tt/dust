@@ -273,12 +273,12 @@ function toUnresolvedOption(
   switch (category) {
     case "access":
     case "availability":
-    case "model":
       return null;
     case "editor":
       return { category, id, name, image: null, disabled: false };
     case "skill":
       return { category, id, name, icon: null, disabled: false };
+    case "model":
     case "space":
     case "tag":
       return { category, id, name, disabled: false };
@@ -321,28 +321,26 @@ export function resolveSearchFilterSelection<
   unresolvedCategories: Category[];
   unresolvedKeys: ReadonlySet<string>;
 } {
+  // Availability names derive from their IDs alone.
+  const allFacets: SearchFilterFacets = {
+    ...facets,
+    availability: SKILL_AVAILABILITIES.map((availability) => ({
+      availability,
+    })),
+  };
   const filter: SearchFilter<Category> = {};
   const unresolvedCategories: Category[] = [];
   const unresolvedKeys = new Set<string>();
 
   for (const category of categories) {
-    // Access, availability and model names derive from their IDs alone.
-    const categoryFacets: SearchFilterFacets = {
-      ...facets,
-      availability: SKILL_AVAILABILITIES.map((availability) => ({
-        availability,
-      })),
-      models: Object.keys(selection[category] ?? {}).map((modelId) => ({
-        modelId,
-      })),
-    };
     const optionsByKey = new Map(
-      getSearchFilterOptions(category, categoryFacets, currentUserId).flatMap(
+      getSearchFilterOptions(category, allFacets, currentUserId).flatMap(
         (option) =>
           getSearchFilterOptionKeys(option).map((key) => [key, option])
       )
     );
     const optionsById = new Map<string, SearchFilterOption>();
+    const toolViewIdsById = new Map<string, string[]>();
     let isCategoryResolved = true;
     for (const [id, label] of Object.entries(selection[category] ?? {})) {
       const key = `${category}:${id}`;
@@ -355,24 +353,24 @@ export function resolveSearchFilterSelection<
         unresolvedKeys.add(key);
         isCategoryResolved = false;
       }
-      const existing = optionsById.get(option.id);
-      optionsById.set(
-        option.id,
+      if (!optionsById.has(option.id)) {
+        optionsById.set(option.id, option);
+      }
+      if (option.category === "tool") {
+        const viewIds = toolViewIdsById.get(option.id) ?? [];
+        viewIds.push(id);
+        toolViewIdsById.set(option.id, viewIds);
+      }
+    }
+    if (optionsById.size > 0) {
+      filter[category] = [...optionsById.values()].map((option) =>
         option.category === "tool"
           ? {
               ...option,
-              mcpServerViewIds: [
-                ...(existing?.category === "tool"
-                  ? existing.mcpServerViewIds
-                  : []),
-                id,
-              ],
+              mcpServerViewIds: toolViewIdsById.get(option.id) ?? [],
             }
           : option
       );
-    }
-    if (optionsById.size > 0) {
-      filter[category] = [...optionsById.values()];
     }
     if (!isCategoryResolved) {
       unresolvedCategories.push(category);
