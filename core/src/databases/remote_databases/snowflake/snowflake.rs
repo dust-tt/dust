@@ -66,7 +66,7 @@ struct SnowflakeQueryPlanEntry {
 
 pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 
-pub const FORBIDDEN_OPERATIONS: [&str; 3] = ["UPDATE", "DELETE", "INSERT"];
+pub const FORBIDDEN_OPERATIONS: [&str; 3] = ["update", "delete", "insert"];
 
 pub const GET_SESSION_MAX_TRIES: usize = 3;
 
@@ -403,6 +403,7 @@ impl SnowflakeRemoteDatabase {
     ) -> Result<(), QueryDatabaseError> {
         // Ensure that query only uses tables that are allowed.
         let plan = self.get_query_plan(&session, query).await?;
+        let plan_is_non_empty = !plan.is_empty();
         let used_tables: HashSet<&str> = plan
             .iter()
             .filter_map(|entry| match &entry.objects {
@@ -416,7 +417,8 @@ impl SnowflakeRemoteDatabase {
             .collect();
 
         let used_forbidden_tables = used_tables
-            .into_iter()
+            .iter()
+            .copied()
             .filter(|table| !allowed_tables.contains(*table))
             .collect::<Vec<_>>();
 
@@ -434,6 +436,16 @@ impl SnowflakeRemoteDatabase {
                     "Query uses tables that are not allowed: {}",
                     used_forbidden_tables.join(", ")
                 ),
+                Some(query.to_string()),
+            ))?
+        }
+
+        // If the plan has entries but none reference any table object, we cannot verify
+        // that the query is within the allowed table set, so reject for safety.
+        if used_tables.is_empty() && plan_is_non_empty {
+            Err(QueryDatabaseError::ExecutionError(
+                "Query plan contains no table references; authorization cannot be verified."
+                    .to_string(),
                 Some(query.to_string()),
             ))?
         }
@@ -505,9 +517,18 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         opaque_ids: &Vec<&str>,
     ) -> Result<Vec<Option<RemoteTableSchema>>> {
         // Construct a "DESCRIBE TABLE" query for each opaque table ID.
+        // Double-quote each identifier component to prevent SQL injection from
+        // schema-supplied opaque identifiers (e.g. `db.schema.table`).
         let queries: Vec<String> = opaque_ids
             .iter()
-            .map(|opaque_id| format!("DESCRIBE TABLE {}", opaque_id))
+            .map(|opaque_id| {
+                let quoted = opaque_id
+                    .split('.')
+                    .map(|part| format!("\"{}\"", part.replace('"', "\"\"")))
+                    .collect::<Vec<_>>()
+                    .join(".");
+                format!("DESCRIBE TABLE {}", quoted)
+            })
             .collect();
 
         let session = self.get_session().await?;
