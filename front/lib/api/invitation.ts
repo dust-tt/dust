@@ -35,7 +35,6 @@ import type {
 import sgMail from "@sendgrid/mail";
 import { escape } from "html-escaper";
 import type { Transaction } from "sequelize";
-import { Op } from "sequelize";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 
@@ -115,7 +114,7 @@ export async function sendWorkspaceInvitationReminderEmail(
 
 async function batchUnrevokeInvitations(
   auth: Authenticator,
-  invitationIds: string[],
+  invitations: Array<{ sId: string; role: ActiveRoleType }>,
   transaction?: Transaction
 ) {
   const owner = auth.workspace();
@@ -125,20 +124,12 @@ async function batchUnrevokeInvitations(
     );
   }
 
-  await MembershipInvitationModel.update(
-    {
-      status: "pending",
-    },
-    {
-      where: {
-        sId: {
-          [Op.in]: invitationIds,
-        },
-        workspaceId: owner.id,
-      },
-      transaction,
-    }
-  );
+  for (const { sId, role } of invitations) {
+    await MembershipInvitationModel.update(
+      { status: "pending", initialRole: role },
+      { where: { sId, workspaceId: owner.id }, transaction }
+    );
+  }
 }
 
 interface MembershipInvitationBlob {
@@ -282,6 +273,9 @@ export async function handleMembershipInvitations(
                 r.email.toLowerCase().trim()
               )
           );
+      const emailToRequestedRole = new Map(
+        invitationRequests.map((r) => [r.email.toLowerCase().trim(), r.role])
+      );
       const invitationsToUnrevoke = force
         ? []
         : unconsumedInvitations.revoked.filter((i) =>
@@ -305,7 +299,12 @@ export async function handleMembershipInvitations(
 
       await batchUnrevokeInvitations(
         auth,
-        invitationsToUnrevoke.map((i) => i.sId),
+        invitationsToUnrevoke.map((i) => ({
+          sId: i.sId,
+          role:
+            emailToRequestedRole.get(i.inviteEmail.toLowerCase().trim()) ??
+            i.initialRole,
+        })),
         t
       );
 
