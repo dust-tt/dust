@@ -41,16 +41,21 @@ import {
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { BatchSuggestionType } from "@app/types/suggestions/batch_suggestion";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
-import { isCreateSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
+import {
+  isCreateSkillSuggestion,
+  isDeleteSkillSuggestion,
+} from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
   ChevronDown,
   ChevronUp,
+  Chip,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  cn,
   Icon,
   LoadingBlock,
 } from "@dust-tt/sparkle";
@@ -76,32 +81,48 @@ interface SuggestionTargetSectionProps {
   name: string;
   visual: ReactElement;
   onOpen: () => void;
+  isDeletion?: boolean;
   children: ReactNode;
 }
 
-// One collapsible block per edited agent or skill, open by default.
+// One collapsible block per agent or skill, open by default. A deleted target has no detail to
+// show: a chip flags it instead.
 function SuggestionTargetSection({
   targetLabel,
   name,
   visual,
   onOpen,
+  isDeletion = false,
   children,
 }: SuggestionTargetSectionProps) {
+  const header = (
+    <div className="heading-sm flex min-w-0 items-center gap-1">
+      <span className="shrink-0 text-foreground">{targetLabel}</span>
+      <Button
+        variant="outline"
+        size="xs"
+        isRounded
+        icon={visual}
+        label={name}
+        onClick={onOpen}
+        className={cn("min-w-0", isDeletion && "line-through")}
+      />
+    </div>
+  );
+
+  if (isDeletion) {
+    return (
+      <div className="flex h-12 items-center justify-between gap-2 rounded-xl bg-background p-3">
+        {header}
+        <Chip size="xs" color="warning" label="Delete" />
+      </div>
+    );
+  }
+
   return (
     <Collapsible defaultOpen className="rounded-xl bg-background p-3">
       <div className="flex h-6 items-center justify-between gap-2">
-        <div className="heading-sm flex min-w-0 items-center gap-1">
-          <span className="shrink-0 text-foreground">{targetLabel}</span>
-          <Button
-            variant="outline"
-            size="xs"
-            isRounded
-            icon={visual}
-            label={name}
-            onClick={onOpen}
-            className="min-w-0"
-          />
-        </div>
+        {header}
         <CollapsibleTrigger
           variant="secondary"
           hideChevron
@@ -203,6 +224,7 @@ function AgentSuggestionsDiff({
 
   // A created agent is a pending placeholder: its name is the suggested one.
   const creation = displayable.find((s) => s.kind === "create");
+  const isDeletion = displayable.some((s) => s.kind === "delete");
   const name =
     creation?.kind === "create"
       ? creation.suggestion.name
@@ -226,6 +248,7 @@ function AgentSuggestionsDiff({
           previewBatchId: batchId,
         })
       }
+      isDeletion={isDeletion}
     >
       {Object.entries(suggestionsByKind).map(([kind, kindSuggestions]) => {
         const groupLabel = GROUPED_AGENT_SUGGESTION_LABELS[kind];
@@ -268,6 +291,7 @@ function SkillSuggestionsDiff({
   const { openPanel } = useConversationSidePanelContext();
   // A created skill is a pending placeholder: its name is the suggested one.
   const creation = suggestions.find(isCreateSkillSuggestion);
+  const isDeletion = suggestions.some(isDeleteSkillSuggestion);
   const { skill, isSkillLoading } = useSkill({
     workspaceId: owner.sId,
     skillId,
@@ -300,6 +324,7 @@ function SkillSuggestionsDiff({
           previewBatchId: batchId,
         })
       }
+      isDeletion={isDeletion}
     >
       {sortSkillSuggestionsByBuilderOrder(suggestions).map((suggestion) => (
         <PendingSkillSuggestionDetails

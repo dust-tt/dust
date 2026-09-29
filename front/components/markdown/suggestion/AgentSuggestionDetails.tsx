@@ -260,14 +260,9 @@ export function AgentSuggestionDetails({
       );
     }
 
+    // A deleted agent has nothing to review: its card shows no body.
     case "delete":
-      return (
-        <p className="text-sm text-foreground">
-          Delete the{" "}
-          <span className="font-medium">{suggestion.suggestion.name}</span>{" "}
-          agent.
-        </p>
-      );
+      return null;
 
     case "description":
       return (
