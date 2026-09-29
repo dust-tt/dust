@@ -229,6 +229,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "frankaloia",
   },
+  standard_stream_gpt_6_luna_medium: {
+    description:
+      "Route the Standard model tier to GPT 6 Luna at medium reasoning first, to test it as the Standard baseline",
+    stage: "dust_only",
+    owner: "Nils-Fedrigo",
+  },
   automatic_model_health_routing: {
     description:
       "Let a model-health breach seen on this workspace's traffic degrade the endpoint",

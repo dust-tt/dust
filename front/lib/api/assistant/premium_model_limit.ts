@@ -27,6 +27,7 @@ import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import type { ResolvedRequestedModel } from "@app/types/assistant/models/types";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { isCreditPricedPlan } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -43,7 +44,8 @@ type PremiumModelFairUseDecision =
 // Resolves the Standard stream and refuses anything still priced Premium or above: the
 // stream's last-resort fallback is a preferred large model, which can be premium itself.
 async function resolveDowngradeTarget(
-  auth: Authenticator
+  auth: Authenticator,
+  featureFlags: readonly WhitelistableFeature[]
 ): Promise<ResolvedRequestedModel | null> {
   const models = await getEnabledModelsForAuth(auth);
   const degradedModelIds = getDegradedModelIds();
@@ -52,7 +54,8 @@ async function resolveDowngradeTarget(
     const { model, reasoningEffort } = resolveStreamModel(
       models,
       streamId,
-      degradedModelIds
+      degradedModelIds,
+      featureFlags
     );
     const tierName = getTierForModel(model.modelId, reasoningEffort);
 
@@ -124,7 +127,7 @@ export async function applyPremiumModelFairUse(
   );
 
   const downgradeTarget = isEnforced
-    ? await resolveDowngradeTarget(auth)
+    ? await resolveDowngradeTarget(auth, featureFlags)
     : null;
 
   logger.info(

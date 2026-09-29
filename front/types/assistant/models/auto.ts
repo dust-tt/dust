@@ -1,3 +1,4 @@
+import type { WhitelistableFeature } from "../../shared/feature_flags";
 import {
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_OPUS_5_MODEL_ID,
@@ -14,7 +15,11 @@ import {
   MISTRAL_MEDIUM_3_5_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
 } from "./mistral";
-import { GPT_5_6_LUNA_MODEL_ID, GPT_5_6_SOL_MODEL_ID } from "./openai";
+import {
+  GPT_5_6_LUNA_MODEL_ID,
+  GPT_5_6_SOL_MODEL_ID,
+  GPT_6_LUNA_MODEL_ID,
+} from "./openai";
 import { SIMULATED_FAILURE_MODEL_ID } from "./simulated_failure_model";
 import type {
   ModelConfigurationType,
@@ -50,6 +55,8 @@ export interface ModelStreamCandidate {
   providerId: ModelProviderIdType;
   modelId: string;
   reasoningEffort: ReasoningEffort;
+  // When set, the candidate is only considered for workspaces with this flag.
+  featureFlag?: WhitelistableFeature;
 }
 
 export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
@@ -58,6 +65,12 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
     // reasoning effort. The last candidate (Sonnet at `low`) is the Basic-tier
     // floor so tier-capped users still resolve within the stream.
     [AUTO_MODEL_ID]: [
+      {
+        providerId: "openai",
+        modelId: GPT_6_LUNA_MODEL_ID,
+        reasoningEffort: "medium",
+        featureFlag: "standard_stream_gpt_6_luna_medium",
+      },
       {
         providerId: "openai",
         modelId: SIMULATED_FAILURE_MODEL_ID,

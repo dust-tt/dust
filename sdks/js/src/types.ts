@@ -902,6 +902,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "shopify_tool"
   | "show_debug_tools"
   | "simulated_failure_model_feature"
+  | "standard_stream_gpt_6_luna_medium"
   | "slack_message_splitting"
   | "stateful_conversation_window"
   | "run_tools_from_prompt"

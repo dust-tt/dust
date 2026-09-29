@@ -27,8 +27,12 @@ import {
   MODEL_STREAMS,
 } from "@app/types/assistant/models/auto";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
-import { GPT_5_6_LUNA_MODEL_ID } from "@app/types/assistant/models/openai";
+import {
+  GPT_5_6_LUNA_MODEL_ID,
+  GPT_6_LUNA_MODEL_ID,
+} from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const CUSTOM_MODEL_CONFIG = {
@@ -226,10 +230,11 @@ describe("resolveStreamModel", () => {
   async function resolveStreamForAuth(
     auth: Authenticator,
     streamId: ModelStreamIdType,
-    degradedModelIds: ReadonlySet<string> = new Set()
+    degradedModelIds: ReadonlySet<string> = new Set(),
+    featureFlags: WhitelistableFeature[] = []
   ) {
     const models = await getEnabledModelsForAuth(auth);
-    return resolveStreamModel(models, streamId, degradedModelIds);
+    return resolveStreamModel(models, streamId, degradedModelIds, featureFlags);
   }
 
   it("routes the Auto stream to its first available candidate + effort", async () => {
@@ -275,6 +280,16 @@ describe("resolveStreamModel", () => {
     expect(resolved.reasoningEffort).toBe("low");
   });
 
+  it("routes the Auto stream to GPT 6 Luna medium first when the workspace has its flag", async () => {
+    const resolved = await resolveStreamForAuth(adminAuth, "auto", new Set(), [
+      "standard_stream_gpt_6_luna_medium",
+    ]);
+
+    expect(resolved.fromPool).toBe(true);
+    expect(resolved.model.modelId).toBe(GPT_6_LUNA_MODEL_ID);
+    expect(resolved.reasoningEffort).toBe("medium");
+  });
+
   it("only ever resolves to a candidate declared in the stream", async () => {
     for (const streamId of ["auto", "auto_fast", "auto_complex"] as const) {
       const resolved = await resolveStreamForAuth(adminAuth, streamId);
@@ -293,7 +308,8 @@ describe("resolveStreamModel", () => {
       // Nothing is selectable, so no stream candidate can match.
       models.map((m) => ({ ...m, isSelectable: false })),
       "auto_complex",
-      new Set()
+      new Set(),
+      []
     );
 
     expect(resolved.fromPool).toBe(false);
@@ -319,7 +335,8 @@ describe("resolveStreamModel", () => {
     const resolved = resolveStreamModelWithFallback(
       models,
       "auto",
-      new Set([GPT_5_6_LUNA_MODEL_ID])
+      new Set([GPT_5_6_LUNA_MODEL_ID]),
+      []
     );
 
     expect(resolved.didFallback).toBe(true);
@@ -332,7 +349,7 @@ describe("resolveStreamModel", () => {
     const models = await getEnabledModelsForAuth(adminAuth);
 
     expect(
-      getFallbackStreamIds(models, new Set([GPT_5_6_LUNA_MODEL_ID]))
+      getFallbackStreamIds(models, new Set([GPT_5_6_LUNA_MODEL_ID]), [])
     ).toEqual(["auto", "auto_fast"]);
   });
 
@@ -346,13 +363,14 @@ describe("resolveStreamModel", () => {
     const resolved = resolveStreamModelWithFallback(
       models,
       "auto",
-      new Set([GPT_5_6_LUNA_MODEL_ID])
+      new Set([GPT_5_6_LUNA_MODEL_ID]),
+      []
     );
 
     expect(isModelStreamId(resolved.model.modelId)).toBe(true);
     expect(resolved.didFallback).toBe(false);
     expect(
-      getFallbackStreamIds(models, new Set([GPT_5_6_LUNA_MODEL_ID]))
+      getFallbackStreamIds(models, new Set([GPT_5_6_LUNA_MODEL_ID]), [])
     ).toEqual([]);
   });
 
@@ -361,7 +379,8 @@ describe("resolveStreamModel", () => {
     const resolved = resolveStreamModelWithFallback(
       models,
       "auto",
-      new Set([CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId])
+      new Set([CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId]),
+      []
     );
 
     expect(resolved.didFallback).toBe(false);
@@ -379,7 +398,8 @@ describe("resolveStreamModel", () => {
         isSelectable: m.modelId === GPT_5_6_LUNA_MODEL_ID,
       })),
       "auto",
-      new Set([GPT_5_6_LUNA_MODEL_ID])
+      new Set([GPT_5_6_LUNA_MODEL_ID]),
+      []
     );
 
     expect(resolved.fromPool).toBe(false);
