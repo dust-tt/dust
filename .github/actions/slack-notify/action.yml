@@ -102,24 +102,28 @@ runs:
       if: inputs.step == 'build_success'
       id: build_payload
       shell: bash
+      env:
+        REGION: ${{ inputs.region }}
+        IMAGE_TAG: ${{ inputs.image_tag }}
+        CURRENT_VERSION: ${{ inputs.current_version }}
+        COMMIT_COUNT: ${{ inputs.commit_count }}
+        COMMIT_DIFF: ${{ inputs.commit_diff }}
+        CHANNEL: ${{ inputs.channel }}
+        THREAD_TS: ${{ inputs.thread_ts }}
       run: |
         # 1. Build Header Section
         # Region builds (marketing) say where, cell deploys build once.
-        case "${{ inputs.region }}" in
-          cell-*|all) HEADER_TEXT="🔨 \`${{ inputs.image_tag }}\` built" ;;
-          *) HEADER_TEXT="🔨 \`${{ inputs.image_tag }}\` built for ${{ inputs.region }}" ;;
+        case "$REGION" in
+          cell-*|all) HEADER_TEXT="🔨 \`${IMAGE_TAG}\` built" ;;
+          *) HEADER_TEXT="🔨 \`${IMAGE_TAG}\` built for ${REGION}" ;;
         esac
         MAIN_BLOCK_TEXT="$HEADER_TEXT"
-        if [ -n "${{ inputs.current_version }}" ]; then
-          MAIN_BLOCK_TEXT="${HEADER_TEXT} · \`${{ inputs.current_version }}\` → \`${{ inputs.image_tag }}\`, ${{ inputs.commit_count }} commits"
+        if [ -n "$CURRENT_VERSION" ]; then
+          MAIN_BLOCK_TEXT="${HEADER_TEXT} · \`${CURRENT_VERSION}\` → \`${IMAGE_TAG}\`, ${COMMIT_COUNT} commits"
         fi
 
         # 2. Build Changelog Section
         CHANGELOG_TEXT=""
-        COMMIT_DIFF=$(cat <<'EOF'
-        ${{ inputs.commit_diff }}
-        EOF
-        )
         if [ -n "$COMMIT_DIFF" ]; then
           while IFS= read -r line; do
             if [ -n "$line" ]; then
@@ -148,8 +152,8 @@ runs:
 
         # Final Payload
         JSON_PAYLOAD=$(jq -c -n \
-          --arg channel "${{ inputs.channel }}" \
-          --arg ts "${{ inputs.thread_ts }}" \
+          --arg channel "$CHANNEL" \
+          --arg ts "$THREAD_TS" \
           --arg text "$HEADER_TEXT" \
           --argjson blocks "$BLOCKS" \
           '{
