@@ -19,6 +19,7 @@ export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
 export const LIST_TOOLS_TOOL_NAME = "list_tools" as const;
 export const GET_TOOL_DETAILS_TOOL_NAME = "get_tool_details" as const;
 export const LIST_MODELS_TOOL_NAME = "list_models" as const;
+export const LIST_TAGS_TOOL_NAME = "list_tags" as const;
 export const SEARCH_KNOWLEDGE_TOOL_NAME = "search_knowledge" as const;
 export const LIST_WORKSPACE_MEMBERS_TOOL_NAME =
   "list_workspace_members" as const;
@@ -422,6 +423,21 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
+    name: LIST_TAGS_TOOL_NAME,
+    description:
+      "List the workspace's agent tags with their name, id and kind. Protected tags can " +
+      "only be added to or removed from agents by users who can publish agents.",
+    schema: {},
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Listing tags",
+      done: "Listed tags",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
     name: SEARCH_KNOWLEDGE_TOOL_NAME,
     description:
       "Browse or search the knowledge sources agents and skills can be given. " +
@@ -522,7 +538,8 @@ export const WORKSPACE_MANAGEMENT_SERVER = {
   serverInfo: {
     name: WORKSPACE_MANAGEMENT_SERVER_NAME,
     version: "1.0.0",
-    description: "Inventory the workspace's agents, skills, tools and groups.",
+    description:
+      "Inventory the workspace's agents, skills, tools, tags and groups.",
     icon: "ActionListCheckIcon",
     authorization: null,
     documentationUrl: null,
