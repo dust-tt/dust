@@ -36,6 +36,8 @@ const run = {
   head_commit: { message: "Break <main> & more\n\nBody" },
   actor: { login: "pusher" },
   triggering_actor: { login: "pusher" },
+  run_started_at: "2026-09-28T12:00:00Z",
+  updated_at: "2026-09-28T12:10:00Z",
 };
 
 describe("formatBreakageMessage", () => {
@@ -496,6 +498,19 @@ describe("infra retry", () => {
     assert.equal(await notifyWith(github), null);
   });
 
+  it("reports without claiming a retry when the retry is cancelled", async () => {
+    globalThis.fetch = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: infraJobs,
+      retryConclusion: "cancelled",
+    });
+    const text = (await notifyWith(github)) ?? "";
+    assert.match(text, /main is broken/);
+    assert.doesNotMatch(text, /automatic retry/);
+  });
+
   it("reports without claiming a retry when the retry never completes", async () => {
     globalThis.fetch = (async () =>
       new Response("", { status: 500 })) as typeof fetch;
@@ -557,5 +572,22 @@ describe("infra retry", () => {
       triggering_actor: { login: "github-actions[bot]" },
     });
     assert.equal(text, null);
+  });
+
+  it("posts recovery when the retried attempt outlives the retrying job", async () => {
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: [{ name: "test", conclusion: "success" }],
+      attempts: { 1: { conclusion: "failure" } },
+    });
+    const text = await notifyWith(github, {
+      ...run,
+      conclusion: "success",
+      run_attempt: 2,
+      triggering_actor: { login: "github-actions[bot]" },
+      run_started_at: "2026-09-28T12:00:00Z",
+      updated_at: "2026-09-28T12:50:00Z",
+    });
+    assert.match(text ?? "", /main is green again/);
   });
 });
