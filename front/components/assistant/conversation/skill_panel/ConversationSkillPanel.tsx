@@ -3,7 +3,10 @@ import {
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
-import { SkillSuggestionPreviewProvider } from "@app/components/assistant/details/SuggestionPreviewContext";
+import {
+  isPreviewedSuggestion,
+  SkillSuggestionPreviewProvider,
+} from "@app/components/assistant/details/SuggestionPreviewContext";
 import { SuggestionPreviewHeader } from "@app/components/assistant/details/SuggestionPreviewHeader";
 import {
   SkillDetailsContent,
@@ -36,7 +39,7 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
   const previewSuggestions = useMemo(
     () =>
       (batch?.skillSuggestions ?? []).filter(
-        (s) => s.skillConfigurationId === skillId && s.state === "pending"
+        (s) => s.skillConfigurationId === skillId && isPreviewedSuggestion(s)
       ),
     [batch, skillId]
   );
