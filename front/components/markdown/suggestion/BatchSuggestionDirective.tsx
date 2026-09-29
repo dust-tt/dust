@@ -297,6 +297,7 @@ function SkillSuggestionsDiff({
           getSkillInstructionsHtml={getSkillInstructionsHtml}
           getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
           workspaceId={owner.sId}
+          layout="inline"
         />
       ))}
     </SuggestionTargetSection>

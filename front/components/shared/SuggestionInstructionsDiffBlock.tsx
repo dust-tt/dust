@@ -1,3 +1,4 @@
+import type { SuggestionDiffLayout } from "@app/components/shared/SuggestionFieldEditSection";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { DiffBlock } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/react";
@@ -10,6 +11,7 @@ interface SuggestionInstructionsDiffBlockProps {
   content: string;
   // Must include the instruction suggestion extension, which provides the diff commands.
   extensions: Extensions;
+  layout?: SuggestionDiffLayout;
 }
 
 export function SuggestionInstructionsDiffBlock({
@@ -17,6 +19,7 @@ export function SuggestionInstructionsDiffBlock({
   targetBlockId,
   content,
   extensions,
+  layout = "boxed",
 }: SuggestionInstructionsDiffBlockProps) {
   const blockHtml = useMemo(
     () =>
@@ -48,7 +51,10 @@ export function SuggestionInstructionsDiffBlock({
   );
 
   return (
-    <DiffBlock variant="borderless">
+    <DiffBlock
+      isCollapsible={layout === "boxed"}
+      variant={layout === "inline" ? "plain" : "borderless"}
+    >
       {editor && <EditorContent editor={editor} />}
     </DiffBlock>
   );

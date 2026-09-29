@@ -80,6 +80,7 @@ function renderCardContent(target: ConversationalSuggestionTarget) {
               target.skill.agentFacingDescription
             }
             workspaceId={target.workspaceId}
+            layout="inline"
           />
         ),
       };
