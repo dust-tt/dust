@@ -188,7 +188,11 @@ export function SubscriptionPage() {
     submit: handleGoToStripePortal,
     isSubmitting: isGoingToStripePortal,
   } = useSubmitFunction(async () => {
-    window.open(`/w/${owner.sId}/subscription/manage`, "_blank");
+    window.open(
+      `/w/${owner.sId}/subscription/manage`,
+      "_blank",
+      "noopener,noreferrer"
+    );
   });
 
   const {

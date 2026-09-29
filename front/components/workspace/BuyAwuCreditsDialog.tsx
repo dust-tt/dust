@@ -805,7 +805,11 @@ export function BuyAwuCreditsDialog({
               label: "Manage invoices",
               variant: "primary",
               onClick: () => {
-                window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
+                window.open(
+                  `/w/${workspaceId}/subscription/manage`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
               },
             }}
           />
@@ -1030,7 +1034,11 @@ export function BuyAwuCreditsDialog({
             label: "Manage invoices",
             variant: "primary",
             onClick: () => {
-              window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
+              window.open(
+                `/w/${workspaceId}/subscription/manage`,
+                "_blank",
+                "noopener,noreferrer"
+              );
             },
           }}
         />

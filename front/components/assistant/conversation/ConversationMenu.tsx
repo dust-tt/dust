@@ -204,7 +204,7 @@ export function ConversationMenu({
         `agentDetails=${agentId}`,
         config.getAppUrl()
       );
-      window.open(agentDetailsUrl, "_blank");
+      window.open(agentDetailsUrl, "_blank", "noopener,noreferrer");
       return;
     }
     onOpenChangeAgentModal(true);
@@ -219,7 +219,7 @@ export function ConversationMenu({
         `userDetails=${userId}`,
         config.getAppUrl()
       );
-      window.open(userDetailsUrl, "_blank");
+      window.open(userDetailsUrl, "_blank", "noopener,noreferrer");
       return;
     }
     onOpenChangeUserModal(true);
@@ -345,7 +345,7 @@ export function ConversationMenu({
   }, [conversationLink, sendNotification]);
 
   const openConversationInBrowser = () => {
-    window.open(conversationLink, "_blank");
+    window.open(conversationLink, "_blank", "noopener,noreferrer");
   };
   const {
     isUpdatingConversationUrlAccessMode,
