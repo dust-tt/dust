@@ -9,8 +9,8 @@ import {
   getWorkspaceAdministrationVersionLock,
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getMembershipInvitationUrl } from "@app/lib/utils/invitation_token";
@@ -34,7 +34,7 @@ import type {
 } from "@app/types/user";
 import sgMail from "@sendgrid/mail";
 import { escape } from "html-escaper";
-import type { Transaction } from "sequelize";
+import { QueryTypes, type Transaction } from "sequelize";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 
@@ -124,12 +124,38 @@ async function batchUnrevokeInvitations(
     );
   }
 
-  for (const { sId, role } of invitations) {
-    await MembershipInvitationModel.update(
-      { status: "pending", initialRole: role },
-      { where: { sId, workspaceId: owner.id }, transaction }
-    );
+  if (invitations.length === 0) {
+    return;
   }
+
+  // Each row can take a different role. One statement keeps the shared
+  // transaction on a single connection.
+  // biome-ignore lint/plugin/noRawSql: Sequelize cannot bulk-update each row with a distinct value.
+  await frontSequelize.query(
+    `
+      UPDATE "membership_invitations" AS invitation
+      SET
+        "status" = 'pending',
+        "initialRole" = data.role,
+        "updatedAt" = $updatedAt
+      FROM unnest(
+        $sIds::text[],
+        $roles::text[]
+      ) AS data(sid, role)
+      WHERE invitation."sId" = data.sid
+        AND invitation."workspaceId" = $workspaceId
+    `,
+    {
+      bind: {
+        sIds: invitations.map((invitation) => invitation.sId),
+        roles: invitations.map((invitation) => invitation.role),
+        updatedAt: new Date(),
+        workspaceId: owner.id,
+      },
+      transaction,
+      type: QueryTypes.UPDATE,
+    }
+  );
 }
 
 interface MembershipInvitationBlob {
