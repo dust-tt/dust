@@ -270,7 +270,7 @@ export function SkillSearchTable({
       <div role="status" aria-label="Loading skills">
         <DataTableSkeleton
           columns={columns}
-          density="compact"
+          density="default"
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
               case "select":
@@ -316,7 +316,7 @@ export function SkillSearchTable({
         onClick: () => onSelect(skill.sId),
       }))}
       columns={columns}
-      density="compact"
+      density="default"
       getRowId={(skill) => skill.sId}
       enableRowSelection={(row) => canSelect(row.original)}
       disableRowClickSelection

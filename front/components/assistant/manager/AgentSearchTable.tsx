@@ -436,7 +436,7 @@ export function AgentSearchTable({
       <div role="status" aria-label="Loading agents">
         <DataTableSkeleton
           columns={columns}
-          density="compact"
+          density="default"
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
               case "select":
@@ -488,7 +488,7 @@ export function AgentSearchTable({
         onClick: () => onSelect(agent.sId),
       }))}
       columns={columns}
-      density="compact"
+      density="default"
       getRowId={(agent) => agent.sId}
       enableRowSelection={(row) => canSelect(row.original)}
       disableRowClickSelection
