@@ -18,6 +18,7 @@ import {
   WebCrawlerFolderModel,
   WebCrawlerPageModel,
 } from "@connectors/lib/models/webcrawler";
+import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
@@ -168,6 +169,13 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         return res;
       }
     }
+
+    // Garbage collection and firecrawl webhook workflows are not tied to the
+    // crawl workflow, sweep them through the connectorId search attribute.
+    await terminateAllWorkflowsForConnectorId({
+      connectorId: this.connectorId,
+      stopReason: reason,
+    });
 
     return new Ok(undefined);
   }

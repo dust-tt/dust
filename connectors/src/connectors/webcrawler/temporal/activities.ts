@@ -367,6 +367,10 @@ export async function webCrawlerGarbageCollector(
     logger.error({ connectorId }, "Connector not found");
     return;
   }
+  if (connector.isPaused()) {
+    logger.info({ connectorId }, "Connector is paused, skipping");
+    return;
+  }
 
   const webCrawlerConfig =
     await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
