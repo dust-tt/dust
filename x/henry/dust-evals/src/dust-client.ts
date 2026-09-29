@@ -188,6 +188,9 @@ export interface DustClientConfig {
   retryBackoffMs: number
 }
 
+// Upper bound on a single backoff wait, so late retries don't stall for minutes.
+const MAX_RETRY_DELAY_MS = 60_000
+
 /**
  * Check if an error is retryable.
  * - 4xx errors (except 429 rate limit) should not be retried
@@ -652,8 +655,11 @@ export class DustClient {
       // Don't wait after the last attempt
       if (attempt < maxRetries) {
         retryCount++
-        // Exponential backoff with jitter
-        const baseDelay = retryBackoffMs * Math.pow(2, attempt - 1)
+        // Exponential backoff with jitter, capped
+        const baseDelay = Math.min(
+          retryBackoffMs * Math.pow(2, attempt - 1),
+          MAX_RETRY_DELAY_MS
+        )
         const jitter = Math.random() * 0.3 * baseDelay // 0-30% jitter
         const delay = Math.round(baseDelay + jitter)
 
