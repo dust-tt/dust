@@ -21,7 +21,6 @@ export type ActionPhaseItem = Extract<
 >;
 
 interface CommandPaletteActionPhaseProps {
-  userId: string;
   item: ActionPhaseItem;
   onAction: (action: CommandPaletteAction) => void;
   onBack: () => void;
@@ -35,20 +34,16 @@ interface ActionDefinition {
   icon: typeof Eye;
 }
 
-function canEdit(item: ActionPhaseItem, userId: string): boolean {
+function canEdit(item: ActionPhaseItem): boolean {
   switch (item.kind) {
     case "agent":
-      return "canEdit" in item.agent
-        ? item.agent.canEdit
-        : item.agent.scope !== "global" &&
-            item.agent.editorIds.includes(userId);
+      return item.agent.canEdit ?? false;
     case "skill":
       return item.skill.canAdministrate;
   }
 }
 
 export function CommandPaletteActionPhase({
-  userId,
   item,
   onAction,
   onBack,
@@ -70,7 +65,7 @@ export function CommandPaletteActionPhase({
       description: "View description and settings",
       icon: Eye,
     });
-    if (canEdit(item, userId)) {
+    if (canEdit(item)) {
       result.push({
         action: "edit",
         label: "Edit",
@@ -79,7 +74,7 @@ export function CommandPaletteActionPhase({
       });
     }
     return result;
-  }, [item, userId]);
+  }, [item]);
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
