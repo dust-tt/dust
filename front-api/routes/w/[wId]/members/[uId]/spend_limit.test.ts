@@ -1,6 +1,7 @@
 import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { getUserSpendLimit } from "@app/lib/api/users/spend_limit";
 import { Authenticator } from "@app/lib/auth";
+import * as metronomeContracts from "@app/lib/metronome/contracts";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -9,9 +10,10 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/audit/workos_audit", async () => {
   const actual = await vi.importActual<typeof workosAudit>(
@@ -20,7 +22,29 @@ vi.mock("@app/lib/api/audit/workos_audit", async () => {
   return { ...actual, emitAuditLogEvent: vi.fn() };
 });
 
+vi.mock("@app/lib/metronome/contracts", async () => {
+  const actual = await vi.importActual<typeof metronomeContracts>(
+    "@app/lib/metronome/contracts"
+  );
+  return {
+    ...actual,
+    getCachedMetronomeCurrentBillingPeriod: vi.fn(),
+  };
+});
+
 const TEST_METRONOME_CUSTOMER_ID = "cust_test_xxx";
+const TEST_CYCLE_END = new Date("2026-10-01T00:00:00.000Z");
+
+beforeEach(() => {
+  vi.mocked(
+    metronomeContracts.getCachedMetronomeCurrentBillingPeriod
+  ).mockResolvedValue(
+    new Ok({
+      cycleStart: new Date("2026-09-01T00:00:00.000Z"),
+      cycleEnd: TEST_CYCLE_END,
+    })
+  );
+});
 
 async function makeMetronomeWorkspaceWithCustomer(): Promise<WorkspaceType> {
   return WorkspaceFactory.metronome({
@@ -366,6 +390,9 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
             previous_kind: "unlimited",
             previous_awu_credits: "unlimited",
             authorizing_group_id: group.sId,
+            reset_at_next_billing_cycle: "false",
+            expires_at: "",
+            reset_to_awu_credits: "unlimited",
           },
         })
       );
@@ -450,6 +477,51 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
           workspace,
         });
       expect(updatedMembership?.poolCapOverrideAwuCredits).toBe(1500);
+    });
+
+    it("schedules a temporary override that restores the previous value", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      const membership = await MembershipFactory.associate(
+        workspace,
+        targetUser,
+        { role: "user" }
+      );
+      await membership.updatePoolCapOverride({
+        poolCapOverrideAwuCredits: 800,
+      });
+
+      await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "admin",
+        workspace,
+      });
+
+      const response = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: "limited",
+            awuCredits: 2000,
+            resetAtNextBillingCycle: true,
+          }),
+        }
+      );
+
+      expect(response.status).toBe(200);
+
+      const updatedMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: targetUser,
+          workspace,
+        });
+      expect(updatedMembership?.poolCapOverrideAwuCredits).toBe(2000);
+      expect(updatedMembership?.poolCapOverridePreviousAwuCredits).toBe(800);
+      expect(updatedMembership?.poolCapOverrideExpiresAt?.toISOString()).toBe(
+        TEST_CYCLE_END.toISOString()
+      );
     });
   });
 });
