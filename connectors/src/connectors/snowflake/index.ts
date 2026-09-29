@@ -69,6 +69,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const credentialsRes = await getCredentials({
       credentialsId: connectionId,
+      workspaceId: dataSourceConfig.workspaceId,
       isTypeGuard: isSnowflakeCredentials,
       logger,
     });
@@ -152,6 +153,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
 
     const newCredentialsRes = await getCredentials({
       credentialsId: connectionId,
+      workspaceId: c.workspaceId,
       isTypeGuard: isSnowflakeCredentials,
       logger,
     });

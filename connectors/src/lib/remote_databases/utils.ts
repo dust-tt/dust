@@ -69,10 +69,12 @@ export const getConnector = async ({
 
 export const getCredentials = async <T extends ConnectionCredentials>({
   credentialsId,
+  workspaceId,
   isTypeGuard,
   logger,
 }: {
   credentialsId: string;
+  workspaceId: string;
   isTypeGuard: (credentials: ConnectionCredentials) => credentials is T;
   logger: Logger;
 }): Promise<
@@ -92,8 +94,25 @@ export const getCredentials = async <T extends ConnectionCredentials>({
     logger.error({ credentialsId }, "Failed to retrieve credentials");
     return new Err(Error("Failed to retrieve credentials"));
   }
+  const { credential } = credentialsRes.value;
+  // @cc[security] credential workspace ownership: reject credentials
+  // that were minted for a different workspace to prevent cross-tenant
+  // data access (IDOR via credential ID).
+  if (credential.metadata.workspace_id !== workspaceId) {
+    logger.error(
+      {
+        credentialsId,
+        credentialWorkspaceId: credential.metadata.workspace_id,
+        expectedWorkspaceId: workspaceId,
+      },
+      "Credential workspace mismatch"
+    );
+    return new Err(
+      new Error("Credential does not belong to the expected workspace")
+    );
+  }
   // Narrow the type of credentials to just the username/password variant
-  const credentials = credentialsRes.value.credential.content;
+  const credentials = credential.content;
   if (!isTypeGuard(credentials)) {
     throw new Error(
       `Invalid credentials types, type guard: ${isTypeGuard.name}`

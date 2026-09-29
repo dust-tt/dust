@@ -250,10 +250,13 @@ const _webhookGithubAPIHandler = async (
 
     case "pull_request":
       if (isPullRequestPayload(jsonBody)) {
+        // Use repository.owner.login as the authoritative repo owner.
+        // sender.login identifies who performed the action (e.g., a
+        // fork contributor) and must not be used to route the event.
         const login =
           "organization" in jsonBody
             ? jsonBody.organization.login
-            : jsonBody.sender.login;
+            : jsonBody.repository.owner.login;
         if (jsonBody.action === "opened" || jsonBody.action === "edited") {
           return syncIssue(
             enabledConnectors,
