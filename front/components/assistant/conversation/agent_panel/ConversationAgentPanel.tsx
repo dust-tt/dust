@@ -6,7 +6,8 @@ import { ConversationSidePanelHeader } from "@app/components/assistant/conversat
 import { AgentDetailsBody } from "@app/components/assistant/details/AgentDetailsBody";
 import { AgentSuggestionPreviewProvider } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { SuggestionPreviewHeader } from "@app/components/assistant/details/SuggestionPreviewHeader";
-import { useAgentSuggestions } from "@app/lib/swr/agent_suggestions";
+import { isAgentActionCardSuggestion } from "@app/components/markdown/suggestion/suggestion_directives";
+import { useSuggestionBatch } from "@app/hooks/useSuggestionBatches";
 import { useUser } from "@app/lib/swr/user";
 import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -15,31 +16,28 @@ import { useMemo, useState } from "react";
 
 interface ConversationAgentPanelProps {
   owner: LightWorkspaceType;
-  conversationId: string;
 }
 
-export function ConversationAgentPanel({
-  owner,
-  conversationId,
-}: ConversationAgentPanelProps) {
+export function ConversationAgentPanel({ owner }: ConversationAgentPanelProps) {
   const { closePanel, data } = useConversationSidePanelContext();
-  const { entityId, suggestionIds } = parseSuggestionPreviewData(data);
+  const { entityId, batchId } = parseSuggestionPreviewData(data);
   const agentId = entityId || null;
   const { user } = useUser();
 
-  const { suggestions, isSuggestionsLoading } = useAgentSuggestions({
-    agentConfigurationId: agentId,
+  const { batch, isBatchLoading: isSuggestionsLoading } = useSuggestionBatch({
+    batchId: batchId ?? null,
     workspaceId: owner.sId,
-    conversationId,
-    sources: ["conversational"],
-    disabled: !suggestionIds,
   });
-  const previewSuggestions = useMemo(() => {
-    const ids = suggestionIds.split(",");
-    return suggestions.filter(
-      (s) => s.state === "pending" && ids.includes(s.sId)
-    );
-  }, [suggestions, suggestionIds]);
+  const previewSuggestions = useMemo(
+    () =>
+      (batch?.agentSuggestions ?? []).filter(
+        (s) =>
+          s.agentId === agentId &&
+          s.state === "pending" &&
+          isAgentActionCardSuggestion(s)
+      ),
+    [batch, agentId]
+  );
   const [hiddenPreviewData, setHiddenPreviewData] = useState<string>();
   const isApplied = hiddenPreviewData !== data;
   const hasPreview = previewSuggestions.length > 0;

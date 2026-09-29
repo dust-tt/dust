@@ -170,12 +170,14 @@ const GROUPED_AGENT_SUGGESTION_LABELS: Record<string, string | undefined> = {
 
 interface AgentSuggestionsDiffProps {
   owner: LightWorkspaceType;
+  batchId: string;
   agentId: string;
   suggestions: AgentSuggestionType[];
 }
 
 function AgentSuggestionsDiff({
   owner,
+  batchId,
   agentId,
   suggestions,
 }: AgentSuggestionsDiffProps) {
@@ -221,7 +223,7 @@ function AgentSuggestionsDiff({
         openPanel({
           type: AGENT_SIDE_PANEL_TYPE,
           agentId,
-          previewSuggestionIds: displayable.map((s) => s.sId),
+          previewBatchId: batchId,
         })
       }
     >
@@ -252,12 +254,14 @@ function AgentSuggestionsDiff({
 
 interface SkillSuggestionsDiffProps {
   owner: LightWorkspaceType;
+  batchId: string;
   skillId: string;
   suggestions: SkillSuggestionType[];
 }
 
 function SkillSuggestionsDiff({
   owner,
+  batchId,
   skillId,
   suggestions,
 }: SkillSuggestionsDiffProps) {
@@ -293,7 +297,7 @@ function SkillSuggestionsDiff({
         openPanel({
           type: SKILL_SIDE_PANEL_TYPE,
           skillId,
-          previewSuggestionIds: suggestions.map((s) => s.sId),
+          previewBatchId: batchId,
         })
       }
     >
@@ -359,6 +363,7 @@ export function PendingBatchSuggestionCard({
               <AgentSuggestionsDiff
                 key={agentId}
                 owner={owner}
+                batchId={batch.id}
                 agentId={agentId}
                 suggestions={suggestions}
               />
@@ -369,6 +374,7 @@ export function PendingBatchSuggestionCard({
               <SkillSuggestionsDiff
                 key={skillId}
                 owner={owner}
+                batchId={batch.id}
                 skillId={skillId}
                 suggestions={suggestions}
               />
@@ -392,13 +398,12 @@ interface BatchSuggestionProps {
 }
 
 function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
-  const { batch, isBatchLoading, mutateBatch } = useSuggestionBatch({
+  const { batch, isBatchLoading } = useSuggestionBatch({
     batchId,
     workspaceId: owner.sId,
   });
   const reviewBatches = useReviewSuggestionBatches({
     workspaceId: owner.sId,
-    mutateBatches: mutateBatch,
   });
   const [pendingState, setPendingState] =
     useState<SuggestionBatchReviewState | null>(null);

@@ -158,7 +158,6 @@ function useRevalidateBatchTargets({ workspaceId }: { workspaceId: string }) {
 
 interface UseReviewSuggestionBatchesParams {
   workspaceId: string;
-  mutateBatches: ReturnType<typeof useSuggestionBatches>["mutateBatches"];
 }
 
 /**
@@ -168,8 +167,8 @@ interface UseReviewSuggestionBatchesParams {
  */
 export function useReviewSuggestionBatches({
   workspaceId,
-  mutateBatches,
 }: UseReviewSuggestionBatchesParams) {
+  const { mutate } = useSWRConfig();
   const { patchBatch } = usePatchSuggestionBatch({ workspaceId });
   const revalidateBatchTargets = useRevalidateBatchTargets({ workspaceId });
 
@@ -185,7 +184,11 @@ export function useReviewSuggestionBatches({
       if (state === "approved") {
         reviewedById.forEach(revalidateBatchTargets);
       }
-      await mutateBatches(
+      // A batch can be cached under several queries (its own card, a pile of batches, a side
+      // panel previewing it): update every one of them, not only the caller's.
+      const batchesPath = `/api/w/${workspaceId}/assistant/suggestion_batches?`;
+      await mutate<GetSuggestionBatchesResponseBody>(
+        (key) => isString(key) && key.startsWith(batchesPath),
         (current) =>
           current && {
             batches: current.batches.map((b) => reviewedById.get(b.id) ?? b),
@@ -193,6 +196,6 @@ export function useReviewSuggestionBatches({
         { revalidate: reviewedById.size < batchIds.length }
       );
     },
-    [mutateBatches, patchBatch, revalidateBatchTargets]
+    [mutate, patchBatch, revalidateBatchTargets, workspaceId]
   );
 }
