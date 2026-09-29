@@ -54,7 +54,7 @@ function isWorkspaceRelocatedError(err: unknown): boolean {
 // Errors the connector cannot make progress on without a human action: it gets
 // marked as failed and paused instead of being retried.
 /**
- * @cc [owner:fontanierh,label:product] relocated-workspace-is-final
+ * @cc [owner:PopDaph,label:product] relocated-workspace-is-final
  * A `workspace_not_found` error carrying the `[relocation-done]` marker MUST be categorized as a
  * final error (`workspace_relocated`) so the connector is paused instead of retrying forever
  * against a workspace that now lives in another region.
