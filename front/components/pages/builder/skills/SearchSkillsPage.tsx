@@ -19,6 +19,8 @@ import {
 import {
   SKILL_FILTER_CATEGORIES,
   SKILL_FILTER_CATEGORY_FACET,
+  SKILL_SEARCH_TAB_IDS,
+  SKILL_SEARCH_TABS,
   toSkillSearchFilterFacets,
   toSkillSearchFilters,
 } from "@app/components/skills/skillFilter";
@@ -57,18 +59,6 @@ import type { PaginationState } from "@tanstack/react-table";
 import { useState } from "react";
 
 const SKILL_SEARCH_PAGE_SIZE = 50;
-
-const SEARCH_TABS = [
-  { id: "all", label: "All", filters: { status: ["active"] } },
-  {
-    id: "default",
-    label: "Default",
-    filters: { status: ["active"], codeDefinedOnly: true },
-  },
-  { id: "archived", label: "Archived", filters: { status: ["archived"] } },
-] satisfies { id: string; label: string; filters: SkillSearchFilters }[];
-
-const SEARCH_TAB_IDS = SEARCH_TABS.map(({ id }) => id);
 
 // Batch edits are reserved to the skill's editors and to workspace admins, as for agents;
 // Dust-provided skills are never administrable.
@@ -298,12 +288,13 @@ export function SearchSkillsPage() {
     resolveFilter,
   } = useSearchPageHashState({
     categories: SKILL_FILTER_CATEGORIES,
-    tabIds: SEARCH_TAB_IDS,
+    tabIds: SKILL_SEARCH_TAB_IDS,
     defaultTabId: "all",
   });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const activeTab =
-    SEARCH_TABS.find((tab) => tab.id === selectedTab) ?? SEARCH_TABS[0];
+    SKILL_SEARCH_TABS.find((tab) => tab.id === selectedTab) ??
+    SKILL_SEARCH_TABS[0];
   const permissionFiltering =
     isAdmin && showHiddenSkills ? "redact_unreadable" : undefined;
   // Names of the selections restored from a link come from the skills they match.
@@ -358,7 +349,7 @@ export function SearchSkillsPage() {
         <Tabs
           value={selectedTab}
           onValueChange={(value) => {
-            const tab = SEARCH_TABS.find(({ id }) => id === value);
+            const tab = SKILL_SEARCH_TABS.find(({ id }) => id === value);
             if (tab) {
               setSelectedTab(tab.id);
             }
@@ -366,7 +357,7 @@ export function SearchSkillsPage() {
         >
           <div className="flex flex-col gap-2">
             <TabsList>
-              {SEARCH_TABS.map((tab) => (
+              {SKILL_SEARCH_TABS.map((tab) => (
                 <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
               ))}
               <div className="grow" />
@@ -419,7 +410,7 @@ export function SearchSkillsPage() {
                 setShowHiddenSkills(false);
               }}
             />
-            {SEARCH_TABS.map((tab) => (
+            {SKILL_SEARCH_TABS.map((tab) => (
               <TabsContent key={tab.id} value={tab.id}>
                 <SkillsList
                   key={owner.sId}

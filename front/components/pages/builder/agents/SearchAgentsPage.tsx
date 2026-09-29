@@ -6,6 +6,8 @@ import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchT
 import {
   AGENT_FILTER_CATEGORIES,
   AGENT_FILTER_CATEGORY_FACET,
+  AGENT_SEARCH_TAB_IDS,
+  AGENT_SEARCH_TABS,
   toAgentSearchFilters,
 } from "@app/components/assistant/manager/agentFilter";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
@@ -47,23 +49,7 @@ import { useCallback, useMemo, useState } from "react";
 
 const AGENT_SEARCH_PAGE_SIZE = 25;
 
-const SEARCH_TABS = [
-  {
-    id: "all",
-    label: "All",
-    filters: { status: ["active"], scope: ["visible", "hidden"] },
-  },
-  {
-    id: "default",
-    label: "Default",
-    filters: { status: ["active"], scope: ["global"] },
-  },
-  { id: "archived", label: "Archived", filters: { status: ["archived"] } },
-] satisfies { id: string; label: string; filters: AgentSearchFilters }[];
-
-type SearchTabId = (typeof SEARCH_TABS)[number]["id"];
-
-const SEARCH_TAB_IDS = SEARCH_TABS.map(({ id }) => id);
+type SearchTabId = (typeof AGENT_SEARCH_TABS)[number]["id"];
 
 interface AgentsListProps {
   searchTerm: string;
@@ -264,7 +250,7 @@ export function SearchAgentsPage() {
     resolveFilter,
   } = useSearchPageHashState({
     categories: AGENT_FILTER_CATEGORIES,
-    tabIds: SEARCH_TAB_IDS,
+    tabIds: AGENT_SEARCH_TAB_IDS,
     defaultTabId: "all",
   });
   // Default agents all share the global scope, so Access does not apply to them.
@@ -272,7 +258,8 @@ export function SearchAgentsPage() {
     (category) => selectedTab !== "default" || category !== "access"
   );
   const activeTab =
-    SEARCH_TABS.find((tab) => tab.id === selectedTab) ?? SEARCH_TABS[0];
+    AGENT_SEARCH_TABS.find((tab) => tab.id === selectedTab) ??
+    AGENT_SEARCH_TABS[0];
   const canShowHiddenAgents = isAdmin && selectedTab === "all";
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Agents");
@@ -334,7 +321,7 @@ export function SearchAgentsPage() {
         <Tabs
           value={selectedTab}
           onValueChange={(value) => {
-            const tab = SEARCH_TABS.find(({ id }) => id === value);
+            const tab = AGENT_SEARCH_TABS.find(({ id }) => id === value);
             if (tab) {
               setSelectedTab(tab.id);
             }
@@ -342,7 +329,7 @@ export function SearchAgentsPage() {
         >
           <div className="flex flex-col gap-2">
             <TabsList>
-              {SEARCH_TABS.map((tab) => (
+              {AGENT_SEARCH_TABS.map((tab) => (
                 <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
               ))}
               <div className="grow" />
@@ -396,7 +383,7 @@ export function SearchAgentsPage() {
                 setShowHiddenAgents(false);
               }}
             />
-            {SEARCH_TABS.map((tab) => (
+            {AGENT_SEARCH_TABS.map((tab) => (
               <TabsContent key={tab.id} value={tab.id}>
                 <AgentsList
                   key={owner.sId}

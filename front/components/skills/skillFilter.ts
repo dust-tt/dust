@@ -59,3 +59,15 @@ export function toSkillSearchFilterFacets(
 ): SearchFilterFacets | undefined {
   return facets && { ...facets, skills: facets.childSkills };
 }
+
+export const SKILL_SEARCH_TABS = [
+  { id: "all", label: "All", filters: { status: ["active"] } },
+  {
+    id: "default",
+    label: "Default",
+    filters: { status: ["active"], codeDefinedOnly: true },
+  },
+  { id: "archived", label: "Archived", filters: { status: ["archived"] } },
+] satisfies { id: string; label: string; filters: SkillSearchFilters }[];
+
+export const SKILL_SEARCH_TAB_IDS = SKILL_SEARCH_TABS.map(({ id }) => id);

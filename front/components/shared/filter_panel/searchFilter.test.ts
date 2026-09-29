@@ -1,11 +1,15 @@
+import { AGENT_FILTER_CATEGORIES } from "@app/components/assistant/manager/agentFilter";
 import type { SearchFilterOption } from "@app/components/shared/filter_panel/searchFilter";
 import {
   resolveSearchFilterSelection,
   toSearchFilterSelection,
 } from "@app/components/shared/filter_panel/searchFilter";
+import { SKILL_FILTER_CATEGORIES } from "@app/components/skills/skillFilter";
 import { describe, expect, it } from "vitest";
 
-const CATEGORIES = ["access", "editor", "model", "tool"] as const;
+const CATEGORIES = [
+  ...new Set([...AGENT_FILTER_CATEGORIES, ...SKILL_FILTER_CATEGORIES]),
+];
 
 const SLACK_VIEWS = [
   { sId: "view1", mcpServerId: "slack", name: "Slack", icon: "SlackLogo" },

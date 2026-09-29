@@ -2,13 +2,19 @@ import {
   parseSearchPageHash,
   serializeSearchPageHash,
 } from "@app/components/shared/filter_panel/searchFilterHash";
+import {
+  SKILL_FILTER_CATEGORIES,
+  SKILL_SEARCH_TAB_IDS,
+} from "@app/components/skills/skillFilter";
 import { describe, expect, it } from "vitest";
 
-const CATEGORIES = ["editor", "skill", "tool"] as const;
-const TAB_IDS = ["all", "archived"] as const;
-
 function parse(value: string | undefined) {
-  return parseSearchPageHash(value, CATEGORIES, TAB_IDS, "all");
+  return parseSearchPageHash(
+    value,
+    SKILL_FILTER_CATEGORIES,
+    SKILL_SEARCH_TAB_IDS,
+    "all"
+  );
 }
 
 function encode(json: string): string {
