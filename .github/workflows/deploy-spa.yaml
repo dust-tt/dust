@@ -222,22 +222,32 @@ jobs:
 
       - name: Derive preview URL
         id: preview_url
+        env:
+          APP: ${{ inputs.app }}
+          GIT_REF_NAME: ${{ github.ref_name }}
+          VERSION_PREFIX: ${{ steps.extract_version.outputs.version_prefix }}
+          BRANCH_SANITIZED: ${{ steps.branch.outputs.sanitized }}
         run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "url=https://${{ steps.extract_version.outputs.version_prefix }}--${{ inputs.app }}.preview.dust.tt" >> "$GITHUB_OUTPUT"
+          if [ "$GIT_REF_NAME" = "main" ]; then
+            echo "url=https://${VERSION_PREFIX}--${APP}.preview.dust.tt" >> "$GITHUB_OUTPUT"
           else
-            echo "url=https://${{ steps.branch.outputs.sanitized }}--${{ inputs.app }}.preview.dust.tt" >> "$GITHUB_OUTPUT"
+            echo "url=https://${BRANCH_SANITIZED}--${APP}.preview.dust.tt" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Summary
+        env:
+          APP: ${{ inputs.app }}
+          PREVIEW_URL: ${{ steps.preview_url.outputs.url }}
+          REGION: ${{ inputs.region }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
           {
             echo "### SPA Deployed :rocket:"
             echo ""
-            echo "- **App**: ${{ inputs.app }}"
-            echo "- **URL**: ${{ steps.preview_url.outputs.url }}"
-            echo "- **Region**: ${{ inputs.region }}"
-            echo "- **Commit**: ${{ github.sha }}"
+            echo "- **App**: ${APP}"
+            echo "- **URL**: ${PREVIEW_URL}"
+            echo "- **Region**: ${REGION}"
+            echo "- **Commit**: ${COMMIT_SHA}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Notify Deploy Success
