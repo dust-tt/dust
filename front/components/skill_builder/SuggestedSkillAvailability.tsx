@@ -1,23 +1,8 @@
+import { SuggestedChangeRow } from "@app/components/shared/SuggestedChangeRow";
 import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import type { SkillAvailabilitySuggestionType } from "@app/types/suggestions/skill_suggestion";
-import { Chip, LoadingBlock, Tooltip } from "@dust-tt/sparkle";
-
-interface AvailabilityChipProps {
-  availability: SkillAvailability;
-}
-
-function AvailabilityChip({ availability }: AvailabilityChipProps) {
-  const display = SKILL_AVAILABILITY_DISPLAY[availability];
-
-  return (
-    <Tooltip
-      label={display.tooltip}
-      trigger={<Chip size="xs" color={display.color} label={display.label} />}
-    />
-  );
-}
+import { LoadingBlock } from "@dust-tt/sparkle";
 
 interface SuggestedSkillAvailabilityProps {
   suggestion: SkillAvailabilitySuggestionType;
@@ -36,17 +21,25 @@ export function SuggestedSkillAvailability({
     return <LoadingBlock className="h-16 w-full" />;
   }
 
+  const current = skill ? SKILL_AVAILABILITY_DISPLAY[skill.availability] : null;
+  const next = SKILL_AVAILABILITY_DISPLAY[suggestion.availability];
+
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">Availability</span>
-      <div className="flex items-center gap-2 rounded-xl border border-separator bg-background px-3 py-2.5">
-        {skill && (
-          <>
-            <AvailabilityChip availability={skill.availability} />
-            <span className="text-xs text-muted-foreground">becomes</span>
-          </>
+      <div className="divide-y divide-border">
+        {current && (
+          <SuggestedChangeRow
+            action="remove"
+            title={current.label}
+            description={current.tooltip}
+          />
         )}
-        <AvailabilityChip availability={suggestion.availability} />
+        <SuggestedChangeRow
+          action="add"
+          title={next.label}
+          description={next.tooltip}
+        />
       </div>
     </div>
   );

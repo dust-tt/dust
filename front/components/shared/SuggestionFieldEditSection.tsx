@@ -27,7 +27,7 @@ export function SuggestionFieldEditSection({
         variant={layout === "inline" ? "plain" : "default"}
       >
         {layout === "inline" ? (
-          <p className="p-3 text-sm text-foreground">
+          <p className="text-sm text-foreground">
             {/* Everything is new on a creation, so a word diff would just color the whole text. */}
             {currentValue === ""
               ? newValue
