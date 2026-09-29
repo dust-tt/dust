@@ -1008,6 +1008,97 @@ describe("applyBatchSuggestions", () => {
     expect(updated?.scope).toBe("hidden");
   });
 
+  async function fetchAgentEditorIds(agentId: string) {
+    const agent = await AgentResource.fetchById(auth, agentId);
+    assert(agent);
+    return ((await agent.listEditors(auth)) ?? []).map((editor) => editor.sId);
+  }
+
+  it("changes the editors of an agent without creating a version", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const newEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, newEditor, { role: "user" });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createEditors(auth, agent, {
+      suggestion: { addUserIds: [newEditor.sId], removeUserIds: [user.sId] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    expect(await fetchAgentEditorIds(agent.sId)).toEqual([newEditor.sId]);
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(updated?.version).toBe(agent.version);
+  });
+
+  it("changes the editors along with a definition field", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const newEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, newEditor, { role: "user" });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createEditors(auth, agent, {
+      suggestion: { addUserIds: [newEditor.sId], removeUserIds: [] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    expect(await fetchAgentName(agent.sId)).toBe("RenamedAgent");
+    expect((await fetchAgentEditorIds(agent.sId)).sort()).toEqual(
+      [user.sId, newEditor.sId].sort()
+    );
+  });
+
+  it("writes nothing when a removed editor no longer edits the agent", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const formerEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, formerEditor, {
+      role: "user",
+    });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createEditors(auth, agent, {
+      suggestion: { addUserIds: [], removeUserIds: [formerEditor.sId] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    expect(await fetchAgentName(agent.sId)).toBe(agent.name);
+    expect(await fetchAgentEditorIds(agent.sId)).toEqual([user.sId]);
+  });
+
+  it("writes nothing when the change would leave the agent without editors", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createEditors(auth, agent, {
+      suggestion: { addUserIds: [], removeUserIds: [user.sId] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    expect(await fetchAgentEditorIds(agent.sId)).toEqual([user.sId]);
+  });
+
   it("leaves the batch pending once applied", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const newSkill = await SkillFactory.create(auth, { name: "New Skill" });
