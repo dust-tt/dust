@@ -1,0 +1,5 @@
+@cc [owner:spolu,label:architecture] official-gcsfuse-package
+The image MUST install gcsfuse from Google's official package repository.
+
+@cc [owner:spolu,label:security] runtime-gcs-credentials
+Google Cloud credentials MUST be supplied at runtime and MUST NOT be embedded in image layers.
