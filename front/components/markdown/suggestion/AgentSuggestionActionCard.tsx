@@ -61,7 +61,7 @@ interface AgentSuggestionActionCardProps {
   pictureUrl?: string;
 }
 
-export function getAgentSuggestionLabels(
+function getAgentSuggestionLabels(
   agentSuggestion: AgentActionCardSuggestionType
 ): {
   title: string;

@@ -10,9 +10,11 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { AgentSuggestionDetails } from "@app/components/markdown/suggestion/AgentSuggestionDetails";
-import { isAgentActionCardSuggestion } from "@app/components/markdown/suggestion/AgentSuggestionDirective";
 import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
-import { DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS } from "@app/components/markdown/suggestion/suggestion_directives";
+import {
+  DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS,
+  isAgentActionCardSuggestion,
+} from "@app/components/markdown/suggestion/suggestion_directives";
 import { makeDirective } from "@app/components/markdown/suggestion/suggestionDirective";
 import { getIcon } from "@app/components/resources/resources_icons";
 import {

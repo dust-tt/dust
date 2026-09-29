@@ -1,3 +1,6 @@
+import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
+import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+
 const CONVERSATION_AGENT_SUGGESTION_KINDS = [
   "create",
   "delete",
@@ -18,10 +21,17 @@ export type ConversationAgentSuggestionKind =
 export const DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS: ConversationAgentSuggestionKind[] =
   ["create"];
 
-export function isConversationAgentSuggestionKind(
+function isConversationAgentSuggestionKind(
   kind: string
 ): kind is ConversationAgentSuggestionKind {
   return CONVERSATION_AGENT_SUGGESTION_KINDS.some((k) => k === kind);
+}
+
+/** Whether the suggestion is of a kind the conversational agent cards render. */
+export function isAgentActionCardSuggestion(
+  suggestion: AgentSuggestionType
+): suggestion is AgentActionCardSuggestionType {
+  return isConversationAgentSuggestionKind(suggestion.kind);
 }
 
 const BATCH_DIRECTIVE_REGEX = /:{1,2}batch_edit\[\]\{([^}]*)\}/g;
