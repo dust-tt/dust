@@ -244,9 +244,13 @@ const upsertTableToDatasource: ProcessingFunction = async (
   /**
    * @cc [owner:flvndvd,label:security] table-upsert-no-mass-assignment
    * Only caller-supplied fields that are safe to override (title, name,
-   * description, tags) MUST be forwarded from `upsertArgs`. Trusted server-side
-   * fields (auth, dataSource, tableId, fileId, mimeType, truncate, async,
-   * parentId, parents, sourceUrl) MUST NOT be overridable by the caller.
+   * description, tags) MUST be forwarded from `upsertArgs` without further
+   * validation. Sensitive server-controlled fields (auth, dataSource, tableId,
+   * fileId, mimeType, truncate, async, sourceUrl) MUST NOT be overridable by
+   * the caller. `parentId` and `parents` are passed through from `upsertArgs`
+   * because the public request type (`UpsertFileToDataSourceRequestBody`) does
+   * not expose them, so HTTP callers cannot supply them; internal callers
+   * (e.g. `upsertExcelToDatasource`) set them explicitly.
    */
   const title = upsertArgs?.title ?? file.fileName;
   const callerName = upsertArgs?.name;
