@@ -106,6 +106,7 @@ const MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   confluence: "development",
   val_town: "development",
   http_client: "development",
+  cursor_cloud_agents: "development",
   // CRM & Sales
   salesforce: "crm",
   hubspot: "crm",
@@ -169,6 +170,10 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   "qobra us": "crm",
   lokalise: "productivity",
   "lokalise software development": "development",
+  siit: "support",
+  "databricks sql": "data",
+  "databricks genie": "data",
+  qonto: "productivity",
 };
 
 // Category mapping for connectors
