@@ -34,6 +34,7 @@ import { isFilePreviewableContentType } from "@app/types/file_preview";
 import { isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Edit04, FolderOpen, Trash01 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -319,7 +320,10 @@ export function FileExplorer({
 
   const handleNodeOpen = (entry: ContentNodeEntry) => {
     if (entry.sourceUrl) {
-      window.open(entry.sourceUrl, "_blank", "noopener,noreferrer");
+      const validated = validateUrl(entry.sourceUrl);
+      if (validated.valid) {
+        window.open(validated.standardized, "_blank", "noopener,noreferrer");
+      }
     }
   };
 

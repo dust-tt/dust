@@ -9,6 +9,7 @@ import {
   isFrameContentType,
 } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 import type {
   ConversationAttachmentItem,
@@ -63,7 +64,12 @@ export function conversationAttachmentToRow(
       creator,
       date: null,
       onClick: sourceUrl
-        ? () => window.open(sourceUrl, "_blank", "noopener,noreferrer")
+        ? () => {
+            const validated = validateUrl(sourceUrl);
+            if (validated.valid) {
+              window.open(validated.standardized, "_blank", "noopener,noreferrer");
+            }
+          }
         : undefined,
     };
   } else {

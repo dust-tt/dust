@@ -232,6 +232,12 @@ export function TaskSources({
                         return;
                       }
 
+                      if (
+                        targetUrl.protocol !== "http:" &&
+                        targetUrl.protocol !== "https:"
+                      ) {
+                        return;
+                      }
                       window.open(
                         targetUrl.toString(),
                         "_blank",
