@@ -129,18 +129,6 @@ async function fetchAllCompositeBuckets(
   return allBuckets;
 }
 
-/**
- * @cc [owner:sfriquet,label:security] admin-only-export
- * Callers MUST restrict this export to workspace admins (the route gates it with `ensureIsAdmin`),
- * so every custom agent of the workspace is fetchable and its name is exported, hidden, draft and
- * pending agents included.
- */
-/**
- * @cc [owner:sfriquet,label:security;backend] agent-names-workspace-scoped
- * Agent names MUST be resolved through `AgentResource.fetchByIds` within `auth`'s workspace, from
- * each agent's current version. An agent id that does not resolve (deleted, from another
- * workspace, or not fetchable by the caller) MUST be exported as its raw sId.
- */
 export async function getProgrammaticCostExport(
   auth: Authenticator,
   { selectedPeriod, billingCycleStartDay }: ExportQuery
