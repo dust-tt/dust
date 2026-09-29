@@ -144,15 +144,15 @@ app.patch(
       }
     }
 
-    const batchedSuggestionIds = suggestions
-      .filter((suggestion) => suggestion.batchId !== null)
+    const nonSidekickSuggestionIds = suggestions
+      .filter((suggestion) => suggestion.source !== "sidekick")
       .map((suggestion) => suggestion.sId);
-    if (batchedSuggestionIds.length > 0) {
+    if (nonSidekickSuggestionIds.length > 0) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: `The following suggestions belong to a batch and must be reviewed with it: ${batchedSuggestionIds.join(", ")}.`,
+          message: `Only Sidekick suggestions can be reviewed here: ${nonSidekickSuggestionIds.join(", ")}.`,
         },
       });
     }

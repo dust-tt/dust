@@ -177,7 +177,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions", ()
     );
   });
 
-  it("returns 400 for a suggestion that belongs to a batch", async () => {
+  it("returns 400 for a conversational suggestion", async () => {
     const { workspace, auth, agent } = await setupTest();
     const batch = await BatchSuggestionFactory.createEmpty(auth);
     const suggestion = await AgentSuggestionFactory.createInstructions(
@@ -194,7 +194,9 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions", ()
     expect(response.status).toBe(400);
     const data = await response.json();
     expect(data.error.type).toBe("invalid_request_error");
-    expect(data.error.message).toContain("belong to a batch");
+    expect(data.error.message).toContain(
+      "Only Sidekick suggestions can be reviewed here"
+    );
 
     const fetchedSuggestion = await AgentSuggestionResource.fetchById(
       auth,

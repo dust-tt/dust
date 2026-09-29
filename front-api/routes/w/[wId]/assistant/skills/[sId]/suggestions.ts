@@ -1,5 +1,3 @@
-import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -11,10 +9,7 @@ import {
   GetSkillSuggestionsQuerySchema,
   PatchSkillSuggestionRequestBodySchema,
 } from "@app/types/api/assistant/skills/suggestions";
-import type {
-  SkillSuggestionSource,
-  SkillSuggestionType,
-} from "@app/types/suggestions/skill_suggestion";
+import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { skillApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -24,21 +19,6 @@ import { validate } from "@front-api/middlewares/validator";
 // The `skill` context variable is set by the parent skills/[sId]/index.ts
 // middleware, which also enforces `auth.can("admin", skill)`.
 const app = skillApp();
-
-async function listEnabledSources(
-  auth: Authenticator
-): Promise<Set<SkillSuggestionSource>> {
-  const sources = new Set<SkillSuggestionSource>();
-
-  if (await hasReinforcementEnabled(auth)) {
-    sources.add("reinforcement");
-  }
-  if (await hasFeatureFlag(auth, "conversational_building")) {
-    sources.add("conversational");
-  }
-
-  return sources;
-}
 
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
@@ -103,6 +83,16 @@ app.patch(
 
     const { suggestionIds, state } = ctx.req.valid("json");
 
+    if (!(await hasReinforcementEnabled(auth))) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Skill suggestions are not available in this workspace.",
+        },
+      });
+    }
+
     const suggestions = await SkillSuggestionResource.fetchByIds(
       auth,
       suggestionIds
@@ -131,22 +121,8 @@ app.patch(
       }
     }
 
-    const batchedSuggestionIds = suggestions
-      .filter((suggestion) => suggestion.batchId !== null)
-      .map((suggestion) => suggestion.sId);
-    if (batchedSuggestionIds.length > 0) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `The following suggestions belong to a batch and must be reviewed with it: ${batchedSuggestionIds.join(", ")}.`,
-        },
-      });
-    }
-
-    const enabledSources = await listEnabledSources(auth);
     const unavailableSuggestionIds = suggestions
-      .filter((suggestion) => !enabledSources.has(suggestion.source))
+      .filter((suggestion) => suggestion.source !== "reinforcement")
       .map((suggestion) => suggestion.sId);
     if (unavailableSuggestionIds.length > 0) {
       return apiError(ctx, {
