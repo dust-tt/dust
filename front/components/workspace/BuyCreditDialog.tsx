@@ -3,6 +3,7 @@ import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
 import { usePurchaseCredits } from "@app/lib/swr/credits";
 import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
   Button,
@@ -435,7 +436,12 @@ export function BuyCreditDialog({
               variant: "primary",
               onClick: () => {
                 if (paymentUrl) {
-                  window.open(paymentUrl, "_blank")?.focus();
+                  const { valid, standardized } = validateUrl(paymentUrl);
+                  if (valid) {
+                    window
+                      .open(standardized, "_blank", "noopener,noreferrer")
+                      ?.focus();
+                  }
                 }
               },
             }}
@@ -453,7 +459,11 @@ export function BuyCreditDialog({
               label: "Manage invoices",
               variant: "primary",
               onClick: () => {
-                window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
+                window.open(
+                  `/w/${workspaceId}/subscription/manage`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
               },
             }}
           />
@@ -505,7 +515,8 @@ export function BuyCreditDialog({
                 onClick={() =>
                   window.open(
                     `mailto:${SUPPORT_EMAIL}?subject=Credit%20purchase%20during%20trial`,
-                    "_blank"
+                    "_blank",
+                    "noopener,noreferrer"
                   )
                 }
               />
@@ -551,7 +562,8 @@ export function BuyCreditDialog({
                 onClick={() =>
                   window.open(
                     `mailto:${SUPPORT_EMAIL}?subject=Credit%20purchase%20-%20payment%20issue`,
-                    "_blank"
+                    "_blank",
+                    "noopener,noreferrer"
                   )
                 }
               />
@@ -610,7 +622,11 @@ export function BuyCreditDialog({
               label: "Manage invoices",
               variant: "primary",
               onClick: () => {
-                window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
+                window.open(
+                  `/w/${workspaceId}/subscription/manage`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
               },
             }}
           />
@@ -647,7 +663,8 @@ export function BuyCreditDialog({
                 onClick={() =>
                   window.open(
                     `mailto:${SUPPORT_EMAIL}?subject=Credit%20purchase%20limit%20reached`,
-                    "_blank"
+                    "_blank",
+                    "noopener,noreferrer"
                   )
                 }
               />
