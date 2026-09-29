@@ -30,7 +30,6 @@ type BreakageOptions = {
           params: Repository & {
             workflow_id: number;
             branch: string;
-            status: "completed";
             per_page: number;
           }
         ): Promise<{
@@ -190,7 +189,7 @@ type PreviousState =
  * @cc [label:product] main-breakage-run-ordering
  * Runs complete out of order: a completed signal run newer than the current one MUST silence it.
  * Otherwise, unless a previous attempt of the current run supplies the comparison state, it is
- * the newest older signal run within the 100 most recent completed runs. A signal past that
+ * the newest older signal run within the 100 most recent runs. A signal past that
  * window is invisible by design; its transition MUST be dropped silently, never guessed.
  */
 /**
@@ -208,7 +207,8 @@ async function getPreviousState({
     ...context.repo,
     workflow_id: run.workflow_id,
     branch: "main",
-    status: "completed",
+    // No status filter: GitHub serves inconsistent, sometimes weeks-old pages with it, while
+    // in-progress runs are dropped below by their missing conclusion anyway.
     per_page: RUN_LOOKBACK,
   });
   const completed = data.workflow_runs.filter(
