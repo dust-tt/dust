@@ -1,45 +1,35 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
-import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
+import { UpgradeRequestLimitModal } from "@app/components/workspace/UpgradeRequestLimitModal";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
-import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { useMembersUsage } from "@app/lib/swr/memberships";
 import { useResolveUpgradeRequest } from "@app/lib/swr/upgrade_requests";
-import { useDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
 import type { GroupType } from "@app/types/groups";
 import type { MembershipUpgradeRequestType } from "@app/types/memberships";
-import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
-import { isAdmin, isManager } from "@app/types/user";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useReducer,
-  useState,
-} from "react";
+import { ContentMessage } from "@dust-tt/sparkle";
+import { useContext, useMemo, useState } from "react";
 
 interface UpgradeRequestsProps {
   owner: WorkspaceType;
   requests: MembershipUpgradeRequestType[];
   isLoading: boolean;
+  isError?: boolean;
   groups: GroupType[];
-  seatUpgrade: {
+  editableGroupIds?: ReadonlySet<string>;
+  seatUpgrade?: {
     plans: SeatPlanResponseBody;
     isLoading: boolean;
     isError: boolean;
     isManagedByGroup: (member: MemberUsageType | null) => boolean;
     onSavingChange: (memberId: string, isSaving: boolean) => void;
   };
-  onSpendLimitSavingChange: (memberId: string, isSaving: boolean) => void;
-  onSaved: () => void;
+  onSpendLimitSavingChange?: (memberId: string, isSaving: boolean) => void;
+  onSaved?: () => void;
 }
 
-// Build a minimal member from an upgrade request to feed the reused seat / spend
-// limit modals.
+// Build a minimal member from an upgrade request for the seat editor.
 function memberFromUpgradeRequest(
   request: MembershipUpgradeRequestType
 ): MemberUsageType {
@@ -86,196 +76,111 @@ export function UpgradeRequests({
   owner,
   requests,
   isLoading,
+  isError,
   groups,
+  editableGroupIds,
   seatUpgrade,
   onSpendLimitSavingChange,
   onSaved,
 }: UpgradeRequestsProps) {
-  const { subscription } = useAuth();
   const confirm = useContext(ConfirmContext);
-  const [changeSeatMember, setChangeSeatMember] =
-    useState<MemberUsageType | null>(null);
-  const [spendLimitRecapMember, setSpendLimitRecapMember] =
-    useState<MemberUsageType | null>(null);
-  const hasMetronomeContract = isSubscriptionMetronomeBilled(subscription);
-  const { defaultUserSpendLimit, isDefaultUserSpendLimitError } =
-    useDefaultUserSpendLimit({
-      workspaceId: owner.sId,
-      disabled: spendLimitRecapMember === null || !hasMetronomeContract,
-    });
-  // Same availability rule as the workspace read endpoint and poke's
-  // PoolUsagePage: the default pool limit only exists for Metronome-billed
-  // workspaces.
-  const defaultUserSpendLimitState: DefaultUserSpendLimitState =
-    !hasMetronomeContract
-      ? { status: "unavailable" }
-      : defaultUserSpendLimit
-        ? { status: "ready", awuCredits: defaultUserSpendLimit.awuCredits }
-        : isDefaultUserSpendLimitError
-          ? { status: "error" }
-          : { status: "loading" };
-  const { doResolveUpgradeRequest } = useResolveUpgradeRequest({
-    workspaceId: owner.sId,
-  });
+  const [requestToEdit, setRequestToEdit] =
+    useState<MembershipUpgradeRequestType | null>(null);
+  const [requestToUpgrade, setRequestToUpgrade] =
+    useState<MembershipUpgradeRequestType | null>(null);
+  const changeSeatMember = useMemo(
+    () =>
+      requestToUpgrade ? memberFromUpgradeRequest(requestToUpgrade) : null,
+    [requestToUpgrade]
+  );
   const [resolvingRequestIds, setResolvingRequestIds] = useState<
     ReadonlySet<string>
   >(() => new Set());
-  const setRequestResolving = useCallback(
-    (requestId: string, isResolving: boolean) =>
-      setResolvingRequestIds((prev) => {
-        const next = new Set(prev);
-        next[isResolving ? "add" : "delete"](requestId);
-        return next;
-      }),
-    []
-  );
-  // The request to approve once its seat or spend-limit modal saves.
-  const [pendingApproveRequestId, setPendingApproveRequestId] = useState<
-    string | null
-  >(null);
-  const handleUpgradePlanRequest = useCallback(
-    (request: MembershipUpgradeRequestType) => {
-      setPendingApproveRequestId(request.sId);
-      setChangeSeatMember(memberFromUpgradeRequest(request));
-    },
-    []
-  );
-
-  const [pendingEditLimit, dispatchPendingEditLimit] = useReducer(
-    (
-      _state: MembershipUpgradeRequestType | null,
-      action:
-        | { type: "start"; request: MembershipUpgradeRequestType }
-        | { type: "settled" }
-    ) => (action.type === "start" ? action.request : null),
-    null
-  );
-  const {
-    membersUsage: pendingEditLimitMembersUsage,
-    isMembersUsageLoading: isPendingEditLimitMemberLoading,
-  } = useMembersUsage({
+  const { doResolveUpgradeRequest } = useResolveUpgradeRequest({
     workspaceId: owner.sId,
-    searchTerm: pendingEditLimit?.requester.email ?? "",
-    pageIndex: 0,
-    pageSize: 1,
-    disabled: !pendingEditLimit,
   });
-  useEffect(() => {
-    if (!pendingEditLimit || isPendingEditLimitMemberLoading) {
-      return;
-    }
-    const request = pendingEditLimit;
-    const fetchedMember = pendingEditLimitMembersUsage.find(
-      (m) => m.sId === request.requester.sId
-    );
-    setPendingApproveRequestId(request.sId);
-    setSpendLimitRecapMember(
-      fetchedMember ?? memberFromUpgradeRequest(request)
-    );
-    setRequestResolving(request.sId, false);
-    dispatchPendingEditLimit({ type: "settled" });
-  }, [
-    pendingEditLimit,
-    isPendingEditLimitMemberLoading,
-    pendingEditLimitMembersUsage,
-    setRequestResolving,
-  ]);
-  const handleEditLimitRequest = useCallback(
-    (request: MembershipUpgradeRequestType) => {
-      setRequestResolving(request.sId, true);
-      dispatchPendingEditLimit({ type: "start", request });
-    },
-    [setRequestResolving]
-  );
-  const handleApproveOnModalSaved = useCallback(() => {
-    if (!pendingApproveRequestId) {
-      return;
-    }
-    const requestId = pendingApproveRequestId;
-    const request = requests.find((r) => r.sId === requestId);
-    setRequestResolving(requestId, true);
-    void doResolveUpgradeRequest({
-      requestId,
-      requesterName: request?.requester.name ?? "Member",
-      status: "approved",
-    }).finally(() => setRequestResolving(requestId, false));
-  }, [
-    pendingApproveRequestId,
-    requests,
-    doResolveUpgradeRequest,
-    setRequestResolving,
-  ]);
-  const handleDenyRequest = useCallback(
-    async (request: MembershipUpgradeRequestType) => {
-      const confirmed = await confirm({
+
+  async function resolveRequest(
+    request: MembershipUpgradeRequestType,
+    status: "approved" | "denied"
+  ) {
+    if (
+      status === "denied" &&
+      !(await confirm({
         title: "Deny upgrade request",
         message: `Deny ${request.requester.name}'s request to increase their spend limit?`,
         validateLabel: "Deny",
         validateVariant: "warning",
+      }))
+    ) {
+      return;
+    }
+    setResolvingRequestIds((current) => new Set([...current, request.sId]));
+    try {
+      await doResolveUpgradeRequest({
+        requestId: request.sId,
+        requesterName: request.requester.name,
+        status,
       });
-      if (!confirmed) {
-        return;
-      }
-      setRequestResolving(request.sId, true);
-      try {
-        await doResolveUpgradeRequest({
-          requestId: request.sId,
-          requesterName: request.requester.name,
-          status: "denied",
-        });
-      } finally {
-        setRequestResolving(request.sId, false);
-      }
-    },
-    [confirm, doResolveUpgradeRequest, setRequestResolving]
-  );
+    } finally {
+      setResolvingRequestIds(
+        (current) => new Set([...current].filter((id) => id !== request.sId))
+      );
+    }
+  }
 
-  function handleSaved() {
-    onSaved();
-    handleApproveOnModalSaved();
+  function handleSaved(request: MembershipUpgradeRequestType) {
+    onSaved?.();
+    void resolveRequest(request, "approved");
   }
 
   return (
     <>
-      <UpgradeRequestsTable
-        requests={requests}
-        isLoading={isLoading}
-        seatPlans={seatUpgrade.plans}
-        pendingRequestIds={resolvingRequestIds}
-        onUpgradePlan={handleUpgradePlanRequest}
-        onEditLimit={handleEditLimitRequest}
-        onDeny={handleDenyRequest}
-      />
-      <ChangeSeatModal
-        isOpen={changeSeatMember !== null}
-        onClose={() => {
-          setChangeSeatMember(null);
-          setPendingApproveRequestId(null);
-        }}
-        member={changeSeatMember}
-        owner={owner}
-        seatPlans={seatUpgrade.plans}
-        isSeatPlanLoading={seatUpgrade.isLoading}
-        isSeatPlanError={seatUpgrade.isError}
-        onSavingChange={seatUpgrade.onSavingChange}
-        onSaved={handleSaved}
-        seatManagedByGroup={seatUpgrade.isManagedByGroup(changeSeatMember)}
-      />
-      <EditMemberSpendLimitModal
-        isOpen={spendLimitRecapMember !== null}
-        onClose={() => {
-          setSpendLimitRecapMember(null);
-          setPendingApproveRequestId(null);
-        }}
-        member={spendLimitRecapMember}
-        owner={owner}
-        groups={groups}
-        readOnly={!isManager(owner)}
-        canEditDefaultLimit={isAdmin(owner)}
-        defaultUserSpendLimit={defaultUserSpendLimitState}
-        onSavingChange={onSpendLimitSavingChange}
-        onSaved={handleSaved}
-      />
+      {isError ? (
+        <ContentMessage variant="warning">
+          Could not load requests. Refresh the page to try again.
+        </ContentMessage>
+      ) : (
+        <UpgradeRequestsTable
+          requests={requests}
+          isLoading={isLoading}
+          seatPlans={seatUpgrade?.plans}
+          pendingRequestIds={resolvingRequestIds}
+          onUpgradePlan={seatUpgrade ? setRequestToUpgrade : undefined}
+          onEditLimit={setRequestToEdit}
+          onDeny={(request) => void resolveRequest(request, "denied")}
+        />
+      )}
+      {seatUpgrade && (
+        <ChangeSeatModal
+          isOpen={requestToUpgrade !== null}
+          onClose={() => setRequestToUpgrade(null)}
+          member={changeSeatMember}
+          owner={owner}
+          seatPlans={seatUpgrade.plans}
+          isSeatPlanLoading={seatUpgrade.isLoading}
+          isSeatPlanError={seatUpgrade.isError}
+          onSavingChange={seatUpgrade.onSavingChange}
+          onSaved={() => {
+            if (requestToUpgrade) {
+              handleSaved(requestToUpgrade);
+            }
+          }}
+          seatManagedByGroup={seatUpgrade.isManagedByGroup(changeSeatMember)}
+        />
+      )}
+      {requestToEdit && (
+        <UpgradeRequestLimitModal
+          key={requestToEdit.sId}
+          owner={owner}
+          request={requestToEdit}
+          groups={groups}
+          editableGroupIds={editableGroupIds}
+          onClose={() => setRequestToEdit(null)}
+          onSavingChange={onSpendLimitSavingChange}
+          onSaved={() => handleSaved(requestToEdit)}
+        />
+      )}
     </>
   );
 }
