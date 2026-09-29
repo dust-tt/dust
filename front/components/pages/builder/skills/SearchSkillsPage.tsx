@@ -284,7 +284,11 @@ export function SearchSkillsPage() {
   const [skillId, setSkillId] = useHashParam("skillId");
   const [agentId, setAgentId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showHiddenSkills, setShowHiddenSkills] = useState(false);
+  const [hiddenSkillsParam, setHiddenSkillsParam] =
+    useHashParam("hiddenSkills");
+  const showHiddenSkills = hiddenSkillsParam === "true";
+  const setShowHiddenSkills = (isShown: boolean) =>
+    setHiddenSkillsParam(isShown ? "true" : undefined);
   const {
     selectedTab,
     setSelectedTab,
