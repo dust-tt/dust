@@ -234,6 +234,9 @@ export function PoolUsagePage() {
     owner,
   });
   const isSeatBased = Object.keys(seatPlans).length > 1;
+  const seatsHaveBuiltInAllowance = Object.values(seatPlans).some(
+    (info) => (info?.awuCredits ?? 0) > 0
+  );
   const canUpgradeSeat = useCallback(
     (member: MemberUsageType) =>
       isSeatBased &&
@@ -466,6 +469,7 @@ export function PoolUsagePage() {
         owner={owner}
         groups={groups}
         readOnly
+        seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
         defaultUserSpendLimit={defaultUserSpendLimit}
         onClose={() => setSpendLimitRecapMember(null)}
       />

@@ -1443,6 +1443,7 @@ export function UsagePage() {
           owner={owner}
           groups={groups}
           readOnly={!isManager(owner)}
+          seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
           canEditDefaultLimit={isWorkspaceAdmin}
           defaultUserSpendLimit={defaultUserSpendLimitState}
           onSavingChange={handleUsagePendingChange}

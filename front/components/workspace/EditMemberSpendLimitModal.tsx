@@ -42,6 +42,9 @@ interface EditMemberSpendLimitModalProps {
   groups: GroupType[];
   editableGroupIds?: ReadonlySet<string>;
   readOnly?: boolean;
+  // Whether any seat on the workspace's contract carries a built-in credit
+  // allowance, in which case limits only apply once that allowance is used.
+  seatsHaveBuiltInAllowance: boolean;
   // The workspace default applies to every member, so editing it is reserved
   // to admins even where managers may edit personal and group limits.
   canEditDefaultLimit?: boolean;
@@ -58,6 +61,7 @@ interface MemberSpendLimitFormProps {
   groups: GroupType[];
   editableGroupIds?: ReadonlySet<string>;
   readOnly: boolean;
+  seatsHaveBuiltInAllowance: boolean;
   canEditDefaultLimit: boolean;
   defaultUserSpendLimit: DefaultUserSpendLimitState;
   onClose: () => void;
@@ -71,6 +75,7 @@ function MemberSpendLimitForm({
   groups,
   editableGroupIds,
   readOnly,
+  seatsHaveBuiltInAllowance,
   canEditDefaultLimit,
   defaultUserSpendLimit,
   onClose,
@@ -253,9 +258,11 @@ function MemberSpendLimitForm({
           <div>
             <DialogTitle>Edit spend limit for {member?.name}</DialogTitle>
             <DialogDescription>
-              These limits cap what each member can spend, once their seat
-              credits are used. Personal limits override workspace and group
-              limits.
+              {`These limits cap what each member can spend${
+                seatsHaveBuiltInAllowance
+                  ? ", once their seat credits are used"
+                  : ""
+              }. Personal limits override workspace and group limits.`}
             </DialogDescription>
           </div>
         </div>
@@ -345,6 +352,7 @@ export function EditMemberSpendLimitModal({
   groups,
   editableGroupIds,
   readOnly = false,
+  seatsHaveBuiltInAllowance,
   canEditDefaultLimit = false,
   defaultUserSpendLimit,
   onSavingChange,
@@ -375,6 +383,7 @@ export function EditMemberSpendLimitModal({
           groups={groups}
           editableGroupIds={editableGroupIds}
           readOnly={readOnly}
+          seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
           canEditDefaultLimit={canEditDefaultLimit}
           defaultUserSpendLimit={defaultUserSpendLimit}
           onClose={onClose}
