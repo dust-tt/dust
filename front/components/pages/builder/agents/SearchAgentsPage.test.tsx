@@ -255,20 +255,21 @@ describe("search-backed Manage Agents", () => {
       },
       { timeout: CI_RENDER_TIMEOUT_MS }
     );
-    for (const header of [
+    expect(
+      screen
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent?.trim())
+        .filter(Boolean)
+    ).toEqual([
       "Name",
-      "Model",
       "Access",
-      "Editors",
-      "Tags",
+      "Model",
       "Usage",
       "Feedback",
+      "Editors",
+      "Tags",
       "Last edited",
-    ]) {
-      expect(
-        screen.getByRole("columnheader", { name: header })
-      ).toBeInTheDocument();
-    }
+    ]);
     expect(fetchedUrls(fetcher)).not.toContainEqual(
       expect.stringContaining(`/agent_configurations/${agent.sId}`)
     );
