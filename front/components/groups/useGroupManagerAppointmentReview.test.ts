@@ -1,4 +1,4 @@
-import { newManagersOutsideGroup } from "@app/components/groups/GroupManagerAppointmentWarning";
+import { newManagersOutsideGroup } from "@app/components/groups/useGroupManagerAppointmentReview";
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { describe, expect, it } from "vitest";
 
