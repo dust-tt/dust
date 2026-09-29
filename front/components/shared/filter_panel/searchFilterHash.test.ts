@@ -7,6 +7,10 @@ import { describe, expect, it } from "vitest";
 
 const CATEGORIES = ["editor", "skill", "tool"] as const;
 
+function encode(json: string): string {
+  return Buffer.from(json).toString("base64url");
+}
+
 describe("searchFilterHash", () => {
   it("round-trips a filter, without editor avatars", () => {
     const filter: SearchFilter<(typeof CATEGORIES)[number]> = {
@@ -52,14 +56,39 @@ describe("searchFilterHash", () => {
     expect(serializeSearchFilterHash({ skill: [] })).toBeUndefined();
   });
 
+  it("encodes non-ASCII names as URL-safe base64", () => {
+    const value = serializeSearchFilterHash({
+      skill: [
+        {
+          category: "skill",
+          id: "skill1",
+          name: "Développeur 🚀",
+          icon: null,
+          disabled: false,
+        },
+      ],
+    });
+
+    expect(value).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(parseSearchFilterHash(value, CATEGORIES).skill?.[0].name).toBe(
+      "Développeur 🚀"
+    );
+  });
+
   it.each([
     undefined,
     "",
+    "not base64!",
+  ])("parses %j as an empty filter", (value) => {
+    expect(parseSearchFilterHash(value, CATEGORIES)).toEqual({});
+  });
+
+  it.each([
     "not json",
     "[]",
     '{"skill":"skill1"}',
-  ])("parses %j as an empty filter", (value) => {
-    expect(parseSearchFilterHash(value, CATEGORIES)).toEqual({});
+  ])("parses encoded %j as an empty filter", (json) => {
+    expect(parseSearchFilterHash(encode(json), CATEGORIES)).toEqual({});
   });
 
   it("drops invalid, misplaced and unlisted options only", () => {
@@ -86,7 +115,7 @@ describe("searchFilterHash", () => {
       model: [{ category: "model", id: "gpt", name: "GPT", disabled: false }],
     });
 
-    expect(parseSearchFilterHash(value, CATEGORIES)).toEqual({
+    expect(parseSearchFilterHash(encode(value), CATEGORIES)).toEqual({
       skill: [skill],
     });
   });

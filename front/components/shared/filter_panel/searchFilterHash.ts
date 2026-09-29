@@ -63,21 +63,46 @@ const searchFilterOptionSchema: z.ZodType<SearchFilterOption> =
 
 const searchFilterHashSchema = z.record(z.array(z.unknown()));
 
+// base64url of the UTF-8 bytes: option names may hold any character, and the URL-safe alphabet
+// needs no percent-encoding in the hash.
+function toBase64Url(text: string): string {
+  const binary = Array.from(new TextEncoder().encode(text), (byte) =>
+    String.fromCharCode(byte)
+  ).join("");
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function fromBase64Url(value: string): string | null {
+  let binary: string;
+  try {
+    binary = atob(value.replace(/-/g, "+").replace(/_/g, "/"));
+  } catch {
+    return null;
+  }
+  return new TextDecoder().decode(
+    Uint8Array.from(binary, (char) => char.charCodeAt(0))
+  );
+}
+
 /**
  * @cc [owner:tdraier,label:react;security] parse-tolerates-untrusted-hash
- * The hash is user-controlled (shared links, manual edits): malformed JSON MUST yield an empty
- * filter, and options that fail validation, belong to a category outside `categories` or are
- * listed under another category MUST be dropped individually rather than discarding the other
+ * The hash is user-controlled (shared links, manual edits): malformed base64 or JSON MUST yield
+ * an empty filter, and options that fail validation, belong to a category outside `categories` or
+ * are listed under another category MUST be dropped individually rather than discarding the other
  * selections.
  */
 export function parseSearchFilterHash<Category extends SearchFilterCategory>(
   value: string | undefined,
   categories: readonly Category[]
 ): SearchFilter<Category> {
-  if (!value) {
+  const text = value ? fromBase64Url(value) : null;
+  if (!text) {
     return {};
   }
-  const json = safeParseJSON(value);
+  const json = safeParseJSON(text);
   if (json.isErr()) {
     return {};
   }
@@ -114,7 +139,7 @@ export function serializeSearchFilterHash<
       ),
     ]);
   return entries.length > 0
-    ? JSON.stringify(Object.fromEntries(entries))
+    ? toBase64Url(JSON.stringify(Object.fromEntries(entries)))
     : undefined;
 }
 
