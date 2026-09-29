@@ -74,10 +74,9 @@ import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+import escapeRegExp from "lodash/escapeRegExp";
 import maxBy from "lodash/maxBy";
 import type z from "zod";
-
-const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 function canRunChildAgent(agent: LightAgentConfigurationType): boolean {
   switch (agent.status) {
@@ -512,7 +511,7 @@ export const runAgent = async (
 
     const newRefs: Record<string, CitationType> = {};
     Object.keys(refsFromAgent).forEach((refKeyFromAgent, index) => {
-      const escapedKey = escapeRegex(refKeyFromAgent);
+      const escapedKey = escapeRegExp(refKeyFromAgent);
       const newRef = refs[index];
       if (newRef) {
         // Replace citation references only within :cite[...] blocks
