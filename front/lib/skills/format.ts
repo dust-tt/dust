@@ -17,12 +17,15 @@ export const UNAVAILABLE_SKILL_LABEL = "Unavailable skill";
 // Letters, digits, underscores and hyphens only, e.g. "meeting-notes".
 export const SKILL_REF_REGEX = /^[\w-]+$/;
 
-export const SKILL_TAG_REGEX = /<skill\s+([^>]*?)\s*(?:\/>|><\/skill>)/g;
-const SKILL_TAG_REGEX_BEGINNING = /^<skill\s+([^>]*?)\s*(?:\/>|><\/skill>)/;
+// Note: no \s* before the closing alternation — [^>]*? already matches
+// whitespace, and an extra \s* creates ambiguity that causes O(n²) backtracking
+// on adversarial input (many spaces, no closing />).
+export const SKILL_TAG_REGEX = /<skill\s+([^>]*?)(?:\/>|><\/skill>)/g;
+const SKILL_TAG_REGEX_BEGINNING = /^<skill\s+([^>]*?)(?:\/>|><\/skill>)/;
 export const SKILL_REFERENCE_TAG_REGEX =
-  /<(skill|unavailable_skill)\s+([^>]*?)\s*(?:\/>|><\/\1>)/g;
+  /<(skill|unavailable_skill)\s+([^>]*?)(?:\/>|><\/\1>)/g;
 export const SKILL_REFERENCE_TAG_REGEX_BEGINNING =
-  /^<(skill|unavailable_skill)\s+([^>]*?)\s*(?:\/>|><\/\1>)/;
+  /^<(skill|unavailable_skill)\s+([^>]*?)(?:\/>|><\/\1>)/;
 
 const SKILL_ELEMENT_REGEX = /<skill\b([^>]*)>[\s\S]*?<\/skill>/g;
 

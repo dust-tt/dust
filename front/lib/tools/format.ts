@@ -9,8 +9,11 @@ export type ToolReference = {
 
 export const TOOL_TAG_NAME = "tool";
 
-export const TOOL_TAG_REGEX = /<tool\s+([^>]*?)\s*\/>/g;
-export const TOOL_TAG_REGEX_BEGINNING = /^<tool\s+([^>]*?)\s*\/>/;
+// Note: no \s* before \/>  — [^>]*? already matches whitespace, and an
+// extra \s* creates ambiguity that causes O(n²) backtracking on adversarial
+// input (many spaces, no closing />).
+export const TOOL_TAG_REGEX = /<tool\s+([^>]*?)\/>/g;
+export const TOOL_TAG_REGEX_BEGINNING = /^<tool\s+([^>]*?)\/>/;
 
 const TOOL_ELEMENT_REGEX = /<tool\b([^>]*)>[\s\S]*?<\/tool>/g;
 
