@@ -62,7 +62,9 @@ async function syncMCPStaticIpProxyMetadata(
   }
 
   const metadata = metadataRes.value.connection.metadata;
-  const desired = await shouldUseStaticIpProxy(auth, metadata.token_endpoint);
+  const desired = await shouldUseStaticIpProxy(auth, metadata.token_endpoint, {
+    relatedMcpServerUrl: metadata.resource,
+  });
   const stored = metadata.use_static_ip_proxy === "true";
 
   if (stored === desired) {

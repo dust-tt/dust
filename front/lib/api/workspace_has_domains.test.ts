@@ -42,6 +42,39 @@ describe("shouldUseStaticIpProxy", () => {
       shouldUseStaticIpProxy(authenticator, "https://127.0.0.1/token")
     ).resolves.toBe(false);
   });
+
+  it("returns true for hardcoded official remote MCP URLs without verified domains", async () => {
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
+
+    await expect(
+      shouldUseStaticIpProxy(
+        authenticator,
+        "https://bigquery.googleapis.com/mcp"
+      )
+    ).resolves.toBe(true);
+
+    await expect(
+      shouldUseStaticIpProxy(
+        authenticator,
+        "https://oauth2.googleapis.com/token",
+        {
+          relatedMcpServerUrl: "https://bigquery.googleapis.com/mcp",
+        }
+      )
+    ).resolves.toBe(true);
+
+    await expect(
+      shouldUseStaticIpProxy(
+        authenticator,
+        "https://oauth2.googleapis.com/token",
+        {
+          relatedMcpServerUrl: "https://mcp.unrelated.example.com/mcp",
+        }
+      )
+    ).resolves.toBe(false);
+  });
 });
 
 describe("isHostUnderVerifiedDomain", () => {

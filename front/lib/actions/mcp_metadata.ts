@@ -41,6 +41,7 @@ import type {
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import { isInClusterMCPUrlAllowed } from "@app/lib/api/mcp/in_cluster";
+import { isStaticIpForcedRemoteMcpUrl } from "@app/lib/api/mcp/static_ip_forced_urls";
 import { invalidateOAuthConnectionAccessTokenCache } from "@app/lib/api/oauth_access_token";
 import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
@@ -190,9 +191,11 @@ async function createMCPProxyConfig(
 
   // Check if workspace should use static IP:
   // 1. Legacy hardcoded check for specific workspaces
-  // 2. Domain-based check: host is under any verified domain for this workspace
+  // 2. Hardcoded official remote MCP URLs (e.g. Google BigQuery MCP)
+  // 3. Domain-based check: host is under any verified domain for this workspace
   const useStaticIP =
     isWorkspaceUsingStaticIP(workspace) ||
+    isStaticIpForcedRemoteMcpUrl(url) ||
     (await isHostUnderVerifiedDomain(auth, host));
 
   if (useStaticIP) {
