@@ -33,10 +33,33 @@ fn is_unsafe_ipv4(ip: Ipv4Addr) -> bool {
         || ip.is_private()
         || ip.is_link_local()
         || ip.is_unspecified()
+        || ip.is_broadcast()
         || is_shared_ipv4(ip)
+        || is_documentation_ipv4(ip)
+        || is_benchmarking_ipv4(ip)
+        || is_class_e_ipv4(ip)
         // Explicitly block the well-known cloud metadata service address. This is already covered
         // by the link-local check above, but keeping it visible documents the SSRF risk.
         || ip == Ipv4Addr::new(169, 254, 169, 254)
+}
+
+// RFC 5737 documentation ranges — never globally routable.
+fn is_documentation_ipv4(ip: Ipv4Addr) -> bool {
+    let [a, b, c, ..] = ip.octets();
+    (a == 192 && b == 0 && c == 2)       // 192.0.2.0/24   TEST-NET-1
+        || (a == 198 && b == 51 && c == 100) // 198.51.100.0/24 TEST-NET-2
+        || (a == 203 && b == 0 && c == 113) // 203.0.113.0/24  TEST-NET-3
+}
+
+// RFC 2544 benchmarking range — not for production traffic.
+fn is_benchmarking_ipv4(ip: Ipv4Addr) -> bool {
+    let [a, b, ..] = ip.octets();
+    a == 198 && (b == 18 || b == 19) // 198.18.0.0/15
+}
+
+// Class E (240.0.0.0/4) — reserved by IANA, never globally routable.
+fn is_class_e_ipv4(ip: Ipv4Addr) -> bool {
+    ip.octets()[0] >= 240
 }
 
 fn is_unsafe_ipv6(ip: Ipv6Addr) -> bool {
@@ -67,6 +90,11 @@ fn extract_embedded_ipv4(ip: Ipv6Addr) -> Option<Ipv4Addr> {
         [0x20, 0x02, a, b, c, d, ..] => Some(Ipv4Addr::new(a, b, c, d)),
         // NAT64's well-known prefix (64:ff9b::/96) embeds the IPv4 destination at the end.
         [0x00, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0, a, b, c, d] => {
+            Some(Ipv4Addr::new(a, b, c, d))
+        }
+        // NAT64's local well-known prefix (64:ff9b:1::/48, RFC 8215): operator assigns /96
+        // subnets within this range; IPv4 is always in the last 32 bits.
+        [0x00, 0x64, 0xff, 0x9b, 0x00, 0x01, _, _, _, _, _, _, a, b, c, d] => {
             Some(Ipv4Addr::new(a, b, c, d))
         }
         // Teredo (2001:0000::/32) stores the client IPv4 destination bitwise-inverted at the end.
@@ -168,5 +196,46 @@ mod tests {
                 .expect("public address should be valid IPv4");
             assert!(!is_unsafe_ip(IpAddr::V4(ip)), "{value}");
         }
+    }
+
+    #[test]
+    fn blocks_reserved_ipv4_ranges() {
+        for value in [
+            "192.0.2.1",       // TEST-NET-1 (RFC 5737)
+            "198.51.100.1",    // TEST-NET-2 (RFC 5737)
+            "203.0.113.1",     // TEST-NET-3 (RFC 5737)
+            "198.18.0.1",      // benchmarking (RFC 2544)
+            "198.19.255.255",  // benchmarking (RFC 2544)
+            "240.0.0.1",       // Class E
+            "255.255.255.255", // broadcast
+        ] {
+            let ip = value
+                .parse::<Ipv4Addr>()
+                .expect("reserved address should be valid IPv4");
+            assert!(is_unsafe_ip(IpAddr::V4(ip)), "{value}");
+        }
+
+        // Adjacent public addresses must not be blocked.
+        for value in ["192.0.3.1", "198.20.0.1", "239.255.255.255"] {
+            let ip = value
+                .parse::<Ipv4Addr>()
+                .expect("public address should be valid IPv4");
+            assert!(!is_unsafe_ip(IpAddr::V4(ip)), "{value}");
+        }
+    }
+
+    #[test]
+    fn blocks_nat64_local_prefix() {
+        // 64:ff9b:1::/48 with a private IPv4 at the end (10.0.0.1).
+        let ip = "64:ff9b:1::a00:1"
+            .parse::<Ipv6Addr>()
+            .expect("NAT64 local address should be valid IPv6");
+        assert!(is_unsafe_ip(IpAddr::V6(ip)), "NAT64 local + private IPv4");
+
+        // 64:ff9b:1::/48 with a public IPv4 at the end (93.184.216.34).
+        let ip = "64:ff9b:1::5db8:d822"
+            .parse::<Ipv6Addr>()
+            .expect("NAT64 local address should be valid IPv6");
+        assert!(!is_unsafe_ip(IpAddr::V6(ip)), "NAT64 local + public IPv4");
     }
 }
