@@ -129,6 +129,13 @@ export default function ConnectorSyncingChip({
             trigger={<Chip color="warning">Synchronization failed</Chip>}
           />
         );
+      case "workspace_relocated":
+        return (
+          <Tooltip
+            label="This workspace has been moved to another region. Contact support@dust.tt if you still see this connection."
+            trigger={<Chip color="warning">Synchronization failed</Chip>}
+          />
+        );
       default:
         assertNeverAndIgnore(connector.errorType);
     }
