@@ -17,6 +17,7 @@ import type {
 } from "@app/types/data_source_view";
 import type { FileUseCase } from "@app/types/files";
 import type { PlanType } from "@app/types/plan";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import {
   DocumentDeletionKey,
   DocumentViewRawContentKey,
@@ -306,7 +307,10 @@ const makeViewSourceUrlContentAction = (
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
       if (contentNode.sourceUrl) {
-        window.open(contentNode.sourceUrl, "_blank");
+        const v = validateUrl(contentNode.sourceUrl);
+        if (v.valid) {
+          window.open(v.standardized, "_blank", "noopener,noreferrer");
+        }
       }
     },
   };

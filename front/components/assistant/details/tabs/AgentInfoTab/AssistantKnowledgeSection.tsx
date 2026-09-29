@@ -30,6 +30,7 @@ import type {
   DataSourceViewType,
   TagsFilter,
 } from "@app/types/data_source_view";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import { DocumentViewRawContentKey } from "@app/types/sheets";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -550,7 +551,10 @@ function DataSourceViewSelectedNodes({
             icon={LinkExternal01}
             onClick={() => {
               if (node.sourceUrl) {
-                window.open(node.sourceUrl, "_blank");
+                const v = validateUrl(node.sourceUrl);
+                if (v.valid) {
+                  window.open(v.standardized, "_blank", "noopener,noreferrer");
+                }
               }
             }}
             className={classNames(

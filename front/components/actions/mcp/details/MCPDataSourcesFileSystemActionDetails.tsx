@@ -9,6 +9,7 @@ import {
   getVisualForContentNodeType,
 } from "@app/lib/content_nodes";
 import { formatDataSourceDisplayName } from "@app/types/core/utils";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   Breadcrumbs,
@@ -49,7 +50,18 @@ export function DataSourceNodeContentDetails({
           {metadata && (
             <Citation
               onClick={
-                sourceUrl ? () => window.open(sourceUrl, "_blank") : undefined
+                sourceUrl
+                  ? () => {
+                      const v = validateUrl(sourceUrl);
+                      if (v.valid) {
+                        window.open(
+                          v.standardized,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                      }
+                    }
+                  : undefined
               }
               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               tooltip={`${metadata.parentTitle || metadata.path}${metadata.lastUpdatedAt ? ` • ${metadata.lastUpdatedAt}` : ""}`}
