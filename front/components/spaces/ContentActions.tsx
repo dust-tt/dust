@@ -309,7 +309,7 @@ const makeViewSourceUrlContentAction = (
       if (contentNode.sourceUrl) {
         const { valid } = validateUrl(contentNode.sourceUrl);
         if (valid) {
-          window.open(contentNode.sourceUrl, "_blank");
+          window.open(contentNode.sourceUrl, "_blank", "noopener,noreferrer");
         }
       }
     },
