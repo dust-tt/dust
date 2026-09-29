@@ -14,7 +14,10 @@ import { useSkillSuggestionsPreview } from "@app/hooks/useSkillSuggestions";
 import { useSuggestionBatch } from "@app/hooks/useSuggestionBatches";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { useUser } from "@app/lib/swr/user";
-import { isCreateSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
+import {
+  isCreateSkillSuggestion,
+  isDeleteSkillSuggestion,
+} from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
@@ -36,7 +39,10 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
   const previewSuggestions = useMemo(
     () =>
       (batch?.skillSuggestions ?? []).filter(
-        (s) => s.skillConfigurationId === skillId && s.state === "pending"
+        (s) =>
+          s.skillConfigurationId === skillId &&
+          s.state === "pending" &&
+          !isDeleteSkillSuggestion(s)
       ),
     [batch, skillId]
   );

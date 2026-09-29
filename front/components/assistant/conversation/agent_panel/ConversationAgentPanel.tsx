@@ -9,7 +9,10 @@ import { SuggestionPreviewHeader } from "@app/components/assistant/details/Sugge
 import { isAgentActionCardSuggestion } from "@app/components/markdown/suggestion/suggestion_directives";
 import { useSuggestionBatch } from "@app/hooks/useSuggestionBatches";
 import { useUser } from "@app/lib/swr/user";
-import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";
+import {
+  isCreateAgentSuggestion,
+  isDeleteAgentSuggestion,
+} from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
@@ -34,7 +37,8 @@ export function ConversationAgentPanel({ owner }: ConversationAgentPanelProps) {
         (s) =>
           s.agentId === agentId &&
           s.state === "pending" &&
-          isAgentActionCardSuggestion(s)
+          isAgentActionCardSuggestion(s) &&
+          !isDeleteAgentSuggestion(s)
       ),
     [batch, agentId]
   );
