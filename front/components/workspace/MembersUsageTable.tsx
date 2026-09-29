@@ -94,6 +94,7 @@ const EMPTY_MODEL_TIER_DEFINITION_BY_NAME = new Map<
 >();
 const NOOP_ON_MEMBER = (_member: MemberUsageType) => {};
 const ALWAYS_CAN_UPGRADE_SEAT = (_member: MemberUsageType) => true;
+const ALWAYS_CAN_EDIT_SPEND_LIMIT = (_member: MemberUsageType) => true;
 
 const DEFAULT_PREMIUM_MESSAGE_WINDOW_DAYS = 7;
 
@@ -1221,7 +1222,7 @@ export function MembersUsageTable({
   seatChangePendingMemberIds,
   isSeatBased,
   showSpendLimit,
-  canEditSpendLimit = () => true,
+  canEditSpendLimit = ALWAYS_CAN_EDIT_SPEND_LIMIT,
   readOnly = false,
   showSeatAndCredits = true,
   showSeatActions = true,
