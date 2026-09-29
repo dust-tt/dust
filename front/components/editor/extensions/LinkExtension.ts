@@ -1,3 +1,4 @@
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import Link from "@tiptap/extension-link";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 
@@ -55,8 +56,11 @@ export const LinkExtension = Link.extend({
               if (event.ctrlKey || event.metaKey) {
                 const href = link.getAttribute("href");
                 if (href) {
-                  const newWindow = window.open(href, "_blank");
-                  newWindow?.focus();
+                  const validated = validateUrl(href);
+                  if (validated.valid) {
+                    const newWindow = window.open(validated.standardized, "_blank", "noopener,noreferrer");
+                    newWindow?.focus();
+                  }
                 }
                 return true;
               }
