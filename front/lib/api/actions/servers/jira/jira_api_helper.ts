@@ -989,7 +989,7 @@ export async function deleteIssueLink(
 ): Promise<Result<void, JiraErrorResult>> {
   const result = await jiraApiCall(
     {
-      endpoint: `/rest/api/3/issueLink/${linkId}`,
+      endpoint: `/rest/api/3/issueLink/${encodeURIComponent(linkId)}`,
       accessToken,
     },
     z.void(),
