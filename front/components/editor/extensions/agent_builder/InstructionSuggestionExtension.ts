@@ -5,10 +5,11 @@ import {
   replaceBlock,
 } from "@app/lib/editor/instruction_blocks";
 import { KNOWLEDGE_TAG } from "@app/lib/editor/knowledge_node_constants";
-import { SKILL_TAG_NAME, UNAVAILABLE_SKILL_TAG_NAME } from "@app/lib/skills/format";
+import {
+  SKILL_TAG_NAME,
+  UNAVAILABLE_SKILL_TAG_NAME,
+} from "@app/lib/skills/format";
 import { TOOL_TAG_NAME } from "@app/lib/tools/format";
-import type { Config } from "dompurify";
-import DOMPurify from "dompurify";
 import { Extension } from "@tiptap/core";
 import type { Node as PMNode, Schema, Slice } from "@tiptap/pm/model";
 import {
@@ -20,10 +21,17 @@ import type { EditorState } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Transform } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import type { Config } from "dompurify";
+import DOMPurify from "dompurify";
 import { ChangeSet } from "prosemirror-changeset";
 
 const INSTRUCTION_PURIFY_CONFIG: Config = {
-  ADD_TAGS: [KNOWLEDGE_TAG, SKILL_TAG_NAME, TOOL_TAG_NAME, UNAVAILABLE_SKILL_TAG_NAME],
+  ADD_TAGS: [
+    KNOWLEDGE_TAG,
+    SKILL_TAG_NAME,
+    TOOL_TAG_NAME,
+    UNAVAILABLE_SKILL_TAG_NAME,
+  ],
   ALLOW_DATA_ATTR: true,
 };
 
