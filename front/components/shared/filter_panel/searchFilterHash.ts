@@ -1,70 +1,42 @@
 import type {
   SearchFilter,
   SearchFilterCategory,
+  SearchFilterFacets,
   SearchFilterOption,
+  SearchFilterSelection,
+} from "@app/components/shared/filter_panel/searchFilter";
+import {
+  getSearchFilterOptionKeys,
+  resolveSearchFilterSelection,
+  toSearchFilterSelection,
 } from "@app/components/shared/filter_panel/searchFilter";
 import { useHashParam } from "@app/hooks/useHashParams";
-import type { MCPServerType } from "@app/lib/api/mcp";
-import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
-import {
-  isCustomResourceIconType,
-  isInternalAllowedIcon,
-} from "@app/types/resources_icon_names";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { useCallback, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { z } from "zod";
 
-const SEARCH_FILTER_HASH_PARAM = "filters";
+const SEARCH_PAGE_HASH_PARAM = "search";
 
-const optionFields = {
-  id: z.string().min(1),
-  name: z.string(),
-  disabled: z.boolean(),
-};
+// The search endpoints accept at most 100 IDs per filter.
+const MAX_SELECTED_IDS = 100;
 
-const mcpServerIconSchema = z.custom<MCPServerType["icon"]>(
-  (icon) =>
-    typeof icon === "string" &&
-    (isCustomResourceIconType(icon) || isInternalAllowedIcon(icon))
-);
+const searchPageHashSchema = z.object({
+  tab: z.unknown().optional(),
+  filter: z.record(z.unknown()).optional(),
+});
 
-const searchFilterOptionSchema: z.ZodType<SearchFilterOption> =
-  z.discriminatedUnion("category", [
-    z.object({
-      ...optionFields,
-      category: z.literal("access"),
-      id: z.enum(["visible", "hidden"]),
-    }),
-    z.object({
-      ...optionFields,
-      category: z.literal("availability"),
-      id: z.enum(SKILL_AVAILABILITIES),
-    }),
-    z.object({
-      ...optionFields,
-      category: z.literal("editor"),
-      image: z.string().nullable(),
-    }),
-    z.object({ ...optionFields, category: z.literal("model") }),
-    z.object({
-      ...optionFields,
-      category: z.literal("skill"),
-      icon: z.string().nullable(),
-    }),
-    z.object({ ...optionFields, category: z.literal("space") }),
-    z.object({ ...optionFields, category: z.literal("tag") }),
-    z.object({
-      ...optionFields,
-      category: z.literal("tool"),
-      icon: mcpServerIconSchema,
-      mcpServerViewIds: z.array(z.string().min(1)),
-    }),
-  ]);
+const selectedIdsSchema = z.array(z.unknown());
 
-const searchFilterHashSchema = z.record(z.array(z.unknown()));
+export interface SearchPageHashState<
+  Category extends SearchFilterCategory,
+  TabId extends string,
+> {
+  tabId: TabId;
+  selection: SearchFilterSelection<Category>;
+}
 
-// base64url of the UTF-8 bytes: option names may hold any character, and the URL-safe alphabet
-// needs no percent-encoding in the hash.
+// base64url of the UTF-8 bytes: the URL-safe alphabet needs no percent-encoding in the hash.
 function toBase64Url(text: string): string {
   const binary = Array.from(new TextEncoder().encode(text), (byte) =>
     String.fromCharCode(byte)
@@ -90,72 +62,140 @@ function fromBase64Url(value: string): string | null {
 /**
  * @cc [owner:tdraier,label:react;security] parse-tolerates-untrusted-hash
  * The hash is user-controlled (shared links, manual edits): malformed base64 or JSON MUST yield
- * an empty filter, and options that fail validation, belong to a category outside `categories` or
- * are listed under another category MUST be dropped individually rather than discarding the other
- * selections.
+ * `defaultTabId` and no selection, an unknown tab MUST yield `defaultTabId`, and invalid IDs or
+ * categories outside `categories` MUST be dropped individually without discarding the other
+ * selections. Each category MUST keep at most 100 distinct IDs.
  */
-export function parseSearchFilterHash<Category extends SearchFilterCategory>(
+export function parseSearchPageHash<
+  Category extends SearchFilterCategory,
+  TabId extends string,
+>(
   value: string | undefined,
-  categories: readonly Category[]
-): SearchFilter<Category> {
+  categories: readonly Category[],
+  tabIds: readonly TabId[],
+  defaultTabId: TabId
+): SearchPageHashState<Category, TabId> {
   const text = value ? fromBase64Url(value) : null;
-  if (!text) {
-    return {};
-  }
-  const json = safeParseJSON(text);
-  if (json.isErr()) {
-    return {};
-  }
-  const parsed = searchFilterHashSchema.safeParse(json.value);
-  if (!parsed.success) {
-    return {};
+  const json = text ? safeParseJSON(text) : null;
+  const parsed = json?.isOk()
+    ? searchPageHashSchema.safeParse(json.value)
+    : null;
+  if (!parsed?.success) {
+    return { tabId: defaultTabId, selection: {} };
   }
 
-  const filter: SearchFilter<Category> = {};
+  const selection: SearchFilterSelection<Category> = {};
   for (const category of categories) {
-    const options = (parsed.data[category] ?? []).flatMap((option) => {
-      const result = searchFilterOptionSchema.safeParse(option);
-      return result.success && result.data.category === category
-        ? [result.data]
-        : [];
-    });
-    if (options.length > 0) {
-      filter[category] = options;
+    const values = selectedIdsSchema.safeParse(parsed.data.filter?.[category]);
+    const ids = [
+      ...new Set(
+        (values.success ? values.data : []).filter(
+          (id): id is string => typeof id === "string" && id.length > 0
+        )
+      ),
+    ].slice(0, MAX_SELECTED_IDS);
+    if (ids.length > 0) {
+      selection[category] = ids;
     }
   }
-  return filter;
+  return {
+    tabId: tabIds.find((tabId) => tabId === parsed.data.tab) ?? defaultTabId,
+    selection,
+  };
 }
 
-export function serializeSearchFilterHash<
+export function serializeSearchPageHash<
   Category extends SearchFilterCategory,
->(filter: SearchFilter<Category>): string | undefined {
-  const entries = Object.entries<SearchFilterOption[] | undefined>(filter)
-    .filter(([, options]) => (options?.length ?? 0) > 0)
-    .map(([category, options]) => [
-      category,
-      // Selected options are displayed by name only, so avatar URLs need not travel in links.
-      options?.map((option) =>
-        option.category === "editor" ? { ...option, image: null } : option
-      ),
-    ]);
-  return entries.length > 0
-    ? toBase64Url(JSON.stringify(Object.fromEntries(entries)))
-    : undefined;
+  TabId extends string,
+>(
+  { tabId, selection }: SearchPageHashState<Category, TabId>,
+  defaultTabId: TabId
+): string | undefined {
+  const hasSelection = Object.values<string[] | undefined>(selection).some(
+    (ids) => (ids?.length ?? 0) > 0
+  );
+  if (tabId === defaultTabId && !hasSelection) {
+    return undefined;
+  }
+  return toBase64Url(
+    JSON.stringify({
+      ...(tabId !== defaultTabId ? { tab: tabId } : {}),
+      ...(hasSelection ? { filter: selection } : {}),
+    })
+  );
 }
 
-// `categories` must be referentially stable (a module-level constant).
-export function useSearchFilterHashParam<Category extends SearchFilterCategory>(
-  categories: readonly Category[]
-): [SearchFilter<Category>, (filter: SearchFilter<Category>) => void] {
-  const [value, setValue] = useHashParam(SEARCH_FILTER_HASH_PARAM);
-  const filter = useMemo(
-    () => parseSearchFilterHash(value, categories),
-    [value, categories]
+// Persists the selected tab and the selected filter IDs in the URL hash. Option names come from
+// the options applied in this session; the caller resolves the others (restored from a link)
+// through `resolveFilter`, from the facets of `unresolvedCategories`.
+// `categories` and `tabIds` must be referentially stable (module-level constants).
+export function useSearchPageHashState<
+  Category extends SearchFilterCategory,
+  TabId extends string,
+>({
+  categories,
+  tabIds,
+  defaultTabId,
+}: {
+  categories: readonly Category[];
+  tabIds: readonly TabId[];
+  defaultTabId: TabId;
+}) {
+  const { user } = useAuth();
+  const [value, setValue] = useHashParam(SEARCH_PAGE_HASH_PARAM);
+  const { tabId, selection } = useMemo(
+    () => parseSearchPageHash(value, categories, tabIds, defaultTabId),
+    [value, categories, tabIds, defaultTabId]
   );
-  const setFilter = useCallback(
-    (nextFilter: SearchFilter<Category>) =>
-      setValue(serializeSearchFilterHash(nextFilter)),
-    [setValue]
-  );
-  return [filter, setFilter];
+  const [knownOptions, setKnownOptions] = useState<
+    ReadonlyMap<string, SearchFilterOption>
+  >(() => new Map());
+  const resolve = (facets: SearchFilterFacets | undefined) =>
+    resolveSearchFilterSelection({
+      selection,
+      categories,
+      knownOptions,
+      facets,
+      currentUserId: user.sId,
+    });
+  const { filter, unresolvedCategories, unresolvedKeys } = resolve(undefined);
+
+  const setSelectedTab = (nextTabId: TabId) =>
+    setValue(
+      serializeSearchPageHash({ tabId: nextTabId, selection }, defaultTabId)
+    );
+
+  const setFilter = (nextFilter: SearchFilter<Category>) => {
+    // Unresolved placeholders are not remembered, so that their names are still looked up.
+    setKnownOptions((previous) => {
+      const next = new Map(previous);
+      const options = Object.values<SearchFilterOption[] | undefined>(
+        nextFilter
+      ).flatMap((categoryOptions) => categoryOptions ?? []);
+      for (const option of options) {
+        for (const key of getSearchFilterOptionKeys(option)) {
+          if (!unresolvedKeys.has(key)) {
+            next.set(key, option);
+          }
+        }
+      }
+      return next;
+    });
+    setValue(
+      serializeSearchPageHash(
+        { tabId, selection: toSearchFilterSelection(nextFilter, categories) },
+        defaultTabId
+      )
+    );
+  };
+
+  return {
+    selectedTab: tabId,
+    setSelectedTab,
+    filter,
+    setFilter,
+    unresolvedCategories,
+    resolveFilter: (facets: SearchFilterFacets | undefined) =>
+      facets ? resolve(facets).filter : filter,
+  };
 }

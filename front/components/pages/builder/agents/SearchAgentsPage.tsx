@@ -5,6 +5,7 @@ import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterP
 import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
 import {
   AGENT_FILTER_CATEGORIES,
+  AGENT_FILTER_CATEGORY_FACET,
   toAgentSearchFilters,
 } from "@app/components/assistant/manager/agentFilter";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
@@ -13,7 +14,7 @@ import {
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
 import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
-import { useSearchFilterHashParam } from "@app/components/shared/filter_panel/searchFilterHash";
+import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import {
   useSetContentWidth,
   useSetPageTitle,
@@ -61,6 +62,8 @@ const SEARCH_TABS = [
 ] satisfies { id: string; label: string; filters: AgentSearchFilters }[];
 
 type SearchTabId = (typeof SEARCH_TABS)[number]["id"];
+
+const SEARCH_TAB_IDS = SEARCH_TABS.map(({ id }) => id);
 
 interface AgentsListProps {
   searchTerm: string;
@@ -247,13 +250,23 @@ export function SearchAgentsPage() {
   const { hasPermission } = useWorkspacePermissions();
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
   const [hiddenAgentsParam, setHiddenAgentsParam] =
     useHashParam("hiddenAgents");
   const showHiddenAgents = hiddenAgentsParam === "true";
   const setShowHiddenAgents = (isShown: boolean) =>
     setHiddenAgentsParam(isShown ? "true" : undefined);
-  const [filter, setFilter] = useSearchFilterHashParam(AGENT_FILTER_CATEGORIES);
+  const {
+    selectedTab,
+    setSelectedTab,
+    filter: pendingFilter,
+    setFilter,
+    unresolvedCategories,
+    resolveFilter,
+  } = useSearchPageHashState({
+    categories: AGENT_FILTER_CATEGORIES,
+    tabIds: SEARCH_TAB_IDS,
+    defaultTabId: "all",
+  });
   // Default agents all share the global scope, so Access does not apply to them.
   const filterCategories = AGENT_FILTER_CATEGORIES.filter(
     (category) => selectedTab !== "default" || category !== "access"
@@ -272,6 +285,19 @@ export function SearchAgentsPage() {
     isAdmin && ((tabId === "all" && showHiddenAgents) || tabId === "archived")
       ? "unrestricted"
       : "strict";
+  // Names of the selections restored from a link come from the agents they match.
+  const { facets: selectionFacets } = useSearchAgents({
+    owner,
+    searchTerm: "",
+    limit: 0,
+    filters: toAgentSearchFilters(pendingFilter, activeTab.filters),
+    permissionFiltering: getPermissionFiltering(activeTab.id),
+    facets: unresolvedCategories.flatMap(
+      (category) => AGENT_FILTER_CATEGORY_FACET[category] ?? []
+    ),
+    disabled: unresolvedCategories.length === 0,
+  });
+  const filter = resolveFilter(selectionFacets);
 
   return (
     <>

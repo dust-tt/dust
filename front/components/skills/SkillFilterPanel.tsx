@@ -9,6 +9,7 @@ import type {
 import {
   SKILL_FILTER_CATEGORIES,
   SKILL_FILTER_CATEGORY_FACET,
+  toSkillSearchFilterFacets,
   toSkillSearchFilters,
 } from "@app/components/skills/skillFilter";
 import { useSearchSkills } from "@app/lib/swr/skill_configurations";
@@ -92,7 +93,7 @@ export function SkillFilterPanel({
       }}
       onOpen={() => setDraftShowHiddenSkills(hiddenSkills?.isShown ?? false)}
       onClearAll={() => setDraftShowHiddenSkills(false)}
-      facets={facets && { ...facets, skills: facets.childSkills }}
+      facets={toSkillSearchFilterFacets(facets)}
       isLoading={isSkillsLoading}
       isError={isSkillsError}
       idPrefix="skill-filter"

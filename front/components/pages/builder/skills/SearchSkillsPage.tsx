@@ -5,7 +5,7 @@ import {
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
 import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
-import { useSearchFilterHashParam } from "@app/components/shared/filter_panel/searchFilterHash";
+import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
@@ -18,6 +18,8 @@ import {
 } from "@app/components/skills/SkillsBatchEdit";
 import {
   SKILL_FILTER_CATEGORIES,
+  SKILL_FILTER_CATEGORY_FACET,
+  toSkillSearchFilterFacets,
   toSkillSearchFilters,
 } from "@app/components/skills/skillFilter";
 import {
@@ -66,7 +68,7 @@ const SEARCH_TABS = [
   { id: "archived", label: "Archived", filters: { status: ["archived"] } },
 ] satisfies { id: string; label: string; filters: SkillSearchFilters }[];
 
-type SearchTabId = (typeof SEARCH_TABS)[number]["id"];
+const SEARCH_TAB_IDS = SEARCH_TABS.map(({ id }) => id);
 
 // Batch edits are reserved to the skill's editors and to workspace admins, as for agents;
 // Dust-provided skills are never administrable.
@@ -282,15 +284,38 @@ export function SearchSkillsPage() {
   const [skillId, setSkillId] = useHashParam("skillId");
   const [agentId, setAgentId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
   const [showHiddenSkills, setShowHiddenSkills] = useState(false);
-  const [filter, setFilter] = useSearchFilterHashParam(SKILL_FILTER_CATEGORIES);
+  const {
+    selectedTab,
+    setSelectedTab,
+    filter: pendingFilter,
+    setFilter,
+    unresolvedCategories,
+    resolveFilter,
+  } = useSearchPageHashState({
+    categories: SKILL_FILTER_CATEGORIES,
+    tabIds: SEARCH_TAB_IDS,
+    defaultTabId: "all",
+  });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const searchFilters = toSkillSearchFilters(filter);
   const activeTab =
     SEARCH_TABS.find((tab) => tab.id === selectedTab) ?? SEARCH_TABS[0];
   const permissionFiltering =
     isAdmin && showHiddenSkills ? "redact_unreadable" : undefined;
+  // Names of the selections restored from a link come from the skills they match.
+  const { facets: selectionFacets } = useSearchSkills({
+    owner,
+    searchTerm: "",
+    limit: 0,
+    filters: { ...activeTab.filters, ...toSkillSearchFilters(pendingFilter) },
+    permissionFiltering,
+    facets: unresolvedCategories.map(
+      (category) => SKILL_FILTER_CATEGORY_FACET[category]
+    ),
+    disabled: unresolvedCategories.length === 0,
+  });
+  const filter = resolveFilter(toSkillSearchFilterFacets(selectionFacets));
+  const searchFilters = toSkillSearchFilters(filter);
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
 

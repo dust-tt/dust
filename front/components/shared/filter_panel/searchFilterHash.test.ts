@@ -1,122 +1,79 @@
-import type { SearchFilter } from "@app/components/shared/filter_panel/searchFilter";
 import {
-  parseSearchFilterHash,
-  serializeSearchFilterHash,
+  parseSearchPageHash,
+  serializeSearchPageHash,
 } from "@app/components/shared/filter_panel/searchFilterHash";
 import { describe, expect, it } from "vitest";
 
 const CATEGORIES = ["editor", "skill", "tool"] as const;
+const TAB_IDS = ["all", "archived"] as const;
+
+function parse(value: string | undefined) {
+  return parseSearchPageHash(value, CATEGORIES, TAB_IDS, "all");
+}
 
 function encode(json: string): string {
   return Buffer.from(json).toString("base64url");
 }
 
-describe("searchFilterHash", () => {
-  it("round-trips a filter, without editor avatars", () => {
-    const filter: SearchFilter<(typeof CATEGORIES)[number]> = {
-      editor: [
-        {
-          category: "editor",
-          id: "user1",
-          name: "Me",
-          image: "https://example.com/me.png",
-          disabled: false,
-        },
-      ],
-      skill: [
-        {
-          category: "skill",
-          id: "skill1",
-          name: "Research",
-          icon: null,
-          disabled: false,
-        },
-      ],
-      tool: [
-        {
-          category: "tool",
-          id: "server1",
-          name: "Zendesk",
-          icon: "ZendeskLogo",
-          mcpServerViewIds: ["view1", "view2"],
-          disabled: false,
-        },
-      ],
+describe("searchPageHash", () => {
+  it("round-trips the tab and the selected IDs as URL-safe base64", () => {
+    const state = {
+      tabId: "archived" as const,
+      selection: { editor: ["user1"], tool: ["view1", "view2"] },
     };
-
-    expect(
-      parseSearchFilterHash(serializeSearchFilterHash(filter), CATEGORIES)
-    ).toEqual({
-      ...filter,
-      editor: [{ ...filter.editor?.[0], image: null }],
-    });
-  });
-
-  it("serializes an empty filter as no value", () => {
-    expect(serializeSearchFilterHash({ skill: [] })).toBeUndefined();
-  });
-
-  it("encodes non-ASCII names as URL-safe base64", () => {
-    const value = serializeSearchFilterHash({
-      skill: [
-        {
-          category: "skill",
-          id: "skill1",
-          name: "Développeur 🚀",
-          icon: null,
-          disabled: false,
-        },
-      ],
-    });
+    const value = serializeSearchPageHash(state, "all");
 
     expect(value).toMatch(/^[A-Za-z0-9_-]+$/);
-    expect(parseSearchFilterHash(value, CATEGORIES).skill?.[0].name).toBe(
-      "Développeur 🚀"
+    expect(Buffer.from(value ?? "", "base64url").toString()).toBe(
+      '{"tab":"archived","filter":{"editor":["user1"],"tool":["view1","view2"]}}'
     );
+    expect(parse(value)).toEqual(state);
+  });
+
+  it("omits the default tab and empty selections", () => {
+    expect(
+      serializeSearchPageHash({ tabId: "all", selection: { skill: [] } }, "all")
+    ).toBeUndefined();
+    expect(
+      Buffer.from(
+        serializeSearchPageHash(
+          { tabId: "all", selection: { skill: ["skill1"] } },
+          "all"
+        ) ?? "",
+        "base64url"
+      ).toString()
+    ).toBe('{"filter":{"skill":["skill1"]}}');
   });
 
   it.each([
     undefined,
     "",
     "not base64!",
-  ])("parses %j as an empty filter", (value) => {
-    expect(parseSearchFilterHash(value, CATEGORIES)).toEqual({});
+    encode("not json"),
+    encode("[]"),
+  ])("parses %j as the default state", (value) => {
+    expect(parse(value)).toEqual({ tabId: "all", selection: {} });
   });
 
-  it.each([
-    "not json",
-    "[]",
-    '{"skill":"skill1"}',
-  ])("parses encoded %j as an empty filter", (json) => {
-    expect(parseSearchFilterHash(encode(json), CATEGORIES)).toEqual({});
-  });
-
-  it("drops invalid, misplaced and unlisted options only", () => {
-    const skill = {
-      category: "skill",
-      id: "skill1",
-      name: "Research",
-      icon: null,
-      disabled: false,
-    };
-    const value = JSON.stringify({
-      skill: [skill, { ...skill, id: "" }],
-      editor: [skill],
-      tool: [
-        {
-          category: "tool",
-          id: "server1",
-          name: "Unknown",
-          icon: "NotAnIcon",
-          mcpServerViewIds: [],
-          disabled: false,
+  it("drops invalid values individually", () => {
+    const value = encode(
+      JSON.stringify({
+        tab: "unknown",
+        filter: {
+          editor: ["user1", "", 42, "user1"],
+          skill: "skill1",
+          model: ["gpt"],
+          tool: Array.from({ length: 101 }, (_, i) => `view${i}`),
         },
-      ],
-      model: [{ category: "model", id: "gpt", name: "GPT", disabled: false }],
-    });
+      })
+    );
 
-    expect(parseSearchFilterHash(encode(value), CATEGORIES)).toEqual({
-      skill: [skill],
+    expect(parse(value)).toEqual({
+      tabId: "all",
+      selection: {
+        editor: ["user1"],
+        tool: Array.from({ length: 100 }, (_, i) => `view${i}`),
+      },
     });
   });
 });

@@ -1,9 +1,13 @@
-import type { SearchFilter } from "@app/components/shared/filter_panel/searchFilter";
+import type {
+  SearchFilter,
+  SearchFilterFacets,
+} from "@app/components/shared/filter_panel/searchFilter";
 import {
   getSearchFilterIds,
   getSearchFilterMcpServerViewIds,
 } from "@app/components/shared/filter_panel/searchFilter";
 import type {
+  SearchSkillsResponseBody,
   SkillSearchFacet,
   SkillSearchFilters,
 } from "@app/types/api/skills";
@@ -47,4 +51,11 @@ export function toSkillSearchFilters(filter: SkillFilter): SkillSearchFilters {
     ...(editorIds.length > 0 ? { editorIds } : {}),
     ...(spaceIds.length > 0 ? { spaceIds } : {}),
   };
+}
+
+// Skills filter on the skills they use as child skills.
+export function toSkillSearchFilterFacets(
+  facets: SearchSkillsResponseBody["facets"] | undefined
+): SearchFilterFacets | undefined {
+  return facets && { ...facets, skills: facets.childSkills };
 }
