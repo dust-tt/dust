@@ -312,7 +312,7 @@ export function AgentSearchTable({
           cell: ({ row: { original: agent } }) => (
             <AgentSearchModelCell model={agent.model} isDark={isDark} />
           ),
-          meta: { className: "hidden @sm:w-28 @sm:table-cell @xl:w-56" },
+          meta: { className: "hidden @sm:w-28 @sm:table-cell @xl:w-32" },
         },
         {
           id: "usage" as const,
@@ -365,7 +365,7 @@ export function AgentSearchTable({
               editors={agent.scope === "global" ? null : agent.editors}
             />
           ),
-          meta: { className: "hidden pl-6 @lg:w-28 @lg:table-cell" },
+          meta: { className: "hidden pl-8 @lg:w-32 @lg:table-cell" },
         },
         {
           id: "tags" as const,
