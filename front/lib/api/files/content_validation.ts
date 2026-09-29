@@ -19,10 +19,12 @@ const MAX_DISPLAYED_ERRORS = 5;
 // We check both double and single quotes separately to handle mixed usage.
 const classNameRegex = /className\s*=\s*["']([^"']*)["']/g;
 
-// Regular expression to capture Tailwind arbitrary values:
-// Matches a word boundary, then one or more lowercase letters or hyphens,
-// followed by a dash, an opening bracket, one or more non-']' characters, and a closing bracket.
-const arbitraryRegex = /\b[a-z-]+-\[[^\]]+\]/g;
+// Regular expression to capture Tailwind arbitrary values like h-[600px].
+// Uses [a-z]+(?:-[a-z]+)* instead of [a-z-]+ to avoid O(n²) backtracking:
+// the former unambiguously alternates between letter-runs and hyphens, so
+// the engine never retries splits of the hyphen sequence against the
+// required trailing -[ separator.
+const arbitraryRegex = /\b[a-z]+(?:-[a-z]+)*-\[[^\]]+\]/g;
 
 /**
  * Validates that the generated code doesn't contain Tailwind arbitrary values.
