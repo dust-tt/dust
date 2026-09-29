@@ -240,6 +240,24 @@ export const isAgentMessageWithStreaming = (
 ): msg is AgentMessageWithStreaming =>
   "streaming" in msg && msg.type === "agent_message";
 
+/**
+ * @cc [owner:id13,label:react;reliability] active-agent-row-selection
+ * Only a real, created agent message listed in the ongoing-loop registry MAY be selected for
+ * streaming visibility; when several are present, the latest row MUST be selected.
+ */
+export function findLatestActiveAgentMessageIndex(
+  messages: VirtuosoMessage[],
+  activeMessageIds: Set<string>
+): number {
+  return messages.findLastIndex(
+    (message) =>
+      isAgentMessageWithStreaming(message) &&
+      !isPlaceholderMessage(message) &&
+      message.status === "created" &&
+      activeMessageIds.has(message.sId)
+  );
+}
+
 export const getMessageDate = (msg: VirtuosoMessage): Date =>
   new Date(msg.created);
 

@@ -1,4 +1,5 @@
 import {
+  findLatestActiveAgentMessageIndex,
   makeInitialMessageStreamState,
   reconcileAgentMessage,
   reconcileCachedAgentMessage,
@@ -16,6 +17,39 @@ function makeAgentMessage(
 
   return { ...message, ...overrides };
 }
+
+describe("findLatestActiveAgentMessageIndex", () => {
+  it("selects the latest running row in an older conversation", () => {
+    const completed = makeInitialMessageStreamState(
+      makeAgentMessage({ sId: "completed", rank: 1, status: "succeeded" })
+    );
+    const first = makeInitialMessageStreamState(
+      makeAgentMessage({ sId: "first", rank: 2, status: "created" })
+    );
+    const second = makeInitialMessageStreamState(
+      makeAgentMessage({ sId: "second", rank: 3, status: "created" })
+    );
+    const placeholder = makeInitialMessageStreamState(
+      makeAgentMessage({
+        sId: "placeholder-agent-message-123",
+        rank: 4,
+        status: "created",
+      })
+    );
+    expect(
+      findLatestActiveAgentMessageIndex(
+        [completed, first, second, placeholder],
+        new Set(["completed", "first", "second", placeholder.sId])
+      )
+    ).toBe(2);
+    expect(
+      findLatestActiveAgentMessageIndex(
+        [completed, first],
+        new Set(["completed"])
+      )
+    ).toBe(-1);
+  });
+});
 
 describe("reconcileAgentMessage", () => {
   it("replaces the previous answer with a newer retry", () => {

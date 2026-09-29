@@ -25,6 +25,7 @@ import type {
 import {
   areSameRank,
   convertLightMessageTypeToVirtuosoMessages,
+  findLatestActiveAgentMessageIndex,
   getPredicateForRank,
   isAgentMessageWithStreaming,
   isCompactionMessage,
@@ -259,6 +260,12 @@ function buildFirstMessagePlaceholders(
  * `agent_message_done` MUST revalidate persisted messages instead of synthesizing terminal message
  * state from the live stream, which may not have received the final answer or activity steps yet.
  */
+/**
+ * @cc [owner:id13,label:react;reliability] active-message-visible-on-registry-discovery
+ * When a registry-listed, created agent message is present in the mounted list, the view MUST
+ * reveal that message once so its virtualized streaming subscriber can replay buffered events.
+ * Subsequent registry refreshes MUST NOT move the user's scroll position for that same message.
+ */
 export const ConversationViewer = ({
   owner,
   user,
@@ -278,6 +285,18 @@ export const ConversationViewer = ({
   const isMobile = useIsMobile();
   const sendNotification = useSendNotification();
   const ongoingLoopsSnapshot = useOngoingAgentLoopsSnapshot();
+  const lastRevealedStream = useRef<string | null>(null);
+  const activeMessageIds = useMemo(
+    () =>
+      new Set(
+        ongoingLoopsSnapshot?.workspaceId === owner.sId
+          ? ongoingLoopsSnapshot.agentLoops
+              .filter((loop) => loop.conversationId === conversationId)
+              .map((loop) => loop.messageId)
+          : []
+      ),
+    [conversationId, ongoingLoopsSnapshot, owner.sId]
+  );
   const { incrementPendingSteeringCount } = useGenerationContext();
   const { peekPendingFirstMessage } = useContext(InputBarContext);
 
@@ -478,6 +497,18 @@ export const ConversationViewer = ({
 
       setInitialListData(messagesAndNotices);
 
+      const activeIndex = disabled
+        ? -1
+        : findLatestActiveAgentMessageIndex(
+            messagesAndNotices,
+            activeMessageIds
+          );
+      if (activeIndex >= 0) {
+        lastRevealedStream.current = `${conversationId}:${messagesAndNotices[activeIndex].sId}`;
+        setMessageIdToScrollTo(activeIndex);
+        return;
+      }
+
       // Fetch the message to scroll to from the URL hash.
       const hash = window.location.hash;
       // If we arrive on an unread conversation from a deep link, we scroll to the linked message.
@@ -519,6 +550,9 @@ export const ConversationViewer = ({
       }
     }
   }, [
+    activeMessageIds,
+    conversationId,
+    disabled,
     initialListData,
     conversation,
     messages,
@@ -621,6 +655,39 @@ export const ConversationViewer = ({
       );
     }
   }, [conversation?.forkingData?.forkedChildren, messages]);
+
+  useEffect(() => {
+    const list = virtuosoMessageListRef.current;
+    if (
+      disabled ||
+      isLoadingInitialData ||
+      initialListData === undefined ||
+      messages.length === 0 ||
+      !list ||
+      ongoingLoopsSnapshot?.workspaceId !== owner.sId
+    ) {
+      return;
+    }
+    const data = list.data.get();
+    const index = findLatestActiveAgentMessageIndex(data, activeMessageIds);
+    if (index < 0) {
+      return;
+    }
+    const key = `${conversationId}:${data[index].sId}`;
+    if (lastRevealedStream.current !== key) {
+      lastRevealedStream.current = key;
+      list.scrollToItem({ index, align: "end", behavior: "instant" });
+    }
+  }, [
+    activeMessageIds,
+    conversationId,
+    disabled,
+    initialListData,
+    isLoadingInitialData,
+    messages,
+    ongoingLoopsSnapshot,
+    owner.sId,
+  ]);
 
   useEffect(() => {
     if (
