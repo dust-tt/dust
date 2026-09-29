@@ -1,8 +1,11 @@
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
+import { useSearchAgents } from "@app/hooks/useSearchAgents";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -17,6 +20,7 @@ import {
   DropdownMenuTrigger,
   Icon,
   Robot,
+  Spinner,
   XClose,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -24,7 +28,7 @@ import { useState } from "react";
 interface AgentPickerProps {
   owner: LightWorkspaceType;
   agents: LightAgentConfigurationType[];
-  onItemClick: (agent: LightAgentConfigurationType) => void;
+  onItemClick: (agent: RichAgentMentionCandidate) => void;
   onAgentDetailsClick?: (agentId: string) => void;
   pickerButton?: React.ReactNode;
   showDropdownArrow?: boolean;
@@ -39,6 +43,12 @@ interface AgentPickerProps {
   onDeselect?: () => void;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:react;product] agent-picker-search-rollout
+ * With `new_manage_agents_page`, the open, enabled picker MUST search agents in
+ * alphabetical order. Without the flag it MUST filter the supplied agents locally
+ * and MUST NOT call agent search. A selected match stays first in either mode.
+ */
 export function AgentPicker({
   owner,
   agents,
@@ -55,13 +65,36 @@ export function AgentPicker({
   selectedAgentId,
   onDeselect,
 }: AgentPickerProps) {
+  const { hasFeature } = useFeatureFlags();
+  const useAgentSearch = hasFeature("new_manage_agents_page");
   const clientType = useClientType();
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  const searched = filterAndSortAgents(agents, searchText);
-  const selected = searched.find((a) => a.sId === selectedAgentId);
+  const {
+    agents: searchResults,
+    isAgentsLoading,
+    isAgentsError,
+  } = useSearchAgents({
+    owner,
+    searchTerm: searchText,
+    sortBy: "name",
+    sortOrder: "asc",
+    permissionFiltering: "strict",
+    disabled: !useAgentSearch || !isOpen || disabled,
+  });
+  const isSearchLoading = useAgentSearch && isAgentsLoading;
+  const isSearchError = useAgentSearch && isAgentsError;
+  const searched: RichAgentMentionCandidate[] = useAgentSearch
+    ? searchResults
+    : filterAndSortAgents(agents, searchText);
+  const selected =
+    searched.find((a) => a.sId === selectedAgentId) ??
+    // Keep the current selection visible even if it is beyond the first search page.
+    (useAgentSearch && !searchText.trim()
+      ? agents.find((a) => a.sId === selectedAgentId)
+      : undefined);
   const searchedAgents = selected
     ? [selected, ...searched.filter((a) => a.sId !== selectedAgentId)]
     : searched;
@@ -108,7 +141,12 @@ export function AgentPicker({
               value={searchText}
               onChange={setSearchText}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && searchedAgents.length > 0) {
+                if (
+                  e.key === "Enter" &&
+                  !isSearchLoading &&
+                  !isSearchError &&
+                  searchedAgents.length > 0
+                ) {
                   onItemClick(searchedAgents[0]);
                   setSearchText("");
                   setIsOpen(false);
@@ -127,7 +165,19 @@ export function AgentPicker({
           </>
         }
       >
-        {searchedAgents.length > 0 ? (
+        {isSearchLoading ? (
+          <div
+            role="status"
+            aria-label="Loading agents"
+            className="flex items-center justify-center py-4"
+          >
+            <Spinner size="sm" />
+          </div>
+        ) : isSearchError ? (
+          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+            Unable to load agents
+          </div>
+        ) : searchedAgents.length > 0 ? (
           searchedAgents.map((c) => {
             const isSelected = c.sId === selectedAgentId;
             return (
