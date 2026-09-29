@@ -141,14 +141,25 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     auth: Authenticator,
     options?: ResourceFindOptions<SkillSuggestionModel> & {
       dangerouslyBypassConversationsVisibilityCheck?: boolean;
-      // Throw instead of silently dropping the suggestions the caller cannot access.
-      throwOnInaccessible?: boolean;
     }
-  ) {
+  ): Promise<SkillSuggestionResource[]> {
+    const { resources } = await this.baseFetchWithAccess(auth, options);
+    return resources;
+  }
+
+  // Also returns the matching rows dropped because the caller cannot administrate their skill.
+  private static async baseFetchWithAccess(
+    auth: Authenticator,
+    options?: ResourceFindOptions<SkillSuggestionModel> & {
+      dangerouslyBypassConversationsVisibilityCheck?: boolean;
+    }
+  ): Promise<{
+    resources: SkillSuggestionResource[];
+    inaccessible: SkillSuggestionModel[];
+  }> {
     const {
       where,
       dangerouslyBypassConversationsVisibilityCheck,
-      throwOnInaccessible,
       ...otherOptions
     } = options ?? {};
     const owner = auth.getNonNullableWorkspace();
@@ -184,7 +195,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     });
 
     if (suggestions.length === 0) {
-      return [];
+      return { resources: [], inaccessible: [] };
     }
 
     // Filter suggestions to only include those for skills the user can administrate. Resolved
@@ -192,32 +203,28 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     // workspace id, and `sId` is a pure derivation from the same pair. This also means a
     // suggestion whose skill was archived since (e.g. a `delete` suggestion archives its own
     // target on accept) stays visible: the permission check never depends on skill status.
-    const resources = removeNulls(
-      suggestions.map((suggestion) => {
-        if (
-          !SkillResource.canAdministrateCustomSkillId(auth, {
-            id: suggestion.skillConfigurationId,
-            workspaceId: owner.id,
-          })
-        ) {
-          if (throwOnInaccessible) {
-            throw new Error(
-              "User does not have permission to access every requested skill suggestion"
-            );
+    const resources: SkillSuggestionResource[] = [];
+    const inaccessible: SkillSuggestionModel[] = [];
+    for (const suggestion of suggestions) {
+      if (
+        !SkillResource.canAdministrateCustomSkillId(auth, {
+          id: suggestion.skillConfigurationId,
+          workspaceId: owner.id,
+        })
+      ) {
+        inaccessible.push(suggestion);
+        continue;
+      }
+      const user = suggestion.updatedByUser;
+      const updatedBy = user
+        ? {
+            sId: user.sId,
+            fullName: [user.firstName, user.lastName].filter(Boolean).join(" "),
+            email: user.email,
           }
-          return null;
-        }
-        const user = suggestion.updatedByUser;
-        const updatedBy = user
-          ? {
-              sId: user.sId,
-              fullName: [user.firstName, user.lastName]
-                .filter(Boolean)
-                .join(" "),
-              email: user.email,
-            }
-          : null;
-        return new this(
+        : null;
+      resources.push(
+        new this(
           SkillSuggestionModel,
           suggestion.get(),
           SkillResource.modelIdToSId({
@@ -226,9 +233,9 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
           }),
           updatedBy,
           suggestion.notificationConversation?.sId ?? null
-        );
-      })
-    );
+        )
+      );
+    }
 
     // Enrich resources with visible source conversation IDs.
     const allConversationModelIds = [
@@ -264,7 +271,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       }
     }
 
-    return resources;
+    return { resources, inaccessible };
   }
 
   static async fetchByIds(
@@ -347,21 +354,30 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
 
   /**
    * Lists the suggestions belonging to the given batches (by batch model id), whatever their
-   * source. Throws if the caller cannot administrate the skill of any of them.
+   * source, along with the batches holding a suggestion whose skill the caller cannot administrate.
    */
   static async listByBatchModelIds(
     auth: Authenticator,
     batchModelIds: ModelId[]
-  ): Promise<SkillSuggestionResource[]> {
+  ): Promise<{
+    suggestions: SkillSuggestionResource[];
+    inaccessibleBatchModelIds: Set<ModelId>;
+  }> {
     if (batchModelIds.length === 0) {
-      return [];
+      return { suggestions: [], inaccessibleBatchModelIds: new Set() };
     }
 
-    return this.baseFetch(auth, {
+    const { resources, inaccessible } = await this.baseFetchWithAccess(auth, {
       where: { batchId: batchModelIds },
       order: [["id", "ASC"]],
-      throwOnInaccessible: true,
     });
+
+    return {
+      suggestions: resources,
+      inaccessibleBatchModelIds: new Set(
+        removeNulls(inaccessible.map((s) => s.batchId))
+      ),
+    };
   }
 
   /**

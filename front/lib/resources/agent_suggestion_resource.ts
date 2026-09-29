@@ -132,12 +132,21 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<AgentSuggestionModel> & {
-      // Throw instead of silently dropping the suggestions the caller cannot access.
-      throwOnInaccessible?: boolean;
-    }
-  ) {
-    const { where, throwOnInaccessible, ...otherOptions } = options ?? {};
+    options?: ResourceFindOptions<AgentSuggestionModel>
+  ): Promise<AgentSuggestionResource[]> {
+    const { resources } = await this.baseFetchWithAccess(auth, options);
+    return resources;
+  }
+
+  // Also returns the matching rows dropped because the caller cannot edit their agent.
+  private static async baseFetchWithAccess(
+    auth: Authenticator,
+    options?: ResourceFindOptions<AgentSuggestionModel>
+  ): Promise<{
+    resources: AgentSuggestionResource[];
+    inaccessible: AgentSuggestionModel[];
+  }> {
+    const { where, ...otherOptions } = options ?? {};
     const owner = auth.getNonNullableWorkspace();
 
     const suggestions = await AgentSuggestionModel.findAll({
@@ -162,7 +171,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     });
 
     if (suggestions.length === 0) {
-      return [];
+      return { resources: [], inaccessible: [] };
     }
 
     // Get unique agent sIds from the included AgentConfigurationModel.
@@ -173,25 +182,25 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     const agentById = await this.getAgentById(auth, agentIds);
 
     // Filter suggestions to only include those for agents the user can edit.
-    return removeNulls(
-      suggestions.map((suggestion) => {
-        const agent = agentById.get(suggestion.agentConfiguration.sId);
-        if (!agent || !this.canEditAgent(auth, agent)) {
-          if (throwOnInaccessible) {
-            throw new Error(
-              "User does not have permission to access every requested agent suggestion"
-            );
-          }
-          return null;
-        }
-        return new this(
+    const resources: AgentSuggestionResource[] = [];
+    const inaccessible: AgentSuggestionModel[] = [];
+    for (const suggestion of suggestions) {
+      const agent = agentById.get(suggestion.agentConfiguration.sId);
+      if (!agent || !this.canEditAgent(auth, agent)) {
+        inaccessible.push(suggestion);
+        continue;
+      }
+      resources.push(
+        new this(
           AgentSuggestionModel,
           suggestion.get(),
           agent,
           suggestion.conversation?.sId ?? null
-        );
-      })
-    );
+        )
+      );
+    }
+
+    return { resources, inaccessible };
   }
 
   private static canEditAgent(
@@ -461,22 +470,31 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   }
 
   /**
-   * Lists the suggestions belonging to the given batches (by batch model id). Throws if the caller
-   * cannot edit the agent of any of them.
+   * Lists the suggestions belonging to the given batches (by batch model id), along with the
+   * batches holding a suggestion whose agent the caller cannot edit.
    */
   static async listByBatchModelIds(
     auth: Authenticator,
     batchModelIds: ModelId[]
-  ): Promise<AgentSuggestionResource[]> {
+  ): Promise<{
+    suggestions: AgentSuggestionResource[];
+    inaccessibleBatchModelIds: Set<ModelId>;
+  }> {
     if (batchModelIds.length === 0) {
-      return [];
+      return { suggestions: [], inaccessibleBatchModelIds: new Set() };
     }
 
-    return this.baseFetch(auth, {
+    const { resources, inaccessible } = await this.baseFetchWithAccess(auth, {
       where: { batchId: batchModelIds },
       order: [["id", "ASC"]],
-      throwOnInaccessible: true,
     });
+
+    return {
+      suggestions: resources,
+      inaccessibleBatchModelIds: new Set(
+        removeNulls(inaccessible.map((s) => s.batchId))
+      ),
+    };
   }
 
   /**
