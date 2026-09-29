@@ -1,8 +1,8 @@
 # gcsfuse in Docker
 
 An interactive Ubuntu container with Google's official gcsfuse package, installed the same way as
-the Dust sandbox, and ripgrep (`rg`) for search benchmarks. Package versions are resolved at build
-time; check them with `gcsfuse --version` and `rg --version`.
+the Dust sandbox, plus Python 3 and ripgrep (`rg`) for filesystem benchmarks. Package versions are
+resolved at build time; check them with `gcsfuse --version` and `rg --version`.
 
 On macOS, Docker Desktop runs this in its Linux VM. The GCS mount is accessible inside the
 container; it does not appear as a mounted directory in Finder. Docker Desktop does not support
@@ -62,3 +62,25 @@ When finished, unmount inside the container before exiting:
 umount /mnt/gcs
 exit
 ```
+
+## Run the DFS corpus benchmark
+
+The corpus at `gs://dust-test-data/dfs-bench/corpus/` has a manifest and `docs/` at its root.
+Mount that prefix with `--only-dir` so the benchmark can use `/mnt/gcs` directly. From the repo root:
+
+```sh
+docker run --rm --device /dev/fuse --cap-add SYS_ADMIN \
+  --mount "type=bind,src=${CLOUDSDK_CONFIG:-$HOME/.config/gcloud}/application_default_credentials.json,dst=/run/secrets/gcp-adc.json,readonly" \
+  --mount "type=bind,src=$PWD/x/jd/filesystem-benchmark,dst=/opt/benchmark,readonly" \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-adc.json \
+  dfs-gcsfuse bash -lc '
+    gcsfuse --implicit-dirs --only-dir dfs-bench/corpus dust-test-data /mnt/gcs &&
+    gcsfuse --version &&
+    python3 /opt/benchmark/benchmark.py /mnt/gcs --warm-runs 1
+  '
+```
+
+The benchmark creates and removes 32 scratch objects under `docs/` for write tests.
+Pass `--skip-writes` for a read-only run. Compare with the same manifest and
+`--warm-runs 1` on the macOS copy: `python3 x/jd/filesystem-benchmark/benchmark.py
+x/jd/filesystem-benchmark/corpus --warm-runs 1`.

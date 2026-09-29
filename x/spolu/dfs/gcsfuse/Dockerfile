@@ -1,7 +1,7 @@
 FROM ubuntu:noble-20260210.1
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl ripgrep \
+  && apt-get install -y --no-install-recommends ca-certificates curl ripgrep python3 \
   && rm -rf /var/lib/apt/lists/*
 
 # Install Google's official package, as in dockerfiles/sandbox-bedrock.Dockerfile.
