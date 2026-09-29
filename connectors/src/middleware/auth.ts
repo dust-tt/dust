@@ -23,12 +23,15 @@ export const authMiddleware = (
   res: Response<ConnectorsAPIErrorResponse>,
   next: NextFunction
 ) => {
-  if (req.path.startsWith("/webhooks")) {
-    if (req.path.endsWith("/github")) {
+  // Strip trailing slashes so that e.g. /webhooks/.../github/ routes to the
+  // correct handler instead of falling through to the less-strict webhook check.
+  const path = req.path.replace(/\/+$/, "");
+  if (path.startsWith("/webhooks")) {
+    if (path.endsWith("/github")) {
       return _authMiddlewareWebhooksGithub(req, res, next);
     } else if (
-      req.path.endsWith("/intercom") ||
-      req.path.endsWith("/intercom/uninstall")
+      path.endsWith("/intercom") ||
+      path.endsWith("/intercom/uninstall")
     ) {
       return _authMiddlewareWebhooksIntercom(req, res, next);
     }
