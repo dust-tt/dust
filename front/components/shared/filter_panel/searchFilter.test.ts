@@ -16,9 +16,9 @@ describe("resolveSearchFilterSelection", () => {
   it("names the selection from facets and groups tool views by server", () => {
     const { filter, unresolvedCategories } = resolveSearchFilterSelection({
       selection: {
-        access: ["visible", "invalid"],
-        editor: ["user1"],
-        tool: ["view1", "view2"],
+        access: { visible: "Published", invalid: "Invalid" },
+        editor: { user1: "Old name" },
+        tool: { view1: "Slack", view2: "Slack" },
       },
       categories: CATEGORIES,
       knownOptions: new Map(),
@@ -40,13 +40,13 @@ describe("resolveSearchFilterSelection", () => {
       }),
     ]);
     expect(toSearchFilterSelection(filter, CATEGORIES)).toEqual({
-      access: ["visible"],
-      editor: ["user1"],
-      tool: ["view1", "view2"],
+      access: { visible: "Published" },
+      editor: { user1: "Alice" },
+      tool: { view1: "Slack", view2: "Slack" },
     });
   });
 
-  it("falls back on known options, then on unresolved placeholders", () => {
+  it("falls back on known options, then on the selected labels", () => {
     const known: SearchFilterOption = {
       category: "editor",
       id: "user1",
@@ -56,16 +56,23 @@ describe("resolveSearchFilterSelection", () => {
     };
     const { filter, unresolvedCategories, unresolvedKeys } =
       resolveSearchFilterSelection({
-        selection: { editor: ["user1", "user2"], tool: ["view3"] },
+        selection: {
+          editor: { user1: "Old name", user2: "Bob" },
+          tool: { view3: "Notion" },
+        },
         categories: CATEGORIES,
         knownOptions: new Map([["editor:user1", known]]),
         facets: undefined,
         currentUserId: "me",
       });
 
-    expect(filter.editor?.map(({ name }) => name)).toEqual(["Alice", "user2"]);
+    expect(filter.editor?.map(({ name }) => name)).toEqual(["Alice", "Bob"]);
     expect(filter.tool?.[0]).toEqual(
-      expect.objectContaining({ id: "view3", mcpServerViewIds: ["view3"] })
+      expect.objectContaining({
+        id: "view3",
+        name: "Notion",
+        mcpServerViewIds: ["view3"],
+      })
     );
     expect(unresolvedCategories).toEqual(["editor", "tool"]);
     expect([...unresolvedKeys]).toEqual(["editor:user2", "tool:view3"]);

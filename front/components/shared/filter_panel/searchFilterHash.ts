@@ -26,7 +26,7 @@ const searchPageHashSchema = z.object({
   filter: z.record(z.unknown()).optional(),
 });
 
-const selectedIdsSchema = z.array(z.unknown());
+const selectedLabelsSchema = z.record(z.unknown());
 
 export interface SearchPageHashState<
   Category extends SearchFilterCategory,
@@ -62,9 +62,9 @@ function fromBase64Url(value: string): string | null {
 /**
  * @cc [owner:tdraier,label:react;security] parse-tolerates-untrusted-hash
  * The hash is user-controlled (shared links, manual edits): malformed base64 or JSON MUST yield
- * `defaultTabId` and no selection, an unknown tab MUST yield `defaultTabId`, and invalid IDs or
- * categories outside `categories` MUST be dropped individually without discarding the other
- * selections. Each category MUST keep at most 100 distinct IDs.
+ * `defaultTabId` and no selection, an unknown tab MUST yield `defaultTabId`, and invalid IDs,
+ * non-string labels or categories outside `categories` MUST be dropped individually without
+ * discarding the other selections. Each category MUST keep at most 100 IDs.
  */
 export function parseSearchPageHash<
   Category extends SearchFilterCategory,
@@ -86,16 +86,16 @@ export function parseSearchPageHash<
 
   const selection: SearchFilterSelection<Category> = {};
   for (const category of categories) {
-    const values = selectedIdsSchema.safeParse(parsed.data.filter?.[category]);
-    const ids = [
-      ...new Set(
-        (values.success ? values.data : []).filter(
-          (id): id is string => typeof id === "string" && id.length > 0
-        )
-      ),
-    ].slice(0, MAX_SELECTED_IDS);
-    if (ids.length > 0) {
-      selection[category] = ids;
+    const labels = selectedLabelsSchema.safeParse(
+      parsed.data.filter?.[category]
+    );
+    const entries = Object.entries(labels.success ? labels.data : {})
+      .flatMap(([id, label]) =>
+        id.length > 0 && typeof label === "string" ? [[id, label]] : []
+      )
+      .slice(0, MAX_SELECTED_IDS);
+    if (entries.length > 0) {
+      selection[category] = Object.fromEntries(entries);
     }
   }
   return {
@@ -111,9 +111,9 @@ export function serializeSearchPageHash<
   { tabId, selection }: SearchPageHashState<Category, TabId>,
   defaultTabId: TabId
 ): string | undefined {
-  const hasSelection = Object.values<string[] | undefined>(selection).some(
-    (ids) => (ids?.length ?? 0) > 0
-  );
+  const hasSelection = Object.values<Record<string, string> | undefined>(
+    selection
+  ).some((labels) => Object.keys(labels ?? {}).length > 0);
   if (tabId === defaultTabId && !hasSelection) {
     return undefined;
   }
@@ -125,9 +125,10 @@ export function serializeSearchPageHash<
   );
 }
 
-// Persists the selected tab and the selected filter IDs in the URL hash. Option names come from
-// the options applied in this session; the caller resolves the others (restored from a link)
-// through `resolveFilter`, from the facets of `unresolvedCategories`.
+// Persists the selected tab and the selected filter IDs with their labels in the URL hash. Option
+// names come from the options applied in this session; the caller resolves the others (restored
+// from a link) through `resolveFilter`, from the facets of `unresolvedCategories`, and the stored
+// labels name the IDs no facet holds.
 // `categories` and `tabIds` must be referentially stable (module-level constants).
 export function useSearchPageHashState<
   Category extends SearchFilterCategory,

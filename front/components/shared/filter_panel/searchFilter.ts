@@ -231,9 +231,10 @@ export function getSearchFilterMcpServerViewIds<
     );
 }
 
-// Tool selections hold MCP server view IDs; the other categories hold option IDs.
+// Selected IDs mapped to their labels. Tool selections hold MCP server view IDs; the other
+// categories hold option IDs.
 export type SearchFilterSelection<Category extends SearchFilterCategory> =
-  Partial<Record<Category, string[]>>;
+  Partial<Record<Category, Record<string, string>>>;
 
 export function toSearchFilterSelection<Category extends SearchFilterCategory>(
   filter: SearchFilter<Category>,
@@ -241,11 +242,15 @@ export function toSearchFilterSelection<Category extends SearchFilterCategory>(
 ): SearchFilterSelection<Category> {
   const selection: SearchFilterSelection<Category> = {};
   for (const category of categories) {
-    const ids = (filter[category] ?? []).flatMap((option) =>
-      option.category === "tool" ? option.mcpServerViewIds : [option.id]
+    const labels = Object.fromEntries(
+      (filter[category] ?? []).flatMap((option) =>
+        option.category === "tool"
+          ? option.mcpServerViewIds.map((viewId) => [viewId, option.name])
+          : [[option.id, option.name]]
+      )
     );
-    if (ids.length > 0) {
-      selection[category] = ids;
+    if (Object.keys(labels).length > 0) {
+      selection[category] = labels;
     }
   }
   return selection;
@@ -259,10 +264,11 @@ export function getSearchFilterOptionKeys(
     : [`${option.category}:${option.id}`];
 }
 
-// Stands for a selected ID whose name is not known yet; null for IDs that cannot be valid.
+// Stands for a selected ID that no facet names; null for IDs that cannot be valid.
 function toUnresolvedOption(
   category: SearchFilterCategory,
-  id: string
+  id: string,
+  name: string
 ): SearchFilterOption | null {
   switch (category) {
     case "access":
@@ -270,17 +276,17 @@ function toUnresolvedOption(
     case "model":
       return null;
     case "editor":
-      return { category, id, name: id, image: null, disabled: false };
+      return { category, id, name, image: null, disabled: false };
     case "skill":
-      return { category, id, name: id, icon: null, disabled: false };
+      return { category, id, name, icon: null, disabled: false };
     case "space":
     case "tag":
-      return { category, id, name: id, disabled: false };
+      return { category, id, name, disabled: false };
     case "tool":
       return {
         category,
         id,
-        name: id,
+        name,
         icon: DEFAULT_MCP_SERVER_ICON,
         mcpServerViewIds: [],
         disabled: false,
@@ -291,7 +297,8 @@ function toUnresolvedOption(
 /**
  * @cc [owner:tdraier,label:product] resolve-every-selected-id
  * Every selected ID that can be valid MUST be kept in the resolved filter, named from `facets`,
- * then `knownOptions`, and otherwise by an unresolved placeholder listed in `unresolvedKeys`.
+ * then `knownOptions`, and otherwise by an unresolved placeholder carrying its selected label and
+ * listed in `unresolvedKeys`.
  * Access and availability IDs that match no option MUST be dropped. Tool options MUST carry only
  * the selected view IDs, grouped by MCP server.
  */
@@ -325,7 +332,9 @@ export function resolveSearchFilterSelection<
       availability: SKILL_AVAILABILITIES.map((availability) => ({
         availability,
       })),
-      models: (selection[category] ?? []).map((modelId) => ({ modelId })),
+      models: Object.keys(selection[category] ?? {}).map((modelId) => ({
+        modelId,
+      })),
     };
     const optionsByKey = new Map(
       getSearchFilterOptions(category, categoryFacets, currentUserId).flatMap(
@@ -335,10 +344,10 @@ export function resolveSearchFilterSelection<
     );
     const optionsById = new Map<string, SearchFilterOption>();
     let isCategoryResolved = true;
-    for (const id of new Set(selection[category])) {
+    for (const [id, label] of Object.entries(selection[category] ?? {})) {
       const key = `${category}:${id}`;
       const resolved = optionsByKey.get(key) ?? knownOptions.get(key);
-      const option = resolved ?? toUnresolvedOption(category, id);
+      const option = resolved ?? toUnresolvedOption(category, id, label);
       if (!option) {
         continue;
       }
