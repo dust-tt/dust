@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
@@ -47,7 +48,11 @@ export const getMyDriveIdCached = cacheWithRedis(
     if (!auth_credentials.credentials.access_token) {
       throw new Error("No access token in auth credentials");
     }
-    return auth_credentials.credentials.access_token;
+    // Hash the token so it doesn't appear verbatim in Redis key names.
+    return crypto
+      .createHash("sha256")
+      .update(auth_credentials.credentials.access_token)
+      .digest("hex");
   },
   {
     ttlMs: 60 * 10 * 1000, // 10 minutes
