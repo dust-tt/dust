@@ -3,7 +3,6 @@ import { useEditedAgentSections } from "@app/components/assistant/details/Sugges
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
-  getMcpServerDisplayName,
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
@@ -104,26 +103,45 @@ export function AssistantSkillsToolsSection({
       agentConfiguration,
     });
 
+  const serverViewsById = useMemo(
+    () =>
+      new Map(
+        mcpServers.flatMap((server) =>
+          server.views.map((view): [string, ServerView] => [
+            view.sId,
+            { server, view },
+          ])
+        )
+      ),
+    [mcpServers]
+  );
+
   const sortedActions = useMemo(() => {
     const removedToolIds = new Set(previewedCapabilities?.removedToolIds);
     const isRemovedTool = (action: MCPServerConfigurationType) =>
       isServerSideMCPServerConfiguration(action) &&
       removedToolIds.has(action.mcpServerViewId);
 
-    const currentTools = agentConfiguration.actions
-      .filter((action) => (isDustAgent ? !isHiddenDustAction(action) : true))
-      .filter((action) => !isRemovedTool(action))
-      .map((action) => renderOtherAction(action, mcpServers));
-
-    const addedTools = (previewedCapabilities?.addedToolIds ?? []).map(
-      (toolId) => renderServerSideTool(toolId, mcpServers)
+    const currentToolIds = new Set(
+      agentConfiguration.actions
+        .filter(isServerSideMCPServerConfiguration)
+        .map((action) => action.mcpServerViewId)
     );
 
-    const actions = removeNulls([...currentTools, ...addedTools]);
+    const keptTools = agentConfiguration.actions
+      .filter((action) => (isDustAgent ? !isHiddenDustAction(action) : true))
+      .filter((action) => !isRemovedTool(action))
+      .map((action) => renderOtherAction(action, serverViewsById));
+
+    const addedTools = (previewedCapabilities?.addedToolIds ?? [])
+      .filter((toolId) => !currentToolIds.has(toolId))
+      .map((toolId) => renderServerSideTool(serverViewsById.get(toolId)));
+
+    const actions = removeNulls([...keptTools, ...addedTools]);
     return sortBy(uniqBy(actions, "title"), ["order", "title"]);
   }, [
     agentConfiguration.actions,
-    mcpServers,
+    serverViewsById,
     isDustAgent,
     previewedCapabilities,
   ]);
@@ -320,45 +338,49 @@ interface AddedSkillItemProps {
 }
 
 function AddedSkillItem({ owner, skillId }: AddedSkillItemProps) {
-  const { skill } = useSkill({ workspaceId: owner.sId, skillId });
+  const { skill, isSkillLoading } = useSkill({
+    workspaceId: owner.sId,
+    skillId,
+    shouldRetryOnError: false,
+  });
+  if (isSkillLoading) {
+    return <Spinner size="xs" />;
+  }
   return skill ? <SkillItem skill={skill} /> : null;
 }
 
+interface ServerView {
+  server: MCPServerTypeWithViews<MCPServerViewLightType>;
+  view: MCPServerViewLightType;
+}
+
 function renderServerSideTool(
-  mcpServerViewId: string,
-  mcpServers: MCPServerTypeWithViews<MCPServerViewLightType>[],
+  serverView: ServerView | undefined,
   action?: MCPServerConfigurationType
 ): ActionData | null {
-  const mcpServer = mcpServers.find((s) =>
-    s.views.some((v) => v.sId === mcpServerViewId)
-  );
-  if (!mcpServer) {
+  if (!serverView) {
     return null;
   }
-  const view = mcpServer.views.find((v) => v.sId === mcpServerViewId);
-  const { serverType } = getServerTypeAndIdFromSId(mcpServer.sId);
-  const avatar = getAvatar(mcpServer, "xs");
-  const title = view
-    ? getMcpServerViewDisplayName(view, action)
-    : getMcpServerDisplayName(mcpServer, action);
-  const description = view
-    ? getMcpServerViewDescription(view)
-    : mcpServer.description;
+  const { server, view } = serverView;
+  const { serverType } = getServerTypeAndIdFromSId(server.sId);
 
   return {
-    title,
-    description,
-    avatar,
+    title: getMcpServerViewDisplayName(view, action),
+    description: getMcpServerViewDescription(view),
+    avatar: getAvatar(server, "xs"),
     order: serverType === "internal" ? 1 : 3,
   };
 }
 
 function renderOtherAction(
   action: MCPServerConfigurationType,
-  mcpServers: MCPServerTypeWithViews<MCPServerViewLightType>[]
+  serverViewsById: Map<string, ServerView>
 ): ActionData | null {
   if (isServerSideMCPServerConfiguration(action)) {
-    return renderServerSideTool(action.mcpServerViewId, mcpServers, action);
+    return renderServerSideTool(
+      serverViewsById.get(action.mcpServerViewId),
+      action
+    );
   } else if (isMCPServerConfiguration(action)) {
     return {
       title: asDisplayName(action.name),

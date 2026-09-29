@@ -248,4 +248,24 @@ describe("previewAgentSuggestions", () => {
       expect(result.value.capabilities.addedSkillIds).toEqual(["skl_1"]);
     }
   });
+
+  it("returns an error for knowledge suggestions", () => {
+    const result = previewAgentSuggestions({
+      agent: AGENT,
+      suggestions: [
+        {
+          ...BASE_SUGGESTION,
+          kind: "knowledge",
+          suggestion: {
+            action: "add",
+            method: "search",
+            dataSourceViewId: "dsv_1",
+          },
+        },
+      ],
+      pipeline,
+    });
+
+    expect(result.isErr()).toBe(true);
+  });
 });
