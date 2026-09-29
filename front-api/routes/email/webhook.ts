@@ -1,3 +1,5 @@
+import fs from "node:fs";
+
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
@@ -158,6 +160,7 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
   // remaining processing in a detached IIFE so the response goes out
   // immediately, matching the Next-side `res.status(200).json(...)` then
   // keep-working pattern.
+  const attachmentPaths = email.attachments.map((a) => a.filepath);
   void (async () => {
     try {
       const authDecision = evaluateInboundAuth(email);
@@ -344,6 +347,15 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
         { error: normalizeError(err) },
         "[email] Unhandled error in async email processing"
       );
+    } finally {
+      // Clean up attachment temp files written by formidable during parsing.
+      for (const p of attachmentPaths) {
+        try {
+          fs.unlinkSync(p);
+        } catch {
+          // Ignore: file may have already been deleted or never written.
+        }
+      }
     }
   })();
 

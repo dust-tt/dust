@@ -12,6 +12,7 @@ import { statsDMetrics } from "@app/lib/utils/statsd";
 import { isString } from "@app/types/shared/utils/general";
 import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
 import { createHono } from "@front-api/lib/hono";
+import { bodyLimit } from "@front-api/middlewares/body_limit";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -69,8 +70,15 @@ const WEBHOOK_REQUEST_MAX_SIZE_BYTES = 2 * 1024 * 1024;
 // authentication scheme based on the URL secret.
 const app = createHono();
 
+/**
+ * @cc [owner:flvndvd,label:security;performance] body-limit-before-buffer
+ * The `bodyLimit` middleware MUST be applied before the handler reads the body.
+ * This ensures oversized requests are rejected at the middleware layer without
+ * buffering the full payload in memory, preventing CWE-770 resource exhaustion.
+ */
 app.post(
   "/",
+  bodyLimit(WEBHOOK_REQUEST_MAX_SIZE_BYTES),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<PostWebhookTriggerResponseType> => {
     const contentType = ctx.req.header("content-type");
@@ -87,15 +95,6 @@ app.post(
     // Read the raw body for signature verification (must match exactly what the
     // sender signed), then parse JSON for processing.
     const arrayBuffer = await ctx.req.arrayBuffer();
-    if (arrayBuffer.byteLength > WEBHOOK_REQUEST_MAX_SIZE_BYTES) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Request body too large.",
-        },
-      });
-    }
     const rawBody = Buffer.from(arrayBuffer).toString("utf8");
     let body: Record<string, unknown>;
     try {

@@ -1,3 +1,5 @@
+import fs from "node:fs";
+
 import type {
   EmailAttachment,
   EmailTriggerError,
@@ -31,6 +33,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+
 import assert from "assert";
 import { IncomingForm } from "formidable";
 import { readFile } from "fs/promises";
@@ -338,6 +341,13 @@ type EmailWebhookErrorLogContext = {
   workspaceName: string;
 };
 
+/**
+ * @cc [owner:flvndvd,label:security] temp-file-cleanup
+ * All temporary files written by formidable during multipart parsing MUST be
+ * deleted before this function returns. Files included in the returned
+ * `InboundEmail.attachments` are excluded from cleanup here — callers are
+ * responsible for deleting those after use.
+ */
 // Parses the Sendgrid webhook form data and validates it returning a fully formed InboundEmail.
 export const parseSendgridWebhookContent = async (
   rawBody: Buffer,
@@ -355,6 +365,20 @@ export const parseSendgridWebhookContent = async (
   });
   const [fields, files] = await form.parse(req);
 
+  // Collect all temp paths written by formidable so we can delete any that are
+  // not returned as attachments (unsupported types, empty files, parse errors).
+  const allTempPaths: string[] = [];
+  for (const fileList of Object.values(files)) {
+    if (Array.isArray(fileList)) {
+      for (const f of fileList) {
+        if (f.filepath) {
+          allTempPaths.push(f.filepath);
+        }
+      }
+    }
+  }
+
+  let attachmentPaths: Set<string> = new Set();
   try {
     const subject = fields["subject"] ? fields["subject"][0] : null;
     const text = fields["text"] ? fields["text"][0] : null;
@@ -409,6 +433,7 @@ export const parseSendgridWebhookContent = async (
             contentType: file.mimetype,
             size: file.size,
           });
+          attachmentPaths.add(file.filepath);
         }
       }
     }
@@ -455,6 +480,18 @@ export const parseSendgridWebhookContent = async (
     });
   } catch {
     return new Err(new Error("Failed to parse email content"));
+  } finally {
+    // Delete temp files that were not accepted as attachments. Attachment files
+    // are still needed by the caller and are cleaned up there after use.
+    for (const p of allTempPaths) {
+      if (!attachmentPaths.has(p)) {
+        try {
+          fs.unlinkSync(p);
+        } catch {
+          // Ignore: file may not exist if formidable failed to write it.
+        }
+      }
+    }
   }
 };
 
