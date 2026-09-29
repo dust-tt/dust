@@ -115,8 +115,7 @@ export function usePatchAgentSuggestions({
   const patchSuggestions = useCallback(
     async (
       suggestionIds: string[],
-      state: PatchSuggestionRequestBody["state"],
-      { apply }: { apply?: boolean } = {}
+      state: PatchSuggestionRequestBody["state"]
     ): Promise<PatchSuggestionResponseBody | null> => {
       if (!agentConfigurationId || suggestionIds.length === 0) {
         return null;
@@ -133,7 +132,6 @@ export function usePatchAgentSuggestions({
             body: JSON.stringify({
               suggestionIds,
               state,
-              applyToAgent: apply,
             } satisfies PatchSuggestionRequestBody),
           }
         );

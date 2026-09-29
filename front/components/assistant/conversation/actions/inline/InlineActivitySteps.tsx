@@ -137,7 +137,6 @@ export function InlineActivitySteps({
             <AgentMessageMarkdown
               content={agentMessage.content}
               owner={owner}
-              conversationId={conversationId}
               streamingState="streaming"
               isLastMessage={false}
             />
@@ -215,7 +214,6 @@ export function InlineActivitySteps({
         <AgentMessageMarkdown
           content={agentMessage.content}
           owner={owner}
-          conversationId={conversationId}
           streamingState="streaming"
           isLastMessage={false}
         />
@@ -237,7 +235,6 @@ export function InlineActivitySteps({
         <AgentMessageMarkdown
           content={content}
           owner={owner}
-          conversationId={conversationId}
           isLastMessage={false}
         />
       )}

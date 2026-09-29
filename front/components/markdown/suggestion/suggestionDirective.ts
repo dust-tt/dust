@@ -1,13 +1,5 @@
 import { SKIP, visit } from "unist-util-visit";
 
-export function makeSuggestionDirective(name: string, targetAttribute: string) {
-  return makeDirective(name, (attributes) => ({
-    suggestionId: attributes.sId,
-    kind: attributes.kind,
-    [targetAttribute]: attributes[targetAttribute],
-  }));
-}
-
 /**
  * Builds the remark plugin of a directive: it renders `:<name>[]{key=value ...}` as a `<name>`
  * element whose properties are built from the directive attributes by `toProperties`.

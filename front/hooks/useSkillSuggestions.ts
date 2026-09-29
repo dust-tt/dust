@@ -129,8 +129,7 @@ export function usePatchSkillSuggestions({
   const patchSuggestions = useCallback(
     async (
       suggestionIds: string[],
-      state: PatchSkillSuggestionRequestBody["state"],
-      { apply }: { apply?: boolean } = {}
+      state: PatchSkillSuggestionRequestBody["state"]
     ): Promise<PatchSkillSuggestionResponseBody | null> => {
       if (!skillId || suggestionIds.length === 0) {
         return null;
@@ -147,7 +146,6 @@ export function usePatchSkillSuggestions({
             body: JSON.stringify({
               suggestionIds,
               state,
-              applyToSkill: apply,
             } satisfies PatchSkillSuggestionRequestBody),
           }
         );
