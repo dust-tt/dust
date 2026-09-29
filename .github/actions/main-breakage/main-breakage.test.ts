@@ -35,6 +35,7 @@ const run = {
   html_url: "https://github.com/dust-tt/dust/actions/runs/42",
   head_commit: { message: "Break <main> & more\n\nBody" },
   actor: { login: "pusher" },
+  triggering_actor: { login: "pusher" },
 };
 
 describe("formatBreakageMessage", () => {
@@ -85,9 +86,18 @@ describe("formatBreakageMessage", () => {
   });
 });
 
+type FakeJob = {
+  name: string;
+  conclusion: string | null;
+  steps?: Array<{ name: string; conclusion: string | null }>;
+};
+
 function fakeGithub({
   otherRuns,
+  otherRunsAfterRetry,
   jobs = [],
+  retryJobs,
+  retryConclusion = null,
   jobsByRunNumber = {},
   attempts = {},
   attemptJobs = {},
@@ -95,7 +105,13 @@ function fakeGithub({
   mergedBy = null,
 }: {
   otherRuns: Array<{ run_number: number; conclusion: string | null }>;
-  jobs?: Array<{ name: string; conclusion: string | null }>;
+  otherRunsAfterRetry?: Array<{
+    run_number: number;
+    conclusion: string | null;
+  }>;
+  jobs?: FakeJob[];
+  retryJobs?: FakeJob[];
+  retryConclusion?: string | null;
   jobsByRunNumber?: Record<
     number,
     Array<{ name: string; conclusion: string | null }>
@@ -108,12 +124,17 @@ function fakeGithub({
   pulls?: Array<{ number: number; html_url: string; merged_at: string | null }>;
   mergedBy?: string | null;
 }) {
+  const calls = { reruns: 0 };
   return {
+    calls,
     rest: {
       actions: {
         listWorkflowRuns: async () => ({
           data: {
-            workflow_runs: otherRuns.map((candidate) => ({
+            workflow_runs: (calls.reruns > 0 && otherRunsAfterRetry
+              ? otherRunsAfterRetry
+              : otherRuns
+            ).map((candidate) => ({
               id: 1000 + candidate.run_number,
               ...candidate,
             })),
@@ -121,7 +142,9 @@ function fakeGithub({
         }),
         listJobsForWorkflowRun: async ({ run_id }: { run_id: number }) => {
           if (run_id === run.id) {
-            return { data: { jobs } };
+            return {
+              data: { jobs: calls.reruns > 0 && retryJobs ? retryJobs : jobs },
+            };
           }
           return {
             data: {
@@ -147,6 +170,19 @@ function fakeGithub({
         }: {
           attempt_number: number;
         }) => ({ data: attempts[attempt_number] ?? { conclusion: null } }),
+        getWorkflowRun: async () => ({
+          data:
+            retryConclusion === null
+              ? { run_attempt: 2, status: "in_progress", conclusion: null }
+              : {
+                  run_attempt: 2,
+                  status: "completed",
+                  conclusion: retryConclusion,
+                },
+        }),
+        reRunWorkflowFailedJobs: async () => {
+          calls.reruns += 1;
+        },
       },
       repos: {
         listPullRequestsAssociatedWithCommit: async () => ({ data: pulls }),
@@ -383,5 +419,143 @@ describe("buildBreakageNotification", () => {
       slackToken: "token",
     });
     assert.match(text ?? "", /merged by <@U42>\./);
+  });
+});
+
+const infraJobs: FakeJob[] = [
+  {
+    name: "Test Shard 3 of 6",
+    conclusion: "failure",
+    steps: [
+      { name: "Setup Node Dependencies", conclusion: "success" },
+      { name: "Install Postgres", conclusion: "failure" },
+      { name: "Run Tests", conclusion: "skipped" },
+    ],
+  },
+  { name: "Test Shard 1 of 6", conclusion: "success" },
+];
+
+async function notifyWith(
+  github: ReturnType<typeof fakeGithub>,
+  workflowRun: typeof run = run
+) {
+  return buildBreakageNotification({
+    github,
+    context: { repo, payload: { workflow_run: workflowRun } },
+    core,
+    authors: "",
+    slackToken: "token",
+    sleep: async () => {},
+  });
+}
+
+describe("infra retry", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it("stays silent when the retry of an infra failure passes", async () => {
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: infraJobs,
+      retryConclusion: "success",
+    });
+    assert.equal(await notifyWith(github), null);
+    assert.equal(github.calls.reruns, 1);
+  });
+
+  it("reports the breakage when the retry fails too", async () => {
+    globalThis.fetch = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: infraJobs,
+      retryJobs: [
+        { name: "Test Shard 3 of 6", conclusion: "failure" },
+        { name: "Test Shard 1 of 6", conclusion: "success" },
+      ],
+      retryConclusion: "failure",
+    });
+    assert.match(
+      (await notifyWith(github)) ?? "",
+      /Failed jobs: Test Shard 3 of 6\. Failed again after an automatic retry\./
+    );
+  });
+
+  it("stays silent when a newer run completes during the retry", async () => {
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      otherRunsAfterRetry: [
+        { run_number: 8, conclusion: "success" },
+        { run_number: 6, conclusion: "success" },
+      ],
+      jobs: infraJobs,
+      retryConclusion: "failure",
+    });
+    assert.equal(await notifyWith(github), null);
+  });
+
+  it("reports without claiming a retry when the retry never completes", async () => {
+    globalThis.fetch = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: infraJobs,
+    });
+    const text = (await notifyWith(github)) ?? "";
+    assert.match(text, /main is broken/);
+    assert.doesNotMatch(text, /automatic retry/);
+  });
+
+  it("does not retry a failure outside the setup steps", async () => {
+    globalThis.fetch = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: [
+        ...infraJobs,
+        {
+          name: "Test Shard 5 of 6",
+          conclusion: "failure",
+          steps: [
+            { name: "Install Postgres", conclusion: "success" },
+            { name: "Run Tests", conclusion: "failure" },
+          ],
+        },
+      ],
+    });
+    assert.match((await notifyWith(github)) ?? "", /main is broken/);
+    assert.equal(github.calls.reruns, 0);
+  });
+
+  it("does not retry a manual rerun", async () => {
+    globalThis.fetch = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: infraJobs,
+      attempts: { 1: { conclusion: "success" } },
+    });
+    assert.match(
+      (await notifyWith(github, { ...run, run_attempt: 2 })) ?? "",
+      /main is broken/
+    );
+    assert.equal(github.calls.reruns, 0);
+  });
+
+  it("stays silent on the attempt started by the automatic retry", async () => {
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: [{ name: "test", conclusion: "success" }],
+      attempts: { 1: { conclusion: "failure" } },
+    });
+    const text = await notifyWith(github, {
+      ...run,
+      conclusion: "success",
+      run_attempt: 2,
+      triggering_actor: { login: "github-actions[bot]" },
+    });
+    assert.equal(text, null);
   });
 });

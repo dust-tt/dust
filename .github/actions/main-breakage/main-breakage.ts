@@ -13,9 +13,12 @@ type WorkflowRun = {
   html_url: string;
   head_commit: { message: string } | null;
   actor: { login: string } | null;
+  triggering_actor: { login: string } | null;
 };
 
-type Job = { name: string; conclusion: string | null };
+type Step = { name: string; conclusion: string | null };
+
+type Job = { name: string; conclusion: string | null; steps?: Step[] };
 
 type BreakageContext = {
   repo: Repository;
@@ -54,6 +57,16 @@ type BreakageOptions = {
         getWorkflowRunAttempt(
           params: Repository & { run_id: number; attempt_number: number }
         ): Promise<{ data: { conclusion: string | null } }>;
+        getWorkflowRun(params: Repository & { run_id: number }): Promise<{
+          data: {
+            run_attempt: number;
+            status: string | null;
+            conclusion: string | null;
+          };
+        }>;
+        reRunWorkflowFailedJobs(
+          params: Repository & { run_id: number }
+        ): Promise<unknown>;
       };
       repos: {
         listPullRequestsAssociatedWithCommit(
@@ -80,6 +93,7 @@ type BreakageOptions = {
   };
   authors: string;
   slackToken: string;
+  sleep?: (ms: number) => Promise<void>;
 };
 
 // A run conclusion that carries information about main's state, as opposed to the raw
@@ -181,6 +195,125 @@ async function getAttemptConclusion({
   }
 }
 
+// Steps that only prepare the runner, so their failure says nothing about the code under test.
+const INFRA_STEPS = new Set([
+  "Set up job",
+  "Initialize containers",
+  "Checkout",
+  "Setup Node Dependencies",
+  "Install Postgres",
+  "Install Redis",
+  "Install Protoc",
+  "Install Sandbox",
+  "Install minimal stable",
+  "Install Grit CLI",
+  "Setup Rust Cache",
+]);
+const INFRA_STEP_PREFIXES = [
+  "Run actions/checkout@",
+  "Build dust-tt/postgresql-action@",
+];
+
+function isInfraStep(name: string): boolean {
+  return (
+    INFRA_STEPS.has(name) ||
+    INFRA_STEP_PREFIXES.some((prefix) => name.startsWith(prefix))
+  );
+}
+
+/**
+ * @cc [label:product] main-breakage-infra-retry
+ * A first-attempt breakage counts as infra only when every failed job's first failed step
+ * prepares the runner; any other or unknown failed step MUST notify without a retry. An infra
+ * breakage MUST be retried once and stay silent unless the retry fails too and no newer run has
+ * completed meanwhile. A retry that does not complete in time MUST notify as if never retried.
+ */
+function isInfraFailure(jobs: Job[]): boolean {
+  const failed = jobs.filter((job) => job.conclusion === "failure");
+  return (
+    failed.length > 0 &&
+    failed.every((job) => {
+      const step = job.steps?.find((s) => s.conclusion === "failure");
+      return step !== undefined && isInfraStep(step.name);
+    })
+  );
+}
+
+// The token behind the automatic retry; its rerun attempts are followed by the job that started them.
+const RETRY_ACTOR = "github-actions[bot]";
+const RETRY_POLL_MS = 30_000;
+const RETRY_TIMEOUT_MS = 45 * 60_000;
+
+function defaultSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Returns the conclusion of the retried attempt, or null when it did not complete in time.
+async function retryFailedJobs({
+  github,
+  context,
+  core,
+  sleep = defaultSleep,
+}: Pick<BreakageOptions, "github" | "context" | "core" | "sleep">): Promise<
+  string | null
+> {
+  const run = context.payload.workflow_run;
+  await github.rest.actions.reRunWorkflowFailedJobs({
+    ...context.repo,
+    run_id: run.id,
+  });
+  core.info(`Retrying the failed jobs of ${run.name} run ${run.id}.`);
+  for (let waited = 0; waited < RETRY_TIMEOUT_MS; waited += RETRY_POLL_MS) {
+    await sleep(RETRY_POLL_MS);
+    const { data } = await github.rest.actions.getWorkflowRun({
+      ...context.repo,
+      run_id: run.id,
+    });
+    if (data.run_attempt > run.run_attempt && data.status === "completed") {
+      return data.conclusion;
+    }
+  }
+  core.warning(
+    `The retry of ${run.name} run ${run.id} did not complete in time.`
+  );
+  return null;
+}
+
+async function isSuperseded(
+  { github, context }: Pick<BreakageOptions, "github" | "context">,
+  completed: Array<{
+    id: number;
+    run_number: number;
+    conclusion: string | null;
+  }>
+): Promise<boolean> {
+  const run = context.payload.workflow_run;
+  const newer = completed
+    .filter((candidate) => candidate.run_number > run.run_number)
+    .sort((a, b) => b.run_number - a.run_number);
+  return (await findSignalConclusion({ github, context }, newer)) !== null;
+}
+
+async function listCompletedRuns({
+  github,
+  context,
+}: Pick<BreakageOptions, "github" | "context">) {
+  const run = context.payload.workflow_run;
+  const { data } = await github.rest.actions.listWorkflowRuns({
+    ...context.repo,
+    workflow_id: run.workflow_id,
+    branch: "main",
+    // No status filter: GitHub serves inconsistent, sometimes weeks-old pages with it, while
+    // in-progress runs are dropped below by their missing conclusion anyway.
+    per_page: RUN_LOOKBACK,
+  });
+  return data.workflow_runs.filter(
+    (candidate) =>
+      candidate.run_number !== run.run_number &&
+      (candidate.conclusion === "success" || candidate.conclusion === "failure")
+  );
+}
+
 type PreviousState =
   | { superseded: true }
   | { superseded: false; previous: Conclusion | null };
@@ -196,31 +329,16 @@ type PreviousState =
  * @cc [label:product] main-breakage-reruns
  * A rerun keeps its run number, so its comparison state MUST be its immediately previous attempt
  * when that attempt carries a signal (otherwise recovery-by-rerun would stay silent forever), and
- * the previous-run lookup when it does not.
+ * the previous-run lookup when it does not. An attempt started by the automatic infra retry MUST
+ * stay silent: the job that started it waits for it and reports its outcome.
  */
 async function getPreviousState({
   github,
   context,
 }: Pick<BreakageOptions, "github" | "context">): Promise<PreviousState> {
   const run = context.payload.workflow_run;
-  const { data } = await github.rest.actions.listWorkflowRuns({
-    ...context.repo,
-    workflow_id: run.workflow_id,
-    branch: "main",
-    // No status filter: GitHub serves inconsistent, sometimes weeks-old pages with it, while
-    // in-progress runs are dropped below by their missing conclusion anyway.
-    per_page: RUN_LOOKBACK,
-  });
-  const completed = data.workflow_runs.filter(
-    (candidate) =>
-      candidate.run_number !== run.run_number &&
-      (candidate.conclusion === "success" || candidate.conclusion === "failure")
-  );
-
-  const newer = completed
-    .filter((candidate) => candidate.run_number > run.run_number)
-    .sort((a, b) => b.run_number - a.run_number);
-  if ((await findSignalConclusion({ github, context }, newer)) !== null) {
+  const completed = await listCompletedRuns({ github, context });
+  if (await isSuperseded({ github, context }, completed)) {
     return { superseded: true };
   }
 
@@ -248,6 +366,7 @@ type BreakageDetails = {
   pr: { number: number; html_url: string } | null;
   merger: string | null;
   mention: string | null;
+  retried?: boolean;
 };
 
 /**
@@ -263,6 +382,7 @@ export function formatBreakageMessage({
   pr,
   merger,
   mention,
+  retried = false,
 }: BreakageDetails): string {
   const shortSha = run.head_sha.slice(0, 7);
   const title = run.head_commit?.message.split("\n")[0] ?? shortSha;
@@ -281,9 +401,10 @@ export function formatBreakageMessage({
     failedJobs.length > 0
       ? ` Failed jobs: ${failedJobs.map(escapeSlackText).join(", ")}.`
       : "";
+  const retry = retried ? " Failed again after an automatic retry." : "";
   return (
     `:rotating_light: *main is broken*: ${workflow} failed on ${commit}${prPart}${mergedBy}.` +
-    `${jobs} <${escapeSlackText(run.html_url)}|See the run>.`
+    `${jobs}${retry} <${escapeSlackText(run.html_url)}|See the run>.`
   );
 }
 
@@ -323,8 +444,15 @@ export async function buildBreakageNotification({
   core,
   authors,
   slackToken,
+  sleep,
 }: BreakageOptions): Promise<string | null> {
   const run = context.payload.workflow_run;
+  if (run.run_attempt > 1 && run.triggering_actor?.login === RETRY_ACTOR) {
+    core.info(
+      `No notification: the job that retried ${run.name} reports its outcome.`
+    );
+    return null;
+  }
   const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
     ...context.repo,
     run_id: run.id,
@@ -362,6 +490,33 @@ export async function buildBreakageNotification({
     });
   }
 
+  let jobs = jobsData.jobs;
+  let retried = false;
+  if (run.run_attempt === 1 && isInfraFailure(jobs)) {
+    const conclusion = await retryFailedJobs({ github, context, core, sleep });
+    if (conclusion === "failure") {
+      const completed = await listCompletedRuns({ github, context });
+      if (await isSuperseded({ github, context }, completed)) {
+        core.info(
+          `No notification: a newer ${run.name} run completed during the retry.`
+        );
+        return null;
+      }
+      const { data } = await github.rest.actions.listJobsForWorkflowRun({
+        ...context.repo,
+        run_id: run.id,
+        per_page: JOBS_PER_PAGE,
+      });
+      jobs = data.jobs;
+      retried = true;
+    } else if (conclusion !== null) {
+      core.info(
+        `No notification: ${run.name} concluded ${conclusion} after a retry.`
+      );
+      return null;
+    }
+  }
+
   const { pr, merger } = await getMergedPullRequest({ github, context });
   const mentions = merger
     ? await resolveSlackMentions({
@@ -375,11 +530,12 @@ export async function buildBreakageNotification({
     transition,
     run,
     repo: context.repo,
-    failedJobs: jobsData.jobs
+    failedJobs: jobs
       .filter((job) => job.conclusion === "failure")
       .map((job) => job.name),
     pr,
     merger,
     mention: merger ? (mentions.get(merger.toLowerCase()) ?? null) : null,
+    retried,
   });
 }
