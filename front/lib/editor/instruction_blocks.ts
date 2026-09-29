@@ -51,22 +51,55 @@ function pairSelfClosingCustomTags(html: string): string {
   );
 }
 
+/**
+ * @cc [owner:flvndvd,label:security] instruction-html-parser-isolated
+ * `parseInstructionsHtml` MUST parse LLM-authored HTML in an isolated context
+ * that never executes scripts or loads resources. In the browser this means
+ * using `DOMParser` (pass `htmlParser: new DOMParser()` in the options) rather
+ * than assigning to `innerHTML` on a live-document element. The jsdom path on
+ * the server is safe without `htmlParser` because jsdom never executes scripts.
+ */
 interface ParseInstructionsHtmlOptions {
-  // The browser's `document` in the editor, a jsdom one on the server. Narrowed to what this
-  // module calls: `Document` declares the whole spec, but jsdom implements only part of it, so a
-  // wider type would let a browser-only call through the compiler and fail on the server.
-  document: Pick<Document, "createElement">;
+  // The browser's `document` in the editor, a jsdom one on the server. Narrowed
+  // to what this module calls: `Document` declares the whole spec, but jsdom
+  // implements only part of it, so a wider type would let a browser-only call
+  // through the compiler and fail on the server.
+  document: Pick<Document, "createElement" | "adoptNode">;
   domParser: ProseMirrorDOMParser;
-  // Drops every `data-block-id` before parsing, for content whose ids must not be trusted.
+  // Drops every `data-block-id` before parsing, for content whose ids must not
+  // be trusted.
   clearBlockIds?: boolean;
+  // When provided, HTML is parsed in an isolated context via `parseFromString`
+  // instead of being assigned to `innerHTML` on a live-document element.
+  // Browser callers MUST supply `new DOMParser()` here to prevent XSS from
+  // LLM-authored payloads (e.g. `<img src=x onerror=…>`).
+  htmlParser?: Pick<DOMParser, "parseFromString">;
 }
 
 export function parseInstructionsHtml(
   html: string,
-  { clearBlockIds = false, document, domParser }: ParseInstructionsHtmlOptions
+  {
+    clearBlockIds = false,
+    document,
+    domParser,
+    htmlParser,
+  }: ParseInstructionsHtmlOptions
 ): ProseMirrorNode {
-  const tempDiv = document.createElement("div");
-  tempDiv.innerHTML = pairSelfClosingCustomTags(html);
+  const paired = pairSelfClosingCustomTags(html);
+
+  let tempDiv: Element;
+  if (htmlParser) {
+    // Parse in an isolated document so scripts never execute and no resources
+    // are loaded. Adopt the body element into the caller's document so that
+    // ProseMirror's DOM parser, which uses the caller's schema, works normally.
+    const isolated = htmlParser.parseFromString(paired, "text/html");
+    tempDiv = document.adoptNode(isolated.body) as Element;
+  } else {
+    // Server path: jsdom never executes scripts, so innerHTML is safe here.
+    const div = document.createElement("div");
+    div.innerHTML = paired;
+    tempDiv = div;
+  }
 
   if (clearBlockIds) {
     tempDiv

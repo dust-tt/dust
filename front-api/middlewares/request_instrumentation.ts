@@ -39,6 +39,21 @@ export const skipRequestLog = createMiddleware<SkipRequestLogEnv>(
   }
 );
 
+/**
+ * @cc [owner:flvndvd,label:security;logging] webhook-secret-log-redaction
+ * URL logging MUST redact the webhook source secret segment before writing to
+ * logs. The webhook path `/api/v1/w/:wId/triggers/hooks/:id/:secret` carries
+ * a bearer-style secret in the URL; logging it verbatim leaks the secret to
+ * any party with log-read access.
+ */
+function sanitizeUrlForLogging(url: string): string {
+  // Redact the secret (last path segment) from webhook source URLs.
+  return url.replace(
+    /\/api\/v1\/w\/[^/]+\/triggers\/hooks\/[^/]+\/[^/?#]+/,
+    (match) => match.replace(/\/([^/?#]+)$/, "/[redacted]")
+  );
+}
+
 // We skip k8s probes path to avoid noisy logs and skewed distribution
 const SKIP_LOGGER_PATHS = new Set([
   "/api/healthz",
@@ -175,7 +190,7 @@ export const requestInstrumentation =
           sessionId: session?.sessionId ?? "unknown",
           statusCode,
           streaming,
-          url: c.req.path,
+          url: sanitizeUrlForLogging(c.req.path),
           ...(user ? { user: { sId: user.sId } } : {}),
           workspaceId:
             auth && typeof auth.workspace === "function"

@@ -528,6 +528,7 @@ function buildDecorations(
       const newNodes = parseHTMLToBlocks(op.newContent, op.targetBlockId, {
         document,
         domParser: PMDOMParser.fromSchema(schema),
+        htmlParser: new DOMParser(),
       });
       if (newNodes.length === 0) {
         continue;
@@ -845,7 +846,11 @@ export const InstructionSuggestionExtension = Extension.create<{
               const newNodes = parseHTMLToBlocks(
                 op.newContent,
                 op.targetBlockId,
-                { document, domParser: PMDOMParser.fromSchema(schema) }
+                {
+                  document,
+                  domParser: PMDOMParser.fromSchema(schema),
+                  htmlParser: new DOMParser(),
+                }
               );
               if (newNodes.length === 0) {
                 continue;
