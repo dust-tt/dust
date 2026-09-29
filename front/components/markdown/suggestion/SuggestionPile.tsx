@@ -1,4 +1,8 @@
 import {
+  parseSuggestionPreviewData,
+  useConversationSidePanelContext,
+} from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
   getBatchSuggestionTitle,
   PendingBatchSuggestionCard,
 } from "@app/components/markdown/suggestion/BatchSuggestionDirective";
@@ -200,6 +204,7 @@ export function ConversationSuggestionPile({
   const reviewBatches = useReviewSuggestionBatches({
     workspaceId: owner.sId,
   });
+  const { closePanel, data } = useConversationSidePanelContext();
 
   const [isReviewing, setIsReviewing] = useState(false);
   const [inFlight, setInFlight] = useState<InFlightReview | null>(null);
@@ -224,11 +229,13 @@ export function ConversationSuggestionPile({
     batch?: BatchSuggestionType
   ) => {
     setInFlight({ batchId: batch?.id ?? null, state });
+    const reviewedIds = (batch ? [batch] : pendingBatches).map((b) => b.id);
     try {
-      await reviewBatches(
-        (batch ? [batch] : pendingBatches).map((b) => b.id),
-        state
-      );
+      await reviewBatches(reviewedIds, state);
+      const { batchId: previewedBatchId } = parseSuggestionPreviewData(data);
+      if (previewedBatchId && reviewedIds.includes(previewedBatchId)) {
+        closePanel();
+      }
     } finally {
       setInFlight(null);
     }

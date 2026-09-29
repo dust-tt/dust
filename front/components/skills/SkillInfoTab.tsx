@@ -2,7 +2,10 @@ import {
   DetailsSectionHeading,
   EditedSectionBar,
 } from "@app/components/assistant/details/DetailsSectionHeading";
-import { useEditedSkillSections } from "@app/components/assistant/details/SuggestionPreviewContext";
+import {
+  useEditedSkillSections,
+  useSkillSuggestionPreview,
+} from "@app/components/assistant/details/SuggestionPreviewContext";
 import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
@@ -53,6 +56,7 @@ export function SkillInfoTab({
 }: SkillInfoTabProps) {
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
   const editedSections = useEditedSkillSections();
+  const previewSuggestions = useSkillSuggestionPreview();
 
   const showDiscoverableSkills = skill.sId === "discover_skills";
   const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;
@@ -156,7 +160,9 @@ export function SkillInfoTab({
             label="Guidelines"
             isEdited={editedSections.has("guidelines")}
           />
+          {/* Remounts the instructions editor on preview change, since it only reads its content once. */}
           <SkillInstructionsReadOnlyEditor
+            key={previewSuggestions.map((s) => s.sId).join(",")}
             content={skill.instructions ?? ""}
             htmlContent={skill.instructionsHtml ?? ""}
             owner={owner}
