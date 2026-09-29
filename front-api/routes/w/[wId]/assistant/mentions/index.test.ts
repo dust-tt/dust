@@ -3,16 +3,20 @@ import {
   ElasticsearchError,
   withEs,
 } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MentionResource } from "@app/lib/resources/mention_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockSearch = vi.hoisted(() => vi.fn());
@@ -50,6 +54,40 @@ async function setup() {
     description: "Test Agent Description",
   });
   return { workspace, auth, agentConfig };
+}
+
+async function mockAgentSearchResults(
+  auth: Authenticator,
+  agentIds: string[],
+  total = agentIds.length
+) {
+  const agents = await AgentResource.fetchByIds(auth, agentIds);
+  const documents = agents
+    .map((agent) =>
+      agent.toSearchDocument(auth, {
+        activeUsersCount: 0,
+        editors: [],
+        favoriteCount: 0,
+        feedbackNegativeCount: 0,
+        feedbackPositiveCount: 0,
+        lastEditedByUser: null,
+        mcpServerViewIds: [],
+        skillIds: [],
+        tagIds: [],
+      })
+    )
+    .toSorted((a, b) => a.name.localeCompare(b.name));
+  mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
+    hits: {
+      hits:
+        request.index === AGENT_SEARCH_ALIAS_NAME
+          ? documents.map((document) => ({ _source: document }))
+          : [],
+      total: {
+        value: request.index === AGENT_SEARCH_ALIAS_NAME ? total : 0,
+      },
+    },
+  }));
 }
 
 function parse(workspace: { sId: string }, body: unknown) {
@@ -256,37 +294,7 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
     const second = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Beta Marketing Sales",
     });
-    const agents = await AgentResource.fetchByIds(auth, [
-      first.sId,
-      second.sId,
-    ]);
-    const documents = agents
-      .map((agent) =>
-        agent.toSearchDocument(auth, {
-          activeUsersCount: 0,
-          editors: [],
-          favoriteCount: 0,
-          feedbackNegativeCount: 0,
-          feedbackPositiveCount: 0,
-          lastEditedByUser: null,
-          mcpServerViewIds: [],
-          skillIds: [],
-          tagIds: [],
-        })
-      )
-      .toSorted((a, b) => a.name.localeCompare(b.name));
-    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
-      hits: {
-        hits:
-          request.index === AGENT_SEARCH_ALIAS_NAME
-            ? documents.map((document) => ({ _source: document }))
-            : [],
-        total: {
-          value:
-            request.index === AGENT_SEARCH_ALIAS_NAME ? documents.length : 0,
-        },
-      },
-    }));
+    await mockAgentSearchResults(auth, [first.sId, second.sId]);
 
     const response = await suggestions(workspace, { query, select: "agents" });
     expect(response.status).toBe(200);
@@ -335,13 +343,13 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
       }),
       expect.objectContaining({
         type: "agent",
-        id: first.sId,
-        isParticipant: false,
+        id: second.sId,
+        isParticipant: true,
       }),
       expect.objectContaining({
         type: "agent",
-        id: second.sId,
-        isParticipant: true,
+        id: first.sId,
+        isParticipant: false,
       }),
     ]);
   });
@@ -356,6 +364,125 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).suggestions).toEqual([]);
     expect(mockSearch).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    "",
+    "agent",
+  ])("includes a last-mentioned participant beyond the first search page (query: %s)", async (query) => {
+    const { workspace, auth } = await setup();
+    await FeatureFlagFactory.basic(auth, "new_manage_agents_page");
+    const page = [];
+    for (let i = 0; i < 20; i++) {
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: `Agent ${i.toString().padStart(2, "0")}`,
+      });
+      page.push(agent);
+    }
+    const zebra = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Zebra Agent",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: zebra.sId,
+      messagesCreatedAt: [new Date(Date.now() - 60_000)],
+    });
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+    await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig: page[0],
+      rank: 2,
+    });
+    const { messageRow } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "@Zebra Agent",
+      rank: 3,
+    });
+    await MentionResource.makeNew({
+      workspaceId: workspace.id,
+      messageId: messageRow.id,
+      agentConfigurationId: zebra.sId,
+      status: "approved",
+    });
+    await mockAgentSearchResults(
+      auth,
+      page.map((agent) => agent.sId),
+      21
+    );
+
+    for (const select of ["agents", "agents&select=users"]) {
+      const response = await honoApp.request(
+        `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/mentions/suggestions?current=true&select=${select}&query=${query}`
+      );
+      expect(response.status).toBe(200);
+      const body: { suggestions: RichMention[] } = await response.json();
+      expect(body.suggestions).toHaveLength(20);
+      expect(body.suggestions[0]).toMatchObject({
+        id: zebra.sId,
+        isParticipant: true,
+      });
+      const agentIds = body.suggestions
+        .filter((mention) => mention.type === "agent")
+        .map((mention) => mention.id);
+      expect(agentIds).toEqual([
+        zebra.sId,
+        ...page.slice(0, agentIds.length - 1).map((agent) => agent.sId),
+      ]);
+      expect(new Set(agentIds).size).toBe(agentIds.length);
+    }
+  });
+
+  it.each([
+    "archived",
+    "inaccessible",
+    "nonmatching",
+  ] as const)("does not add a %s participant absent from search results", async (condition) => {
+    const { workspace, auth, agentConfig } = await setup();
+    await FeatureFlagFactory.basic(auth, "new_manage_agents_page");
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+    const agent = await AgentResource.fetchById(auth, agentConfig.sId);
+    assert(agent);
+    switch (condition) {
+      case "archived": {
+        const result = await agent.archive(auth);
+        expect(result.isOk()).toBe(true);
+        break;
+      }
+      case "inaccessible": {
+        const space = await SpaceFactory.regular(workspace);
+        const result = await AgentResource.updateRequestedSpaceIdsInPlace(
+          auth,
+          {
+            agentConfigurationModelId: agentConfig.id,
+            newSpaceIds: [space.id],
+          }
+        );
+        expect(result.isOk()).toBe(true);
+        break;
+      }
+      case "nonmatching":
+        break;
+    }
+    const query = condition === "nonmatching" ? "unmatched" : "";
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/mentions/suggestions?select=agents&query=${query}`
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions).toEqual([]);
   });
 
   it("falls back to the legacy lookup when agent search fails", async () => {

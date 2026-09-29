@@ -9,9 +9,11 @@ import {
   SUGGESTION_PRIORITY,
   sortEditorSuggestionUsers,
 } from "@app/lib/mentions/editor/suggestion";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { subFilter } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -328,28 +330,52 @@ export const suggestionsOfMentions = async (
       lastActivityAt: participantsById.get(agent.id)?.lastActivityAt ?? 0,
     }));
 
-    // The sidekick agent is excluded from default global agent listings but should
-    // be mentionable when it's a conversation participant.
-    const sidekickParticipant = participantAgents.find(
-      (pa) => pa.id === GLOBAL_AGENTS_SID.SIDEKICK
-    );
-    if (sidekickParticipant) {
-      if (isSearchResult) {
-        agentSuggestions.push(
-          ...filterAndSortEditorSuggestionAgents(normalizedQuery, [
-            sidekickParticipant,
-          ])
+    if (isSearchResult) {
+      // Participants must be considered even when absent from the first search page.
+      const participantConfigurations = await AgentResource.fetchByIds(auth, [
+        ...participantsById.keys(),
+      ]);
+      const mentionableParticipantIds = new Set(
+        participantConfigurations
+          .filter(
+            (agent) => agent.status === "active" && auth.can("read", agent)
+          )
+          .map((agent) => agent.sId)
+      );
+      const searchResultsById = new Map(
+        activeAgents.map((agent) => [agent.id, agent])
+      );
+      const matchingParticipants = participantAgents
+        .filter(
+          (agent) =>
+            mentionableParticipantIds.has(agent.id) &&
+            (searchResultsById.has(agent.id) ||
+              subFilter(normalizedQuery, agent.label.toLowerCase()))
+        )
+        .toSorted(
+          (a, b) =>
+            Number(b.id === lastMentionedId) -
+              Number(a.id === lastMentionedId) ||
+            (b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0)
         );
-      } else {
+      agentSuggestions.push(
+        ...matchingParticipants.map(
+          (agent) => searchResultsById.get(agent.id) ?? agent
+        ),
+        ...activeAgents.filter((agent) => !participantsById.has(agent.id))
+      );
+    } else {
+      // Sidekick is excluded from default listings but is mentionable as a participant.
+      const sidekickParticipant = participantsById.get(
+        GLOBAL_AGENTS_SID.SIDEKICK
+      );
+      if (sidekickParticipant) {
         activeAgents.push(sidekickParticipant);
       }
+      agentSuggestions.push(
+        ...filterAndSortEditorSuggestionAgents(normalizedQuery, activeAgents)
+      );
     }
-
-    const filteredAgents = isSearchResult
-      ? activeAgents
-      : filterAndSortEditorSuggestionAgents(normalizedQuery, activeAgents);
-
-    agentSuggestions.push(...filteredAgents);
   }
 
   if (select.users) {
