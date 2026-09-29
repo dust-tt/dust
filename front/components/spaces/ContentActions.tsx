@@ -11,6 +11,7 @@ import {
 } from "@app/lib/data_sources";
 import type { AppRouter } from "@app/lib/platform";
 import { setQueryParam } from "@app/lib/utils/router";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type {
   DataSourceViewContentNode,
   DataSourceViewType,
@@ -306,7 +307,10 @@ const makeViewSourceUrlContentAction = (
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
       if (contentNode.sourceUrl) {
-        window.open(contentNode.sourceUrl, "_blank");
+        const { valid } = validateUrl(contentNode.sourceUrl);
+        if (valid) {
+          window.open(contentNode.sourceUrl, "_blank");
+        }
       }
     },
   };
