@@ -622,6 +622,37 @@ describe("agent_sidekick_context tools", () => {
         expect(result.error.message).toContain("not found or not accessible");
       }
     });
+
+    it("does not expose another user's hidden agent to a member", async () => {
+      const { authenticator: owner, workspace } = await createResourceTest({
+        role: "user",
+      });
+
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(owner, {
+          scope: "hidden",
+          instructions: "Secret instructions",
+        });
+
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        member.sId,
+        workspace.sId
+      );
+
+      const tool = getToolByName("inspect_available_agent");
+      const result = await tool.handler(
+        { agentId: agentConfiguration.sId },
+        createTestExtra(memberAuth)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("not found or not accessible");
+        expect(result.error.message).not.toContain("Secret instructions");
+      }
+    });
   });
 
   describe("get_agent_feedback", () => {
