@@ -3282,6 +3282,7 @@ export function GroupConversationView({
                         variant="highlight"
                         size="sm"
                         icon={MessageCircle01}
+                        label="New"
                         tooltip="Create a new conversation"
                         onClick={() => onNewConversation()}
                       />

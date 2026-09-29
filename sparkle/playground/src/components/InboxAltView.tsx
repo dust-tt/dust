@@ -936,6 +936,7 @@ export function InboxAltView({
                 variant="highlight"
                 size="sm"
                 icon={MessageCircle01}
+                label="New"
                 tooltip="Create a new conversation"
                 onClick={() => onNewConversation()}
               />
