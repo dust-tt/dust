@@ -25,9 +25,10 @@ export async function describeAgent(
 
 /**
  * @cc [owner:avervaet,label:mcp;security] private-agent-instructions-not-exposed
- * MUST NOT expose an agent's instructions, tools or skills to a caller who cannot view its content,
- * whatever their role. Visibility comes exclusively from the resource (`agent-content-visibility`):
- * this handler MUST check `isFull()` before reading the instructions, tools or skills.
+ * MUST NOT expose an agent's instructions, tools, skills or structured output to a caller who cannot
+ * view its content, whatever their role. Visibility comes exclusively from the resource
+ * (`agent-content-visibility`): this handler MUST check `isFull()` before reading the instructions,
+ * tools, skills or structured output.
  */
 export async function describeAgentHandler(
   args: DescribeAgentArgs,
@@ -90,13 +91,20 @@ export async function describeAgentHandler(
       instructionsHtml
     : `Instructions (full system prompt):\n${instructions ?? "(no instructions)"}`;
 
+  const { responseFormat } = agent.modelConfiguration;
+  const structuredOutputLine = responseFormat
+    ? `- Structured output (JSON response format): ${responseFormat}\n`
+    : "";
+
   return new Ok([
     {
       type: "text" as const,
       text:
         header +
         `- Skills: ${skillNames || "none"}\n` +
-        `- Tools: ${toolNames || "none"}\n\n` +
+        `- Tools: ${toolNames || "none"}\n` +
+        structuredOutputLine +
+        "\n" +
         instructionsBlock,
     },
   ]);

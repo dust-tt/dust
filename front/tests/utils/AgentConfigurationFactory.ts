@@ -29,6 +29,7 @@ export class AgentConfigurationFactory {
         providerId: ModelProviderIdType;
         modelId: ModelIdType;
         temperature?: number;
+        responseFormat?: string;
       };
       requestedSpaceIds: ModelId[];
       templateId: string | null;
@@ -70,6 +71,7 @@ export class AgentConfigurationFactory {
         providerId,
         modelId,
         temperature,
+        responseFormat: overrides.model?.responseFormat,
       },
       templateId: overrides.templateId ?? null,
       reinforcement: overrides.reinforcement,
