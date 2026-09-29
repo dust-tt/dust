@@ -2,7 +2,6 @@ import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import type { SeedContext } from "@app/scripts/seed/factories/types";
 
@@ -26,7 +25,7 @@ export async function createSeedContext({
 
   // Get the first admin user from the workspace
   const { memberships } = await MembershipResource.getActiveMemberships({
-    workspace: renderLightWorkspaceType({ workspace }),
+    workspace: workspace.toLightJSON(),
     roles: ["admin"],
   });
   if (memberships.length === 0) {
@@ -53,7 +52,7 @@ export async function createSeedContext({
 
   return {
     auth,
-    workspace: renderLightWorkspaceType({ workspace }),
+    workspace: workspace.toLightJSON(),
     user,
     execute,
     logger,

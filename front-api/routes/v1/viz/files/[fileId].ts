@@ -4,7 +4,6 @@ import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/acces
 import { assertVizFileAuthorized } from "@app/lib/api/viz/authorized_file_access";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { unauthedApp } from "@front-api/middlewares/ctx";
@@ -118,7 +117,7 @@ app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const owner = renderLightWorkspaceType({ workspace });
+  const owner = workspace.toLightJSON();
 
   const targetFile = await FileResource.unsafeFetchByIdInWorkspace(
     owner,

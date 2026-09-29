@@ -10,7 +10,6 @@ import { getFeatureFlagsForWorkspace } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -83,7 +82,7 @@ app.get("/:wId/:asset", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const featureFlags = await getFeatureFlagsForWorkspace(
-    renderLightWorkspaceType({ workspace })
+    workspace.toLightJSON()
   );
   if (!featureFlags.includes("whitelabel_frames")) {
     return redirectToDefaultAsset(ctx, asset);

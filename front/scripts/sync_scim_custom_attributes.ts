@@ -7,7 +7,6 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import type {
   AutoPaginatable,
@@ -134,7 +133,7 @@ makeScript(
         continue;
       }
 
-      const lightWorkspace = renderLightWorkspaceType({ workspace });
+      const lightWorkspace = workspace.toLightJSON();
 
       totalWorkspacesProcessed++;
 

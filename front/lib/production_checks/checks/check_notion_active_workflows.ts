@@ -4,7 +4,6 @@ import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/uti
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { getNotionWorkflowId } from "@app/types/connectors/workflows";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
@@ -196,9 +195,7 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 
   const workspaceIds = [...new Set(notionConnectors.map((c) => c.workspaceId))];
   const workspaceResources = await WorkspaceResource.fetchByIds(workspaceIds);
-  const workspaces = workspaceResources.map((w) =>
-    renderLightWorkspaceType({ workspace: w })
-  );
+  const workspaces = workspaceResources.map((w) => w.toLightJSON());
   const subscriptionsByWorkspaceId =
     await SubscriptionResource.fetchActiveByWorkspaces(workspaces);
 

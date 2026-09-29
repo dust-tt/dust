@@ -9,7 +9,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -58,7 +57,7 @@ const backfillCustomerIo = async (execute: boolean) => {
 
     const { memberships: workspaceMemberships } =
       await MembershipResource.getLatestMemberships({
-        workspace: renderLightWorkspaceType({ workspace }),
+        workspace: workspace.toLightJSON(),
       });
     const userIds = workspaceMemberships.map((m) => m.userId);
     const users = await UserResource.fetchByModelIds(userIds);

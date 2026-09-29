@@ -7,7 +7,6 @@ import { FramePublicationModel } from "@app/lib/resources/storage/models/frame_p
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import type { FramePublicationDescriptor } from "@app/types/api/frame_publication";
 import {
@@ -73,7 +72,7 @@ makeScript(
       await WorkspaceResource.fetchByModelIds([
         ...fileModelIdsByWorkspaceModelId.keys(),
       ])
-    ).map((workspace) => renderLightWorkspaceType({ workspace }));
+    ).map((workspace) => workspace.toLightJSON());
 
     logger.info(
       {

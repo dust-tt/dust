@@ -3,7 +3,6 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { buildCacheWithRedisKey } from "@app/lib/utils/cache";
 import { defineCache } from "@app/lib/utils/cache_handle";
 import { defineCacheOperations } from "@app/lib/utils/cache_operations";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Transaction } from "sequelize";
 import { z } from "zod";
 
@@ -25,7 +24,7 @@ const workspaceActiveSeatsCache = defineCache<{ workspaceId: string }, number>({
     }
 
     return countMembershipsForWorkspace({
-      workspace: renderLightWorkspaceType({ workspace }),
+      workspace: workspace.toLightJSON(),
       activeOnly: true,
     });
   },

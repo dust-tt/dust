@@ -56,7 +56,6 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { statsDMetrics } from "@app/lib/utils/statsd";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchCleanMetronomeInvoiceWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
@@ -100,7 +99,7 @@ async function provisionShadowMetronome({
   planCode: string;
 }): Promise<void> {
   try {
-    const lightWorkspace = renderLightWorkspaceType({ workspace });
+    const lightWorkspace = workspace.toLightJSON();
 
     const customerResult = await ensureMetronomeCustomerForWorkspace({
       workspace: lightWorkspace,
@@ -640,7 +639,7 @@ async function handleStripeCheckoutCompleted({
 
     const workspaceSeats = await countActiveSeatsForWorkspace(workspace.sId);
     await ServerSideTracking.trackSubscriptionCreated({
-      workspace: renderLightWorkspaceType({ workspace }),
+      workspace: workspace.toLightJSON(),
       planCode,
       workspaceSeats,
       subscriptionStartAt: now,
@@ -1304,9 +1303,7 @@ export async function processStripeWebhookEvent({
           await restoreWorkspaceAfterSubscription(auth);
 
           ServerSideTracking.trackSubscriptionReactivated({
-            workspace: renderLightWorkspaceType({
-              workspace: workspace,
-            }),
+            workspace: workspace.toLightJSON(),
           }).catch((e) => {
             logger.error(
               {
@@ -1319,9 +1316,7 @@ export async function processStripeWebhookEvent({
           });
         } else {
           ServerSideTracking.trackSubscriptionRequestCancel({
-            workspace: renderLightWorkspaceType({
-              workspace: workspace,
-            }),
+            workspace: workspace.toLightJSON(),
             requestCancelAt: now,
           }).catch((e) => {
             logger.error(

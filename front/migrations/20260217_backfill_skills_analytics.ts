@@ -15,7 +15,6 @@ import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/glob
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -253,7 +252,7 @@ makeScript(
       }
 
       await backfillSkillsAnalyticsForWorkspace(
-        renderLightWorkspaceType({ workspace }),
+        workspace.toLightJSON(),
         logger,
         days,
         execute

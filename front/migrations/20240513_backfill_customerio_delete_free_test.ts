@@ -7,7 +7,6 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -100,7 +99,7 @@ const backfillCustomerIo = async (execute: boolean) => {
           if (execute) {
             promises.push(
               CustomerioServerSideTracking.deleteWorkspace({
-                workspace: renderLightWorkspaceType({ workspace: ws }),
+                workspace: ws.toLightJSON(),
               }).catch((err) => {
                 logger.error(
                   { workspaceId: ws.sId, err },

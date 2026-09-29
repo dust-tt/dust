@@ -49,7 +49,6 @@ import {
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -262,7 +261,7 @@ export class Authenticator {
     globalGroupModelId: ModelId | null;
     subscription: SubscriptionResource | null;
   }> {
-    const lightWorkspace = renderLightWorkspaceType({ workspace });
+    const lightWorkspace = workspace.toLightJSON();
 
     const [role, authGroups, subscription] = await Promise.all([
       MembershipResource.getActiveRoleForUserInWorkspace({
@@ -382,7 +381,7 @@ export class Authenticator {
         const authGroups = await GroupResource.dangerouslyListUserGroupsForAuth(
           {
             user: this._user,
-            workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+            workspace: this._workspace.toLightJSON(),
             transaction,
           }
         );
@@ -413,7 +412,7 @@ export class Authenticator {
       return [];
     }
     const key = await KeyResource.fetchByWorkspaceAndId({
-      workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+      workspace: this._workspace.toLightJSON(),
       id: this._key.id,
     });
     if (!key) {
@@ -434,7 +433,7 @@ export class Authenticator {
       const { groupModelIds } =
         await GroupResource.dangerouslyListUserGroupsForAuth({
           user: this._user,
-          workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+          workspace: this._workspace.toLightJSON(),
         });
       return groupModelIds;
     }
@@ -1023,7 +1022,7 @@ export class Authenticator {
     let workspaceSubscription: SubscriptionResource | null = null;
 
     if (workspace) {
-      const lightWorkspace = renderLightWorkspaceType({ workspace });
+      const lightWorkspace = workspace.toLightJSON();
       if (requestedGroupIds && key.isSystem) {
         [requestedGroups, workspaceSubscription] = await Promise.all([
           GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
@@ -1405,7 +1404,7 @@ export class Authenticator {
       ]);
     }
 
-    const lightWorkspace = renderLightWorkspaceType({ workspace });
+    const lightWorkspace = workspace.toLightJSON();
     const grants = await GroupPermissionResource.listForGroups(lightWorkspace, {
       groupModelIds: params.groupModelIds,
     });
@@ -1430,24 +1429,7 @@ export class Authenticator {
   }
 
   workspace(): WorkspaceType | null {
-    return this._workspace
-      ? {
-          id: this._workspace.id,
-          sId: this._workspace.sId,
-          name: this._workspace.name,
-          role: this._role,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          segmentation: this._workspace.segmentation || null,
-          ssoEnforced: this._workspace.ssoEnforced,
-          regionalModelsOnly: this._workspace.regionalModelsOnly,
-          workOSOrganizationId: this._workspace.workOSOrganizationId,
-          whiteListedProviders: this._workspace.whiteListedProviders,
-          defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
-          metadata: this._workspace.metadata,
-          metronomeCustomerId: this._workspace.metronomeCustomerId ?? null,
-          sharingPolicy: this._workspace.sharingPolicy ?? "all_scopes",
-        }
-      : null;
+    return this._workspace ? this._workspace.toAuthJSON(this._role) : null;
   }
 
   getNonNullableWorkspace(): WorkspaceType {

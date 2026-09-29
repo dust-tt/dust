@@ -1,7 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -66,7 +65,7 @@ makeScript(
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
       const result = await deleteToolsAndSkillsSuggestions(
-        renderLightWorkspaceType({ workspace }),
+        workspace.toLightJSON(),
         { execute }
       );
       totals.deleted += result.deleted;

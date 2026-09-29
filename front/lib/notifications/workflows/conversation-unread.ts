@@ -25,7 +25,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { NotificationCondition } from "@app/types/notification_preferences";
@@ -61,9 +60,7 @@ export async function shouldSkipConversationExternalNotification(
   if (!workspace) {
     return true;
   }
-  return !areConversationExternalNotificationsEnabled(
-    renderLightWorkspaceType({ workspace })
-  );
+  return !areConversationExternalNotificationsEnabled(workspace.toLightJSON());
 }
 
 export const shouldSendNotificationForAgentAnswer = (

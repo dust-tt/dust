@@ -57,7 +57,6 @@ import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchReconcileWorkspaceUserCreditStatesWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
@@ -343,7 +342,7 @@ export async function applyContractStartSubscriptionSwap({
     contractResult.value.custom_fields?.[PLAN_CODE_CUSTOM_FIELD_KEY];
 
   await reconcileWorkspaceUserCreditStates({
-    workspace: renderLightWorkspaceType({ workspace }),
+    workspace: workspace.toLightJSON(),
     metronomeCustomerId: customerId,
     metronomeContractId: contractId,
     planCode: targetPlanCode ?? "",
@@ -436,7 +435,7 @@ export async function applyContractStartSubscriptionSwap({
       metronomeContractId: contractId,
     });
     await ensureWorkOSOrganizationForPaidPlan({
-      workspace: renderLightWorkspaceType({ workspace }),
+      workspace: workspace.toLightJSON(),
       planCode: targetPlan.code,
       contractId,
     });
@@ -511,7 +510,7 @@ export async function applyContractStartSubscriptionSwap({
   });
 
   await ensureWorkOSOrganizationForPaidPlan({
-    workspace: renderLightWorkspaceType({ workspace }),
+    workspace: workspace.toLightJSON(),
     planCode: targetPlan.code,
     contractId,
   });
@@ -558,7 +557,7 @@ async function applyStampedLegacyCreditMigration({
   }
   await applyLegacyCreditMigrationAtActivation({
     auth,
-    workspace: renderLightWorkspaceType({ workspace }),
+    workspace: workspace.toLightJSON(),
     metronomeCustomerId,
     metronomeContractId,
     startingAt: new Date(contract.starting_at),

@@ -2,7 +2,6 @@ import { fetchRevokedWorkspace } from "@app/lib/api/user";
 import type { GetWorkspaceLookupResponseBody } from "@app/lib/api/workspace";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -53,7 +52,7 @@ workspaceLookupApp.get(
       }
 
       return ctx.json({
-        workspace: renderLightWorkspaceType({ workspace }),
+        workspace: workspace.toLightJSON(),
         status: "auto-join-disabled" as const,
         workspaceVerifiedDomain,
       });
@@ -71,7 +70,7 @@ workspaceLookupApp.get(
     }
 
     return ctx.json({
-      workspace: renderLightWorkspaceType({ workspace: result.value }),
+      workspace: result.value.toLightJSON(),
       status: "revoked" as const,
       workspaceVerifiedDomain: null,
     });

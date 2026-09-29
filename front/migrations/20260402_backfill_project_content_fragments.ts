@@ -10,7 +10,6 @@ import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -174,7 +173,7 @@ makeScript(
       await backfillProjectContentFragmentsForWorkspace(
         execute,
         logger,
-        renderLightWorkspaceType({ workspace: ws })
+        ws.toLightJSON()
       );
     } else {
       const workspaceModelIds =
@@ -201,7 +200,7 @@ makeScript(
         }
 
         await concurrentExecutor(
-          workspaces.map((ws) => renderLightWorkspaceType({ workspace: ws })),
+          workspaces.map((ws) => ws.toLightJSON()),
           async (workspace) => {
             await backfillProjectContentFragmentsForWorkspace(
               execute,

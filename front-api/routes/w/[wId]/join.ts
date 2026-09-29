@@ -5,7 +5,6 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { GetJoinResponseBody, OnboardingType } from "@app/lib/signup";
 import { getSignInUrl } from "@app/lib/signup";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { isString } from "@app/types/shared/utils/general";
 import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -60,9 +59,7 @@ app.get(
       });
     }
 
-    const workspace = renderLightWorkspaceType({
-      workspace: workspaceResource,
-    });
+    const workspace = workspaceResource.toLightJSON();
     const workspaceDomains = await workspaceResource.getVerifiedDomains();
 
     const token = isString(t) ? t : null;

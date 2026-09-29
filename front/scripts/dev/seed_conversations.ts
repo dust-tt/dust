@@ -13,7 +13,6 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -232,7 +231,7 @@ async function fetchWorkspaceAndUser(workspaceId: string): Promise<{
   }
 
   const { memberships } = await MembershipResource.getActiveMemberships({
-    workspace: renderLightWorkspaceType({ workspace }),
+    workspace: workspace.toLightJSON(),
     roles: ["admin"],
   });
   if (memberships.length === 0) {

@@ -2,7 +2,6 @@ import { fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   GetUserMetadataResponseBody,
   PostUserMetadataKeyResponseBody as PostUserMetadataResponseBody,
@@ -71,7 +70,7 @@ async function loadUserAndWorkspace(
     if (workspace) {
       const role = await MembershipResource.getActiveRoleForUserInWorkspace({
         user,
-        workspace: renderLightWorkspaceType({ workspace }),
+        workspace: workspace.toLightJSON(),
       });
       if (role !== "none") {
         workspaceModelId = workspace.id;

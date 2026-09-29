@@ -1,7 +1,6 @@
 import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Attributes, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
@@ -61,12 +60,12 @@ export async function runOnAllWorkspaces(
     if (!workspace) {
       throw new Error(`Workspace not found: ${wId}`);
     }
-    workspaces = [renderLightWorkspaceType({ workspace })];
+    workspaces = [workspace.toLightJSON()];
   } else {
     const all = await WorkspaceResource.listAll("ASC", {
       where: buildWorkspaceWhere({ where, fromWorkspaceId }),
     });
-    workspaces = all.map((w) => renderLightWorkspaceType({ workspace: w }));
+    workspaces = all.map((w) => w.toLightJSON());
   }
 
   await concurrentExecutor(workspaces, (workspace) => worker(workspace), {

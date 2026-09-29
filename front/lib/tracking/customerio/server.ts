@@ -5,7 +5,6 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { JobType } from "@app/types/job_type";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -189,9 +188,7 @@ export class CustomerioServerSideTracking {
     for (const c of chunks) {
       await Promise.all(
         c.map(async (membership) => {
-          const ws = renderLightWorkspaceType({
-            workspace: workspaces[membership.workspaceId],
-          });
+          const ws = workspaces[membership.workspaceId].toLightJSON();
           await CustomerioServerSideTracking._identifyWorkspace({
             workspace: ws,
           });

@@ -22,7 +22,6 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { type CellInfo, isCellType, SUPPORTED_CELLS } from "@app/types/cell";
 import { isDevelopment } from "@app/types/shared/env";
@@ -678,7 +677,7 @@ async function handleLogout(ctx: Context) {
         const forwarded = ctx.req.header("x-forwarded-for");
         const clientIp = forwarded?.split(",")[0]?.trim() ?? "internal";
         void emitAuditLogEventDirect({
-          workspace: renderLightWorkspaceType({ workspace }),
+          workspace: workspace.toLightJSON(),
           action: "user.logout",
           actor: {
             type: "user",

@@ -1048,7 +1048,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       const syncResult = await syncSeatCount({
         metronomeCustomerId: metronome.metronomeCustomerId,
         contractId: metronome.metronomeContractId,
-        workspace: renderLightWorkspaceType({ workspace: workspaceResource }),
+        workspace: workspaceResource.toLightJSON(),
         startingAt: metronome.startingAt,
         planCode: plan.code,
       });

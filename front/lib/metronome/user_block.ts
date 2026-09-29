@@ -45,7 +45,6 @@ import {
   getWeightedRateLimiterUsage,
   getWeightedRateLimiterUsageForKeys,
 } from "@app/lib/utils/rate_limiter";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
 import { isWorkspacePoolCreditState } from "@app/types/credits";
@@ -501,7 +500,7 @@ async function resolveUserCreditState(
   const membership =
     await MembershipResource.getActiveMembershipOfUserInWorkspace({
       user,
-      workspace: renderLightWorkspaceType({ workspace }),
+      workspace: workspace.toLightJSON(),
     });
 
   // Normalize so legacy rows (pre-narrowing `*_low_balance` / `capped` / `normal`

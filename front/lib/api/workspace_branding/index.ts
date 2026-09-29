@@ -15,7 +15,6 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -77,7 +76,7 @@ export async function getWorkspaceBrandingPublicUrls(
   ogImageUrl: string | null;
 }> {
   const featureFlags = await getFeatureFlagsForWorkspace(
-    renderLightWorkspaceType({ workspace })
+    workspace.toLightJSON()
   );
   if (!featureFlags.includes("whitelabel_frames")) {
     return { faviconUrl: null, logoUrl: null, ogImageUrl: null };

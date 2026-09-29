@@ -6,7 +6,6 @@ import {
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { QueryTypes } from "sequelize";
@@ -118,9 +117,7 @@ export const checkConnectorsLastSyncSuccess: CheckFunction = async (
 
   const workspaceIds = [...new Set(potentiallyStale.map((c) => c.workspaceId))];
   const workspaceResources = await WorkspaceResource.fetchByIds(workspaceIds);
-  const workspaces = workspaceResources.map((w) =>
-    renderLightWorkspaceType({ workspace: w })
-  );
+  const workspaces = workspaceResources.map((w) => w.toLightJSON());
   const subscriptionsByWorkspaceId =
     await SubscriptionResource.fetchActiveByWorkspaces(workspaces);
 

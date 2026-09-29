@@ -15,7 +15,6 @@ import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/a
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -176,7 +175,7 @@ makeScript(
       if (!workspace) {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
-      await processWorkspace(renderLightWorkspaceType({ workspace }));
+      await processWorkspace(workspace.toLightJSON());
     } else {
       await runOnAllWorkspaces(processWorkspace);
     }

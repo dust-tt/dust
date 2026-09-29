@@ -8,7 +8,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -385,7 +384,7 @@ makeScript(
         throw new Error(`Workspace not found with sId: ${workspaceId}`);
       }
 
-      await createMeetingPrepSkill(renderLightWorkspaceType({ workspace }), {
+      await createMeetingPrepSkill(workspace.toLightJSON(), {
         execute,
         logger,
       });

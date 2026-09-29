@@ -4,7 +4,6 @@ import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -367,7 +366,7 @@ makeScript(
         throw new Error("Workspace not found");
       }
 
-      await createSuggestedSkills(renderLightWorkspaceType({ workspace }), {
+      await createSuggestedSkills(workspace.toLightJSON(), {
         logger,
         filePath,
         execute,

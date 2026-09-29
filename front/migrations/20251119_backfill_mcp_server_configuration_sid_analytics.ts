@@ -16,7 +16,6 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { AgentMessageAnalyticsToolUsed } from "@app/types/assistant/analytics";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -328,7 +327,7 @@ makeScript(
       }
 
       await backfillMcpServerConfigurationSidForWorkspace(
-        renderLightWorkspaceType({ workspace }),
+        workspace.toLightJSON(),
         logger,
         days,
         execute

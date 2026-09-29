@@ -18,7 +18,6 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -558,7 +557,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       this.workspaceId,
     ]);
     assert(workspace, `Workspace not found for key ${this.id}`);
-    return renderLightWorkspaceType({ workspace });
+    return workspace.toLightJSON();
   }
 
   async updateMonthlyCap({

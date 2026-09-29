@@ -5,7 +5,6 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import { SandboxFunctionInvocationModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Op } from "sequelize";
@@ -36,9 +35,7 @@ makeScript(
     if (!workspaceResource) {
       throw new Error(`Workspace not found: ${workspaceId}`);
     }
-    const workspace = renderLightWorkspaceType({
-      workspace: workspaceResource,
-    });
+    const workspace = workspaceResource.toLightJSON();
     const bucket = getPrivateUploadBucket();
     let lastInvocationModelId: ModelId | null = null;
     let backfilledCount = 0;

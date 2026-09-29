@@ -24,7 +24,6 @@ import {
 } from "@app/lib/skill_search";
 import { reindexCodeDefinedSkills } from "@app/lib/skill_search/index_code_defined";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 export async function indexUserSearchActivity({
@@ -80,7 +79,7 @@ export async function indexUserSearchActivity({
     } else {
       // Membership is active, index user in this workspace
       const document = user.toUserSearchDocument(
-        renderLightWorkspaceType({ workspace, role: membership.role })
+        workspace.toLightJSON(membership.role)
       );
       const indexResult = await indexUserDocument(document);
       if (indexResult.isErr()) {

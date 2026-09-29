@@ -8,7 +8,6 @@ import {
   concurrentExecutor,
   setTimeoutAsync,
 } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -203,7 +202,7 @@ makeScript(
     const workspaces =
       await WorkspaceResource.fetchByModelIds(workspaceModelIds);
     const workspacesById = new Map(
-      workspaces.map((w) => [w.id, renderLightWorkspaceType({ workspace: w })])
+      workspaces.map((w) => [w.id, w.toLightJSON()])
     );
 
     const users = await UserResource.fetchByModelIds(userModelIds);

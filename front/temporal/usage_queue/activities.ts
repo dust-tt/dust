@@ -108,7 +108,7 @@ export async function recordUsageActivity(workspaceId: string) {
 
   await reportUsageForSubscriptionItems(
     stripeSubscription,
-    renderLightWorkspaceType({ workspace })
+    workspace.toLightJSON()
   );
 }
 
@@ -484,7 +484,7 @@ export async function syncMetronomeSeatCountActivity(
   );
 
   const result = await syncMetronomeSeatCountForWorkspace({
-    workspace: renderLightWorkspaceType({ workspace }),
+    workspace: workspace.toLightJSON(),
   });
   if (result.isErr()) {
     logger.error(

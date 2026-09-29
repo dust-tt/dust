@@ -20,7 +20,6 @@ import { MARKUP_MULTIPLIER } from "@app/lib/api/programmatic_usage/common";
 import { USAGE_TYPE_PROGRAMMATIC } from "@app/lib/metronome/constants";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -117,9 +116,7 @@ makeScript(
       logger.error({ workspaceId }, "Workspace not found");
       return;
     }
-    const workspace = renderLightWorkspaceType({
-      workspace: workspaceResource,
-    });
+    const workspace = workspaceResource.toLightJSON();
 
     const key = await KeyResource.fetchByWorkspaceAndId({
       workspace,

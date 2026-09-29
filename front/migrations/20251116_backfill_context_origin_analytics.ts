@@ -9,7 +9,6 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { ANALYTICS_ALIAS_NAME, getClient } from "@app/lib/api/elasticsearch";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -261,7 +260,7 @@ makeScript(
       }
 
       await backfillContextOriginForWorkspace(
-        renderLightWorkspaceType({ workspace }),
+        workspace.toLightJSON(),
         logger,
         days,
         execute

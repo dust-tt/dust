@@ -12,11 +12,7 @@ export function renderLightWorkspaceType({
   workspace,
   role = "none",
 }: {
-  workspace:
-    | WorkspaceResource
-    | WorkspaceModel
-    | WorkspaceType
-    | LightWorkspaceType;
+  workspace: WorkspaceModel | WorkspaceType | LightWorkspaceType;
   role?: RoleType;
 }): LightWorkspaceType {
   return {

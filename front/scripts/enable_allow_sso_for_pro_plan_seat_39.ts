@@ -22,7 +22,6 @@ import { EMPTY_PLAN_LIMIT_OVERRIDE } from "@app/lib/plans/plan_limit_overrides";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -122,9 +121,7 @@ makeScript(
     ];
     const workspaceResources =
       await WorkspaceResource.fetchByModelIds(workspaceModelIds);
-    const workspaces = workspaceResources.map((w) =>
-      renderLightWorkspaceType({ workspace: w })
-    );
+    const workspaces = workspaceResources.map((w) => w.toLightJSON());
 
     logger.info(
       { candidates: workspaces.length },

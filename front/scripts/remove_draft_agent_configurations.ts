@@ -3,7 +3,6 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MentionModel } from "@app/lib/models/agent/conversation";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -141,7 +140,7 @@ makeScript(
       }
 
       return removeDraftAgentConfigurationsForWorkspace(
-        renderLightWorkspaceType({ workspace }),
+        workspace.toLightJSON(),
         logger,
         execute
       );

@@ -2,7 +2,6 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { QueryTypes } from "sequelize";
 
@@ -33,7 +32,7 @@ export const checkPausedConnectors: CheckFunction = async (
   const workspaceIds = [...new Set(pausedConnectors.map((c) => c.workspaceId))];
   const workspaceResources = await WorkspaceResource.fetchByIds(workspaceIds);
   const workspaces = workspaceResources
-    .map((w) => renderLightWorkspaceType({ workspace: w }))
+    .map((w) => w.toLightJSON())
     .filter((w) => !w.metadata?.maintenance); // Exclude workspaces in maintenance mode (relocation or relocation done).
 
   const subscriptionsByWorkspaceId =

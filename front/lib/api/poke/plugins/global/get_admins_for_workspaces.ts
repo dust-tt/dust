@@ -1,7 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { Err, Ok } from "@app/types/shared/result";
 
 const ALL_ADMINS = "all_admins";
@@ -52,7 +51,7 @@ export const getAdminsForWorkspacesPlugin = createPlugin({
 
     for (const workspace of workspaces) {
       const { memberships } = await MembershipResource.getActiveMemberships({
-        workspace: renderLightWorkspaceType({ workspace }),
+        workspace: workspace.toLightJSON(),
         roles: ["admin"],
       });
 

@@ -6,7 +6,6 @@ import {
   MessageModel,
 } from "@app/lib/models/agent/conversation";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -153,7 +152,7 @@ makeScript(
       if (!workspace) {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
-      await backfillWorkspace(renderLightWorkspaceType({ workspace }), {
+      await backfillWorkspace(workspace.toLightJSON(), {
         execute,
         logger,
       });

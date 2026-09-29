@@ -294,10 +294,7 @@ export async function handleLookupWorkspace(workspaceLookup: {
   );
 
   // If workspace is done relocating, return null so users get created in new region.
-  if (
-    workspace &&
-    isWorkspaceRelocationDone(renderLightWorkspaceType({ workspace }))
-  ) {
+  if (workspace && isWorkspaceRelocationDone(workspace.toLightJSON())) {
     return {
       workspace: null,
     };
@@ -360,9 +357,7 @@ export async function hasEmailLocalCellAffinity(
   if (
     workspaceWithVerifiedDomain &&
     isWorkspaceRelocationDone(
-      renderLightWorkspaceType({
-        workspace: workspaceWithVerifiedDomain.workspace,
-      })
+      workspaceWithVerifiedDomain.workspace.toLightJSON()
     )
   ) {
     return false;

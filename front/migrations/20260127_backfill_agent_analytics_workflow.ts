@@ -13,7 +13,6 @@ import {
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -333,7 +332,7 @@ makeScript(
       }
 
       await backfillAgentAnalyticsWorkflow(
-        renderLightWorkspaceType({ workspace }),
+        workspace.toLightJSON(),
         logger,
         execute
       );

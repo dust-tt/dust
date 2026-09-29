@@ -6,7 +6,6 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { getInactiveAgentArchivalThresholdDays } from "@app/types/user";
 import { ApplicationFailure } from "@temporalio/common";
@@ -22,9 +21,7 @@ export async function getWorkspacesWithInactiveAgentArchivalActivity(): Promise<
   const workspaceIds = flaggedWorkspaces
     .filter(
       (workspace) =>
-        getInactiveAgentArchivalThresholdDays(
-          renderLightWorkspaceType({ workspace })
-        ) !== null
+        getInactiveAgentArchivalThresholdDays(workspace.toLightJSON()) !== null
     )
     .map((workspace) => workspace.sId)
     .sort();

@@ -21,7 +21,6 @@ import { getMetronomeClient } from "@app/lib/metronome/client";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import { makeScript } from "./helpers";
@@ -60,7 +59,7 @@ makeScript(
       logger.error({ workspaceId }, "[SeatBalancesProbe] workspace not found");
       return;
     }
-    const { metronomeCustomerId } = renderLightWorkspaceType({ workspace });
+    const { metronomeCustomerId } = workspace.toLightJSON();
     if (!metronomeCustomerId) {
       logger.error(
         { workspaceId },

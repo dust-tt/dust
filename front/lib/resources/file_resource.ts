@@ -511,7 +511,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     return new Ok({
       file: fileRes,
-      workspace: renderLightWorkspaceType({ workspace }),
+      workspace: workspace.toLightJSON(),
       shareScope: shareableFile.shareScope,
       shareableFileId: shareableFile.id,
       authorizedFileAccess,

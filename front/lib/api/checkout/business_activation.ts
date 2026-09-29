@@ -140,7 +140,7 @@ export async function createPaymentGatedBusinessActivation({
     BusinessActivationError
   >
 > {
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const lightWorkspace = workspace.toLightJSON();
 
   const validCurrency = isSupportedCurrency(currency) ? currency : "usd";
   const resolvedPackageAlias = resolvePackageAliasForCurrency(
@@ -457,7 +457,7 @@ export async function handleSubscriptionActivationSuccess({
   });
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const lightWorkspace = workspace.toLightJSON();
 
   // Coupon credit: create on Business contract before switching plan.
   if (checkoutPayment.couponCode && checkoutPayment.couponRedemptionId) {

@@ -4,7 +4,6 @@ import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -151,7 +150,7 @@ async function addFreeCredits(
     }
 
     const result = await addCreditToWorkspace(
-      renderLightWorkspaceType({ workspace }),
+      workspace.toLightJSON(),
       amountCents,
       expirationDate,
       execute

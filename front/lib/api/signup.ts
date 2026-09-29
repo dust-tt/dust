@@ -135,7 +135,7 @@ export async function handleEnterpriseSignUpFlow(
     return { flow: "unauthorized", workspace: null };
   }
 
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const lightWorkspace = workspace.toLightJSON();
 
   // Early return if user is already a member of a workspace.
   if (total !== 0) {
@@ -212,7 +212,7 @@ export async function handleRegularSignupFlow(
   ) {
     return new Ok({
       flow: null,
-      workspace: renderLightWorkspaceType({ workspace: targetWorkspace }),
+      workspace: targetWorkspace.toLightJSON(),
     });
   }
 
@@ -258,9 +258,7 @@ export async function handleRegularSignupFlow(
       return new Ok({ flow: "no-auto-join", workspace: null });
     }
 
-    const lightWorkspace = renderLightWorkspaceType({
-      workspace: existingWorkspace,
-    });
+    const lightWorkspace = existingWorkspace.toLightJSON();
 
     const m = await MembershipResource.getLatestMembershipOfUserInWorkspace({
       user,
@@ -283,7 +281,7 @@ export async function handleRegularSignupFlow(
     return new Ok({ flow: "joined", workspace: lightWorkspace });
   } else if (!targetWorkspace && activeMemberships.length === 0) {
     const workspace = await createWorkspace(session, utmParams);
-    const lightWorkspace = renderLightWorkspaceType({ workspace });
+    const lightWorkspace = workspace.toLightJSON();
     await createAndTrackMembership({
       workspace: lightWorkspace,
       user,

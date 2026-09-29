@@ -30,7 +30,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { heartbeat } from "@app/lib/temporal";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type {
@@ -204,7 +203,7 @@ export async function reconcileUser({
     return new Err(new Error(`User not found: userId='${userId}'`));
   }
 
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const lightWorkspace = workspace.toLightJSON();
   const membership =
     await MembershipResource.getActiveMembershipOfUserInWorkspace({
       user,

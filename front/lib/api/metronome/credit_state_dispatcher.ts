@@ -11,7 +11,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
   hasMetronomeSeatBalance,
@@ -108,7 +107,7 @@ export async function dispatchSeatBalanceExhausted({
     return;
   }
 
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const lightWorkspace = workspace.toLightJSON();
   const membership =
     await MembershipResource.getActiveMembershipOfUserInWorkspace({
       user,
@@ -216,7 +215,7 @@ export async function dispatchSeatBalanceResolved({
     return;
   }
 
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const lightWorkspace = workspace.toLightJSON();
   const membership =
     await MembershipResource.getActiveMembershipOfUserInWorkspace({
       user,

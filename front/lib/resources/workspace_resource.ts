@@ -30,7 +30,6 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { GitHubConnectionStatus } from "@app/lib/skill_detection";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { terminateAllAgentLoopWorkflowsForConversation } from "@app/temporal/agent_loop/terminate";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
@@ -42,7 +41,12 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, isStringArray } from "@app/types/shared/utils/general";
-import type { WorkspaceSegmentationType } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  RoleType,
+  WorkspaceSegmentationType,
+  WorkspaceType,
+} from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
 import type {
   Attributes,
@@ -646,12 +650,9 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         await existingDomainInRegion.destroy();
 
         // Delete the domain from WorkOS.
-        await removeWorkOSOrganizationDomain(
-          renderLightWorkspaceType({ workspace: domainWorkspace }),
-          {
-            domain,
-          }
-        );
+        await removeWorkOSOrganizationDomain(domainWorkspace.toLightJSON(), {
+          domain,
+        });
       } else {
         return new Err(
           new Error(
@@ -1085,6 +1086,42 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     } catch (error) {
       return new Err(normalizeError(error));
     }
+  }
+
+  toAuthJSON(role: RoleType): WorkspaceType {
+    return {
+      id: this.id,
+      sId: this.sId,
+      name: this.name,
+      role,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      segmentation: this.segmentation || null,
+      ssoEnforced: this.ssoEnforced,
+      regionalModelsOnly: this.regionalModelsOnly,
+      workOSOrganizationId: this.workOSOrganizationId,
+      whiteListedProviders: this.whiteListedProviders,
+      defaultEmbeddingProvider: this.defaultEmbeddingProvider,
+      metadata: this.metadata,
+      metronomeCustomerId: this.metronomeCustomerId ?? null,
+      sharingPolicy: this.sharingPolicy ?? "all_scopes",
+    };
+  }
+
+  toLightJSON(role: RoleType = "none"): LightWorkspaceType {
+    return {
+      defaultEmbeddingProvider: this.defaultEmbeddingProvider,
+      id: this.id,
+      metadata: this.metadata,
+      name: this.name,
+      role,
+      segmentation: this.segmentation,
+      sharingPolicy: this.sharingPolicy,
+      metronomeCustomerId: this.metronomeCustomerId ?? null,
+      regionalModelsOnly: this.regionalModelsOnly,
+      sId: this.sId,
+      whiteListedProviders: this.whiteListedProviders,
+      workOSOrganizationId: this.workOSOrganizationId,
+    };
   }
 
   toLogJSON(): ResourceLogJSON {

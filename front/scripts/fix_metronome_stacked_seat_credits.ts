@@ -94,7 +94,6 @@ import { Op } from "@app/lib/resources/storage/data_types";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { hasMetronomeSeatBalance } from "@app/types/memberships";
@@ -142,7 +141,7 @@ async function fixWorkspace(
     logger.error({ workspaceId }, "[StackedFix] workspace not found");
     return;
   }
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const lightWorkspace = workspace.toLightJSON();
   const { metronomeCustomerId } = lightWorkspace;
   if (!metronomeCustomerId) {
     logger.error(

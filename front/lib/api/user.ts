@@ -2,7 +2,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -268,10 +267,9 @@ export async function getUserWithWorkspaces<T extends boolean>(
     })),
     workspaces: workspaces.map((w) => {
       return {
-        ...renderLightWorkspaceType({
-          workspace: w,
-          role: memberships.find((m) => m.workspaceId === w.id)?.role ?? "none",
-        }),
+        ...w.toLightJSON(
+          memberships.find((m) => m.workspaceId === w.id)?.role ?? "none"
+        ),
         ssoEnforced: w.ssoEnforced,
         workOSOrganizationId: w.workOSOrganizationId,
         ...(populateExtensionConfig && {

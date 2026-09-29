@@ -17,7 +17,6 @@ import { computeSandboxFunctionBundleSha256 } from "@app/lib/resources/sandbox_f
 import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import {
   getFramePublicationBasePath,
@@ -85,7 +84,7 @@ makeScript(
 
     const workspaces = (
       await WorkspaceResource.fetchByModelIds([...fileIdsByWorkspaceId.keys()])
-    ).map((workspace) => renderLightWorkspaceType({ workspace }));
+    ).map((workspace) => workspace.toLightJSON());
 
     scriptLogger.info(
       {

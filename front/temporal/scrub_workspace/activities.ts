@@ -152,7 +152,7 @@ export async function scrubWorkspaceData({
   await deleteDatasources(auth);
   await deleteSpaces(auth);
   await cleanupCustomerio(auth);
-  await disableWorkOSSSOAndSCIM(renderLightWorkspaceType({ workspace }), {
+  await disableWorkOSSSOAndSCIM(workspace.toLightJSON(), {
     disableSSO: true,
     disableSCIM: true,
   });

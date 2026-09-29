@@ -21,7 +21,6 @@ import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 import { makeScript } from "./helpers";
 
@@ -78,7 +77,7 @@ makeScript(
     // Metronome object), and "none"/"workspace" seats have no per-seat
     // balance at all.
     const { memberships } = await MembershipResource.getActiveMemberships({
-      workspace: renderLightWorkspaceType({ workspace }),
+      workspace: workspace.toLightJSON(),
     });
     const seatBalanceEligible = new Set([
       "pro",

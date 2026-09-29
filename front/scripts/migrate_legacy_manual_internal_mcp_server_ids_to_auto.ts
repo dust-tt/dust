@@ -43,7 +43,6 @@ import {
   RESOURCES_PREFIX,
 } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -922,7 +921,7 @@ makeScript(
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
       const progressBar = new ProgressBar("Processing workspace", 1);
-      await processWorkspace(renderLightWorkspaceType({ workspace }));
+      await processWorkspace(workspace.toLightJSON());
       progressBar.finish(workspace.sId);
     } else if (allWorkspaces) {
       const workspaceModelIds = (
@@ -1026,10 +1025,7 @@ makeScript(
             continue;
           }
 
-          await processWorkspace(
-            renderLightWorkspaceType({ workspace }),
-            entry.targets
-          );
+          await processWorkspace(workspace.toLightJSON(), entry.targets);
           processedWorkspaces += 1;
           migrateProgressBar.setCurrent(processedWorkspaces, workspace.sId);
         }

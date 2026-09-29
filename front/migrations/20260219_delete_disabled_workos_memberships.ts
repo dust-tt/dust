@@ -3,7 +3,6 @@ import type { OrganizationMembership } from "@workos-inc/node";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -107,7 +106,7 @@ makeScript(
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
       await deleteDisabledMembershipsForWorkspace(
-        renderLightWorkspaceType({ workspace }),
+        workspace.toLightJSON(),
         scriptLogger,
         execute
       );

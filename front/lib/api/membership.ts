@@ -240,10 +240,11 @@ export async function createAndTrackMembership({
   auditActor?: AuditLogActor;
 }) {
   const w =
-    workspace instanceof WorkspaceModel ||
     workspace instanceof WorkspaceResource
-      ? renderLightWorkspaceType({ workspace })
-      : workspace;
+      ? workspace.toLightJSON()
+      : workspace instanceof WorkspaceModel
+        ? renderLightWorkspaceType({ workspace })
+        : workspace;
 
   // Capture the previous (potentially revoked) membership before creating
   // the new one, so we can restore group memberships that were ended at the

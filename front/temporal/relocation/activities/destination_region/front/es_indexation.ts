@@ -12,7 +12,6 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { indexSkillDocument } from "@app/lib/skill_search";
 import { indexUserDocument } from "@app/lib/user_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -38,7 +37,7 @@ export async function recreateUserSearchIndex({
     throw new Error(`Workspace not found: ${workspaceId}`);
   }
 
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const lightWorkspace = workspace.toLightJSON();
 
   // Get all memberships for this workspace.
   const { memberships } = await MembershipResource.getLatestMemberships({

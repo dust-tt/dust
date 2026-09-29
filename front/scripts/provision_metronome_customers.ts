@@ -3,7 +3,6 @@ import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -101,11 +100,7 @@ makeScript(
         logger.error({ workspaceId: args.workspaceId }, "Workspace not found");
         return;
       }
-      await provisionCustomer(
-        renderLightWorkspaceType({ workspace }),
-        args.execute,
-        logger
-      );
+      await provisionCustomer(workspace.toLightJSON(), args.execute, logger);
     } else {
       await runOnAllWorkspaces(
         (workspace) => provisionCustomer(workspace, args.execute, logger),

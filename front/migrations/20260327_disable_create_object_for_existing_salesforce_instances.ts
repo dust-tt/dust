@@ -9,7 +9,6 @@ import { SALESFORCE_TOOLS_METADATA } from "@app/lib/api/actions/servers/salesfor
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -145,9 +144,7 @@ makeScript(
       if (!workspaceResource) {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
-      const workspace = renderLightWorkspaceType({
-        workspace: workspaceResource,
-      });
+      const workspace = workspaceResource.toLightJSON();
       totalProcessed += await disableCreateObjectForWorkspace(
         workspace,
         execute,

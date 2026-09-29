@@ -36,7 +36,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
 
@@ -52,7 +51,7 @@ async function fixWorkspace(
     logger.error({ workspaceId }, "[SeatFix] workspace not found");
     return;
   }
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const lightWorkspace = workspace.toLightJSON();
   const { metronomeCustomerId } = lightWorkspace;
   if (!metronomeCustomerId) {
     logger.error({ workspaceId }, "[SeatFix] workspace not on Metronome");

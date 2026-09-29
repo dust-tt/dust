@@ -12,7 +12,6 @@ import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import {
   isMembershipSeatType,
@@ -49,7 +48,7 @@ makeScript(
       logger.error({ wId }, "Workspace not found");
       return;
     }
-    const lightWorkspace = renderLightWorkspaceType({ workspace });
+    const lightWorkspace = workspace.toLightJSON();
 
     const user = await UserResource.fetchById(userId);
     if (!user) {

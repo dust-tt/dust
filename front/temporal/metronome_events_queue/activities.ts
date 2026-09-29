@@ -13,7 +13,6 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
 import type { PaidSeatType } from "@app/types/memberships";
@@ -250,7 +249,7 @@ export async function reconcileWorkspaceUserCreditStatesActivity({
   if (!subscription?.metronomeContractId) {
     return;
   }
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const lightWorkspace = workspace.toLightJSON();
   await reconcileWorkspaceUserCreditStates({
     workspace: lightWorkspace,
     metronomeCustomerId: workspace.metronomeCustomerId,

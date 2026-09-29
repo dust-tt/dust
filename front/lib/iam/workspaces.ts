@@ -13,7 +13,6 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { UTMParams } from "@app/lib/utils/utm";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchImmediateWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 
@@ -88,7 +87,7 @@ export async function createWorkspaceInternal({
       transaction
     );
 
-    const lightWorkspace = renderLightWorkspaceType({ workspace: created });
+    const lightWorkspace = created.toLightJSON();
 
     const { systemGroup, globalGroup } =
       await GroupResource.makeDefaultsForWorkspace(lightWorkspace, {
@@ -111,7 +110,7 @@ export async function createWorkspaceInternal({
     return created;
   });
 
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const lightWorkspace = workspace.toLightJSON();
   const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
   if (orgRes.isErr()) {
     logger.error(

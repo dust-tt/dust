@@ -65,7 +65,7 @@ export async function getWorkspaceInfos(
     return null;
   }
 
-  return renderLightWorkspaceType({ workspace });
+  return workspace.toLightJSON();
 }
 
 /**
@@ -147,7 +147,7 @@ export async function setInternalWorkspaceSegmentation(
 
   await workspace.updateSegmentation(segmentation);
 
-  return renderLightWorkspaceType({ workspace });
+  return workspace.toLightJSON();
 }
 
 /**
@@ -449,7 +449,10 @@ export async function evaluateWorkspaceSeatAvailability(
     return true;
   }
 
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const lightWorkspace =
+    workspace instanceof WorkspaceResource
+      ? workspace.toLightJSON()
+      : renderLightWorkspaceType({ workspace });
   const [activeMembersCount, pendingInvitationsCount] = await Promise.all([
     MembershipResource.getMembersCountForWorkspace({
       workspace: lightWorkspace,
@@ -470,7 +473,7 @@ export async function unsafeGetWorkspacesByModelId(
     return [];
   }
   const workspaces = await WorkspaceResource.fetchByModelIds(modelIds);
-  return workspaces.map((w) => renderLightWorkspaceType({ workspace: w }));
+  return workspaces.map((w) => w.toLightJSON());
 }
 
 export async function areAllSubscriptionsCanceled(
@@ -789,7 +792,7 @@ export async function findWorkspaceByWorkOSOrganizationId(
     return null;
   }
 
-  return renderLightWorkspaceType({ workspace });
+  return workspace.toLightJSON();
 }
 
 export type GetWorkspaceLookupResponseBody = {
