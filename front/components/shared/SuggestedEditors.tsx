@@ -1,11 +1,13 @@
+import type { SuggestedChangeAction } from "@app/components/shared/SuggestedChangeRow";
+import { SuggestedChangeRow } from "@app/components/shared/SuggestedChangeRow";
 import type { MemberDisplayInfo } from "@app/lib/swr/assistants";
 import { useMemberDetails } from "@app/lib/swr/assistants";
-import { Avatar, Chip } from "@dust-tt/sparkle";
+import { Avatar } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 interface SuggestedEditorRowProps {
   userId: string;
-  action: "add" | "remove";
+  action: SuggestedChangeAction;
   member: MemberDisplayInfo | undefined;
   isMembersLoading: boolean;
 }
@@ -20,27 +22,19 @@ function SuggestedEditorRow({
     member?.fullName ?? (isMembersLoading ? "Loading…" : userId);
 
   return (
-    <div className="flex items-center gap-3 py-2.5">
-      <Avatar
-        size="xs"
-        visual={member?.image ?? null}
-        name={displayName}
-        isRounded
-      />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm text-foreground">{displayName}</div>
-        {member?.email && (
-          <div className="truncate text-xs text-muted-foreground">
-            {member.email}
-          </div>
-        )}
-      </div>
-      <Chip
-        size="xs"
-        color={action === "add" ? "highlight" : "warning"}
-        label={action === "add" ? "Add" : "Remove"}
-      />
-    </div>
+    <SuggestedChangeRow
+      action={action}
+      visual={
+        <Avatar
+          size="xs"
+          visual={member?.image ?? null}
+          name={displayName}
+          isRounded
+        />
+      }
+      title={displayName}
+      description={member?.email ?? undefined}
+    />
   );
 }
 
