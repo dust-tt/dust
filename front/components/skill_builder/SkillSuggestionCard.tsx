@@ -264,7 +264,7 @@ function SuggestionDetails({
         <>
           {agentFacingDescriptionEdit && (
             <SuggestionFieldEditSection
-              label="Description"
+              label={SKILL_INVOCATION_LABEL}
               currentValue={getCurrentAgentFacingDescription()}
               newValue={agentFacingDescriptionEdit.content}
               layout={layout}
