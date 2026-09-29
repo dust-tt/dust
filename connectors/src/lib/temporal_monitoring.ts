@@ -13,6 +13,7 @@ import type {
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
+import { AxiosError } from "axios";
 import tracer from "dd-trace";
 
 import {
@@ -38,16 +39,55 @@ function isWorkspacePlanNoApiAccessError(err: unknown): err is Error {
   );
 }
 
+type ApiErrorLike = { type: string; message: string };
+
+function isApiErrorLike(value: unknown): value is ApiErrorLike {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "type" in value &&
+    typeof value.type === "string" &&
+    "message" in value &&
+    typeof value.message === "string"
+  );
+}
+
+// Finds the Dust API error carried by an activity failure through the
+// wrappers it may have gone through: retries, axios, or an Error cause.
+function findApiError(err: unknown): ApiErrorLike | null {
+  if (err instanceof WithRetriesError) {
+    for (const { error } of err.errors) {
+      const apiError = findApiError(error);
+      if (apiError) {
+        return apiError;
+      }
+    }
+    return null;
+  }
+  if (err instanceof AxiosError) {
+    return findApiError(err.response?.data?.error);
+  }
+  if (err instanceof Error) {
+    return findApiError(err.cause);
+  }
+  return isApiErrorLike(err) ? err : null;
+}
+
 // After a relocation the workspace row stays in the source region with the
 // `relocation-done` maintenance flag, and front answers every API call with
-// this 404 until the source is purged.
-// The marker only exists in the message: front reuses the generic
-// `workspace_not_found` type, and the axios upload paths only keep the
-// serialized response. A dedicated `workspace_relocated` API error type would
-// allow a structured check, but needs a front + SDK change.
+// this 404 until the source is purged. The marker only exists in the message:
+// front reuses the generic `workspace_not_found` type. A dedicated
+// `workspace_relocated` API error type would allow a check on the type alone,
+// but needs a front + SDK change.
 function isWorkspaceRelocatedError(err: unknown): boolean {
-  // Some DustAPI call sites throw the raw API error object, normalizeError
-  // serializes it into the message like WithRetriesError does.
+  const apiError = findApiError(err);
+  if (apiError) {
+    return (
+      apiError.type === "workspace_not_found" &&
+      apiError.message.includes("[relocation-done]")
+    );
+  }
+  // Some call sites only keep the serialized response in the message.
   const { message } = normalizeError(err);
   return (
     message.includes("workspace_not_found") &&
@@ -61,7 +101,9 @@ function isWorkspaceRelocatedError(err: unknown): boolean {
  * @cc [owner:PopDaph,label:product] relocated-workspace-is-final
  * A `workspace_not_found` error carrying the `[relocation-done]` marker MUST be categorized as a
  * final error (`workspace_relocated`) so the connector is paused instead of retrying forever
- * against a workspace that now lives in another region.
+ * against a workspace that now lives in another region, whether it is thrown as the raw API
+ * error, wrapped by `WithRetriesError`, carried by an axios 404 response, or set as an Error
+ * `cause`.
  */
 function categorizeFinalConnectorError(err: unknown): {
   connectorErrorType: ConnectorErrorType;

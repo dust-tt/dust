@@ -1,4 +1,5 @@
 import { BigQueryCastKnownErrorsInterceptor } from "@connectors/connectors/bigquery/temporal/cast_known_errors";
+import { WithRetriesError } from "@connectors/types";
 import { Context, type Info } from "@temporalio/activity";
 import {
   noopMetricMeter,
@@ -9,6 +10,7 @@ import type {
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
+import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -65,6 +67,7 @@ vi.mock("dd-trace", () => ({
 import logger from "@connectors/logger/logger";
 
 import {
+  DustConnectorWorkflowError,
   ExternalOAuthTokenError,
   RemoteDatabaseConnectionNotReadonlyError,
   ThirdPartyConfigurationError,
@@ -256,29 +259,86 @@ describe("ActivityInboundLogInterceptor", () => {
     });
   });
 
-  it("pauses the connector when the relocated error is a raw API error object", async () => {
-    const interceptor = new ActivityInboundLogInterceptor(
-      makeActivityContext(),
-      logger,
-      "webcrawler"
-    );
-    const error = {
+  describe("relocated workspace error shapes", () => {
+    const relocatedApiError = {
       type: "workspace_not_found",
       message: "The workspace was not found. [relocation-done]",
     };
-    const input = {
-      args: [],
-      headers: {},
-    } satisfies ActivityExecuteInput;
-    const next = vi.fn(async () => {
-      throw error;
-    }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+    const relocatedAxiosError = new AxiosError(
+      "Request failed with status code 404",
+      "ERR_BAD_REQUEST",
+      undefined,
+      undefined,
+      {
+        data: { error: relocatedApiError },
+        status: 404,
+        statusText: "Not Found",
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      }
+    );
 
-    await expect(interceptor.execute(input, next)).rejects.toBe(error);
+    it.each([
+      ["a raw API error object", relocatedApiError],
+      [
+        "an axios 404 wrapped by WithRetriesError",
+        new WithRetriesError(
+          [{ attempt: 1, error: relocatedAxiosError, additionalContext: {} }],
+          1,
+          0
+        ),
+      ],
+      [
+        "an Error cause",
+        new DustConnectorWorkflowError(
+          "Error tokenizing text",
+          "transient_upstream_activity_error",
+          relocatedApiError
+        ),
+      ],
+    ])("pauses the connector on %s", async (_label, error) => {
+      const interceptor = new ActivityInboundLogInterceptor(
+        makeActivityContext(),
+        logger,
+        "webcrawler"
+      );
+      const input = {
+        args: [],
+        headers: {},
+      } satisfies ActivityExecuteInput;
+      const next = vi.fn(async () => {
+        throw error;
+      }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
 
-    expect(mocks.syncFailed).toHaveBeenCalledWith(42, "workspace_relocated");
-    expect(mocks.pauseAndStop).toHaveBeenCalledWith({
-      reason: "Stopped on workspace_not_found [relocation-done]",
+      await expect(interceptor.execute(input, next)).rejects.toBe(error);
+
+      expect(mocks.syncFailed).toHaveBeenCalledWith(42, "workspace_relocated");
+      expect(mocks.pauseAndStop).toHaveBeenCalledWith({
+        reason: "Stopped on workspace_not_found [relocation-done]",
+      });
+    });
+
+    it("does not pause on a plain workspace_not_found", async () => {
+      const interceptor = new ActivityInboundLogInterceptor(
+        makeActivityContext(),
+        logger,
+        "webcrawler"
+      );
+      const error = {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
+      };
+      const input = {
+        args: [],
+        headers: {},
+      } satisfies ActivityExecuteInput;
+      const next = vi.fn(async () => {
+        throw error;
+      }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+
+      await expect(interceptor.execute(input, next)).rejects.toBe(error);
+
+      expect(mocks.pauseAndStop).not.toHaveBeenCalled();
     });
   });
 
