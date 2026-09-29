@@ -113,13 +113,16 @@ export function getTransition(
  * a conclusion MUST neither notify nor serve as a comparison state.
  */
 function isSignal(conclusion: string | null, jobs: Job[]): boolean {
-  if (conclusion === "failure") {
-    return true;
+  switch (conclusion) {
+    case "failure":
+      return true;
+    case "success":
+      return (
+        jobs.length > 0 && jobs.every((job) => job.conclusion !== "skipped")
+      );
+    default:
+      return false;
   }
-  if (conclusion !== "success") {
-    return false;
-  }
-  return jobs.length > 0 && jobs.every((job) => job.conclusion !== "skipped");
 }
 
 async function findSignalConclusion(
@@ -153,19 +156,21 @@ async function getAttemptConclusion({
     run_id: run.id,
     attempt_number,
   });
-  if (prior.conclusion === "failure") {
-    return "failure";
+  switch (prior.conclusion) {
+    case "failure":
+      return "failure";
+    case "success": {
+      const { data } = await github.rest.actions.listJobsForWorkflowRunAttempt({
+        ...context.repo,
+        run_id: run.id,
+        attempt_number,
+        per_page: 100,
+      });
+      return isSignal(prior.conclusion, data.jobs) ? "success" : null;
+    }
+    default:
+      return null;
   }
-  if (prior.conclusion !== "success") {
-    return null;
-  }
-  const { data } = await github.rest.actions.listJobsForWorkflowRunAttempt({
-    ...context.repo,
-    run_id: run.id,
-    attempt_number,
-    per_page: 100,
-  });
-  return isSignal(prior.conclusion, data.jobs) ? "success" : null;
 }
 
 type PreviousState =
