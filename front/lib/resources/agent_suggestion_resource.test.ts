@@ -1,10 +1,12 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
@@ -13,12 +15,14 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 describe("AgentSuggestionResource", () => {
   let workspace: WorkspaceType;
+  let user: UserResource;
   let authenticator: Authenticator;
   let agentConfiguration: LightAgentConfigurationType;
 
   beforeEach(async () => {
     const testSetup = await createResourceTest({ role: "user" });
     workspace = testSetup.workspace;
+    user = testSetup.user;
     authenticator = testSetup.authenticator;
 
     agentConfiguration =
@@ -221,6 +225,11 @@ describe("AgentSuggestionResource", () => {
 
   describe("create suggestion", () => {
     it("should create and fetch a create suggestion", async () => {
+      await grantWorkspacePermission(workspace, user, {
+        grantType: "create",
+        resourceType: "agent",
+      });
+      await authenticator.refresh();
       const suggestion = await AgentSuggestionFactory.createCreate(
         authenticator,
         agentConfiguration,
@@ -309,6 +318,11 @@ describe("AgentSuggestionResource", () => {
 
   describe("scope suggestion", () => {
     it("should create and fetch a scope suggestion", async () => {
+      await grantWorkspacePermission(workspace, user, {
+        grantType: "publish",
+        resourceType: "agent",
+      });
+      await authenticator.refresh();
       const suggestion = await AgentSuggestionFactory.createScope(
         authenticator,
         agentConfiguration,
@@ -438,7 +452,9 @@ describe("AgentSuggestionResource", () => {
           [suggestion],
           "approved"
         )
-      ).rejects.toThrow("User does not have permission to edit this agent");
+      ).rejects.toThrow(
+        "User does not have permission to edit this suggestion"
+      );
     });
   });
 
@@ -478,7 +494,7 @@ describe("AgentSuggestionResource", () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.message).toBe(
-          "User does not have permission to edit this agent"
+          "User does not have permission to edit this suggestion"
         );
       }
     });
@@ -515,7 +531,80 @@ describe("AgentSuggestionResource", () => {
             state: "pending",
           }
         )
-      ).rejects.toThrow("User does not have permission to edit this agent");
+      ).rejects.toThrow(
+        "User does not have permission to suggest this change to the agent"
+      );
+    });
+
+    it("should fail to create a suggestion without the capability its kind requires", async () => {
+      const agent = await AgentResource.fetchById(
+        authenticator,
+        agentConfiguration.sId
+      );
+      assert(agent);
+
+      await expect(
+        AgentSuggestionResource.createSuggestionForAgent(authenticator, agent, {
+          kind: "scope",
+          suggestion: { scope: "visible" },
+          analysis: null,
+          state: "pending",
+          source: "conversational",
+        })
+      ).rejects.toThrow(
+        "User does not have permission to suggest this change to the agent"
+      );
+    });
+
+    it("should let a workspace admin who is not an editor create and fetch editors suggestions only", async () => {
+      const admin = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, admin, { role: "admin" });
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        admin.sId,
+        workspace.sId
+      );
+      const agent = await AgentResource.fetchById(
+        adminAuth,
+        agentConfiguration.sId
+      );
+      assert(agent);
+
+      // Holding only the agent `admin` verb, the admin can manage its editors but not edit it.
+      const editors = await AgentSuggestionResource.createSuggestionForAgent(
+        adminAuth,
+        agent,
+        {
+          kind: "editors",
+          suggestion: { addUserIds: [admin.sId], removeUserIds: [] },
+          analysis: null,
+          state: "pending",
+          source: "conversational",
+        }
+      );
+      expect(
+        await AgentSuggestionResource.fetchById(adminAuth, editors.sId)
+      ).not.toBeNull();
+      expect((await editors.delete(adminAuth)).isOk()).toBe(true);
+
+      await expect(
+        AgentSuggestionResource.createSuggestionForAgent(adminAuth, agent, {
+          kind: "name",
+          suggestion: { name: "Renamed" },
+          analysis: null,
+          state: "pending",
+          source: "conversational",
+        })
+      ).rejects.toThrow(
+        "User does not have permission to suggest this change to the agent"
+      );
+      const name = await AgentSuggestionFactory.createName(
+        authenticator,
+        agentConfiguration,
+        { suggestion: { name: "Renamed" } }
+      );
+      expect(
+        await AgentSuggestionResource.fetchById(adminAuth, name.sId)
+      ).toBeNull();
     });
   });
 

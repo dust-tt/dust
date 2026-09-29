@@ -1,3 +1,4 @@
+import { isAuthorizedForAgentSuggestionKind } from "@app/lib/api/assistant/agent_suggestion_authorization";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
@@ -35,9 +36,14 @@ export interface AgentSuggestionResource
 /**
  * Resource for managing agent suggestions.
  *
- * IMPORTANT: Access to suggestions requires edit permissions on the associated agent.
- * Users can only create, read, update, or delete suggestions for agents they can edit
- * (i.e., they have editor access through the selected permission source, or are a workspace admin).
+ * IMPORTANT: Creating, reading, updating and deleting a suggestion requires the permissions its kind
+ * needs to be applied.
+ */
+/**
+ * @cc [owner:fabiencelier,label:security] agent-suggestion-access-follows-kind
+ * Creating, fetching (through any read path), updating the state of, and deleting a suggestion MUST
+ * require the caller to be authorized for its kind by `isAuthorizedForAgentSuggestionKind`, the
+ * check applying it requires.
  */
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> {
@@ -112,8 +118,14 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
     const owner = auth.getNonNullableWorkspace();
 
-    if (!this.canEditAgent(auth, agent)) {
-      throw new Error("User does not have permission to edit this agent");
+    if (
+      !blobs.every((blob) =>
+        isAuthorizedForAgentSuggestionKind(auth, agent, blob.kind)
+      )
+    ) {
+      throw new Error(
+        "User does not have permission to suggest this change to the agent"
+      );
     }
 
     const suggestions = await AgentSuggestionModel.bulkCreate(
@@ -186,7 +198,10 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     const inaccessible: AgentSuggestionModel[] = [];
     for (const suggestion of suggestions) {
       const agent = agentById.get(suggestion.agentConfiguration.sId);
-      if (!agent || !this.canEditAgent(auth, agent)) {
+      if (
+        !agent ||
+        !isAuthorizedForAgentSuggestionKind(auth, agent, suggestion.kind)
+      ) {
         inaccessible.push(suggestion);
         continue;
       }
@@ -203,15 +218,8 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     return { resources, inaccessible };
   }
 
-  private static canEditAgent(
-    auth: Authenticator,
-    agent: AgentResource
-  ): boolean {
-    if (auth.isAdmin()) {
-      return true;
-    }
-
-    return auth.can("write", agent);
+  private isAuthorizedForKind(auth: Authenticator): boolean {
+    return isAuthorizedForAgentSuggestionKind(auth, this.agent, this.kind);
   }
 
   static async fetchByIds(
@@ -288,9 +296,9 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    if (!AgentSuggestionResource.canEditAgent(auth, this.agent)) {
+    if (!this.isAuthorizedForKind(auth)) {
       return new Err(
-        new Error("User does not have permission to edit this agent")
+        new Error("User does not have permission to edit this suggestion")
       );
     }
 
@@ -385,10 +393,8 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     }
 
     assert(
-      suggestions.every((s) =>
-        AgentSuggestionResource.canEditAgent(auth, s.agent)
-      ),
-      "User does not have permission to edit this agent"
+      suggestions.every((s) => s.isAuthorizedForKind(auth)),
+      "User does not have permission to edit this suggestion"
     );
 
     await this.model.update(

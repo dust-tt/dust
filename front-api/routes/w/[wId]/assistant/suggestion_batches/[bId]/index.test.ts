@@ -1100,22 +1100,24 @@ describe("approving agent suggestions", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns 403 when the caller does not have the create-agent capability", async () => {
+  it("returns 404 when the caller does not have the create-agent capability anymore", async () => {
     const { workspace, auth, agent, batch } = await setupPendingAgent();
     await AgentSuggestionFactory.createCreate(auth, agent, {
       batchModelId: batch.id,
     });
 
     // The capability was held when the placeholder was created; simulate it being revoked since.
+    // A suggestion is only readable with the permissions its kind needs to be applied, and a batch
+    // holding one the caller cannot read is not readable either.
     vi.spyOn(Authenticator.prototype, "hasWorkspacePermission").mockReturnValue(
       false
     );
 
     const response = await approve(workspace, batch.sId);
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe(
-      "agent_group_permission_error"
+      "batch_suggestion_not_found"
     );
 
     const placeholder = await getAgentConfiguration(auth, {
