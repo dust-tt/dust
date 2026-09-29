@@ -142,7 +142,7 @@ describe("applyBatchSuggestions", () => {
     expect(await fetchAgentName(agent.sId)).toBe(agent.name);
   });
 
-  it("writes nothing when the caller cannot apply a later step", async () => {
+  it("hides a batch holding a suggestion the caller cannot apply", async () => {
     const admin = await UserFactory.basic();
     await MembershipFactory.associate(workspace, admin, { role: "admin" });
     const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -153,8 +153,8 @@ describe("applyBatchSuggestions", () => {
       adminAuth,
       { name: "Admin Agent" }
     );
-    // The admin is not an editor of this agent: holding only its `admin` verb, they can see its
-    // suggestions but not rename it.
+    // The admin is not an editor of this agent: holding only its `admin` verb, they can neither
+    // read nor apply its rename.
     const agent = await AgentConfigurationFactory.createTestAgent(auth, {
       scope: "visible",
     });
@@ -164,19 +164,12 @@ describe("applyBatchSuggestions", () => {
       suggestion: { name: "RenamedAdminAgent" },
       batchModelId,
     });
-    await AgentSuggestionFactory.createName(adminAuth, agent, {
+    await AgentSuggestionFactory.createName(auth, agent, {
       suggestion: { name: "RenamedAgent" },
       batchModelId,
     });
-    const batch = await BatchSuggestionResource.fetchById(adminAuth, sId);
-    assert(batch);
 
-    const res = await applyBatchSuggestions(adminAuth, batch);
-
-    assert(res.isErr());
-    expect(res.error.code).toBe("unauthorized");
-    expect(await fetchAgentName(adminAgent.sId)).toBe(adminAgent.name);
-    expect(await fetchAgentName(agent.sId)).toBe(agent.name);
+    expect(await BatchSuggestionResource.fetchById(adminAuth, sId)).toBeNull();
   });
 
   it("writes nothing when the caller cannot publish an agent of the batch", async () => {
@@ -185,18 +178,30 @@ describe("applyBatchSuggestions", () => {
       auth,
       { name: "Published Agent", scope: "visible" }
     );
+    // The suggestions are recorded and read with the `publish` capability; `auth`, created before
+    // the grant, applies them without it.
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "publish",
+      resourceType: "agent",
+    });
+    const publisherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
     const { id: batchModelId, sId } =
-      await BatchSuggestionFactory.createEmpty(auth);
-    await AgentSuggestionFactory.createName(auth, agent, {
+      await BatchSuggestionFactory.createEmpty(publisherAuth);
+    await AgentSuggestionFactory.createName(publisherAuth, agent, {
       suggestion: { name: "RenamedAgent" },
       batchModelId,
     });
-    await AgentSuggestionFactory.createScope(auth, publishedAgent, {
+    await AgentSuggestionFactory.createScope(publisherAuth, publishedAgent, {
       suggestion: { scope: "hidden" },
       batchModelId,
     });
+    const batch = await BatchSuggestionResource.fetchById(publisherAuth, sId);
+    assert(batch);
 
-    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+    const res = await applyBatchSuggestions(auth, batch);
 
     assert(res.isErr());
     expect(res.error.code).toBe("unauthorized");

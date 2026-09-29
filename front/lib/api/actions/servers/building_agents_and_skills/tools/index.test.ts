@@ -500,7 +500,7 @@ describe("building_agents_and_skills tools", () => {
             },
           ],
         }),
-        "instructions of this agent are not readable"
+        "Only editors can suggest changing a workspace agent's instructions"
       );
       expect(
         await AgentSuggestionResource.listByAgentConfigurationId(
