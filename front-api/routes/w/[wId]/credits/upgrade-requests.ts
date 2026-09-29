@@ -14,10 +14,7 @@ import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import {
-  ensureHasAnyGroupPermission,
-  ensureIsManager,
-} from "@front-api/middlewares/ensure_role";
+import { ensureHasAnyGroupPermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -46,6 +43,11 @@ function upgradeRequestErrorToApiError(
   error: UpgradeRequestError
 ): APIErrorWithContentfulStatusCode {
   switch (error.type) {
+    case "unauthorized":
+      return {
+        status_code: 403,
+        api_error: { type: "workspace_auth_error", message: error.message },
+      };
     case "workspace_not_metronome_billed":
       return {
         status_code: 403,
@@ -132,7 +134,10 @@ app.post(
 /** @ignoreswagger */
 app.patch(
   "/:requestId",
-  ensureIsManager(),
+  ensureHasAnyGroupPermission(
+    "set_usage_limits",
+    "Only workspace managers and group managers can resolve upgrade requests."
+  ),
   validate("param", ParamsSchema),
   validate("json", ResolveBodySchema),
   async (ctx): HandlerResult<PatchUpgradeRequestResponseBody> => {

@@ -1,6 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { getMemberScopeWithGroupVerb } from "@app/lib/resources/group_management_access";
+import type { MemberVerbAuthority } from "@app/lib/resources/group_management_access";
+import {
+  getMemberScopeWithGroupVerb,
+  getMemberVerbAuthority,
+} from "@app/lib/resources/group_management_access";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
@@ -234,48 +238,76 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     });
   }
 
-  // Fetching an arbitrary request by id is a business-admin operation (a
-  // manager or full admin resolves it from the usage page).
+  // Fetch requests only when the caller can manage the requester's limit.
   static async fetchById(
     auth: Authenticator,
     membershipUpgradeRequestId: string
   ): Promise<MembershipUpgradeRequestResource | null> {
-    if (!auth.isManager()) {
-      return null;
-    }
     const modelId = getResourceIdFromSId(membershipUpgradeRequestId);
     if (!modelId) {
       return null;
     }
     const [request] = await this.baseFetch(auth, { where: { id: modelId } });
-    return request ?? null;
+    if (
+      !request ||
+      (await request.getResolutionAuthority(auth)).kind === "none"
+    ) {
+      return null;
+    }
+    return request;
   }
 
-  // Mark the request as resolved by an admin. Only a `pending` request can be
-  // resolved; resolving an already-resolved request is rejected.
+  private async getResolutionAuthority(
+    auth: Authenticator
+  ): Promise<MemberVerbAuthority> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (this.workspaceId !== workspace.id) {
+      return { kind: "none" };
+    }
+    const membership =
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user: this.requester,
+        workspace,
+      });
+    if (!membership) {
+      return { kind: "none" };
+    }
+    return getMemberVerbAuthority(auth, this.requester, "set_usage_limits");
+  }
+
+  /**
+   * @cc [owner:philipperolet,label:security;concurrency] request-resolution-authority
+   * Resolution MUST recheck authority over the current requester and update only a pending
+   * request in the caller's workspace. Concurrent resolutions MUST have only one winner.
+   */
   async markAsResolved(
     auth: Authenticator,
     {
       status,
-      resolvedByUser,
     }: {
       status: Exclude<MembershipUpgradeRequestStatus, "pending">;
-      resolvedByUser: UserResource;
     },
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, Error>> {
-    if (this.status !== "pending") {
-      return new Err(new Error("Request is not pending."));
+  ): Promise<
+    Result<MemberVerbAuthority, "unauthorized" | "request_not_pending">
+  > {
+    const authority = await this.getResolutionAuthority(auth);
+    if (authority.kind === "none") {
+      return new Err("unauthorized");
     }
-    await this.update(
+    const [updated] = await this.update(
       {
         status,
-        resolvedByUserId: resolvedByUser.id,
+        resolvedByUserId: auth.getNonNullableUser().id,
         resolvedAt: new Date(),
       },
-      transaction
+      transaction,
+      { workspaceId: auth.getNonNullableWorkspace().id, status: "pending" }
     );
-    return new Ok(undefined);
+    if (updated === 0) {
+      return new Err("request_not_pending");
+    }
+    return new Ok(authority);
   }
 
   async delete(
