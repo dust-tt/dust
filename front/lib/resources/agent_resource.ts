@@ -114,6 +114,7 @@ import type { UserType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import assert from "assert";
 import isEqual from "lodash/isEqual";
+import partition from "lodash/partition";
 import uniq from "lodash/uniq";
 import type {
   Attributes,
@@ -1350,21 +1351,8 @@ export class AgentResource
   async listActions(
     auth: Authenticator
   ): Promise<MCPServerConfigurationType[]> {
-    if (this.scope === "global") {
-      if (!this.canViewContent(auth)) {
-        return [];
-      }
-      const [configuration] = await getGlobalAgents(auth, [this.sId], "full");
-      return configuration?.actions ?? [];
-    }
-
-    const actionsByConfigurationModelId = await AgentResource.batchListActions(
-      auth,
-      [this]
-    );
-    const actions = actionsByConfigurationModelId.get(
-      this.agentConfigurationModelId
-    );
+    const actionsByAgent = await AgentResource.batchListActions(auth, [this]);
+    const actions = actionsByAgent.get(this);
     assert(actions !== undefined);
 
     return actions;
@@ -1372,44 +1360,67 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:security] actions-require-read
-   * Keyed by `agentConfigurationModelId`: tools belong to a configuration version. Each input agent
-   * has an entry. An agent whose content the caller cannot view (see `agent-content-visibility`)
-   * MUST get `[]`: its tools carry its knowledge (data sources, tables), as private as its
-   * instructions. Global agents MUST NOT be passed: their tools are code-defined, not
-   * `AgentMCPServerConfigurationModel` rows, and they share a sentinel configuration id; use
-   * `listActions`.
+   * Keyed by the input resource: tools belong to a configuration version, and global agents share
+   * a sentinel configuration id, so neither `sId` nor `agentConfigurationModelId` identifies a
+   * version across both kinds. Each input agent has an entry. An agent whose content the caller
+   * cannot view (see `agent-content-visibility`) MUST get `[]`: its tools carry its knowledge (data
+   * sources, tables), as private as its instructions.
+   */
+  /**
+   * @cc [owner:tdraier,label:performance] actions-batched-per-kind
+   * A call MUST run at most one tools lookup for its custom agents (by configuration row) and one
+   * full global agent build for its global agents, whatever the number of input agents: no lookup
+   * or build per agent.
    */
   static async batchListActions(
     auth: Authenticator,
     agents: AgentResource[]
-  ): Promise<Map<ModelId, MCPServerConfigurationType[]>> {
-    assert(
-      agents.every((agent) => agent.scope !== "global"),
-      "Unexpected: listing the actions of a global agent."
+  ): Promise<Map<AgentResource, MCPServerConfigurationType[]>> {
+    const viewableAgents = agents.filter((agent) => agent.canViewContent(auth));
+    const [globalAgents, customAgents] = partition(
+      viewableAgents,
+      (agent) => agent.scope === "global"
     );
-    const result = new Map<ModelId, MCPServerConfigurationType[]>(
-      agents.map((agent) => [agent.agentConfigurationModelId, []])
+
+    const [actionsByConfigurationModelId, globalConfigurations] =
+      await Promise.all([
+        customAgents.length > 0
+          ? fetchMCPServerActionConfigurations(auth, {
+              configurationModelIds: customAgents.map(
+                (agent) => agent.agentConfigurationModelId
+              ),
+              variant: "full",
+            })
+          : new Map<ModelId, MCPServerConfigurationType[]>(),
+        globalAgents.length > 0
+          ? getGlobalAgents(
+              auth,
+              uniq(globalAgents.map((agent) => agent.sId)),
+              "full"
+            )
+          : [],
+      ]);
+    const globalActionsById = new Map(
+      globalConfigurations.map((configuration) => [
+        configuration.sId,
+        configuration.actions,
+      ])
     );
-    const readableConfigurationModelIds = agents
-      .filter((agent) => agent.canViewContent(auth))
-      .map((agent) => agent.agentConfigurationModelId);
-    if (readableConfigurationModelIds.length === 0) {
-      return result;
-    }
 
-    const actionsByConfigurationModelId =
-      await fetchMCPServerActionConfigurations(auth, {
-        configurationModelIds: readableConfigurationModelIds,
-        variant: "full",
-      });
-    for (const configurationModelId of readableConfigurationModelIds) {
-      result.set(
-        configurationModelId,
-        actionsByConfigurationModelId.get(configurationModelId) ?? []
-      );
-    }
-
-    return result;
+    return new Map(
+      agents.map((agent) => {
+        if (!agent.canViewContent(auth)) {
+          return [agent, []];
+        }
+        const actions =
+          agent.scope === "global"
+            ? globalActionsById.get(agent.sId)
+            : actionsByConfigurationModelId.get(
+                agent.agentConfigurationModelId
+              );
+        return [agent, actions ?? []];
+      })
+    );
   }
 
   async listTags(auth: Authenticator): Promise<TagResource[]> {

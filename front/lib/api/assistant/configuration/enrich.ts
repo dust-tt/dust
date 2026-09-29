@@ -21,8 +21,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 // composition is parallel + merge, not a pipe.
 //
 // Both builders accept any resource, custom or global, `full` or `light`: a `light` one serializes
-// redacted (no instructions, no tools; see `agent-json-redaction`). `enrichWithActions` takes custom
-// agents only (see `actions-require-read`); the builders resolve global agents' tools themselves.
+// redacted (no instructions, no tools; see `agent-json-redaction`).
 
 /**
  * @cc [owner:tdraier,label:backend] enrich-favorites-key-per-agent
@@ -93,20 +92,18 @@ export async function enrichWithTags(
 
 /**
  * @cc [owner:tdraier,label:backend] enrich-actions-key-per-version
- * `enrichWithActions` keys its result by the configuration-row id (`toJSON().id`): a version's tools
- * belong to that configuration row, not to the agent across versions.
+ * `enrichWithActions` keys its result by the input resource, which is one configuration version: a
+ * version's tools belong to it, `sId` spans every version of an agent, and global agents share one
+ * sentinel configuration id (`toJSON().id`).
  */
 export async function enrichWithActions(
   auth: Authenticator,
   resources: AgentResource[]
-): Promise<Map<ModelId, AgentActionsEnrichment>> {
-  const actionsByConfigurationModelId = await AgentResource.batchListActions(
-    auth,
-    resources
-  );
+): Promise<Map<AgentResource, AgentActionsEnrichment>> {
+  const actionsByAgent = await AgentResource.batchListActions(auth, resources);
 
   return new Map(
-    [...actionsByConfigurationModelId].map(([id, actions]) => [id, { actions }])
+    [...actionsByAgent].map(([resource, actions]) => [resource, { actions }])
   );
 }
 
@@ -144,20 +141,10 @@ export async function toAgentConfigurations(
 ): Promise<AgentConfigurationType[]> {
   const bases = resources.map((resource) => resource.toJSON());
 
-  // Global agents share a sentinel configuration id, so their tools are resolved per resource
-  // rather than keyed by id.
-  const [favorites, tags, customActions, globalActions] = await Promise.all([
+  const [favorites, tags, actions] = await Promise.all([
     enrichWithFavorites(auth, resources),
     enrichWithTags(auth, resources),
-    enrichWithActions(
-      auth,
-      resources.filter((resource) => resource.scope !== "global")
-    ),
-    Promise.all(
-      resources.map((resource) =>
-        resource.scope === "global" ? resource.listActions(auth) : null
-      )
-    ),
+    enrichWithActions(auth, resources),
   ]);
 
   return resources.map((resource, index) => {
@@ -170,9 +157,7 @@ export async function toAgentConfigurations(
       instructionsHtml: resource.isFull()
         ? resource.content.instructionsHtml
         : null,
-      actions: isGlobal
-        ? (globalActions[index] ?? [])
-        : (customActions.get(base.id)?.actions ?? []),
+      ...(actions.get(resource) ?? { actions: [] }),
       // A redacted agent exposes no skills (see `agent-json-redaction`).
       ...(!resource.isFull()
         ? { codeDefinedSkillIds: [] }

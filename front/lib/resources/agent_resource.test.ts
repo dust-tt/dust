@@ -1,5 +1,6 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
+import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -32,6 +33,17 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import assert from "assert";
 import type { JSONSchema7 } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock(
+  "@app/lib/api/assistant/global_agents/global_agents",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/api/assistant/global_agents/global_agents")
+      >();
+    return { ...actual, getGlobalAgents: vi.fn(actual.getGlobalAgents) };
+  }
+);
 
 const AGENT_MODEL_ID = 42;
 
@@ -1534,6 +1546,39 @@ describe("AgentResource", () => {
       // them still gets no tools.
       expect(await AgentResource.fetchById(otherAuth, agent.sId)).toBeNull();
       expect(await editorView.listActions(otherAuth)).toEqual([]);
+    });
+
+    it("lists custom and global agents' tools in one call, with a single global agent build", async () => {
+      const { authenticator } = testContext;
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const [custom, helper] = await AgentResource.fetchByIds(authenticator, [
+        agent.sId,
+        GLOBAL_AGENTS_SID.HELPER,
+      ]);
+      const otherHelper = await AgentResource.fetchById(
+        authenticator,
+        GLOBAL_AGENTS_SID.HELPER
+      );
+      assert(custom && helper && otherHelper);
+      vi.mocked(getGlobalAgents).mockClear();
+
+      const actionsByAgent = await AgentResource.batchListActions(
+        authenticator,
+        [custom, helper, otherHelper]
+      );
+
+      expect(getGlobalAgents).toHaveBeenCalledTimes(1);
+      expect(getGlobalAgents).toHaveBeenCalledWith(
+        authenticator,
+        [GLOBAL_AGENTS_SID.HELPER],
+        "full"
+      );
+      expect(actionsByAgent.get(custom)).toEqual([]);
+      expect(actionsByAgent.get(helper)).toEqual(
+        actionsByAgent.get(otherHelper)
+      );
+      expect(actionsByAgent.size).toBe(3);
     });
   });
 
