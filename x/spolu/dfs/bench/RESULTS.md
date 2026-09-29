@@ -1,29 +1,34 @@
 # Benchmark results
 
 Wall-clock times in seconds. Search rows use `rg -l -F PATTERN . | wc -l`; match counts are files.
-macOS search times use the reported `rg` total; Docker search times use the pipeline's `real` time.
+macOS search times use the reported `rg` total; Docker and VM search times use the pipeline's `real` time.
 Raw output, including CPU timings, is preserved below.
 
-| Requested files | Operation / search pattern | macOS native (s) | GCSFuse in Docker (s) | Matches: macOS / GCS | GCS / macOS |
-| ---: | --- | ---: | ---: | ---: | ---: |
-| 10,000 | Extract (`tar -xzf`) | 1.669 | 1,135.939 — interrupted | — | — |
-| 10,000 | `benchmarkcommon` | 0.307 | 41.081 | 10,000 / 2,646 | — |
-| 10,000 | `benchmarkmedium` | 0.226 | 5.185 | 1,000 / 265 | — |
-| 10,000 | `benchmarkrare` | 0.200 | 1.365 | 100 / 27 | — |
-| 10,000 | `benchmarkneedle` | 0.198 | 4.477 | 10 / 3 | — |
-| 100 | Extract (`tar -xzf`) | 0.049 | 73.627 | — | ≈1,503× |
-| 100 | `benchmarkcommon` | 0.016 | 7.044 | 100 / 100 | ≈440× |
-| 100 | `benchmarkmedium` | 0.013 | 6.595 | 10 / 10 | ≈507× |
-| 100 | `benchmarkrare` | 0.012 | 5.185 | 1 / 1 | ≈432× |
-| 100 | `benchmarkneedle` | 0.010 | 5.680 | 1 / 1 | ≈568× |
-| 100 | Delete (`rm -rf corpus`) | 0.014 | 33.569 | — | ≈2,398× |
+| Requested files | Operation / search pattern | macOS native (s) | GCSFuse in Docker (s) | Filestore from VM (s) | Matches: macOS / GCS / Filestore | GCS / macOS | Filestore / macOS |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 10,000 | Extract (`tar -xzf`) | 1.669 | 1,135.939 — interrupted | 163.836 | — | — | ≈98× |
+| 10,000 | `benchmarkcommon` | 0.307 | 41.081 | 28.482 | 10,000 / 2,646 / 10,000 | — | ≈93× |
+| 10,000 | `benchmarkmedium` | 0.226 | 5.185 | 13.214 | 1,000 / 265 / 1,000 | — | ≈58× |
+| 10,000 | `benchmarkrare` | 0.200 | 1.365 | 4.808 | 100 / 27 / 100 | — | ≈24× |
+| 10,000 | `benchmarkneedle` | 0.198 | 4.477 | 4.003 | 10 / 3 / 10 | — | ≈20× |
+| 100 | Extract (`tar -xzf`) | 0.049 | 73.627 | 1.906 | — | ≈1,503× | ≈39× |
+| 100 | `benchmarkcommon` | 0.016 | 7.044 | 0.366 | 100 / 100 / 100 | ≈440× | ≈23× |
+| 100 | `benchmarkmedium` | 0.013 | 6.595 | 0.119 | 10 / 10 / 10 | ≈507× | ≈9.2× |
+| 100 | `benchmarkrare` | 0.012 | 5.185 | 0.055 | 1 / 1 / 1 | ≈432× | ≈4.6× |
+| 100 | `benchmarkneedle` | 0.010 | 5.680 | 0.054 | 1 / 1 / 1 | ≈568× | ≈5.4× |
+| 100 | Delete (`rm -rf corpus`) | 0.014 | 33.569 | 0.421 | — | ≈2,398× | ≈30× |
 
 **Partial 10,000-file run:** GCS extraction was interrupted after 18m55.939s, having created only
 about 2,700 small files. The subsequent GCS searches used that partial corpus and returned 2,646
-matches for `benchmarkcommon`; macOS used all 10,000 files. Ratios are therefore shown only for
-the complete 100-file runs. These are individual measurements; cache state was not recorded.
+matches for `benchmarkcommon`; macOS and Filestore used all 10,000 files. GCS/macOS ratios are
+therefore shown only for the complete 100-file runs; Filestore/macOS ratios cover both corpus sizes.
 
-# Raw: Benchmark Results 10000 (partial)
+**Filestore setup:** NFSv3 from an Ubuntu 24.04 `e2-small` VM (2 GiB RAM) in `us-east4-a` to a
+100 GiB Regional Filestore instance in `us-east4`, configured for 2,000 IOPS. Ratios compare the
+measured environments, including their different client hardware. These are individual measurements;
+cache state was not recorded.
+
+# Raw: Benchmark Results 10000 (GCS partial)
 
 ## `tar -xzf`
 
@@ -51,6 +56,16 @@ sys     0m1.241s
 ```
 
 Only craeted ~2700 small files
+
+### Filestore from VM
+
+```
+spolu@spolu-dfs-bench-vm:/mnt/filestore/spolu-bench$ time tar -xzf corpus-10000.tar.gz
+
+real    2m43.836s
+user    0m8.606s
+sys     0m5.486s
+```
 
 ## rg
 
@@ -110,6 +125,31 @@ sys     0m0.485s
 
 ```
 
+### Filestore from VM
+
+```
+10000
+
+real    0m28.482s
+user    0m0.587s
+sys     0m2.270s
+1000
+
+real    0m13.214s
+user    0m0.358s
+sys     0m1.342s
+100
+
+real    0m4.808s
+user    0m0.272s
+sys     0m0.660s
+10
+
+real    0m4.003s
+user    0m0.233s
+sys     0m0.611s
+```
+
 # Raw: Benchmark results 100
 
 ## `tar -xzf`
@@ -132,6 +172,16 @@ time tar -xzf /tmp/corpus-100.tar.gz
 real    1m13.627s
 user    0m0.062s
 sys     0m0.103s
+```
+
+### Filestore from VM
+
+```
+spolu@spolu-dfs-bench-vm:/mnt/filestore/spolu-bench$ time tar -xzf ~/corpus-100.tar.gz
+
+real    0m1.906s
+user    0m0.081s
+sys     0m0.069s
 ```
 
 ## rg
@@ -178,6 +228,31 @@ user    0m0.066s
 sys     0m0.300s
 ```
 
+### Filestore from VM
+
+```
+100
+
+real    0m0.366s
+user    0m0.014s
+sys     0m0.042s
+10
+
+real    0m0.119s
+user    0m0.010s
+sys     0m0.017s
+1
+
+real    0m0.055s
+user    0m0.001s
+sys     0m0.018s
+1
+
+real    0m0.054s
+user    0m0.007s
+sys     0m0.012s
+```
+
 ## rm -rf
 
 ### MacOSX native
@@ -194,6 +269,16 @@ root@5b4cebcb1015:/mnt/gcs/spolu-bench/test# time rm -rf corpus
 real    0m33.569s
 user    0m0.003s
 sys     0m0.023s
+```
+
+### Filestore from VM
+
+```
+spolu@spolu-dfs-bench-vm:/mnt/filestore/spolu-bench$ time rm -rf corpus
+
+real    0m0.421s
+user    0m0.004s
+sys     0m0.013s
 ```
 
 # Filesystem VFS benchmark — 2026-09-29
