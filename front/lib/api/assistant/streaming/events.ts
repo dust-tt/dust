@@ -33,8 +33,21 @@ export async function publishEvent({
   await getRedisHybridManager().publish(channel, event, origin);
 }
 
+function withoutAgentInstructions(message: AgentMessageType): AgentMessageType {
+  return {
+    ...message,
+    configuration: { ...message.configuration, instructions: null },
+  };
+}
+
 /**
  * Conversation event publication interface.
+ */
+/**
+ * @cc [owner:sfriquet,label:security] broadcast-agent-message-without-instructions
+ * The event is fanned out to every subscriber of the conversation, whatever their `read` on the
+ * agent: an `agent_message_new` event MUST be published with `message.configuration.instructions`
+ * set to `null`.
  */
 export async function publishConversationEvent(
   event: ConversationEvents,
@@ -50,7 +63,11 @@ export async function publishConversationEvent(
 
   await redisHybridManager.publish(
     conversationChannel,
-    JSON.stringify(event),
+    JSON.stringify(
+      event.type === "agent_message_new"
+        ? { ...event, message: withoutAgentInstructions(event.message) }
+        : event
+    ),
     "user_message_events",
     // Conversation & message initial states are setup before starting to listen to events so we really care about getting new events.
     // We are setting a low value to accommodate for reconnections to the event stream.
@@ -60,6 +77,12 @@ export async function publishConversationEvent(
 
 /**
  * Message event publication interface.
+ */
+/**
+ * @cc [owner:sfriquet,label:security] broadcast-agent-message-without-instructions
+ * The event is fanned out to every subscriber of the message, whatever their `read` on the agent:
+ * `agent_message_success` and `agent_message_gracefully_stopped` events MUST be published with
+ * `message.configuration.instructions` set to `null`.
  */
 async function publishMessageEvent(
   event: AgentMessageEvents,
@@ -73,9 +96,15 @@ async function publishMessageEvent(
 
   const messageChannel = getEventMessageChannelId(event);
 
+  const publishedEvent =
+    event.type === "agent_message_success" ||
+    event.type === "agent_message_gracefully_stopped"
+      ? { ...event, message: withoutAgentInstructions(event.message) }
+      : event;
+
   await redisHybridManager.publish(
     messageChannel,
-    JSON.stringify({ ...event, step }),
+    JSON.stringify({ ...publishedEvent, step }),
     "user_message_events"
   );
 
