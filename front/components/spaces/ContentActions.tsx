@@ -11,13 +11,13 @@ import {
 } from "@app/lib/data_sources";
 import type { AppRouter } from "@app/lib/platform";
 import { setQueryParam } from "@app/lib/utils/router";
-import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type {
   DataSourceViewContentNode,
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import type { FileUseCase } from "@app/types/files";
 import type { PlanType } from "@app/types/plan";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import {
   DocumentDeletionKey,
   DocumentViewRawContentKey,
