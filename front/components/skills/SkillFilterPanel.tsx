@@ -100,7 +100,7 @@ export function SkillFilterPanel({
       applyDisabled={hasTooManyTools}
       categoryNavFooter={
         hiddenSkills && (
-          <div className="flex items-center gap-1.5 py-1 pl-1 pr-2">
+          <div className="flex items-center gap-2 p-2">
             <Checkbox
               id="skill-filter-hidden-skills"
               checked={draftShowHiddenSkills}
