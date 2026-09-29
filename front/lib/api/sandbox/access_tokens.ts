@@ -90,17 +90,6 @@ const SandboxTokenPayloadSchema = z
       payload.aV === undefined &&
       payload.noTools === undefined;
 
-    if (
-      payload.fileAccessUserId !== undefined &&
-      (!hasAction || payload.uId !== undefined)
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "A file access user ID is only valid on a userless action token.",
-      });
-    }
-
     if (actionClaims.some(isDefined) && !hasAction) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

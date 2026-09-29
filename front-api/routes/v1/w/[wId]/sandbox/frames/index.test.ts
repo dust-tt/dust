@@ -1,7 +1,10 @@
 // Legacy Frame publishing runs esbuild, whose TextEncoder invariant requires Node rather than jsdom.
 // @vitest-environment node
 
-import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
+import {
+  generateSandboxExecToken,
+  verifySandboxExecToken,
+} from "@app/lib/api/sandbox/access_tokens";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -225,7 +228,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     );
   });
 
-  it("publishes with a sandbox token minted from a user-owned API key", async () => {
+  it("publishes from a user-owned API key without impersonating its owner", async () => {
     const context = await setup();
     assert(context.frame);
     const { globalGroup } = await GroupFactory.defaults(context.workspace);
@@ -249,6 +252,11 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
       execId: `key-frame-publish-${context.sandbox.sId}`,
       sandboxAction: context.sandboxAction,
     });
+    const claims = await verifySandboxExecToken(token);
+    expect(claims?.uId).toBeUndefined();
+    expect(claims?.fileAccessUserId).toBe(
+      context.auth.getNonNullableUser().sId
+    );
 
     const response = await requestFramePublish(
       context.workspace.sId,
