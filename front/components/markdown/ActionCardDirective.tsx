@@ -40,7 +40,23 @@ export function actionCardDirective() {
       node.data ??= {};
       const data = node.data;
       data.hName = "action_card";
-      data.hProperties = { ...node.attributes };
+      const ALLOWED_ATTRS = new Set([
+        "title",
+        "subtitle",
+        "description",
+        "icon",
+        "cta",
+        "dismiss",
+        "actionMessage",
+        "dismissMessage",
+        "collapsibleLabel",
+        "collapsibleContent",
+      ]);
+      data.hProperties = Object.fromEntries(
+        Object.entries(node.attributes ?? {}).filter(([key]) =>
+          ALLOWED_ATTRS.has(key)
+        )
+      );
     });
   };
 }
