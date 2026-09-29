@@ -1,3 +1,5 @@
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
+import { resolveUpgradeRequest } from "@app/lib/api/credits/upgrade_requests";
 import { Authenticator } from "@app/lib/auth";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -11,7 +13,12 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => ({
+  ...(await importOriginal<typeof workosAudit>()),
+  emitAuditLogEvent: vi.fn(),
+}));
 
 function upgradeRequestsUrl(wId: string) {
   return `/api/w/${wId}/credits/upgrade-requests`;
@@ -201,6 +208,181 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       await GroupFactory.withMembers(adminAuth, second, [member]);
       const scoped = await honoApp.request(upgradeRequestsUrl(workspace.sId));
       expect((await scoped.json()).requests).toHaveLength(1);
+    });
+  });
+
+  describe("PATCH (group manager)", () => {
+    it("gates resolution and audits the group that authorized it", async () => {
+      const { workspace, adminAuth, delegate, member, outsider, first } =
+        await createManagedRequests();
+      const request = await MembershipUpgradeRequestResource.getPendingForUser(
+        adminAuth,
+        { user: member }
+      );
+      const outside = await MembershipUpgradeRequestResource.getPendingForUser(
+        adminAuth,
+        { user: outsider }
+      );
+      expect(request).not.toBeNull();
+      expect(outside).not.toBeNull();
+      if (!request || !outside) {
+        return;
+      }
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        delegate.sId,
+        workspace.sId
+      );
+      const resolve = (requestId: string) =>
+        honoApp.request(`${upgradeRequestsUrl(workspace.sId)}/${requestId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "denied" }),
+        });
+      expect((await resolve(request.sId)).status).toBe(403);
+      const disabled = await resolveUpgradeRequest(auth, {
+        requestId: request.sId,
+        status: "denied",
+      });
+      expect(disabled.isErr()).toBe(true);
+      await FeatureFlagFactory.basic(adminAuth, "group_management");
+      expect((await resolve(outside.sId)).status).toBe(404);
+      const response = await resolve(request.sId);
+      expect(response.status).toBe(200);
+      expect((await response.json()).request.status).toBe("denied");
+      expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "membership.upgrade_request_resolved",
+          metadata: {
+            status: "denied",
+            request_sid: request.sId,
+            authorizing_group_id: first.sId,
+          },
+        })
+      );
+    });
+
+    it("rechecks membership and workspace when resolving a previously loaded request", async () => {
+      const { workspace, adminAuth, delegate, member, first } =
+        await createManagedRequests();
+      await FeatureFlagFactory.basic(adminAuth, "group_management");
+      const request = await MembershipUpgradeRequestResource.getPendingForUser(
+        adminAuth,
+        { user: member }
+      );
+      expect(request).not.toBeNull();
+      if (!request) {
+        return;
+      }
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        delegate.sId,
+        workspace.sId
+      );
+      expect(
+        await MembershipUpgradeRequestResource.fetchById(auth, request.sId)
+      ).not.toBeNull();
+      await first.dangerouslyRemoveMembers(adminAuth, {
+        users: [member.toJSON()],
+      });
+      expect(
+        (await request.markAsResolved(auth, { status: "approved" })).isErr()
+      ).toBe(true);
+      const response = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}/${request.sId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "approved" }),
+        }
+      );
+      expect(response.status).toBe(404);
+      const otherWorkspace = await creditPricedWorkspace();
+      const otherAuth = await Authenticator.internalAdminForWorkspace(
+        otherWorkspace.sId
+      );
+      expect(
+        (await request.markAsResolved(otherAuth, { status: "denied" })).isErr()
+      ).toBe(true);
+      expect(
+        await MembershipUpgradeRequestResource.getPendingForUser(adminAuth, {
+          user: member,
+        })
+      ).not.toBeNull();
+    });
+
+    it("keeps former members' requests resolvable by workspace managers", async () => {
+      const { workspace, adminAuth, member } = await createManagedRequests();
+      const request = await MembershipUpgradeRequestResource.getPendingForUser(
+        adminAuth,
+        { user: member }
+      );
+      expect(request).not.toBeNull();
+      if (!request) {
+        return;
+      }
+      await MembershipResource.revokeMembership({ user: member, workspace });
+      await createPrivateApiMockRequest({
+        method: "PATCH",
+        role: "manager",
+        workspace,
+      });
+      const response = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}/${request.sId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "denied" }),
+        }
+      );
+      expect(response.status).toBe(200);
+      expect((await response.json()).request.status).toBe("denied");
+    });
+
+    it("allows only one concurrent resolution and emits one audit event", async () => {
+      const { workspace, adminAuth, delegate, member } =
+        await createManagedRequests();
+      await FeatureFlagFactory.basic(adminAuth, "group_management");
+      const request = await MembershipUpgradeRequestResource.getPendingForUser(
+        adminAuth,
+        { user: member }
+      );
+      expect(request).not.toBeNull();
+      if (!request) {
+        return;
+      }
+      const otherManager = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherManager, {
+        role: "manager",
+      });
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        delegate.sId,
+        workspace.sId
+      );
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherManager.sId,
+        workspace.sId
+      );
+      vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
+      const results = await Promise.all([
+        resolveUpgradeRequest(auth, {
+          requestId: request.sId,
+          status: "approved",
+        }),
+        resolveUpgradeRequest(otherAuth, {
+          requestId: request.sId,
+          status: "denied",
+        }),
+      ]);
+      expect(results.filter((result) => result.isOk())).toHaveLength(1);
+      const failure = results.find((result) => result.isErr());
+      expect(failure?.isErr() && failure.error.type).toBe(
+        "request_not_pending"
+      );
+      expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledTimes(1);
+      expect(
+        await MembershipUpgradeRequestResource.getPendingForUser(adminAuth, {
+          user: member,
+        })
+      ).toBeNull();
     });
   });
 
