@@ -44,6 +44,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   // Dialog state.
   const [searchQuery, setSearchQuery] = useState("");
+  const trimmedQuery = searchQuery.trim();
   const [phase, setPhase] = useState<"search" | "action">("search");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedItem, setSelectedItem] = useState<ActionPhaseItem | null>(
@@ -69,9 +70,9 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     isAgentsLoading: isSearchAgentsLoading,
   } = useSearchAgents({
     owner,
-    searchTerm: searchQuery.trim(),
+    searchTerm: trimmedQuery,
     limit: MAX_DISPLAYED_AGENTS,
-    sortBy: searchQuery.trim() ? "relevance" : "name",
+    sortBy: trimmedQuery ? "relevance" : "name",
     disabled: !isOpen || !isAgentsSearchEnabled,
   });
   const isAgentsLoading = isAgentsSearchEnabled
@@ -89,7 +90,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     isSkillsLoading: isSearchSkillsLoading,
   } = useSearchSkills({
     owner,
-    searchTerm: searchQuery.trim(),
+    searchTerm: trimmedQuery,
     limit: MAX_DISPLAYED_SKILLS,
     disabled: !isOpen || !isSkillsSearchEnabled,
   });
@@ -112,21 +113,20 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const trimmed = searchQuery.trim();
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
     debounceTimerRef.current = setTimeout(() => {
-      setDebouncedQuery(trimmed);
+      setDebouncedQuery(trimmedQuery);
     }, 150);
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchQuery]);
+  }, [trimmedQuery]);
 
-  const isDebouncing = searchQuery.trim() !== debouncedQuery;
+  const isDebouncing = trimmedQuery !== debouncedQuery;
 
   // Cap the number of rendered items to avoid slow DOM rendering on large workspaces.
   // This is a temporary measure until the command palette moves to Sparkle with
@@ -304,7 +304,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             />
           ) : selectedItem ? (
             <CommandPaletteActionPhase
-              workspaceId={owner.sId}
+              userId={user.sId}
               item={selectedItem}
               onAction={handleAction}
               onBack={handleBack}

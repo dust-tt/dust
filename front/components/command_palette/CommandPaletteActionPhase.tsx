@@ -1,7 +1,6 @@
 import { KeyboardHints } from "@app/components/command_palette/CommandPaletteItems";
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import {
   ArrowLeft,
   Avatar,
@@ -22,7 +21,7 @@ export type ActionPhaseItem = Extract<
 >;
 
 interface CommandPaletteActionPhaseProps {
-  workspaceId: string;
+  userId: string;
   item: ActionPhaseItem;
   onAction: (action: CommandPaletteAction) => void;
   onBack: () => void;
@@ -36,35 +35,25 @@ interface ActionDefinition {
   icon: typeof Eye;
 }
 
-function canEdit(item: ActionPhaseItem, canEditAgent: boolean): boolean {
+function canEdit(item: ActionPhaseItem, userId: string): boolean {
   switch (item.kind) {
     case "agent":
-      return "canEdit" in item.agent ? item.agent.canEdit : canEditAgent;
+      return "canEdit" in item.agent
+        ? item.agent.canEdit
+        : item.agent.scope !== "global" &&
+            item.agent.editorIds.includes(userId);
     case "skill":
       return item.skill.canAdministrate;
   }
 }
 
 export function CommandPaletteActionPhase({
-  workspaceId,
+  userId,
   item,
   onAction,
   onBack,
   onClose,
 }: CommandPaletteActionPhaseProps) {
-  const agentId =
-    item.kind === "agent" &&
-    !("canEdit" in item.agent) &&
-    item.agent.scope !== "global"
-      ? item.agent.sId
-      : null;
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId,
-    agentConfigurationId: agentId,
-    disabled: !agentId,
-  });
-  const canEditAgent = agentConfiguration?.canEdit ?? false;
-
   const actions = useMemo(() => {
     const result: ActionDefinition[] = [];
     if (item.kind === "agent") {
@@ -81,7 +70,7 @@ export function CommandPaletteActionPhase({
       description: "View description and settings",
       icon: Eye,
     });
-    if (canEdit(item, canEditAgent)) {
+    if (canEdit(item, userId)) {
       result.push({
         action: "edit",
         label: "Edit",
@@ -90,7 +79,7 @@ export function CommandPaletteActionPhase({
       });
     }
     return result;
-  }, [item, canEditAgent]);
+  }, [item, userId]);
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
