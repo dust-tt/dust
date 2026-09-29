@@ -1133,12 +1133,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     T extends AutoInternalMCPServerNameType,
   >(
     auth: Authenticator,
-    names: readonly T[],
-    { ensureAutoViews = true }: { ensureAutoViews?: boolean } = {}
+    names: readonly T[]
   ): Promise<Map<T, MCPServerViewResource>> {
-    if (ensureAutoViews) {
-      await this.unsafeEnsureAutoViewsForWorkspace(auth);
-    }
+    await this.unsafeEnsureAutoViewsForWorkspace(auth);
     const workspaceId = auth.getNonNullableWorkspace().id;
     const nameByInternalMCPServerId = new Map<string, T>(
       names.map((name) => [

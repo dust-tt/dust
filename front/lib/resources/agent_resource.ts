@@ -6,7 +6,6 @@ import type {
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
-import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
@@ -361,16 +360,15 @@ export interface AgentResource
  */
 /**
  * @cc [owner:sfriquet,label:security] unreadable-agent-is-light
- * A resource built for a caller who cannot view the agent's content (per `canViewContent`: no
- * `read`, outside the `admin_can_see_private_entities` admin override) MUST be `light`: its
- * `content`, which carries the agent's instructions (`instructions`, `instructionsHtml`), is never
- * materialized for that caller, whatever their role, key type, or superuser status. The
- * instructions are the only private fields: the head fields (`name`, `status`, `scope`,
- * `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and carried by every
- * resource. This holds for every `fetch*` resolver, for `fromModels` and for global agents, so a
- * caller allowed to enumerate agents they cannot read (an admin listing hidden agents, a
- * superuser) sees identity and core fields only. Callers MUST NOT re-attach the instructions to a
- * `light` resource from another read path.
+ * A resource built for a caller who does not hold `read` on the agent (per `getAllowedVerbs`) MUST
+ * be `light`: its `content`, which carries the agent's instructions (`instructions`,
+ * `instructionsHtml`), is never materialized for that caller, whatever their role, key type, or
+ * superuser status. The instructions are the only private fields: the head fields (`name`,
+ * `status`, `scope`, `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and
+ * carried by every resource. This holds for every `fetch*` resolver and for
+ * `fromModels`, so a caller allowed to enumerate agents they cannot read (an admin
+ * listing hidden agents, a superuser) sees identity and core fields only. Callers MUST NOT
+ * re-attach the instructions to a `light` resource from another read path.
  */
 /**
  * @cc [owner:philipperolet,label:security;product] agent-verbs
@@ -442,7 +440,6 @@ export class AgentResource
 
   private _verbs: Set<GrantVerb> = new Set();
   private _isRegularApiKey = false;
-  private _adminCanSeePrivateEntities = false;
 
   private constructor(
     agent: Attributes<AgentModel>,
@@ -550,8 +547,8 @@ export class AgentResource
         authorId: -1,
         name: configuration.name,
         description: configuration.description,
-        instructions: configuration.instructions,
-        instructionsHtml: configuration.instructionsHtml,
+        instructions: null,
+        instructionsHtml: null,
         providerId: configuration.model.providerId,
         modelId: configuration.model.modelId,
         temperature: configuration.model.temperature,
@@ -572,71 +569,38 @@ export class AgentResource
       status: configuration.status,
       versionAuthorId: null,
     } satisfies Pick<AgentResource, "scope" | "status" | "versionAuthorId">);
+    resource._content = null;
     resource.codeDefinedSkillIds = configuration.codeDefinedSkillIds ?? [];
 
-    return resource.materialize(auth);
+    return resource;
   }
 
-  // Binds a freshly built (never shared) resource to its caller: their verbs, and the content only
-  // if they may view it. Every factory and resolver builds a new instance per read before calling it.
-  private materialize(
+  private static materializeResource(
     auth: Authenticator,
-    {
-      adminCanSeePrivateEntities = false,
-    }: { adminCanSeePrivateEntities?: boolean } = {}
+    cachedResource: FullAgentResource
   ): AgentResource {
-    this._verbs = this.getAllowedVerbs(auth);
-    this._isRegularApiKey = auth.isKey() && !auth.isSystemKey();
-    this._adminCanSeePrivateEntities = adminCanSeePrivateEntities;
+    const verbs = cachedResource.getAllowedVerbs(auth);
+    cachedResource._verbs = verbs;
+    cachedResource._isRegularApiKey = auth.isKey() && !auth.isSystemKey();
 
-    if (!this.canViewContent(auth)) {
-      this._content = null;
+    if (!verbs.has("read")) {
+      cachedResource._content = null;
     }
 
-    return this;
-  }
-
-  // The feature flag is only looked up when it can change the outcome: an admin materializing a
-  // custom agent they cannot read.
-  private static async resolveAdminCanSeePrivateEntities(
-    auth: Authenticator,
-    resources: AgentResource[]
-  ): Promise<boolean> {
-    return (
-      auth.isAdmin() &&
-      resources.some(
-        (resource) => !resource.getAllowedVerbs(auth).has("read")
-      ) &&
-      (await canAdminSeePrivateEntities(auth))
-    );
-  }
-
-  /**
-   * @cc [owner:tdraier,label:security] agent-content-visibility
-   * The private content (instructions, tools) is visible to a caller who holds `read`, and to a
-   * workspace admin of a workspace with the `admin_can_see_private_entities` feature flag, whichever
-   * resolver or factory built the resource they are handed (`fetch*`,
-   * `dangerouslyFromConfigurationModels`). The flag MUST NOT grant any verb: what such an admin may
-   * do with the agent is decided by their verbs alone (see `agent-verbs`) — without `read` they
-   * cannot mention or run it, and the definition edits their `admin` verb allows (model, tags) are
-   * unchanged.
-   */
-  canViewContent(auth: Authenticator): boolean {
-    return (
-      auth.can("read", this) ||
-      (this._adminCanSeePrivateEntities && auth.isAdmin())
-    );
+    return cachedResource;
   }
 
   private static fromModels(
     auth: Authenticator,
     agent: AgentModel,
-    agentConfiguration: AgentConfigurationModel,
-    options: { adminCanSeePrivateEntities?: boolean } = {}
+    agentConfiguration: AgentConfigurationModel
   ): AgentResource {
-    return new AgentResource(agent.get(), agentConfiguration.get()).materialize(
+    return this.materializeResource(
       auth,
-      options
+      new AgentResource(
+        agent.get(),
+        agentConfiguration.get()
+      ) as FullAgentResource
     );
   }
 
@@ -661,20 +625,14 @@ export class AgentResource
     });
     const agentById = new Map(agents.map((agent) => [agent.id, agent]));
 
-    const resources = agentConfigurations.map((configuration) => {
+    return agentConfigurations.map((configuration) => {
       const agent = agentById.get(configuration.agentId);
       assert(
         agent,
         `Unexpected: missing agent ${configuration.agentId} for configuration ${configuration.id}`
       );
-      return new AgentResource(agent.get(), configuration.get());
+      return this.fromModels(auth, agent, configuration);
     });
-    const adminCanSeePrivateEntities =
-      await this.resolveAdminCanSeePrivateEntities(auth, resources);
-
-    return resources.map((resource) =>
-      resource.materialize(auth, { adminCanSeePrivateEntities })
-    );
   }
 
   // -- Resolvers: current version, full when readable, light otherwise --
@@ -683,9 +641,8 @@ export class AgentResource
    * @cc [owner:tdraier,label:backend] fetch-current-version
    * Resolves each requested custom agent to its current configuration version — the row whose
    * `version` equals the agent's `currentVersion` pointer (see `agent-current-version-pointer`) —
-   * scoped to the authed workspace. Each is returned as a `full` resource when the caller can view
-   * its content (see `agent-content-visibility`), otherwise a `light` resource; a resource the caller
-   * cannot fetch at all (holds no verb on,
+   * scoped to the authed workspace. Each is returned as a `full` resource when the caller can read
+   * it, otherwise a `light` resource; a resource the caller cannot fetch at all (holds no verb on,
    * per `canFetch`) is dropped. An agent with no configuration yields no resource, and at most one
    * resource is returned per `agentModelId`. `fetchById(s)` additionally resolve global agents by
    * `sId` (they have no configuration rows) via `getGlobalAgents`, gated by the same `canFetch`
@@ -746,13 +703,10 @@ export class AgentResource
       this.fetchGlobalAgents(auth, globalAgentIds),
     ]);
 
-    const adminCanSeePrivateEntities =
-      await this.resolveAdminCanSeePrivateEntities(auth, customResources);
-
     const resourcesById = new Map(
       [
         ...customResources.map((resource) =>
-          resource.materialize(auth, { adminCanSeePrivateEntities })
+          this.materializeResource(auth, resource)
         ),
         ...globalResources,
       ]
@@ -1064,7 +1018,7 @@ export class AgentResource
   /**
    * @cc [owner:tdraier,label:backend;performance] agent-resource-cache
    * The cache holds the caller-independent full resource; the caller-dependent `canFetch` and
-   * `materialize` gates MUST run on every read and MUST NOT be cached. Entries have no TTL, so
+   * `materializeResource` gates MUST run on every read and MUST NOT be cached. Entries have no TTL, so
    * every write that changes or deletes an agent's cached version MUST invalidate its entry — via
    * `AgentResource.invalidateCache` here, or the leaf `invalidateAgentResourceCache`/
    * `invalidateAgentResourceCaches` helpers that lower-level write and deletion paths can import
@@ -1312,19 +1266,9 @@ export class AgentResource
     return result;
   }
 
-  // Global agents' tools are code-defined and depend on workspace data (data sources, tool views),
-  // so they are only built, through the full global agent build, when asked for.
   async listActions(
     auth: Authenticator
   ): Promise<MCPServerConfigurationType[]> {
-    if (this.scope === "global") {
-      if (!this.canViewContent(auth)) {
-        return [];
-      }
-      const [configuration] = await getGlobalAgents(auth, [this.sId], "full");
-      return configuration?.actions ?? [];
-    }
-
     const actionsByConfigurationModelId = await AgentResource.batchListActions(
       auth,
       [this]
@@ -1340,11 +1284,10 @@ export class AgentResource
   /**
    * @cc [owner:tdraier,label:security] actions-require-read
    * Keyed by `agentConfigurationModelId`: tools belong to a configuration version. Each input agent
-   * has an entry. An agent whose content the caller cannot view (see `agent-content-visibility`)
-   * MUST get `[]`: its tools carry its knowledge (data sources, tables), as private as its
-   * instructions. Global agents MUST NOT be passed: their tools are code-defined, not
-   * `AgentMCPServerConfigurationModel` rows, and they share a sentinel configuration id; use
-   * `listActions`.
+   * has an entry. An agent the caller cannot `read` MUST get `[]`: its tools carry its knowledge
+   * (data sources, tables), as private as its instructions. Global agents MUST NOT be passed: their
+   * tools are code-defined, not `AgentMCPServerConfigurationModel` rows, and they share a sentinel
+   * configuration id.
    */
   static async batchListActions(
     auth: Authenticator,
@@ -1358,7 +1301,7 @@ export class AgentResource
       agents.map((agent) => [agent.agentConfigurationModelId, []])
     );
     const readableConfigurationModelIds = agents
-      .filter((agent) => agent.canViewContent(auth))
+      .filter((agent) => auth.can("read", agent))
       .map((agent) => agent.agentConfigurationModelId);
     if (readableConfigurationModelIds.length === 0) {
       return result;
@@ -2825,28 +2768,6 @@ export class AgentResource
     };
   }
 
-  // What the sidekick's `inspect_available_agent` tool exposes; the instructions make it full-only.
-  toInspectionJSON(
-    this: FullAgentResource,
-    { toolIds, skillIds }: { toolIds: string[]; skillIds: string[] }
-  ): {
-    sId: string;
-    name: string;
-    description: string;
-    instructions: string | null;
-    toolIds: string[];
-    skillIds: string[];
-  } {
-    return {
-      sId: this.sId,
-      name: this.name,
-      description: this.description,
-      instructions: this.content.instructions,
-      toolIds,
-      skillIds,
-    };
-  }
-
   toDiscoveryJSON(): DiscoveryAgentType {
     return {
       sId: this.sId,
@@ -2924,12 +2845,9 @@ export class AgentResource
    * path. A pending agent is the sole versioning exception: a definition edit updates its single row
    * in place (preserving version 0 and its FK relationships, see `writeAgentConfigurationRow`) rather
    * than archiving it and creating a new version. All required permissions MUST be checked before any
-   * change is applied so a save never partially succeeds. A caller that cannot view the agent's
-   * content (a `light` resource, see `agent-content-visibility`) cannot create a version, so provided
-   * definition fields are ignored; it may still change scope/editors it is authorized for. A caller
-   * that views the content without `read` (the `admin_can_see_private_entities` admin override) is
-   * handed a `full` resource, so its definition fields are NOT ignored but gated as above: only the
-   * model and tags may produce a version, through their `admin` paths.
+   * change is applied so a save never partially succeeds. A caller that cannot read the agent (a
+   * `light` resource) cannot create a version, so provided definition fields are ignored; it may
+   * still change scope/editors it is authorized for.
    */
   /**
    * @cc [owner:tdraier,label:backend] save-skips-noop-version
@@ -2964,10 +2882,6 @@ export class AgentResource
     auth: Authenticator,
     update: AgentConfigurationUpdate
   ): Promise<Result<{ resource: AgentResource; changed: boolean }, Error>> {
-    if (this.scope === "global") {
-      return new Err(new Error("Global agents cannot be updated."));
-    }
-
     // A scope change needs no private content — `scope` is a core field carried by every resource.
     const scopeChange =
       update.scope !== undefined && update.scope !== this.scope
