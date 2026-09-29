@@ -23,6 +23,10 @@ import {
   sortSkillSuggestionsByBuilderOrder,
 } from "@app/components/markdown/suggestion/suggestion_order";
 import { makeDirective } from "@app/components/markdown/suggestion/suggestionDirective";
+import {
+  trackSuggestionDetailsOpen,
+  trackSuggestionTargetPreviewOpen,
+} from "@app/components/markdown/suggestion/suggestionTracking";
 import { getIcon } from "@app/components/resources/resources_icons";
 import {
   PendingSkillSuggestionDetails,
@@ -244,13 +248,18 @@ function AgentSuggestionsDiff({
           <Avatar icon={getIcon("ActionRobotIcon")} size="3xs" />
         )
       }
-      onOpen={() =>
+      onOpen={() => {
+        trackSuggestionTargetPreviewOpen({
+          batchId,
+          targetKind: "agent",
+          targetId: agentId,
+        });
         openPanel({
           type: AGENT_SIDE_PANEL_TYPE,
           agentId,
           previewBatchId: batchId,
-        })
-      }
+        });
+      }}
       isDeletion={isDeletion}
     >
       {Object.entries(suggestionsByKind).map(([kind, kindSuggestions]) => {
@@ -320,13 +329,18 @@ function SkillSuggestionsDiff({
       targetLabel="Skill"
       name={creation ? creation.suggestion.name : (skill?.name ?? "Skill")}
       visual={<SkillAvatar size="3xs" />}
-      onOpen={() =>
+      onOpen={() => {
+        trackSuggestionTargetPreviewOpen({
+          batchId,
+          targetKind: "skill",
+          targetId: skillId,
+        });
         openPanel({
           type: SKILL_SIDE_PANEL_TYPE,
           skillId,
           previewBatchId: batchId,
-        })
-      }
+        });
+      }}
       isDeletion={isDeletion}
     >
       {sortSkillSuggestionsByBuilderOrder(suggestions).map((suggestion) => (
@@ -409,6 +423,9 @@ export function PendingBatchSuggestionCard({
             )
           )}
         </div>
+      }
+      onCollapsibleOpen={() =>
+        trackSuggestionDetailsOpen({ batchId: batch.id })
       }
       onAccept={onAccept}
       onReject={onReject}
