@@ -17,6 +17,7 @@ const AGENT_SUGGESTION_KIND_ORDER = [
   "tools",
   "sub_agent",
   "knowledge",
+  "editors",
   "scope",
 ] as const satisfies readonly AgentSuggestionKind[];
 

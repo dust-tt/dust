@@ -3,6 +3,7 @@ import { InstructionSuggestionExtension } from "@app/components/editor/extension
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { formatModelEffortLabel } from "@app/components/model_picker/modelPickerUtils";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { SuggestedEditors } from "@app/components/shared/SuggestedEditors";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { SuggestionNewInstructionsBlock } from "@app/components/shared/SuggestionNewInstructionsBlock";
@@ -252,6 +253,14 @@ export function AgentSuggestionDetails({
           label="Description"
           currentValue={agentConfiguration?.description ?? ""}
           newValue={suggestion.suggestion.description}
+        />
+      );
+
+    case "editors":
+      return (
+        <SuggestedEditors
+          suggestion={suggestion.suggestion}
+          workspaceId={owner.sId}
         />
       );
 
