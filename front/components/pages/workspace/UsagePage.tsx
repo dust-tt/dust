@@ -710,14 +710,24 @@ export function UsagePage() {
   }
 
   // In pick order so avatars stay put. A "select all" spans members never
-  // loaded, so no avatars are shown rather than a misleading subset.
+  // loaded, so its members are only shown once the loaded page holds the whole
+  // selection, rather than a misleading subset.
   const selectedVisibleMembers = useMemo(() => {
     const descriptor = selection.descriptor();
-    if (descriptor.mode === "all") {
-      return [];
+    if (descriptor.mode === "ids") {
+      return descriptor.ids.flatMap((id) => loadedMembersById.get(id) ?? []);
     }
-    return descriptor.ids.flatMap((id) => loadedMembersById.get(id) ?? []);
-  }, [loadedMembersById, selection.descriptor]);
+    const excludedIds = new Set(descriptor.excludedIds);
+    const selectedOnPage = membersUsage.filter((m) => !excludedIds.has(m.sId));
+    return selectedOnPage.length === selection.selectedCount
+      ? selectedOnPage
+      : [];
+  }, [
+    loadedMembersById,
+    membersUsage,
+    selection.descriptor,
+    selection.selectedCount,
+  ]);
 
   // A single selected member gets the individual modals
   const singleSelectedMember =
