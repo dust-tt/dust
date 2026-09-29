@@ -302,7 +302,8 @@ describe("resolveModel", () => {
     expect(resolveStreamModelSpy).toHaveBeenCalledWith(
       expect.any(Array),
       AUTO_MODEL_ID,
-      expect.any(Set)
+      expect.any(Set),
+      []
     );
     expect(modelResolutionMethod).toBe("auto");
     expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
@@ -421,7 +422,8 @@ describe("resolveModel", () => {
     expect(resolveStreamModelSpy).toHaveBeenCalledWith(
       expect.any(Array),
       AUTO_MODEL_ID,
-      expect.any(Set)
+      expect.any(Set),
+      []
     );
     expect(modelResolutionMethod).toBe("auto");
     expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
