@@ -135,7 +135,7 @@ describe("searchAgents", () => {
 
     await searchAgents(auth, { searchTerm: "  sal   mar " });
 
-    const nameQuery = buildAgentNameAutocompleteQuery("sal mar");
+    const nameQuery = buildAgentNameAutocompleteQuery("  sal   mar ");
     expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([nameQuery]);
     expect(nameQuery.bool?.must).toEqual(
       ["sal", "mar"].map((term) => ({

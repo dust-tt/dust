@@ -59,7 +59,8 @@ const NAME_AUTOCOMPLETE_FIELDS = [
 
 /**
  * @cc [owner:aubin-tchoi,label:product] indexed-skill-name-matching
- * Whole-name prefix matches on name.keyword contribute additional relevance.
+ * Whole-name prefix matches on name.keyword contribute additional relevance. Exact whole-name
+ * matches MUST receive an additional relevance boost.
  * Name matching uses both autocomplete fields and Elasticsearch relevance, without
  * description matching or usage boosts. Usage breaks relevance ties, then skill ID.
  * Every whitespace-separated search term MUST match the name autocomplete fields as a
@@ -85,8 +86,13 @@ export function buildSkillNameAutocompleteQuery(
       })),
       should: [
         {
+          constant_score: {
+            filter: { term: { "name.keyword": searchTerm } },
+          },
+        },
+        {
           multi_match: {
-            query: terms.join(" "),
+            query: searchTerm,
             type: "bool_prefix",
             operator: "and",
             fields: ["name.keyword", ...NAME_AUTOCOMPLETE_FIELDS],

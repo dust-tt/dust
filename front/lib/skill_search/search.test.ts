@@ -113,8 +113,13 @@ describe("custom skill search", () => {
               })),
               should: [
                 {
+                  constant_score: {
+                    filter: { term: { "name.keyword": "  report   b  " } },
+                  },
+                },
+                {
                   multi_match: {
-                    query: "report b",
+                    query: "  report   b  ",
                     type: "bool_prefix",
                     operator: "and",
                     fields: [
