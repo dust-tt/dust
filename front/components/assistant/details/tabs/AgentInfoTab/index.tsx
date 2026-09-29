@@ -69,8 +69,12 @@ export function AgentInfoTab({
       )}
 
       {agentConfiguration.description && (
-        <div className="relative text-sm text-foreground">
-          {editedSections.has("description") && <EditedSectionBar />}
+        <div
+          className={cn(
+            "text-sm text-foreground",
+            editedSections.has("description") && "rounded-md bg-highlight-50"
+          )}
+        >
           <Markdown
             content={agentConfiguration.description}
             forcedTextSize="text-sm"
@@ -87,10 +91,7 @@ export function AgentInfoTab({
 
       {displayInstructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
-          <DetailsSectionHeading
-            label="Instructions"
-            isEdited={editedSections.has("instructions")}
-          />
+          <DetailsSectionHeading label="Instructions" />
           <div
             className={cn(
               "max-h-[400px] overflow-y-auto rounded-lg border border-border bg-muted-background px-3 py-2"
