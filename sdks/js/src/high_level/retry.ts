@@ -72,7 +72,17 @@ export async function withRetry<T>(
   operation: () => Promise<T>,
   options: WithRetryOptions = {}
 ): Promise<T> {
-  const opts: RetryOptions = { ...DEFAULT_RETRY_OPTIONS, ...options };
+  // An option that is present but undefined keeps its default. A plain spread
+  // would overwrite the default with undefined.
+  const opts: RetryOptions = { ...DEFAULT_RETRY_OPTIONS };
+  for (const key of Object.keys(DEFAULT_RETRY_OPTIONS) as Array<
+    keyof RetryOptions
+  >) {
+    const value = options[key];
+    if (value !== undefined) {
+      (opts as Record<keyof RetryOptions, unknown>)[key] = value;
+    }
+  }
   const { signal, isRetryable: customIsRetryable, onRetry } = options;
 
   let lastError: unknown = null;
@@ -130,6 +140,12 @@ export function createRetry(
     operation: () => Promise<T>,
     options: WithRetryOptions = {}
   ): Promise<T> => {
-    return withRetry(operation, { ...defaultOptions, ...options });
+    const merged: WithRetryOptions = { ...defaultOptions };
+    for (const [key, value] of Object.entries(options)) {
+      if (value !== undefined) {
+        (merged as Record<string, unknown>)[key] = value;
+      }
+    }
+    return withRetry(operation, merged);
   };
 }
