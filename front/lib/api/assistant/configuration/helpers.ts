@@ -96,6 +96,13 @@ export async function getAgentIdFromName(
  * Outside regular API keys, `canEdit` is agent `write` permission; the workspace admin role alone
  * does not grant it.
  */
+/**
+ * @cc [owner:sfriquet,label:security] light-instructions-require-read
+ * For the `light` and `extra_light` variants, `instructions` MUST be `null` when `canRead` is
+ * false (see `unreadable-agent-is-light`). The `full` variant carries them regardless, so a caller
+ * exposing a `full` configuration with `canRead === false` MUST redact it first (see
+ * `redactPrivateAgentConfigurationFields`).
+ */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
   agentConfigurations: AgentConfigurationModel[],
@@ -172,7 +179,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       name: agent.name,
       pictureUrl: agent.pictureUrl,
       description: agent.description,
-      instructions: agent.instructions,
+      instructions: variant === "full" || canRead ? agent.instructions : null,
       instructionsHtml: variant === "full" ? agent.instructionsHtml : null,
       model,
       status: agent.status,

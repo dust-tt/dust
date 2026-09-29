@@ -238,6 +238,52 @@ describe("getAgentConfigurations", () => {
     }
   });
 
+  it("omits the instructions of an unreadable agent from light variants", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { scope: "hidden", instructions: "Secret instructions" }
+    );
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+
+    for (const variant of ["light", "extra_light"] as const) {
+      const [editorConfiguration] = await getAgentConfigurations(
+        authenticator,
+        { agentIds: [agent.sId], variant }
+      );
+      expect(editorConfiguration).toMatchObject({
+        canRead: true,
+        instructions: "Secret instructions",
+      });
+
+      const [memberConfiguration] = await getAgentConfigurations(memberAuth, {
+        agentIds: [agent.sId],
+        variant,
+        dangerouslySkipPermissionFiltering: true,
+      });
+      expect(memberConfiguration).toMatchObject({
+        canRead: false,
+        instructions: null,
+      });
+    }
+
+    const fullConfiguration = await getAgentConfiguration(memberAuth, {
+      agentId: agent.sId,
+      variant: "full",
+    });
+    expect(fullConfiguration).toMatchObject({
+      canRead: false,
+      instructions: "Secret instructions",
+    });
+  });
+
   it("reads a stored legacy light reasoning effort as low", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
