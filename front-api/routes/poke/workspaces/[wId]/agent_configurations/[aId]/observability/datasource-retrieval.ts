@@ -1,7 +1,7 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/lib/api/analytics/observability_constants";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { fetchDatasourceRetrievalMetrics } from "@app/lib/api/assistant/observability/datasource_retrieval";
 import type { PokeGetDatasourceRetrievalResponse } from "@app/lib/api/poke/agent_configurations";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -29,10 +29,7 @@ app.get(
     const { aId } = ctx.req.valid("param");
     const { days } = ctx.req.valid("query");
 
-    const assistant = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
+    const assistant = await AgentResource.fetchById(auth, aId);
     if (!assistant) {
       return apiError(ctx, {
         status_code: 404,

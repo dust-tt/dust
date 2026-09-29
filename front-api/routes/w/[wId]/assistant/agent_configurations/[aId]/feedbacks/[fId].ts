@@ -1,6 +1,6 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getMessageConversationId } from "@app/lib/api/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -28,11 +28,8 @@ app.patch(
     const auth = ctx.get("auth");
     const { aId, fId } = ctx.req.valid("param");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (!agentConfiguration) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -42,7 +39,7 @@ app.patch(
       });
     }
 
-    if (!agentConfiguration.canEdit) {
+    if (!auth.can("write", agent)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
