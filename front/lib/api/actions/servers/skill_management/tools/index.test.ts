@@ -12,9 +12,11 @@ const {
   mockListForAgentLoop,
   mockUpsertSkillFilesToConversation,
   mockWarmsConversationSandbox,
+  mockGetChildSkillIds,
   mockPrewarmConversationSandbox,
 } = vi.hoisted(() => ({
   mockWarmsConversationSandbox: vi.fn(),
+  mockGetChildSkillIds: vi.fn(),
   mockPrewarmConversationSandbox: vi.fn(),
   mockEnableForAgent: vi.fn(),
   mockBatchFetchUsedBySkills: vi.fn(),
@@ -31,6 +33,7 @@ vi.mock("@app/lib/api/skills/conversation_files", () => ({
 
 vi.mock("@app/lib/resources/skill/code_defined/global_registry", () => ({
   GlobalSkillsRegistry: {
+    getChildSkillIds: mockGetChildSkillIds,
     warmsConversationSandbox: mockWarmsConversationSandbox,
   },
 }));
@@ -106,6 +109,7 @@ describe("skill_management enable_skill tool", () => {
     mockFetchByName.mockResolvedValue(null);
     mockFetchByIds.mockResolvedValue([]);
     mockWarmsConversationSandbox.mockResolvedValue(false);
+    mockGetChildSkillIds.mockReturnValue([]);
     mockEnableForAgent.mockResolvedValue({ wasAlreadyEnabled: false });
     mockHasFiles.mockReturnValue(true);
     mockUpsertSkillFilesToConversation.mockResolvedValue(
@@ -424,7 +428,7 @@ describe("skill_management enable_skill tool", () => {
     const globalParentSkill = {
       ...parentSkill,
       kind: "global",
-      instructions: '<skill id="pdf" name="PDF" />',
+      instructions: "",
     };
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [],
@@ -433,15 +437,17 @@ describe("skill_management enable_skill tool", () => {
       systemSkills: [],
     });
     mockFetchByName.mockResolvedValue(globalChildSkill);
+    mockGetChildSkillIds.mockReturnValue([globalChildSkill.sId]);
 
     const result = await getTool().handler({ skillName: "PDF" }, makeExtra());
 
     expect(result.isOk()).toBe(true);
     expect(mockEnableForAgent).toHaveBeenCalled();
+    expect(mockGetChildSkillIds).toHaveBeenCalledWith(globalParentSkill.sId);
     expect(mockBatchFetchUsedBySkills).not.toHaveBeenCalled();
   });
 
-  it("does not enable an unreferenced skill through an active global parent", async () => {
+  it("does not enable an unreferenced skill through an available global parent", async () => {
     const globalChildSkill = {
       ...skill,
       kind: "global",
@@ -451,7 +457,7 @@ describe("skill_management enable_skill tool", () => {
     const globalParentSkill = {
       ...parentSkill,
       kind: "global",
-      instructions: '<skill id="another-skill-id" name="another" />',
+      instructions: '<skill id="pdf" name="PDF" />',
     };
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [],
@@ -460,6 +466,7 @@ describe("skill_management enable_skill tool", () => {
       systemSkills: [],
     });
     mockFetchByName.mockResolvedValue(globalChildSkill);
+    mockGetChildSkillIds.mockReturnValue(["another-skill-id"]);
 
     const result = await getTool().handler({ skillName: "PDF" }, makeExtra());
 

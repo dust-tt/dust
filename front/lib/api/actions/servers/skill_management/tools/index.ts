@@ -63,7 +63,7 @@ async function mountSkillFilesToConversation(
  * A skill MUST be enabled only when it is available to the current agent loop, explicitly
  * referenced by a visible user message, or directly referenced by a parent skill available to
  * the current agent loop.
- * Global parent references MUST use the parent's instructions because they have no
+ * Global parent references MUST use their typed child-skill declarations because they have no
  * persisted skill reference rows.
  */
 async function findAvailableSkillForAgentLoop({
@@ -118,11 +118,13 @@ async function findAvailableSkillForAgentLoop({
   }
 
   // Code-defined skills have no SkillReferenceModel rows. Only a global skill already available to
-  // this agent loop may authorize one of its direct children.
+  // this agent loop may authorize one of its declared direct children.
   for (const parentSkill of parentSkillById.values()) {
     if (
       parentSkill.kind === "global" &&
-      extractUniqueSkillIds(parentSkill.instructions).includes(candidate.sId)
+      GlobalSkillsRegistry.getChildSkillIds(parentSkill.sId).includes(
+        candidate.sId
+      )
     ) {
       return candidate;
     }

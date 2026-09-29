@@ -4,6 +4,7 @@ import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
 import { sheetToFrameSkill } from "@app/lib/resources/skill/code_defined/global/sheet_to_frame";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
@@ -16,6 +17,9 @@ const ENABLE_SKILL_TOOL = getPrefixedToolName(
 describe("sheetToFrameSkill", () => {
   it("is registered as a global skill", () => {
     expect(GLOBAL_SKILLS_ARRAY).toContain(sheetToFrameSkill);
+    expect(
+      GlobalSkillsRegistry.getChildSkillIds(sheetToFrameSkill.sId)
+    ).toEqual([framesSkill.sId]);
   });
 
   it("defers every Frame mechanic to the Frames skill", () => {

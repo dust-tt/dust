@@ -53,6 +53,17 @@ export class GlobalSkillsRegistry {
     });
   }
 
+  /**
+   * @cc [owner:aubin-tchoi,label:security;product] global-skill-child-declarations
+   * Return only direct child IDs declared by the global skill. Callers MUST authorize the parent
+   * in the current agent loop and resolve the child with the current loop context before enabling it.
+   */
+  static getChildSkillIds(sId: string): readonly string[] {
+    return (
+      this.getByIdInternal(sId)?.childSkills?.map((skill) => skill.sId) ?? []
+    );
+  }
+
   static doesSkillInheritAgentConfigurationDataSources(sId: string): boolean {
     return (
       this.getByIdInternal(sId)?.inheritAgentConfigurationDataSources ?? false

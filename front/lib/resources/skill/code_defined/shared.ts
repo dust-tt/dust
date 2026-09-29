@@ -90,6 +90,7 @@ export type SkillDefinition<
 
 export type GlobalSkillDefinition = SkillDefinition & {
   readonly kind: "global";
+  readonly childSkills?: readonly GlobalSkillDefinition[];
 };
 // System skills have no definition of "equipped". When they are present they are directly part of the system prompt.
 export type SystemSkillDefinition = SkillDefinition<"enabled"> & {

@@ -170,6 +170,7 @@ export const sheetToFrameSkill = {
   agentFacingDescription:
     "Use when asked to convert a spreadsheet into a Frame.",
   instructions: SHEET_TO_FRAME_INSTRUCTIONS,
+  childSkills: [framesSkill],
   exposeInstructions: true,
   // No MCP servers: the Frame tooling and the linter both ship with the Frames skill, so the
   // first step of the workflow is enabling it rather than duplicating half of it here.
