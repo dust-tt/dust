@@ -10,6 +10,7 @@ import { RedactedAgentMessage } from "@app/components/assistant/details/tabs/Age
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { PreviewedAgentCapabilities } from "@app/lib/editor/preview_agent_suggestions";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
@@ -21,9 +22,11 @@ import { useEffect, useMemo, useRef } from "react";
 
 export function AgentInfoTab({
   agentConfiguration,
+  previewedCapabilities,
   owner,
 }: {
   agentConfiguration: AgentConfigurationType;
+  previewedCapabilities: PreviewedAgentCapabilities | null;
   owner: WorkspaceType;
 }) {
   const { isDark } = useTheme();
@@ -100,6 +103,7 @@ export function AgentInfoTab({
       {!isRedactedForAdmin && (
         <AssistantSkillsToolsSection
           agentConfiguration={agentConfiguration}
+          previewedCapabilities={previewedCapabilities}
           owner={owner}
           isDustAgent={isDustAgent}
         />
