@@ -24,7 +24,6 @@ function toAgentSearchDocument(sId: GLOBAL_AGENTS_SID): AgentSearchDocument {
   return {
     workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
     agent_id: sId,
-    agent_model_id: null,
     status: "active",
     scope: "global",
     // Global agents resolve their model and skills per caller.

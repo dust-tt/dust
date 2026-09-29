@@ -60,7 +60,6 @@ describe("reindexGlobalAgents", () => {
           {
             workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
             agent_id: agentId,
-            agent_model_id: null,
             status: "active",
             scope: "global",
             model: null,

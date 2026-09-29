@@ -38,7 +38,6 @@ import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
 const document: AgentSearchDocument = {
   workspace_id: "workspace-1",
   agent_id: "agent-1",
-  agent_model_id: 1,
   status: "active",
   scope: "visible",
   model: {

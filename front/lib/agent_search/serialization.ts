@@ -1,4 +1,3 @@
-import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentSearchDocument,
   AgentSearchListItemType,
@@ -7,14 +6,11 @@ import type {
 // Default agents are indexed without a model; `workspaceModel` is the one they resolve to for the
 // caller's workspace.
 export function toAgentListItem(
-  auth: Authenticator,
   document: AgentSearchDocument,
-  workspaceModel: AgentSearchListItemType["model"],
-  readableSpaceIds: ReadonlySet<string> | null
+  workspaceModel: AgentSearchListItemType["model"] = null
 ): AgentSearchListItemType {
   return {
     sId: document.agent_id,
-    canEdit: canEditAgent(auth, document, readableSpaceIds),
     status: document.status,
     scope: document.scope,
     name: document.name,
@@ -43,36 +39,4 @@ export function toAgentListItem(
         ? null
         : new Date(document.updated_at).getTime(),
   };
-}
-
-function canEditAgent(
-  auth: Authenticator,
-  document: AgentSearchDocument,
-  readableSpaceIds: ReadonlySet<string> | null
-): boolean {
-  const workspace = auth.getNonNullableWorkspace();
-  if (
-    document.scope === "global" ||
-    document.workspace_id !== workspace.sId ||
-    !document.agent_model_id
-  ) {
-    return false;
-  }
-
-  const hasWriteGrant = auth
-    .getGovernanceGrantVerbs("agent", document.agent_model_id, workspace.id)
-    .includes("write");
-  const hasAdminKeyWrite =
-    auth.isKey() && !auth.isSystemKey() && auth.isAdmin();
-  if (!hasWriteGrant && !hasAdminKeyWrite) {
-    return false;
-  }
-  if (auth.isKey() && !auth.isSystemKey() && document.status !== "active") {
-    return false;
-  }
-
-  return (
-    readableSpaceIds === null ||
-    document.requested_space_ids.every((id) => readableSpaceIds.has(id))
-  );
 }
