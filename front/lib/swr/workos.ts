@@ -252,7 +252,7 @@ export function useOpenAuditLogsPortal({
 
     const data: AuditLogsPortalResponse = await response.json();
     const validated = validateUrl(data.portalUrl);
-    if (!validated.valid || !validated.standardized) {
+    if (!validated.valid) {
       newWindow?.close();
       sendNotification({
         type: "error",
