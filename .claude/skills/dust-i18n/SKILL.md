@@ -6,8 +6,9 @@ description: Make front UI strings translatable with Lingui. Use when adding or 
 # Translatable UI strings (Lingui)
 
 The product UI is localised with [Lingui](https://lingui.dev). The English text is the message:
-there are no hand-written ids. Catalogs live in `front/locales/{locale}/messages.po` and the
-supported locales are `SUPPORTED_LOCALES` in `front/types/locale.ts`.
+there are no hand-written ids. The supported locales are `SUPPORTED_LOCALES` in
+`front/types/locale.ts`; catalogs live in `front/locales/{locale}/messages.po` for `CATALOG_LOCALES`
+only (`en-GB` uses the `en-US` messages with British date and number formatting).
 
 A file that already uses Lingui MUST keep every user-visible string translated. New UI code SHOULD
 be written translated. After changing strings, follow [Workflow](#workflow) and translate with the

@@ -352,6 +352,17 @@ describe("POST /api/w/:wId (workspace locale)", () => {
     expect(updated?.locale).toBe("fr-FR");
   });
 
+  it("accepts en-GB", async () => {
+    const { workspace, auth } = await setup();
+    await FeatureFlagFactory.basic(auth, "localisation");
+
+    const response = await post(workspace, { locale: "en-GB" });
+
+    expect(response.status).toBe(200);
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.locale).toBe("en-GB");
+  });
+
   it("returns 403 and keeps the default locale when the flag is disabled", async () => {
     const { workspace } = await setup();
 

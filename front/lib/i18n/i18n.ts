@@ -1,6 +1,6 @@
 import { messages as defaultLocaleMessages } from "@app/locales/en-US/messages.po";
-import type { SupportedLocale } from "@app/types/locale";
-import { DEFAULT_LOCALE } from "@app/types/locale";
+import type { CatalogLocale, SupportedLocale } from "@app/types/locale";
+import { CATALOG_LOCALE_BY_LOCALE, DEFAULT_LOCALE } from "@app/types/locale";
 import type { Messages } from "@lingui/core";
 import { i18n } from "@lingui/core";
 
@@ -9,7 +9,7 @@ i18n.loadAndActivate({
   messages: defaultLocaleMessages,
 });
 
-const CATALOG_LOADERS: Record<SupportedLocale, () => Promise<Messages>> = {
+const CATALOG_LOADERS: Record<CatalogLocale, () => Promise<Messages>> = {
   "en-US": async () => defaultLocaleMessages,
   // Non-default catalogs are loaded on demand to keep them out of the main bundle.
   "fr-FR": async () =>
@@ -17,7 +17,7 @@ const CATALOG_LOADERS: Record<SupportedLocale, () => Promise<Messages>> = {
 };
 
 export function loadCatalog(locale: SupportedLocale): Promise<Messages> {
-  return CATALOG_LOADERS[locale]();
+  return CATALOG_LOADERS[CATALOG_LOCALE_BY_LOCALE[locale]]();
 }
 
 export { i18n };

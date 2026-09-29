@@ -100,7 +100,7 @@
  *           example: "openai"
  *         locale:
  *           type: string
- *           enum: [en-US, fr-FR]
+ *           enum: [en-US, en-GB, fr-FR]
  *           description: Default language of the product UI for the workspace members
  *           example: "en-US"
  *     Context:
