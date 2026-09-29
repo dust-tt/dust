@@ -144,9 +144,11 @@ jobs:
           NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
           NEXT_PUBLIC_DATADOG_SERVICE: ${{ inputs.app }}-spa
           NEXT_PUBLIC_COMMIT_HASH: ${{ needs.prepare.outputs.short_sha }}
+          APP: ${{ inputs.app }}
+          ENV: ${{ inputs.env }}
         run: |
           set -a
-          source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env.${{ inputs.env }}
+          source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env."${ENV}"
           # Override NEXT_PUBLIC_DUST_APP_URL: use branch preview URL for non-main branches.
           if [ "${{ github.ref_name }}" != "main" ]; then
             export NEXT_PUBLIC_DUST_APP_URL=https://${{ steps.branch.outputs.sanitized }}--app.preview.dust.tt
@@ -158,7 +160,7 @@ jobs:
             export "VITE_${var#NEXT_PUBLIC_}=${!var}"
           done
           set +a
-          npm run build:${{ inputs.app }}
+          npm run build:"${APP}"
 
       - name: Upload sourcemaps to Datadog
         if: ${{ github.ref_name == 'main' }}
@@ -166,17 +168,18 @@ jobs:
         env:
           DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
           DATADOG_SITE: datadoghq.eu
+          APP: ${{ inputs.app }}
         run: |
           if [ -z "$DATADOG_API_KEY" ]; then
             echo "DD_API_KEY not set, skipping sourcemap upload"
             exit 0
           fi
-          npx --yes @datadog/datadog-ci sourcemaps upload dist/${{ inputs.app }}/assets \
+          npx --yes @datadog/datadog-ci sourcemaps upload dist/"${APP}"/assets \
             --minified-path-prefix=/assets/ \
             --repository-url=https://github.com/dust-tt/dust \
             --project-path=front-spa \
             --release-version=${{ github.sha }} \
-            --service=${{ inputs.app }}-spa-browser
+            --service="${APP}"-spa-browser
 
       - name: Remove sourcemaps
         working-directory: front-spa
@@ -215,21 +218,26 @@ jobs:
 
       - name: Derive preview URL
         id: preview_url
+        env:
+          APP: ${{ inputs.app }}
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "url=https://${{ steps.extract_version.outputs.version_prefix }}--${{ inputs.app }}.preview.dust.tt" >> "$GITHUB_OUTPUT"
+            echo "url=https://${{ steps.extract_version.outputs.version_prefix }}--${APP}.preview.dust.tt" >> "$GITHUB_OUTPUT"
           else
-            echo "url=https://${{ steps.branch.outputs.sanitized }}--${{ inputs.app }}.preview.dust.tt" >> "$GITHUB_OUTPUT"
+            echo "url=https://${{ steps.branch.outputs.sanitized }}--${APP}.preview.dust.tt" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Summary
+        env:
+          APP: ${{ inputs.app }}
+          REGION: ${{ inputs.region }}
         run: |
           {
             echo "### SPA Deployed :rocket:"
             echo ""
-            echo "- **App**: ${{ inputs.app }}"
+            echo "- **App**: ${APP}"
             echo "- **URL**: ${{ steps.preview_url.outputs.url }}"
-            echo "- **Region**: ${{ inputs.region }}"
+            echo "- **Region**: ${REGION}"
             echo "- **Commit**: ${{ github.sha }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
