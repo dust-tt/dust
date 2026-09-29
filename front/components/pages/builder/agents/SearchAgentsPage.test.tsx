@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { ManageAgentsPage } from "@app/components/pages/builder/agents/ManageAgentsPage";
 import { getModelFilterDisplayName } from "@app/components/shared/filter_panel/searchFilter";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
@@ -41,19 +42,14 @@ beforeEach(() => {
   }
 });
 
-const { routerQuery, replace } = vi.hoisted(() => ({
-  routerQuery: { current: {} as Record<string, string | string[] | undefined> },
-  replace: vi.fn(),
-}));
-
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({
     isReady: true,
     pathname: "/w/workspace/builder/agents",
     asPath: "/w/workspace/builder/agents",
-    query: routerQuery.current,
+    query: {},
     push: vi.fn(),
-    replace,
+    replace: vi.fn(),
     events: { on: vi.fn(), off: vi.fn() },
   }),
 }));
@@ -94,8 +90,23 @@ vi.mock("@app/components/assistant/CreateAgentDropdown", () => ({
 }));
 
 afterEach(() => {
+  window.history.replaceState({}, "", "/");
   vi.unstubAllGlobals();
 });
+
+function setHashQuery(query: Record<string, string | string[]>) {
+  const encoded = Buffer.from(JSON.stringify(query)).toString("base64url");
+  window.history.replaceState({}, "", `/#?filter=${encoded}`);
+}
+
+function hashQuery(): Record<string, string | string[]> {
+  const encoded = new URLSearchParams(window.location.hash.slice(2)).get(
+    "filter"
+  );
+  return encoded
+    ? JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"))
+    : {};
+}
 
 async function setup({
   role = "admin",
@@ -220,14 +231,9 @@ function lastSearchBody(fetcherWithBody: ReturnType<typeof vi.fn>) {
 }
 
 describe("search-backed Manage Agents", () => {
-  afterEach(() => {
-    routerQuery.current = {};
-    replace.mockClear();
-  });
-
   it("restores a shared search URL and resolves selected editor names", async () => {
     const { editor, fetcherWithBody, mount } = await setup();
-    routerQuery.current = {
+    setHashQuery({
       q: "report",
       tab: "archived",
       access: "hidden",
@@ -235,7 +241,7 @@ describe("search-backed Manage Agents", () => {
       model: "claude-sonnet-5",
       tag: "saved-tag",
       space: "saved-space",
-    };
+    });
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
     expect(screen.getByRole("textbox", { name: "Search agents" })).toHaveValue(
@@ -256,26 +262,12 @@ describe("search-backed Manage Agents", () => {
       spaceIds: ["saved-space"],
     });
     await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
-    expect(replace).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        query: expect.objectContaining({
-          q: "report",
-          tab: "archived",
-          access: undefined,
-          editor: undefined,
-          model: undefined,
-          tag: undefined,
-          space: undefined,
-        }),
-      }),
-      undefined,
-      { shallow: true }
-    );
+    expect(hashQuery()).toEqual({ q: "report", tab: "archived" });
   });
 
   it("does not grant non-admins unrestricted search through the URL", async () => {
     const { fetcherWithBody, mount } = await setup({ role: "user" });
-    routerQuery.current = { hidden: "1" };
+    setHashQuery({ hidden: "1" });
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
     expect(lastSearchBody(fetcherWithBody)).toMatchObject({
@@ -285,6 +277,38 @@ describe("search-backed Manage Agents", () => {
       screen.queryByRole("checkbox", { name: "Hidden agents" })
     ).not.toBeInTheDocument();
   });
+
+  it("updates hidden-agent visibility when navigating to another hash", async () => {
+    const { fetcherWithBody, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    act(() => {
+      setHashQuery({ hidden: "1" });
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+        permissionFiltering: "unrestricted",
+      })
+    );
+    expect(screen.getByText("Hidden agents")).toBeInTheDocument();
+
+    act(() => {
+      setHashQuery({ q: "after back" });
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    await waitFor(() =>
+      expect(screen.queryByText("Hidden agents")).not.toBeInTheDocument()
+    );
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+        permissionFiltering: "strict",
+        query: "after back",
+      })
+    );
+  });
+
   it("keeps the legacy page when the flag is off", async () => {
     const { fetcherWithBody, fetcher, mount } = await setup({
       pageEnabled: false,
@@ -396,15 +420,8 @@ describe("search-backed Manage Agents", () => {
         permissionFiltering: "unrestricted",
       })
     );
-    expect(replace).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        query: expect.objectContaining({ hidden: "1" }),
-      }),
-      undefined,
-      { shallow: true }
-    );
+    expect(hashQuery()).toEqual({ hidden: "1" });
     page.unmount();
-    routerQuery.current = { hidden: "1" };
     mount();
 
     expect(screen.getByText("Hidden agents")).toBeInTheDocument();
