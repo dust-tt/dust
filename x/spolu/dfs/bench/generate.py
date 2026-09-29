@@ -54,9 +54,9 @@ store trace travel uncover update visit wander watch weave whisper write
 """.split()
 
 FILE_GROUPS = (
-    ("small", 8_000, 1_024, 8_192),
-    ("medium", 1_800, 32_768, 131_072),
-    ("large", 200, 1_048_576, 4_194_304),
+    ("small", 80, 1_024, 8_192),
+    ("medium", 18, 32_768, 131_072),
+    ("large", 2, 1_048_576, 4_194_304),
 )
 
 SEARCH_PHRASES = (
@@ -99,13 +99,17 @@ def make_content(rng: random.Random, file_index: int, size_bytes: int) -> bytes:
     return body[:position] + marker_bytes + body[position:]
 
 
-def create_archive(output: Path, seed: int) -> None:
+def create_archive(output: Path, seed: int, file_count: int) -> None:
     """
     @cc [owner:spolu,label:testing] reproducible-corpus-archive
-    The archive MUST contain exactly 10,000 regular text files with relative paths under corpus/.
-    With the same seed and Python/zlib versions, repeated runs MUST produce identical archive bytes.
+    For a positive file_count, the archive MUST contain exactly file_count regular text files with
+    relative paths under corpus/. Group counts MUST follow FILE_GROUPS percentages, rounded down
+    with remaining files assigned to the small group. With the same file_count, seed, and Python/zlib
+    versions, repeated runs MUST produce identical archive bytes.
     """
     rng = random.Random(seed)
+    group_counts = [file_count * percentage // 100 for _, percentage, _, _ in FILE_GROUPS]
+    group_counts[0] += file_count - sum(group_counts)
     file_index = 0
     total_bytes = 0
     with output.open("wb") as destination:
@@ -113,7 +117,7 @@ def create_archive(output: Path, seed: int) -> None:
             fileobj=destination, mode="wb", filename="", mtime=0, compresslevel=1
         ) as compressed:
             with tarfile.open(fileobj=compressed, mode="w|", format=tarfile.USTAR_FORMAT) as archive:
-                for group, count, min_bytes, max_bytes in FILE_GROUPS:
+                for (group, _, min_bytes, max_bytes), count in zip(FILE_GROUPS, group_counts):
                     for group_index in range(count):
                         size_bytes = rng.randint(min_bytes, max_bytes)
                         content = make_content(rng, file_index, size_bytes)
@@ -125,7 +129,7 @@ def create_archive(output: Path, seed: int) -> None:
                         file_index += 1
                         total_bytes += len(content)
                         if file_index % 1_000 == 0:
-                            logging.info("Generated %s / 10000 files", file_index)
+                            logging.info("Generated %s / %s files", file_index, file_count)
 
     logging.info(
         "Created %s: %s files, %.1f MiB of text, %.1f MiB compressed (seed %s)",
@@ -139,11 +143,21 @@ def create_archive(output: Path, seed: int) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--files", dest="file_count", type=int, default=10_000,
+        help="Total number of files (default: 10000).",
+    )
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--output", type=Path, default=Path(__file__).with_name("corpus.tar.gz"))
+    parser.add_argument(
+        "--output", type=Path,
+        help="Output path (default: corpus-<files>.tar.gz beside this script).",
+    )
     args = parser.parse_args()
+    if args.file_count < 1:
+        parser.error("--files must be greater than zero")
+    output = args.output or Path(__file__).with_name(f"corpus-{args.file_count}.tar.gz")
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    create_archive(args.output, args.seed)
+    create_archive(output, args.seed, args.file_count)
 
 
 if __name__ == "__main__":
