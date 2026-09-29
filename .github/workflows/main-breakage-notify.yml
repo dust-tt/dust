@@ -25,9 +25,11 @@ jobs:
       github.event.workflow_run.conclusion == 'success' ||
       github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
+    # Covers waiting for an automatic retry of the failed jobs.
+    timeout-minutes: 60
     permissions:
       contents: read
-      actions: read
+      actions: write
       pull-requests: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
