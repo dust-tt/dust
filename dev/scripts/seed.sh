@@ -8,6 +8,8 @@ source "$(dirname "$0")/common.sh"
 # shellcheck source=dev/scripts/env.sh
 source "$(dirname "$0")/env.sh"
 
+FREE_UPGRADED_PLAN_CODE="FREE_UPGRADED_PLAN"
+
 SEED_LOG="${DUST_INFRA_LOG_DIR}/seed-dev-user.log"
 touch "$SEED_LOG"
 log() {
@@ -51,6 +53,7 @@ if [ -z "${DEV_WORKOS_USER_EMAIL:-}" ]; then
   exit 0
 fi
 
+# Upsert the workspace and more...  
 SQL_FILE="${DUST_REPO_ROOT}/front/lib/dev/dust_hive_seed.sql"
 STATE_FILE="/tmp/dust-dev-seed.json"
 WORKSPACE_ID="DevWkSpace"
@@ -73,11 +76,11 @@ run_init_plans() {
   local plans_ready
   plans_ready=$(
     PGPASSWORD=dev psql "$FRONT_DATABASE_URI" -tAc \
-      "SELECT 1 FROM plans WHERE code = 'FREE_UPGRADED_PLAN' LIMIT 1" \
+      "SELECT 1 FROM plans WHERE code = '$FREE_UPGRADED_PLAN_CODE' LIMIT 1" \
       2>/dev/null | tr -d '[:space:]' || true
   )
   if [ "$plans_ready" = "1" ]; then
-    log "FREE_UPGRADED_PLAN already present; skipping init_plans"
+    log "$FREE_UPGRADED_PLAN_CODE already present; skipping init_plans"
     return 0
   fi
 
@@ -105,14 +108,14 @@ ensure_dev_super_user() {
 
 ensure_free_upgraded_subscription() {
   local workspace_sid="${1:-$WORKSPACE_ID}"
-  log "Ensuring workspace $workspace_sid is on FREE_UPGRADED_PLAN..."
+  log "Ensuring workspace $workspace_sid is on $FREE_UPGRADED_PLAN_CODE..."
   (
     cd "${DUST_REPO_ROOT}/front"
     export PATH="${DUST_REPO_ROOT}/node_modules/.bin:${PATH}"
     NODE_ENV=development npx tsx admin/cli.ts workspace upgrade --wId "$workspace_sid"
   ) >"${DUST_INFRA_LOG_DIR}/upgrade-workspace.log" 2>&1 || {
     if grep -q "already subscribed" "${DUST_INFRA_LOG_DIR}/upgrade-workspace.log"; then
-      log "Workspace already on FREE_UPGRADED_PLAN"
+      log "Workspace already on $FREE_UPGRADED_PLAN_CODE"
       return 0
     fi
     log "Workspace upgrade failed; see ${DUST_INFRA_LOG_DIR}/upgrade-workspace.log"
@@ -139,13 +142,14 @@ dev_workspace_ready=$(
      JOIN memberships m ON m.\"userId\" = u.id AND m.\"endAt\" IS NULL
      JOIN workspaces w ON w.id = m.\"workspaceId\" AND w.\"sId\" = $(escape_sql "$WORKSPACE_ID")
      JOIN subscriptions s ON s.\"workspaceId\" = w.id AND s.status = 'active'
-     JOIN plans p ON p.id = s.\"planId\" AND p.code = 'FREE_UPGRADED_PLAN'
+     JOIN plans p ON p.id = s.\"planId\" AND p.\"canUseProduct\" = true
      WHERE u.\"workOSUserId\" = $(escape_sql "$DEV_WORKOS_USER_ID")
      LIMIT 1" \
     2>/dev/null | tr -d '[:space:]' || true
 )
+
 if [ "$dev_workspace_ready" = "1" ]; then
-  log "Dev workspace $WORKSPACE_ID is ready (FREE_UPGRADED_PLAN + membership)"
+  log "Dev workspace $WORKSPACE_ID is ready (plan can use product + membership)"
   trap - ERR
   exit 0
 fi
