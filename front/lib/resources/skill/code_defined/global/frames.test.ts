@@ -26,6 +26,8 @@ const FILES_FIRST_MARKER =
 const POD_APP_MARKER = "### Frames In A Pod";
 const POD_APP_UPDATE_MARKER = "#### Changing An Existing Pod Frame";
 const POD_STORAGE_MARKER = "### Where The Frame's Data Lives";
+const POD_V2_PLACEMENT_MARKER =
+  "Still create a new Frame in the conversation folder above";
 
 const FILES_EDIT_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
@@ -275,6 +277,34 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain(POD_APP_UPDATE_MARKER);
     expect(instructions).toContain(FILES_LIST_TOOL);
     expect(instructions).toContain("[id: fil_...]");
+  });
+
+  it("defaults Frames v2 to the conversation in a Pod", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+      agentLoopData: agentLoopDataInPod("vlt_abc123"),
+    });
+
+    expect(instructions).toContain(POD_V2_PLACEMENT_MARKER);
+    expect(instructions).toContain("/files/pod-<podId>/<frame-folder>");
+    expect(instructions).toContain("Save button on the Frame");
+    expect(instructions).not.toContain(POD_APP_MARKER);
+  });
+
+  it("omits Frames v2 Pod placement outside a Pod", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+      agentLoopData: agentLoopDataInPod(null),
+    });
+
+    expect(instructions).not.toContain(POD_V2_PLACEMENT_MARKER);
+    expect(instructions).not.toContain("/files/pod-<podId>/<frame-folder>");
   });
 
   it("keeps the legacy flow for a Pod conversation without the file system", async () => {
