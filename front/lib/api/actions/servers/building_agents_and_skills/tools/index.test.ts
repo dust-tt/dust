@@ -1,5 +1,3 @@
-import { AgentResource } from "@app/lib/resources/agent_resource";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import {
@@ -10,6 +8,7 @@ import {
 import { applyBatchSuggestions } from "@app/lib/api/assistant/apply_batch_suggestions";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -26,6 +25,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
