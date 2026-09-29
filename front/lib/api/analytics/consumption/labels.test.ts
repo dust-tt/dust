@@ -180,7 +180,7 @@ describe("resolveDimensionLabels", () => {
     });
   });
 
-  it("preserves scope for fallback agent labels", async () => {
+  it("preserves scope for agents built on spaces the manager cannot read", async () => {
     const { authenticator: editorAuth, workspace } = await createResourceTest({
       role: "user",
     });
@@ -206,6 +206,48 @@ describe("resolveDimensionLabels", () => {
         name: "Restricted agent",
         scope: "hidden",
       })
+    );
+  });
+
+  it("names the author of an agent the manager cannot read, and hides it from members", async () => {
+    const {
+      authenticator: editorAuth,
+      user: editor,
+      workspace,
+    } = await createResourceTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(editorAuth, {
+      name: "Secret agent",
+      description: "Secret description",
+      scope: "hidden",
+    });
+    const manager = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, manager, { role: "manager" });
+    const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      manager.sId,
+      workspace.sId
+    );
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+
+    const managerLabels = await resolveDimensionLabels(managerAuth, "agent", [
+      agent.sId,
+    ]);
+    const memberLabels = await resolveDimensionLabels(memberAuth, "agent", [
+      agent.sId,
+    ]);
+
+    expect(managerLabels.get(agent.sId)).toEqual(
+      expect.objectContaining({
+        name: "Secret agent",
+        description: `Private agent owned by ${editor.email}`,
+      })
+    );
+    expect(memberLabels.get(agent.sId)).toEqual(
+      expect.objectContaining({ name: agent.sId, description: null })
     );
   });
 

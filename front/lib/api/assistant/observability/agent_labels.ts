@@ -1,9 +1,6 @@
-import {
-  getAgentConfigurations,
-  getAgentLabelsByIds,
-} from "@app/lib/api/assistant/configuration/agent";
 import { getAgentModelDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -27,6 +24,11 @@ function privateAgentDescription(authorEmail: string | null | undefined) {
 
 // Agent ids that no longer resolve to a configuration are absent from the
 // returned map; callers drop them instead of surfacing a placeholder row.
+/**
+ * @cc [owner:sfriquet,label:security] analytics-labels-through-agent-resource
+ * Agents MUST be resolved through `AgentResource`. Without `read`, the description MUST be a
+ * placeholder, naming the author only if the caller holds `list`.
+ */
 export async function resolveAnalyticsAgentLabels(
   auth: Authenticator,
   agentIds: string[]
@@ -35,29 +37,13 @@ export async function resolveAnalyticsAgentLabels(
     return new Map();
   }
 
-  const agents = await getAgentConfigurations(auth, {
-    agentIds,
-    variant: "extra_light",
-  });
-  const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
+  const agents = await AgentResource.fetchByIds(auth, agentIds);
 
-  const missingAgentIds = agentIds.filter((id) => !agentsById.has(id));
-  const fallbackLabels =
-    missingAgentIds.length > 0
-      ? await getAgentLabelsByIds(auth, missingAgentIds)
-      : [];
-  const fallbackById = new Map(
-    fallbackLabels.map((label) => [label.sId, label])
+  const authorModelIds = removeNulls(
+    agents
+      .filter((agent) => !auth.can("read", agent) && auth.can("list", agent))
+      .map((agent) => agent.versionAuthorId)
   );
-
-  const authorModelIds = auth.isManager()
-    ? removeNulls([
-        ...agents
-          .filter((agent) => !agent.canRead)
-          .map((agent) => agent.versionAuthorId),
-        ...fallbackLabels.map((label) => label.authorModelId),
-      ])
-    : [];
   const authors =
     authorModelIds.length > 0
       ? await UserResource.fetchByModelIds(authorModelIds)
@@ -67,38 +53,20 @@ export async function resolveAnalyticsAgentLabels(
   );
 
   const labels = new Map<string, AnalyticsAgentLabel>();
-  for (const agentId of agentIds) {
-    const agent = agentsById.get(agentId);
-    if (agent) {
-      const authorEmail = agent.versionAuthorId
-        ? authorEmailByModelId.get(agent.versionAuthorId)
-        : null;
-      labels.set(agentId, {
-        name: agent.name,
-        pictureUrl: agent.pictureUrl,
-        modelId: agent.model.modelId,
-        modelDisplayName: getAgentModelDisplayName(agent.model),
-        description: agent.canRead
-          ? agent.description
-          : privateAgentDescription(authorEmail),
-        scope: agent.scope,
-      });
-      continue;
-    }
-
-    const fallback = fallbackById.get(agentId);
-    if (fallback) {
-      labels.set(agentId, {
-        name: fallback.name,
-        pictureUrl: fallback.pictureUrl,
-        modelId: fallback.model.modelId,
-        modelDisplayName: getAgentModelDisplayName(fallback.model),
-        description: privateAgentDescription(
-          authorEmailByModelId.get(fallback.authorModelId)
-        ),
-        scope: fallback.scope,
-      });
-    }
+  for (const agent of agents) {
+    const authorEmail = agent.versionAuthorId
+      ? authorEmailByModelId.get(agent.versionAuthorId)
+      : null;
+    labels.set(agent.sId, {
+      name: agent.name,
+      pictureUrl: agent.pictureUrl,
+      modelId: agent.modelConfiguration.modelId,
+      modelDisplayName: getAgentModelDisplayName(agent.modelConfiguration),
+      description: auth.can("read", agent)
+        ? agent.description
+        : privateAgentDescription(authorEmail),
+      scope: agent.scope,
+    });
   }
 
   return labels;

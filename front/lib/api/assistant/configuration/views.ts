@@ -11,6 +11,7 @@ import {
   AgentConfigurationModel,
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type {
   AgentConfigurationType,
   AgentFetchVariant,
@@ -186,9 +187,12 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       : {};
 
   const baseAgentsSequelizeQuery = {
-    // The current-user view is filtered by effective read permission after enrichment, so apply
-    // its limit only after that filtering to avoid dropping readable agents from the result.
-    limit: agentsGetView === "current_user" ? undefined : limit,
+    // The current-user and analytics views are filtered by permission after the query, so apply
+    // their limit only after that filtering to avoid dropping permitted agents from the result.
+    limit:
+      agentsGetView === "current_user" || agentsGetView === "analytics"
+        ? undefined
+        : limit,
     order: sortStrategy.dbOrder,
     ...excludeAttributesFromSelect,
   };
@@ -208,15 +212,22 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         where: baseWhereConditions,
       });
 
-    // Analytics reports on every agent, so managers and admins get the private
-    // ones too. Everyone else sees what `all` returns.
-    case "analytics":
-      return AgentConfigurationModel.findAll({
+    case "analytics": {
+      const agentModels = await AgentConfigurationModel.findAll({
         ...baseAgentsSequelizeQuery,
-        where: auth.isManager()
-          ? baseWhereConditions
-          : baseConditionsAndScopesIn(["workspace", "published", "visible"]),
+        where: baseWhereConditions,
       });
+      const resources = await AgentResource.dangerouslyFromConfigurationModels(
+        auth,
+        agentModels
+      );
+      const fetchableModelIds = new Set(
+        resources
+          .filter((resource) => resource.canFetch(auth))
+          .map((resource) => resource.agentConfigurationModelId)
+      );
+      return agentModels.filter((agent) => fetchableModelIds.has(agent.id));
+    }
 
     case "current_user":
       const authorId = auth.getNonNullableUser().id;
@@ -362,13 +373,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
     }
   );
 
-  // Analytics counts credits for agents built on spaces a manager cannot read,
-  // so the manager analytics view has to list them as well. The unrestricted manage view does the
-  // same for admins, and is gated on the role by its caller.
+  // The analytics view is already filtered by `AgentResource`. The unrestricted manage view lists
+  // every agent for admins, and is gated on the role by its caller.
   // Archived is unrestricted for admins too, matching its documented admin/superuser-only contract.
   const skipPermissionFiltering =
     dangerouslySkipPermissionFiltering ||
-    (agentsGetView === "analytics" && auth.isManager()) ||
+    agentsGetView === "analytics" ||
     agentsGetView === "manage_unrestricted" ||
     (agentsGetView === "archived" && auth.isAdmin());
 
