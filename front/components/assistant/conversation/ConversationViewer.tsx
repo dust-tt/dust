@@ -2,6 +2,7 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { getWorkspaceLimitForSubmitError } from "@app/components/app/ReachedLimitPopup";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
+import { useOngoingAgentLoopsSnapshot } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
@@ -47,6 +48,7 @@ import {
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { planFileKey } from "@app/hooks/conversations/usePlanFile";
+import { useRecoverStaleConversationMessages } from "@app/hooks/conversations/useRecoverStaleConversationMessages";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -275,6 +277,7 @@ export const ConversationViewer = ({
     >(null);
   const isMobile = useIsMobile();
   const sendNotification = useSendNotification();
+  const ongoingLoopsSnapshot = useOngoingAgentLoopsSnapshot();
   const { incrementPendingSteeringCount } = useGenerationContext();
   const { peekPendingFirstMessage } = useContext(InputBarContext);
 
@@ -353,6 +356,18 @@ export const ConversationViewer = ({
     workspaceId: owner.sId,
     limit: CONVERSATION_MESSAGES_PAGE_LIMIT,
     disabled,
+  });
+
+  useRecoverStaleConversationMessages({
+    conversation,
+    owner,
+    disabled,
+    isLoadingInitialData,
+    isMessagesError,
+    isValidating,
+    messageListRef: virtuosoMessageListRef,
+    mutateMessages,
+    ongoingLoopsSnapshot,
   });
 
   const handleAgentMessageRetry = useCallback(
