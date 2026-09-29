@@ -24,6 +24,7 @@ export const SEARCH_FILTER_CATEGORY_LABEL = {
   availability: "Availability",
   editor: "Editors",
   model: "Models",
+  skill: "Skills",
   space: "Spaces",
   tag: "Tags",
   tool: "Tools",
@@ -39,6 +40,7 @@ export const SEARCH_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   availability: "Availability",
   editor: "Editor",
   model: "Model",
+  skill: "Skill",
   space: "Space",
   tag: "Tag",
   tool: "Tool",
@@ -50,6 +52,7 @@ export type SearchFilterOption = FilterOptionBase &
     | { category: "availability"; id: SkillAvailability }
     | { category: "editor"; image: string | null }
     | { category: "model" }
+    | { category: "skill"; icon: string | null }
     | { category: "space" }
     | { category: "tag" }
     | {
@@ -62,19 +65,28 @@ export type SearchFilterOption = FilterOptionBase &
 export type SearchFilter<Category extends SearchFilterCategory> =
   CategoryFilter<Category, SearchFilterOption>;
 
+interface SearchFilterSkillFacetValue {
+  sId: string;
+  name: string;
+  icon: string | null;
+}
+
+interface SearchFilterToolFacetValue {
+  sId: string;
+  mcpServerId: string;
+  name: string;
+  icon: MCPServerType["icon"];
+}
+
 // The facet values the options are built from; agent and skill search responses both fit.
 export interface SearchFilterFacets {
   availability?: { availability: SkillAvailability }[];
   editors?: Pick<UserType, "sId" | "fullName" | "image">[];
   models?: { modelId: string }[];
+  skills?: SearchFilterSkillFacetValue[];
   spaces?: Pick<SpaceType, "sId" | "name" | "kind">[];
   tags?: Pick<TagType, "sId" | "name">[];
-  mcpServerViews?: {
-    sId: string;
-    mcpServerId: string;
-    name: string;
-    icon: MCPServerType["icon"];
-  }[];
+  mcpServerViews?: SearchFilterToolFacetValue[];
 }
 
 const ACCESS_FILTER_OPTIONS: SearchFilterOption[] = [
@@ -95,7 +107,7 @@ export function getModelFilterDisplayName(modelId: string): string {
 
 // One option per MCP server, filtering on every view of it that matching resources use.
 function toToolFilterOptions(
-  views: NonNullable<SearchFilterFacets["mcpServerViews"]>
+  views: SearchFilterToolFacetValue[]
 ): SearchFilterOption[] {
   const optionsByServerId = new Map<
     string,
@@ -166,6 +178,18 @@ export function getSearchFilterOptions(
             category: "model",
             id: modelId,
             name: getModelFilterDisplayName(modelId),
+            disabled: false,
+          })
+        )
+        .toSorted((a, b) => a.name.localeCompare(b.name));
+    case "skill":
+      return (facets?.skills ?? [])
+        .map(
+          (skill): SearchFilterOption => ({
+            category: "skill",
+            id: skill.sId,
+            name: skill.name,
+            icon: skill.icon,
             disabled: false,
           })
         )
