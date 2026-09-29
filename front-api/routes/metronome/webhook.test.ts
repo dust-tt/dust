@@ -4,6 +4,17 @@ import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@app/lib/api/config", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/api/config")>();
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      getMetronomeWebhookSecret: vi.fn().mockReturnValue("test-secret"),
+    },
+  };
+});
+
 vi.mock("@app/lib/metronome/client", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@app/lib/metronome/client")>();
@@ -18,8 +29,6 @@ vi.mock("@app/temporal/metronome_events_queue/client", () => ({
 }));
 
 import { launchMetronomeEventsWorkflow } from "@app/temporal/metronome_events_queue/client";
-
-process.env.METRONOME_WEBHOOK_SECRET ||= "test-metronome-webhook-secret";
 
 async function postContractStart(customerId: string) {
   return honoApp.request("/api/metronome/webhook", {

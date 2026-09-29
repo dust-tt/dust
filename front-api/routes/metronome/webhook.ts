@@ -10,6 +10,7 @@ import { launchMetronomeEventsWorkflow } from "@app/temporal/metronome_events_qu
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import type { Context } from "hono";
 import { z } from "zod";
 
 type ResponseBody = {
@@ -32,7 +33,9 @@ app.get(
  * `relocation-done` is acked with 200 (the workspace now lives in another region, which receives
  * the same event); any other value returns 503 so Metronome redelivers the event later.
  */
-app.post("/", async (ctx): HandlerResult<ResponseBody> => {
+async function handleMetronomeWebhook(
+  ctx: Context
+): HandlerResult<ResponseBody> {
   // Read the raw body bytes once. Metronome's SDK signature verification
   // works on the exact string representation of the JSON body.
   const bodyString = await ctx.req.text();
@@ -164,6 +167,8 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
   }
 
   return ctx.json({ success: true });
-});
+}
+
+app.post("/", handleMetronomeWebhook);
 
 export default app;
