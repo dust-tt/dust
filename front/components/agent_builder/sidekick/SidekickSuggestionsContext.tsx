@@ -232,6 +232,7 @@ function SidekickSuggestionsProviderContent({
         case "instructions":
         case "name":
         case "scope":
+        case "tags":
           return { ...suggestion, relations: null };
 
         case "knowledge": {

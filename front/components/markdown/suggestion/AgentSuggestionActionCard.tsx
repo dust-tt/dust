@@ -18,6 +18,7 @@ import type {
   AgentSkillsSuggestionType,
   AgentSubAgentSuggestionType,
   AgentSuggestionState,
+  AgentTagsSuggestionType,
   AgentToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import type { ActionCardState } from "@dust-tt/sparkle";
@@ -52,6 +53,7 @@ export type AgentActionCardSuggestionType =
   | AgentScopeSuggestionType
   | AgentSkillsSuggestionType
   | AgentSubAgentSuggestionType
+  | AgentTagsSuggestionType
   | AgentToolsSuggestionType;
 
 interface AgentSuggestionActionCardProps {
@@ -141,6 +143,15 @@ function getAgentSuggestionLabels(
         title: "Update agent editors",
         acceptedTitle: "Editors update accepted",
         rejectedTitle: "Editors update rejected",
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "tags": {
+      return {
+        title: "Update agent tags",
+        acceptedTitle: "Tags update accepted",
+        rejectedTitle: "Tags update rejected",
         description: analysis ?? undefined,
       };
     }

@@ -694,6 +694,7 @@ export function SidekickSuggestionCard({
     case "editors":
     case "name":
     case "scope":
+    case "tags":
       return (
         <ConnectedAgentSuggestionActionCard agentSuggestion={agentSuggestion} />
       );

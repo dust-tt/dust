@@ -20,6 +20,7 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerView } from "@app/lib/swr/mcp_servers";
 import { useSkill } from "@app/lib/swr/skill_configurations";
+import { useTags } from "@app/lib/swr/tags";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -28,7 +29,7 @@ import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Avatar, Eye, EyeOff } from "@dust-tt/sparkle";
+import { Avatar, Eye, EyeOff, Tag01 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
@@ -176,6 +177,46 @@ function SuggestedSubAgentRow({
   );
 }
 
+interface SuggestedTagsProps {
+  owner: LightWorkspaceType;
+  addTags: string[];
+  removeTags: string[];
+}
+
+function SuggestedTags({ owner, addTags, removeTags }: SuggestedTagsProps) {
+  const { tags, isTagsLoading } = useTags({ owner });
+  const existingTagNames = useMemo(
+    () => new Set(tags.map((tag) => tag.name.toLowerCase())),
+    [tags]
+  );
+
+  return (
+    <SuggestedChangesSection label="Tags">
+      {addTags.map((name) => (
+        <SuggestedChangeRow
+          key={`add-${name}`}
+          action="add"
+          visual={<Avatar size="xs" icon={Tag01} />}
+          title={name}
+          description={
+            !isTagsLoading && !existingTagNames.has(name.toLowerCase())
+              ? "New tag"
+              : undefined
+          }
+        />
+      ))}
+      {removeTags.map((name) => (
+        <SuggestedChangeRow
+          key={`remove-${name}`}
+          action="remove"
+          visual={<Avatar size="xs" icon={Tag01} />}
+          title={name}
+        />
+      ))}
+    </SuggestedChangesSection>
+  );
+}
+
 interface SuggestedChangesSectionProps {
   label: string;
   children: ReactNode;
@@ -279,6 +320,15 @@ export function AgentSuggestionDetails({
         <SuggestedEditors
           suggestion={suggestion.suggestion}
           workspaceId={owner.sId}
+        />
+      );
+
+    case "tags":
+      return (
+        <SuggestedTags
+          owner={owner}
+          addTags={suggestion.suggestion.addTags}
+          removeTags={suggestion.suggestion.removeTags}
         />
       );
 
