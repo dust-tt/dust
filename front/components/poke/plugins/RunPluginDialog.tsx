@@ -13,6 +13,7 @@ import {
 } from "@app/poke/swr/plugins";
 import type { CellInfo, CellType } from "@app/types/cell";
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import {
   Button,
   CheckboxWithText,
@@ -325,7 +326,14 @@ export function RunPluginDialog({
                     <p>{result.value} - Make sure to reload.</p>
                     <Button
                       onClick={() => {
-                        window.open(result.link, "_blank");
+                        const v = validateUrl(result.link);
+                        if (v.valid) {
+                          window.open(
+                            v.standardized,
+                            "_blank",
+                            "noopener,noreferrer"
+                          );
+                        }
                       }}
                       label={result.linkText}
                       variant="highlight"

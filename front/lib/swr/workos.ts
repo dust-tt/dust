@@ -12,6 +12,7 @@ import {
 } from "@app/lib/swr/swr";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { GetWorkspaceDomainsResponseBody } from "@app/types/api/workos/organization";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
 /**
@@ -250,8 +251,18 @@ export function useOpenAuditLogsPortal({
     }
 
     const data: AuditLogsPortalResponse = await response.json();
+    const validated = validateUrl(data.portalUrl);
+    if (!validated.valid || !validated.standardized) {
+      newWindow?.close();
+      sendNotification({
+        type: "error",
+        title: "Failed to open audit logs portal",
+        description: "Invalid portal URL returned from server.",
+      });
+      return;
+    }
     if (newWindow) {
-      newWindow.location.href = data.portalUrl;
+      newWindow.location.href = validated.standardized;
     }
   };
 
