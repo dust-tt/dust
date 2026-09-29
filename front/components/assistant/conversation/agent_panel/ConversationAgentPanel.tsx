@@ -12,7 +12,7 @@ import { useUser } from "@app/lib/swr/user";
 import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Spinner } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface ConversationAgentPanelProps {
   owner: LightWorkspaceType;
@@ -38,6 +38,16 @@ export function ConversationAgentPanel({ owner }: ConversationAgentPanelProps) {
       ),
     [batch, agentId]
   );
+  const isOutdatedCreation =
+    batch?.state === "outdated" &&
+    batch.agentSuggestions.some(
+      (s) => s.agentId === agentId && isCreateAgentSuggestion(s)
+    );
+  useEffect(() => {
+    if (isOutdatedCreation) {
+      closePanel();
+    }
+  }, [isOutdatedCreation, closePanel]);
   const [hiddenPreviewData, setHiddenPreviewData] = useState<string>();
   const isApplied = hiddenPreviewData !== data;
   const hasPreview = previewSuggestions.length > 0;

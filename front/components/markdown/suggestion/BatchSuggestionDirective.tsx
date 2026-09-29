@@ -7,7 +7,10 @@
  * accepted or rejected as a whole.
  */
 
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
+  parseSuggestionPreviewData,
+  useConversationSidePanelContext,
+} from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { AgentSuggestionDetails } from "@app/components/markdown/suggestion/AgentSuggestionDetails";
 import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
@@ -430,6 +433,7 @@ function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
   const reviewBatches = useReviewSuggestionBatches({
     workspaceId: owner.sId,
   });
+  const { closePanel, data } = useConversationSidePanelContext();
   const [pendingState, setPendingState] =
     useState<SuggestionBatchReviewState | null>(null);
 
@@ -437,6 +441,9 @@ function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
     setPendingState(state);
     try {
       await reviewBatches([batchId], state);
+      if (parseSuggestionPreviewData(data).batchId === batchId) {
+        closePanel();
+      }
     } finally {
       setPendingState(null);
     }

@@ -17,7 +17,7 @@ import { useUser } from "@app/lib/swr/user";
 import { isCreateSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Spinner } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface ConversationSkillPanelProps {
   owner: LightWorkspaceType;
@@ -40,6 +40,16 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
       ),
     [batch, skillId]
   );
+  const isOutdatedCreation =
+    batch?.state === "outdated" &&
+    batch.skillSuggestions.some(
+      (s) => s.skillConfigurationId === skillId && isCreateSkillSuggestion(s)
+    );
+  useEffect(() => {
+    if (isOutdatedCreation) {
+      closePanel();
+    }
+  }, [isOutdatedCreation, closePanel]);
   const [hiddenPreviewData, setHiddenPreviewData] = useState<string>();
   const isApplied = hiddenPreviewData !== data;
   const hasPreview = previewSuggestions.length > 0;

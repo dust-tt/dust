@@ -3,7 +3,10 @@ import {
   DetailsSectionHeading,
   EditedSectionBar,
 } from "@app/components/assistant/details/DetailsSectionHeading";
-import { useEditedAgentSections } from "@app/components/assistant/details/SuggestionPreviewContext";
+import {
+  useAgentSuggestionPreview,
+  useEditedAgentSections,
+} from "@app/components/assistant/details/SuggestionPreviewContext";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
 import { AssistantSkillsToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection";
 import { RedactedAgentMessage } from "@app/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage";
@@ -31,6 +34,7 @@ export function AgentInfoTab({
 }) {
   const { isDark } = useTheme();
   const editedSections = useEditedAgentSections();
+  const previewSuggestions = useAgentSuggestionPreview();
   const isDustAgent =
     agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST ||
     agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE ||
@@ -92,7 +96,9 @@ export function AgentInfoTab({
               "max-h-[400px] overflow-y-auto rounded-lg border border-border bg-muted-background px-3 py-2"
             )}
           >
+            {/* Remounts the instructions editor on preview change, since it only reads its content once. */}
             <ReadOnlyInstructionsEditor
+              key={previewSuggestions.map((s) => s.sId).join(",")}
               instructions={instructions}
               instructionsHtml={instructionsHtml}
             />
