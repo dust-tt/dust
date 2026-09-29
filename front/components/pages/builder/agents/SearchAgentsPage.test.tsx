@@ -90,6 +90,7 @@ vi.mock("@app/components/assistant/CreateAgentDropdown", () => ({
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.history.replaceState({}, "", "/");
 });
 
 async function setup({

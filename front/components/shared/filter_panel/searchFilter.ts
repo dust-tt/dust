@@ -6,6 +6,7 @@ import type {
   CategoryFilter,
   FilterOptionBase,
 } from "@app/components/shared/filter_panel/filterState";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
@@ -228,4 +229,153 @@ export function getSearchFilterMcpServerViewIds<
     .flatMap((option) =>
       option?.category === "tool" ? option.mcpServerViewIds : []
     );
+}
+
+// Selected IDs mapped to their labels. Tool selections hold MCP server view IDs; the other
+// categories hold option IDs.
+export type SearchFilterSelection<Category extends SearchFilterCategory> =
+  Partial<Record<Category, Record<string, string>>>;
+
+export function toSearchFilterSelection<Category extends SearchFilterCategory>(
+  filter: SearchFilter<Category>,
+  categories: readonly Category[]
+): SearchFilterSelection<Category> {
+  const selection: SearchFilterSelection<Category> = {};
+  for (const category of categories) {
+    const labels = Object.fromEntries(
+      (filter[category] ?? []).flatMap((option) =>
+        option.category === "tool"
+          ? option.mcpServerViewIds.map((viewId) => [viewId, option.name])
+          : [[option.id, option.name]]
+      )
+    );
+    if (Object.keys(labels).length > 0) {
+      selection[category] = labels;
+    }
+  }
+  return selection;
+}
+
+export function getSearchFilterOptionKeys(
+  option: SearchFilterOption
+): string[] {
+  return option.category === "tool"
+    ? option.mcpServerViewIds.map((viewId) => `tool:${viewId}`)
+    : [`${option.category}:${option.id}`];
+}
+
+// Stands for a selected ID that no facet names; null for IDs that cannot be valid.
+function toUnresolvedOption(
+  category: SearchFilterCategory,
+  id: string,
+  name: string
+): SearchFilterOption | null {
+  switch (category) {
+    case "access":
+    case "availability":
+      return null;
+    case "editor":
+      return { category, id, name, image: null, disabled: false };
+    case "skill":
+      return { category, id, name, icon: null, disabled: false };
+    case "model":
+    case "space":
+    case "tag":
+      return { category, id, name, disabled: false };
+    case "tool":
+      return {
+        category,
+        id,
+        name,
+        icon: DEFAULT_MCP_SERVER_ICON,
+        mcpServerViewIds: [],
+        disabled: false,
+      };
+  }
+}
+
+/**
+ * @cc [owner:tdraier,label:product] resolve-every-selected-id
+ * Every selected ID that can be valid MUST be kept in the resolved filter, named from `facets`,
+ * then `knownOptions`, and otherwise by an unresolved placeholder carrying its selected label and
+ * listed in `unresolvedKeys`.
+ * Access and availability IDs that match no option MUST be dropped. Tool options MUST carry only
+ * the selected view IDs, grouped by MCP server.
+ */
+export function resolveSearchFilterSelection<
+  Category extends SearchFilterCategory,
+>({
+  selection,
+  categories,
+  knownOptions,
+  facets,
+  currentUserId,
+}: {
+  selection: SearchFilterSelection<Category>;
+  categories: readonly Category[];
+  knownOptions: ReadonlyMap<string, SearchFilterOption>;
+  facets: SearchFilterFacets | undefined;
+  currentUserId: string;
+}): {
+  filter: SearchFilter<Category>;
+  unresolvedCategories: Category[];
+  unresolvedKeys: ReadonlySet<string>;
+} {
+  // Availability names derive from their IDs alone.
+  const allFacets: SearchFilterFacets = {
+    ...facets,
+    availability: SKILL_AVAILABILITIES.map((availability) => ({
+      availability,
+    })),
+  };
+  const filter: SearchFilter<Category> = {};
+  const unresolvedCategories: Category[] = [];
+  const unresolvedKeys = new Set<string>();
+
+  for (const category of categories) {
+    const optionsByKey = new Map(
+      getSearchFilterOptions(category, allFacets, currentUserId).flatMap(
+        (option) =>
+          getSearchFilterOptionKeys(option).map((key) => [key, option])
+      )
+    );
+    const optionsById = new Map<string, SearchFilterOption>();
+    const toolViewIdsById = new Map<string, string[]>();
+    let isCategoryResolved = true;
+    for (const [id, label] of Object.entries(selection[category] ?? {})) {
+      const key = `${category}:${id}`;
+      const resolved = optionsByKey.get(key) ?? knownOptions.get(key);
+      const option = resolved ?? toUnresolvedOption(category, id, label);
+      if (!option) {
+        continue;
+      }
+      if (!resolved) {
+        unresolvedKeys.add(key);
+        isCategoryResolved = false;
+      }
+      if (!optionsById.has(option.id)) {
+        optionsById.set(option.id, option);
+      }
+      if (option.category === "tool") {
+        const viewIds = toolViewIdsById.get(option.id) ?? [];
+        viewIds.push(id);
+        toolViewIdsById.set(option.id, viewIds);
+      }
+    }
+    if (optionsById.size > 0) {
+      filter[category] = [...optionsById.values()].map((option) =>
+        option.category === "tool"
+          ? {
+              ...option,
+              mcpServerViewIds: toolViewIdsById.get(option.id) ?? [],
+            }
+          : option
+      );
+    }
+    if (!isCategoryResolved) {
+      unresolvedCategories.push(category);
+    }
+  }
+
+  return { filter, unresolvedCategories, unresolvedKeys };
 }

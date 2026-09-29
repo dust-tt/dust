@@ -3,9 +3,11 @@ import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdo
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterPanel";
 import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
-import type { AgentFilter } from "@app/components/assistant/manager/agentFilter";
 import {
   AGENT_FILTER_CATEGORIES,
+  AGENT_FILTER_CATEGORY_FACET,
+  AGENT_SEARCH_TAB_IDS,
+  AGENT_SEARCH_TABS,
   toAgentSearchFilters,
 } from "@app/components/assistant/manager/agentFilter";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
@@ -14,10 +16,12 @@ import {
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
 import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
+import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import {
   useSetContentWidth,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
@@ -45,21 +49,7 @@ import { useCallback, useMemo, useState } from "react";
 
 const AGENT_SEARCH_PAGE_SIZE = 25;
 
-const SEARCH_TABS = [
-  {
-    id: "all",
-    label: "All",
-    filters: { status: ["active"], scope: ["visible", "hidden"] },
-  },
-  {
-    id: "default",
-    label: "Default",
-    filters: { status: ["active"], scope: ["global"] },
-  },
-  { id: "archived", label: "Archived", filters: { status: ["archived"] } },
-] satisfies { id: string; label: string; filters: AgentSearchFilters }[];
-
-type SearchTabId = (typeof SEARCH_TABS)[number]["id"];
+type SearchTabId = (typeof AGENT_SEARCH_TABS)[number]["id"];
 
 interface AgentsListProps {
   searchTerm: string;
@@ -246,15 +236,30 @@ export function SearchAgentsPage() {
   const { hasPermission } = useWorkspacePermissions();
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
-  const [showHiddenAgents, setShowHiddenAgents] = useState(false);
-  const [filter, setFilter] = useState<AgentFilter>({});
+  const [hiddenAgentsParam, setHiddenAgentsParam] =
+    useHashParam("hiddenAgents");
+  const showHiddenAgents = hiddenAgentsParam === "true";
+  const setShowHiddenAgents = (isShown: boolean) =>
+    setHiddenAgentsParam(isShown ? "true" : undefined);
+  const {
+    selectedTab,
+    setSelectedTab,
+    filter: pendingFilter,
+    setFilter,
+    unresolvedCategories,
+    resolveFilter,
+  } = useSearchPageHashState({
+    categories: AGENT_FILTER_CATEGORIES,
+    tabIds: AGENT_SEARCH_TAB_IDS,
+    defaultTabId: "all",
+  });
   // Default agents all share the global scope, so Access does not apply to them.
   const filterCategories = AGENT_FILTER_CATEGORIES.filter(
     (category) => selectedTab !== "default" || category !== "access"
   );
   const activeTab =
-    SEARCH_TABS.find((tab) => tab.id === selectedTab) ?? SEARCH_TABS[0];
+    AGENT_SEARCH_TABS.find((tab) => tab.id === selectedTab) ??
+    AGENT_SEARCH_TABS[0];
   const canShowHiddenAgents = isAdmin && selectedTab === "all";
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Agents");
@@ -267,6 +272,20 @@ export function SearchAgentsPage() {
     isAdmin && ((tabId === "all" && showHiddenAgents) || tabId === "archived")
       ? "unrestricted"
       : "strict";
+  // Names of the selections restored from a link come from the agents they match.
+  const { facets: selectionFacets, isAgentsLoading: isSelectionLoading } =
+    useSearchAgents({
+      owner,
+      searchTerm: "",
+      limit: 0,
+      filters: toAgentSearchFilters(pendingFilter, activeTab.filters),
+      permissionFiltering: getPermissionFiltering(activeTab.id),
+      facets: unresolvedCategories.flatMap(
+        (category) => AGENT_FILTER_CATEGORY_FACET[category] ?? []
+      ),
+      disabled: unresolvedCategories.length === 0,
+    });
+  const filter = resolveFilter(selectionFacets);
 
   return (
     <>
@@ -302,7 +321,7 @@ export function SearchAgentsPage() {
         <Tabs
           value={selectedTab}
           onValueChange={(value) => {
-            const tab = SEARCH_TABS.find(({ id }) => id === value);
+            const tab = AGENT_SEARCH_TABS.find(({ id }) => id === value);
             if (tab) {
               setSelectedTab(tab.id);
             }
@@ -310,7 +329,7 @@ export function SearchAgentsPage() {
         >
           <div className="flex flex-col gap-2">
             <TabsList>
-              {SEARCH_TABS.map((tab) => (
+              {AGENT_SEARCH_TABS.map((tab) => (
                 <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
               ))}
               <div className="grow" />
@@ -335,6 +354,7 @@ export function SearchAgentsPage() {
               </div>
             </TabsList>
             <FilterSummaryChips
+              isLoading={isSelectionLoading}
               summaries={getFilterSummaries(
                 filter,
                 filterCategories,
@@ -363,7 +383,7 @@ export function SearchAgentsPage() {
                 setShowHiddenAgents(false);
               }}
             />
-            {SEARCH_TABS.map((tab) => (
+            {AGENT_SEARCH_TABS.map((tab) => (
               <TabsContent key={tab.id} value={tab.id}>
                 <AgentsList
                   key={owner.sId}

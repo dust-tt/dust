@@ -1,9 +1,13 @@
-import type { SearchFilter } from "@app/components/shared/filter_panel/searchFilter";
+import type {
+  SearchFilter,
+  SearchFilterFacets,
+} from "@app/components/shared/filter_panel/searchFilter";
 import {
   getSearchFilterIds,
   getSearchFilterMcpServerViewIds,
 } from "@app/components/shared/filter_panel/searchFilter";
 import type {
+  SearchSkillsResponseBody,
   SkillSearchFacet,
   SkillSearchFilters,
 } from "@app/types/api/skills";
@@ -48,3 +52,22 @@ export function toSkillSearchFilters(filter: SkillFilter): SkillSearchFilters {
     ...(spaceIds.length > 0 ? { spaceIds } : {}),
   };
 }
+
+// Skills filter on the skills they use as child skills.
+export function toSkillSearchFilterFacets(
+  facets: SearchSkillsResponseBody["facets"] | undefined
+): SearchFilterFacets | undefined {
+  return facets && { ...facets, skills: facets.childSkills };
+}
+
+export const SKILL_SEARCH_TABS = [
+  { id: "all", label: "All", filters: { status: ["active"] } },
+  {
+    id: "default",
+    label: "Default",
+    filters: { status: ["active"], codeDefinedOnly: true },
+  },
+  { id: "archived", label: "Archived", filters: { status: ["archived"] } },
+] satisfies { id: string; label: string; filters: SkillSearchFilters }[];
+
+export const SKILL_SEARCH_TAB_IDS = SKILL_SEARCH_TABS.map(({ id }) => id);

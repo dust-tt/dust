@@ -61,3 +61,19 @@ export function toAgentSearchFilters(
     ...(spaceIds.length > 0 ? { spaceIds } : {}),
   };
 }
+
+export const AGENT_SEARCH_TABS = [
+  {
+    id: "all",
+    label: "All",
+    filters: { status: ["active"], scope: ["visible", "hidden"] },
+  },
+  {
+    id: "default",
+    label: "Default",
+    filters: { status: ["active"], scope: ["global"] },
+  },
+  { id: "archived", label: "Archived", filters: { status: ["archived"] } },
+] satisfies { id: string; label: string; filters: AgentSearchFilters }[];
+
+export const AGENT_SEARCH_TAB_IDS = AGENT_SEARCH_TABS.map(({ id }) => id);
