@@ -35,6 +35,7 @@ import type {
 import sgMail from "@sendgrid/mail";
 import { escape } from "html-escaper";
 import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 
@@ -124,12 +125,25 @@ async function batchUnrevokeInvitations(
     );
   }
 
-  for (const { sId, role } of invitations) {
-    // This must remain sequential: all updates share one transaction connection.
+  const invitationIdsByRole = new Map<ActiveRoleType, string[]>();
+  for (const invitation of invitations) {
+    const roleInvitationIds = invitationIdsByRole.get(invitation.role) ?? [];
+    roleInvitationIds.push(invitation.sId);
+    invitationIdsByRole.set(invitation.role, roleInvitationIds);
+  }
+
+  for (const [role, roleInvitationIds] of invitationIdsByRole) {
+    // Keep role groups sequential because they share one transaction connection.
     // react-doctor-disable-next-line react-doctor/async-await-in-loop
     await MembershipInvitationModel.update(
       { status: "pending", initialRole: role },
-      { where: { sId, workspaceId: owner.id }, transaction }
+      {
+        where: {
+          sId: { [Op.in]: roleInvitationIds },
+          workspaceId: owner.id,
+        },
+        transaction,
+      }
     );
   }
 }
