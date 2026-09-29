@@ -83,12 +83,22 @@ const JsonRpcErrorSchema = z.object({
   }),
 });
 
+// Max length to inspect before giving up — bounds worst-case processing cost.
+const MAX_MCP_ERROR_MESSAGE_LENGTH = 4096;
+
 function extractMCPErrorMessage(errorMessage: string): string {
-  const jsonMatch = errorMessage.match(/\{[\s\S]*"jsonrpc"[\s\S]*\}/);
-  if (!jsonMatch) {
+  // Cap length first to prevent quadratic backtracking on adversarial input.
+  const capped = errorMessage.slice(0, MAX_MCP_ERROR_MESSAGE_LENGTH);
+  const jsonrpcIdx = capped.indexOf('"jsonrpc"');
+  if (jsonrpcIdx === -1) {
     return errorMessage;
   }
-  const parseResult = safeParseJSON(jsonMatch[0]);
+  // Find the '{' that opens the JSON-RPC object (closest '{' before "jsonrpc").
+  const openBrace = capped.lastIndexOf("{", jsonrpcIdx);
+  if (openBrace === -1) {
+    return errorMessage;
+  }
+  const parseResult = safeParseJSON(capped.slice(openBrace));
   if (parseResult.isErr()) {
     return errorMessage;
   }
