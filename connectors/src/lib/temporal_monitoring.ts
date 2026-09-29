@@ -41,6 +41,10 @@ function isWorkspacePlanNoApiAccessError(err: unknown): err is Error {
 // After a relocation the workspace row stays in the source region with the
 // `relocation-done` maintenance flag, and front answers every API call with
 // this 404 until the source is purged.
+// The marker only exists in the message: front reuses the generic
+// `workspace_not_found` type, and the axios upload paths only keep the
+// serialized response. A dedicated `workspace_relocated` API error type would
+// allow a structured check, but needs a front + SDK change.
 function isWorkspaceRelocatedError(err: unknown): boolean {
   // Some DustAPI call sites throw the raw API error object, normalizeError
   // serializes it into the message like WithRetriesError does.
