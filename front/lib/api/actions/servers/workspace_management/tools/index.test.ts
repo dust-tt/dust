@@ -189,6 +189,20 @@ describe("workspace_management tools", () => {
       expect(text).not.toContain("Restricted Space Agent");
     });
 
+    it("includes the caller's own unpublished agents with the default view", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      await AgentConfigurationFactory.createTestAgent(authenticator, {
+        name: "My Unpublished Agent",
+        scope: "hidden",
+      });
+
+      const byDefault = await callTool("list_agents", {}, authenticator);
+      expect(byDefault).toContain("My Unpublished Agent");
+
+      const all = await callTool("list_agents", { view: "all" }, authenticator);
+      expect(all).not.toContain("My Unpublished Agent");
+    });
+
     it("returns unpublished and restricted space agents with all_unrestricted", async () => {
       const { workspace, authenticator } = await createResourceTest({
         role: "admin",

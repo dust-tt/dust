@@ -67,6 +67,56 @@ function getDefaultLimitInput(): HTMLElement {
 }
 
 describe("EditMemberSpendLimitModal", () => {
+  it("keeps other groups' limits visible but read-only", () => {
+    const memberGroups: GroupType[] = [
+      {
+        id: 1,
+        sId: "support",
+        name: "Support",
+        kind: "regular_manual",
+        workspaceId: owner.id,
+        memberCount: 2,
+        poolCapAwuCredits: 500,
+        grantedRole: null,
+        grantedSeatType: null,
+      },
+      {
+        id: 2,
+        sId: "sales",
+        name: "Sales",
+        kind: "regular_manual",
+        workspaceId: owner.id,
+        memberCount: 3,
+        poolCapAwuCredits: 700,
+        grantedRole: null,
+        grantedSeatType: null,
+      },
+    ];
+    render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={vi.fn()}
+        member={makeMemberUsage({ groups: ["Support", "Sales"] })}
+        owner={owner}
+        groups={memberGroups}
+        editableGroupIds={new Set(["support"])}
+        defaultUserSpendLimit={{ status: "unavailable" }}
+      />
+    );
+
+    expect(
+      screen.getByText("Support").closest("tr")?.querySelector("input")
+    ).not.toBeDisabled();
+    expect(
+      screen.getByText("Sales").closest("tr")?.querySelector("input")
+    ).toBeDisabled();
+    expect(
+      screen.getByText(
+        "A personal limit applies to this member across the workspace."
+      )
+    ).toBeInTheDocument();
+  });
+
   it("lets admins edit the workspace default limit when it's the member's applicable source", () => {
     render(
       <EditMemberSpendLimitModal

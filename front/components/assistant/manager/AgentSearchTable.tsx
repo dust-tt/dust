@@ -8,6 +8,7 @@ import {
   SkillLastEditedCell,
 } from "@app/components/skills/SkillTableCells";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { EntityTooltipCard } from "@app/components/workspace/analytics/creditsTableCells";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useTags } from "@app/lib/swr/tags";
 import { tagsSorter } from "@app/lib/utils";
@@ -150,6 +151,10 @@ function AgentSearchTagSelector({
  * change, never on data the table loads itself. Callers MUST keep `canSelect`, `onSelect` and
  * `onRefresh` referentially stable while the search inputs are unchanged.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] agent-name-tooltip
+ * Hovering or focusing an agent name must show its name and description.
+ */
 export function AgentSearchTable({
   owner,
   agents,
@@ -244,21 +249,37 @@ export function AgentSearchTable({
           enableMultiSort: false,
           cell: ({ row: { original: agent } }) => (
             <DataTable.CellContent>
-              <button type="button" className="w-full min-w-0 text-left">
-                <div className="flex flex-row items-center gap-2 py-3">
-                  <div>
-                    <Avatar visual={agent.pictureUrl} size="sm" />
+              <Tooltip
+                align="start"
+                label={
+                  <div className="py-1.5">
+                    <EntityTooltipCard
+                      avatar={
+                        <Avatar
+                          name={agent.name}
+                          visual={agent.pictureUrl}
+                          size="xs"
+                        />
+                      }
+                      name={agent.name}
+                      description={agent.description}
+                    />
                   </div>
-                  <div className="flex min-w-0 grow flex-col">
-                    <div className="heading-sm overflow-hidden truncate text-foreground">
-                      {agent.name}
+                }
+                tooltipTriggerAsChild
+                trigger={
+                  <button type="button" className="w-full min-w-0 text-left">
+                    <div className="flex flex-row items-center gap-2 py-3">
+                      <div>
+                        <Avatar visual={agent.pictureUrl} size="sm" />
+                      </div>
+                      <div className="heading-sm min-w-0 grow overflow-hidden truncate text-foreground">
+                        {agent.name}
+                      </div>
                     </div>
-                    <div className="overflow-hidden truncate text-sm text-muted-foreground">
-                      {agent.description}
-                    </div>
-                  </div>
-                </div>
-              </button>
+                  </button>
+                }
+              />
             </DataTable.CellContent>
           ),
           meta: { className: "w-48 @lg:w-full" },

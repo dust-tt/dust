@@ -20,6 +20,7 @@ export interface AgentSearchDocumentModel {
 
 export interface AgentSearchDocument extends ElasticsearchBaseDocument {
   agent_id: string;
+  agent_model_id: number | null;
   status: AgentConfigurationStatus;
   scope: AgentConfigurationScope;
   model: AgentSearchDocumentModel | null;
@@ -108,6 +109,7 @@ export type AgentSearchSortOrder = (typeof AGENT_SEARCH_SORT_ORDERS)[number];
 
 export interface AgentSearchListItemType {
   sId: string;
+  canEdit?: boolean;
   status: AgentConfigurationStatus;
   scope: AgentConfigurationScope;
   name: string;

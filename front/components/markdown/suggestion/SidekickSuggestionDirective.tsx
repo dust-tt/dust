@@ -1,8 +1,6 @@
 /**
- * Markdown component plugin rendering agent suggestions inside the agent builder's Sidekick.
- *
- * The `:agent_suggestion[]` directive itself is parsed by the conversational agent suggestion
- * plugin; Sidekick only swaps the component that renders it.
+ * Markdown directive and component plugin rendering agent suggestions inside the agent builder's
+ * Sidekick.
  */
 
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
@@ -10,8 +8,18 @@ import {
   SidekickSuggestionCard,
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/SidekickSuggestionCard";
+import { makeDirective } from "@app/components/markdown/suggestion/suggestionDirective";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
 import { useEffect } from "react";
+
+/**
+ * Remark directive plugin parsing `:agent_suggestion[]{sId=xxx kind=yyy}` into the element the
+ * component plugin below renders.
+ */
+export const sidekickSuggestionDirective = makeDirective(
+  "agent_suggestion",
+  (attributes) => ({ suggestionId: attributes.sId, kind: attributes.kind })
+);
 
 interface SidekickSuggestionPluginProps {
   suggestionId?: string;

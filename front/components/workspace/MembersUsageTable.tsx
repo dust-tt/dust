@@ -42,6 +42,7 @@ import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
 import type { MembershipSeatType } from "@app/types/memberships";
 import {
+  isMembershipSeatType,
   isPaidSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
@@ -94,6 +95,7 @@ const EMPTY_MODEL_TIER_DEFINITION_BY_NAME = new Map<
 >();
 const NOOP_ON_MEMBER = (_member: MemberUsageType) => {};
 const ALWAYS_CAN_UPGRADE_SEAT = (_member: MemberUsageType) => true;
+const ALWAYS_CAN_EDIT_SPEND_LIMIT = (_member: MemberUsageType) => true;
 
 const DEFAULT_PREMIUM_MESSAGE_WINDOW_DAYS = 7;
 
@@ -205,7 +207,7 @@ function getScheduledSeatChangeLabel(
   // billing cadence switches. Call that out explicitly instead of the
   // confusing "changed to Pro" wording, since the user is already on Pro.
   const isMonthlyToYearlySwitch =
-    !!currentSeatType &&
+    isMembershipSeatType(currentSeatType) &&
     isPaidSeatType(currentSeatType) &&
     !currentSeatType.endsWith("_yearly") &&
     scheduledSeatType.endsWith("_yearly") &&
@@ -1170,11 +1172,14 @@ interface MembersUsageTableProps {
   seatChangePendingMemberIds: ReadonlySet<string>;
   isSeatBased: boolean;
   showSpendLimit: boolean;
+  canEditSpendLimit?: (member: MemberUsageType) => boolean;
   // Disables every row action
   readOnly?: boolean;
   // Seat and credits usage columns plus the seat row actions. Off for
   // workspaces that are not on a credit plan.
   showSeatAndCredits?: boolean;
+  // Keep credit usage visible without offering seat changes to group managers.
+  showSeatActions?: boolean;
   // Disables only the seat-assign/change/remove actions (e.g. while the
   // subscription has a cancellation scheduled), independent of `readOnly`.
   seatActionsDisabled?: boolean;
@@ -1218,8 +1223,10 @@ export function MembersUsageTable({
   seatChangePendingMemberIds,
   isSeatBased,
   showSpendLimit,
+  canEditSpendLimit = ALWAYS_CAN_EDIT_SPEND_LIMIT,
   readOnly = false,
   showSeatAndCredits = true,
+  showSeatActions = true,
   seatActionsDisabled = false,
   onChangeSeat,
   onRemoveSeat,
@@ -1251,7 +1258,8 @@ export function MembersUsageTable({
     () =>
       members.map((m) => {
         const hasSeat = m.seatType !== null && m.seatType !== "none";
-        const canEditSeat = showSeatAndCredits && isSeatBased && hasSeat;
+        const canEditSeat =
+          showSeatActions && showSeatAndCredits && isSeatBased && hasSeat;
         const resolvedModelTiers = showModelTiersColumn
           ? resolveModelTiersForUser({
               userId: m.sId,
@@ -1286,7 +1294,7 @@ export function MembersUsageTable({
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
           overallUsageTarget: m.overallUsageTarget,
           isSpendCapped: m.isSpendCapped,
-          canUpgradeSeat: canUpgradeSeat(m),
+          canUpgradeSeat: showSeatActions && canUpgradeSeat(m),
           onOpenChangeSeatRecap: () => onOpenChangeSeatRecap(m),
           onOpenSpendLimitRecap: () => onOpenSpendLimitRecap(m),
           premiumMessageUsage: m.premiumMessageUsage ?? null,
@@ -1297,7 +1305,10 @@ export function MembersUsageTable({
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
-            ...(showSeatAndCredits && !hasSeat && !showPremiumMessageUsage
+            ...(showSeatActions &&
+            showSeatAndCredits &&
+            !hasSeat &&
+            !showPremiumMessageUsage
               ? [
                   {
                     kind: "item" as const,
@@ -1317,12 +1328,14 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showSpendLimit && hasSeat && m.seatType !== "free"
+            ...(showSpendLimit &&
+            isMembershipSeatType(m.seatType) &&
+            isPaidSeatType(m.seatType)
               ? [
                   {
                     kind: "item" as const,
                     label: "Edit spend limit",
-                    disabled: readOnly,
+                    disabled: readOnly || !canEditSpendLimit(m),
                     onClick: () => onEditSpendLimit(m),
                   },
                 ]
@@ -1374,6 +1387,7 @@ export function MembersUsageTable({
       seatChangePendingMemberIds,
       isSeatBased,
       showSpendLimit,
+      canEditSpendLimit,
       showModelTiersColumn,
       userModelTierSelectionByUserId,
       userAllowedModelTiersByUserId,
@@ -1382,6 +1396,7 @@ export function MembersUsageTable({
       groupNameToId,
       readOnly,
       showSeatAndCredits,
+      showSeatActions,
       showPremiumMessageUsage,
       seatActionsDisabled,
       onChangeSeat,

@@ -41,10 +41,7 @@ export async function fetchCustomSkillById(
   return new Ok(skill);
 }
 
-export type SkillWriteAccessErrorCode =
-  | SkillLookupErrorCode
-  | "not_authorized"
-  | "archived";
+export type SkillWriteAccessErrorCode = "not_authorized" | "archived";
 
 export class SkillWriteAccessError extends Error {
   constructor(
@@ -59,31 +56,6 @@ export class SkillWriteAccessError extends Error {
  * @cc [owner:avervaet,label:security] requires-skill-write
  * A caller MUST only be handed back a custom skill it can write and that is not archived;
  * otherwise the call fails with a `SkillWriteAccessError` and the skill is not returned.
- */
-export async function fetchWritableSkill(
-  auth: Authenticator,
-  skillId: string
-): Promise<Result<SkillResource, SkillWriteAccessError>> {
-  const skillResult = await fetchCustomSkillById(
-    auth,
-    skillId,
-    "Only custom workspace skills can receive suggestions."
-  );
-  if (skillResult.isErr()) {
-    return new Err(
-      new SkillWriteAccessError(
-        skillResult.error.code,
-        skillResult.error.message
-      )
-    );
-  }
-
-  return checkSkillWritable(auth, skillResult.value);
-}
-
-/**
- * The write checks of `fetchWritableSkill` for a skill that is already resolved: the caller can
- * write it and it is not archived.
  */
 export function checkSkillWritable(
   auth: Authenticator,

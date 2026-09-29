@@ -193,6 +193,26 @@ export type RichMentionWithStatus =
       status: "agent_restricted_by_space_usage";
     });
 
+export type RichMentionRequiringValidation = Extract<
+  RichMentionWithStatus,
+  {
+    status:
+      | "pending_conversation_access"
+      | "pending_project_membership"
+      | "agent_restricted_by_space_usage";
+  }
+>;
+
+export function isMentionRequiringValidation(
+  mention: RichMentionWithStatus
+): mention is RichMentionRequiringValidation {
+  return (
+    mention.status === "pending_conversation_access" ||
+    mention.status === "pending_project_membership" ||
+    mention.status === "agent_restricted_by_space_usage"
+  );
+}
+
 /**
  * @swaggerschema PrivateUserMessage (swagger_private_schemas.ts)
  */

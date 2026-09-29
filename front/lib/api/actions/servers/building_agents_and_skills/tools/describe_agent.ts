@@ -4,10 +4,8 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentConfigurationForDetails } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -16,8 +14,8 @@ export type DescribeAgentArgs = { agentId: string };
 export async function describeAgent(
   auth: Authenticator,
   { agentId }: DescribeAgentArgs
-): Promise<Result<AgentConfigurationType, MCPError>> {
-  const agent = await getAgentConfigurationForDetails(auth, { agentId });
+): Promise<Result<AgentResource, MCPError>> {
+  const agent = await AgentResource.fetchById(auth, agentId);
   if (!agent) {
     return new Err(new MCPError("Agent not found."));
   }
@@ -27,10 +25,9 @@ export async function describeAgent(
 
 /**
  * @cc [owner:avervaet,label:mcp;security] private-agent-instructions-not-exposed
- * MUST NOT expose an agent's instructions, tools or skills to a caller without `read` on that
- * agent, whatever their role. Redaction comes exclusively from `getAgentConfigurationForDetails`;
- * this handler MUST check the returned `canRead` before reading `instructions`,
- * `instructionsHtml` or `actions`.
+ * MUST NOT expose an agent's instructions, tools or skills to a caller who cannot view its content,
+ * whatever their role. Visibility comes exclusively from the resource (`agent-content-visibility`):
+ * this handler MUST check `isFull()` before reading the instructions, tools or skills.
  */
 export async function describeAgentHandler(
   args: DescribeAgentArgs,
@@ -46,9 +43,9 @@ export async function describeAgentHandler(
     `Agent ${agent.name} [${agent.sId}]\n` +
     `- Description: ${agent.description}\n` +
     `- Scope: ${agent.scope}\n` +
-    `- Model: ${agent.model.providerId}/${agent.model.modelId}\n`;
+    `- Model: ${agent.modelConfiguration.providerId}/${agent.modelConfiguration.modelId}\n`;
 
-  if (!agent.canRead) {
+  if (!agent.isFull()) {
     return new Ok([
       {
         type: "text" as const,
@@ -60,26 +57,32 @@ export async function describeAgentHandler(
     ]);
   }
 
-  // Tools carry their id, as `list_tools` prints them, so that they can be removed by id.
-  const toolNames = agent.actions
+  const [actions, skills] = await Promise.all([
+    agent.listActions(auth),
+    agent.listSkills(auth),
+  ]);
+  // Tools carry their id, as `list_tools` prints them, so that they can be removed by id. Sub-agent
+  // actions carry the id of the agent they run instead, which is how sub-agents are removed.
+  const toolNames = actions
     .map((action) =>
-      isServerSideMCPServerConfiguration(action)
-        ? `${action.name} [${action.mcpServerViewId}]`
-        : action.name
+      !isServerSideMCPServerConfiguration(action)
+        ? action.name
+        : action.childAgentId
+          ? `${action.name} [sub-agent ${action.childAgentId}]`
+          : `${action.name} [${action.mcpServerViewId}]`
     )
     .join(", ");
-  // Only reached for an agent the caller can read, so its skills are not private.
-  const skills = await SkillResource.listByAgentConfiguration(auth, agent);
   // Skills carry their id, as `list_skills` prints them, so that they can be removed.
   const skillNames = skills
     .map((skill) => `${skill.name} [${skill.sId}]`)
     .join(", ");
 
-  const instructionsBlock = agent.instructionsHtml
+  const { instructions, instructionsHtml } = agent.content;
+  const instructionsBlock = instructionsHtml
     ? "Instructions (full system prompt), as HTML whose blocks carry a data-block-id — " +
       "required to target block-level instruction edits:\n" +
-      agent.instructionsHtml
-    : `Instructions (full system prompt):\n${agent.instructions ?? "(no instructions)"}`;
+      instructionsHtml
+    : `Instructions (full system prompt):\n${instructions ?? "(no instructions)"}`;
 
   return new Ok([
     {

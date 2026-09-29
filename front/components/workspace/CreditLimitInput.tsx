@@ -1,4 +1,4 @@
-import { Button, Chip, Input, Page, Tooltip } from "@dust-tt/sparkle";
+import { Button, Input, Page, Tooltip } from "@dust-tt/sparkle";
 
 interface CreditLimitNumberInputProps {
   value: string;
@@ -36,13 +36,24 @@ export function CreditLimitNumberInput({
   );
 }
 
+// Marks the limit that currently applies.
+export function ActiveLimitDot() {
+  return (
+    <span
+      role="img"
+      aria-label="Active"
+      className="inline-block h-2 w-2 shrink-0 rounded-full bg-gradient-to-b from-highlight-400 to-highlight-500"
+    />
+  );
+}
+
 interface CreditLimitInputProps {
   label: string;
   value: string;
   readOnly: boolean;
   // Shown on hover when the field is read-only, to say why it is locked.
   readOnlyTooltip?: string;
-  isActive: boolean;
+  isActive?: boolean;
   validationMessage: string | null;
   onChange: (cleaned: string) => void;
   // Small text action rendered on the opposite end of the label row (e.g. to
@@ -55,7 +66,7 @@ export function CreditLimitInput({
   value,
   readOnly,
   readOnlyTooltip,
-  isActive,
+  isActive = false,
   validationMessage,
   onChange,
   action,
@@ -72,7 +83,7 @@ export function CreditLimitInput({
     <Page.Vertical gap="xs" align="stretch">
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-foreground">{label}</span>
-        {isActive && <Chip size="mini" color="highlight" label="Active" />}
+        {isActive && <ActiveLimitDot />}
         {!readOnly && action && (
           <Button
             variant="ghost"
@@ -94,5 +105,40 @@ export function CreditLimitInput({
         input
       )}
     </Page.Vertical>
+  );
+}
+
+interface PersonalLimitInputProps {
+  value: string;
+  readOnly: boolean;
+  isActive?: boolean;
+  validationMessage: string | null;
+  onChange: (cleaned: string) => void;
+  // The remove action is only shown when a handler is given.
+  onRemove?: () => void;
+}
+
+export function PersonalLimitInput({
+  value,
+  readOnly,
+  isActive,
+  validationMessage,
+  onChange,
+  onRemove,
+}: PersonalLimitInputProps) {
+  return (
+    <CreditLimitInput
+      label="Personal limit"
+      value={value}
+      readOnly={readOnly}
+      isActive={isActive}
+      validationMessage={validationMessage}
+      onChange={onChange}
+      action={
+        onRemove
+          ? { label: "Remove personal limit", onClick: onRemove }
+          : undefined
+      }
+    />
   );
 }

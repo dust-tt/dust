@@ -1593,7 +1593,6 @@ function AgentMessageContent({
             <AgentMessageMarkdown
               content={answer.content}
               owner={owner}
-              conversationId={conversationId}
               streamingState={
                 agentMessage.status === "cancelled" ? "cancelled" : "none"
               }

@@ -463,7 +463,7 @@ export const FIREWORKS_GLM_5P3_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Z.ai's flagship GLM-5.3 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context, served via Fireworks).",
+    "Z.ai's flagship GLM-5.3 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context).",
   shortDescription: "GLM-5.3 for coding and agentic tasks.",
   isLegacy: false,
   isLatest: true,
@@ -485,9 +485,10 @@ export const FIREWORKS_GLM_5P3_MODEL_CONFIG: ModelConfigurationType = {
   // Native thinking at `light`, so no chain-of-thought meta prompt.
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  // EU inference is served by Mistral (`z_ai/glm-5p3/eu/mistral`).
   regionalAvailability: {
     "us-central1": true,
-    "europe-west1": false,
+    "europe-west1": true,
   },
 };
 // Specs, pricing, and availability verified 2026-08-31 against

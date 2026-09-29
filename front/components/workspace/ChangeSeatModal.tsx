@@ -388,7 +388,7 @@ export function ChangeSeatModal({
     ? (seatPlans[selectedSeat]?.awuCredits ?? 0)
     : 0;
   const isMonthlyToYearlySwitch =
-    !!currentSeatType &&
+    isMembershipSeatType(currentSeatType) &&
     !!selectedSeat &&
     isPaidSeatType(currentSeatType) &&
     !currentSeatType.endsWith("_yearly") &&

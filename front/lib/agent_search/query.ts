@@ -14,7 +14,7 @@ export const MAX_AGENT_SEARCH_WINDOW = 10_000;
 export const MAX_AGENT_SEARCH_FACET_VALUES = 1_000;
 
 // Null represents a type-wide read grant; do not enumerate resources in that case.
-function getAgentSearchReadableSpaceIds(auth: Authenticator) {
+export function getAgentSearchReadableSpaceIds(auth: Authenticator) {
   const workspaceModelId = auth.getNonNullableWorkspace().id;
   const spaces = auth.getReadableSpaceModelIds();
   return spaces.kind === "all"

@@ -70,7 +70,7 @@ describe("GET /api/w/:wId/assistant/suggestion_batches", () => {
     ).toEqual([skillSuggestion.sId]);
   });
 
-  it("fails and returns no batch when a requested batch has an inaccessible suggestion", async () => {
+  it("omits a requested batch that has an inaccessible suggestion", async () => {
     const { workspace, batch } = await setup();
 
     // Another member adds a suggestion on their own skill to a second batch.
@@ -93,7 +93,8 @@ describe("GET /api/w/:wId/assistant/suggestion_batches", () => {
 
     const response = await get(workspace, [batch.sId, inaccessibleBatch.sId]);
 
-    expect(response.status).toBe(500);
-    expect((await response.json()).batches).toBeUndefined();
+    expect(response.status).toBe(200);
+    const { batches } = await response.json();
+    expect(batches.map((b: { id: string }) => b.id)).toEqual([batch.sId]);
   });
 });

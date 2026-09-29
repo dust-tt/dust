@@ -10,9 +10,15 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { AgentSuggestionDetails } from "@app/components/markdown/suggestion/AgentSuggestionDetails";
-import { isAgentActionCardSuggestion } from "@app/components/markdown/suggestion/AgentSuggestionDirective";
 import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
-import { DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS } from "@app/components/markdown/suggestion/suggestion_directives";
+import {
+  DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS,
+  isAgentActionCardSuggestion,
+} from "@app/components/markdown/suggestion/suggestion_directives";
+import {
+  sortAgentSuggestionsByBuilderOrder,
+  sortSkillSuggestionsByBuilderOrder,
+} from "@app/components/markdown/suggestion/suggestion_order";
 import { makeDirective } from "@app/components/markdown/suggestion/suggestionDirective";
 import { getIcon } from "@app/components/resources/resources_icons";
 import {
@@ -49,7 +55,6 @@ import {
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
-import partition from "lodash/partition";
 import type { ReactElement, ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -157,29 +162,32 @@ function AgentSuggestionGroup({
   );
 }
 
+const GROUPED_AGENT_SUGGESTION_LABELS: Record<string, string | undefined> = {
+  skills: "Skills",
+  tools: "Tools",
+  sub_agent: "Sub-agents",
+};
+
 interface AgentSuggestionsDiffProps {
   owner: LightWorkspaceType;
+  batchId: string;
   agentId: string;
   suggestions: AgentSuggestionType[];
 }
 
 function AgentSuggestionsDiff({
   owner,
+  batchId,
   agentId,
   suggestions,
 }: AgentSuggestionsDiffProps) {
   const { openPanel } = useConversationSidePanelContext();
-  const displayable = suggestions.filter(isAgentActionCardSuggestion);
-  // Each skill and each tool is its own suggestion: they are listed together, under a single
-  // heading per kind.
-  const [skillSuggestions, otherSuggestions] = partition(
-    displayable,
-    (s) => s.kind === "skills"
+  const displayable = sortAgentSuggestionsByBuilderOrder(
+    suggestions.filter(isAgentActionCardSuggestion)
   );
-  const [toolSuggestions, fieldSuggestions] = partition(
-    otherSuggestions,
-    (s) => s.kind === "tools"
-  );
+  // Each skill, tool and sub-agent is its own suggestion: they are listed together, under a
+  // single heading per kind. Grouping keeps the sorted order of the kinds.
+  const suggestionsByKind = groupBy(displayable, (s) => s.kind);
   const { agentConfiguration, isAgentConfigurationLoading } =
     useAgentConfiguration({
       workspaceId: owner.sId,
@@ -215,42 +223,45 @@ function AgentSuggestionsDiff({
         openPanel({
           type: AGENT_SIDE_PANEL_TYPE,
           agentId,
-          previewSuggestionIds: displayable.map((s) => s.sId),
+          previewBatchId: batchId,
         })
       }
     >
-      {fieldSuggestions.map((suggestion) => (
-        <AgentSuggestionDetails
-          key={suggestion.sId}
-          owner={owner}
-          suggestion={suggestion}
-          agentConfiguration={agentConfiguration}
-        />
-      ))}
-      <AgentSuggestionGroup
-        owner={owner}
-        label="Skills"
-        suggestions={skillSuggestions}
-        agentConfiguration={agentConfiguration}
-      />
-      <AgentSuggestionGroup
-        owner={owner}
-        label="Tools"
-        suggestions={toolSuggestions}
-        agentConfiguration={agentConfiguration}
-      />
+      {Object.entries(suggestionsByKind).map(([kind, kindSuggestions]) => {
+        const groupLabel = GROUPED_AGENT_SUGGESTION_LABELS[kind];
+        return groupLabel ? (
+          <AgentSuggestionGroup
+            key={kind}
+            owner={owner}
+            label={groupLabel}
+            suggestions={kindSuggestions}
+            agentConfiguration={agentConfiguration}
+          />
+        ) : (
+          kindSuggestions.map((suggestion) => (
+            <AgentSuggestionDetails
+              key={suggestion.sId}
+              owner={owner}
+              suggestion={suggestion}
+              agentConfiguration={agentConfiguration}
+            />
+          ))
+        );
+      })}
     </SuggestionTargetSection>
   );
 }
 
 interface SkillSuggestionsDiffProps {
   owner: LightWorkspaceType;
+  batchId: string;
   skillId: string;
   suggestions: SkillSuggestionType[];
 }
 
 function SkillSuggestionsDiff({
   owner,
+  batchId,
   skillId,
   suggestions,
 }: SkillSuggestionsDiffProps) {
@@ -286,17 +297,18 @@ function SkillSuggestionsDiff({
         openPanel({
           type: SKILL_SIDE_PANEL_TYPE,
           skillId,
-          previewSuggestionIds: suggestions.map((s) => s.sId),
+          previewBatchId: batchId,
         })
       }
     >
-      {suggestions.map((suggestion) => (
+      {sortSkillSuggestionsByBuilderOrder(suggestions).map((suggestion) => (
         <PendingSkillSuggestionDetails
           key={suggestion.sId}
           suggestion={suggestion}
           getSkillInstructionsHtml={getSkillInstructionsHtml}
           getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
           workspaceId={owner.sId}
+          layout="inline"
         />
       ))}
     </SuggestionTargetSection>
@@ -351,6 +363,7 @@ export function PendingBatchSuggestionCard({
               <AgentSuggestionsDiff
                 key={agentId}
                 owner={owner}
+                batchId={batch.id}
                 agentId={agentId}
                 suggestions={suggestions}
               />
@@ -361,6 +374,7 @@ export function PendingBatchSuggestionCard({
               <SkillSuggestionsDiff
                 key={skillId}
                 owner={owner}
+                batchId={batch.id}
                 skillId={skillId}
                 suggestions={suggestions}
               />
@@ -384,13 +398,12 @@ interface BatchSuggestionProps {
 }
 
 function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
-  const { batch, isBatchLoading, mutateBatch } = useSuggestionBatch({
+  const { batch, isBatchLoading } = useSuggestionBatch({
     batchId,
     workspaceId: owner.sId,
   });
   const reviewBatches = useReviewSuggestionBatches({
     workspaceId: owner.sId,
-    mutateBatches: mutateBatch,
   });
   const [pendingState, setPendingState] =
     useState<SuggestionBatchReviewState | null>(null);

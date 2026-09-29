@@ -691,6 +691,7 @@ export function SidekickSuggestionCard({
     case "create":
     case "delete":
     case "description":
+    case "editors":
     case "name":
     case "scope":
       return (

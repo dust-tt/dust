@@ -166,11 +166,13 @@ export function AnalyticsConsumptionPage() {
   const { user } = useAuth();
   const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
   const [skillDetailsId, setSkillDetailsId] = useState<string | null>(null);
-  const state = useAnalyticsConsumptionState(useAnalyticsViewState());
+  const viewState = useAnalyticsViewState();
+  const state = useAnalyticsConsumptionState(viewState);
   const { filter, isFacetsLoading } = useResolvedUsageFilter({
     workspaceId: owner.sId,
     period: state.period,
     filter: state.filter,
+    restoredOptions: viewState.restoredOptions,
   });
 
   const [isOpen, setIsOpen] = useState(false);
@@ -399,7 +401,7 @@ export function AnalyticsConsumptionContent({
       />
 
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-lg font-semibold text-foreground">Explore</h2>
             <UsageFilterPanelComponent

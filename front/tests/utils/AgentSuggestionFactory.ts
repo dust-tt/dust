@@ -8,7 +8,9 @@ import type {
   CreateSuggestionType,
   DeleteSuggestionType,
   DescriptionSuggestionType,
+  EditorsSuggestionType,
   InstructionsSuggestionSchemaType,
+  KnowledgeSuggestionType,
   ModelSuggestionType,
   NameSuggestionType,
   ScopeSuggestionType,
@@ -91,6 +93,8 @@ export class AgentSuggestionFactory {
       suggestion: SubAgentSuggestionType;
       analysis: string | null;
       state: AgentSuggestionState;
+      source: AgentSuggestionSource;
+      batchModelId: number | null;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -105,6 +109,36 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Added sub-agent delegation",
         state: overrides.state ?? "pending",
+        source: overrides.source ?? "sidekick",
+        batchId: overrides.batchModelId ?? null,
+      }
+    );
+  }
+
+  static async createKnowledge(
+    auth: Authenticator,
+    agentConfiguration: { sId: string },
+    overrides: Partial<{
+      suggestion: KnowledgeSuggestionType;
+      analysis: string | null;
+      state: AgentSuggestionState;
+      batchModelId: number | null;
+    }> = {}
+  ): Promise<AgentSuggestionResource> {
+    return AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      await fetchAgent(auth, agentConfiguration.sId),
+      {
+        kind: "knowledge",
+        suggestion: overrides.suggestion ?? {
+          action: "add",
+          method: "search",
+          dataSourceViewId: "dsv_knowledge",
+        },
+        analysis: overrides.analysis ?? "Added useful knowledge",
+        state: overrides.state ?? "pending",
+        source: "sidekick",
+        batchId: overrides.batchModelId ?? null,
       }
     );
   }
@@ -145,6 +179,7 @@ export class AgentSuggestionFactory {
       analysis: string | null;
       state: AgentSuggestionState;
       source: AgentSuggestionSource;
+      batchModelId: number | null;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -159,6 +194,7 @@ export class AgentSuggestionFactory {
         analysis: overrides.analysis ?? "Suggested a more capable model",
         state: overrides.state ?? "pending",
         source: overrides.source ?? "conversational",
+        batchId: overrides.batchModelId ?? null,
       }
     );
   }
@@ -224,6 +260,7 @@ export class AgentSuggestionFactory {
       analysis: string | null;
       state: AgentSuggestionState;
       source: AgentSuggestionSource;
+      batchModelId: number | null;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -238,6 +275,7 @@ export class AgentSuggestionFactory {
         state: overrides.state ?? "pending",
         conversationId: null,
         source: overrides.source ?? "conversational",
+        batchId: overrides.batchModelId ?? null,
       }
     );
   }
@@ -260,6 +298,32 @@ export class AgentSuggestionFactory {
         kind: "name",
         suggestion: overrides.suggestion ?? { name: "RenamedAgent" },
         analysis: overrides.analysis ?? "A clearer name for this agent",
+        state: overrides.state ?? "pending",
+        conversationId: null,
+        source: overrides.source ?? "conversational",
+        batchId: overrides.batchModelId ?? null,
+      }
+    );
+  }
+
+  static async createEditors(
+    auth: Authenticator,
+    agentConfiguration: { sId: string },
+    // No valid default: an editors suggestion must add or remove at least one user.
+    overrides: { suggestion: EditorsSuggestionType } & Partial<{
+      analysis: string | null;
+      state: AgentSuggestionState;
+      source: AgentSuggestionSource;
+      batchModelId: number | null;
+    }>
+  ): Promise<AgentSuggestionResource> {
+    return AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      await fetchAgent(auth, agentConfiguration.sId),
+      {
+        kind: "editors",
+        suggestion: overrides.suggestion,
+        analysis: overrides.analysis ?? "These members should edit the agent",
         state: overrides.state ?? "pending",
         conversationId: null,
         source: overrides.source ?? "conversational",

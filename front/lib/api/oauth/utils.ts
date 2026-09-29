@@ -10,8 +10,8 @@ import type { ParsedUrlQuery } from "querystring";
 /**
  * @cc [owner:flvndvd,label:security] provider-callback-default
  * Outside the development override, a stored redirect_uri MUST take precedence.
- * Without one, the connection use case, mcp, mcp_static, and gong MUST use
- * DUST_OAUTH_REDIRECT_BASE_URL when set, otherwise the app URL. The use case
+ * Without one, the connection use case, mcp, mcp_static, gong, and notion MUST
+ * use DUST_OAUTH_REDIRECT_BASE_URL when set, otherwise the app URL. The use case
  * comes from the explicit argument, falling back to connection metadata.
  * All other provider/use-case combinations MUST default to the app URL.
  */
@@ -38,11 +38,13 @@ export function finalizeUriForProvider({
 
   // Connector and remote MCP apps may only allow the legacy cell callback.
   // Gong shares one client across use cases and has not registered the app URL.
+  // The Notion tools client has not registered the app URL either.
   if (
     (useCase ?? connection?.metadata.use_case) === "connection" ||
     provider === "mcp" ||
     provider === "mcp_static" ||
-    provider === "gong"
+    provider === "gong" ||
+    provider === "notion"
   ) {
     return (
       config.getLegacyOAuthRedirectBaseUrl() + `/oauth/${provider}/finalize`

@@ -5,6 +5,7 @@ import {
   LIST_MODELS_TOOL_NAME,
   WORKSPACE_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
+import { validateAgentEditorsChange } from "@app/lib/api/assistant/agent_editors_change";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { validateInstructionEdits } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
@@ -18,6 +19,12 @@ import {
   checkSkillAddition,
   fetchSuggestableSkills,
 } from "@app/lib/api/assistant/suggestable_skills";
+import {
+  checkSubAgentAddition,
+  checkSubAgentRemoval,
+  fetchRunAgentTool,
+  fetchSuggestableSubAgents,
+} from "@app/lib/api/assistant/suggestable_sub_agents";
 import {
   checkToolAddition,
   checkToolRemoval,
@@ -42,14 +49,17 @@ import type {
   CreateSuggestionType,
   DeleteSuggestionType,
   DescriptionSuggestionType,
+  EditorsSuggestionType,
   ModelSuggestionType,
   NameSuggestionType,
   ScopeSuggestionType,
   SkillsSuggestionType,
+  SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import {
   isSkillsSuggestion,
+  isSubAgentSuggestion,
   isToolsSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
 
@@ -220,6 +230,29 @@ export function validateAgentPublishStateChange(
   }
 
   return new Ok({ scope });
+}
+
+/**
+ * Applies the validation the suggestion is applied with (`validateAgentEditorsChange`), so a
+ * suggestion that is created as pending can be applied later.
+ */
+export async function validateAgentEditorsSuggestion(
+  auth: Authenticator,
+  agent: AgentResource,
+  {
+    addUserIds,
+    removeUserIds,
+  }: { addUserIds: string[]; removeUserIds: string[] }
+): Promise<Result<EditorsSuggestionType, MCPError>> {
+  const validation = await validateAgentEditorsChange(auth, agent, {
+    addUserIds,
+    removeUserIds,
+  });
+  if (validation.isErr()) {
+    return new Err(new MCPError(validation.error.message));
+  }
+
+  return new Ok({ addUserIds, removeUserIds });
 }
 
 /**
@@ -567,10 +600,90 @@ function isSupersededToolSuggestion(
   );
 }
 
+/**
+ * Checks each sub-agent can be added to or removed from the agent. An added sub-agent
+ * is run through the `run_agent` tool, with the builder's defaults.
+ * Only editors can suggest it, as only editors can apply it.
+ * Returns one suggestion per sub-agent.
+ */
+export async function validateAgentSubAgentChanges(
+  auth: Authenticator,
+  agent: AgentResource,
+  {
+    addAgentIds,
+    removeAgentIds,
+  }: { addAgentIds: string[]; removeAgentIds: string[] }
+): Promise<Result<SubAgentSuggestionType[], MCPError>> {
+  if (!auth.can("write", agent)) {
+    return new Err(
+      new MCPError("Only editors can suggest changing an agent's sub-agents.")
+    );
+  }
+
+  if (agent.status !== "active") {
+    return new Err(
+      new MCPError("Only active agents can have their sub-agents changed.")
+    );
+  }
+
+  const subAgentIds = [...addAgentIds, ...removeAgentIds];
+  if (new Set(subAgentIds).size !== subAgentIds.length) {
+    return new Err(
+      new MCPError("Each sub-agent can only be added or removed once.")
+    );
+  }
+
+  const runAgentTool = await fetchRunAgentTool(auth);
+  if (!runAgentTool) {
+    return new Err(
+      new MCPError("The tool to run sub-agents is not available.")
+    );
+  }
+
+  const actions = (await agent.listActions(auth)).filter(
+    isServerSideMCPServerConfiguration
+  );
+  for (const subAgentId of removeAgentIds) {
+    const removal = checkSubAgentRemoval(subAgentId, actions);
+    if (removal.isErr()) {
+      return new Err(new MCPError(removal.error));
+    }
+  }
+
+  const suggestable = await fetchSuggestableSubAgents(auth, addAgentIds);
+  for (const subAgentId of addAgentIds) {
+    if (actions.some((action) => action.childAgentId === subAgentId)) {
+      return new Err(
+        new MCPError(`The agent already has the sub-agent "${subAgentId}".`)
+      );
+    }
+    const addition = checkSubAgentAddition(subAgentId, suggestable, {
+      agentId: agent.sId,
+    });
+    if (addition.isErr()) {
+      return new Err(new MCPError(addition.error));
+    }
+  }
+
+  // No pending suggestion limit for conversational building.
+  return new Ok([
+    ...addAgentIds.map((childAgentId) => ({
+      action: "add" as const,
+      toolId: runAgentTool.sId,
+      childAgentId,
+    })),
+    ...removeAgentIds.map((childAgentId) => ({
+      action: "remove" as const,
+      toolId: runAgentTool.sId,
+      childAgentId,
+    })),
+  ]);
+}
+
 /** Kinds of which a single suggestion may be pending per agent at a time. */
 export type SingletonAgentSuggestionData = Extract<
   AgentSuggestionData,
-  { kind: "name" | "description" | "scope" | "model" | "delete" }
+  { kind: "name" | "description" | "scope" | "model" | "editors" | "delete" }
 >;
 
 /**
@@ -623,31 +736,6 @@ export async function recordSingletonAgentSuggestions(
   });
 
   return suggestions;
-}
-
-export async function recordSingletonAgentSuggestion(
-  auth: Authenticator,
-  agent: AgentResource,
-  {
-    data,
-    analysis,
-    conversation,
-    batch,
-  }: {
-    data: SingletonAgentSuggestionData;
-    analysis: string | null;
-    conversation: ConversationType;
-    batch: BatchSuggestionResource | null;
-  }
-): Promise<AgentSuggestionResource> {
-  const [suggestion] = await recordSingletonAgentSuggestions(auth, agent, {
-    data: [data],
-    analysis,
-    conversation,
-    batch,
-  });
-
-  return suggestion;
 }
 
 /**
@@ -781,6 +869,57 @@ export async function recordAgentToolSuggestions(
     agent,
     tools.map((suggestion) => ({
       kind: "tools" as const,
+      suggestion,
+      analysis: null,
+      state: "pending" as const,
+      conversationId: conversation.id,
+      source: "conversational" as const,
+      batchId: batch?.id ?? null,
+    }))
+  );
+}
+
+/**
+ * @cc [owner:fabiencelier,label:product] single-pending-per-sub-agent
+ * Recording sub-agent suggestions MUST mark every other `pending` sub-agent suggestion on the same
+ * agent and for the same sub-agent `outdated`, and never the recorded ones.
+ */
+export async function recordAgentSubAgentSuggestions(
+  auth: Authenticator,
+  agent: AgentResource,
+  {
+    subAgents,
+    conversation,
+    batch,
+  }: {
+    subAgents: SubAgentSuggestionType[];
+    conversation: ConversationType;
+    batch: BatchSuggestionResource | null;
+  }
+): Promise<AgentSuggestionResource[]> {
+  if (subAgents.length === 0) {
+    return [];
+  }
+
+  const subAgentIds = new Set(subAgents.map((s) => s.childAgentId));
+  const pending = await AgentSuggestionResource.listByAgentConfigurationId(
+    auth,
+    agent.sId,
+    { states: ["pending"], kind: "sub_agent" }
+  );
+  await markDuplicateSuggestionsAsOutdated(
+    auth,
+    pending,
+    (s) =>
+      isSubAgentSuggestion(s.suggestion) &&
+      subAgentIds.has(s.suggestion.childAgentId)
+  );
+
+  return AgentSuggestionResource.createSuggestionsForAgent(
+    auth,
+    agent,
+    subAgents.map((suggestion) => ({
+      kind: "sub_agent" as const,
       suggestion,
       analysis: null,
       state: "pending" as const,

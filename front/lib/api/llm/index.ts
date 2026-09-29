@@ -113,7 +113,7 @@ const PROVIDER_ID_TO_LAB: Record<ModelProviderIdType, Lab | null> = {
 const PROVIDER_ID_TO_HOST: Record<ModelProviderIdType, Host | null> = {
   openai: null,
   anthropic: null,
-  mistral: null,
+  mistral: "mistral",
   google_ai_studio: null,
   deepseek: null,
   fireworks: "fireworks",

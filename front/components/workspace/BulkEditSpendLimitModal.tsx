@@ -1,4 +1,4 @@
-import { CreditLimitInput } from "@app/components/workspace/CreditLimitInput";
+import { PersonalLimitInput } from "@app/components/workspace/CreditLimitInput";
 import {
   parseCreditsInput,
   toSpendLimit,
@@ -202,24 +202,19 @@ function BulkEditSpendLimitForm({
             />
           )}
           <div>
-            <CreditLimitInput
-              label="Personal limit"
+            <PersonalLimitInput
               value={personalLimitInput}
               readOnly={false}
-              isActive={false}
               validationMessage={validationMessage}
               onChange={(cleaned) => {
                 setPersonalLimitInput(cleaned);
                 setRemoveRequested(false);
                 setValidationMessage(null);
               }}
-              action={{
-                label: "Remove personal limit",
-                onClick: () => {
-                  setPersonalLimitInput("");
-                  setRemoveRequested(true);
-                  setValidationMessage(null);
-                },
+              onRemove={() => {
+                setPersonalLimitInput("");
+                setRemoveRequested(true);
+                setValidationMessage(null);
               }}
             />
             {removeRequested && (

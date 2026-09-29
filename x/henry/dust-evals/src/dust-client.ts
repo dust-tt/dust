@@ -8,7 +8,7 @@ import { readFile } from "fs/promises"
 import { basename, extname } from "path"
 import type { Result, AgentResponse } from "./types"
 import { Ok, Err } from "./types"
-import type { AgentSpec } from "./model-selection"
+import type { AgentSpec, ModelSelection } from "./model-selection"
 import { parseAgentSpec } from "./model-selection"
 
 const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
@@ -48,10 +48,10 @@ const DUST_API_BASE_URL = "https://dust.tt"
 
 // `costCredits` is computed in a post-success finalize step on the server, so it
 // is frequently still null in the first fetch right after the stream completes.
-// Poll a few times to give it a chance to be persisted.
-const COST_POLL_ATTEMPTS = 6
+// Poll for up to ~1 minute to give it a chance to be persisted.
+const COST_POLL_ATTEMPTS = 15
 const COST_POLL_INITIAL_DELAY_MS = 500
-const COST_POLL_MAX_DELAY_MS = 3000
+const COST_POLL_MAX_DELAY_MS = 5000
 
 function hasAgentMessageFor(
   conversation: ConversationPublicType,
@@ -188,6 +188,9 @@ export interface DustClientConfig {
   retryBackoffMs: number
 }
 
+// Upper bound on a single backoff wait, so late retries don't stall for minutes.
+const MAX_RETRY_DELAY_MS = 60_000
+
 /**
  * Check if an error is retryable.
  * - 4xx errors (except 429 rate limit) should not be retried
@@ -265,9 +268,14 @@ function createLogger(verbose: boolean): LoggerInterface {
   }
 }
 
+// The post-message route validates `modelSelection` before rejecting an empty
+// `context.username`, so this error means the model override was accepted.
+const MODEL_PROBE_ACCEPTED_ERROR = "The context.username field is required."
+
 export class DustClient {
   private client: DustAPI
   private config: DustClientConfig
+  private modelProbeConversationId: string | undefined
 
   constructor(config: DustClientConfig) {
     this.config = config
@@ -652,8 +660,11 @@ export class DustClient {
       // Don't wait after the last attempt
       if (attempt < maxRetries) {
         retryCount++
-        // Exponential backoff with jitter
-        const baseDelay = retryBackoffMs * Math.pow(2, attempt - 1)
+        // Exponential backoff with jitter, capped
+        const baseDelay = Math.min(
+          retryBackoffMs * Math.pow(2, attempt - 1),
+          MAX_RETRY_DELAY_MS
+        )
         const jitter = Math.random() * 0.3 * baseDelay // 0-30% jitter
         const delay = Math.round(baseDelay + jitter)
 
@@ -715,10 +726,52 @@ export class DustClient {
   }
 
   /**
+   * Check that a model override is enabled and selectable for the workspace,
+   * without running an agent. Posts a message with an empty username into a
+   * single empty probe conversation: the server rejects an invalid model first
+   * (`model_disabled`), and otherwise rejects the empty username, so no message
+   * is ever created.
+   */
+  private async validateModelSelection(
+    modelSelection: ModelSelection
+  ): Promise<Result<void>> {
+    if (!this.modelProbeConversationId) {
+      const conversationRes = await this.client.createConversation({
+        title: "dust-evals dry run: model check",
+        visibility: "unlisted",
+      })
+      if (!conversationRes.isOk()) {
+        return Err(
+          new Error(
+            `Failed to create model probe conversation: ${JSON.stringify(conversationRes.error)}`
+          )
+        )
+      }
+      this.modelProbeConversationId = conversationRes.value.conversation.sId
+    }
+
+    const probeRes = await this.client.postUserMessage({
+      conversationId: this.modelProbeConversationId,
+      message: {
+        content: "model check",
+        mentions: [],
+        context: { username: "", timezone: "UTC", origin: "api" },
+        modelSelection,
+      },
+    })
+    if (probeRes.isOk()) {
+      return Err(new Error("Model probe unexpectedly created a message"))
+    }
+    if (probeRes.error.message === MODEL_PROBE_ACCEPTED_ERROR) {
+      return Ok(undefined)
+    }
+    return Err(new Error(probeRes.error.message))
+  }
+
+  /**
    * Validate that an agent exists and is accessible. Accepts a full agent spec
-   * (`<sId>#<providerId>/<modelId>@<effort>`); the model override itself is
-   * validated server-side at send time — it must be enabled and selectable for
-   * the workspace.
+   * (`<sId>#<providerId>/<modelId>@<effort>`); a model override is also checked
+   * to be enabled and selectable for the workspace.
    */
   async validateAgent(agentSpec: string): Promise<Result<{ name: string }>> {
     const parsed = parseAgentSpec(agentSpec)
@@ -751,6 +804,16 @@ export class DustClient {
       const name = (agent as { name: string }).name
       if (!modelSelection) {
         return Ok({ name })
+      }
+
+      const modelRes = await this.validateModelSelection(modelSelection)
+      if (!modelRes.isOk) {
+        return Err(
+          new Error(
+            `Model '${modelSelection.providerId}/${modelSelection.modelId}' ` +
+              `rejected: ${modelRes.error.message}`
+          )
+        )
       }
 
       const effortSuffix = modelSelection.reasoningEffort

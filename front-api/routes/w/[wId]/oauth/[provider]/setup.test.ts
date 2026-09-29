@@ -287,7 +287,7 @@ describe("OAuth setup handler", () => {
       "https://app.dust.tt",
     ],
     ["notion", "connection", "https://eu.dust.tt", "https://eu.dust.tt"],
-    ["notion", "platform_actions", "https://eu.dust.tt", "https://app.dust.tt"],
+    ["notion", "platform_actions", "https://eu.dust.tt", "https://eu.dust.tt"],
     ["gong", "connection", "https://eu.dust.tt", "https://eu.dust.tt"],
     ["gong", "personal_actions", "https://eu.dust.tt", "https://eu.dust.tt"],
     ["slack", "bot", "https://eu.dust.tt", "https://app.dust.tt"],

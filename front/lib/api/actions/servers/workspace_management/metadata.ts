@@ -92,11 +92,12 @@ const paginationSchemaShape = {
 const listAgentsSchema = {
   view: z
     .enum(AGENT_VIEWS)
-    .default("all")
+    .optional()
     .describe(
-      "Which agents to list. 'all' (default): every non-private agent of the " +
-        "workspace. 'list': the agents the caller can see (the non-private ones " +
-        "plus the unpublished ones they edit); needs an interactive user. " +
+      "Which agents to list. 'list' (default): the agents the caller can see " +
+        "(the non-private ones plus the unpublished ones they edit); falls back " +
+        "to 'all' without an interactive user. 'all': every non-private agent " +
+        "of the workspace, excluding unpublished ones. " +
         "'published': published agents only. 'global': Dust's " +
         "built-in agents only. 'archived': agents that were deleted, limited " +
         "to those the caller edits, or all of them for an admin. " +

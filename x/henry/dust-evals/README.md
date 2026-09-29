@@ -6,7 +6,7 @@ A robust evaluation framework for testing and benchmarking Dust agents using CSV
 
 This tool allows you to:
 - Evaluate multiple Dust agents against a set of test prompts
-- Use configurable scoring scales (binary, 0-3, 1-5, or 0-100)
+- Use configurable scoring scales (binary, 0-2, 0-3, 1-5, or 0-100)
 - Employ majority voting with multiple judge runs for reliable scoring
 - Track conversation IDs for debugging
 - Resume interrupted evaluations from checkpoints
@@ -75,7 +75,7 @@ bun run eval \
 | `--judge-runs <n>` | 3 | Judge evaluations per response (majority voting) |
 | `--parallel <n>` | 5 | Concurrent executions |
 | `--timeout <dur>` | 2m | Timeout per call (e.g., 30s, 2m, 120000) |
-| `--scale <type>` | 0-3 | Scoring scale: binary, 0-3, 1-5, 0-100 |
+| `--scale <type>` | 0-3 | Scoring scale: binary, 0-2, 0-3, 1-5, 0-100 |
 
 ### Output Options
 
@@ -88,8 +88,8 @@ bun run eval \
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--max-retries <n>` | 3 | Maximum retry attempts |
-| `--retry-backoff <dur>` | 1s | Base backoff between retries |
+| `--max-retries <n>` | 6 | Maximum retry attempts |
+| `--retry-backoff <dur>` | 5s | Base backoff between retries |
 
 ### Filtering & Sampling
 
@@ -138,6 +138,7 @@ uploaded fails that run with a clear error.
 | Scale | Range | Use Case |
 |-------|-------|----------|
 | binary | 0-1 | Pass/fail evaluations |
+| 0-2 | 0-2 | Fail / partial / full credit |
 | 0-3 | 0-3 | Quick quality assessment (default) |
 | 1-5 | 1-5 | Likert-style ratings |
 | 0-100 | 0-100 | Fine-grained scoring |
@@ -145,7 +146,7 @@ uploaded fails that run with a clear error.
 ## Majority Voting
 
 By default, each agent response is evaluated 3 times (`--judge-runs 3`). The final score is determined by:
-- **Discrete scales (binary, 0-3, 1-5)**: Mode (most common score)
+- **Discrete scales (binary, 0-2, 0-3, 1-5)**: Mode (most common score)
 - **Continuous scale (0-100)**: Median
 
 The system reports:
@@ -230,7 +231,8 @@ CLI options override config file values.
 
 - **Retried**: Timeouts, rate limits (429), 5xx errors, network errors
 - **Not retried**: 4xx client errors (400, 401, 403, 404)
-- **Backoff**: Exponential with jitter (1s, 2s, 4s by default)
+- **Backoff**: Exponential with jitter, capped at 60s (5s, 10s, 20s, 40s, 60s by default)
+- **Duration**: `agent_duration_ms` only measures the successful attempt, not retries or backoff waits
 
 ### Checkpointing
 

@@ -66,14 +66,14 @@ const ConfigSchema = z.object({
   parallel: z.number().int().positive().default(5),
   timeout: z.number().int().positive().default(120000),
   scale: z
-    .enum(["binary", "0-3", "1-5", "0-100"])
+    .enum(["binary", "0-2", "0-3", "1-5", "0-100"])
     .default("0-3") as z.ZodType<ScaleType>,
   output: z.enum(["json", "csv", "console", "html"]).default("console"),
   outputFile: z.string().optional(),
   resume: z.boolean().default(false),
   verbose: z.boolean().default(false),
-  maxRetries: z.number().int().positive().default(3),
-  retryBackoff: z.number().int().positive().default(1000),
+  maxRetries: z.number().int().positive().default(6),
+  retryBackoff: z.number().int().positive().default(5000),
   minAgreement: z.number().min(0).max(1).optional(),
   seed: z.number().int().optional(),
   sample: z.number().int().positive().optional(),
@@ -155,11 +155,11 @@ async function main(): Promise<void> {
     .option("--output-file <path>", "Path to save results (required for html)")
 
     // Retry configuration
-    .option("--max-retries <number>", "Maximum retry attempts per call", "3")
+    .option("--max-retries <number>", "Maximum retry attempts per call", "6")
     .option(
       "--retry-backoff <duration>",
-      "Base backoff duration between retries (e.g., 1s, 1000)",
-      "1s"
+      "Base backoff duration between retries (e.g., 5s, 5000)",
+      "5s"
     )
 
     // Filtering and sampling
@@ -258,7 +258,7 @@ async function main(): Promise<void> {
   let retryBackoff: number
   try {
     const backoffValue =
-      cliOptions["retryBackoff"] || fileConfig.retryBackoff?.toString() || "1s"
+      cliOptions["retryBackoff"] || fileConfig.retryBackoff?.toString() || "5s"
     retryBackoff = parseDuration(backoffValue)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -283,7 +283,7 @@ async function main(): Promise<void> {
     resume: cliOptions["resume"] || false,
     verbose: cliOptions["verbose"] || fileConfig.verbose || false,
     maxRetries:
-      parseInt(cliOptions["maxRetries"]) || fileConfig.maxRetries || 3,
+      parseInt(cliOptions["maxRetries"]) || fileConfig.maxRetries || 6,
     retryBackoff,
     minAgreement:
       cliOptions["minAgreement"] !== undefined

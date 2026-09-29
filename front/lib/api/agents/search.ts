@@ -1,6 +1,7 @@
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import {
   buildAgentSearchQuery,
+  getAgentSearchReadableSpaceIds,
   MAX_AGENT_SEARCH_FACET_VALUES,
   MAX_AGENT_SEARCH_RESULTS,
   MAX_AGENT_SEARCH_WINDOW,
@@ -142,6 +143,9 @@ export async function searchAgents(
   const globalAgentModels = new Map(
     globalAgents.map((agent) => [agent.sId, agent.toSearchModelJSON()])
   );
+  const readableSpaceIds = getAgentSearchReadableSpaceIds(auth);
+  const readableSpaceIdSet =
+    readableSpaceIds === null ? null : new Set(readableSpaceIds);
   const query = buildAgentSearchQuery(auth, { ...options, globalAgentIds });
 
   const result = await withEs((client) =>
@@ -187,10 +191,12 @@ export async function searchAgents(
   return new Ok({
     agents: removeNulls(hits.map((hit) => hit._source)).map((document) =>
       toAgentListItem(
+        auth,
         document,
         document.workspace_id === GLOBAL_AGENTS_WORKSPACE_ID
-          ? globalAgentModels.get(document.agent_id)
-          : null
+          ? (globalAgentModels.get(document.agent_id) ?? null)
+          : null,
+        readableSpaceIdSet
       )
     ),
     total: totalCount,

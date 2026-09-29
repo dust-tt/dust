@@ -90,6 +90,7 @@ vi.mock("@app/components/assistant/CreateAgentDropdown", () => ({
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.history.replaceState({}, "", "/");
 });
 
 async function setup({
@@ -277,16 +278,11 @@ describe("search-backed Manage Agents", () => {
     const { fetcherWithBody, mount } = await setup();
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
+    expect(
+      screen.queryByRole("tab", { name: "Editable" })
+    ).not.toBeInTheDocument();
 
     for (const { tab, filters } of [
-      {
-        tab: "Editable",
-        filters: {
-          status: ["active"],
-          editedByMe: true,
-          permissionFiltering: "strict",
-        },
-      },
       {
         tab: "Default",
         filters: {

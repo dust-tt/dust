@@ -46,7 +46,6 @@ import {
   getCitationsFromActions,
   getRefs,
 } from "@app/lib/api/assistant/citations";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { cancelAgentLoop } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
@@ -54,9 +53,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { CitationType } from "@app/types/assistant/conversation";
 import { getHeaderFromRole } from "@app/types/groups";
@@ -77,11 +76,11 @@ import assert from "assert";
 import maxBy from "lodash/maxBy";
 import type z from "zod";
 
-function canRunChildAgent(agent: LightAgentConfigurationType): boolean {
+function canRunChildAgent(auth: Authenticator, agent: AgentResource): boolean {
   switch (agent.status) {
     case "active":
     case "draft":
-      return agent.canRead;
+      return auth.can("read", agent);
     case "disabled_free_workspace":
     case "disabled_missing_datasource":
     case "disabled_by_admin":
@@ -130,10 +129,7 @@ async function getRunnableChildAgent(
     childAgentName?: string;
   }
 ): Promise<Result<ChildAgentBlob, MCPError>> {
-  const childAgent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "extra_light",
-  });
+  const childAgent = await AgentResource.fetchById(auth, agentId);
 
   if (childAgent?.status === "archived") {
     return new Err(
@@ -145,7 +141,7 @@ async function getRunnableChildAgent(
     );
   }
 
-  if (!childAgent || !canRunChildAgent(childAgent)) {
+  if (!childAgent || !canRunChildAgent(auth, childAgent)) {
     return new Err(
       makeChildAgentUnavailableError(childAgent?.name ?? childAgentName)
     );

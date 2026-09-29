@@ -4,9 +4,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   AgentSuggestionType,
+  EditorsSuggestionType,
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import { AgentSuggestionDataSchema } from "@app/types/suggestions/agent_suggestion";
@@ -16,9 +18,11 @@ export interface AgentEdits {
   model?: ModelSuggestionType;
   description?: string;
   scope?: "hidden" | "visible";
+  editors?: EditorsSuggestionType;
   instructions?: InstructionsSuggestionSchemaType[];
   skills?: SkillsSuggestionType[];
   tools?: ToolsSuggestionType[];
+  subAgents?: SubAgentSuggestionType[];
 }
 
 type AgentSuggestionChangeInput = Pick<
@@ -58,6 +62,9 @@ function fieldEditsForSuggestion(
     case "scope":
       return new Ok({ scope: data.suggestion.scope });
 
+    case "editors":
+      return new Ok({ editors: data.suggestion });
+
     case "instructions":
       return new Ok({ instructions: [data.suggestion] });
 
@@ -67,8 +74,10 @@ function fieldEditsForSuggestion(
     case "skills":
       return new Ok({ skills: [data.suggestion] });
 
-    case "knowledge":
     case "sub_agent":
+      return new Ok({ subAgents: [data.suggestion] });
+
+    case "knowledge":
       return new Err(
         new DustError(
           "invalid_request_error",
@@ -91,6 +100,25 @@ function mergeFieldEdits(merged: AgentEdits, next: AgentEdits): AgentEdits {
   ];
   const skills = [...(merged.skills ?? []), ...(next.skills ?? [])];
   const tools = [...(merged.tools ?? []), ...(next.tools ?? [])];
+  const subAgents = [...(merged.subAgents ?? []), ...(next.subAgents ?? [])];
+  // Union, not last-wins: approving two suggestions must apply both editor changes.
+  const editors =
+    merged.editors && next.editors
+      ? {
+          addUserIds: [
+            ...new Set([
+              ...merged.editors.addUserIds,
+              ...next.editors.addUserIds,
+            ]),
+          ],
+          removeUserIds: [
+            ...new Set([
+              ...merged.editors.removeUserIds,
+              ...next.editors.removeUserIds,
+            ]),
+          ],
+        }
+      : (next.editors ?? merged.editors);
 
   return {
     ...merged,
@@ -98,6 +126,8 @@ function mergeFieldEdits(merged: AgentEdits, next: AgentEdits): AgentEdits {
     ...(instructions.length > 0 ? { instructions } : {}),
     ...(skills.length > 0 ? { skills } : {}),
     ...(tools.length > 0 ? { tools } : {}),
+    ...(subAgents.length > 0 ? { subAgents } : {}),
+    ...(editors ? { editors } : {}),
   };
 }
 

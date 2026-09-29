@@ -1,34 +1,32 @@
 import type { UsageFilterSourceOption } from "@app/components/workspace/analytics/usageFilter";
 import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
-import { MAX_ANALYTICS_URL_LENGTH } from "@app/lib/analytics/view_params";
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const { mockReplace, routerQuery } = vi.hoisted(() => ({
-  mockReplace: vi.fn(),
-  routerQuery: { current: {} as Record<string, string | string[]> },
-}));
+import { afterEach, describe, expect, it } from "vitest";
 
 const PATHNAME = "/w/0ec9852c2f/analytics/consumption";
 
-vi.mock("@app/lib/platform", () => ({
-  useAppRouter: () => ({
-    replace: mockReplace,
-    pathname: PATHNAME,
-    query: routerQuery.current,
-    isReady: true,
-  }),
-}));
+function encode(json: unknown): string {
+  return Buffer.from(JSON.stringify(json)).toString("base64url");
+}
 
-function renderViewState(query: Record<string, string | string[]>) {
-  routerQuery.current = query;
+function hashState(): unknown {
+  const value = new URLSearchParams(window.location.hash.slice(2)).get(
+    "search"
+  );
+  return value
+    ? JSON.parse(Buffer.from(value, "base64url").toString())
+    : undefined;
+}
+
+function renderViewState(hash = "") {
+  window.history.replaceState({}, "", `${PATHNAME}${hash}`);
   return renderHook(() => useAnalyticsViewState());
 }
 
 function sourceOption(id: string): UsageFilterSourceOption {
   return {
     id,
-    name: id,
+    name: "Slack",
     kind: "source",
     connectorProvider: id === "slack" ? "slack" : undefined,
     disabled: false,
@@ -36,59 +34,55 @@ function sourceOption(id: string): UsageFilterSourceOption {
 }
 
 describe("useAnalyticsViewState", () => {
-  beforeEach(() => {
-    mockReplace.mockClear();
+  afterEach(() => {
+    window.history.replaceState({}, "", "/");
   });
 
   it("starts on the default view and leaves the URL alone", () => {
-    const { result } = renderViewState({});
+    const { result } = renderViewState();
 
     expect(result.current.period).toEqual({ kind: "cycle" });
     expect(result.current.dimension).toBe("agent");
     expect(result.current.filter).toEqual({});
-    expect(mockReplace).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe("");
   });
 
-  it("reads the whole view out of the query", () => {
-    const { result } = renderViewState({
-      p: "30",
-      d: "model",
-      a: ["8oGtWFRlPa", "aXbYcZdWeV"],
-      u: "member-1",
-      s: "slack",
-    });
+  it("reads the whole view out of the hash", () => {
+    const { result } = renderViewState(
+      `#?search=${encode({
+        period: 30,
+        tab: "model",
+        filter: {
+          agent: { "8oGtWFRlPa": "Support", aXbYcZdWeV: "Sales" },
+          user: { "member-1": "Alice" },
+          source: { slack: "Slack" },
+        },
+      })}`
+    );
 
     expect(result.current.period).toEqual({ kind: "days", days: 30 });
     expect(result.current.dimension).toBe("model");
-    expect(result.current.filter.agent?.map(({ id }) => id)).toEqual([
-      "8oGtWFRlPa",
-      "aXbYcZdWeV",
+    expect(result.current.filter.agent?.map(({ name }) => name)).toEqual([
+      "Support",
+      "Sales",
     ]);
     expect(result.current.filter.member?.[0]?.id).toBe("member-1");
     expect(result.current.filter.source).toEqual([sourceOption("slack")]);
-    expect(mockReplace).not.toHaveBeenCalled();
+    expect(result.current.restoredOptions.size).toBe(4);
   });
 
-  it("falls back to the default view on a value it cannot read", () => {
-    const { result } = renderViewState({ p: "45", d: "nope" });
+  it("drops the values it cannot read from the hash", () => {
+    const { result } = renderViewState(
+      `#?search=${encode({ period: 45, tab: "nope" })}`
+    );
 
     expect(result.current.period).toEqual({ kind: "cycle" });
     expect(result.current.dimension).toBe("agent");
-    expect(mockReplace).toHaveBeenCalledWith(
-      {
-        pathname: PATHNAME,
-        query: expect.objectContaining({
-          p: undefined,
-          d: undefined,
-        }),
-      },
-      undefined,
-      { shallow: true }
-    );
+    expect(window.location.hash).toBe("");
   });
 
-  it("writes the new view back with replace, preserving other params", () => {
-    const { result } = renderViewState({ tab: "explore" });
+  it("writes the new view back, preserving other hash params", () => {
+    const { result } = renderViewState("#?modal=personal-settings");
 
     act(() => {
       result.current.setDimension("model");
@@ -106,29 +100,20 @@ describe("useAnalyticsViewState", () => {
     });
 
     expect(result.current.dimension).toBe("model");
-    expect(mockReplace).toHaveBeenCalledTimes(1);
-    expect(mockReplace).toHaveBeenCalledWith(
-      {
-        pathname: PATHNAME,
-        query: expect.objectContaining({
-          tab: "explore",
-          d: "model",
-          u: ["member-1"],
-          p: undefined,
-          a: undefined,
-        }),
-      },
-      undefined,
-      { shallow: true }
-    );
+    expect(result.current.restoredOptions.size).toBe(0);
+    expect(
+      new URLSearchParams(window.location.hash.slice(2)).get("modal")
+    ).toBe("personal-settings");
+    expect(hashState()).toEqual({
+      tab: "model",
+      filter: { user: { "member-1": "Member 1" } },
+    });
   });
 
-  it("clears the params the view no longer needs", () => {
-    const { result } = renderViewState({
-      p: "30",
-      d: "model",
-      s: "slack",
-    });
+  it("clears the hash state the view no longer needs", () => {
+    const { result } = renderViewState(
+      `#?search=${encode({ period: 30, tab: "model", filter: { source: { slack: "Slack" } } })}`
+    );
 
     act(() => {
       result.current.setPeriod({ kind: "cycle" });
@@ -136,43 +121,6 @@ describe("useAnalyticsViewState", () => {
       result.current.setFilter({});
     });
 
-    expect(mockReplace).toHaveBeenCalledWith(
-      {
-        pathname: PATHNAME,
-        query: {
-          p: undefined,
-          d: undefined,
-          a: undefined,
-          u: undefined,
-          g: undefined,
-          m: undefined,
-          t: undefined,
-          sk: undefined,
-          s: undefined,
-          k: undefined,
-        },
-      },
-      undefined,
-      { shallow: true }
-    );
-  });
-
-  it("drops the whole query when the URL would be too long", () => {
-    const { result } = renderViewState({ tab: "explore" });
-
-    act(() => {
-      result.current.setFilter({
-        source: [sourceOption("x".repeat(MAX_ANALYTICS_URL_LENGTH))],
-      });
-    });
-
-    expect(mockReplace).toHaveBeenCalledWith(
-      {
-        pathname: PATHNAME,
-        query: {},
-      },
-      undefined,
-      { shallow: true }
-    );
+    expect(hashState()).toBeUndefined();
   });
 });

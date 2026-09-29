@@ -8,17 +8,20 @@ import type { SingletonAgentSuggestionData } from "@app/lib/api/actions/servers/
 import {
   recordAgentCreationSuggestion,
   recordAgentSkillSuggestions,
+  recordAgentSubAgentSuggestions,
   recordAgentToolSuggestions,
   recordSingletonAgentSuggestions,
   validateAgentCreation,
   validateAgentCreationCapabilities,
   validateAgentDeletion,
   validateAgentDescriptionChange,
+  validateAgentEditorsSuggestion,
   validateAgentInstructionsChange,
   validateAgentModelChange,
   validateAgentNameChange,
   validateAgentPublishStateChange,
   validateAgentSkillChanges,
+  validateAgentSubAgentChanges,
   validateAgentToolChanges,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import { formatBatchSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
@@ -66,6 +69,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   CreateSuggestionType,
   SkillsSuggestionType,
+  SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import type {
@@ -90,6 +94,7 @@ type PlannedChange =
       } | null;
       skills: SkillsSuggestionType[];
       tools: ToolsSuggestionType[];
+      subAgents: SubAgentSuggestionType[];
     }
   | {
       type: "skill_creation";
@@ -193,6 +198,8 @@ async function planAgentEdit(
     scope,
     skills: skillChanges,
     tools: toolChanges,
+    subAgents: subAgentChanges,
+    editors: editorChanges,
   }: EditAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const agentRes = await fetchAgentForSuggestion(auth, agentId);
@@ -244,6 +251,17 @@ async function planAgentEdit(
     );
   }
 
+  if (editorChanges !== undefined) {
+    const validation = await validateAgentEditorsSuggestion(auth, agent, {
+      addUserIds: editorChanges.addUserIds ?? [],
+      removeUserIds: editorChanges.removeUserIds ?? [],
+    });
+    if (validation.isErr()) {
+      return validation;
+    }
+    singletons.push({ kind: "editors", suggestion: validation.value });
+  }
+
   let instructions: {
     agent: FullAgentResource;
     edits: InstructionSuggestionEditInput[];
@@ -292,11 +310,26 @@ async function planAgentEdit(
     tools = validation.value;
   }
 
+  let subAgents: SubAgentSuggestionType[] = [];
+  const addAgentIds = subAgentChanges?.addAgentIds ?? [];
+  const removeAgentIds = subAgentChanges?.removeAgentIds ?? [];
+  if (addAgentIds.length > 0 || removeAgentIds.length > 0) {
+    const validation = await validateAgentSubAgentChanges(auth, agent, {
+      addAgentIds,
+      removeAgentIds,
+    });
+    if (validation.isErr()) {
+      return validation;
+    }
+    subAgents = validation.value;
+  }
+
   if (
     singletons.length === 0 &&
     instructions === null &&
     skills.length === 0 &&
-    tools.length === 0
+    tools.length === 0 &&
+    subAgents.length === 0
   ) {
     return new Err(
       new MCPError(
@@ -312,6 +345,7 @@ async function planAgentEdit(
     instructions,
     skills,
     tools,
+    subAgents,
   });
 }
 
@@ -337,6 +371,7 @@ async function planAgentDeletion(
     instructions: null,
     skills: [],
     tools: [],
+    subAgents: [],
   });
 }
 
@@ -614,6 +649,26 @@ function findSkillAddedAndDeleted(suggestions: Suggestion[]): string | null {
   return null;
 }
 
+/** An agent the batch deletes cannot also be added as a sub-agent by the same batch. */
+function findSubAgentAddedAndDeleted(suggestions: Suggestion[]): string | null {
+  const deletedAgentIds = new Set(
+    suggestions.flatMap((suggestion) =>
+      suggestion.kind === "delete_agent" ? [suggestion.agentId] : []
+    )
+  );
+  for (const suggestion of suggestions) {
+    if (suggestion.kind === "edit_agent") {
+      const addedAgentId = (suggestion.subAgents?.addAgentIds ?? []).find(
+        (id) => deletedAgentIds.has(id)
+      );
+      if (addedAgentId) {
+        return addedAgentId;
+      }
+    }
+  }
+  return null;
+}
+
 /** Each existing agent or skill may be targeted by at most one suggestion of the batch. */
 function findDuplicateTarget(suggestions: Suggestion[]): string | null {
   const seen = new Set<string>();
@@ -777,6 +832,11 @@ async function recordPlannedChange(
         conversation,
         batch,
       });
+      await recordAgentSubAgentSuggestions(auth, change.agent, {
+        subAgents: change.subAgents,
+        conversation,
+        batch,
+      });
       return new Ok(undefined);
     }
 
@@ -820,7 +880,8 @@ async function recordPlannedChange(
  * @cc [owner:fabiencelier,label:product;mcp] suggest-validates-all-before-writing
  * `suggest` MUST validate every suggestion of the call against live state before recording any of
  * them: when one suggestion is invalid or unsupported, or two suggestions target the same agent or
- * skill, or a skill is both deleted and added to an agent, or a ref is declared twice or used without being declared, the call fails and no batch,
+ * skill, or a skill is both deleted and added to an agent, or an agent is both deleted and added
+ * as a sub-agent, or a ref is declared twice or used without being declared, the call fails and no batch,
  * placeholder agent or skill, or suggestion row is created.
  */
 /**
@@ -854,6 +915,15 @@ export async function suggest(
     return new Err(
       new MCPError(
         `Skill "${addedAndDeletedSkillId}" is both deleted and added to an agent: keep only one.`
+      )
+    );
+  }
+
+  const addedAndDeletedSubAgentId = findSubAgentAddedAndDeleted(suggestions);
+  if (addedAndDeletedSubAgentId) {
+    return new Err(
+      new MCPError(
+        `Agent "${addedAndDeletedSubAgentId}" is both deleted and added as a sub-agent: keep only one.`
       )
     );
   }

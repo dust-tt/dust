@@ -177,6 +177,26 @@ export type SidebarNavigation = {
   menus: AppLayoutNavigation[];
 };
 
+export function getAdminSectionHref(
+  owner: WorkspaceType,
+  hasPermission: (
+    verb: GrantVerb,
+    resourceType: ConcreteResourceType
+  ) => boolean,
+  canManageUsage: boolean
+): string | null {
+  if (isManager(owner)) {
+    return `/w/${owner.sId}/members`;
+  }
+  if (hasPermission("admin", "billing")) {
+    return `/w/${owner.sId}/billing`;
+  }
+  if (hasPermission("admin", "security")) {
+    return `/w/${owner.sId}/identity-and-provisioning`;
+  }
+  return canManageUsage ? `/w/${owner.sId}/usage` : null;
+}
+
 export const getTopNavigationTabs = (
   owner: WorkspaceType,
   spaceMenuButtonRef: React.RefObject<HTMLDivElement>,
@@ -252,11 +272,13 @@ export const subNavigationAdmin = ({
   featureFlags,
   subscription,
   hasPermission,
+  canManageUsage = false,
 }: {
   owner: WorkspaceType;
   currentRoute: string;
   featureFlags: WhitelistableFeature[];
   subscription: SubscriptionType;
+  canManageUsage?: boolean;
   hasPermission: (
     verb: GrantVerb,
     resourceType: ConcreteResourceType
@@ -269,7 +291,12 @@ export const subNavigationAdmin = ({
 
   // Admins and managers see the admin sidebar. Each item is then individually enabled/disabled
   // based on permission.
-  if (!isManager(owner) && !canAdminBilling && !canAdminSecurity) {
+  if (
+    !isManager(owner) &&
+    !canAdminBilling &&
+    !canAdminSecurity &&
+    !canManageUsage
+  ) {
     return nav;
   }
 
@@ -325,7 +352,7 @@ export const subNavigationAdmin = ({
         icon: PieChart01,
         href: `/w/${owner.sId}/usage`,
         current: isCurrent("usage"),
-        disabled: !hasManagerRole,
+        disabled: !hasManagerRole && !canManageUsage,
       },
       {
         id: "model_providers",

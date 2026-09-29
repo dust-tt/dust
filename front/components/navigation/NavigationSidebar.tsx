@@ -1,21 +1,21 @@
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type { SidebarNavigation } from "@app/components/navigation/config";
-import { getTopNavigationTabs } from "@app/components/navigation/config";
+import {
+  getAdminSectionHref,
+  getTopNavigationTabs,
+} from "@app/components/navigation/config";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { SidebarUserMenu } from "@app/components/navigation/SidebarUserMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import type {
-  ConcreteResourceType,
-  GrantVerb,
-} from "@app/types/group_permissions";
+import { hasGroupManagementScope } from "@app/types/api/auth_context";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import { isAdmin, isManager } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   CollapseButton,
   cn,
@@ -30,25 +30,6 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useContext, useMemo } from "react";
-
-function getAdminSectionHref(
-  owner: WorkspaceType,
-  hasPermission: (
-    verb: GrantVerb,
-    resourceType: ConcreteResourceType
-  ) => boolean
-): string | null {
-  if (isManager(owner)) {
-    return `/w/${owner.sId}/members`;
-  }
-  if (hasPermission("admin", "billing")) {
-    return `/w/${owner.sId}/billing`;
-  }
-  if (hasPermission("admin", "security")) {
-    return `/w/${owner.sId}/identity-and-provisioning`;
-  }
-  return null;
-}
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -83,9 +64,17 @@ export const NavigationSidebar = React.forwardRef<
   }, [router.isReady, router.pathname]);
 
   const { hasFeature } = useFeatureFlags();
+  const { featureFlags, groupManagement } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
 
-  const adminSectionHref = getAdminSectionHref(owner, hasPermission);
+  const canManageUsage =
+    featureFlags.includes("group_management") &&
+    hasGroupManagementScope(groupManagement?.read_usage);
+  const adminSectionHref = getAdminSectionHref(
+    owner,
+    hasPermission,
+    canManageUsage
+  );
 
   const showAdminSection = adminSectionHref !== null;
 

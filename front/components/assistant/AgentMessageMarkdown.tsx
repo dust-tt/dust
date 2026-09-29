@@ -21,17 +21,9 @@ import {
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
 import {
-  agentSuggestionDirective,
-  getConversationAgentSuggestionPlugin,
-} from "@app/components/markdown/suggestion/AgentSuggestionDirective";
-import {
   batchSuggestionDirective,
   getBatchSuggestionPlugin,
 } from "@app/components/markdown/suggestion/BatchSuggestionDirective";
-import {
-  getSkillSuggestionPlugin,
-  skillSuggestionDirective,
-} from "@app/components/markdown/suggestion/SkillSuggestionDirective";
 import {
   getTaskDirectiveBlock,
   taskDirective,
@@ -53,7 +45,6 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 export const AgentMessageMarkdown = ({
   owner,
-  conversationId,
   content,
   additionalMarkdownComponents = {} as Components,
   additionalMarkdownPlugins = [] as PluggableList,
@@ -66,7 +57,6 @@ export const AgentMessageMarkdown = ({
   canCopyQuotes,
 }: {
   owner: WorkspaceType;
-  conversationId?: string;
   content: string;
   isLastMessage?: boolean;
   streamingState?: StreamingState;
@@ -95,15 +85,10 @@ export const AgentMessageMarkdown = ({
       instruction_block: InstructionBlock,
       build_skill: BuildSkillDirectiveBlock,
       build_agent: getBuildAgentDirectivePlugin(owner),
-      skill_suggestion: getSkillSuggestionPlugin(owner, conversationId),
       batch_edit: getBatchSuggestionPlugin(owner),
-      agent_suggestion: getConversationAgentSuggestionPlugin(
-        owner,
-        conversationId
-      ),
       ...additionalMarkdownComponents,
     }),
-    [owner, conversationId, additionalMarkdownComponents]
+    [owner, additionalMarkdownComponents]
   );
 
   const markdownPlugins = React.useMemo(() => {
@@ -120,8 +105,6 @@ export const AgentMessageMarkdown = ({
       actionCardDirective,
       buildSkillDirective,
       buildAgentDirective,
-      skillSuggestionDirective,
-      agentSuggestionDirective,
       batchSuggestionDirective,
       ...additionalMarkdownPlugins,
     ];

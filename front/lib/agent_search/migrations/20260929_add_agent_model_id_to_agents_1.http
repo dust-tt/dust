@@ -1,0 +1,8 @@
+PUT /front.agents_1/_mapping
+{
+  "properties": {
+    "agent_model_id": {
+      "type": "long"
+    }
+  }
+}

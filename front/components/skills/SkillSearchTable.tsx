@@ -6,8 +6,9 @@ import {
   SkillNameCell,
 } from "@app/components/skills/SkillTableCells";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
+import { EntityTooltipCard } from "@app/components/workspace/analytics/creditsTableCells";
 import { useSkillsUsedBy } from "@app/hooks/useSkillsUsedBy";
-import { isDustProvidedSkill } from "@app/lib/skill";
+import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -20,6 +21,7 @@ import {
   Label,
   LoadingBlock,
   TextCellSkeleton,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type {
   ColumnDef,
@@ -105,6 +107,10 @@ function SkillSearchUsedByCell({
  * `columns` MUST only be rebuilt when `onSelect`, `onAgentClick`, `onRefresh` or `owner` change,
  * never on data the table loads itself. Callers MUST keep `onSelect`, `onAgentClick` and
  * `onRefresh` referentially stable while the search inputs are unchanged.
+ */
+/**
+ * @cc [owner:aubin-tchoi,label:product] skill-name-tooltip
+ * Hovering or focusing a skill name must show its name and user-facing description.
  */
 export function SkillSearchTable({
   owner,
@@ -202,13 +208,31 @@ export function SkillSearchTable({
           header: "Name",
           sortDescFirst: false,
           enableMultiSort: false,
-          cell: ({ row: { original: skill } }) => (
-            <DataTable.CellContent>
-              <button type="button" className="w-full min-w-0 text-left">
-                <SkillNameCell skill={skill} />
-              </button>
-            </DataTable.CellContent>
-          ),
+          cell: ({ row: { original: skill } }) => {
+            const SkillAvatar = getSkillAvatarIcon(skill);
+
+            return (
+              <DataTable.CellContent>
+                <Tooltip
+                  label={
+                    <div className="py-1.5">
+                      <EntityTooltipCard
+                        avatar={<SkillAvatar name={skill.name} size="xs" />}
+                        name={skill.name}
+                        description={skill.userFacingDescription}
+                      />
+                    </div>
+                  }
+                  tooltipTriggerAsChild
+                  trigger={
+                    <button type="button" className="w-full min-w-0 text-left">
+                      <SkillNameCell skill={skill} />
+                    </button>
+                  }
+                />
+              </DataTable.CellContent>
+            );
+          },
           meta: { className: SKILL_SEARCH_NAME_COLUMN_WIDTH },
         },
         {

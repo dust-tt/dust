@@ -37,7 +37,7 @@ export function FilterCategoryNav<Category extends string>({
               type="button"
               role="tab"
               aria-selected={category === activeCategory}
-              className="w-full text-left"
+              className="w-full rounded-lg text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
               key={category}
               onClick={() => onCategoryChange(category)}
             >

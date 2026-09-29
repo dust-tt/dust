@@ -7,6 +7,9 @@
     "agent_id": {
       "type": "keyword"
     },
+    "agent_model_id": {
+      "type": "long"
+    },
     "status": {
       "type": "keyword"
     },

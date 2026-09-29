@@ -3,6 +3,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/lib/api/labs/transcripts";
 import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Page, SliderToggle } from "@dust-tt/sparkle";
@@ -25,7 +26,7 @@ export function ProcessingConfiguration({
   mutateTranscriptsConfiguration,
 }: ProcessingConfigurationProps) {
   const [assistantSelected, setAssistantSelected] =
-    useState<LightAgentConfigurationType | null>(
+    useState<RichAgentMentionCandidate | null>(
       transcriptsConfiguration.agentConfigurationId
         ? (agents.find(
             (agent) =>
@@ -41,7 +42,7 @@ export function ProcessingConfiguration({
   });
 
   const handleSelectAssistant = async (
-    assistant: LightAgentConfigurationType
+    assistant: RichAgentMentionCandidate
   ) => {
     setAssistantSelected(assistant);
     const response = await doUpdate({

@@ -17,6 +17,7 @@ import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import { TopUpsHistoryTable } from "@app/components/workspace/TopUpsHistoryTable";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
+import { UsageMembersSection } from "@app/components/workspace/UsageMembersSection";
 import { CreditSpendCheckpointSettingsCard } from "@app/components/workspace/usage/CreditSpendCheckpointSettingsCard";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTiersSettingsCard";
@@ -93,6 +94,7 @@ import type {
 } from "@app/types/memberships";
 import {
   isMembershipSeatType,
+  isPaidSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
@@ -105,8 +107,6 @@ import { isAdmin, isManager } from "@app/types/user";
 import {
   AlertCircle,
   Button,
-  ButtonsSwitch,
-  ButtonsSwitchList,
   Chip,
   ContentMessage,
   DropdownMenu,
@@ -119,7 +119,6 @@ import {
   Page,
   Plus,
   ProgressBar,
-  SearchInput,
   Separator,
   Tabs,
   TabsContent,
@@ -599,9 +598,6 @@ export function UsagePage() {
     // self-fetches via GroupsUsageTable.
     disabled: usageTab !== "members",
   });
-  const selectedGroupName =
-    groups.find((g) => g.sId === groupFilter)?.name ?? null;
-
   const { tiers: modelTiersCatalog } = useModelTiers({
     owner,
     disabled: !isWorkspaceAdmin,
@@ -689,10 +685,6 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
-  const handleBatchEditSpendLimit = useCallback(() => {
-    setIsBulkSpendLimitOpen(true);
-  }, []);
-
   const { doBulkChangeSeatType } = useBulkChangeSeatType({
     workspaceId: owner.sId,
   });
@@ -700,10 +692,6 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
   const [isBulkChangeSeatOpen, setIsBulkChangeSeatOpen] = useState(false);
-
-  const handleBatchChangeSeat = useCallback(() => {
-    setIsBulkChangeSeatOpen(true);
-  }, []);
 
   // Remember loaded members so picks from other pages keep their avatar.
   const [loadedMembersById, setLoadedMembersById] = useState(
@@ -722,14 +710,48 @@ export function UsagePage() {
   }
 
   // In pick order so avatars stay put. A "select all" spans members never
-  // loaded, so no avatars are shown rather than a misleading subset.
+  // loaded, so its members are only shown once the loaded page holds the whole
+  // selection, rather than a misleading subset.
   const selectedVisibleMembers = useMemo(() => {
     const descriptor = selection.descriptor();
-    if (descriptor.mode === "all") {
-      return [];
+    if (descriptor.mode === "ids") {
+      return descriptor.ids.flatMap((id) => loadedMembersById.get(id) ?? []);
     }
-    return descriptor.ids.flatMap((id) => loadedMembersById.get(id) ?? []);
-  }, [loadedMembersById, selection.descriptor]);
+    const excludedIds = new Set(descriptor.excludedIds);
+    const selectedOnPage = membersUsage.filter((m) => !excludedIds.has(m.sId));
+    return selectedOnPage.length === selection.selectedCount
+      ? selectedOnPage
+      : [];
+  }, [
+    loadedMembersById,
+    membersUsage,
+    selection.descriptor,
+    selection.selectedCount,
+  ]);
+
+  // A single selected member gets the individual modals
+  const singleSelectedMember =
+    selection.selectedCount === 1 && selectedVisibleMembers.length === 1
+      ? selectedVisibleMembers[0]
+      : null;
+  const handleBatchChangeSeat = useCallback(() => {
+    if (singleSelectedMember) {
+      handleChangeSeatFromTable(singleSelectedMember);
+      return;
+    }
+    setIsBulkChangeSeatOpen(true);
+  }, [singleSelectedMember, handleChangeSeatFromTable]);
+
+  const handleBatchEditSpendLimit = useCallback(() => {
+    if (
+      isMembershipSeatType(singleSelectedMember?.seatType) &&
+      isPaidSeatType(singleSelectedMember.seatType)
+    ) {
+      handleEditSpendLimitFromTable(singleSelectedMember);
+      return;
+    }
+    setIsBulkSpendLimitOpen(true);
+  }, [singleSelectedMember, handleEditSpendLimitFromTable]);
 
   // Translate the cross-page selection into the descriptor the bulk member
   // endpoints expect: explicit ids, or the current filter minus exclusions.
@@ -789,6 +811,13 @@ export function UsagePage() {
     // Seat mutations can move a member in or out of the currently filtered set
     // (for example with the seat filter), which makes the cross-page selection
     // stale.
+    clearSelection();
+    handleApproveOnModalSaved();
+  }, [handleApproveOnModalSaved, clearSelection]);
+
+  const handleSpendLimitSaved = useCallback(() => {
+    // A single-member selection can be routed to this modal, so clear the
+    // selection on save like the other selection-driven mutations do.
     clearSelection();
     handleApproveOnModalSaved();
   }, [handleApproveOnModalSaved, clearSelection]);
@@ -987,16 +1016,6 @@ export function UsagePage() {
     />
   ) : null;
 
-  const searchRow = (
-    <SearchInput
-      placeholder="Search members"
-      value={searchTerm}
-      name="search"
-      onChange={handleSetSearchTerm}
-      className="w-full"
-    />
-  );
-
   const seatFilterDropdown = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -1041,32 +1060,6 @@ export function UsagePage() {
               />
             }
             onClick={() => handleSetSeatTypeFilter(seatType)}
-          />
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
-  const groupsFilterDropdown = groups.length > 0 && (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          label={selectedGroupName ?? "All groups"}
-          size="sm"
-          isSelect
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          label="All groups"
-          onClick={() => handleSetGroupFilter(null)}
-        />
-        {groups.map((group) => (
-          <DropdownMenuItem
-            key={group.sId}
-            label={group.name}
-            onClick={() => handleSetGroupFilter(group.sId)}
           />
         ))}
       </DropdownMenuContent>
@@ -1335,64 +1328,46 @@ export function UsagePage() {
             </TabsList>
 
             <TabsContent value="members" className={TAB_CONTENT_CLASS}>
-              <div className="flex flex-col items-stretch gap-4">
-                {searchRow}
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-row items-center justify-between gap-2">
-                    {isCreditPriced && (
-                      <ButtonsSwitchList
-                        size="xs"
-                        defaultValue="members"
-                        onValueChange={(v: string) =>
-                          setMembersTab(
-                            v === "requests" ? "requests" : "members"
-                          )
-                        }
-                      >
-                        <ButtonsSwitch value="members" label="Members" />
-                        <ButtonsSwitch
-                          value="requests"
-                          label="Requests"
-                          isCounter
-                          counterValue={
-                            filteredUpgradeRequests.length > 0
-                              ? String(filteredUpgradeRequests.length)
-                              : undefined
-                          }
-                        />
-                      </ButtonsSwitchList>
+              <UsageMembersSection
+                searchTerm={searchTerm}
+                onSearchChange={handleSetSearchTerm}
+                groups={groups}
+                groupId={groupFilter}
+                onGroupChange={handleSetGroupFilter}
+                extraFilters={
+                  <>
+                    {isWorkspaceAdmin && groupFilter && (
+                      <GroupModelTierPickerDropdown
+                        owner={owner}
+                        groupId={groupFilter}
+                      />
                     )}
-                    {membersTab === "members" && (
-                      <div className="flex flex-row items-center gap-2">
-                        {groupsFilterDropdown}
-                        {isWorkspaceAdmin && groupFilter && (
-                          <GroupModelTierPickerDropdown
-                            owner={owner}
-                            groupId={groupFilter}
+                    {isCreditPriced && seatFilterDropdown}
+                  </>
+                }
+                membersTable={membersTable}
+                selectionBanner={selectionBanner}
+                requests={
+                  isCreditPriced
+                    ? {
+                        count: filteredUpgradeRequests.length,
+                        activeTab: membersTab,
+                        onTabChange: setMembersTab,
+                        table: (
+                          <UpgradeRequestsTable
+                            requests={filteredUpgradeRequests}
+                            isLoading={isUpgradeRequestsLoading}
+                            seatPlans={seatPlans}
+                            pendingRequestIds={resolvingRequestIds}
+                            onUpgradePlan={handleUpgradePlanRequest}
+                            onEditLimit={handleEditLimitRequest}
+                            onDeny={handleDenyRequest}
                           />
-                        )}
-                        {isCreditPriced && seatFilterDropdown}
-                      </div>
-                    )}
-                  </div>
-                  {membersTab === "members" ? (
-                    <div className="flex flex-col gap-2">
-                      {membersTable}
-                      {selectionBanner}
-                    </div>
-                  ) : (
-                    <UpgradeRequestsTable
-                      requests={filteredUpgradeRequests}
-                      isLoading={isUpgradeRequestsLoading}
-                      seatPlans={seatPlans}
-                      pendingRequestIds={resolvingRequestIds}
-                      onUpgradePlan={handleUpgradePlanRequest}
-                      onEditLimit={handleEditLimitRequest}
-                      onDeny={handleDenyRequest}
-                    />
-                  )}
-                </div>
-              </div>
+                        ),
+                      }
+                    : undefined
+                }
+              />
             </TabsContent>
             <TabsContent value="groups" className={TAB_CONTENT_CLASS}>
               <GroupsUsageTable
@@ -1471,7 +1446,7 @@ export function UsagePage() {
           canEditDefaultLimit={isWorkspaceAdmin}
           defaultUserSpendLimit={defaultUserSpendLimitState}
           onSavingChange={handleUsagePendingChange}
-          onSaved={handleApproveOnModalSaved}
+          onSaved={handleSpendLimitSaved}
         />
 
         <BulkEditSpendLimitModal

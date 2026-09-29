@@ -1,4 +1,4 @@
-import { CreditLimitInput } from "@app/components/workspace/CreditLimitInput";
+import { PersonalLimitInput } from "@app/components/workspace/CreditLimitInput";
 import { MemberGroupLimitTable } from "@app/components/workspace/MemberGroupLimitTable";
 import {
   groupRowsForMember,
@@ -11,7 +11,6 @@ import {
   WorkspaceDefaultLimitInput,
 } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { formatCredits } from "@app/lib/client/credits";
 import { useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { useUpdateUserSpendLimit } from "@app/lib/swr/memberships";
 import { useUpdateDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
@@ -41,6 +40,7 @@ interface EditMemberSpendLimitModalProps {
   member: MemberUsageType | null;
   owner: LightWorkspaceType;
   groups: GroupType[];
+  editableGroupIds?: ReadonlySet<string>;
   readOnly?: boolean;
   // The workspace default applies to every member, so editing it is reserved
   // to admins even where managers may edit personal and group limits.
@@ -56,6 +56,7 @@ interface MemberSpendLimitFormProps {
   member: MemberUsageType | null;
   owner: LightWorkspaceType;
   groups: GroupType[];
+  editableGroupIds?: ReadonlySet<string>;
   readOnly: boolean;
   canEditDefaultLimit: boolean;
   defaultUserSpendLimit: DefaultUserSpendLimitState;
@@ -68,6 +69,7 @@ function MemberSpendLimitForm({
   member,
   owner,
   groups,
+  editableGroupIds,
   readOnly,
   canEditDefaultLimit,
   defaultUserSpendLimit,
@@ -156,10 +158,12 @@ function MemberSpendLimitForm({
     const personalResult = parseCreditsInput(personalLimitInput);
     setValidationMessage(personalResult.ok ? null : personalResult.message);
 
-    const groupResults = memberGroupRows.map((row) => ({
-      row,
-      result: parseCreditsInput(groupLimitInputs[row.groupId] ?? ""),
-    }));
+    const groupResults = memberGroupRows
+      .filter((row) => !editableGroupIds || editableGroupIds.has(row.groupId))
+      .map((row) => ({
+        row,
+        result: parseCreditsInput(groupLimitInputs[row.groupId] ?? ""),
+      }));
     setGroupValidationMessages(
       Object.fromEntries(
         groupResults.map(({ row, result }) => [
@@ -249,19 +253,11 @@ function MemberSpendLimitForm({
           <div>
             <DialogTitle>Edit spend limit for {member?.name}</DialogTitle>
             <DialogDescription>
-              {seatAllowanceAwuCredits > 0 ? (
-                <>
-                  This user can currently consume{" "}
-                  {formatCredits(seatAllowanceAwuCredits)} credits from their
-                  seat, plus {formatCredits(extraAwuCredits)} on the&nbsp;pool.
-                </>
-              ) : (
-                <>
-                  This user can currently consume{" "}
-                  {formatCredits(extraAwuCredits)} credits from the workspace
-                  credit&nbsp;pool.
-                </>
-              )}
+              {`These limits cap what each member can spend${
+                seatAllowanceAwuCredits > 0
+                  ? ", once their seat credits are used"
+                  : ""
+              }. Personal limits override workspace and group limits.`}
             </DialogDescription>
           </div>
         </div>
@@ -284,8 +280,7 @@ function MemberSpendLimitForm({
             />
           )}
 
-          <CreditLimitInput
-            label="Personal limit"
+          <PersonalLimitInput
             value={personalLimitInput}
             readOnly={readOnly}
             isActive={hasPersonalOverride}
@@ -294,18 +289,20 @@ function MemberSpendLimitForm({
               setPersonalLimitInput(cleaned);
               setValidationMessage(null);
             }}
-            action={
+            onRemove={
               personalLimitInput !== ""
-                ? {
-                    label: "Remove personal limit",
-                    onClick: () => {
-                      setPersonalLimitInput("");
-                      setValidationMessage(null);
-                    },
+                ? () => {
+                    setPersonalLimitInput("");
+                    setValidationMessage(null);
                   }
                 : undefined
             }
           />
+          {editableGroupIds && (
+            <span className="copy-xs text-muted-foreground">
+              A personal limit applies to this member across the workspace.
+            </span>
+          )}
 
           {memberGroupRows.length > 0 && (
             <Page.Vertical gap="xs" align="stretch">
@@ -315,6 +312,7 @@ function MemberSpendLimitForm({
               <MemberGroupLimitTable
                 rows={memberGroupRows}
                 readOnly={readOnly}
+                editableGroupIds={editableGroupIds}
                 groupLimitInputs={groupLimitInputs}
                 groupValidationMessages={groupValidationMessages}
                 onChange={handleGroupLimitChange}
@@ -347,6 +345,7 @@ export function EditMemberSpendLimitModal({
   member,
   owner,
   groups,
+  editableGroupIds,
   readOnly = false,
   canEditDefaultLimit = false,
   defaultUserSpendLimit,
@@ -376,6 +375,7 @@ export function EditMemberSpendLimitModal({
           member={displayedMember}
           owner={owner}
           groups={groups}
+          editableGroupIds={editableGroupIds}
           readOnly={readOnly}
           canEditDefaultLimit={canEditDefaultLimit}
           defaultUserSpendLimit={defaultUserSpendLimit}

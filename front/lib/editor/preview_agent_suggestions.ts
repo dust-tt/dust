@@ -10,6 +10,8 @@ import type {
   AgentSuggestionType,
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
+  SkillsSuggestionType,
+  ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";
 
@@ -22,6 +24,18 @@ type PreviewedAgentFields = Pick<
   | "instructionsHtml"
   | "model"
 >;
+
+export interface PreviewedAgentCapabilities {
+  addedToolIds: string[];
+  removedToolIds: string[];
+  addedSkillIds: string[];
+  removedSkillIds: string[];
+}
+
+export interface AgentSuggestionsPreview {
+  fields: PreviewedAgentFields;
+  capabilities: PreviewedAgentCapabilities;
+}
 
 interface PreviewAgentSuggestionsInput {
   agent: PreviewedAgentFields;
@@ -93,19 +107,33 @@ export function previewAgentSuggestions({
   suggestions,
   pipeline,
 }: PreviewAgentSuggestionsInput): Result<
-  PreviewedAgentFields,
+  AgentSuggestionsPreview,
   DustError<"invalid_request_error">
 > {
   const creation = suggestions.find(isCreateAgentSuggestion);
   if (creation) {
-    const { name, description, instructions } = creation.suggestion;
-    return new Ok({
+    const {
       name,
       description,
-      scope: agent.scope,
-      model: agent.model,
-      instructions: agent.instructions,
-      instructionsHtml: instructions,
+      instructions,
+      toolIds = [],
+      skillIds = [],
+    } = creation.suggestion;
+    return new Ok({
+      fields: {
+        name,
+        description,
+        scope: agent.scope,
+        model: agent.model,
+        instructions: agent.instructions,
+        instructionsHtml: instructions,
+      },
+      capabilities: {
+        addedToolIds: toolIds,
+        removedToolIds: [],
+        addedSkillIds: skillIds,
+        removedSkillIds: [],
+      },
     });
   }
 
@@ -114,16 +142,24 @@ export function previewAgentSuggestions({
     return edits;
   }
 
-  const { name, description, scope, instructions, model, skills, tools } =
-    edits.value;
+  const {
+    name,
+    description,
+    scope,
+    instructions,
+    model,
+    skills = [],
+    tools = [],
+    subAgents,
+  } = edits.value;
 
-  // The preview only covers the fields above: showing the agent without its skill or tool changes
-  // would misrepresent the suggestions.
-  if (skills || tools) {
+  // Sub-agent changes are not previewed yet: showing the agent without them would misrepresent the
+  // suggestions.
+  if (subAgents) {
     return new Err(
       new DustError(
         "invalid_request_error",
-        "Suggestions changing the agent's skills or tools cannot be previewed."
+        "Suggestions changing the agent's sub-agents cannot be previewed."
       )
     );
   }
@@ -143,10 +179,31 @@ export function previewAgentSuggestions({
   }
 
   return new Ok({
-    name: name ?? agent.name,
-    description: description ?? agent.description,
-    scope: scope ?? agent.scope,
-    model: modelRes.value,
-    ...instructionsRes.value,
+    fields: {
+      name: name ?? agent.name,
+      description: description ?? agent.description,
+      scope: scope ?? agent.scope,
+      model: modelRes.value,
+      ...instructionsRes.value,
+    },
+    capabilities: previewCapabilities(tools, skills),
   });
+}
+
+function previewCapabilities(
+  tools: ToolsSuggestionType[],
+  skills: SkillsSuggestionType[]
+): PreviewedAgentCapabilities {
+  return {
+    addedToolIds: tools.filter((t) => t.action === "add").map((t) => t.toolId),
+    removedToolIds: tools
+      .filter((t) => t.action === "remove")
+      .map((t) => t.toolId),
+    addedSkillIds: skills
+      .filter((s) => s.action === "add")
+      .map((s) => s.skillId),
+    removedSkillIds: skills
+      .filter((s) => s.action === "remove")
+      .map((s) => s.skillId),
+  };
 }

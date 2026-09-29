@@ -230,6 +230,7 @@ function SidekickSuggestionsProviderContent({
         case "create":
         case "delete":
         case "description":
+        case "editors":
         case "instructions":
         case "name":
         case "scope":
