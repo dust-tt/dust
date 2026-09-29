@@ -169,14 +169,6 @@ export function parseMentionSelectParam(
   };
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:backend;product] mention-agent-search-rollout
- * When agents are requested and `new_manage_agents_page` is enabled, suggestions
- * MUST use strict agent search in alphabetical name order, including for an empty
- * query. Search order MUST be retained except for the existing conversation-specific
- * promotions. With the flag off, or after a logged search failure, suggestions MUST
- * use the legacy lookup and ordering. User-only requests MUST NOT search agents.
- */
 export const suggestionsOfMentions = async (
   auth: Authenticator,
   {
