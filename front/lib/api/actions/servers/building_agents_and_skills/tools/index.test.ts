@@ -271,6 +271,59 @@ describe("building_agents_and_skills tools", () => {
       expect(result.value[0].text).toContain("- Tags: Sales, Support\n");
     });
 
+    it("returns the agent's structured output only when it has one", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const responseFormat = JSON.stringify({
+        type: "json_schema",
+        json_schema: {
+          name: "ticket_summary",
+          schema: {
+            type: "object",
+            properties: { priority: { type: "string" } },
+            required: ["priority"],
+            additionalProperties: false,
+          },
+        },
+      });
+      const structuredAgent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          name: "Structured Agent",
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            responseFormat,
+          },
+        }
+      );
+      const plainAgent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Plain Agent" }
+      );
+
+      const describeAgentText = async (agentId: string) => {
+        const result = await getTool(DESCRIBE_AGENT_TOOL_NAME).handler(
+          { agentId },
+          makeExtra(authenticator)
+        );
+        if (result.isErr()) {
+          throw result.error;
+        }
+        if (result.value[0]?.type !== "text") {
+          throw new Error("Expected text output.");
+        }
+        return result.value[0].text;
+      };
+
+      const structuredText = await describeAgentText(structuredAgent.sId);
+      expect(structuredText).toContain(
+        `- Structured output (JSON response format): ${responseFormat}`
+      );
+
+      const plainText = await describeAgentText(plainAgent.sId);
+      expect(plainText).not.toContain("Structured output");
+    });
+
     it("returns an MCPError for an unknown agent", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
 
