@@ -92,6 +92,26 @@ export function redactString(str: string, n: number) {
   return redacted;
 }
 
+const REDACTED_SECRET_LENGTH = 8;
+const SECRET_VISIBLE_SUFFIX_LENGTH = 4;
+// Below this length, the visible suffix would leave too few hidden characters to resist guessing.
+const SECRET_MIN_LENGTH_FOR_VISIBLE_SUFFIX = 16;
+
+/**
+ * @cc [owner:pmilliotte,label:security] secret-never-returned-verbatim
+ * The returned value MUST be 8 characters whatever the secret's length, and MUST reveal nothing of a
+ * secret shorter than 16 characters; a longer secret MAY keep only its last 4 characters visible.
+ */
+export function redactSecret(secret: string): string {
+  const visibleSuffix =
+    secret.length < SECRET_MIN_LENGTH_FOR_VISIBLE_SUFFIX
+      ? ""
+      : secret.slice(-SECRET_VISIBLE_SUFFIX_LENGTH);
+  return (
+    "•".repeat(REDACTED_SECRET_LENGTH - visibleSuffix.length) + visibleSuffix
+  );
+}
+
 export function truncate(text: string, length: number, omission = "...") {
   return text.length > length
     ? `${text.substring(0, length - omission.length)}${omission}`
