@@ -10,12 +10,6 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
-/**
- * @cc [owner:sfriquet,label:mcp;security] get-agent-info-requires-read
- * `get_agent_info` MUST return the "Agent configuration not found" error, and no instructions,
- * tools or skills, for an agent the caller does not hold `read` on (`canRead` false), whatever
- * their role.
- */
 const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
   {
     get_agent_info: async (_, { auth, runContext }) => {
