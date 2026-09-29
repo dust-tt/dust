@@ -2,6 +2,7 @@ import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapp
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { isWarehousesBrowseType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getDocumentIcon } from "@app/lib/content_nodes";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import {
   Citation,
   CitationIcons,
@@ -55,7 +56,16 @@ export function MCPDataWarehousesBrowseDetails({
                   key={index}
                   onClick={
                     node.sourceUrl
-                      ? () => window.open(node.sourceUrl ?? "", "_blank")
+                      ? () => {
+                          const validated = validateUrl(node.sourceUrl ?? "");
+                          if (validated.valid) {
+                            window.open(
+                              validated.standardized,
+                              "_blank",
+                              "noopener,noreferrer"
+                            );
+                          }
+                        }
                       : undefined
                   }
                   tooltip={`${node.lastUpdatedAt ? ` • ${node.lastUpdatedAt}` : ""}`}
