@@ -1,11 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
 import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
-import type {
-  GlobalSkillDefinition,
-  GlobalSkillWithChildrenDefinition,
-} from "@app/lib/resources/skill/code_defined/shared";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { filterSkillDefinitions } from "@app/lib/resources/skill/code_defined/shared";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
+import type { SerializedSkillTag } from "@app/lib/skills/format";
 import { serializeSkillTag } from "@app/lib/skills/format";
 
 // Build lookup map for direct access by sId.
@@ -15,12 +13,6 @@ const GLOBAL_SKILLS_BY_ID: Map<string, GlobalSkillDefinition> = new Map(
 
 // Type derived from the actual array.
 export type GlobalSkillId = (typeof GLOBAL_SKILLS_ARRAY)[number]["sId"];
-
-function hasChildSkills(
-  skill: GlobalSkillDefinition
-): skill is GlobalSkillWithChildrenDefinition {
-  return "childSkills" in skill;
-}
 
 export class GlobalSkillsRegistry {
   // Internal sync lookup that does not check restrictions.
@@ -49,14 +41,16 @@ export class GlobalSkillsRegistry {
     });
   }
 
-  static serializeSkillTag(sId: GlobalSkillId): string {
+  static serializeSkillTag<const Id extends GlobalSkillId>(
+    sId: Id
+  ): SerializedSkillTag<Id> {
     const skill = this.getByIdInternal(sId);
     if (!skill) {
       throw new Error(`Unknown global skill: ${sId}`);
     }
 
     return serializeSkillTag({
-      id: skill.sId,
+      id: sId,
       icon: skill.icon,
       name: skill.name,
     });
@@ -68,10 +62,9 @@ export class GlobalSkillsRegistry {
    * in the current agent loop and resolve the child with the current loop context before enabling it.
    */
   static getChildSkillIds(sId: string): readonly string[] {
-    const skill = this.getByIdInternal(sId);
-    return skill && hasChildSkills(skill)
-      ? skill.childSkills.map((child) => child.sId)
-      : [];
+    return (
+      this.getByIdInternal(sId)?.childSkills?.map((child) => child.sId) ?? []
+    );
   }
 
   static doesSkillInheritAgentConfigurationDataSources(sId: string): boolean {

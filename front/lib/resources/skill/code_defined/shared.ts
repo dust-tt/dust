@@ -2,7 +2,6 @@ import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_interna
 import type { Authenticator } from "@app/lib/auth";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { ResourceSId } from "@app/lib/resources/string_ids";
-import { serializeSkillTag } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -89,58 +88,48 @@ export type SkillDefinition<
   | WithStaticInstructions<BaseSkillDefinition<T>>
   | WithDynamicInstructions<BaseSkillDefinition<T>>;
 
+type SkillTagIds<T extends string> =
+  T extends `${string}<skill id="${infer Id}"${infer Rest}`
+    ? [Id, ...SkillTagIds<Rest>]
+    : [];
+
+type UniqueSkillIds<
+  T extends readonly string[],
+  Seen extends string = never,
+> = T extends readonly [infer Id extends string, ...infer Rest extends string[]]
+  ? Id extends Seen
+    ? UniqueSkillIds<Rest, Seen>
+    : [Id, ...UniqueSkillIds<Rest, Seen | Id>]
+  : [];
+
+type ChildSkillsForIds<T extends readonly string[]> = T extends readonly [
+  infer Id extends string,
+  ...infer Rest extends string[],
+]
+  ? readonly [
+      GlobalSkillDefinition & { readonly sId: Id },
+      ...ChildSkillsForIds<Rest>,
+    ]
+  : readonly [];
+
 /**
- * @cc [owner:aubin-tchoi,label:product;security] global-skill-nested-references
- * A global skill that embeds another global skill tag in its instructions MUST use
- * `defineGlobalSkillWithChildTags` so its authorized children come from the tag serializer calls.
+ * @cc [owner:aubin-tchoi,label:product;security] global-skill-children-match-tags
+ * For static global skill instructions typed as a literal, `childSkills` MUST contain exactly the
+ * unique global skill IDs emitted in `<skill>` tags, in first-appearance order. Global skills
+ * without those tags MUST NOT declare children.
  */
-export type GlobalSkillDefinition = SkillDefinition & {
-  readonly kind: "global";
-};
+export type GlobalSkillDefinition<Instructions extends string = string> =
+  SkillDefinition & { readonly kind: "global" } & (string extends Instructions
+      ? { readonly childSkills?: readonly GlobalSkillDefinition[] }
+      : UniqueSkillIds<SkillTagIds<Instructions>> extends []
+        ? { readonly instructions: Instructions; readonly childSkills?: never }
+        : {
+            readonly instructions: Instructions;
+            readonly childSkills: ChildSkillsForIds<
+              UniqueSkillIds<SkillTagIds<Instructions>>
+            >;
+          });
 
-export type GlobalSkillWithChildrenDefinition = GlobalSkillDefinition & {
-  readonly childSkills: readonly GlobalSkillDefinition[];
-};
-
-type GlobalSkillWithChildrenInput = Omit<
-  GlobalSkillDefinition,
-  "instructions" | "fetchInstructions"
-> & {
-  readonly childSkills?: never;
-  readonly fetchInstructions?: never;
-  readonly instructions: (
-    serializeChildSkillTag: (skill: GlobalSkillDefinition) => string
-  ) => string;
-};
-
-/**
- * @cc [owner:aubin-tchoi,label:product;security] global-skill-children-from-tags
- * Every child registered for a global skill MUST come from a tag emitted through the supplied
- * serializer while building its instructions. The serializer MUST use the canonical skill tag
- * format, and each child MUST appear only once in the resulting declaration.
- */
-export function defineGlobalSkillWithChildTags<
-  const T extends GlobalSkillWithChildrenInput,
->({
-  instructions: buildInstructions,
-  ...definition
-}: T): Omit<T, "instructions"> & GlobalSkillWithChildrenDefinition {
-  const childSkills = new Map<string, GlobalSkillDefinition>();
-  const instructions = buildInstructions((skill) => {
-    childSkills.set(skill.sId, skill);
-    return serializeSkillTag({
-      id: skill.sId,
-      icon: skill.icon,
-      name: skill.name,
-    });
-  });
-
-  return {
-    ...definition,
-    instructions,
-    childSkills: [...childSkills.values()],
-  };
-}
 // System skills have no definition of "equipped". When they are present they are directly part of the system prompt.
 export type SystemSkillDefinition = SkillDefinition<"enabled"> & {
   readonly kind: "system";
