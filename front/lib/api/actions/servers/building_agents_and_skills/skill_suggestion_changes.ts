@@ -234,7 +234,7 @@ export function checkSkillSuggestionKindAuthorized(
   return new Ok(undefined);
 }
 
-async function pruneSupersededSkillSuggestions(
+export async function pruneSupersededSkillSuggestions(
   auth: Authenticator,
   skill: SkillResource,
   created: SkillSuggestionResource

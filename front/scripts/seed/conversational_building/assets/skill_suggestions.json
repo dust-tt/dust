@@ -2,7 +2,6 @@
   {
     "id": "skillEditInstructions",
     "skillName": "MeetingNotesFormatter",
-    "overwrite": true,
     "kind": "edit",
     "title": "Add due dates to action items",
     "analysis": "Action items are more useful when they carry a due date. The skill should ask for one when it is missing from the notes instead of leaving it out.",
@@ -21,7 +20,6 @@
   {
     "id": "skillEditDescription",
     "skillName": "MeetingNotesFormatter",
-    "overwrite": true,
     "kind": "edit",
     "title": "Clarify when to use the skill",
     "analysis": "The agent-facing description should tell agents that the skill also handles call transcripts and Slack threads, so it gets picked up in those situations.",
@@ -36,7 +34,6 @@
   {
     "id": "skillEditors",
     "skillName": "MeetingNotesFormatter",
-    "overwrite": true,
     "kind": "editors",
     "title": "Hand over skill maintenance to Leila",
     "analysis": "Leila now runs the weekly team meetings and should be able to maintain the skill. Luke no longer attends them and asked to be removed.",
@@ -50,7 +47,6 @@
   {
     "id": "skillEditTool",
     "skillName": "MeetingNotesFormatter",
-    "overwrite": true,
     "kind": "edit",
     "title": "Schedule follow-ups with the Team Calendar tool",
     "analysis": "Meeting notes often end with a follow-up meeting to organize. The skill should offer to create the event with the Team Calendar tool instead of leaving it to the user.",
@@ -69,7 +65,6 @@
   {
     "id": "skillEditKnowledge",
     "skillName": "MeetingNotesFormatter",
-    "overwrite": true,
     "kind": "edit",
     "title": "Expand acronyms using the Team Glossary",
     "analysis": "Summaries reuse acronyms from the notes verbatim, which readers outside the team do not understand. The skill should look them up in the Team Glossary and expand them on first use.",
@@ -88,7 +83,6 @@
   {
     "id": "skillUserFacingDescription",
     "skillName": "MeetingNotesFormatter",
-    "overwrite": true,
     "kind": "user_facing_description",
     "title": "Describe the skill for members",
     "analysis": "Members browsing skills only see the user-facing description. It should say what to paste in and what comes back, not just what the skill does internally.",
@@ -101,7 +95,6 @@
   {
     "id": "skillName",
     "skillName": "MeetingNotesFormatter",
-    "overwrite": true,
     "kind": "name",
     "title": "Rename to match its scope",
     "analysis": "The skill now covers call transcripts and Slack threads, not only meeting notes, and its output is a decisions-and-actions summary. The name should say so.",
@@ -114,7 +107,6 @@
   {
     "id": "skillDelete",
     "skillName": "MeetingNotesFormatter",
-    "overwrite": true,
     "kind": "delete",
     "title": "Delete this skill",
     "analysis": "Nobody has sent meeting notes through this skill in three months; the team now formats notes directly in the meeting tool.",
@@ -125,7 +117,6 @@
   {
     "id": "skillAvailability",
     "skillName": "MeetingNotesFormatter",
-    "overwrite": true,
     "kind": "availability",
     "title": "Stop agents from auto-picking it",
     "analysis": "Agents keep discovering this skill on their own and applying it to messages that are not meeting notes. Keeping it available to members, but not to agents, lets people choose it when it fits.",
