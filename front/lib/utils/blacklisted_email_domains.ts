@@ -2427,6 +2427,7 @@ const BLACKLISTED_EMAIL_DOMAINS = new Set([
   "octovie.com",
   "odaymail.com",
   "odem.com",
+  "oddxq.dev",
   "odnorazovoe.ru",
   "oepia.com",
   "oerpub.org",
