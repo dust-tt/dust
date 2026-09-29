@@ -125,6 +125,11 @@ function isSignal(conclusion: string | null, jobs: Job[]): boolean {
   }
 }
 
+// How far back the run history search can see; the run-ordering contract depends on this value.
+const RUN_LOOKBACK = 100;
+// One page holds every job of a run for the workflows we watch.
+const JOBS_PER_PAGE = 100;
+
 async function findSignalConclusion(
   { github, context }: Pick<BreakageOptions, "github" | "context">,
   candidates: Array<{ id: number; conclusion: string | null }>
@@ -136,7 +141,7 @@ async function findSignalConclusion(
     const { data } = await github.rest.actions.listJobsForWorkflowRun({
       ...context.repo,
       run_id: candidate.id,
-      per_page: 100,
+      per_page: JOBS_PER_PAGE,
     });
     if (isSignal(candidate.conclusion, data.jobs)) {
       return "success";
@@ -164,7 +169,7 @@ async function getAttemptConclusion({
         ...context.repo,
         run_id: run.id,
         attempt_number,
-        per_page: 100,
+        per_page: JOBS_PER_PAGE,
       });
       return isSignal(prior.conclusion, data.jobs) ? "success" : null;
     }
@@ -200,7 +205,7 @@ async function getPreviousState({
     workflow_id: run.workflow_id,
     branch: "main",
     status: "completed",
-    per_page: 100,
+    per_page: RUN_LOOKBACK,
   });
   const completed = data.workflow_runs.filter(
     (candidate) =>
@@ -319,7 +324,7 @@ export async function buildBreakageNotification({
   const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
     ...context.repo,
     run_id: run.id,
-    per_page: 100,
+    per_page: JOBS_PER_PAGE,
   });
   if (!isSignal(run.conclusion, jobsData.jobs)) {
     core.info(
