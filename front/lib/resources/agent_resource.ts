@@ -2737,6 +2737,7 @@ export class AgentResource
         ? GLOBAL_AGENTS_WORKSPACE_ID
         : auth.getNonNullableWorkspace().sId,
       agent_id: this.sId,
+      agent_model_id: isGlobal ? null : this.id,
       status: isGlobal ? "active" : this.status,
       scope: this.scope,
       model: {

@@ -23,10 +23,13 @@ import {
 } from "@app/lib/agent_search/query";
 import { buildAgentNameAutocompleteQuery } from "@app/lib/agent_search/ranking";
 import { searchAgents } from "@app/lib/api/agents/search";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { matchesAgentSearchFilters } from "@app/tests/utils/agent_search";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -58,6 +61,7 @@ function makeDocument(
     active_users_count: 0,
     favorite_count: 0,
     editor_ids: [],
+    agent_model_id: null,
     ...overrides,
   };
 }
@@ -127,6 +131,70 @@ describe("searchAgents", () => {
     expect(lastPage.value).toMatchObject({ total: 3, hasMore: false });
     expect(lastPage.value.agents.map((agent) => agent.sId)).toEqual(["c"]);
     expect(mockSearch.mock.lastCall?.[0]).toMatchObject({ from: 2, size: 2 });
+  });
+
+  it("returns edit permission from current grants even when indexed editors are stale", async () => {
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createResourceTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const resource = await AgentResource.fetchById(auth, agent.sId);
+    assert(resource);
+    mockHits([
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: agent.sId,
+        agent_model_id: resource.id,
+        editor_ids: [],
+      }),
+    ]);
+
+    const before = await searchAgents(auth, { searchTerm: "" });
+    assert(before.isOk());
+    expect(before.value.agents[0].canEdit).toBe(true);
+
+    const removed = await resource.updateEditorsFromDelta(auth, {
+      usersToAdd: [],
+      usersToRemove: [user],
+    });
+    expect(removed.isOk()).toBe(true);
+    await auth.refresh();
+
+    const after = await searchAgents(auth, { searchTerm: "" });
+    assert(after.isOk());
+    expect(after.value.agents[0].canEdit).toBe(false);
+  });
+
+  it.each([
+    "regular",
+    "admin",
+    "system",
+  ] as const)("matches agent edit permissions for a %s API key", async (keyKind) => {
+    const {
+      authenticator: auth,
+      workspace,
+      globalGroup,
+    } = await createResourceTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const resource = await AgentResource.fetchById(auth, agent.sId);
+    assert(resource);
+    const key = await KeyFactory[keyKind](globalGroup);
+    const keyAuth = await Authenticator.fromKey(key, workspace.sId);
+    mockHits([
+      makeDocument({
+        workspace_id: workspace.sId,
+        agent_id: agent.sId,
+        agent_model_id: resource.id,
+      }),
+    ]);
+
+    const result = await searchAgents(keyAuth, { searchTerm: "" });
+    assert(result.isOk());
+    const agentForKey = await AgentResource.fetchById(keyAuth, agent.sId);
+    assert(agentForKey);
+    expect(result.value.agents[0].canEdit).toBe(agentForKey.toJSON().canEdit);
   });
 
   it("requires every search term to prefix-match the name, in any order", async () => {
