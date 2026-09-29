@@ -1,70 +1,57 @@
+import { FILTER_HASH_PARAM } from "@app/components/shared/filter_panel/filterHash";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
-import {
-  usageFilterFromIds,
-  usageFilterToIds,
+import type {
+  UsageFilter,
+  UsageFilterOption,
 } from "@app/components/workspace/analytics/usageFilter";
+import {
+  getUsageFilterOptions,
+  usageFilterFromSelection,
+  usageFilterToSelection,
+} from "@app/components/workspace/analytics/usageFilter";
+import { useHashParam } from "@app/hooks/useHashParams";
 import type {
   ConsumptionGranularity,
   ConsumptionPeriodSelection,
 } from "@app/lib/analytics/consumption_period";
 import type { AnalyticsViewState } from "@app/lib/analytics/view_params";
 import {
-  analyticsViewQueryString,
-  analyticsViewUrlQuery,
   readAnalyticsView,
+  serializeAnalyticsView,
 } from "@app/lib/analytics/view_params";
-import { useAppRouter } from "@app/lib/platform";
 import type { SetStateAction } from "react";
 import { useCallback, useEffect, useState } from "react";
 
 /**
- * The query string is the source of truth for the period, the breakdown
+ * The URL hash is the source of truth for the period, the breakdown
  * dimension and the filter. It is read once on mount and written back with
  * `replace`, so Back leaves the page instead of stepping through every filter
- * edit.
+ * edit. `restoredOptions` are the options read from the hash, named by their
+ * stored labels until facets resolve them.
  */
 export function useAnalyticsViewState() {
-  const router = useAppRouter();
-  const [view, setView] = useState<
-    Omit<AnalyticsViewState, "filter"> & { filter: UsageFilter }
-  >(() => {
-    const initialView = readAnalyticsView(router.query);
+  const [hashValue, setHashValue] = useHashParam(FILTER_HASH_PARAM);
+  const [restored] = useState<{
+    view: Omit<AnalyticsViewState, "filter"> & { filter: UsageFilter };
+    options: ReadonlySet<UsageFilterOption>;
+  }>(() => {
+    const initialView = readAnalyticsView(hashValue);
+    const filter = usageFilterFromSelection(initialView.filter);
     return {
-      ...initialView,
-      filter: usageFilterFromIds(initialView.filter),
+      view: { ...initialView, filter },
+      options: new Set(getUsageFilterOptions(filter)),
     };
   });
+  const [view, setView] = useState(restored.view);
 
   useEffect(() => {
-    const urlView: AnalyticsViewState = {
-      ...view,
-      filter: usageFilterToIds(view.filter),
-    };
-    const nextQuery = analyticsViewUrlQuery(
-      router.pathname,
-      router.query,
-      urlView
+    setHashValue(
+      serializeAnalyticsView({
+        ...view,
+        filter: usageFilterToSelection(view.filter),
+      })
     );
-    const shouldDropQuery = Object.keys(nextQuery).length === 0;
-    if (
-      (shouldDropQuery && Object.keys(router.query).length === 0) ||
-      (!shouldDropQuery &&
-        analyticsViewQueryString(router.query) ===
-          analyticsViewQueryString(nextQuery))
-    ) {
-      return;
-    }
-
-    void router.replace(
-      {
-        pathname: router.pathname,
-        query: nextQuery,
-      },
-      undefined,
-      { shallow: true }
-    );
-  }, [router, view]);
+  }, [view, setHashValue]);
 
   const setPeriod = useCallback((period: ConsumptionPeriodSelection) => {
     setView((current) => ({ ...current, period }));
@@ -94,5 +81,6 @@ export function useAnalyticsViewState() {
     setGranularity,
     setDimension,
     setFilter,
+    restoredOptions: restored.options,
   };
 }

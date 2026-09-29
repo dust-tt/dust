@@ -2,6 +2,7 @@ import {
   getModelTier,
   getTierIdForMetaModelId,
 } from "@app/components/model_picker/modelPickerUtils";
+import type { FilterHashSelection } from "@app/components/shared/filter_panel/filterHash";
 import type {
   CategoryFilter,
   FilterOptionBase,
@@ -231,10 +232,9 @@ export function getSearchFilterMcpServerViewIds<
     );
 }
 
-// Selected IDs mapped to their labels. Tool selections hold MCP server view IDs; the other
-// categories hold option IDs.
+// Tool selections hold MCP server view IDs; the other categories hold option IDs.
 export type SearchFilterSelection<Category extends SearchFilterCategory> =
-  Partial<Record<Category, Record<string, string>>>;
+  FilterHashSelection<Category>;
 
 export function toSearchFilterSelection<Category extends SearchFilterCategory>(
   filter: SearchFilter<Category>,

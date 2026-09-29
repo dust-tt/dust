@@ -1,3 +1,4 @@
+import type { FilterHashSelection } from "@app/components/shared/filter_panel/filterHash";
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type {
@@ -190,17 +191,19 @@ export const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
   api_key: [],
 };
 
-// URL filters only carry ids. Keep that transport shape at the boundary and
-// use minimal options until the user replaces them from the filter panel.
-export function usageFilterFromIds(ids: UsageFilterIds): UsageFilter {
+// URL filters only carry ids and labels. Keep that transport shape at the
+// boundary and use minimal options until facets or the filter panel replace them.
+export function usageFilterFromSelection(
+  selection: FilterHashSelection<ConsumptionScopeDimension>
+): UsageFilter {
   let filter: UsageFilter = {};
   for (const dimension of CONSUMPTION_SCOPE_DIMENSIONS) {
-    for (const id of ids[dimension] ?? []) {
+    for (const [id, name] of Object.entries(selection[dimension] ?? {})) {
       filter = addUsageFilterOption(
         filter,
         usageFilterOptionFromAttributionRow(dimension, {
           id,
-          name: id,
+          name,
           pictureUrl: null,
         })
       );
@@ -230,10 +233,12 @@ function resolveCategory<C extends UsageFilterCategory>(
     : resolved;
 }
 
-export function hasUnresolvedUsageFilterNames(filter: UsageFilter): boolean {
+export function getUsageFilterOptions(
+  filter: UsageFilter
+): UsageFilterOption[] {
   return USAGE_FILTER_CATEGORIES.flatMap(
     (category): UsageFilterOption[] => filter[category] ?? []
-  ).some((option) => option.name === option.id);
+  );
 }
 
 export function resolveUsageFilter(
@@ -270,6 +275,30 @@ export function usageFilterToIds(filter: UsageFilter): UsageFilterIds {
     source: filter.source?.map(({ id }) => id),
     trigger: filter.trigger?.map(({ id }) => id),
     api_key: filter.api_key?.map(({ id }) => id),
+  };
+}
+
+function toSelectionLabels(
+  options: UsageFilterOption[] | undefined
+): Record<string, string> | undefined {
+  return options?.length
+    ? Object.fromEntries(options.map(({ id, name }) => [id, name]))
+    : undefined;
+}
+
+export function usageFilterToSelection(
+  filter: UsageFilter
+): FilterHashSelection<ConsumptionScopeDimension> {
+  return {
+    agent: toSelectionLabels(filter.agent),
+    user: toSelectionLabels(filter.member),
+    group: toSelectionLabels(filter.group),
+    model: toSelectionLabels(filter.model),
+    tool: toSelectionLabels(filter.tool),
+    skill: toSelectionLabels(filter.skill),
+    source: toSelectionLabels(filter.source),
+    trigger: toSelectionLabels(filter.trigger),
+    api_key: toSelectionLabels(filter.api_key),
   };
 }
 

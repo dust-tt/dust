@@ -7,12 +7,9 @@ import {
 import type { AnalyticsViewState } from "@app/lib/analytics/view_params";
 import {
   analyticsConsumptionHref,
-  analyticsViewQuery,
-  analyticsViewQueryString,
-  analyticsViewUrlQuery,
   DEFAULT_ANALYTICS_VIEW_STATE,
-  MAX_ANALYTICS_URL_LENGTH,
   readAnalyticsView,
+  serializeAnalyticsView,
 } from "@app/lib/analytics/view_params";
 import {
   CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION,
@@ -22,85 +19,57 @@ import { describe, expect, it } from "vitest";
 
 const WORKSPACE_ID = "0ec9852c2f";
 
-function roundTripped(view: AnalyticsViewState): AnalyticsViewState {
-  const query = analyticsViewQueryString(analyticsViewQuery(view));
-  const readBack: Record<string, string[]> = {};
-  for (const [name, value] of new URLSearchParams(query)) {
-    readBack[name] = [...(readBack[name] ?? []), value];
-  }
-  return readAnalyticsView(readBack);
+function encode(json: unknown): string {
+  return Buffer.from(JSON.stringify(json)).toString("base64url");
 }
 
-const VIEW_CASES: [query: string, state: AnalyticsViewState][] = [
+function decode(value: string | undefined): string {
+  return Buffer.from(value ?? "", "base64url").toString();
+}
+
+const VIEW_CASES: [json: string, state: AnalyticsViewState][] = [
   ["", DEFAULT_ANALYTICS_VIEW_STATE],
   [
-    "a=8oGtWFRlPa",
+    '{"filter":{"agent":{"8oGtWFRlPa":"Support"}}}',
     {
       period: { kind: "cycle" },
       granularity: DEFAULT_CONSUMPTION_GRANULARITY,
       dimension: "agent",
-      filter: { agent: ["8oGtWFRlPa"] },
+      filter: { agent: { "8oGtWFRlPa": "Support" } },
     },
   ],
   [
-    "p=30&d=model&a=8oGtWFRlPa&s=slack",
+    '{"period":30,"tab":"model","filter":{"agent":{"8oGtWFRlPa":"Support"},"source":{"slack":"Slack"}}}',
     {
       period: { kind: "days", days: 30 },
       granularity: DEFAULT_CONSUMPTION_GRANULARITY,
       dimension: "model",
-      filter: { agent: ["8oGtWFRlPa"], source: ["slack"] },
-    },
-  ],
-  [
-    "k=Zapier+prod+*main*",
-    {
-      period: { kind: "cycle" },
-      granularity: DEFAULT_CONSUMPTION_GRANULARITY,
-      dimension: "agent",
-      filter: { api_key: ["Zapier prod *main*"] },
+      filter: {
+        agent: { "8oGtWFRlPa": "Support" },
+        source: { slack: "Slack" },
+      },
     },
   ],
 ];
 
-describe("analytics view params", () => {
-  it.each(VIEW_CASES)("writes %s", (query, state) => {
-    expect(analyticsViewQueryString(analyticsViewQuery(state))).toBe(query);
+describe("analytics view hash", () => {
+  it.each(VIEW_CASES)("writes %s", (json, state) => {
+    expect(decode(serializeAnalyticsView(state))).toBe(json);
   });
 
-  it.each(VIEW_CASES)("reads %s", (query, state) => {
-    expect(roundTripped(state)).toEqual(state);
+  it.each(VIEW_CASES)("reads %s", (_json, state) => {
+    expect(readAnalyticsView(serializeAnalyticsView(state))).toEqual(state);
   });
 
   it("spends nothing on a field that is already on its default", () => {
     expect(
-      analyticsViewQueryString(
-        analyticsViewQuery({
+      decode(
+        serializeAnalyticsView({
           ...DEFAULT_ANALYTICS_VIEW_STATE,
-          filter: { model: [], source: ["slack"] },
+          filter: { model: {}, source: { slack: "Slack" } },
         })
       )
-    ).toBe("s=slack");
-  });
-
-  it("clears the params a field no longer needs", () => {
-    expect(
-      analyticsViewQuery({
-        ...DEFAULT_ANALYTICS_VIEW_STATE,
-        filter: { source: ["slack"] },
-      })
-    ).toEqual({
-      p: undefined,
-      gr: undefined,
-      d: undefined,
-      a: undefined,
-      u: undefined,
-      g: undefined,
-      m: undefined,
-      t: undefined,
-      sk: undefined,
-      s: ["slack"],
-      k: undefined,
-    });
+    ).toBe('{"filter":{"source":{"slack":"Slack"}}}');
   });
 });
 
@@ -108,133 +77,94 @@ describe("every axis of the view survives the round trip", () => {
   it.each(CONSUMPTION_PERIOD_OPTIONS)("period %o", (period) => {
     const view = { ...DEFAULT_ANALYTICS_VIEW_STATE, period };
 
-    expect(roundTripped(view)).toEqual(view);
+    expect(readAnalyticsView(serializeAnalyticsView(view))).toEqual(view);
   });
 
   it.each(CONSUMPTION_GRANULARITY_OPTIONS)("granularity %s", (granularity) => {
     const view = { ...DEFAULT_ANALYTICS_VIEW_STATE, granularity };
 
-    expect(roundTripped(view)).toEqual(view);
+    expect(readAnalyticsView(serializeAnalyticsView(view))).toEqual(view);
   });
 
   it.each(CONSUMPTION_DIMENSIONS)("dimension %s", (dimension) => {
     const view = { ...DEFAULT_ANALYTICS_VIEW_STATE, dimension };
 
-    expect(roundTripped(view)).toEqual(view);
+    expect(readAnalyticsView(serializeAnalyticsView(view))).toEqual(view);
   });
 
-  it.each(CONSUMPTION_SCOPE_DIMENSIONS)("dimension %s", (dimension) => {
+  it.each(CONSUMPTION_SCOPE_DIMENSIONS)("filter %s", (dimension) => {
     const view = {
       ...DEFAULT_ANALYTICS_VIEW_STATE,
-      filter: { [dimension]: ["id-1", "id 2", "a&b=c"] },
+      filter: {
+        [dimension]: { "id-1": "One", "id 2": "Two", "a&b=c": "Café & co" },
+      },
     };
 
-    expect(roundTripped(view)).toEqual(view);
+    expect(readAnalyticsView(serializeAnalyticsView(view))).toEqual(view);
   });
 });
 
 describe("readAnalyticsView", () => {
   it("renders the default view for anything it cannot read", () => {
-    expect(readAnalyticsView({})).toEqual(DEFAULT_ANALYTICS_VIEW_STATE);
-    expect(readAnalyticsView({ p: "45", d: "nope", a: "" })).toEqual(
+    expect(readAnalyticsView(undefined)).toEqual(DEFAULT_ANALYTICS_VIEW_STATE);
+    expect(readAnalyticsView("not base64!")).toEqual(
       DEFAULT_ANALYTICS_VIEW_STATE
     );
-    expect(readAnalyticsView({ p: ["30", "7"] }).period).toEqual({
-      kind: "days",
-      days: 30,
+    expect(
+      readAnalyticsView(
+        encode({
+          period: 45,
+          granularity: "never",
+          tab: "nope",
+          filter: { agent: { "": "Empty" } },
+        })
+      )
+    ).toEqual(DEFAULT_ANALYTICS_VIEW_STATE);
+    expect(readAnalyticsView(encode({ period: "30" })).period).toEqual({
+      kind: "cycle",
     });
-  });
-
-  it("ignores a param it does not own", () => {
-    expect(readAnalyticsView({ tab: "explore", v: "1pd30" })).toEqual(
-      DEFAULT_ANALYTICS_VIEW_STATE
-    );
   });
 
   it("caps a category at what the API accepts", () => {
-    const agents = Array.from({ length: 900 }, (_, index) => `agent-${index}`);
-
-    expect(readAnalyticsView({ a: agents }).filter.agent).toHaveLength(
-      CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION
+    const agents = Object.fromEntries(
+      Array.from({ length: 900 }, (_, index) => [`agent-${index}`, "Agent"])
     );
-  });
-});
 
-describe("analyticsViewUrlQuery", () => {
-  it("rebuilds the query from the unowned head and complete view tail", () => {
     expect(
-      analyticsViewUrlQuery(
-        `/w/${WORKSPACE_ID}/analytics/consumption`,
-        { tab: "explore", a: "old-agent" },
-        {
-          ...DEFAULT_ANALYTICS_VIEW_STATE,
-          dimension: "model",
-          filter: { source: ["slack"] },
-        }
+      Object.keys(
+        readAnalyticsView(encode({ filter: { agent: agents } })).filter.agent ??
+          {}
       )
-    ).toEqual({
-      tab: "explore",
-      p: undefined,
-      gr: undefined,
-      d: "model",
-      a: undefined,
-      u: undefined,
-      g: undefined,
-      m: undefined,
-      t: undefined,
-      sk: undefined,
-      s: ["slack"],
-      k: undefined,
-    });
-  });
-
-  it("drops the whole query when the URL would be too long", () => {
-    const query = analyticsViewUrlQuery(
-      `/w/${WORKSPACE_ID}/analytics/consumption`,
-      { tab: "explore", a: "old-agent" },
-      {
-        ...DEFAULT_ANALYTICS_VIEW_STATE,
-        filter: { source: ["x".repeat(MAX_ANALYTICS_URL_LENGTH)] },
-      }
-    );
-
-    expect(query).toEqual({});
+    ).toHaveLength(CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION);
   });
 });
 
 describe("analyticsConsumptionHref", () => {
-  it("omits the query string for the default view", () => {
+  it("omits the hash for the default view", () => {
     expect(analyticsConsumptionHref(WORKSPACE_ID)).toBe(
       `/w/${WORKSPACE_ID}/analytics/consumption`
     );
   });
 
   it("builds a link other pages can hand to the router", () => {
-    expect(
-      analyticsConsumptionHref(WORKSPACE_ID, {
-        period: { kind: "days", days: 30 },
-        dimension: "model",
-        filter: { agent: ["8oGtWFRlPa"] },
-      })
-    ).toBe(
-      `/w/${WORKSPACE_ID}/analytics/consumption?p=30&d=model&a=8oGtWFRlPa`
-    );
-  });
-
-  it("leaves escaping to the serializer", () => {
     const href = analyticsConsumptionHref(WORKSPACE_ID, {
-      filter: { api_key: ["Zapier prod *main*", "a&b"] },
+      period: { kind: "days", days: 30 },
+      dimension: "model",
+      filter: { agent: { "8oGtWFRlPa": "Support" } },
     });
     const url = new URL(href, "https://dust.tt");
 
-    expect(url.searchParams.getAll("k")).toEqual(["Zapier prod *main*", "a&b"]);
-  });
-
-  it("omits the query string when the URL would be too long", () => {
+    expect(url.pathname).toBe(`/w/${WORKSPACE_ID}/analytics/consumption`);
+    expect(url.search).toBe("");
     expect(
-      analyticsConsumptionHref(WORKSPACE_ID, {
-        filter: { source: ["x".repeat(MAX_ANALYTICS_URL_LENGTH)] },
-      })
-    ).toBe(`/w/${WORKSPACE_ID}/analytics/consumption`);
+      readAnalyticsView(
+        new URLSearchParams(url.hash.slice(2)).get("search") ?? undefined
+      )
+    ).toEqual({
+      period: { kind: "days", days: 30 },
+      granularity: DEFAULT_CONSUMPTION_GRANULARITY,
+      dimension: "model",
+      filter: { agent: { "8oGtWFRlPa": "Support" } },
+    });
   });
 });
