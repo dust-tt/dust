@@ -13,6 +13,7 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   getMessageDate,
+  hasMentionRequiringValidation,
   isAgentMessageWithStreaming,
   isCompactionMessage,
   isConversationForkNotice,
@@ -298,9 +299,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       );
     }
 
-    if (isHiddenMessage(data)) {
-      // This is hacky but in case of handover we generate a user message from the agent and we want
-      // to hide it in the conversation because it has no value to display.
+    // This is hacky but in case of handover we generate a user message from the agent and we want
+    // to hide it in the conversation because it has no value to display. Its mentions requiring
+    // validation (e.g. a child agent restricted by space usage) must still be shown.
+    const isHidden = isHiddenMessage(data);
+    if (isHidden && !hasMentionRequiringValidation(data)) {
       return null;
     }
 
@@ -348,7 +351,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     return (
       <>
-        {!areSameDate && <MessageDateIndicator message={data} />}
+        {!areSameDate && !isHidden && <MessageDateIndicator message={data} />}
         <div
           key={`message-id-${sId}`}
           ref={ref}
@@ -358,7 +361,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             !nextData && "mb-10"
           )}
         >
-          {isUserMessage(data) && (
+          {isUserMessage(data) && !isHidden && (
             <UserMessage
               citations={citations}
               conversationId={context.conversation.sId}
