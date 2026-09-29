@@ -1,6 +1,6 @@
-import { validateUrl } from "@app/types/shared/utils/url_utils";
 import Link from "@tiptap/extension-link";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 export const LinkExtension = Link.extend({
   addKeyboardShortcuts() {
