@@ -1212,10 +1212,14 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     ): Promise<Result<null, { type: "last_admin" }>> => {
       if (!transaction) {
         // Serialize workspace-level admin mutations when we own the transaction.
-        await frontSequelize.query("SELECT pg_advisory_xact_lock(:wid)", {
-          replacements: { wid: workspace.id },
-          transaction: t,
-        });
+        // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
+        await frontSequelize.query(
+          "SELECT pg_advisory_xact_lock(hashtext(:key))",
+          {
+            replacements: { key: `membership_admin:${workspace.id}` },
+            transaction: t,
+          }
+        );
       }
       if (membership.role === "admin" && !allowLastAdminRevocation) {
         const adminsCount = await this.getMembersCountForWorkspace({
@@ -1371,10 +1375,14 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         t: Transaction
       ): Promise<Result<null, { type: "last_admin" }>> => {
         if (!transaction) {
-          await frontSequelize.query("SELECT pg_advisory_xact_lock(:wid)", {
-            replacements: { wid: workspace.id },
-            transaction: t,
-          });
+          // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
+          await frontSequelize.query(
+            "SELECT pg_advisory_xact_lock(hashtext(:key))",
+            {
+              replacements: { key: `membership_admin:${workspace.id}` },
+              transaction: t,
+            }
+          );
         }
         if (previousRole === "admin") {
           const adminsCount = await this.getMembersCountForWorkspace({
