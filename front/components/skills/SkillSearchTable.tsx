@@ -3,7 +3,6 @@ import {
   SkillAvailabilityCell,
   SkillEditorsCell,
   SkillLastEditedCell,
-  SkillNameCell,
 } from "@app/components/skills/SkillTableCells";
 import { EntityTooltipCard } from "@app/components/workspace/analytics/creditsTableCells";
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
@@ -66,6 +65,10 @@ type SkillSearchRow = SkillListItemType & { onClick: () => void };
 /**
  * @cc [owner:aubin-tchoi,label:product] skill-name-tooltip
  * Hovering or focusing a skill name must show its name and user-facing description.
+ */
+/**
+ * @cc [owner:aubin-tchoi,label:react] matching-table-density
+ * The loaded table and its loading skeleton MUST use the same density.
  */
 export function SkillSearchTable({
   owner,
@@ -176,14 +179,22 @@ export function SkillSearchTable({
                   tooltipTriggerAsChild
                   trigger={
                     <button type="button" className="w-full min-w-0 text-left">
-                      <SkillNameCell skill={skill} />
+                      <div className="flex items-center gap-2 py-1">
+                        <SkillAvatar size="xs" />
+                        <span className="heading-sm min-w-0 grow overflow-hidden truncate text-foreground">
+                          {skill.name}
+                        </span>
+                      </div>
                     </button>
                   }
                 />
               </DataTable.CellContent>
             );
           },
-          meta: { className: SKILL_SEARCH_NAME_COLUMN_WIDTH },
+          meta: {
+            className: SKILL_SEARCH_NAME_COLUMN_WIDTH,
+            rowHeader: true,
+          },
         },
         {
           id: "availability" as const,
@@ -191,7 +202,10 @@ export function SkillSearchTable({
           cell: ({ row: { original: skill } }) => (
             <SkillAvailabilityCell availability={skill.availability} />
           ),
-          meta: { className: "hidden w-40 @md:table-cell" },
+          meta: {
+            type: "status",
+            className: "hidden w-40 @md:table-cell",
+          },
         },
         {
           id: "usage" as const,
@@ -209,7 +223,7 @@ export function SkillSearchTable({
               }
             />
           ),
-          meta: { className: "w-24 font-mono tabular-nums" },
+          meta: { type: "numeric", className: "w-24 font-mono" },
         },
         {
           id: "editors" as const,
@@ -219,7 +233,7 @@ export function SkillSearchTable({
               editors={isDustProvidedSkill(skill) ? null : skill.editors}
             />
           ),
-          meta: { className: "hidden w-32 @sm:table-cell" },
+          meta: { className: "hidden w-32 pl-6 @sm:table-cell" },
         },
         {
           id: "updatedAt" as const,
@@ -256,14 +270,14 @@ export function SkillSearchTable({
       <div role="status" aria-label="Loading skills">
         <DataTableSkeleton
           columns={columns}
-          rowHeight={64}
+          density="default"
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
               case "select":
                 return <LoadingBlock className="h-4 w-4 rounded-sm" />;
               case "name":
                 return (
-                  <AvatarCellSkeleton avatarClassName="h-9 w-9 rounded-lg">
+                  <AvatarCellSkeleton>
                     <TextCellSkeleton
                       className={rowIndex % 2 === 0 ? "h-4 w-32" : "h-4 w-40"}
                     />
@@ -302,6 +316,7 @@ export function SkillSearchTable({
         onClick: () => onSelect(skill.sId),
       }))}
       columns={columns}
+      density="default"
       getRowId={(skill) => skill.sId}
       enableRowSelection={(row) => canSelect(row.original)}
       disableRowClickSelection

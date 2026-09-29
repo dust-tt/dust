@@ -155,6 +155,10 @@ function AgentSearchTagSelector({
  * @cc [owner:aubin-tchoi,label:product] agent-name-tooltip
  * Hovering or focusing an agent name must show its name and description.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:react] matching-table-density
+ * The loaded table and its loading skeleton MUST use the same density.
+ */
 export function AgentSearchTable({
   owner,
   agents,
@@ -269,9 +273,9 @@ export function AgentSearchTable({
                 tooltipTriggerAsChild
                 trigger={
                   <button type="button" className="w-full min-w-0 text-left">
-                    <div className="flex flex-row items-center gap-2 py-3">
+                    <div className="flex flex-row items-center gap-2 py-1">
                       <div>
-                        <Avatar visual={agent.pictureUrl} size="sm" />
+                        <Avatar visual={agent.pictureUrl} size="xs" />
                       </div>
                       <div className="heading-sm min-w-0 grow overflow-hidden truncate text-foreground">
                         {agent.name}
@@ -282,7 +286,7 @@ export function AgentSearchTable({
               />
             </DataTable.CellContent>
           ),
-          meta: { className: "w-48 @lg:w-full" },
+          meta: { className: "w-48 @lg:w-full", rowHeader: true },
         },
         {
           id: "model" as const,
@@ -307,7 +311,10 @@ export function AgentSearchTable({
               )}
             </DataTable.CellContent>
           ),
-          meta: { className: "hidden @lg:w-32 @lg:table-cell" },
+          meta: {
+            type: "status",
+            className: "hidden @lg:w-32 @lg:table-cell",
+          },
         },
         {
           id: "editors" as const,
@@ -367,7 +374,10 @@ export function AgentSearchTable({
               }
             />
           ),
-          meta: { className: "hidden @sm:w-24 @sm:table-cell" },
+          meta: {
+            type: "numeric",
+            className: "hidden @sm:w-24 @sm:table-cell",
+          },
         },
         {
           id: "feedback" as const,
@@ -385,7 +395,10 @@ export function AgentSearchTable({
               />
             );
           },
-          meta: { className: "hidden @lg:w-28 @lg:table-cell" },
+          meta: {
+            type: "numeric",
+            className: "hidden @lg:w-28 @lg:table-cell",
+          },
         },
         {
           id: "updatedAt" as const,
@@ -423,18 +436,17 @@ export function AgentSearchTable({
       <div role="status" aria-label="Loading agents">
         <DataTableSkeleton
           columns={columns}
-          rowHeight={64}
+          density="default"
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
               case "select":
                 return <LoadingBlock className="h-4 w-4 rounded-sm" />;
               case "name":
                 return (
-                  <AvatarCellSkeleton avatarClassName="h-9 w-9 rounded-lg">
+                  <AvatarCellSkeleton>
                     <TextCellSkeleton
                       className={rowIndex % 2 === 0 ? "h-4 w-32" : "h-4 w-40"}
                     />
-                    <TextCellSkeleton className="h-4 w-3/4" />
                   </AvatarCellSkeleton>
                 );
               case "model":
@@ -476,6 +488,7 @@ export function AgentSearchTable({
         onClick: () => onSelect(agent.sId),
       }))}
       columns={columns}
+      density="default"
       getRowId={(agent) => agent.sId}
       enableRowSelection={(row) => canSelect(row.original)}
       disableRowClickSelection
