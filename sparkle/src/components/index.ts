@@ -314,6 +314,8 @@ export {
 } from "./Sheet";
 export type { SidebarLayoutProps, SidebarLayoutRef } from "./SidebarLayout";
 export { SidebarLayout } from "./SidebarLayout";
+export type { SliderProps } from "./Slider";
+export { Slider } from "./Slider";
 export type { SliderStepsProps } from "./SliderSteps";
 export { SliderSteps } from "./SliderSteps";
 export { SliderToggle } from "./SliderToggle";
