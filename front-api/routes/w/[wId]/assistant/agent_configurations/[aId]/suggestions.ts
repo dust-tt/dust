@@ -1,5 +1,3 @@
-import { isAuthorizedToApplyAgentSuggestions } from "@app/lib/api/assistant/agent_suggestion_authorization";
-import { applyAgentSuggestions } from "@app/lib/api/assistant/apply_agent_suggestions";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -136,17 +134,7 @@ app.patch(
       });
     }
 
-    const { suggestionIds, state, applyToAgent } = ctx.req.valid("json");
-
-    if (applyToAgent && state !== "approved") {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Only an approved suggestion can be applied to the agent.",
-        },
-      });
-    }
+    const { suggestionIds, state } = ctx.req.valid("json");
 
     const suggestions = await AgentSuggestionResource.fetchByIds(
       auth,
@@ -187,46 +175,6 @@ app.patch(
           message: `The following suggestions belong to a batch and must be reviewed with it: ${batchedSuggestionIds.join(", ")}.`,
         },
       });
-    }
-
-    if (applyToAgent) {
-      const alreadyReviewedIds = suggestions
-        .filter((suggestion) => suggestion.state !== "pending")
-        .map((suggestion) => suggestion.sId);
-      if (alreadyReviewedIds.length > 0) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `The following agent suggestions have already been reviewed: ${alreadyReviewedIds.join(", ")}.`,
-          },
-        });
-      }
-
-      if (!isAuthorizedToApplyAgentSuggestions(auth, agent, suggestions)) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "agent_group_permission_error",
-            message:
-              "You are not allowed to apply one or more of these suggestions to this agent.",
-          },
-        });
-      }
-
-      const applyRes = await applyAgentSuggestions(auth, {
-        agent,
-        suggestions,
-      });
-      if (applyRes.isErr()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: applyRes.error.message,
-          },
-        });
-      }
     }
 
     await AgentSuggestionResource.bulkUpdateState(auth, suggestions, state);

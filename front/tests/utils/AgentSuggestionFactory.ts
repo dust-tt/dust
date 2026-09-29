@@ -122,6 +122,7 @@ export class AgentSuggestionFactory {
       suggestion: KnowledgeSuggestionType;
       analysis: string | null;
       state: AgentSuggestionState;
+      batchModelId: number | null;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -137,6 +138,7 @@ export class AgentSuggestionFactory {
         analysis: overrides.analysis ?? "Added useful knowledge",
         state: overrides.state ?? "pending",
         source: "sidekick",
+        batchId: overrides.batchModelId ?? null,
       }
     );
   }
@@ -177,6 +179,7 @@ export class AgentSuggestionFactory {
       analysis: string | null;
       state: AgentSuggestionState;
       source: AgentSuggestionSource;
+      batchModelId: number | null;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -191,6 +194,7 @@ export class AgentSuggestionFactory {
         analysis: overrides.analysis ?? "Suggested a more capable model",
         state: overrides.state ?? "pending",
         source: overrides.source ?? "conversational",
+        batchId: overrides.batchModelId ?? null,
       }
     );
   }
@@ -256,6 +260,7 @@ export class AgentSuggestionFactory {
       analysis: string | null;
       state: AgentSuggestionState;
       source: AgentSuggestionSource;
+      batchModelId: number | null;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -270,6 +275,7 @@ export class AgentSuggestionFactory {
         state: overrides.state ?? "pending",
         conversationId: null,
         source: overrides.source ?? "conversational",
+        batchId: overrides.batchModelId ?? null,
       }
     );
   }

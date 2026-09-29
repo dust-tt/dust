@@ -19,12 +19,6 @@ import {
 } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
 import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
-import {
-  pruneConflictingSkillAvailabilitySuggestions,
-  pruneConflictingSkillEditorsSuggestions,
-  pruneConflictingSkillNameSuggestions,
-  pruneConflictingSkillUserFacingDescriptionSuggestions,
-} from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
@@ -45,10 +39,6 @@ import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 import {
   getSkillSuggestionAction,
-  isAvailabilitySkillSuggestion,
-  isEditorsSkillSuggestion,
-  isNameSkillSuggestion,
-  isUserFacingDescriptionSkillSuggestion,
   SkillSuggestionDataSchema,
 } from "@app/types/suggestions/skill_suggestion";
 import uniq from "lodash/uniq";
@@ -571,57 +561,4 @@ export async function writeSkillChange(
     default:
       return assertNever(change);
   }
-}
-
-/** Marks outdated the pending suggestions that the applied `suggestions` conflict with. */
-async function pruneConflictingSkillSuggestions(
-  auth: Authenticator,
-  skill: SkillResource,
-  suggestions: SkillSuggestionResource[]
-): Promise<void> {
-  await pruneConflictingSkillUserFacingDescriptionSuggestions(
-    auth,
-    skill,
-    suggestions.filter(isUserFacingDescriptionSkillSuggestion)
-  );
-  await pruneConflictingSkillNameSuggestions(
-    auth,
-    skill,
-    suggestions.filter(isNameSkillSuggestion)
-  );
-  // An accepted availability suggestion whose value already matches the skill still resolves
-  // every other pending availability suggestion.
-  await pruneConflictingSkillAvailabilitySuggestions(
-    auth,
-    skill,
-    suggestions.filter(isAvailabilitySkillSuggestion)
-  );
-  await pruneConflictingSkillEditorsSuggestions(
-    auth,
-    skill,
-    suggestions.filter(isEditorsSkillSuggestion)
-  );
-}
-
-export async function applySkillSuggestions(
-  auth: Authenticator,
-  params: { skill: SkillResource; suggestions: SkillSuggestionResource[] }
-): Promise<Result<undefined, DustError<"invalid_request_error">>> {
-  const change = await resolveSkillSuggestions(auth, params);
-  if (change.isErr()) {
-    return change;
-  }
-
-  const writeRes = await writeSkillChange(auth, params.skill, change.value);
-  if (writeRes.isErr()) {
-    return writeRes;
-  }
-
-  await pruneConflictingSkillSuggestions(
-    auth,
-    params.skill,
-    params.suggestions
-  );
-
-  return new Ok(undefined);
 }
