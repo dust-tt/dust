@@ -12,8 +12,16 @@ import type { Result } from "@dust-tt/client";
 import { Err, normalizeError, Ok, removeNulls } from "@dust-tt/client";
 import { BigQuery } from "@google-cloud/bigquery";
 import { ProjectsClient } from "@google-cloud/resource-manager";
+import PQueue from "p-queue";
 
 const MAX_TABLES_PER_SCHEMA = 1500;
+// BigQuery limits tables.get requests per service account. Share the budget across
+// concurrent sync activities in this worker instead of limiting each dataset alone.
+const tableMetadataQueue = new PQueue({
+  concurrency: 4,
+  intervalCap: 20,
+  interval: 1000,
+});
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
 
 export class TestConnectionError extends Error {
@@ -68,7 +76,7 @@ export function connectToBigQuery(
     location: credentials.location,
     retryOptions: {
       autoRetry: true,
-      maxRetries: 3,
+      maxRetries: 6,
     },
     projectId,
   });
@@ -192,7 +200,9 @@ export const fetchDatasets = async ({
 };
 
 /**
- * Fetch the tables available in the BigQuery dataset.
+ * @cc [owner:aubin-tchoi,label:performance;error-handling] bigquery-table-metadata-rate-limit
+ * When descriptions are requested, table metadata reads MUST share a worker-wide rate limit.
+ * A failed metadata read MUST fail the fetch, except for an access-denied table, which is skipped.
  */
 export const fetchTables = async ({
   credentials,
@@ -260,7 +270,10 @@ export const fetchTables = async ({
 
           if (fetchTablesDescription) {
             try {
-              const metadata = await table.getMetadata();
+              const metadata = await tableMetadataQueue.add(
+                () => table.getMetadata(),
+                { throwOnTimeout: true }
+              );
               logger?.info(
                 {
                   dataset,
