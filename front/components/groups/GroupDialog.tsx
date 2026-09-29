@@ -8,7 +8,6 @@ import type { GroupWithAllowedActions } from "@app/types/api/groups";
 import type { GroupType } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -125,15 +124,13 @@ function GroupForm({
   const { doUpdateGroup, isUpdating } = useUpdateGroup({ owner, groupId });
   const isSubmitting = isCreating || isUpdating;
   const canManageManagers = group?.allowedActions?.canAssignManagers === true;
-  const { confirmAppointment, hasReviewError, isReviewBlocked, retryReview } =
-    useGroupManagerAppointmentReview({
-      owner,
-      group,
-      initialManagers,
-      selectedManagers,
-      initialMembers,
-      selectedMemberIds,
-    });
+  const { confirmAppointment } = useGroupManagerAppointmentReview({
+    group,
+    initialManagers,
+    selectedManagers,
+    initialMembers,
+    selectedMemberIds,
+  });
   const initialMemberIds = new Set(initialMembers.map((member) => member.sId));
   const hasGroupChanges =
     name.trim() !== initialName ||
@@ -149,7 +146,6 @@ function GroupForm({
   const shouldDisableButton =
     readOnly ||
     isSubmitting ||
-    isReviewBlocked ||
     name.trim().length === 0 ||
     (!groupId && selectedMemberIds.size === 0) ||
     (hasGroupChanges && selectedMemberIds.size === 0);
@@ -251,25 +247,6 @@ function GroupForm({
               disabled={readOnly || isSubmitting}
             />
           </div>
-          {hasReviewError && (
-            <ContentMessage
-              variant="warning"
-              icon={InfoCircle}
-              title="Could not review group access"
-              size="sm"
-            >
-              <p>
-                Try loading the group's permissions again before appointing
-                these managers.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                label="Retry"
-                onClick={() => void retryReview()}
-              />
-            </ContentMessage>
-          )}
         </div>
       </DialogContainer>
       <DialogFooter
