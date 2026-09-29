@@ -273,9 +273,9 @@ export function AgentSearchTable({
                 tooltipTriggerAsChild
                 trigger={
                   <button type="button" className="w-full min-w-0 text-left">
-                    <div className="flex flex-row items-center gap-2 py-3">
+                    <div className="flex flex-row items-center gap-2 py-1">
                       <div>
-                        <Avatar visual={agent.pictureUrl} size="sm" />
+                        <Avatar visual={agent.pictureUrl} size="xs" />
                       </div>
                       <div className="heading-sm min-w-0 grow overflow-hidden truncate text-foreground">
                         {agent.name}
@@ -436,18 +436,17 @@ export function AgentSearchTable({
       <div role="status" aria-label="Loading agents">
         <DataTableSkeleton
           columns={columns}
-          density="relaxed"
+          density="compact"
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
               case "select":
                 return <LoadingBlock className="h-4 w-4 rounded-sm" />;
               case "name":
                 return (
-                  <AvatarCellSkeleton avatarClassName="h-9 w-9 rounded-lg">
+                  <AvatarCellSkeleton>
                     <TextCellSkeleton
                       className={rowIndex % 2 === 0 ? "h-4 w-32" : "h-4 w-40"}
                     />
-                    <TextCellSkeleton className="h-4 w-3/4" />
                   </AvatarCellSkeleton>
                 );
               case "model":
@@ -489,7 +488,7 @@ export function AgentSearchTable({
         onClick: () => onSelect(agent.sId),
       }))}
       columns={columns}
-      density="relaxed"
+      density="compact"
       getRowId={(agent) => agent.sId}
       enableRowSelection={(row) => canSelect(row.original)}
       disableRowClickSelection

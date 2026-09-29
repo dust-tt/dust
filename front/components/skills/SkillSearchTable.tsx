@@ -3,7 +3,6 @@ import {
   SkillAvailabilityCell,
   SkillEditorsCell,
   SkillLastEditedCell,
-  SkillNameCell,
 } from "@app/components/skills/SkillTableCells";
 import { EntityTooltipCard } from "@app/components/workspace/analytics/creditsTableCells";
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
@@ -180,7 +179,12 @@ export function SkillSearchTable({
                   tooltipTriggerAsChild
                   trigger={
                     <button type="button" className="w-full min-w-0 text-left">
-                      <SkillNameCell skill={skill} />
+                      <div className="flex items-center gap-2 py-1">
+                        <SkillAvatar size="xs" />
+                        <span className="heading-sm min-w-0 grow overflow-hidden truncate text-foreground">
+                          {skill.name}
+                        </span>
+                      </div>
                     </button>
                   }
                 />
@@ -266,14 +270,14 @@ export function SkillSearchTable({
       <div role="status" aria-label="Loading skills">
         <DataTableSkeleton
           columns={columns}
-          density="relaxed"
+          density="compact"
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
               case "select":
                 return <LoadingBlock className="h-4 w-4 rounded-sm" />;
               case "name":
                 return (
-                  <AvatarCellSkeleton avatarClassName="h-9 w-9 rounded-lg">
+                  <AvatarCellSkeleton>
                     <TextCellSkeleton
                       className={rowIndex % 2 === 0 ? "h-4 w-32" : "h-4 w-40"}
                     />
@@ -312,7 +316,7 @@ export function SkillSearchTable({
         onClick: () => onSelect(skill.sId),
       }))}
       columns={columns}
-      density="relaxed"
+      density="compact"
       getRowId={(skill) => skill.sId}
       enableRowSelection={(row) => canSelect(row.original)}
       disableRowClickSelection
