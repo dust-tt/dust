@@ -229,6 +229,13 @@ function GroupForm({
               owner={owner}
               group={group}
               managers={selectedManagers}
+              memberIds={
+                new Set(
+                  [...initialMemberIds].filter((id) =>
+                    selectedMemberIds.has(id)
+                  )
+                )
+              }
               onChange={setSelectedManagers}
               disabled={isSubmitting}
             />

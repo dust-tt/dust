@@ -60,10 +60,15 @@ and “Continue only if you trust them with those permissions” in one modal. U
 The confirmation needs no extra permissions request.
 Cancel saves nothing; confirmation submits the pending changes.
 
-Existing group members skip this modal. The manager picker still explains that managing membership
-means deciding who receives the group's access. Provisioned and admin-granting groups skip this
+Existing group members skip this modal. In the picker, managers outside the group have a blue
+“Not group member” badge. Its tooltip explains that they can manage the group and grant themselves
+its permissions and data. Pending membership additions keep the badge until saved; pending removals
+show it immediately. The picker description reads “Group managers can add members and set their usage
+and credit limits.” Follow the [picker design](https://www.figma.com/design/dhYmzTjBXjtmNOkjSfwumG/?node-id=104-33329).
+
+Provisioned and admin-granting groups skip this
 membership warning because the assignment does not grant membership editing. Explain their existing
-directory-managed or workspace-admin-only membership rule instead.
+directory-managed or workspace-admin-only membership rule in the picker and badge tooltip instead.
 
 ### Open the People page to group managers
 
