@@ -37,7 +37,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
         variant: "full",
       });
 
-      if (!agentConfiguration) {
+      if (!agentConfiguration?.canRead) {
         return new Err(
           new MCPError(
             `Agent configuration not found: ${agentConfigurationId}`,
