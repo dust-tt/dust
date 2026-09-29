@@ -451,16 +451,11 @@ Tell the user the Frame stayed a legacy Frame and why.
 `;
 
 const POD_FRAME_PLACEMENT = `
-This conversation belongs to a Pod. Still create a new Frame in the conversation folder above,
-unless it belongs to the Pod: the user asks to put it in the Pod, asks for an app the whole Pod
-will use, or the Frame changes what it shows based on \`isPodMember\` or \`isPodEditor\`. Only
-then write it under \`/files/pod-<podId>/<frame-folder>\` instead. A Pod Frame is visible to and
-editable by every Pod editor, can be pinned or added as a Pod tab, outlives this conversation,
-and cannot be moved back into a conversation.
-
-After creating a Frame in the conversation, tell the user in one sentence that they can save it
-to the Pod with the Save button on the Frame. Change an existing Pod Frame in place at its Pod
-path; never recreate it in the conversation.
+This conversation is in a Pod, but new Frames still go in the conversation folder. Use
+\`/files/pod-<podId>/<frame-folder>\` only when the user asks for the Pod or a Pod-wide app, or
+when the Frame relies on \`isPodMember\` or \`isPodEditor\`: Pod Frames are editable by every Pod
+editor and cannot move back. Otherwise, mention that the Frame's Save button adds it to the Pod.
+Edit existing Pod Frames in place.
 
 `;
 

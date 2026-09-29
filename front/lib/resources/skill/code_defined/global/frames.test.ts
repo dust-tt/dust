@@ -27,7 +27,7 @@ const POD_APP_MARKER = "### Frames In A Pod";
 const POD_APP_UPDATE_MARKER = "#### Changing An Existing Pod Frame";
 const POD_STORAGE_MARKER = "### Where The Frame's Data Lives";
 const POD_V2_PLACEMENT_MARKER =
-  "Still create a new Frame in the conversation folder above";
+  "new Frames still go in the conversation folder";
 
 const FILES_EDIT_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
@@ -290,7 +290,7 @@ describe("framesSkill.fetchInstructions", () => {
 
     expect(instructions).toContain(POD_V2_PLACEMENT_MARKER);
     expect(instructions).toContain("/files/pod-<podId>/<frame-folder>");
-    expect(instructions).toContain("Save button on the Frame");
+    expect(instructions).toContain("Frame's Save button");
     expect(instructions).not.toContain(POD_APP_MARKER);
   });
 
