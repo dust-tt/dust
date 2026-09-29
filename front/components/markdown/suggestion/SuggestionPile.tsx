@@ -300,6 +300,7 @@ export function ConversationSuggestionPile({
   return (
     <ActionCardStack cardCount={pendingBatches.length}>
       <PendingBatchSuggestionCard
+        key={batch.id}
         owner={owner}
         batch={batch}
         onAccept={() => void review("approved", batch)}
