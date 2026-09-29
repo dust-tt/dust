@@ -1978,5 +1978,142 @@ describe("building_agents_and_skills tools", () => {
         );
       });
     });
+
+    describe("tag changes", () => {
+      const editTags = (
+        agentId: string,
+        tags: { addTags?: string[]; removeTags?: string[] }
+      ) => ({
+        title: "Update tags",
+        analysis: "The agent needs other tags.",
+        suggestions: [{ kind: "edit_agent", agentId, tags }],
+      });
+
+      it("records one pending tags suggestion by tag name, without applying it", async () => {
+        const { authenticator, workspace } = await createResourceTest({
+          role: "user",
+        });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const sales = await TagFactory.create(workspace, { name: "Sales" });
+        await TagFactory.create(workspace, { name: "Support" });
+        await AgentResource.bulkUpdate(authenticator, [agent.sId], {
+          addTags: [sales],
+        });
+
+        const batchId = extractBatchId(
+          await runSuggest(
+            authenticator,
+            // Names match existing tags case-insensitively and are recorded as stored.
+            editTags(agent.sId, {
+              addTags: [" support "],
+              removeTags: ["SALES"],
+            })
+          )
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          authenticator,
+          batchId
+        );
+        expect(batch?.agentSuggestions.map((s) => s.toJSON())).toMatchObject([
+          {
+            kind: "tags",
+            state: "pending",
+            suggestion: { addTags: ["Support"], removeTags: ["Sales"] },
+          },
+        ]);
+        const agentResource = await AgentResource.fetchById(
+          authenticator,
+          agent.sId
+        );
+        const tags = (await agentResource?.listTags(authenticator)) ?? [];
+        expect(tags.map((tag) => tag.name)).toEqual(["Sales"]);
+      });
+
+      it("lets an admin suggest a tag that does not exist yet", async () => {
+        const { authenticator } = await createResourceTest({ role: "admin" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+
+        const batchId = extractBatchId(
+          await runSuggest(
+            authenticator,
+            editTags(agent.sId, { addTags: ["Brand New"] })
+          )
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          authenticator,
+          batchId
+        );
+        expect(batch?.agentSuggestions.map((s) => s.toJSON())).toMatchObject([
+          {
+            kind: "tags",
+            suggestion: { addTags: ["Brand New"], removeTags: [] },
+          },
+        ]);
+      });
+
+      it("rejects changes that do not fit the current tags", async () => {
+        const { authenticator, workspace } = await createResourceTest({
+          role: "user",
+        });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const sales = await TagFactory.create(workspace, { name: "Sales" });
+        await TagFactory.create(workspace, { name: "Support" });
+        await TagFactory.create(workspace, {
+          name: "Official",
+          kind: "protected",
+        });
+        await AgentResource.bulkUpdate(authenticator, [agent.sId], {
+          addTags: [sales],
+        });
+
+        expectMcpError(
+          await runSuggest(authenticator, editTags(agent.sId, {})),
+          "at least one tag"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editTags(agent.sId, { addTags: ["Sales"] })
+          ),
+          "already tags of the agent"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editTags(agent.sId, { removeTags: ["Support"] })
+          ),
+          "not tags of the agent"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editTags(agent.sId, {
+              addTags: ["Support"],
+              removeTags: ["support"],
+            })
+          ),
+          "both added and removed"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editTags(agent.sId, { addTags: ["Brand New"] })
+          ),
+          "Only workspace admins can create tags"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editTags(agent.sId, { addTags: ["Official"] })
+          ),
+          "protected tags"
+        );
+      });
+    });
   });
 });

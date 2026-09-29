@@ -1,4 +1,5 @@
 import { getBrowserMarkdownPipeline } from "@app/lib/editor/browser_markdown_pipeline";
+import type { PreviewedAgentFields } from "@app/lib/editor/preview_agent_suggestions";
 import { previewAgentSuggestions } from "@app/lib/editor/preview_agent_suggestions";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
@@ -21,7 +22,7 @@ const BASE_SUGGESTION: Omit<AgentSuggestionType, "kind" | "suggestion"> = {
 
 const [CURRENT_MODEL, SUGGESTED_MODEL] = SUPPORTED_MODEL_CONFIGS;
 
-const AGENT = {
+const AGENT: PreviewedAgentFields = {
   name: "Current name",
   description: "Current description",
   scope: "hidden",
@@ -33,7 +34,8 @@ const AGENT = {
     temperature: 0.4,
     reasoningEffort: CURRENT_MODEL.defaultReasoningEffort,
   },
-} as const;
+  tags: [{ sId: "tag-sales", name: "Sales", kind: "standard" }],
+};
 
 function blockIds(html: string): string[] {
   return [...html.matchAll(/data-block-id="([^"]+)"/g)].map((m) => m[1]);
@@ -77,6 +79,7 @@ describe("previewAgentSuggestions", () => {
         description: "Shares a random quote.",
         scope: AGENT.scope,
         model: AGENT.model,
+        tags: AGENT.tags,
         instructions: null,
         instructionsHtml: "<p>Share one quote.</p>",
       });
@@ -246,6 +249,34 @@ describe("previewAgentSuggestions", () => {
     if (result.isOk()) {
       expect(result.value.fields.name).toBe("Renamed");
       expect(result.value.capabilities.addedSkillIds).toEqual(["skl_1"]);
+    }
+  });
+
+  it("previews the tags once the suggested ones are added and removed", () => {
+    const result = previewAgentSuggestions({
+      agent: {
+        ...AGENT,
+        tags: [
+          { sId: "tag-sales", name: "Sales", kind: "standard" },
+          { sId: "tag-hr", name: "HR", kind: "standard" },
+        ],
+      },
+      suggestions: [
+        {
+          ...BASE_SUGGESTION,
+          kind: "tags",
+          suggestion: { addTags: ["Support", "hr"], removeTags: ["sales"] },
+        },
+      ],
+      pipeline,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.fields.tags.map((tag) => tag.name)).toEqual([
+        "HR",
+        "Support",
+      ]);
     }
   });
 

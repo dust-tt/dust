@@ -22,6 +22,7 @@ import {
   validateAgentPublishStateChange,
   validateAgentSkillChanges,
   validateAgentSubAgentChanges,
+  validateAgentTagsSuggestion,
   validateAgentToolChanges,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import { formatBatchSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
@@ -200,6 +201,7 @@ async function planAgentEdit(
     tools: toolChanges,
     subAgents: subAgentChanges,
     editors: editorChanges,
+    tags: tagChanges,
   }: EditAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const agentRes = await fetchAgentForSuggestion(auth, agentId);
@@ -260,6 +262,17 @@ async function planAgentEdit(
       return validation;
     }
     singletons.push({ kind: "editors", suggestion: validation.value });
+  }
+
+  if (tagChanges !== undefined) {
+    const validation = await validateAgentTagsSuggestion(auth, agent, {
+      addTags: tagChanges.addTags ?? [],
+      removeTags: tagChanges.removeTags ?? [],
+    });
+    if (validation.isErr()) {
+      return validation;
+    }
+    singletons.push({ kind: "tags", suggestion: validation.value });
   }
 
   let instructions: {

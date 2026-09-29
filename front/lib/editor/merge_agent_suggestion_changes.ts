@@ -9,6 +9,7 @@ import type {
   ModelSuggestionType,
   SkillsSuggestionType,
   SubAgentSuggestionType,
+  TagsSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import { AgentSuggestionDataSchema } from "@app/types/suggestions/agent_suggestion";
@@ -19,6 +20,7 @@ export interface AgentEdits {
   description?: string;
   scope?: "hidden" | "visible";
   editors?: EditorsSuggestionType;
+  tags?: TagsSuggestionType;
   instructions?: InstructionsSuggestionSchemaType[];
   skills?: SkillsSuggestionType[];
   tools?: ToolsSuggestionType[];
@@ -64,6 +66,9 @@ function fieldEditsForSuggestion(
 
     case "editors":
       return new Ok({ editors: data.suggestion });
+
+    case "tags":
+      return new Ok({ tags: data.suggestion });
 
     case "instructions":
       return new Ok({ instructions: [data.suggestion] });
@@ -119,6 +124,16 @@ function mergeFieldEdits(merged: AgentEdits, next: AgentEdits): AgentEdits {
           ],
         }
       : (next.editors ?? merged.editors);
+  // Union as well, for the same reason.
+  const tags =
+    merged.tags && next.tags
+      ? {
+          addTags: [...new Set([...merged.tags.addTags, ...next.tags.addTags])],
+          removeTags: [
+            ...new Set([...merged.tags.removeTags, ...next.tags.removeTags]),
+          ],
+        }
+      : (next.tags ?? merged.tags);
 
   return {
     ...merged,
@@ -128,6 +143,7 @@ function mergeFieldEdits(merged: AgentEdits, next: AgentEdits): AgentEdits {
     ...(tools.length > 0 ? { tools } : {}),
     ...(subAgents.length > 0 ? { subAgents } : {}),
     ...(editors ? { editors } : {}),
+    ...(tags ? { tags } : {}),
   };
 }
 

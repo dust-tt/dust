@@ -196,6 +196,22 @@ export const EditAgentSuggestionSchema = z.object({
     })
     .optional()
     .describe("The editors to add to or remove from the agent."),
+  tags: z
+    .object({
+      addTags: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Names of the tags to add to the agent. A tag that does not exist yet is created " +
+            "when the suggestion is accepted, which only workspace admins can do."
+        ),
+      removeTags: z
+        .array(z.string())
+        .optional()
+        .describe("Names of the agent's tags to remove from it."),
+    })
+    .optional()
+    .describe("The tags to add to or remove from the agent."),
 });
 
 export type EditAgentSuggestion = z.infer<typeof EditAgentSuggestionSchema>;
