@@ -30,7 +30,9 @@ export const CreateAgentSuggestionSchema = z.object({
     .string()
     .trim()
     .min(1)
-    .describe("Unique, human-readable agent name (no leading '@')."),
+    .describe(
+      "Unique, human-readable agent name, without a leading '@' and without spaces"
+    ),
   description: z
     .string()
     .trim()
@@ -109,7 +111,7 @@ export const EditAgentSuggestionSchema = z.object({
     .string()
     .min(1)
     .optional()
-    .describe("The new name, without a leading '@'."),
+    .describe("The new name, without a leading '@' and without spaces"),
   description: z.string().min(1).optional().describe("The new description."),
   instructionEdits: z
     .array(SkillInstructionEditItemSchema)
