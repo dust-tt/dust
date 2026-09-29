@@ -1,9 +1,5 @@
 import { filterEditableAgents } from "@app/lib/api/assistant/agent_permissions";
-import {
-  enrichAgentConfigurations,
-  redactPrivateAgentConfigurationFields,
-} from "@app/lib/api/assistant/configuration/helpers";
-import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
+import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -283,57 +279,6 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
         : AgentConfigurationType) || null
     );
   });
-}
-
-/**
- * Retrieves the latest version of an agent for the caller's details view. Callers only get agents
- * they can read, except admins: they can list every agent of the workspace (see the
- * `manage_unrestricted` view), so they get the ones they cannot read too, with the private fields
- * redacted (see `redactPrivateAgentConfigurationFields`). Returns null when the agent does not
- * exist or is not readable by a non-admin caller.
- */
-export async function getAgentConfigurationForDetails(
-  auth: Authenticator,
-  { agentId }: { agentId: string }
-): Promise<AgentConfigurationType | null> {
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "full",
-  });
-  if (agent?.canRead) {
-    return agent;
-  }
-
-  if (!auth.isAdmin()) {
-    return null;
-  }
-
-  // Either not readable (unpublished, not an editor) or filtered out by a space the admin is not a
-  // member of. With the `admin_can_see_private_entities` feature flag the admin gets it in full;
-  // otherwise it is refetched without the space filtering to be redacted.
-  if (await canAdminSeePrivateEntities(auth)) {
-    const fullAgent =
-      agent ??
-      (await getAgentConfiguration(auth, {
-        agentId,
-        variant: "full",
-        dangerouslySkipPermissionFiltering: true,
-      }));
-    return fullAgent ? { ...fullAgent, canRead: true } : null;
-  }
-
-  // The light variant is enough, the full one only adds fields the redaction drops.
-  const restrictedAgent =
-    agent ??
-    (await getAgentConfiguration(auth, {
-      agentId,
-      variant: "light",
-      dangerouslySkipPermissionFiltering: true,
-    }));
-
-  return restrictedAgent
-    ? redactPrivateAgentConfigurationFields(restrictedAgent)
-    : null;
 }
 
 /**

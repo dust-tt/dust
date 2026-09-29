@@ -206,6 +206,9 @@ export const AgentConfigurationBaseSchema = z.object({
   ignoreCreditSpendThresholdAlert: z.boolean().optional(),
   canRead: z.boolean(),
   canEdit: z.boolean(),
+  // The private fields (instructions, skills, tools) were redacted: the caller cannot view the
+  // agent's content (see `agent-content-visibility`).
+  isRedacted: z.boolean().optional(),
   omittedThinking: z.boolean().optional(),
 });
 
@@ -214,8 +217,8 @@ export type AgentConfigurationBaseType = z.infer<
 >;
 
 // -- Builder enrichments: fields the resource builders add on top of the base via a matching
-// `enrichWith*` step in `lib/api/assistant/configuration/enrich.ts`. Each schema's inferred type is
-// the value of the `Map` that step returns, so the builder merges it in by spreading. --
+// `enrichWith*` step in `lib/resources/agent_resource_serialization.ts`. Each schema's inferred type
+// is the value of the `Map` that step returns, handed to the resource's configuration serializers. --
 
 // `enrichWithFavorites` (per requesting user).
 export const AgentFavoriteEnrichmentSchema = z.object({

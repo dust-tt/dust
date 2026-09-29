@@ -1,7 +1,4 @@
-import {
-  redactPrivateAgentConfigurationFields,
-  toAgentConfigurationsWithSkills,
-} from "@app/lib/api/assistant/configuration/helpers";
+import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -78,7 +75,7 @@ describe("toAgentConfigurationsWithSkills", () => {
     });
 
     const [serialized] = await toAgentConfigurationsWithSkills(authenticator, [
-      redactPrivateAgentConfigurationFields(agent),
+      { ...agent, canRead: false },
     ]);
 
     expect(serialized.skills).toEqual([]);

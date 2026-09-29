@@ -83,13 +83,17 @@ import type {
 } from "@app/types/agent_search/agent_search";
 import type { DiscoveryAgentType } from "@app/types/api/discovery";
 import type {
+  AgentActionsEnrichment,
   AgentConfigurationBaseType,
   AgentConfigurationScope,
   AgentConfigurationStatus,
   AgentConfigurationType,
+  AgentFavoriteEnrichment,
   AgentModelConfigurationType,
   AgentReinforcementMode,
   AgentStatus,
+  AgentTagsEnrichment,
+  LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { isAgentStatus } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -114,6 +118,7 @@ import type { UserType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import assert from "assert";
 import isEqual from "lodash/isEqual";
+import partition from "lodash/partition";
 import uniq from "lodash/uniq";
 import type {
   Attributes,
@@ -166,16 +171,11 @@ const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
   { role: "none", permissions: ["read", "list"] },
 ];
 
-// Full-only payload: every `AgentConfigurationModel` column that is not part of the identity/core
-// carried by both shapes. Present only on `full` resources (see `AgentResource` variants).
+// Full-only payload: the private `AgentConfigurationModel` columns. Present only on `full`
+// resources (see `AgentResource` variants).
 export type AgentResourceContent = {
-  version: number;
   instructions: string | null;
   instructionsHtml: string | null;
-  maxStepsPerRun: number;
-  creditSpendCheckpointThresholdAwuCredits: number | null;
-  createdAt: Date;
-  updatedAt: Date;
 };
 
 // The outcome of a `bulkUpdate`: the agents whose save succeeded (`updatedAgentIds`, a change
@@ -291,15 +291,6 @@ type SerializedModelConfiguration = {
   responseFormat: string | null;
 };
 
-// JSON-serializable form of `AgentResourceContent`: Date columns become epoch millis.
-type SerializedAgentResourceContent = Omit<
-  AgentResourceContent,
-  "createdAt" | "updatedAt"
-> & {
-  createdAt: number;
-  updatedAt: number;
-};
-
 // Cached shape of a `full` custom `AgentResource`. Hand-written (the resource spans two tables and
 // reshapes columns), so `AGENT_RESOURCE_CACHE_VERSION` MUST be bumped on any change; a test asserts
 // its `content` stays in sync with `AgentResourceContent`.
@@ -308,7 +299,7 @@ export type AgentResourceSnapshot = {
   agentConfigurationModelId: ModelId;
   workspaceId: ModelId;
   sId: string;
-  // The agent row's `createdAt` (epoch millis). Distinct from `content.createdAt`, which is the
+  // The agent row's `createdAt` (epoch millis). Distinct from `versionCreatedAt`, which is the
   // configuration version's timestamp — `agents.createdAt` is independent since it is backfilled.
   createdAt: number;
   scope: AgentConfigurationScope;
@@ -322,7 +313,12 @@ export type AgentResourceSnapshot = {
   versionAuthorId: ModelId | null;
   requestedSpaceIds: ModelId[];
   modelConfiguration: SerializedModelConfiguration;
-  content: SerializedAgentResourceContent;
+  version: number;
+  maxStepsPerRun: number;
+  creditSpendCheckpointThresholdAwuCredits: number | null;
+  versionCreatedAt: number;
+  versionUpdatedAt: number;
+  content: AgentResourceContent;
 };
 
 // Rollout mode for the agent read cache. Progression: "dryRun" (wired end to end but touching no
@@ -351,6 +347,11 @@ export interface AgentResource
   readonly reinforcement: AgentReinforcementMode;
   readonly versionAuthorId: ModelId | null;
   readonly modelConfiguration: AgentModelConfigurationType;
+  readonly version: number;
+  readonly maxStepsPerRun: number;
+  readonly creditSpendCheckpointThresholdAwuCredits: number | null;
+  readonly versionCreatedAt: Date;
+  readonly versionUpdatedAt: Date;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -442,12 +443,19 @@ export interface AgentResource
  * API keys are the sole exception: the admin role grants them `write` (see `admin-key-agent-write`),
  * so an admin key may edit an agent it holds no editor grant on.
  */
+/**
+ * @cc [owner:tdraier,label:backend] batch-results-by-resource
+ * Every `batch*` read (`batchListEditors`, `batchListActions`, `batchListTags`,
+ * `batchCountFavorites`) MUST accept custom and global agents alike and return a `Map` keyed by the
+ * input resource, with an entry for every input: a resource is one configuration version, whereas
+ * `sId` spans every version of an agent and global agents share one sentinel configuration id.
+ */
 export class AgentResource
   extends BaseResource<AgentModel>
   implements WithAccessControl
 {
   private readonly requestedSpaceIds: ModelId[];
-  private codeDefinedSkillIds: string[] = [];
+  private _codeDefinedSkillIds: string[] = [];
   private _content: AgentResourceContent | null;
 
   private _verbs: Set<GrantVerb> = new Set();
@@ -479,6 +487,12 @@ export class AgentResource
         reasoningEffort: agentConfiguration.reasoningEffort ?? undefined,
         responseFormat: agentConfiguration.responseFormat ?? undefined,
       },
+      version: agentConfiguration.version,
+      maxStepsPerRun: agentConfiguration.maxStepsPerRun,
+      creditSpendCheckpointThresholdAwuCredits:
+        agentConfiguration.creditSpendCheckpointThresholdAwuCredits,
+      versionCreatedAt: agentConfiguration.createdAt,
+      versionUpdatedAt: agentConfiguration.updatedAt,
     } satisfies Pick<
       AgentResource,
       | "agentConfigurationModelId"
@@ -492,17 +506,16 @@ export class AgentResource
       | "lastReinforcementAnalysisAt"
       | "versionAuthorId"
       | "modelConfiguration"
+      | "version"
+      | "maxStepsPerRun"
+      | "creditSpendCheckpointThresholdAwuCredits"
+      | "versionCreatedAt"
+      | "versionUpdatedAt"
     >);
     this.requestedSpaceIds = agentConfiguration.requestedSpaceIds;
     this._content = {
-      version: agentConfiguration.version,
       instructions: agentConfiguration.instructions,
       instructionsHtml: agentConfiguration.instructionsHtml,
-      maxStepsPerRun: agentConfiguration.maxStepsPerRun,
-      creditSpendCheckpointThresholdAwuCredits:
-        agentConfiguration.creditSpendCheckpointThresholdAwuCredits,
-      createdAt: agentConfiguration.createdAt,
-      updatedAt: agentConfiguration.updatedAt,
     };
   }
 
@@ -582,7 +595,7 @@ export class AgentResource
       status: configuration.status,
       versionAuthorId: null,
     } satisfies Pick<AgentResource, "scope" | "status" | "versionAuthorId">);
-    resource.codeDefinedSkillIds = configuration.codeDefinedSkillIds ?? [];
+    resource._codeDefinedSkillIds = configuration.codeDefinedSkillIds ?? [];
 
     return resource.materialize(auth);
   }
@@ -1151,11 +1164,13 @@ export class AgentResource
         reasoningEffort: modelConfiguration.reasoningEffort ?? null,
         responseFormat: modelConfiguration.responseFormat ?? null,
       },
-      content: {
-        ...content,
-        createdAt: content.createdAt.getTime(),
-        updatedAt: content.updatedAt.getTime(),
-      },
+      version: this.version,
+      maxStepsPerRun: this.maxStepsPerRun,
+      creditSpendCheckpointThresholdAwuCredits:
+        this.creditSpendCheckpointThresholdAwuCredits,
+      versionCreatedAt: this.versionCreatedAt.getTime(),
+      versionUpdatedAt: this.versionUpdatedAt.getTime(),
+      content: { ...content },
     };
   }
 
@@ -1185,9 +1200,9 @@ export class AgentResource
         sId: snapshot.sId,
         createdAt: new Date(snapshot.createdAt),
         // `updatedAt` is not surfaced on the resource; the version's stands in harmlessly.
-        updatedAt: new Date(content.updatedAt),
+        updatedAt: new Date(snapshot.versionUpdatedAt),
         // The cached row is the current version, so its version is the agent's `currentVersion`.
-        currentVersion: content.version,
+        currentVersion: snapshot.version,
         name: null,
         status: null,
         scope: null,
@@ -1199,9 +1214,9 @@ export class AgentResource
         id: snapshot.agentConfigurationModelId,
         workspaceId: snapshot.workspaceId,
         sId: snapshot.sId,
-        createdAt: new Date(content.createdAt),
-        updatedAt: new Date(content.updatedAt),
-        version: content.version,
+        createdAt: new Date(snapshot.versionCreatedAt),
+        updatedAt: new Date(snapshot.versionUpdatedAt),
+        version: snapshot.version,
         agentId: snapshot.agentModelId,
         status: snapshot.status,
         scope: snapshot.scope,
@@ -1216,9 +1231,9 @@ export class AgentResource
         responseFormat: modelConfiguration.responseFormat ?? undefined,
         pictureUrl: snapshot.pictureUrl,
         authorId: snapshot.versionAuthorId,
-        maxStepsPerRun: content.maxStepsPerRun,
+        maxStepsPerRun: snapshot.maxStepsPerRun,
         creditSpendCheckpointThresholdAwuCredits:
-          content.creditSpendCheckpointThresholdAwuCredits,
+          snapshot.creditSpendCheckpointThresholdAwuCredits,
         templateId: snapshot.templateId,
         reinforcement: snapshot.reinforcement,
         lastReinforcementAnalysisAt,
@@ -1238,7 +1253,7 @@ export class AgentResource
         transaction,
       }
     );
-    const editors = editorsByAgentId.get(this.sId);
+    const editors = editorsByAgentId.get(this);
     assert(editors !== undefined);
 
     return editors;
@@ -1246,9 +1261,9 @@ export class AgentResource
 
   /**
    * @cc [owner:philipperolet,label:backend] editor-results-by-agent
-   * Each input agent has a map entry: `null` for globals and active workspace members
-   * of its editor grant for custom agents, or `[]` when there are none or the caller holds
-   * neither `read` nor `admin` on it (see `editors-require-read-or-admin`).
+   * Each input agent has a map entry (see `batch-results-by-resource`): `null` for globals and
+   * active workspace members of its editor grant for custom agents, or `[]` when there are none or
+   * the caller holds neither `read` nor `admin` on it (see `editors-require-read-or-admin`).
    */
   /**
    * @cc [owner:sfriquet,label:security] editors-require-read-or-admin
@@ -1258,9 +1273,9 @@ export class AgentResource
     auth: Authenticator,
     agents: AgentResource[],
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Map<string, UserResource[] | null>> {
-    const result = new Map<string, UserResource[] | null>(
-      agents.map((agent) => [agent.sId, agent.scope === "global" ? null : []])
+  ): Promise<Map<AgentResource, UserResource[] | null>> {
+    const result = new Map<AgentResource, UserResource[] | null>(
+      agents.map((agent) => [agent, agent.scope === "global" ? null : []])
     );
     const customAgents = agents.filter(
       (agent) =>
@@ -1321,7 +1336,7 @@ export class AgentResource
         ? (membershipsByGroupId[group.id] ?? [])
         : [];
       result.set(
-        agent.sId,
+        agent,
         removeNulls(
           memberModelIds.map((userModelId) => userByModelId.get(userModelId))
         )
@@ -1336,21 +1351,8 @@ export class AgentResource
   async listActions(
     auth: Authenticator
   ): Promise<MCPServerConfigurationType[]> {
-    if (this.scope === "global") {
-      if (!this.canViewContent(auth)) {
-        return [];
-      }
-      const [configuration] = await getGlobalAgents(auth, [this.sId], "full");
-      return configuration?.actions ?? [];
-    }
-
-    const actionsByConfigurationModelId = await AgentResource.batchListActions(
-      auth,
-      [this]
-    );
-    const actions = actionsByConfigurationModelId.get(
-      this.agentConfigurationModelId
-    );
+    const actionsByAgent = await AgentResource.batchListActions(auth, [this]);
+    const actions = actionsByAgent.get(this);
     assert(actions !== undefined);
 
     return actions;
@@ -1358,51 +1360,70 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:security] actions-require-read
-   * Keyed by `agentConfigurationModelId`: tools belong to a configuration version. Each input agent
-   * has an entry. An agent whose content the caller cannot view (see `agent-content-visibility`)
-   * MUST get `[]`: its tools carry its knowledge (data sources, tables), as private as its
-   * instructions. Global agents MUST NOT be passed: their tools are code-defined, not
-   * `AgentMCPServerConfigurationModel` rows, and they share a sentinel configuration id; use
-   * `listActions`.
+   * Tools belong to a configuration version (see `batch-results-by-resource`). An agent whose
+   * content the caller cannot view (see `agent-content-visibility`) MUST get `[]`: its tools carry
+   * its knowledge (data sources, tables), as private as its instructions.
+   */
+  /**
+   * @cc [owner:tdraier,label:performance] actions-batched-per-kind
+   * A call MUST run at most one tools lookup for its custom agents (by configuration row) and one
+   * full global agent build for its global agents, whatever the number of input agents: no lookup
+   * or build per agent.
    */
   static async batchListActions(
     auth: Authenticator,
     agents: AgentResource[]
-  ): Promise<Map<ModelId, MCPServerConfigurationType[]>> {
-    assert(
-      agents.every((agent) => agent.scope !== "global"),
-      "Unexpected: listing the actions of a global agent."
+  ): Promise<Map<AgentResource, MCPServerConfigurationType[]>> {
+    const viewableAgents = agents.filter((agent) => agent.canViewContent(auth));
+    const [globalAgents, customAgents] = partition(
+      viewableAgents,
+      (agent) => agent.scope === "global"
     );
-    const result = new Map<ModelId, MCPServerConfigurationType[]>(
-      agents.map((agent) => [agent.agentConfigurationModelId, []])
+
+    const [actionsByConfigurationModelId, globalConfigurations] =
+      await Promise.all([
+        customAgents.length > 0
+          ? fetchMCPServerActionConfigurations(auth, {
+              configurationModelIds: customAgents.map(
+                (agent) => agent.agentConfigurationModelId
+              ),
+              variant: "full",
+            })
+          : new Map<ModelId, MCPServerConfigurationType[]>(),
+        globalAgents.length > 0
+          ? getGlobalAgents(
+              auth,
+              uniq(globalAgents.map((agent) => agent.sId)),
+              "full"
+            )
+          : [],
+      ]);
+    const globalActionsById = new Map(
+      globalConfigurations.map((configuration) => [
+        configuration.sId,
+        configuration.actions,
+      ])
     );
-    const readableConfigurationModelIds = agents
-      .filter((agent) => agent.canViewContent(auth))
-      .map((agent) => agent.agentConfigurationModelId);
-    if (readableConfigurationModelIds.length === 0) {
-      return result;
-    }
 
-    const actionsByConfigurationModelId =
-      await fetchMCPServerActionConfigurations(auth, {
-        configurationModelIds: readableConfigurationModelIds,
-        variant: "full",
-      });
-    for (const configurationModelId of readableConfigurationModelIds) {
-      result.set(
-        configurationModelId,
-        actionsByConfigurationModelId.get(configurationModelId) ?? []
-      );
-    }
-
-    return result;
+    return new Map(
+      agents.map((agent) => {
+        if (!agent.canViewContent(auth)) {
+          return [agent, []];
+        }
+        const actions =
+          agent.scope === "global"
+            ? globalActionsById.get(agent.sId)
+            : actionsByConfigurationModelId.get(
+                agent.agentConfigurationModelId
+              );
+        return [agent, actions ?? []];
+      })
+    );
   }
 
   async listTags(auth: Authenticator): Promise<TagResource[]> {
-    const tagsByConfigurationModelId = await AgentResource.batchListTags(auth, [
-      this,
-    ]);
-    const tags = tagsByConfigurationModelId.get(this.agentConfigurationModelId);
+    const tagsByAgent = await AgentResource.batchListTags(auth, [this]);
+    const tags = tagsByAgent.get(this);
     assert(tags !== undefined);
 
     return tags;
@@ -1410,36 +1431,31 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:backend] tag-results-by-version
-   * Keyed by `agentConfigurationModelId`: tags attach to a configuration version, not to the agent
-   * across versions. Each input agent has an entry, `[]` when it has no tag. Global agents MUST get
-   * `[]` without a tag lookup: they hold no tag row and share a sentinel configuration id.
+   * Tags attach to a configuration version, not to the agent across versions (see
+   * `batch-results-by-resource`); an agent with no tag gets `[]`. Global agents MUST get `[]`
+   * without a tag lookup: they hold no tag row and share a sentinel configuration id.
    */
   static async batchListTags(
     auth: Authenticator,
     agents: AgentResource[]
-  ): Promise<Map<ModelId, TagResource[]>> {
-    const result = new Map<ModelId, TagResource[]>(
-      agents.map((agent) => [agent.agentConfigurationModelId, []])
-    );
-    const customConfigurationModelIds = agents
-      .filter((agent) => agent.scope !== "global")
-      .map((agent) => agent.agentConfigurationModelId);
-    if (customConfigurationModelIds.length === 0) {
-      return result;
-    }
+  ): Promise<Map<AgentResource, TagResource[]>> {
+    const customAgents = agents.filter((agent) => agent.scope !== "global");
+    const tagsByConfigurationModelId =
+      customAgents.length > 0
+        ? await TagResource.listForAgents(
+            auth,
+            uniq(customAgents.map((agent) => agent.agentConfigurationModelId))
+          )
+        : {};
 
-    const tagsByConfigurationModelId = await TagResource.listForAgents(
-      auth,
-      customConfigurationModelIds
+    return new Map(
+      agents.map((agent) => [
+        agent,
+        agent.scope === "global"
+          ? []
+          : (tagsByConfigurationModelId[agent.agentConfigurationModelId] ?? []),
+      ])
     );
-    for (const configurationModelId of customConfigurationModelIds) {
-      result.set(
-        configurationModelId,
-        tagsByConfigurationModelId[configurationModelId] ?? []
-      );
-    }
-
-    return result;
   }
 
   static async listEditorConfigModelIds(
@@ -1640,32 +1656,33 @@ export class AgentResource
     });
   }
 
+  // Favorites are keyed by `sId`, so each count spans every version of its agent.
   static async batchCountFavorites(
     auth: Authenticator,
     agents: AgentResource[]
-  ): Promise<Map<string, number>> {
-    const favoriteCountByAgentId = new Map<string, number>(
-      agents.map((agent) => [agent.sId, 0])
-    );
+  ): Promise<Map<AgentResource, number>> {
     if (agents.length === 0) {
-      return favoriteCountByAgentId;
+      return new Map();
     }
 
     const rows = await AgentUserRelationModel.count({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        agentConfiguration: agents.map((agent) => agent.sId),
+        agentConfiguration: uniq(agents.map((agent) => agent.sId)),
         favorite: true,
       },
       group: ["agentConfiguration"],
     });
+    const countByAgentId = new Map<string, number>();
     for (const { agentConfiguration, count } of rows) {
       if (isString(agentConfiguration)) {
-        favoriteCountByAgentId.set(agentConfiguration, count);
+        countByAgentId.set(agentConfiguration, count);
       }
     }
 
-    return favoriteCountByAgentId;
+    return new Map(
+      agents.map((agent) => [agent, countByAgentId.get(agent.sId) ?? 0])
+    );
   }
 
   /**
@@ -1845,7 +1862,7 @@ export class AgentResource
       authorId: this.versionAuthorId ?? auth.getNonNullableUser().id,
       reinforcement: this.reinforcement,
       ignoreCreditSpendThresholdAlert:
-        this.content.creditSpendCheckpointThresholdAwuCredits === null,
+        this.creditSpendCheckpointThresholdAwuCredits === null,
       actions,
       skills,
     };
@@ -1863,10 +1880,10 @@ export class AgentResource
       return;
     }
 
-    const editorsByAgentId = await this.batchListEditors(auth, agents);
+    const editorsByAgent = await this.batchListEditors(auth, agents);
     const editorModelIdsByAgentId = new Map(
-      [...editorsByAgentId].map(([agentId, editors]) => [
-        agentId,
+      [...editorsByAgent].map(([agent, editors]) => [
+        agent.sId,
         new Set((editors ?? []).map((editor) => editor.id)),
       ])
     );
@@ -2714,7 +2731,7 @@ export class AgentResource
     if (this.scope === "global") {
       return SkillResource.fetchByIds(
         auth,
-        this.codeDefinedSkillIds,
+        this._codeDefinedSkillIds,
         fetchContext
       );
     }
@@ -2804,28 +2821,38 @@ export class AgentResource
     };
   }
 
+  // The code-defined skills a global agent declares; always empty for custom agents.
+  get codeDefinedSkillIds(): string[] {
+    return [...this._codeDefinedSkillIds];
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security;backend] agent-json-redaction
+   * `toJSON`, `toLightConfigurationJSON` and `toConfigurationJSON` serialize every resource, custom
+   * or global, `full` or `light`. A `light` resource MUST serialize with `instructions: null` and
+   * `isRedacted: true` (a `full` one with `isRedacted: false`), and `toConfigurationJSON` MUST also
+   * give it no `instructionsHtml`, no `actions` and no `codeDefinedSkillIds`, whatever enrichment it
+   * is handed: the head fields and the version metadata are not private and are always carried.
+   * These methods are the only place that shapes an agent's configuration JSON.
+   */
   toJSON(): AgentConfigurationBaseType {
-    assert(
-      this.scope !== "global",
-      "Unexpected: `toJSON` called on a global AgentResource"
-    );
-    const content = this.content;
+    const isGlobal = this.scope === "global";
 
     return {
       id: this.agentConfigurationModelId,
-      agentModelId: this.id,
-      versionCreatedAt: content.createdAt.toISOString(),
+      agentModelId: isGlobal ? null : this.id,
+      versionCreatedAt: isGlobal ? null : this.versionCreatedAt.toISOString(),
       sId: this.sId,
-      version: content.version,
+      version: this.version,
       versionAuthorId: this.versionAuthorId,
-      instructions: content.instructions,
+      instructions: this._content?.instructions ?? null,
       model: this.modelConfiguration,
       status: this.status,
       scope: this.scope,
       name: this.name,
       description: this.description,
       pictureUrl: this.pictureUrl,
-      maxStepsPerRun: content.maxStepsPerRun,
+      maxStepsPerRun: this.maxStepsPerRun,
       templateId: this.templateId
         ? TemplateResource.modelIdToSId({ id: this.templateId })
         : null,
@@ -2843,13 +2870,49 @@ export class AgentResource
       lastReinforcementAnalysisAt:
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
       ignoreCreditSpendThresholdAlert:
-        content.creditSpendCheckpointThresholdAwuCredits === null,
+        this.creditSpendCheckpointThresholdAwuCredits === null,
       canRead: this._verbs.has("read"),
       // Regular API keys hold `write` from the admin role but may only edit an active version
       // (see the `regular-key-agent-editability` contract on `enrichAgentConfigurations`).
       canEdit:
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
+      isRedacted: this._content === null,
+    };
+  }
+
+  toLightConfigurationJSON({
+    userFavorite,
+    tags,
+  }: AgentFavoriteEnrichment &
+    AgentTagsEnrichment): LightAgentConfigurationType {
+    return { ...this.toJSON(), userFavorite, tags };
+  }
+
+  toConfigurationJSON({
+    userFavorite,
+    tags,
+    actions,
+  }: AgentFavoriteEnrichment &
+    AgentTagsEnrichment &
+    AgentActionsEnrichment): AgentConfigurationType {
+    const light = this.toLightConfigurationJSON({ userFavorite, tags });
+    if (!this.isFull()) {
+      return {
+        ...light,
+        instructionsHtml: null,
+        actions: [],
+        codeDefinedSkillIds: [],
+      };
+    }
+
+    return {
+      ...light,
+      instructionsHtml: this.content.instructionsHtml,
+      actions,
+      ...(this.scope === "global"
+        ? { codeDefinedSkillIds: this.codeDefinedSkillIds }
+        : {}),
     };
   }
 

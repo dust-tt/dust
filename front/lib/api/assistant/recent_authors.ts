@@ -5,8 +5,8 @@ import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
+  AgentConfigurationScope,
   AgentRecentAuthors,
-  LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { getGlobalAgentAuthorName } from "@app/types/assistant/assistant";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -167,7 +167,7 @@ export async function getAgentsRecentAuthors({
   agents,
   auth,
 }: {
-  agents: LightAgentConfigurationType[];
+  agents: { sId: string; scope: AgentConfigurationScope }[];
   auth: Authenticator;
 }): Promise<AgentRecentAuthors[]> {
   const owner = auth.getNonNullableWorkspace();
@@ -237,20 +237,6 @@ export async function getAgentsRecentAuthors({
   });
 }
 
-export async function getAgentRecentAuthors({
-  agent,
-  auth,
-}: {
-  agent: LightAgentConfigurationType;
-  auth: Authenticator;
-}): Promise<AgentRecentAuthors> {
-  const recentAuthors = await getAgentsRecentAuthors({
-    agents: [agent],
-    auth,
-  });
-  return recentAuthors[0];
-}
-
 export async function agentConfigurationWasUpdatedBy({
   agent,
   auth,
@@ -258,8 +244,7 @@ export async function agentConfigurationWasUpdatedBy({
   agent: AgentResource;
   auth: Authenticator;
 }) {
-  const { sId: agentId, versionAuthorId: authorId } = agent;
-  const { version } = agent.content;
+  const { sId: agentId, versionAuthorId: authorId, version } = agent;
   if (!authorId) {
     return;
   }

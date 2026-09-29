@@ -226,8 +226,8 @@ export function AgentDetailsBody({
     agentId != null &&
     !isGlobalAgent &&
     agentConfiguration?.status === "active";
-  // The triggers tab only lists the caller's own triggers, which is pointless on an agent whose
-  // private fields were redacted for an admin (flagged by `canRead: false`).
+  // The triggers tab only lists the caller's own triggers, and creating one needs `read` on the
+  // agent.
   const showTriggersTabs =
     agentId != null &&
     agentConfiguration?.status === "active" &&

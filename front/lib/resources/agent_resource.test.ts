@@ -1,5 +1,6 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
+import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -32,6 +33,17 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import assert from "assert";
 import type { JSONSchema7 } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock(
+  "@app/lib/api/assistant/global_agents/global_agents",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/api/assistant/global_agents/global_agents")
+      >();
+    return { ...actual, getGlobalAgents: vi.fn(actual.getGlobalAgents) };
+  }
+);
 
 const AGENT_MODEL_ID = 42;
 
@@ -455,7 +467,7 @@ describe("AgentResource", () => {
     expect(resource).not.toBeNull();
     expect(resource?.id).toBe(agent.agentModelId);
     expect(resource?.status).toBe("active");
-    expect(resource?.content.version).toBe(currentConfig.version);
+    expect(resource?.version).toBe(currentConfig.version);
   });
 
   it("returns one resource per agent when fetching in batches", async () => {
@@ -533,7 +545,7 @@ describe("AgentResource", () => {
 
     // The snapshot round-trip must keep the agent row's `createdAt`, not fall back to the version's.
     expect(resource.createdAt.getTime()).toBe(agentCreatedAt.getTime());
-    expect(resource.content.createdAt.getTime()).not.toBe(
+    expect(resource.versionCreatedAt.getTime()).not.toBe(
       agentCreatedAt.getTime()
     );
   });
@@ -551,8 +563,8 @@ describe("AgentResource", () => {
     const snapshot = full.toSnapshot();
 
     // `content` must carry every `AgentConfigurationModel` column except the ones folded into the
-    // resource's identity/core, or explicitly excluded. When this fails the model changed shape:
-    // reconcile `AgentResourceContent` and bump `AGENT_RESOURCE_CACHE_VERSION`.
+    // resource's identity/core/version metadata, or explicitly excluded. When this fails the model
+    // changed shape: reconcile `AgentResourceContent` and bump `AGENT_RESOURCE_CACHE_VERSION`.
     const foldedIntoIdentityOrCore = new Set([
       // Carried as the core `agentConfigurationModelId`, not `content`.
       "id",
@@ -575,6 +587,12 @@ describe("AgentResource", () => {
       "temperature",
       "reasoningEffort",
       "responseFormat",
+      // Carried by the core version metadata, not `content`.
+      "version",
+      "maxStepsPerRun",
+      "creditSpendCheckpointThresholdAwuCredits",
+      "createdAt",
+      "updatedAt",
     ]);
     // Deliberately not carried by `AgentResource` (deprecated/unused column).
     const excludedColumns = new Set(["visualizationEnabled"]);
@@ -745,7 +763,7 @@ describe("AgentResource", () => {
     );
     assert(latest?.isFull());
     expect(latest.description).toBe("v1");
-    expect(latest.content.version).toBeGreaterThan(v0.content.version);
+    expect(latest.version).toBeGreaterThan(v0.version);
   });
 
   it("does not serve an agent to a caller from another workspace", async () => {
@@ -787,7 +805,7 @@ describe("AgentResource", () => {
     const firstEditors = await resources[0].listEditors(
       testContext.authenticator
     );
-    const editorsByAgentId = await AgentResource.batchListEditors(
+    const editorsByAgent = await AgentResource.batchListEditors(
       testContext.authenticator,
       resources
     );
@@ -796,11 +814,10 @@ describe("AgentResource", () => {
       testContext.user.id,
     ]);
     expect(
-      editorsByAgentId.get(firstAgent.sId)?.map((editor) => editor.id)
-    ).toEqual([testContext.user.id]);
-    expect(
-      editorsByAgentId.get(secondAgent.sId)?.map((editor) => editor.id)
-    ).toEqual([testContext.user.id]);
+      resources.map((resource) =>
+        editorsByAgent.get(resource)?.map((editor) => editor.id)
+      )
+    ).toEqual([[testContext.user.id], [testContext.user.id]]);
   });
 
   it("applies admin and editor permissions to active custom agents", async () => {
@@ -1379,9 +1396,9 @@ describe("AgentResource", () => {
 
       expect(counts).toEqual(
         new Map([
-          [popular.sId, 2],
-          [unfavorited.sId, 0],
-          [ignored.sId, 0],
+          [popular, 2],
+          [unfavorited, 0],
+          [ignored, 0],
         ])
       );
     });
@@ -1390,6 +1407,36 @@ describe("AgentResource", () => {
       expect(
         await AgentResource.batchCountFavorites(testContext.authenticator, [])
       ).toEqual(new Map());
+    });
+
+    it("counts and lists editors for global agents alongside custom ones", async () => {
+      const { authenticator } = testContext;
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const [custom, helper] = await AgentResource.fetchByIds(authenticator, [
+        agent.sId,
+        GLOBAL_AGENTS_SID.HELPER,
+      ]);
+      assert(custom && helper);
+      expect((await helper.setUserFavorite(authenticator, true)).isOk()).toBe(
+        true
+      );
+
+      const [counts, editors] = await Promise.all([
+        AgentResource.batchCountFavorites(authenticator, [custom, helper]),
+        AgentResource.batchListEditors(authenticator, [custom, helper]),
+      ]);
+
+      expect(counts).toEqual(
+        new Map([
+          [custom, 0],
+          [helper, 1],
+        ])
+      );
+      expect(editors.get(custom)?.map((editor) => editor.id)).toEqual([
+        testContext.user.id,
+      ]);
+      expect(editors.get(helper)).toBeNull();
     });
   });
 
@@ -1535,6 +1582,39 @@ describe("AgentResource", () => {
       expect(await AgentResource.fetchById(otherAuth, agent.sId)).toBeNull();
       expect(await editorView.listActions(otherAuth)).toEqual([]);
     });
+
+    it("lists custom and global agents' tools in one call, with a single global agent build", async () => {
+      const { authenticator } = testContext;
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const [custom, helper] = await AgentResource.fetchByIds(authenticator, [
+        agent.sId,
+        GLOBAL_AGENTS_SID.HELPER,
+      ]);
+      const otherHelper = await AgentResource.fetchById(
+        authenticator,
+        GLOBAL_AGENTS_SID.HELPER
+      );
+      assert(custom && helper && otherHelper);
+      vi.mocked(getGlobalAgents).mockClear();
+
+      const actionsByAgent = await AgentResource.batchListActions(
+        authenticator,
+        [custom, helper, otherHelper]
+      );
+
+      expect(getGlobalAgents).toHaveBeenCalledTimes(1);
+      expect(getGlobalAgents).toHaveBeenCalledWith(
+        authenticator,
+        [GLOBAL_AGENTS_SID.HELPER],
+        "full"
+      );
+      expect(actionsByAgent.get(custom)).toEqual([]);
+      expect(actionsByAgent.get(helper)).toEqual(
+        actionsByAgent.get(otherHelper)
+      );
+      expect(actionsByAgent.size).toBe(3);
+    });
   });
 
   describe("batchListTags", () => {
@@ -1561,20 +1641,20 @@ describe("AgentResource", () => {
 
       const listForAgents = vi.spyOn(TagResource, "listForAgents");
       try {
-        const tagsByConfigurationModelId = await AgentResource.batchListTags(
+        const tagsByAgent = await AgentResource.batchListTags(
           authenticator,
           agents
         );
 
         expect(
-          [...tagsByConfigurationModelId].map(([id, tags]) => [
-            id,
+          [...tagsByAgent].map(([agent, tags]) => [
+            agent,
             tags.map((t) => t.sId),
           ])
         ).toEqual([
-          [taggedAgent.agentConfigurationModelId, [tag.sId]],
-          [untaggedAgent.agentConfigurationModelId, []],
-          [globalAgent.agentConfigurationModelId, []],
+          [taggedAgent, [tag.sId]],
+          [untaggedAgent, []],
+          [globalAgent, []],
         ]);
         expect(listForAgents).toHaveBeenCalledWith(authenticator, [
           taggedAgent.agentConfigurationModelId,
@@ -1645,7 +1725,7 @@ describe("AgentResource", () => {
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
       // A new version, with the new model, keeping the agent's own temperature.
-      expect(after.content.version).toBe(agent.version + 1);
+      expect(after.version).toBe(agent.version + 1);
       expect(after.modelConfiguration.modelId).toBe("gpt-5");
       expect(after.modelConfiguration.reasoningEffort).toBe("medium");
       expect(after.modelConfiguration.temperature).toBe(0.7);
@@ -1690,7 +1770,7 @@ describe("AgentResource", () => {
         agent.sId
       );
       assert(afterFirst?.isFull());
-      expect(afterFirst.content.version).toBe(agent.version + 1);
+      expect(afterFirst.version).toBe(agent.version + 1);
 
       // Re-applying the exact same model is a no-op: no new version is created.
       const second = await AgentResource.bulkUpdate(
@@ -1714,7 +1794,7 @@ describe("AgentResource", () => {
         agent.sId
       );
       assert(afterSecond?.isFull());
-      expect(afterSecond.content.version).toBe(afterFirst.content.version);
+      expect(afterSecond.version).toBe(afterFirst.version);
     });
 
     it("skips archived agents and reports them", async () => {
@@ -1791,7 +1871,7 @@ describe("AgentResource", () => {
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
       // A new version was created and both tags are attached to it.
-      expect(after.content.version).toBe(agent.version + 1);
+      expect(after.version).toBe(agent.version + 1);
       expect(await currentTagIds(authenticator, agent.sId)).toEqual(
         [existingTag.sId, newTag.sId].sort()
       );
@@ -1820,7 +1900,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(agent.version + 1);
+      expect(after.version).toBe(agent.version + 1);
       expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
     });
 
@@ -1844,7 +1924,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(agent.version);
+      expect(after.version).toBe(agent.version);
     });
 
     it("lets a workspace admin who is not an editor tag an agent", async () => {
@@ -1909,7 +1989,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(agent.version);
+      expect(after.version).toBe(agent.version);
       expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
     });
 
@@ -1947,7 +2027,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(agent.version);
+      expect(after.version).toBe(agent.version);
       expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
       const editorIds = (await after.listEditors(authenticator))?.map(
         (editor) => editor.id
@@ -2006,7 +2086,7 @@ describe("AgentResource", () => {
       assert(noop.isOk());
       const afterNoop = await AgentResource.fetchById(authenticator, agent.sId);
       assert(afterNoop?.isFull());
-      expect(afterNoop.content.version).toBe(before.content.version);
+      expect(afterNoop.version).toBe(before.version);
 
       // Editing the schema under the `id` property is a real change and MUST create a new version,
       // rather than being masked by the identity-key drop and silently skipped.
@@ -2024,7 +2104,7 @@ describe("AgentResource", () => {
       assert(edited.isOk());
       const afterEdit = await AgentResource.fetchById(authenticator, agent.sId);
       assert(afterEdit?.isFull());
-      expect(afterEdit.content.version).toBe(before.content.version + 1);
+      expect(afterEdit.version).toBe(before.version + 1);
     });
   });
 
@@ -2052,7 +2132,7 @@ describe("AgentResource", () => {
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
       // No new version was created for an editor-only change.
-      expect(after.content.version).toBe(before.content.version);
+      expect(after.version).toBe(before.version);
       const editorIds = (await after.listEditors(authenticator))?.map(
         (e) => e.id
       );
@@ -2078,7 +2158,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(before.content.version + 1);
+      expect(after.version).toBe(before.version + 1);
       expect(after.description).toBe("A brand new description");
       expect(after.scope).toBe("visible");
     });
@@ -2124,7 +2204,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(auth, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(before.content.version + 1);
+      expect(after.version).toBe(before.version + 1);
       expect(after.description).toBe("A brand new description");
       expect(after.scope).toBe("hidden");
     });
@@ -2152,7 +2232,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(before.content.version);
+      expect(after.version).toBe(before.version);
       expect(after.scope).toBe("visible");
       expect(after.description).toBe(before.description);
     });

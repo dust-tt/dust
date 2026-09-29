@@ -1,11 +1,9 @@
-import {
-  getAgentConfiguration,
-  getAgentConfigurationForDetails,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -96,16 +94,14 @@ it("revokes active-agent author access and keeps admin redaction", async () => {
     admin.sId,
     workspace.sId
   );
-  const adminAgent = await getAgentConfigurationForDetails(adminAuth, {
-    agentId: agent.sId,
-  });
+  const adminResource = await AgentResource.fetchById(adminAuth, agent.sId);
+  assert(adminResource !== null);
+  const [adminAgent] = await toAgentConfigurations(adminAuth, [adminResource]);
   expect(adminAgent).toMatchObject({
     canRead: false,
     canEdit: false,
     instructions: null,
   });
   // The admin role still administers the agent even though content is redacted.
-  const adminResource = await AgentResource.fetchById(adminAuth, agent.sId);
-  assert(adminResource !== null);
   expect(adminAuth.can("admin", adminResource)).toBe(true);
 });

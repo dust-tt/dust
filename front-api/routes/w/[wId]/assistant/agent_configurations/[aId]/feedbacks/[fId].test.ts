@@ -12,7 +12,11 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/assistant/recent_authors", () => ({
   agentConfigurationWasUpdatedBy: vi.fn(),
-  getAgentRecentAuthors: vi.fn().mockResolvedValue([]),
+  getAgentsRecentAuthors: vi
+    .fn()
+    .mockImplementation(async ({ agents }: { agents: unknown[] }) =>
+      agents.map(() => [])
+    ),
 }));
 
 vi.mock("@app/temporal/analytics_queue/client", () => ({

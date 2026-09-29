@@ -20,7 +20,11 @@ vi.mock("@app/lib/resources/storage", async (importActual) => {
 
 vi.mock("@app/lib/api/assistant/recent_authors", () => ({
   agentConfigurationWasUpdatedBy: vi.fn(),
-  getAgentRecentAuthors: vi.fn().mockResolvedValue([]),
+  getAgentsRecentAuthors: vi
+    .fn()
+    .mockImplementation(async ({ agents }: { agents: unknown[] }) =>
+      agents.map(() => [])
+    ),
 }));
 
 function getFeedbackDistribution(

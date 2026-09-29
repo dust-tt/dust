@@ -256,6 +256,10 @@
  *           type: boolean
  *           description: Whether the agent keeps running past the workspace credit spend threshold alert
  *           example: false
+ *         isRedacted:
+ *           type: boolean
+ *           description: Whether the private fields (instructions, skills, tools) were redacted because the caller cannot view the agent's content
+ *           example: false
  *     AgentSkill:
  *       type: object
  *       description: A skill attached to an agent configuration.
