@@ -69,14 +69,12 @@ export async function publishFrame(
     entryRelPath,
     rootScopedPath,
     publishedByAgentConfigurationId,
-    fileAccessUserModelId,
   }: {
     file: FileResource;
     reader: FrameSourceReader;
     entryRelPath: string;
     rootScopedPath: string;
     publishedByAgentConfigurationId?: string;
-    fileAccessUserModelId?: number;
   }
 ): Promise<Result<{ warnings: ValidationWarning[] }, PublishFrameError>> {
   if (!file.isInteractiveContent) {
@@ -159,9 +157,7 @@ export async function publishFrame(
       });
 
       // 4. Recompute the allowlist against the rendered bundle.
-      const allowlist = await ensureAuthorizedFileAccessForShare(auth, file, {
-        fileAccessUserModelId,
-      });
+      const allowlist = await ensureAuthorizedFileAccessForShare(auth, file);
       if (allowlist.isErr()) {
         return new Err(
           new PublishFrameError("allowlist_failed", allowlist.error.message)

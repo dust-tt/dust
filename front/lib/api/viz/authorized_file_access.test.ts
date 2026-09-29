@@ -466,7 +466,7 @@ describe("computeAuthorizedFileAccess", () => {
     ]);
   });
 
-  it("uses the key owner's user when auth has no user (API key auth)", async () => {
+  it("does not treat an API key creator as the allowlist author", async () => {
     const {
       authenticator: userAuth,
       workspace,
@@ -523,7 +523,14 @@ describe("computeAuthorizedFileAccess", () => {
       frameContent,
     });
 
-    expect(result.generatedByUserId).toBe(user.id);
+    expect(result.generatedByUserId).toBeNull();
+    expect(result.refs).toEqual([
+      {
+        kind: "file_id",
+        ref: accessibleFile.sId,
+        fileName: accessibleFile.fileName,
+      },
+    ]);
   });
 
   it("marks file_id refs without conversation or space metadata as unverifiable", async () => {

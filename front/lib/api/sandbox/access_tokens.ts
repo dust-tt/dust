@@ -51,7 +51,6 @@ const SandboxTokenPayloadSchema = z
   .object({
     wId: z.string(),
     uId: z.string().optional(),
-    fileAccessUserModelId: z.number().int().positive().optional(),
     sbId: z.string(),
     execId: z.string(),
     cId: z.string().optional(),
@@ -313,11 +312,6 @@ export async function revokeAllExecTokensForSandbox(
   });
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:security;backend] sandbox-key-owner-is-attribution-only
- * For a user-owned API key without an attached user, the token MUST carry the key owner's
- * user ID separately from `uId`. It MUST NOT turn the owner into the sandbox caller.
- */
 export async function generateSandboxExecToken(
   auth: Authenticator,
   {
@@ -342,9 +336,6 @@ export async function generateSandboxExecToken(
     wId: auth.getNonNullableWorkspace().sId,
     cId: conversation.sId,
     uId: auth.user()?.sId,
-    fileAccessUserModelId: auth.user()
-      ? undefined
-      : (auth.key()?.userModelId ?? undefined),
     aId: agentConfiguration.sId,
     aV: agentConfiguration.version,
     mId: agentMessage.sId,

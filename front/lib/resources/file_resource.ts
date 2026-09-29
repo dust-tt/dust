@@ -66,7 +66,6 @@ import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { copyContent } from "@app/lib/utils/files";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -2572,16 +2571,14 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   /**
-   * @cc [owner:aubin-tchoi,label:security;backend] frame-file-author-is-attribution-only
-   * An explicit file access author ID MUST only determine the stored allowlist author.
-   * File references MUST still be verified under the supplied Authenticator.
+   * @cc [owner:aubin-tchoi,label:security;backend] frame-file-author-is-authenticated-user
+   * The allowlist author MUST be the authenticated user, or null when no user is attached.
+   * API key creator metadata MUST NOT be treated as the author; file reads without an author
+   * remain denied by the viewer revalidation paths.
    */
   async computeAuthorizedFileAccess(
     auth: Authenticator,
-    {
-      frameContent,
-      fileAccessUserModelId,
-    }: { frameContent: string; fileAccessUserModelId?: number }
+    { frameContent }: { frameContent: string }
   ): Promise<ComputedAuthorizedFileAccess> {
     const frameContext = await this.resolveFrameScopedPathContext(auth);
     const packageRoot = this.getFrameV2SourceDirectoryPath(auth);
@@ -2593,35 +2590,7 @@ export class FileResource extends BaseResource<FileModel> {
         visited: new Set(),
       });
 
-    const generatedByUserId =
-      auth.user()?.id ??
-      auth.key()?.userModelId ??
-      fileAccessUserModelId ??
-      null;
-    if (!generatedByUserId) {
-      logger.error(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          hasApiKey: auth.key() != null,
-        },
-        "Cannot compute authorized file access without a userId"
-      );
-
-      throw new Error("Cannot compute authorized file access without a userId");
-    }
-
-    const generatedByUser =
-      auth.user() ?? (await UserResource.fetchByModelId(generatedByUserId));
-    if (!generatedByUser) {
-      logger.error(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          hasApiKey: auth.key() != null,
-        },
-        "Cannot compute authorized file access without a user"
-      );
-      throw new Error("Cannot compute authorized file access without a user");
-    }
+    const generatedByUserId = auth.user()?.id ?? null;
 
     return {
       generatedByUserId,

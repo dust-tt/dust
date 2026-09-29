@@ -108,16 +108,12 @@ export async function readFrameFileContent(
 export async function computeAuthorizedFileAccessForShare(
   auth: Authenticator,
   frameFile: FileResource,
-  {
-    frameContent,
-    fileAccessUserModelId,
-  }: { frameContent: string; fileAccessUserModelId?: number }
+  { frameContent }: { frameContent: string }
 ): Promise<
   Result<ComputedAuthorizedFileAccess, AuthorizedFileAccessShareError>
 > {
   const authorized = await frameFile.computeAuthorizedFileAccess(auth, {
     frameContent,
-    fileAccessUserModelId,
   });
 
   if (authorized.unverifiableRefs && authorized.unverifiableRefs.length > 0) {
@@ -136,10 +132,7 @@ export async function computeAuthorizedFileAccessForShare(
 export async function ensureAuthorizedFileAccessForShare(
   auth: Authenticator,
   frameFile: FileResource,
-  {
-    frameContent: suppliedFrameContent,
-    fileAccessUserModelId,
-  }: { frameContent?: string; fileAccessUserModelId?: number } = {}
+  { frameContent: suppliedFrameContent }: { frameContent?: string } = {}
 ): Promise<
   Result<ComputedAuthorizedFileAccess, AuthorizedFileAccessShareError>
 > {
@@ -172,7 +165,6 @@ export async function ensureAuthorizedFileAccessForShare(
     frameFile,
     {
       frameContent,
-      fileAccessUserModelId,
     }
   );
   if (authorized.isErr()) {
