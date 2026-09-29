@@ -3,6 +3,8 @@ import { InstructionSuggestionExtension } from "@app/components/editor/extension
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { formatModelEffortLabel } from "@app/components/model_picker/modelPickerUtils";
 import { getIcon } from "@app/components/resources/resources_icons";
+import type { SuggestedChangeAction } from "@app/components/shared/SuggestedChangeRow";
+import { SuggestedChangeRow } from "@app/components/shared/SuggestedChangeRow";
 import { SuggestedEditors } from "@app/components/shared/SuggestedEditors";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
@@ -21,7 +23,7 @@ import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Avatar, Chip } from "@dust-tt/sparkle";
+import { Avatar } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
@@ -32,11 +34,9 @@ function formatModel(modelId: string, reasoningEffort?: ReasoningEffort) {
     : modelName;
 }
 
-type SuggestedAction = "add" | "remove";
-
 interface SuggestedSkillRowProps {
   owner: LightWorkspaceType;
-  action: SuggestedAction;
+  action: SuggestedChangeAction;
   skillId: string;
 }
 
@@ -50,28 +50,18 @@ function SuggestedSkillRow({ owner, action, skillId }: SuggestedSkillRowProps) {
   const displayName = skill?.name ?? (isSkillLoading ? "Loading…" : skillId);
 
   return (
-    <div className="flex items-center gap-3 py-2.5">
-      <SkillAvatar size="xs" />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm text-foreground">{displayName}</div>
-        {skill && (
-          <div className="truncate text-xs text-muted-foreground">
-            {skill.userFacingDescription}
-          </div>
-        )}
-      </div>
-      <Chip
-        size="xs"
-        color={action === "add" ? "highlight" : "warning"}
-        label={action === "add" ? "Add" : "Remove"}
-      />
-    </div>
+    <SuggestedChangeRow
+      action={action}
+      visual={<SkillAvatar size="xs" />}
+      title={displayName}
+      description={skill?.userFacingDescription}
+    />
   );
 }
 
 interface SuggestedToolRowProps {
   owner: LightWorkspaceType;
-  action: SuggestedAction;
+  action: SuggestedChangeAction;
   toolId: string;
 }
 
@@ -88,31 +78,25 @@ function SuggestedToolRow({ owner, action, toolId }: SuggestedToolRowProps) {
       : toolId;
 
   return (
-    <div className="flex items-center gap-3 py-2.5">
-      <Avatar
-        size="xs"
-        icon={serverView ? getIcon(serverView.server.icon) : undefined}
-      />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm text-foreground">{displayName}</div>
-        {serverView && (
-          <div className="truncate text-xs text-muted-foreground">
-            {getMcpServerViewDescription(serverView)}
-          </div>
-        )}
-      </div>
-      <Chip
-        size="xs"
-        color={action === "add" ? "highlight" : "warning"}
-        label={action === "add" ? "Add" : "Remove"}
-      />
-    </div>
+    <SuggestedChangeRow
+      action={action}
+      visual={
+        <Avatar
+          size="xs"
+          icon={serverView ? getIcon(serverView.server.icon) : undefined}
+        />
+      }
+      title={displayName}
+      description={
+        serverView ? getMcpServerViewDescription(serverView) : undefined
+      }
+    />
   );
 }
 
 interface SuggestedSubAgentRowProps {
   owner: LightWorkspaceType;
-  action: SuggestedAction;
+  action: SuggestedChangeAction;
   childAgentId: string;
 }
 
@@ -134,22 +118,12 @@ function SuggestedSubAgentRow({
       : childAgentId;
 
   return (
-    <div className="flex items-center gap-3 py-2.5">
-      <Avatar size="xs" visual={subAgent?.pictureUrl} />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm text-foreground">{displayName}</div>
-        {subAgent && (
-          <div className="truncate text-xs text-muted-foreground">
-            {subAgent.description}
-          </div>
-        )}
-      </div>
-      <Chip
-        size="xs"
-        color={action === "add" ? "highlight" : "warning"}
-        label={action === "add" ? "Add" : "Remove"}
-      />
-    </div>
+    <SuggestedChangeRow
+      action={action}
+      visual={<Avatar size="xs" visual={subAgent?.pictureUrl} />}
+      title={displayName}
+      description={subAgent?.description}
+    />
   );
 }
 
