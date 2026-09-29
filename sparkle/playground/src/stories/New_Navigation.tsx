@@ -4,8 +4,8 @@ import {
   Bell01,
   Breadcrumbs,
   Button,
-  CheckDone01,
   ChevronDown,
+  Clock,
   Cube01,
   CubeOutline,
   Dialog,
@@ -28,15 +28,18 @@ import {
   File02,
   Heart,
   Icon,
+  Inbox01,
   IntersectDust,
   LayersThree01,
   Lightbulb04,
   Link01,
   LogOut01,
+  MessageChatSquare,
   MessageCircle01,
+  MessageLightning01,
+  MessageQuestionCircle,
   NavigationList,
   NavigationListCollapsibleSection,
-  NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
   NavTabPill,
@@ -46,19 +49,20 @@ import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
+  PuzzlePiece01,
+  Robot,
   ScrollArea,
   ScrollBar,
   SearchInput,
   Settings01,
+  ShapesPlus,
   SlackLogo,
   Star01,
-  Trash01,
   User01,
   Users01,
   UserSquare,
   XClose,
   Zap,
-  ZapOff,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
 import {
@@ -70,10 +74,17 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
-import { BuildNav } from "../components/BuildNav";
+import {
+  BUILD_SECTIONS,
+  type BuildSection,
+  BuildNav,
+  isBuildSection,
+} from "../components/BuildNav";
 import {
   ConversationActions,
+  conversationFilesFor,
   isFileView,
+  type SelectedCitation,
   type SidePanelView,
   sidePanelContent,
   sidePanelLabel,
@@ -82,7 +93,11 @@ import {
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
+import { InboxAltView } from "../components/InboxAltView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
+import { ManageAgentsView } from "../components/ManageAgentsView";
+import { ManageSkillsView } from "../components/ManageSkillsView";
+import { ManageToolsView } from "../components/ManageToolsView";
 import { NewConversation } from "../components/NewConversation";
 import {
   PanelLayout,
@@ -91,25 +106,42 @@ import {
   type PanelSizingType,
 } from "../components/PanelLayout";
 import { ProfilePanel } from "../components/Profile";
+import { RequestDetailView } from "../components/RequestDetailView";
+import type { RequestsTab } from "../components/RequestsView";
+import { RequestsView } from "../components/RequestsView";
+import { TriggersManageView } from "../components/TriggersManageView";
+import { WakeUpsManageView } from "../components/WakeUpsManageView";
 import {
+  type AdminRequest,
   type Agent,
   type Conversation,
   createConversationsWithMessages,
+  createMockRequests,
+  createMockTriggers,
+  createMockWakeUps,
   createSpace,
+  createTriggeredConversations,
+  type DataSource,
+  type DataSourceFileType,
   DEFAULT_POD_NOTIFICATION_CONDITION,
-  getAgentById,
   getMembersBySpaceId,
   getRandomAgents,
   getRandomSpaces,
   getRandomUsers,
   getUserById,
+  isTriggeredConversation,
   mockAgents,
   mockConversations,
   mockUsers,
+  MY_POD_SPACE,
   POD_NOTIFICATION_OPTIONS,
   type PodNotificationCondition,
+  type RequestOutcome,
   type Space,
+  type Trigger,
+  type TriggerPool,
   type User,
+  type WakeUp,
 } from "../data";
 import {
   getDataSourceIcon,
@@ -135,41 +167,18 @@ type Collaborator =
   | { type: "agent"; data: Agent }
   | { type: "person"; data: User };
 
+/**
+ * What Automated work shows: the runs themselves, the triggers that start them,
+ * or the wake-ups agents set for themselves inside a conversation.
+ */
+type AutomatedWorkTab = "conversations" | "triggers" | "wakeups";
+
 type PodTabsState = {
   mainTabOrder: string[];
   dynamicFileTabs: DynamicFileTab[];
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function getRandomParticipants(conversation: Conversation) {
-  const all = [
-    ...conversation.userParticipants.map((id) => ({
-      type: "user" as const,
-      data: getUserById(id),
-    })),
-    ...conversation.agentParticipants.map((id) => ({
-      type: "agent" as const,
-      data: getAgentById(id),
-    })),
-  ].filter((p) => p.data != null) as (
-    | { type: "user"; data: User }
-    | { type: "agent"; data: Agent }
-  )[];
-  const shuffled = [...all].sort(() => Math.random() - 0.5);
-  return shuffled.slice(
-    0,
-    Math.min(Math.max(1, Math.floor(Math.random() * 6) + 1), shuffled.length)
-  );
-}
-
-function isPlaygroundInboxTriggered(conversation: Conversation): boolean {
-  let h = 0;
-  for (let i = 0; i < conversation.id.length; i++) {
-    h = (h + conversation.id.charCodeAt(i)) % 997;
-  }
-  return h % 4 === 0;
-}
 
 function getSpaceActivity(space: Space) {
   const c = space.id.charCodeAt(space.id.length - 1);
@@ -179,7 +188,7 @@ function getSpaceActivity(space: Space) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-function Pods() {
+function NewNavigation() {
   // ── Bootstrap state ───────────────────────────────────────────────────────
   const [user, setUser] = useState<User | null>(null);
   const [greeting, setGreeting] = useState<string>("");
@@ -214,24 +223,40 @@ function Pods() {
     setStarredSpaceIds(
       new Set(randomSpaces.slice(0, 2).map((space) => space.id))
     );
-    setConversationsWithMessages(createConversationsWithMessages(u.id));
+    const conversations = createConversationsWithMessages(u.id);
+    setConversationsWithMessages(conversations);
+    // Every trigger and wake-up belongs to whoever opened the playground, since
+    // the Manage tabs only ever list the ones you own.
+    const userTriggers = createMockTriggers(u.id);
+    setTriggers(userTriggers);
+    setTriggeredConversations(createTriggeredConversations(userTriggers));
+    setWakeUps(
+      createMockWakeUps([...conversations, ...mockConversations], u.id)
+    );
   }, []);
 
   // ── Navigation state ──────────────────────────────────────────────────────
   // P2 selection: what's shown in the "level 1" panel
   type P2View =
     | { kind: "welcome" }
+    | { kind: "inboxAlt" }
+    | { kind: "requests" }
+    | { kind: "conversations" }
+    | { kind: "automations" }
     | { kind: "conversation"; conversationId: string }
     | { kind: "space"; spaceId: string }
     | { kind: "profile" }
-    | { kind: "templates" };
+    | { kind: "templates" }
+    | { kind: "build"; section: BuildSection };
 
-  const [p2View, setP2View] = useState<P2View>({ kind: "welcome" });
+  const [p2View, setP2View] = useState<P2View>({ kind: "inboxAlt" });
 
-  // P3: conversation from a space (level 2), or a side panel opened from the
-  // level-1 conversation (citation preview, file, files, credit usage).
+  // P3: conversation from a space (level 2), a file opened from a pod's
+  // files screen, or a side panel opened from the level-1 conversation.
   type P3View =
     | { kind: "conversation"; conversationId: string }
+    | { kind: "request"; requestId: string }
+    | { kind: "newConversation"; podName?: string }
     | SidePanelView;
 
   const [p3View, setP3View] = useState<P3View | null>(null);
@@ -239,8 +264,45 @@ function Pods() {
   // P4: side panel opened from a level-2 conversation.
   const [p4View, setP4View] = useState<SidePanelView | null>(null);
 
+  const openNewConversation = (podName?: string) => {
+    setP3View({ kind: "newConversation", podName });
+    setP4View(null);
+  };
+
   // ── Space panel tab state (lifted from GroupConversationView) ────────────
   const [spaceActiveTab, setSpaceActiveTab] = useState("conversations");
+  const [requestsActiveTab, setRequestsActiveTab] =
+    useState<RequestsTab>("pending");
+  const [automatedWorkTab, setAutomatedWorkTab] =
+    useState<AutomatedWorkTab>("conversations");
+  const [triggers, setTriggers] = useState<Trigger[]>([]);
+  // A run that already happened is history: switching its trigger off or moving
+  // it to another pool does not rewrite it. Keeping these conversations in
+  // state rather than deriving them from `triggers` is what stops a toggle from
+  // rebuilding every list that shows a conversation.
+  const [triggeredConversations, setTriggeredConversations] = useState<
+    Conversation[]
+  >([]);
+  const [wakeUps, setWakeUps] = useState<WakeUp[]>([]);
+  // The inbox rows you have read, conversations and requests alike. Ones read
+  // during a visit to the Inbox keep their place there; the next visit starts
+  // without them.
+  const [readRowIds, setReadRowIds] = useState<Set<string>>(new Set());
+  // Rows put back to unread from a row's menu, which outranks whether the
+  // conversation itself has anything new in it. A row is in one set or the
+  // other, never both.
+  const [unreadRowIds, setUnreadRowIds] = useState<Set<string>>(new Set());
+  // Conversations you have left. They are gone from every list that draws on
+  // `allConversations`, which is all of them.
+  const [leftConversationIds, setLeftConversationIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [requests, setRequests] = useState<AdminRequest[]>(createMockRequests);
+  // Requests handled since the list was last refreshed. They stay in Pending,
+  // showing their outcome, instead of vanishing under the cursor.
+  const [stickyRequestIds, setStickyRequestIds] = useState<Set<string>>(
+    new Set()
+  );
   const [podTabsBySpaceId, setPodTabsBySpaceId] = useState<
     Map<string, PodTabsState>
   >(new Map());
@@ -260,10 +322,10 @@ function Pods() {
   const [activeTab, setActiveTab] = useState<"chat" | "build" | "admin">(
     "chat"
   );
-  // The Build screens live in the Inbox story, so here the nav only highlights.
+  // Which Build row is highlighted. Only three of them have a screen, so this
+  // outlives `p2View` — a Space stays lit without the panel changing.
   const [buildNavItem, setBuildNavItem] = useState("agents");
   const [searchText, setSearchText] = useState("");
-  const [inboxHideTriggered] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
     useState<Map<string, PodNotificationCondition>>(new Map());
 
@@ -278,9 +340,6 @@ function Pods() {
   const [starredSpaceIds, setStarredSpaceIds] = useState<Set<string>>(
     new Set()
   );
-  const [hideTriggeredConversations, setHideTriggeredConversations] =
-    useState(false);
-
   // ── Space management state ────────────────────────────────────────────────
   const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
     new Map()
@@ -322,60 +381,25 @@ function Pods() {
   }, [spaces, lastCreatedSpaceId]);
 
   // ── Derived data ──────────────────────────────────────────────────────────
+  // Automated work is nothing but the runs of your triggers, so it joins the
+  // conversations from the trigger list rather than from a coin flip.
   const allConversations = useMemo(
-    () => [...conversationsWithMessages, ...mockConversations],
-    [conversationsWithMessages]
+    () =>
+      [
+        ...conversationsWithMessages,
+        ...mockConversations,
+        ...triggeredConversations,
+      ].filter((conversation) => !leftConversationIds.has(conversation.id)),
+    [conversationsWithMessages, leftConversationIds, triggeredConversations]
   );
 
-  const filteredConversations = useMemo(() => {
-    if (!searchText.trim()) return allConversations;
-    const lower = searchText.toLowerCase();
-    return allConversations.filter((c) =>
-      c.title.toLowerCase().includes(lower)
-    );
-  }, [searchText, allConversations]);
-
-  const groupedConversations = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const lastWeek = new Date(today);
-    lastWeek.setDate(today.getDate() - 7);
-    const lastMonth = new Date(today);
-    lastMonth.setDate(today.getDate() - 30);
-    const groups = {
-      today: [] as Conversation[],
-      yesterday: [] as Conversation[],
-      lastWeek: [] as Conversation[],
-      lastMonth: [] as Conversation[],
-    };
-    filteredConversations.forEach((c) => {
-      if (c.updatedAt >= today) groups.today.push(c);
-      else if (c.updatedAt >= yesterday) groups.yesterday.push(c);
-      else if (c.updatedAt >= lastWeek) groups.lastWeek.push(c);
-      else if (c.updatedAt >= lastMonth) groups.lastMonth.push(c);
-    });
-    return groups;
-  }, [filteredConversations]);
-
-  const inboxConversations = useMemo(() => {
-    const pool = inboxHideTriggered
-      ? filteredConversations.filter((c) => !isPlaygroundInboxTriggered(c))
-      : filteredConversations;
-    if (pool.length === 0) return [];
-    const count = Math.floor(Math.random() * 4) + 2;
-    return [...pool]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, Math.min(count, pool.length))
-      .map((c) => ({
-        conversation: c,
-        status: (Math.random() < 0.25 ? "blocked" : "idle") as
-          | "idle"
-          | "blocked",
-      }));
-  }, [filteredConversations, inboxHideTriggered]);
+  const unreadCount = useMemo(() => {
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    return allConversations.filter((conv) => {
+      if (!conv.spaceId) return false;
+      return conv.updatedAt >= twoDaysAgo;
+    }).length;
+  }, [allConversations]);
 
   const sortedSpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {
@@ -438,6 +462,110 @@ function Pods() {
         : null,
     [p3View, allConversations]
   );
+
+  const p3Request = useMemo(
+    () =>
+      p3View?.kind === "request"
+        ? (requests.find((r) => r.id === p3View.requestId) ?? null)
+        : null,
+    [p3View, requests]
+  );
+
+  const pendingRequestCount = requests.filter(
+    (r) => r.status === "pending"
+  ).length;
+
+  // Handling a request records the decision and the decision maker. The row is
+  // now Done, but it is pinned to Pending until the list is refreshed.
+  const handleResolveRequest = useCallback(
+    (requestId: string, outcome: RequestOutcome, note?: string) => {
+      setRequests((prev) =>
+        prev.map((request) =>
+          request.id === requestId
+            ? {
+                ...request,
+                status: "done" as const,
+                outcome,
+                resolvedByUserId: user?.id,
+                resolvedAt: new Date(),
+                resolutionMessage: note,
+              }
+            : request
+        )
+      );
+      setStickyRequestIds((prev) => new Set(prev).add(requestId));
+    },
+    [user?.id]
+  );
+
+  // Switching tabs is a refresh: handled rows drop out of Pending.
+  const handleRequestsTabChange = useCallback((tab: RequestsTab) => {
+    setRequestsActiveTab(tab);
+    setStickyRequestIds(new Set());
+  }, []);
+
+  const handleClearHandledRequests = useCallback(() => {
+    setStickyRequestIds(new Set());
+  }, []);
+
+  const handleRowsRead = useCallback((rowIds: string[]) => {
+    setReadRowIds((prev) => new Set([...prev, ...rowIds]));
+    setUnreadRowIds((prev) => {
+      const next = new Set(prev);
+      rowIds.forEach((rowId) => next.delete(rowId));
+      return next;
+    });
+  }, []);
+
+  const handleRowsUnread = useCallback((rowIds: string[]) => {
+    setReadRowIds((prev) => {
+      const next = new Set(prev);
+      rowIds.forEach((rowId) => next.delete(rowId));
+      return next;
+    });
+    setUnreadRowIds((prev) => new Set([...prev, ...rowIds]));
+  }, []);
+
+  // Leaving a conversation takes it out of every list, and closes it if you
+  // were looking at it.
+  const handleLeaveConversation = useCallback((conversationId: string) => {
+    setLeftConversationIds((prev) => new Set([...prev, conversationId]));
+    setP3View((prev) =>
+      prev?.kind === "conversation" && prev.conversationId === conversationId
+        ? null
+        : prev
+    );
+    setP4View(null);
+  }, []);
+
+  const handleToggleTrigger = useCallback(
+    (triggerId: string, enabled: boolean) => {
+      setTriggers((prev) =>
+        prev.map((trigger) =>
+          trigger.id === triggerId
+            ? { ...trigger, status: enabled ? "enabled" : "disabled" }
+            : trigger
+        )
+      );
+    },
+    []
+  );
+
+  const handleSetTriggerPool = useCallback(
+    (triggerId: string, pool: TriggerPool) => {
+      setTriggers((prev) =>
+        prev.map((trigger) =>
+          trigger.id === triggerId ? { ...trigger, pool } : trigger
+        )
+      );
+    },
+    []
+  );
+
+  // A wake-up has no off switch: dismissing it is the end of it.
+  const handleDismissWakeUp = useCallback((wakeUpId: string) => {
+    setWakeUps((prev) => prev.filter((wakeUp) => wakeUp.id !== wakeUpId));
+  }, []);
 
   // ── Pod context & tab state ───────────────────────────────────────────────
   const podContext = useMemo(
@@ -826,84 +954,6 @@ function Pods() {
     );
   };
 
-  const getConversationMoreMenu = (conversation: Conversation) => {
-    const participants = getRandomParticipants(conversation);
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <NavigationListItemAction />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem
-            label="Rename"
-            icon={Edit04}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          />
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger
-              icon={UserSquare}
-              label="Participant list"
-            />
-            <DropdownMenuPortal>
-              <DropdownMenuSubContent>
-                {participants.length > 0 ? (
-                  participants.map((p) => (
-                    <DropdownMenuItem
-                      key={
-                        p.type === "user"
-                          ? `user-${p.data.id}`
-                          : `agent-${p.data.id}`
-                      }
-                      label={p.type === "user" ? p.data.fullName : p.data.name}
-                      icon={
-                        p.type === "user" ? (
-                          <Avatar
-                            size="xxs"
-                            name={p.data.fullName}
-                            visual={p.data.portrait}
-                            isRounded
-                          />
-                        ) : (
-                          <Avatar
-                            size="xxs"
-                            name={p.data.name}
-                            emoji={p.data.emoji}
-                            backgroundColor={p.data.backgroundColor}
-                            isRounded={false}
-                          />
-                        )
-                      }
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    />
-                  ))
-                ) : (
-                  <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-                    No participants
-                  </div>
-                )}
-              </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
-          <DropdownMenuItem
-            label="Delete"
-            icon={Trash01}
-            variant="warning"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          />
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
-
   const renderPodNavItem = (space: Space) => {
     const isStarred = starredSpaceIds.has(space.id);
     const isRestricted = space.id.charCodeAt(space.id.length - 1) % 2 === 0;
@@ -1052,7 +1102,24 @@ function Pods() {
   }
 
   // ── P2 content ────────────────────────────────────────────────────────────
+  // What the three Build screens are called and badged with, in one place: the
+  // sidebar row, the breadcrumb and the panel label all read from it.
+  const BUILD_SECTION_DISPLAY: Record<
+    BuildSection,
+    { label: string; icon: ComponentType }
+  > = {
+    agents: { label: "Agents", icon: Robot },
+    skills: { label: "Skills", icon: PuzzlePiece01 },
+    tools: { label: "Tools", icon: ShapesPlus },
+  };
+
   const p2Label = (() => {
+    if (p2View.kind === "build")
+      return BUILD_SECTION_DISPLAY[p2View.section].label;
+    if (p2View.kind === "inboxAlt") return "Inbox";
+    if (p2View.kind === "requests") return "Requests";
+    if (p2View.kind === "conversations") return "Free conversations";
+    if (p2View.kind === "automations") return "Automated work";
     if (podContext) return podContext.space.name;
     if (p2View.kind === "conversation")
       return selectedConversation?.title ?? "Conversation";
@@ -1062,7 +1129,67 @@ function Pods() {
   })();
 
   const p2Content = (() => {
+    if (p2View.kind === "build") {
+      if (p2View.section === "agents")
+        return <ManageAgentsView currentUserId={user.id} />;
+      if (p2View.section === "skills")
+        return <ManageSkillsView currentUserId={user.id} />;
+      return <ManageToolsView />;
+    }
     if (p2View.kind === "profile" && user) return <ProfilePanel user={user} />;
+    if (p2View.kind === "inboxAlt")
+      return (
+        <InboxAltView
+          spaces={spaces}
+          onNewConversation={openNewConversation}
+          conversations={allConversations}
+          requests={requests}
+          triggers={triggers}
+          currentUserId={user.id}
+          selectedConversationId={
+            p3View?.kind === "conversation" ? p3View.conversationId : null
+          }
+          selectedRequestId={
+            p3View?.kind === "request" ? p3View.requestId : null
+          }
+          readRowIds={readRowIds}
+          onRowsRead={handleRowsRead}
+          unreadRowIds={unreadRowIds}
+          onRowsUnread={handleRowsUnread}
+          onLeaveConversation={handleLeaveConversation}
+          onConversationClick={(conversation) => {
+            setP3View({
+              kind: "conversation",
+              conversationId: conversation.id,
+            });
+            setP4View(null);
+          }}
+          onRequestClick={(request) => {
+            setP3View({ kind: "request", requestId: request.id });
+            setP4View(null);
+          }}
+        />
+      );
+    if (p2View.kind === "requests")
+      return (
+        <RequestsView
+          requests={requests}
+          activeTab={requestsActiveTab}
+          onTabChange={handleRequestsTabChange}
+          stickyRequestIds={stickyRequestIds}
+          onClearHandled={handleClearHandledRequests}
+          currentUserId={user?.id}
+          selectedRequestId={
+            p3View?.kind === "request" ? p3View.requestId : null
+          }
+          readRowIds={readRowIds}
+          onRowsRead={handleRowsRead}
+          onRequestClick={(request) => {
+            setP3View({ kind: "request", requestId: request.id });
+            setP4View(null);
+          }}
+        />
+      );
     if (p2View.kind === "templates")
       return (
         <div className="h-full overflow-auto">
@@ -1085,6 +1212,63 @@ function Pods() {
           }}
         />
       );
+    if (p2View.kind === "automations") {
+      if (automatedWorkTab === "triggers")
+        return (
+          <TriggersManageView
+            triggers={triggers}
+            currentUserId={user.id}
+            onToggleTrigger={handleToggleTrigger}
+            onSetTriggerPool={handleSetTriggerPool}
+          />
+        );
+      if (automatedWorkTab === "wakeups")
+        return (
+          <WakeUpsManageView
+            wakeUps={wakeUps}
+            conversations={allConversations}
+            currentUserId={user.id}
+            onDismissWakeUp={handleDismissWakeUp}
+            onConversationClick={(conversation) => {
+              setP3View({
+                kind: "conversation",
+                conversationId: conversation.id,
+              });
+              setP4View(null);
+            }}
+          />
+        );
+      return (
+        <GroupConversationView
+          space={MY_POD_SPACE}
+          conversations={allConversations.filter(isTriggeredConversation)}
+          users={mockUsers}
+          agents={mockAgents}
+          onConversationClick={(conversation) => {
+            setP3View({
+              kind: "conversation",
+              conversationId: conversation.id,
+            });
+            setP4View(null);
+          }}
+          activeTab="conversations"
+          podVariant="personal"
+          showComposer={false}
+          hideConversationFilters
+          currentUserId={user.id}
+          readRowIds={readRowIds}
+          onRowsRead={handleRowsRead}
+          unreadRowIds={unreadRowIds}
+          onRowsUnread={handleRowsUnread}
+          onLeaveConversation={handleLeaveConversation}
+          leftConversationIds={leftConversationIds}
+          triggers={triggers}
+          selectedConversationId={
+            p3View?.kind === "conversation" ? p3View.conversationId : null
+          }
+        />
+      );
+    }
     if (podContext)
       return (
         <GroupConversationView
@@ -1093,10 +1277,16 @@ function Pods() {
           users={mockUsers}
           agents={mockAgents}
           spaceMemberIds={
-            spaceMembers.get(podContext.spaceId) ??
-            getMembersBySpaceId(podContext.spaceId)
+            podContext.variant === "shared"
+              ? (spaceMembers.get(podContext.spaceId) ??
+                getMembersBySpaceId(podContext.spaceId))
+              : undefined
           }
-          editorUserIds={spaceEditors.get(podContext.spaceId) ?? []}
+          editorUserIds={
+            podContext.variant === "shared"
+              ? (spaceEditors.get(podContext.spaceId) ?? [])
+              : undefined
+          }
           onConversationClick={(conversation) => {
             setP3View({
               kind: "conversation",
@@ -1104,14 +1294,28 @@ function Pods() {
             });
             setP4View(null);
           }}
-          onInviteMembers={() => handleInviteMembers(podContext.spaceId)}
-          onUpdateSpaceName={handleUpdateSpaceName}
-          onUpdateSpacePublic={handleUpdateSpacePublic}
+          onInviteMembers={
+            podContext.variant === "shared"
+              ? () => handleInviteMembers(podContext.spaceId)
+              : undefined
+          }
+          onUpdateSpaceName={
+            podContext.variant === "shared" ? handleUpdateSpaceName : undefined
+          }
+          onUpdateSpacePublic={
+            podContext.variant === "shared"
+              ? handleUpdateSpacePublic
+              : undefined
+          }
           spacePublicSettings={spacePublicSettings}
           onUpdateSpaceNotifications={updateSpaceNotificationPreference}
           spaceNotificationSettings={spaceNotificationPreferences}
-          activeTab={activePodTab}
-          onTabChange={setActivePodTab}
+          activeTab={
+            podContext.variant === "personal" ? "conversations" : activePodTab
+          }
+          onTabChange={
+            podContext.variant === "personal" ? undefined : setActivePodTab
+          }
           dynamicFileTabIds={dynamicFileTabIds}
           onAddFileToTopbar={handlePodFileDrop}
           // Pod files open in a panel (frames take focus, others share).
@@ -1125,16 +1329,29 @@ function Pods() {
             setFileToRevealInKnowledge(null)
           }
           podVariant={podContext.variant}
+          showComposer={false}
+          onNewConversation={() => openNewConversation(podContext.space.name)}
           currentUserId={user.id}
-          podTabCustomization={{
-            tabs: podTabCustomizationTabs,
-            addableFiles: addablePodFiles,
-            onReorder: handlePodFileReorder,
-            onChangeIcon: handlePodTabIconChange,
-            onRename: handlePodTabRename,
-            onRemove: handlePodRemoveTab,
-            onAdd: (file) => handlePodFileDrop(file.id, { activateTab: false }),
-          }}
+          readRowIds={readRowIds}
+          onRowsRead={handleRowsRead}
+          unreadRowIds={unreadRowIds}
+          onRowsUnread={handleRowsUnread}
+          onLeaveConversation={handleLeaveConversation}
+          leftConversationIds={leftConversationIds}
+          podTabCustomization={
+            podContext.variant === "shared"
+              ? {
+                  tabs: podTabCustomizationTabs,
+                  addableFiles: addablePodFiles,
+                  onReorder: handlePodFileReorder,
+                  onChangeIcon: handlePodTabIconChange,
+                  onRename: handlePodTabRename,
+                  onRemove: handlePodRemoveTab,
+                  onAdd: (file) =>
+                    handlePodFileDrop(file.id, { activateTab: false }),
+                }
+              : undefined
+          }
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
           }
@@ -1164,18 +1381,37 @@ function Pods() {
       ? "Panel 3"
       : p3View.kind === "conversation"
         ? (p3Conversation?.title ?? "Conversation")
-        : sidePanelLabel(p3View);
+        : p3View.kind === "request"
+          ? (p3Request?.title ?? "Request")
+          : p3View.kind === "newConversation"
+            ? "New conversation"
+            : sidePanelLabel(p3View);
 
   const p3SizingType: PanelSizingType =
     p3View === null
       ? "secondary"
-      : p3View.kind === "conversation"
+      : p3View.kind === "conversation" ||
+          p3View.kind === "request" ||
+          p3View.kind === "newConversation"
         ? "default"
         : sidePanelSizing(p3View);
 
   const p3Content = (() => {
     if (!p3View) return null;
-    if (p3View.kind === "conversation" && p3Conversation)
+    if (p3View.kind === "newConversation")
+      return <NewConversation greeting={greeting} podName={p3View.podName} />;
+    if (p3View.kind === "request") {
+      if (!p3Request) return null;
+      return (
+        <RequestDetailView
+          request={p3Request}
+          currentUserId={user?.id}
+          onResolve={handleResolveRequest}
+        />
+      );
+    }
+    if (p3View.kind === "conversation") {
+      if (!p3Conversation) return null;
       return (
         <ConversationView
           conversation={p3Conversation}
@@ -1188,9 +1424,8 @@ function Pods() {
           }
         />
       );
-    if (p3View.kind !== "conversation")
-      return renderSidePanel(p3View, setP3View, selectedConversation);
-    return null;
+    }
+    return renderSidePanel(p3View, setP3View, selectedConversation);
   })();
 
   const p4Label = p4View === null ? "Attachment" : sidePanelLabel(p4View);
@@ -1218,98 +1453,99 @@ function Pods() {
     />
   );
 
-  const podTopBarLeft = podContext ? (
-    <div
-      className={
-        "flex min-w-0 flex-1 items-center gap-0.5 rounded-lg " +
-        (draggingPodFileId ? "bg-highlight-50" : "")
-      }
-      onDragOver={(event) => {
-        if (draggingPodFileId) {
+  const podTopBarLeft =
+    podContext?.variant === "shared" ? (
+      <div
+        className={
+          "flex min-w-0 flex-1 items-center gap-0.5 rounded-lg " +
+          (draggingPodFileId ? "bg-highlight-50" : "")
+        }
+        onDragOver={(event) => {
+          if (draggingPodFileId) {
+            event.preventDefault();
+          }
+        }}
+        onDrop={(event) => {
           event.preventDefault();
-        }
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        if (draggingPodFileId) {
-          handlePodFileDrop(draggingPodFileId);
-        }
-      }}
-    >
-      <NavTabPill
-        value={activePodTab}
-        onValueChange={setActivePodTab}
-        className="min-w-0 overflow-hidden"
+          if (draggingPodFileId) {
+            handlePodFileDrop(draggingPodFileId);
+          }
+        }}
       >
-        <NavTabPillList>
-          {podTabOptions.map((option) => {
-            if (!option.icon) {
-              return null;
-            }
+        <NavTabPill
+          value={activePodTab}
+          onValueChange={setActivePodTab}
+          className="min-w-0 overflow-hidden"
+        >
+          <NavTabPillList>
+            {podTabOptions.map((option) => {
+              if (!option.icon) {
+                return null;
+              }
 
-            return (
-              <NavTabPillTrigger
-                key={option.value}
-                value={option.value}
-                icon={option.icon}
-                aria-label={option.tooltip ?? option.label}
-                onContextMenu={(event) => {
-                  if (!option.contextMenuItems?.length) {
-                    return;
-                  }
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setTabContextMenu({
-                    value: option.value,
-                    x: event.clientX,
-                    y: event.clientY,
-                  });
+              return (
+                <NavTabPillTrigger
+                  key={option.value}
+                  value={option.value}
+                  icon={option.icon}
+                  aria-label={option.tooltip ?? option.label}
+                  onContextMenu={(event) => {
+                    if (!option.contextMenuItems?.length) {
+                      return;
+                    }
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setTabContextMenu({
+                      value: option.value,
+                      x: event.clientX,
+                      y: event.clientY,
+                    });
+                  }}
+                >
+                  {option.label}
+                </NavTabPillTrigger>
+              );
+            })}
+          </NavTabPillList>
+        </NavTabPill>
+        {tabContextMenu && tabContextMenuOption?.contextMenuItems && (
+          <DropdownMenu
+            open
+            onOpenChange={(open) => {
+              if (!open) {
+                setTabContextMenu(null);
+              }
+            }}
+            modal
+          >
+            <DropdownMenuPortal>
+              <DropdownMenuContent
+                align="start"
+                className="whitespace-nowrap"
+                style={{
+                  position: "fixed",
+                  left: tabContextMenu.x,
+                  top: tabContextMenu.y,
                 }}
               >
-                {option.label}
-              </NavTabPillTrigger>
-            );
-          })}
-        </NavTabPillList>
-      </NavTabPill>
-      {tabContextMenu && tabContextMenuOption?.contextMenuItems && (
-        <DropdownMenu
-          open
-          onOpenChange={(open) => {
-            if (!open) {
-              setTabContextMenu(null);
-            }
-          }}
-          modal
-        >
-          <DropdownMenuPortal>
-            <DropdownMenuContent
-              align="start"
-              className="whitespace-nowrap"
-              style={{
-                position: "fixed",
-                left: tabContextMenu.x,
-                top: tabContextMenu.y,
-              }}
-            >
-              {tabContextMenuOption.contextMenuItems.map((item) => (
-                <DropdownMenuItem
-                  key={item.label}
-                  label={item.label}
-                  icon={item.icon}
-                  variant={item.variant}
-                  onClick={() => {
-                    item.onClick?.();
-                    setTabContextMenu(null);
-                  }}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenu>
-      )}
-    </div>
-  ) : null;
+                {tabContextMenuOption.contextMenuItems.map((item) => (
+                  <DropdownMenuItem
+                    key={item.label}
+                    label={item.label}
+                    icon={item.icon}
+                    variant={item.variant}
+                    onClick={() => {
+                      item.onClick?.();
+                      setTabContextMenu(null);
+                    }}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenu>
+        )}
+      </div>
+    ) : null;
 
   const podTopBarRight = (() => {
     if (!podContext || !shouldShowMemberChrome(podContext.variant)) return null;
@@ -1381,6 +1617,16 @@ function Pods() {
   })();
 
   const p2TopBarLeft = (() => {
+    if (p2View.kind === "build") {
+      const section = BUILD_SECTION_DISPLAY[p2View.section];
+      return (
+        <Breadcrumbs
+          items={[{ label: section.label, icon: section.icon }]}
+          size="sm"
+          hasLighterFont
+        />
+      );
+    }
     if (p2View.kind === "conversation" && selectedConversation)
       return (
         <Breadcrumbs
@@ -1388,6 +1634,63 @@ function Pods() {
           size="sm"
           hasLighterFont
         />
+      );
+    if (p2View.kind === "inboxAlt")
+      return (
+        <Breadcrumbs
+          items={[{ label: "Inbox", icon: Inbox01 }]}
+          size="sm"
+          hasLighterFont
+        />
+      );
+    if (p2View.kind === "requests")
+      return (
+        <Breadcrumbs
+          items={[{ label: "Requests", icon: MessageQuestionCircle }]}
+          size="sm"
+          hasLighterFont
+        />
+      );
+    if (p2View.kind === "conversations")
+      return (
+        <Breadcrumbs
+          items={[{ label: "Free conversations", icon: MessageChatSquare }]}
+          size="sm"
+          hasLighterFont
+        />
+      );
+    if (p2View.kind === "automations")
+      return (
+        <NavTabPill
+          value={automatedWorkTab}
+          onValueChange={(value) =>
+            setAutomatedWorkTab(value as AutomatedWorkTab)
+          }
+        >
+          <NavTabPillList>
+            <NavTabPillTrigger
+              value="conversations"
+              icon={MessageLightning01}
+              aria-label="Triggered Conversations"
+            >
+              Triggered Conversations
+            </NavTabPillTrigger>
+            <NavTabPillTrigger
+              value="triggers"
+              icon={Zap}
+              aria-label="Manage Triggers"
+            >
+              Manage Triggers
+            </NavTabPillTrigger>
+            <NavTabPillTrigger
+              value="wakeups"
+              icon={Clock}
+              aria-label="Planned Wake-ups"
+            >
+              Planned Wake-ups
+            </NavTabPillTrigger>
+          </NavTabPillList>
+        </NavTabPill>
       );
     if (podContext) return podTopBarLeft;
     if (p2View.kind === "profile")
@@ -1411,21 +1714,9 @@ function Pods() {
     return null;
   })();
 
-  const p3TopBarLeft = (() => {
-    if (p3View?.kind === "conversation" && p3Conversation)
-      return (
-        <Breadcrumbs
-          items={[{ label: p3Conversation.title }]}
-          size="sm"
-          hasLighterFont
-        />
-      );
-    if (p3View !== null && p3View.kind !== "conversation")
-      return (
-        <Breadcrumbs items={[{ label: p3Label }]} size="sm" hasLighterFont />
-      );
-    return null;
-  })();
+  const p3TopBarLeft = p3View ? (
+    <Breadcrumbs items={[{ label: p3Label }]} size="sm" hasLighterFont />
+  ) : null;
 
   const p3TopBarRight =
     p3View?.kind === "conversation" ? conversationActionsFor("p4") : null;
@@ -1434,11 +1725,27 @@ function Pods() {
     <Breadcrumbs items={[{ label: p4Label }]} size="sm" hasLighterFont />
   ) : null;
 
+  /** Opens a Build screen, from the nav or from landing on the Build tab. */
+  const openBuildSection = (section: BuildSection) => {
+    setBuildNavItem(section);
+    setP2View({ kind: "build", section });
+    setP3View(null);
+    setP4View(null);
+  };
+
   // ── Sidebar (Nav) top bar ─────────────────────────────────────────────────
   const navTopBar = (
     <NavTabPill
       value={activeTab}
-      onValueChange={(v) => setActiveTab(v as "chat" | "build" | "admin")}
+      onValueChange={(v) => {
+        const tab = v as "chat" | "build" | "admin";
+        setActiveTab(tab);
+        // Build opens on its first section rather than keeping whatever the
+        // Work tab had in the panel.
+        if (tab === "build") {
+          openBuildSection(BUILD_SECTIONS[0]);
+        }
+      }}
     >
       <NavTabPillList>
         <NavTabPillTrigger value="chat" icon={IntersectDust}>
@@ -1475,7 +1782,7 @@ function Pods() {
                 variant="highlight"
                 tooltip="Create a new conversation"
                 size="sm"
-                icon={Plus}
+                icon={MessageCircle01}
                 label="New"
                 className="shrink-0"
                 onClick={() => {
@@ -1486,67 +1793,71 @@ function Pods() {
               />
             </div>
 
-            {inboxConversations.length > 0 && (
-              <NavigationListCollapsibleSection
+            <NavigationList className="mx-sidebar-side-spacing pt-1">
+              <NavigationListItem
                 label="Inbox"
-                count={inboxConversations.length}
-                className="bg-background rounded-xl border border-border p-1 mx-sidebar-side-spacing"
-                actionOnHover={false}
-                action={
-                  <Button
-                    size="xmini"
-                    variant="ghost-secondary"
-                    label="Mark all as read"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    hasLighterFont
-                  />
+                icon={Inbox01}
+                selected={p2View.kind === "inboxAlt"}
+                count={unreadCount > 0 ? unreadCount : undefined}
+                onClick={() => {
+                  setP2View({ kind: "inboxAlt" });
+                  setP3View(null);
+                  setP4View(null);
+                }}
+              />
+              <NavigationListItem
+                label="Requests"
+                icon={MessageQuestionCircle}
+                selected={p2View.kind === "requests"}
+                count={
+                  pendingRequestCount > 0 ? pendingRequestCount : undefined
                 }
-              >
-                {inboxConversations.map(({ conversation, status }) => (
-                  <NavigationListItem
-                    key={conversation.id}
-                    label={conversation.title}
-                    selected={
-                      p2View.kind === "conversation" &&
-                      p2View.conversationId === conversation.id
-                    }
-                    status={status}
-                    moreMenu={getConversationMoreMenu(conversation)}
-                    onClick={() => {
-                      setP2View({
-                        kind: "conversation",
-                        conversationId: conversation.id,
-                      });
-                      setP3View(null);
-                      setP4View(null);
-                    }}
-                  />
-                ))}
-              </NavigationListCollapsibleSection>
-            )}
+                onClick={() => {
+                  setP2View({ kind: "requests" });
+                  setStickyRequestIds(new Set());
+                  setP3View(null);
+                  setP4View(null);
+                }}
+              />
+              <NavigationListItem
+                label="Free conversations"
+                icon={MessageChatSquare}
+                selected={p2View.kind === "conversations"}
+                onClick={() => {
+                  setP2View({ kind: "conversations" });
+                  setP3View(null);
+                  setP4View(null);
+                }}
+              />
+              <NavigationListItem
+                label="Automated work"
+                icon={Zap}
+                selected={p2View.kind === "automations"}
+                onClick={() => {
+                  setP2View({ kind: "automations" });
+                  setP3View(null);
+                  setP4View(null);
+                }}
+              />
+            </NavigationList>
 
             {starredSpaces.length > 0 && (
-              <NavigationList className="mx-sidebar-side-spacing">
+              <NavigationList className="mx-sidebar-side-spacing mt-2">
                 <NavigationListCollapsibleSection
                   label="Starred"
                   type="collapse"
                   defaultOpen={true}
-                  visibleItems={5}
                 >
                   {starredSpaces.map(renderPodNavItem)}
                 </NavigationListCollapsibleSection>
               </NavigationList>
             )}
 
-            <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
+            <NavigationList className="mx-sidebar-side-spacing mt-2 flex-shrink-0">
               <NavigationListCollapsibleSection
                 label="Pods"
                 type="collapse"
                 defaultOpen={true}
-                visibleItems={4}
                 action={
                   <>
                     {unstarredSpaces.length > 0 && (
@@ -1641,149 +1952,6 @@ function Pods() {
                 )}
               </NavigationListCollapsibleSection>
             </NavigationList>
-
-            <NavigationList className="mx-sidebar-side-spacing">
-              {(filteredConversations.length > 0 || !searchText.trim()) && (
-                <NavigationListCollapsibleSection
-                  label="Conversations"
-                  type="collapse"
-                  defaultOpen={true}
-                  action={
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xmini"
-                          icon={DotsHorizontal}
-                          variant="ghost"
-                          aria-label="Conversations options"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuLabel label="Conversations" />
-                        <DropdownMenuItem
-                          label={
-                            hideTriggeredConversations
-                              ? "Show triggered"
-                              : "Hide triggered"
-                          }
-                          icon={hideTriggeredConversations ? Zap : ZapOff}
-                          onClick={() =>
-                            setHideTriggeredConversations(
-                              !hideTriggeredConversations
-                            )
-                          }
-                        />
-                        <DropdownMenuItem
-                          label="Edit history"
-                          icon={CheckDone01}
-                        />
-                        <DropdownMenuItem
-                          label="Clear history"
-                          variant="warning"
-                          icon={Trash01}
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  }
-                >
-                  {groupedConversations.today.map((c) => (
-                    <NavigationListItem
-                      key={c.id}
-                      label={c.title}
-                      selected={
-                        p2View.kind === "conversation" &&
-                        p2View.conversationId === c.id
-                      }
-                      moreMenu={getConversationMoreMenu(c)}
-                      onClick={() => {
-                        setP2View({
-                          kind: "conversation",
-                          conversationId: c.id,
-                        });
-                        setP3View(null);
-                        setP4View(null);
-                      }}
-                    />
-                  ))}
-                  {groupedConversations.yesterday.length > 0 && (
-                    <>
-                      <NavigationListCompactLabel label="Yesterday" isSticky />
-                      {groupedConversations.yesterday.map((c) => (
-                        <NavigationListItem
-                          key={c.id}
-                          label={c.title}
-                          selected={
-                            p2View.kind === "conversation" &&
-                            p2View.conversationId === c.id
-                          }
-                          moreMenu={getConversationMoreMenu(c)}
-                          onClick={() => {
-                            setP2View({
-                              kind: "conversation",
-                              conversationId: c.id,
-                            });
-                            setP3View(null);
-                            setP4View(null);
-                          }}
-                        />
-                      ))}
-                    </>
-                  )}
-                  {groupedConversations.lastWeek.length > 0 && (
-                    <>
-                      <NavigationListCompactLabel label="Last week" isSticky />
-                      {groupedConversations.lastWeek.map((c) => (
-                        <NavigationListItem
-                          key={c.id}
-                          label={c.title}
-                          selected={
-                            p2View.kind === "conversation" &&
-                            p2View.conversationId === c.id
-                          }
-                          moreMenu={getConversationMoreMenu(c)}
-                          onClick={() => {
-                            setP2View({
-                              kind: "conversation",
-                              conversationId: c.id,
-                            });
-                            setP3View(null);
-                            setP4View(null);
-                          }}
-                        />
-                      ))}
-                    </>
-                  )}
-                  {groupedConversations.lastMonth.length > 0 && (
-                    <>
-                      <NavigationListCompactLabel label="Last month" />
-                      {groupedConversations.lastMonth.map((c) => (
-                        <NavigationListItem
-                          key={c.id}
-                          label={c.title}
-                          selected={
-                            p2View.kind === "conversation" &&
-                            p2View.conversationId === c.id
-                          }
-                          moreMenu={getConversationMoreMenu(c)}
-                          onClick={() => {
-                            setP2View({
-                              kind: "conversation",
-                              conversationId: c.id,
-                            });
-                            setP3View(null);
-                            setP4View(null);
-                          }}
-                        />
-                      ))}
-                    </>
-                  )}
-                </NavigationListCollapsibleSection>
-              )}
-            </NavigationList>
           </ScrollArea>
         </div>
       )}
@@ -1791,7 +1959,13 @@ function Pods() {
       {activeTab === "build" && (
         <BuildNav
           selectedItem={buildNavItem}
-          onSelectItem={setBuildNavItem}
+          onSelectItem={(item) => {
+            if (isBuildSection(item)) {
+              openBuildSection(item);
+            } else {
+              setBuildNavItem(item);
+            }
+          }}
           onNewAgentFromTemplate={() => {
             setP2View({ kind: "templates" });
             setP3View(null);
@@ -1911,8 +2085,9 @@ function Pods() {
           {p2Content}
         </PanelLayoutPanel>
 
-        {/* P3 — Level 2: conversation from a space (takes focus), or a side
-            panel from the P2 conversation (sizing per its kind) */}
+        {/* P3 — Level 2: conversation from space (takes focus), or a side
+            panel from the P2 conversation (citation/files/credits — secondary,
+            leaves focus where it is) */}
         <PanelLayoutPanel
           label={p3Label}
           sizingType={p3SizingType}
@@ -1929,7 +2104,7 @@ function Pods() {
           {p3Content}
         </PanelLayoutPanel>
 
-        {/* P4 — Level 3: citation / file / files / credits */}
+        {/* P4 — Level 3: citation / files / credits */}
         <PanelLayoutPanel
           label={p4Label}
           sizingType={p4SizingType}
@@ -1995,4 +2170,4 @@ function Pods() {
   );
 }
 
-export default Pods;
+export default NewNavigation;

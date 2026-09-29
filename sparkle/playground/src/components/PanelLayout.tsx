@@ -66,7 +66,8 @@ import { allocateFocusPanels, applySplitDrag } from "./panelAllocate";
 
 const MOBILE_BREAKPOINT = 768;
 const MIN_NAV = 160,
-  MAX_NAV = 320;
+  MAX_NAV = 320,
+  DEFAULT_NAV = 250;
 const PANEL_MINIMAL = 384; // --breakpoint-xxs — hard floor for any panel
 const PANEL_COMPACT = 512; // --breakpoint-xs — width of non-focus panels
 // Panel-count caps by stage width. Principle: a column count unlocks only
@@ -393,7 +394,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   );
 
   // ── Internal geometry state ─────────────────────────────────────────────
-  const [navW, setNavW] = useState(312);
+  const [navW, setNavW] = useState(DEFAULT_NAV);
   /** Live left-panel width while a split handle is being dragged. */
   const [dragLeftW, setDragLeftW] = useState(0);
   const [dragHandle, setDragHandle] = useState<"p2-p3" | "p3-p4" | null>(null);

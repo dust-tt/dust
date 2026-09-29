@@ -36,6 +36,7 @@ import {
 import { getAgentById } from "../data/agents";
 import { isTriggeredConversation } from "../data/myPod";
 import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "../data/requests";
+import { getConversationBadge, INBOX_ROW_BADGES } from "../data/rowBadges";
 import { formatRowTime, READ_DWELL_MS } from "../data/time";
 import { getTriggerById } from "../data/triggers";
 import type {
@@ -827,6 +828,7 @@ export function InboxView({
         key={conversation.id}
         conversation={conversation}
         creator={creator || undefined}
+        badge={getConversationBadge(conversation)}
         leadingVisual={
           trigger ? <TriggerRunAvatar trigger={trigger} /> : undefined
         }
@@ -971,6 +973,7 @@ export function InboxView({
                     request={request}
                     isSelected={selectedRequestId === request.id}
                     currentUserId={currentUserId}
+                    badge={INBOX_ROW_BADGES.request}
                     isRead={readRowIds?.has(request.id) ?? false}
                     onClick={() => onRequestClick?.(request)}
                   />
@@ -987,7 +990,7 @@ export function InboxView({
     <div className="flex h-full w-full flex-col overflow-x-clip overflow-y-auto bg-background">
       {/* flex-1 so an empty state, which grows to fill its parent, centers on
           the panel rather than collapsing against the toolbar. */}
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 pt-6 pb-8">
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 pt-3 pb-8">
         {renderConversationsTab()}
       </div>
     </div>
