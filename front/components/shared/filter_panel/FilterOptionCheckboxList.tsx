@@ -47,10 +47,6 @@ interface FilterOptionCheckboxListProps<Option extends FilterOptionBase> {
   scrollContainer?: HTMLDivElement | null;
 }
 
-/**
- * @cc [label:react] filter-option-heading-spacing
- * The option heading must retain its full height when a long list overflows the scroll area.
- */
 export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
   idPrefix,
   categoryLabel,
