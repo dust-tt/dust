@@ -1,5 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { getMemberScopeWithGroupVerb } from "@app/lib/resources/group_management_access";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -196,14 +198,38 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     return request ?? null;
   }
 
+  /**
+   * @cc [owner:philipperolet,label:security] pending-request-scope
+   * Delegates MUST receive only requests from current members covered by `set_usage_limits`.
+   * Group filters MUST narrow that scope; overlapping groups MUST NOT duplicate requests.
+   */
   static async listPendingByWorkspace(
-    auth: Authenticator
+    auth: Authenticator,
+    { groupId }: { groupId?: string } = {}
   ): Promise<MembershipUpgradeRequestResource[]> {
-    if (!auth.isManager()) {
+    const scope = await getMemberScopeWithGroupVerb(auth, "set_usage_limits");
+    let memberModelIds =
+      scope.kind === "ids" ? scope.memberModelIds : undefined;
+    if (groupId) {
+      const group = await GroupResource.fetchById(auth, groupId);
+      if (group.isErr()) {
+        return [];
+      }
+      const members = await group.value.getActiveMembers(auth);
+      const groupMemberModelIds = new Set(members.map((member) => member.id));
+      memberModelIds = memberModelIds
+        ? memberModelIds.filter((id) => groupMemberModelIds.has(id))
+        : [...groupMemberModelIds];
+    }
+    if (memberModelIds?.length === 0) {
       return [];
     }
+    // The workspace/status and pending workspace/user indexes cover both paths.
     return this.baseFetch(auth, {
-      where: { status: "pending" },
+      where: {
+        status: "pending",
+        ...(memberModelIds ? { userId: memberModelIds } : {}),
+      },
       order: [["createdAt", "DESC"]],
     });
   }

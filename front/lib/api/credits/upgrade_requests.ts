@@ -250,12 +250,15 @@ export async function getUpgradeRequestAvailabilityForUser(
   };
 }
 
-// Admin-only: list pending upgrade requests for the workspace.
+// List pending requests within the caller's usage-limit scope.
 export async function listPendingUpgradeRequests(
-  auth: Authenticator
+  auth: Authenticator,
+  { groupId }: { groupId?: string } = {}
 ): Promise<MembershipUpgradeRequestType[]> {
   const requests =
-    await MembershipUpgradeRequestResource.listPendingByWorkspace(auth);
+    await MembershipUpgradeRequestResource.listPendingByWorkspace(auth, {
+      groupId,
+    });
   return requests.map((r) => r.toJSON());
 }
 
