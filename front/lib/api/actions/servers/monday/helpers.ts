@@ -1416,20 +1416,33 @@ export const createMultipleItems = async (
     columnValues?: Record<string, any>;
   }>
 ): Promise<MondayItem[]> => {
+  const variables: Record<string, unknown> = {};
+  const varDefs: string[] = [];
   const mutations = items
-    .map(
-      (item, index) => `
-      item${index}: create_item(
-        board_id: ${item.boardId}
-        item_name: "${item.itemName}"
-        ${item.groupId ? `group_id: "${item.groupId}"` : ""}
-        ${
+    .map((item, index) => {
+      variables[`item${index}BoardId`] = item.boardId;
+      variables[`item${index}Name`] = item.itemName;
+      varDefs.push(`$item${index}BoardId: ID!, $item${index}Name: String!`);
+      let groupArg = "";
+      if (item.groupId !== undefined) {
+        variables[`item${index}GroupId`] = item.groupId;
+        varDefs.push(`$item${index}GroupId: String`);
+        groupArg = `group_id: $item${index}GroupId`;
+      }
+      let columnArg = "";
+      if (item.columnValues !== undefined) {
+        variables[`item${index}ColumnValues`] = JSON.stringify(
           item.columnValues
-            ? `column_values: ${JSON.stringify(
-                JSON.stringify(item.columnValues)
-              )}`
-            : ""
-        }
+        );
+        varDefs.push(`$item${index}ColumnValues: JSON`);
+        columnArg = `column_values: $item${index}ColumnValues`;
+      }
+      return `
+      item${index}: create_item(
+        board_id: $item${index}BoardId
+        item_name: $item${index}Name
+        ${groupArg}
+        ${columnArg}
       ) {
         id
         name
@@ -1459,17 +1472,17 @@ export const createMultipleItems = async (
           email
         }
       }
-    `
-    )
+    `;
+    })
     .join("\n");
 
   const query = `
-    mutation CreateMultipleItems {
+    mutation CreateMultipleItems(${varDefs.join(", ")}) {
       ${mutations}
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query);
+  const data = await makeGraphQLRequest(accessToken, query, variables);
   return Object.values(data);
 };
 
