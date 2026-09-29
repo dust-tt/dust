@@ -1,0 +1,70 @@
+---
+name: dust-i18n
+description: Make front UI strings translatable with Lingui. Use when adding or changing user-visible text in `front/components`, `front/hooks` or `front/lib` React code, when wrapping existing strings for translation, or when reviewing UI text changes.
+---
+
+# Translatable UI strings (Lingui)
+
+The product UI is localised with [Lingui](https://lingui.dev). The English text is the message:
+there are no hand-written ids. Catalogs live in `front/locales/{locale}/messages.po` and the
+supported locales are `SUPPORTED_LOCALES` in `front/types/locale.ts`.
+
+A file that already uses Lingui MUST keep every user-visible string translated. New UI code SHOULD
+be written translated. After changing strings, follow [Workflow](#workflow) and translate with the
+`dust-translate` skill in the same PR.
+
+## Which macro
+
+| Where the text is | Use | Import |
+|---|---|---|
+| JSX children | `<Trans>Save changes</Trans>` | `import { Trans } from "@lingui/react/macro"` |
+| String props, toasts, `aria-label`, `placeholder`, zod messages built in a component | ``const { t } = useLingui();`` then ``t`Search agents` `` | `import { useLingui } from "@lingui/react/macro"` |
+| Module-level constants (labels maps, option lists) | ``msg`Admin` `` at module level, ``i18n._(LABELS[role])`` at render (`const { i18n } = useLingui()`) | `import { msg } from "@lingui/core/macro"` |
+| Counts | ``t`${count} ${plural(count, { one: "agent", other: "agents" })}` `` or `<Plural>` | `@lingui/core/macro` / `@lingui/react/macro` |
+| Short ambiguous words | ``t({ message: "Open", context: "verb, button label" })`` | |
+
+Rules:
+
+- One message per sentence. Inline markup stays inside one `<Trans>`:
+  `<Trans>Invite <strong>{name}</strong> to the <Link to={url}>workspace</Link>.</Trans>`.
+- Interpolate with placeholders, never concatenate: ``t`Delete ${name}?` `` not
+  `"Delete " + name + "?"`.
+- Placeholders must be simple identifiers (`${name}`, not `${user.name}`), so translators see a
+  meaningful name: hoist expressions into a `const` first.
+- No `pluralize()`, `(s)` suffixes or ternaries between English words: use `plural`/`select`.
+- `t` from `useLingui()` only works inside components and hooks. Module-level code uses `msg`.
+- Write English in sentence case. Do not apply CSS `uppercase`/`capitalize` to translated text.
+- Format dates and numbers with the active locale (`i18n.locale`), never a hardcoded `"en-US"`.
+
+## Never translate
+
+- Text sent to models: `front/lib/actions/**`, MCP tool and server descriptions, skill and agent
+  definitions, zod `.describe()`.
+- Server code (`front-api/**`, `front/lib/api/**`, `front/temporal/**`): Lingui imports there fail
+  lint (`noClientImportsInServer`). Servers return error codes; the UI translates them.
+- Poke (`front/components/poke/**`), logs, analytics event names, keyboard symbols (`⌘`, `↵`),
+  product and brand names on their own (Dust, Slack), user-generated content.
+
+## Where translated components can render
+
+Lingui components need an `I18nProvider`. The SPA mounts one at its root (`front-spa/src/app/App.tsx`).
+The browser extension (`extension/`, built with `ts-loader`, no Babel) and the `share`/`oauth`
+entries have none yet: do not use Lingui in components they import.
+
+Component tests that render translated components must wrap them:
+
+```tsx
+import { i18n } from "@app/lib/i18n/i18n";
+import { I18nProvider } from "@lingui/react";
+
+render(<I18nProvider i18n={i18n}><MyComponent /></I18nProvider>);
+```
+
+## Workflow
+
+1. Wrap the strings with the macros above.
+2. From `front/`, run `npm run i18n:extract`: it updates every catalog and removes obsolete
+   messages.
+3. Fill the new empty `msgstr` entries with the `dust-translate` skill.
+4. Run `npm run i18n:check` (also run in CI): it fails on stale catalogs and missing translations.
+5. Commit the code and the catalogs together.
