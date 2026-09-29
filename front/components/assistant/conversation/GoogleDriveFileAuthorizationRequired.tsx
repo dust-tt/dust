@@ -184,7 +184,7 @@ export function GoogleDriveFileAuthorizationRequired({
   const webAppConversationUrl = `${cellInfo.url}/w/${owner.sId}/conversation/${blockedAction.conversationId}`;
 
   const handleOpenInWebApp = () => {
-    window.open(webAppConversationUrl, "_blank");
+    window.open(webAppConversationUrl, "_blank", "noopener,noreferrer");
   };
 
   const isReady = pickerCredentials && isPickerLoaded;

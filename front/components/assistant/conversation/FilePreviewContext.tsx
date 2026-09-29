@@ -62,7 +62,7 @@ export function FilePreviewProvider({
           : null;
 
       if (downloadUrl) {
-        window.open(downloadUrl, "_blank");
+        window.open(downloadUrl, "_blank", "noopener,noreferrer");
       }
     },
     [hasConversation, openPanel, owner]

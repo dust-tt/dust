@@ -76,7 +76,7 @@ export function ExportContentDropdown({
 
   const handleDownloadAsCode = () => {
     const downloadUrl = `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
-    window.open(downloadUrl, "_blank");
+    window.open(downloadUrl, "_blank", "noopener,noreferrer");
   };
 
   return (

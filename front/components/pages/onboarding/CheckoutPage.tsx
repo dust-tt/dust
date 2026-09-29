@@ -26,6 +26,7 @@ import {
 import type { CouponType } from "@app/types/coupon";
 import type { BillingPeriod } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -727,7 +728,16 @@ function CheckoutSuccessPage({
             label="View receipt"
             variant="outline"
             size="md"
-            onClick={() => window.open(receiptUrl, "_blank")}
+            onClick={() => {
+              const validated = validateUrl(receiptUrl);
+              if (validated.valid) {
+                window.open(
+                  validated.standardized,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }
+            }}
           />
         )}
         <Button
