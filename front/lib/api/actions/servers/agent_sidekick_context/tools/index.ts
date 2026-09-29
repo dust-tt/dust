@@ -14,6 +14,7 @@ import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/me
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
 import { markDuplicateSuggestionsAsOutdated } from "@app/lib/api/assistant/agent_suggestion_pruning";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -123,7 +124,7 @@ async function createInstructionSuggestions({
   // for instructionsHtml used in conflict pruning).
   const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-  if (!agent || agent.scope === "global" || !agent.isFull()) {
+  if (!agent || !agent.isFull()) {
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
@@ -476,9 +477,12 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   inspect_available_agent: async ({ agentId }, { auth }) => {
-    const agent = await AgentResource.fetchById(auth, agentId);
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId,
+      variant: "full",
+    });
 
-    if (!agent || !agent.isFull()) {
+    if (!agentConfiguration) {
       return new Err(
         new MCPError(`Agent not found or not accessible: ${agentId}`, {
           tracked: false,
@@ -486,20 +490,27 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const [actions, skills] = await Promise.all([
-      agent.listActions(auth),
-      agent.listSkills(auth),
-    ]);
-    const toolIds = actions
+    const toolIds = agentConfiguration.actions
       .filter(
         (action): action is ServerSideMCPServerConfigurationType =>
           "mcpServerViewId" in action
       )
       .map((action) => action.mcpServerViewId);
-    const agentDetails = agent.toInspectionJSON({
+
+    const skills = await SkillResource.listByAgentConfiguration(
+      auth,
+      agentConfiguration
+    );
+    const skillIds = skills.map((skill) => skill.sId);
+
+    const agentDetails = {
+      sId: agentConfiguration.sId,
+      name: agentConfiguration.name,
+      description: agentConfiguration.description,
+      instructions: agentConfiguration.instructions,
       toolIds,
-      skillIds: skills.map((skill) => skill.sId),
-    });
+      skillIds,
+    };
 
     return new Ok([
       {

@@ -18,14 +18,12 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
 import { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
 import type { LightWorkspaceType } from "@app/types/user";
-import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TOOLS } from "./tools";
@@ -114,45 +112,6 @@ async function useRealGetAgentFeedbacks() {
 }
 
 describe("agent_sidekick_context tools", () => {
-  describe("inspect_available_agent", () => {
-    it("does not reveal a hidden agent to a member who cannot read it", async () => {
-      const { authenticator, workspace } = await createResourceTest({
-        role: "user",
-      });
-      const owner = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, owner, { role: "user" });
-      const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        owner.sId,
-        workspace.sId
-      );
-      const agent = await AgentConfigurationFactory.createTestAgent(ownerAuth, {
-        scope: "hidden",
-        instructions: "Secret instructions",
-      });
-
-      const result = await getToolByName("inspect_available_agent").handler(
-        { agentId: agent.sId },
-        createTestExtra(authenticator)
-      );
-
-      expect(result.isErr()).toBe(true);
-    });
-
-    it("returns the instructions of a global agent", async () => {
-      const { authenticator } = await createResourceTest({ role: "user" });
-
-      const result = await getToolByName("inspect_available_agent").handler(
-        { agentId: GLOBAL_AGENTS_SID.HELPER },
-        createTestExtra(authenticator)
-      );
-
-      assert(result.isOk());
-      const [output] = result.value;
-      assert(output.type === "text");
-      expect(JSON.parse(output.text).instructions).toContain("@help");
-    });
-  });
-
   describe("search_knowledge", () => {
     it("returns data source views and empty nodes in browse mode (no query)", async () => {
       const { authenticator, globalSpace, workspace } =

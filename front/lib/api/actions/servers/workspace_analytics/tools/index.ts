@@ -37,8 +37,9 @@ import {
   fetchConsumptionTopGroups,
   resolveConsumptionGroupLabels,
 } from "@app/lib/api/analytics/consumption/top";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import { formatDateFromMillis } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -180,7 +181,11 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(deniedError);
     }
 
-    const agent = await AgentResource.fetchById(auth, agentId);
+    const agents = await getAgentConfigurations(auth, {
+      agentIds: [agentId],
+      variant: "full",
+    });
+    const agent = agents[0];
 
     if (!agent) {
       return new Ok([
@@ -193,7 +198,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       ]);
     }
 
-    if (!agent.isFull()) {
+    if (!agent.canRead) {
       return new Ok([
         {
           type: "text" as const,
@@ -201,18 +206,16 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
             `Agent ${agent.name} [${agent.sId}]\n` +
             `- Description: (private agent - not available)\n` +
             `- Scope: ${agent.scope}\n` +
-            `- Model: ${agent.modelConfiguration.providerId}/${agent.modelConfiguration.modelId}\n\n` +
+            `- Model: ${agent.model.providerId}/${agent.model.modelId}\n\n` +
             "Instructions, skills, and tools are not available for private " +
             "agents you do not have access to.",
         },
       ]);
     }
 
-    const [actions, skills] = await Promise.all([
-      agent.listActions(auth),
-      agent.listSkills(auth),
-    ]);
-    const toolNames = actions.map((action) => action.name).join(", ");
+    const toolNames = agent.actions.map((action) => action.name).join(", ");
+    // Only reached for an agent the caller can read, so its skills are not private.
+    const skills = await SkillResource.listByAgentConfiguration(auth, agent);
     const skillNames = skills.map((skill) => skill.name).join(", ");
 
     return new Ok([
@@ -222,11 +225,11 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
           `Agent ${agent.name} [${agent.sId}]\n` +
           `- Description: ${agent.description}\n` +
           `- Scope: ${agent.scope}\n` +
-          `- Model: ${agent.modelConfiguration.providerId}/${agent.modelConfiguration.modelId}\n` +
+          `- Model: ${agent.model.providerId}/${agent.model.modelId}\n` +
           `- Skills: ${skillNames || "none"}\n` +
           `- Tools: ${toolNames || "none"}\n\n` +
           "Instructions (full system prompt):\n" +
-          `${agent.content.instructions ?? "(no instructions)"}`,
+          `${agent.instructions ?? "(no instructions)"}`,
       },
     ]);
   },

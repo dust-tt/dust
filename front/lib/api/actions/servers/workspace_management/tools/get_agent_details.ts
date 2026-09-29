@@ -2,14 +2,17 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import { getAgentConfigurationForDetails } from "@app/lib/api/assistant/configuration/agent";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Ok } from "@app/types/shared/result";
 
 export async function getAgentDetails(
   { agentId }: { agentId: string },
   { auth }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const agent = await AgentResource.fetchById(auth, agentId);
+  // Admins get every agent of the workspace, with the private fields redacted (`canRead` false)
+  // for the ones they cannot read. Everyone else only gets the agents they can read.
+  const agent = await getAgentConfigurationForDetails(auth, { agentId });
 
   if (!agent) {
     return new Ok([
@@ -26,9 +29,9 @@ export async function getAgentDetails(
     `Agent ${agent.name} [${agent.sId}]\n` +
     `- Description: ${agent.description}\n` +
     `- Scope: ${agent.scope}\n` +
-    `- Model: ${agent.modelConfiguration.providerId}/${agent.modelConfiguration.modelId}\n`;
+    `- Model: ${agent.model.providerId}/${agent.model.modelId}\n`;
 
-  if (!agent.isFull()) {
+  if (!agent.canRead) {
     return new Ok([
       {
         type: "text" as const,
@@ -41,11 +44,9 @@ export async function getAgentDetails(
     ]);
   }
 
-  const [actions, skills] = await Promise.all([
-    agent.listActions(auth),
-    agent.listSkills(auth),
-  ]);
-  const toolNames = actions.map((action) => action.name).join(", ");
+  const toolNames = agent.actions.map((action) => action.name).join(", ");
+  // Only reached for an agent the caller can read, so its skills are not private.
+  const skills = await SkillResource.listByAgentConfiguration(auth, agent);
   const skillNames = skills.map((skill) => skill.name).join(", ");
 
   return new Ok([
@@ -56,7 +57,7 @@ export async function getAgentDetails(
         `- Skills: ${skillNames || "none"}\n` +
         `- Tools: ${toolNames || "none"}\n\n` +
         "Instructions (full system prompt):\n" +
-        `${agent.content.instructions ?? "(no instructions)"}`,
+        `${agent.instructions ?? "(no instructions)"}`,
     },
   ]);
 }
