@@ -101,7 +101,12 @@ describe("usage filter", () => {
   it("names a usage range from its ID and drops invalid ranges", () => {
     const { filter, unresolvedCategories } = resolveSearchFilterSelection({
       selection: {
-        usage: { "5-40": "Stale label", "40-5": "Inverted", "1-x": "Bad" },
+        usage: {
+          "5-40": "Stale label",
+          "40-5": "Inverted",
+          "1-x": "Bad",
+          [`0-${"9".repeat(309)}`]: "Infinite",
+        },
       },
       categories: CATEGORIES,
       knownOptions: new Map(),

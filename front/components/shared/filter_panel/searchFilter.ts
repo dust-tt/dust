@@ -418,7 +418,9 @@ function parseUsageFilterOption(id: string): SearchFilterOption | undefined {
   }
   const min = Number(match[1]);
   const max = Number(match[2]);
-  return min <= max ? toUsageFilterOption({ min, max }) : undefined;
+  return Number.isSafeInteger(min) && Number.isSafeInteger(max) && min <= max
+    ? toUsageFilterOption({ min, max })
+    : undefined;
 }
 
 export function getSearchFilterActiveUsersCount<

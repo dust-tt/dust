@@ -51,8 +51,9 @@ export function UsageRangeFilter({
 
   return (
     <div className="flex flex-col gap-3 px-2 py-3">
-      <div className="text-sm font-medium text-foreground">
+      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
         {low === high ? low : `${low}–${high}`} active users
+        {isLoading && <Spinner size="xs" />}
       </div>
       <Slider
         min={range.min}
