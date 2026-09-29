@@ -365,6 +365,7 @@ impl Provider for GithubConnectionProvider {
                 map.remove("token"); // GitHub App installation token
                 map.remove("access_token"); // OAuth app access token
                 map.remove("refresh_token"); // OAuth app refresh token
+                map.remove("expires_in"); // Token expiry — stripped for consistency with other providers
                 serde_json::Value::Object(map)
             }
             _ => Err(anyhow!("Invalid raw_json, not an object"))?,
