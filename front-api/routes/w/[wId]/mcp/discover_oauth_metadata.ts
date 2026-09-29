@@ -12,12 +12,17 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-const PostBodySchema = z.object({
-  url: z.string(),
-  customHeaders: z
-    .array(z.object({ key: z.string(), value: z.string() }))
-    .optional(),
-});
+// An existing server is probed at its stored URL with its stored headers: clients only ever
+// receive those headers redacted.
+const PostBodySchema = z.union([
+  z.object({ mcpServerId: z.string() }),
+  z.object({
+    url: z.string(),
+    customHeaders: z
+      .array(z.object({ key: z.string(), value: z.string() }))
+      .optional(),
+  }),
+]);
 
 // Mounted at /api/w/:wId/mcp/discover_oauth_metadata.
 const app = workspaceApp();
@@ -34,7 +39,31 @@ app.post(
   validate("json", PostBodySchema),
   async (ctx): HandlerResult<DiscoverOAuthMetadataResponseBody> => {
     const auth = ctx.get("auth");
-    const { url, customHeaders } = ctx.req.valid("json");
+    const body = ctx.req.valid("json");
+
+    let url: string;
+    let headers: Record<string, string>;
+    if ("mcpServerId" in body) {
+      const server = await RemoteMCPServerResource.fetchById(
+        auth,
+        body.mcpServerId,
+        { includeHeavyAttributes: ["customHeaders"] }
+      );
+      if (!server) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "mcp_server_not_found",
+            message: "Remote MCP server not found.",
+          },
+        });
+      }
+      url = server.url;
+      headers = server.getCustomHeaders() ?? {};
+    } else {
+      url = body.url;
+      headers = headersArrayToRecord(body.customHeaders);
+    }
 
     if (!(await isInClusterMCPUrlAllowed(auth, url))) {
       const urlError = await validateExternalUrl(url);
@@ -48,8 +77,6 @@ app.post(
         });
       }
     }
-
-    const headers = headersArrayToRecord(customHeaders);
 
     // Try a direct connection without auth first.
     const directConnectRes = await connectToMCPServer(auth, {
