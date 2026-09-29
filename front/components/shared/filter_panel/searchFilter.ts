@@ -15,6 +15,7 @@ import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
@@ -30,6 +31,7 @@ export const SEARCH_FILTER_CATEGORY_LABEL = {
   space: "Spaces",
   tag: "Tags",
   tool: "Tools",
+  usage: "Usage",
 } as const;
 
 export type SearchFilterCategory = keyof typeof SEARCH_FILTER_CATEGORY_LABEL;
@@ -46,6 +48,7 @@ export const SEARCH_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   space: "Space",
   tag: "Tag",
   tool: "Tool",
+  usage: "Usage",
 };
 
 export type SearchFilterOption = FilterOptionBase &
@@ -62,6 +65,7 @@ export type SearchFilterOption = FilterOptionBase &
         icon: MCPServerType["icon"];
         mcpServerViewIds: string[];
       }
+    | { category: "usage"; min: number; max: number }
   );
 
 export type SearchFilter<Category extends SearchFilterCategory> =
@@ -89,6 +93,8 @@ export interface SearchFilterFacets {
   spaces?: Pick<SpaceType, "sId" | "name" | "kind">[];
   tags?: Pick<TagType, "sId" | "name">[];
   mcpServerViews?: SearchFilterToolFacetValue[];
+  // Bounds of the active users count; null when no matching resource has usage.
+  usage?: { min: number | null; max: number | null };
 }
 
 const ACCESS_FILTER_OPTIONS: SearchFilterOption[] = [
@@ -212,6 +218,9 @@ export function getSearchFilterOptions(
       }));
     case "tool":
       return toToolFilterOptions(facets?.mcpServerViews ?? []);
+    // The usage range is picked on a slider, not among options.
+    case "usage":
+      return [];
   }
 }
 
@@ -273,6 +282,7 @@ function toUnresolvedOption(
   switch (category) {
     case "access":
     case "availability":
+    case "usage":
       return null;
     case "editor":
       return { category, id, name, image: null, disabled: false };
@@ -299,8 +309,9 @@ function toUnresolvedOption(
  * Every selected ID that can be valid MUST be kept in the resolved filter, named from `facets`,
  * then `knownOptions`, and otherwise by an unresolved placeholder carrying its selected label and
  * listed in `unresolvedKeys`.
- * Access and availability IDs that match no option MUST be dropped. Tool options MUST carry only
- * the selected view IDs, grouped by MCP server.
+ * Usage IDs MUST be named from the range they encode. Access, availability and usage IDs that
+ * match no option MUST be dropped. Tool options MUST carry only the selected view IDs, grouped by
+ * MCP server.
  */
 export function resolveSearchFilterSelection<
   Category extends SearchFilterCategory,
@@ -344,7 +355,10 @@ export function resolveSearchFilterSelection<
     let isCategoryResolved = true;
     for (const [id, label] of Object.entries(selection[category] ?? {})) {
       const key = `${category}:${id}`;
-      const resolved = optionsByKey.get(key) ?? knownOptions.get(key);
+      const resolved =
+        optionsByKey.get(key) ??
+        knownOptions.get(key) ??
+        (category === "usage" ? parseUsageFilterOption(id) : undefined);
       const option = resolved ?? toUnresolvedOption(category, id, label);
       if (!option) {
         continue;
@@ -378,4 +392,42 @@ export function resolveSearchFilterSelection<
   }
 
   return { filter, unresolvedCategories, unresolvedKeys };
+}
+
+export function toUsageFilterOption({
+  min,
+  max,
+}: {
+  min: number;
+  max: number;
+}): SearchFilterOption {
+  return {
+    category: "usage",
+    id: `${min}-${max}`,
+    name: `${min === max ? min : `${min}–${max}`} active user${pluralize(max)}`,
+    min,
+    max,
+    disabled: false,
+  };
+}
+
+function parseUsageFilterOption(id: string): SearchFilterOption | undefined {
+  const match = /^(\d+)-(\d+)$/.exec(id);
+  if (!match) {
+    return undefined;
+  }
+  const min = Number(match[1]);
+  const max = Number(match[2]);
+  return min <= max ? toUsageFilterOption({ min, max }) : undefined;
+}
+
+export function getSearchFilterActiveUsersCount<
+  Category extends SearchFilterCategory,
+>(filter: SearchFilter<Category>): { min: number; max: number } | undefined {
+  const option = Object.values<SearchFilterOption[] | undefined>(filter)
+    .flat()
+    .find((candidate) => candidate?.category === "usage");
+  return option?.category === "usage"
+    ? { min: option.min, max: option.max }
+    : undefined;
 }

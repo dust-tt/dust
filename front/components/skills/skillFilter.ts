@@ -3,6 +3,7 @@ import type {
   SearchFilterFacets,
 } from "@app/components/shared/filter_panel/searchFilter";
 import {
+  getSearchFilterActiveUsersCount,
   getSearchFilterIds,
   getSearchFilterMcpServerViewIds,
 } from "@app/components/shared/filter_panel/searchFilter";
@@ -18,6 +19,7 @@ export const SKILL_FILTER_CATEGORIES = [
   "skill",
   "editor",
   "space",
+  "usage",
 ] as const;
 
 export type SkillFilterCategory = (typeof SKILL_FILTER_CATEGORIES)[number];
@@ -33,6 +35,7 @@ export const SKILL_FILTER_CATEGORY_FACET: Record<
   skill: "childSkills",
   editor: "editors",
   space: "spaces",
+  usage: "usage",
 };
 
 export function toSkillSearchFilters(filter: SkillFilter): SkillSearchFilters {
@@ -43,6 +46,7 @@ export function toSkillSearchFilters(filter: SkillFilter): SkillSearchFilters {
   const childSkillIds = getSearchFilterIds(filter, "skill");
   const editorIds = getSearchFilterIds(filter, "editor");
   const spaceIds = getSearchFilterIds(filter, "space");
+  const activeUsersCount = getSearchFilterActiveUsersCount(filter);
 
   return {
     ...(availability.length > 0 ? { availability } : {}),
@@ -50,6 +54,7 @@ export function toSkillSearchFilters(filter: SkillFilter): SkillSearchFilters {
     ...(childSkillIds.length > 0 ? { childSkillIds } : {}),
     ...(editorIds.length > 0 ? { editorIds } : {}),
     ...(spaceIds.length > 0 ? { spaceIds } : {}),
+    ...(activeUsersCount ? { activeUsersCount } : {}),
   };
 }
 
