@@ -144,12 +144,12 @@ describe("BatchSuggestionResource", () => {
     });
 
     // Neither user can access every member.
-    await expect(
-      BatchSuggestionResource.fetchById(authenticator, batch.sId)
-    ).rejects.toThrow();
-    await expect(
-      BatchSuggestionResource.fetchById(otherAuth, batch.sId)
-    ).rejects.toThrow();
+    expect(
+      await BatchSuggestionResource.fetchById(authenticator, batch.sId)
+    ).toBeNull();
+    expect(
+      await BatchSuggestionResource.fetchById(otherAuth, batch.sId)
+    ).toBeNull();
   });
 
   it("updates the state of the batch and of all its members", async () => {
