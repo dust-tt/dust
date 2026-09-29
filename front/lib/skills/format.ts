@@ -92,9 +92,6 @@ export function extractUniqueSkillReferenceIds(content: string): string[] {
   ];
 }
 
-export type SerializedSkillTag<Id extends string> =
-  `<skill id="${Id}"${string}>`;
-
 /**
  * @cc [owner:aubin-tchoi,label:product;security] serialized-skill-tag-id-type
  * The return type MUST retain the literal skill ID so static global skill instructions can check
@@ -103,15 +100,15 @@ export type SerializedSkillTag<Id extends string> =
 export function serializeSkillTag<const Id extends string>(
   { id, name, icon }: SkillReference & { id: Id },
   { html = false }: { html?: boolean } = {}
-): SerializedSkillTag<Id> {
+): `<skill id="${Id}"${string}>` {
   const iconAttribute = icon ? ` icon="${icon}"` : "";
   const attributes = `id="${id}" name="${escapeXml(name)}"${iconAttribute}`;
 
   if (html) {
-    return `<${SKILL_TAG_NAME} ${attributes}></${SKILL_TAG_NAME}>` as SerializedSkillTag<Id>;
+    return `<${SKILL_TAG_NAME} ${attributes}></${SKILL_TAG_NAME}>` as `<skill id="${Id}"${string}>`;
   }
 
-  return `<${SKILL_TAG_NAME} ${attributes} />` as SerializedSkillTag<Id>;
+  return `<${SKILL_TAG_NAME} ${attributes} />` as `<skill id="${Id}"${string}>`;
 }
 
 function parseSkillRef(attributes: string): string | null {

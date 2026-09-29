@@ -3,7 +3,6 @@ import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/globa
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { filterSkillDefinitions } from "@app/lib/resources/skill/code_defined/shared";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
-import type { SerializedSkillTag } from "@app/lib/skills/format";
 import { serializeSkillTag } from "@app/lib/skills/format";
 
 // Build lookup map for direct access by sId.
@@ -41,9 +40,7 @@ export class GlobalSkillsRegistry {
     });
   }
 
-  static serializeSkillTag<const Id extends GlobalSkillId>(
-    sId: Id
-  ): SerializedSkillTag<Id> {
+  static serializeSkillTag<const Id extends GlobalSkillId>(sId: Id) {
     const skill = this.getByIdInternal(sId);
     if (!skill) {
       throw new Error(`Unknown global skill: ${sId}`);
