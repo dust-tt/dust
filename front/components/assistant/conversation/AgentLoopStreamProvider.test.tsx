@@ -1,8 +1,12 @@
-import { useIsAgentLoopStreaming } from "@app/components/assistant/conversation/AgentLoopStreamContext";
+import {
+  useIsAgentLoopStreaming,
+  useOngoingAgentLoopsSnapshot,
+  useRegisterAgentLoopStream,
+} from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import { AgentLoopStreamProvider } from "@app/components/assistant/conversation/AgentLoopStreamProvider";
 import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseOngoingAgentLoops = vi.hoisted(() => vi.fn());
@@ -21,6 +25,20 @@ const owner = LightWorkspaceFactory.build({ sId: "w_1" });
 
 function StreamIndicator() {
   return useIsAgentLoopStreaming("conv_1") ? "active" : "inactive";
+}
+
+function RegistryStatus() {
+  const snapshot = useOngoingAgentLoopsSnapshot();
+  return snapshot ? `${snapshot.agentLoops.length} loops` : "pending";
+}
+
+function MountedMessageStream() {
+  useRegisterAgentLoopStream({
+    conversationId: "conv_1",
+    enabled: true,
+    streamId: "message-msg_1",
+  });
+  return null;
 }
 
 describe("AgentLoopStreamProvider", () => {
@@ -52,10 +70,12 @@ describe("AgentLoopStreamProvider", () => {
       </AgentLoopStreamProvider>
     );
     const [{ onSuccess }] = mockUseOngoingAgentLoops.mock.calls[0];
-    onSuccess([
-      { conversationId: "conv_1", messageId: "msg_1" },
-      { conversationId: "conv_2", messageId: "msg_2" },
-    ]);
+    act(() =>
+      onSuccess([
+        { conversationId: "conv_1", messageId: "msg_1" },
+        { conversationId: "conv_2", messageId: "msg_2" },
+      ])
+    );
 
     expect(eventSourceManager.resume).toHaveBeenCalledTimes(2);
     expect(eventSourceManager.resume).toHaveBeenNthCalledWith(
@@ -66,6 +86,26 @@ describe("AgentLoopStreamProvider", () => {
       2,
       "message-msg_2"
     );
+  });
+
+  it("only publishes successful registry responses to the conversation view", () => {
+    mockUseOngoingAgentLoops.mockReturnValue({
+      ongoingAgentLoops: [
+        { conversationId: "conv_1", messageId: "msg_cached" },
+      ],
+      refreshOngoingAgentLoops: mockRefreshOngoingAgentLoops,
+    });
+
+    render(
+      <AgentLoopStreamProvider owner={owner}>
+        <RegistryStatus />
+      </AgentLoopStreamProvider>
+    );
+    expect(screen.getByText("pending")).toBeInTheDocument();
+
+    const [{ onSuccess }] = mockUseOngoingAgentLoops.mock.calls[0];
+    act(() => onSuccess([]));
+    expect(screen.getByText("0 loops")).toBeInTheDocument();
   });
 
   it("revokes keepalive when a cached registry entry disappears", () => {
@@ -119,5 +159,53 @@ describe("AgentLoopStreamProvider", () => {
     );
 
     expect(screen.getByText("active")).toBeInTheDocument();
+  });
+
+  it.each([
+    "terminal",
+    "failed",
+  ] as const)("keeps the sidebar streaming across navigation until the manager reports %s", (stoppedState) => {
+    mockUseOngoingAgentLoops.mockReturnValue({
+      ongoingAgentLoops: [],
+      refreshOngoingAgentLoops: mockRefreshOngoingAgentLoops,
+    });
+    let connectionState: "open" | "terminal" | "failed" = "open";
+    let notifyStateChange: (() => void) | undefined;
+    vi.spyOn(eventSourceManager, "getConnectionState").mockImplementation(() =>
+      connectionState === "open"
+        ? { kind: "open", openedAt: 1 }
+        : connectionState === "failed"
+          ? { kind: "failed", attempt: 1, error: new Error("disconnected") }
+          : { kind: "terminal" }
+    );
+    vi.spyOn(
+      eventSourceManager,
+      "subscribeToConnectionState"
+    ).mockImplementation((_streamId, listener) => {
+      notifyStateChange = listener;
+      return () => {
+        if (notifyStateChange === listener) {
+          notifyStateChange = undefined;
+        }
+      };
+    });
+
+    const renderProvider = (showMessage: boolean) => (
+      <AgentLoopStreamProvider owner={owner}>
+        <StreamIndicator />
+        {showMessage && <MountedMessageStream />}
+      </AgentLoopStreamProvider>
+    );
+    const view = render(renderProvider(true));
+    expect(screen.getByText("active")).toBeInTheDocument();
+
+    view.rerender(renderProvider(false));
+    expect(screen.getByText("active")).toBeInTheDocument();
+
+    act(() => {
+      connectionState = stoppedState;
+      notifyStateChange?.();
+    });
+    expect(screen.getByText("inactive")).toBeInTheDocument();
   });
 });
