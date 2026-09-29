@@ -14,7 +14,7 @@ export function FilterFooter({
   applyDisabled,
 }: FilterFooterProps) {
   return (
-    <div className="flex items-center justify-between border-t border-border p-2 dark:border-border-dark/60">
+    <div className="flex items-center justify-between border-t border-border p-2 dark:border-border-dark">
       <Button
         label="Clear filters"
         size="xmini"
