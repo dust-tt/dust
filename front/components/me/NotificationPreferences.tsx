@@ -33,6 +33,9 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import cloneDeep from "lodash/cloneDeep";
 import { useEffect, useState } from "react";
 import type { Control } from "react-hook-form";
@@ -41,20 +44,23 @@ import { z } from "zod";
 
 const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
   NotificationPreferencesDelay,
-  string
+  MessageDescriptor
 > = {
-  "5_minutes": "Every 5 minutes",
-  "15_minutes": "Every 15 minutes",
-  "30_minutes": "Every 30 minutes",
-  "1_hour": "Every hour",
-  daily: "Once a day",
-  weekly: "Once a week",
+  "5_minutes": msg`Every 5 minutes`,
+  "15_minutes": msg`Every 15 minutes`,
+  "30_minutes": msg`Every 30 minutes`,
+  "1_hour": msg`Every hour`,
+  daily: msg`Once a day`,
+  weekly: msg`Once a week`,
 };
 
-const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
-  all_messages: "All activity",
-  only_mentions: "Mentions only",
-  never: "Nothing",
+const NOTIFICATION_CONDITION_LABELS: Record<
+  NotificationCondition,
+  MessageDescriptor
+> = {
+  all_messages: msg`All activity`,
+  only_mentions: msg`Mentions only`,
+  never: msg`Nothing`,
 };
 
 const NotificationPreferencesFormSchema = z.object({
@@ -76,6 +82,7 @@ export function useNotificationPreferencesForm({
   owner: LightWorkspaceType;
   disabled: boolean;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { hasFeature } = useFeatureFlags();
 
@@ -169,7 +176,7 @@ export function useNotificationPreferencesForm({
       } catch (error) {
         sendNotification({
           type: "error",
-          title: "Error updating notification preferences",
+          title: t`Error updating notification preferences`,
           description: normalizeError(error).message,
         });
       }
@@ -201,6 +208,7 @@ export function NotificationPreferences({
   workflowEnabled,
   conversationExternalNotificationsEnabled,
 }: NotificationPreferencesProps) {
+  const { t, i18n } = useLingui();
   const { field: notifyConditionField } = useController({
     name: "notifyCondition",
     control,
@@ -232,8 +240,8 @@ export function NotificationPreferences({
     <div className="flex flex-col gap-3">
       <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
         <SettingsList.Row
-          title="Notify me about"
-          description="Applies to in-app popups, email, and Slack"
+          title={t`Notify me about`}
+          description={t`Applies to in-app popups, email, and Slack`}
           action={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -241,16 +249,16 @@ export function NotificationPreferences({
                   variant="outline"
                   size="sm"
                   isSelect
-                  label={
+                  label={i18n._(
                     NOTIFICATION_CONDITION_LABELS[notifyConditionField.value]
-                  }
+                  )}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent mountPortalContainer={portalContainer}>
                 {NOTIFICATION_CONDITION_OPTIONS.map((condition) => (
                   <DropdownMenuItem
                     key={condition}
-                    label={NOTIFICATION_CONDITION_LABELS[condition]}
+                    label={i18n._(NOTIFICATION_CONDITION_LABELS[condition])}
                     onClick={() => notifyConditionField.onChange(condition)}
                   />
                 ))}
@@ -260,8 +268,8 @@ export function NotificationPreferences({
         />
 
         <SettingsList.Row
-          title="In-app popup"
-          description="Show a popup inside Dust"
+          title={t`In-app popup`}
+          description={t`Show a popup inside Dust`}
           action={
             <SliderToggle
               selected={isInAppEnabled}
@@ -274,8 +282,10 @@ export function NotificationPreferences({
 
       {externalChannelsDisabled && (
         <ContentMessageInline variant="info" icon={InfoCircle}>
-          Email and Slack notifications are turned off for this workspace by an
-          admin.
+          <Trans>
+            Email and Slack notifications are turned off for this workspace by
+            an admin.
+          </Trans>
         </ContentMessageInline>
       )}
 
@@ -283,7 +293,7 @@ export function NotificationPreferences({
         {displaySlackOption && (
           <SettingsList.Row
             title="Slack"
-            description="A direct message in Slack"
+            description={t`A direct message in Slack`}
             action={
               <SliderToggle
                 selected={isSlackEnabled}
@@ -296,8 +306,8 @@ export function NotificationPreferences({
         )}
 
         <SettingsList.Row
-          title="Email"
-          description="Receive a summary by email"
+          title={t`Email`}
+          description={t`Receive a summary by email`}
           action={
             <SliderToggle
               selected={isEmailEnabled}
@@ -309,8 +319,8 @@ export function NotificationPreferences({
         />
 
         <SettingsList.Row
-          title="Email frequency"
-          description="How often to send email notification summaries"
+          title={t`Email frequency`}
+          description={t`How often to send email notification summaries`}
           action={
             <DropdownMenu>
               <DropdownMenuTrigger asChild disabled={!isEmailFrequencyEnabled}>
@@ -320,16 +330,16 @@ export function NotificationPreferences({
                   isSelect
                   disabled={!isEmailFrequencyEnabled}
                   icon={externalChannelsDisabled ? Lock01 : undefined}
-                  label={
+                  label={i18n._(
                     NOTIFICATION_PREFERENCES_DELAY_LABELS[emailDelayField.value]
-                  }
+                  )}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent mountPortalContainer={portalContainer}>
                 {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
                   <DropdownMenuItem
                     key={delay}
-                    label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
+                    label={i18n._(NOTIFICATION_PREFERENCES_DELAY_LABELS[delay])}
                     onClick={() => emailDelayField.onChange(delay)}
                   />
                 ))}

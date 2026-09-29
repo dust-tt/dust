@@ -2,6 +2,8 @@ import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import {
   createContext,
   memo,
@@ -27,10 +29,13 @@ import {
 export const CONVERSATION_FONTS = ["sans", "serif", "dyslexic"] as const;
 export type ConversationFont = (typeof CONVERSATION_FONTS)[number];
 
-export const CONVERSATION_FONT_LABELS: Record<ConversationFont, string> = {
-  sans: "Default",
-  serif: "Lora",
-  dyslexic: "OpenDyslexic",
+export const CONVERSATION_FONT_LABELS: Record<
+  ConversationFont,
+  MessageDescriptor
+> = {
+  sans: msg({ message: "Default", context: "conversation font" }),
+  serif: msg({ message: "Lora", context: "font name" }),
+  dyslexic: msg({ message: "OpenDyslexic", context: "font name" }),
 };
 
 const DEFAULT_CONVERSATION_FONT: ConversationFont = "sans";

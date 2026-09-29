@@ -1,10 +1,20 @@
 import config from "@app/lib/api/config";
 import { classNames } from "@app/lib/utils";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
+import type { ActiveRoleType } from "@app/types/user";
 import { Button, DataTable, Label } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { MouseEvent } from "react";
 import { useMemo } from "react";
+
+const ROLE_LABELS: Record<ActiveRoleType, MessageDescriptor> = {
+  admin: msg({ message: "admin", context: "workspace role" }),
+  manager: msg({ message: "manager", context: "workspace role" }),
+  user: msg({ message: "user", context: "workspace role" }),
+};
 
 interface PendingInvitationsTableRow extends PendingInvitationOption {
   onJoin: () => void;
@@ -20,6 +30,7 @@ interface PendingInvitationsTableProps {
 export function PendingInvitationsTable({
   invitations,
 }: PendingInvitationsTableProps) {
+  const { t, i18n } = useLingui();
   const sortedInvitations = useMemo(
     () =>
       invitations
@@ -48,41 +59,44 @@ export function PendingInvitationsTable({
     () => [
       {
         accessorKey: "workspaceName",
-        header: "Workspace",
+        header: t`Workspace`,
         sortingFn: (rowA, rowB) =>
           rowA.original.workspaceName.localeCompare(
             rowB.original.workspaceName
           ),
-        cell: ({ row }) => (
-          <DataTable.CellContent grow>
-            <div
-              className={classNames(
-                "flex flex-col gap-1 py-3",
-                row.original.isExpired && "opacity-60"
-              )}
-            >
-              <span className="text-sm font-semibold text-foreground">
-                {row.original.workspaceName}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Role: {row.original.initialRole}
-              </span>
-            </div>
-          </DataTable.CellContent>
-        ),
+        cell: ({ row }) => {
+          const role = i18n._(ROLE_LABELS[row.original.initialRole]);
+          return (
+            <DataTable.CellContent grow>
+              <div
+                className={classNames(
+                  "flex flex-col gap-1 py-3",
+                  row.original.isExpired && "opacity-60"
+                )}
+              >
+                <span className="text-sm font-semibold text-foreground">
+                  {row.original.workspaceName}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  <Trans>Role: {role}</Trans>
+                </span>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
         meta: {
           className: "w-full",
         },
       },
       {
         id: "createdAt",
-        header: "Invited",
+        header: t`Invited`,
         sortingFn: (rowA, rowB) =>
           rowA.original.createdAt - rowB.original.createdAt,
         cell: ({ row }) => (
           <DataTable.CellContent>
             <span className="text-sm text-muted-foreground">
-              {new Date(row.original.createdAt).toLocaleString()}
+              {new Date(row.original.createdAt).toLocaleString(i18n.locale)}
             </span>
           </DataTable.CellContent>
         ),
@@ -98,7 +112,7 @@ export function PendingInvitationsTable({
             <Button
               size="xs"
               variant={row.original.isExpired ? "outline" : "primary"}
-              label={row.original.isExpired ? "Expired" : "Join"}
+              label={row.original.isExpired ? t`Expired` : t`Join`}
               disabled={row.original.isExpired}
               onClick={(event: MouseEvent<HTMLButtonElement>) => {
                 event.stopPropagation();
@@ -112,7 +126,7 @@ export function PendingInvitationsTable({
         },
       },
     ],
-    []
+    [t, i18n]
   );
 
   return (
@@ -124,7 +138,9 @@ export function PendingInvitationsTable({
           sorting={[{ id: "workspaceName", desc: false }]}
         />
       ) : (
-        <Label>No pending invitations found.</Label>
+        <Label>
+          <Trans>No pending invitations found.</Trans>
+        </Label>
       )}
     </div>
   );
