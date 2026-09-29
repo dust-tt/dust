@@ -42,6 +42,7 @@ import { emptyArray } from "@app/lib/swr/swr";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import type { AllSupportedWithDustSpecificFileContentType } from "@app/types/files";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
@@ -401,7 +402,17 @@ function MCPRunAgentActionDetailsDisplay({
                         icon={LinkExternal01}
                         label="View full conversation"
                         variant="outline"
-                        onClick={() => window.open(conversationUrl, "_blank")}
+                        onClick={() => {
+                          if (!conversationUrl) return;
+                          if (conversationUrl.startsWith("/")) {
+                            window.open(conversationUrl, "_blank", "noopener,noreferrer");
+                          } else {
+                            const validated = validateUrl(conversationUrl);
+                            if (validated.valid) {
+                              window.open(validated.standardized, "_blank", "noopener,noreferrer");
+                            }
+                          }
+                        }}
                         size="xs"
                       />
                     )}

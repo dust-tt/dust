@@ -7,6 +7,7 @@ import {
 } from "@app/lib/swr/workos";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { PlanType } from "@app/types/plan";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -84,7 +85,10 @@ export default function WorkOSSSOConnection({
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  window.open(ssoStatus?.setupLink, "_blank");
+                  const validated = validateUrl(ssoStatus?.setupLink ?? "");
+                  if (validated.valid) {
+                    window.open(validated.standardized, "_blank", "noopener,noreferrer");
+                  }
                 }}
               />
 
@@ -112,7 +116,10 @@ export default function WorkOSSSOConnection({
                 if (!isUpgraded(plan)) {
                   setShowUpgradePlanDialog(true);
                 } else {
-                  window.open(ssoStatus?.setupLink, "_blank");
+                  const validated = validateUrl(ssoStatus?.setupLink ?? "");
+                  if (validated.valid) {
+                    window.open(validated.standardized, "_blank", "noopener,noreferrer");
+                  }
                 }
               }}
             />
