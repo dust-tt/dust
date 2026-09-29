@@ -100,6 +100,8 @@ function fakeGithub({
   jobs = [],
   retryJobs,
   retryConclusion = null,
+  retryDurationMs = 10 * 60_000,
+  retryError = false,
   jobsByRunNumber = {},
   attempts = {},
   attemptJobs = {},
@@ -114,6 +116,8 @@ function fakeGithub({
   jobs?: FakeJob[];
   retryJobs?: FakeJob[];
   retryConclusion?: string | null;
+  retryDurationMs?: number;
+  retryError?: boolean;
   jobsByRunNumber?: Record<
     number,
     Array<{ name: string; conclusion: string | null }>
@@ -172,17 +176,34 @@ function fakeGithub({
         }: {
           attempt_number: number;
         }) => ({ data: attempts[attempt_number] ?? { conclusion: null } }),
-        getWorkflowRun: async () => ({
-          data:
-            retryConclusion === null
-              ? { run_attempt: 2, status: "in_progress", conclusion: null }
-              : {
-                  run_attempt: 2,
-                  status: "completed",
-                  conclusion: retryConclusion,
-                },
-        }),
+        getWorkflowRun: async () => {
+          const attempt = {
+            run_attempt: 2,
+            run_started_at: new Date(RETRY_STARTED_AT_MS).toISOString(),
+          };
+          return {
+            data:
+              retryConclusion === null
+                ? {
+                    ...attempt,
+                    status: "in_progress",
+                    conclusion: null,
+                    updated_at: new Date(fakeNowMs).toISOString(),
+                  }
+                : {
+                    ...attempt,
+                    status: "completed",
+                    conclusion: retryConclusion,
+                    updated_at: new Date(
+                      RETRY_STARTED_AT_MS + retryDurationMs
+                    ).toISOString(),
+                  },
+          };
+        },
         reRunWorkflowFailedJobs: async () => {
+          if (retryError) {
+            throw new Error("GitHub is down");
+          }
           calls.reruns += 1;
         },
       },
@@ -199,6 +220,9 @@ function fakeGithub({
 }
 
 const core = { info() {}, warning() {} };
+
+const RETRY_STARTED_AT_MS = Date.parse("2026-09-28T12:11:00Z");
+let fakeNowMs = RETRY_STARTED_AT_MS;
 
 describe("buildBreakageNotification", () => {
   const originalFetch = globalThis.fetch;
@@ -441,13 +465,17 @@ async function notifyWith(
   github: ReturnType<typeof fakeGithub>,
   workflowRun: typeof run = run
 ) {
+  fakeNowMs = RETRY_STARTED_AT_MS;
   return buildBreakageNotification({
     github,
     context: { repo, payload: { workflow_run: workflowRun } },
     core,
     authors: "",
     slackToken: "token",
-    sleep: async () => {},
+    sleep: async (ms) => {
+      fakeNowMs += ms;
+    },
+    nowMs: () => fakeNowMs,
   });
 }
 
@@ -517,6 +545,45 @@ describe("infra retry", () => {
     const github = fakeGithub({
       otherRuns: [{ run_number: 6, conclusion: "success" }],
       jobs: infraJobs,
+    });
+    const text = (await notifyWith(github)) ?? "";
+    assert.match(text, /main is broken/);
+    assert.doesNotMatch(text, /automatic retry/);
+  });
+
+  it("stays silent when a newer run completes during a retry that never completes", async () => {
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      otherRunsAfterRetry: [
+        { run_number: 8, conclusion: "success" },
+        { run_number: 6, conclusion: "success" },
+      ],
+      jobs: infraJobs,
+    });
+    assert.equal(await notifyWith(github), null);
+  });
+
+  it("reports without claiming a retry when retrying errors", async () => {
+    globalThis.fetch = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: infraJobs,
+      retryError: true,
+    });
+    const text = (await notifyWith(github)) ?? "";
+    assert.match(text, /main is broken/);
+    assert.doesNotMatch(text, /automatic retry/);
+  });
+
+  it("leaves a retry that outlived the poll cap to the attempt itself", async () => {
+    globalThis.fetch = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: infraJobs,
+      retryConclusion: "success",
+      retryDurationMs: 46 * 60_000,
     });
     const text = (await notifyWith(github)) ?? "";
     assert.match(text, /main is broken/);

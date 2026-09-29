@@ -64,6 +64,8 @@ type BreakageOptions = {
             run_attempt: number;
             status: string | null;
             conclusion: string | null;
+            run_started_at: string;
+            updated_at: string;
           };
         }>;
         reRunWorkflowFailedJobs(
@@ -96,6 +98,7 @@ type BreakageOptions = {
   authors: string;
   slackToken: string;
   sleep?: (ms: number) => Promise<void>;
+  nowMs?: () => number;
 };
 
 // A run conclusion that carries information about main's state, as opposed to the raw
@@ -207,6 +210,7 @@ const INFRA_STEPS = new Set([
   "Install Redis",
   "Install Protoc",
   "Install Sandbox",
+  "Install Frame lint tools",
   "Install minimal stable",
   "Install Grit CLI",
   "Setup Rust Cache",
@@ -227,8 +231,8 @@ function isInfraStep(name: string): boolean {
  * @cc [label:product] main-breakage-infra-retry
  * A first-attempt breakage MUST be retried once when every failed job first failed on a
  * runner-preparation step, and notify without a retry otherwise. Only a successful retry
- * silences it: a second failure notifies unless a newer run completed meanwhile, and any other
- * outcome, including a timeout, notifies as if never retried.
+ * silences it: any other outcome, including a timeout or an error while retrying, notifies unless
+ * a newer signal run completed meanwhile, and only a second failure is reported as retried.
  */
 function isInfraFailure(jobs: Job[]): boolean {
   const failed = jobs.filter((job) => job.conclusion === "failure");
@@ -250,30 +254,61 @@ function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Returns the conclusion of the retried attempt, or null when it did not complete in time.
+// The retrying job and the retried attempt both decide who reports the attempt from this single
+// measure, so exactly one of them does.
+function isWithinRetryPoll(
+  attempt: Pick<WorkflowRun, "run_started_at" | "updated_at">
+): boolean {
+  const durationMs =
+    Date.parse(attempt.updated_at) - Date.parse(attempt.run_started_at);
+  return !(durationMs >= RETRY_TIMEOUT_MS);
+}
+
+// Returns the conclusion of the retried attempt, or null when it could not be obtained within
+// the poll cap.
 async function retryFailedJobs({
   github,
   context,
   core,
   sleep = defaultSleep,
-}: Pick<BreakageOptions, "github" | "context" | "core" | "sleep">): Promise<
-  string | null
-> {
+  nowMs = Date.now,
+}: Pick<
+  BreakageOptions,
+  "github" | "context" | "core" | "sleep" | "nowMs"
+>): Promise<string | null> {
   const run = context.payload.workflow_run;
-  await github.rest.actions.reRunWorkflowFailedJobs({
-    ...context.repo,
-    run_id: run.id,
-  });
-  core.info(`Retrying the failed jobs of ${run.name} run ${run.id}.`);
-  for (let waited = 0; waited < RETRY_TIMEOUT_MS; waited += RETRY_POLL_MS) {
-    await sleep(RETRY_POLL_MS);
-    const { data } = await github.rest.actions.getWorkflowRun({
+  try {
+    await github.rest.actions.reRunWorkflowFailedJobs({
       ...context.repo,
       run_id: run.id,
     });
-    if (data.run_attempt > run.run_attempt && data.status === "completed") {
-      return data.conclusion;
+    core.info(`Retrying the failed jobs of ${run.name} run ${run.id}.`);
+    const requestedAtMs = nowMs();
+    for (;;) {
+      await sleep(RETRY_POLL_MS);
+      const { data } = await github.rest.actions.getWorkflowRun({
+        ...context.repo,
+        run_id: run.id,
+      });
+      const started = data.run_attempt > run.run_attempt;
+      if (started && data.status === "completed") {
+        if (isWithinRetryPoll(data)) {
+          return data.conclusion;
+        }
+        break;
+      }
+      const startedAtMs = started
+        ? Date.parse(data.run_started_at)
+        : requestedAtMs;
+      if (!(nowMs() - startedAtMs < RETRY_TIMEOUT_MS)) {
+        break;
+      }
     }
+  } catch (error) {
+    core.warning(
+      `The retry of ${run.name} run ${run.id} failed: ${String(error)}`
+    );
+    return null;
   }
   core.warning(
     `The retry of ${run.name} run ${run.id} did not complete in time.`
@@ -332,8 +367,8 @@ type PreviousState =
  * A rerun keeps its run number, so its comparison state MUST be its immediately previous attempt
  * when that attempt carries a signal (otherwise recovery-by-rerun would stay silent forever), and
  * the previous-run lookup when it does not. An attempt started by the automatic infra retry MUST
- * stay silent when it completes within the poll cap of the job that started it, which waits and
- * reports its outcome; an attempt that outlives that cap MUST report its own transition.
+ * stay silent when its own start-to-completion time is under the poll cap, and MUST report its own
+ * transition otherwise; the job that started it MUST report its outcome in exactly the first case.
  */
 async function getPreviousState({
   github,
@@ -448,13 +483,11 @@ export async function buildBreakageNotification({
   authors,
   slackToken,
   sleep,
+  nowMs,
 }: BreakageOptions): Promise<string | null> {
   const run = context.payload.workflow_run;
   if (run.run_attempt > 1 && run.triggering_actor?.login === RETRY_ACTOR) {
-    // The attempt's start also starts the poll of the job that retried it, so an attempt shorter
-    // than the poll cap was reported by that job. A longer one outlived it and reports itself.
-    const elapsed = Date.parse(run.updated_at) - Date.parse(run.run_started_at);
-    if (!(elapsed >= RETRY_TIMEOUT_MS)) {
+    if (isWithinRetryPoll(run)) {
       core.info(
         `No notification: the job that retried ${run.name} reports its outcome.`
       );
@@ -504,19 +537,25 @@ export async function buildBreakageNotification({
   let jobs = jobsData.jobs;
   let retried = false;
   if (run.run_attempt === 1 && isInfraFailure(jobs)) {
-    const conclusion = await retryFailedJobs({ github, context, core, sleep });
+    const conclusion = await retryFailedJobs({
+      github,
+      context,
+      core,
+      sleep,
+      nowMs,
+    });
     if (conclusion === "success") {
       core.info(`No notification: ${run.name} succeeded after a retry.`);
       return null;
     }
+    const completed = await listCompletedRuns({ github, context });
+    if (await isSuperseded({ github, context }, completed)) {
+      core.info(
+        `No notification: a newer ${run.name} run completed during the retry.`
+      );
+      return null;
+    }
     if (conclusion === "failure") {
-      const completed = await listCompletedRuns({ github, context });
-      if (await isSuperseded({ github, context }, completed)) {
-        core.info(
-          `No notification: a newer ${run.name} run completed during the retry.`
-        );
-        return null;
-      }
       const { data } = await github.rest.actions.listJobsForWorkflowRun({
         ...context.repo,
         run_id: run.id,
