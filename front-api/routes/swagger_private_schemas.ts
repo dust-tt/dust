@@ -968,6 +968,9 @@
  *           type: boolean
  *         canEdit:
  *           type: boolean
+ *         isRedacted:
+ *           type: boolean
+ *           description: Whether the private fields (instructions, skills, tools) were redacted because the caller cannot view the agent's content
  *         lastAuthors:
  *           type: array
  *           description: Optional, returned when withAuthors query param is set
