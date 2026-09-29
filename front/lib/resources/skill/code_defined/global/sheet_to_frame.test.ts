@@ -27,6 +27,9 @@ describe("sheetToFrameSkill", () => {
 
     expect(instructions).toContain(ENABLE_SKILL_TOOL);
     expect(instructions).toContain(framesSkill.name);
+    expect(instructions).toContain(
+      GlobalSkillsRegistry.serializeSkillTag(framesSkill.sId)
+    );
     expect(instructions).toContain("Before reading the sheet");
     // The authoring, linting and publishing mechanics are versioned in the Frames skill. Restating
     // any of them here is how the two drift apart.

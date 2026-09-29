@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { defineGlobalSkillWithChildTags } from "@app/lib/resources/skill/code_defined/shared";
 import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 
 const ENABLE_SKILL_TOOL = getPrefixedToolName(
@@ -28,7 +29,9 @@ const IMPORT_BATCH_SIZE = 200;
  * database schema and out of the entry form: they are derived on read from the stored entered
  * fields.
  */
-const SHEET_TO_FRAME_INSTRUCTIONS = `\
+const SHEET_TO_FRAME_INSTRUCTIONS = (
+  serializeChildSkillTag: (skill: GlobalSkillDefinition) => string
+) => `\
 # Turning a spreadsheet into a Frame
 
 Convert a sheet when people **add rows to it** and some columns are **formulas**: expense logs,
@@ -40,6 +43,8 @@ appended, until you understand that workflow. When the sheet qualifies but the u
 offer in one line rather than converting unprompted.
 
 ## 1. Enable the ${framesSkill.name} skill first
+
+${serializeChildSkillTag(framesSkill)}
 
 Before reading the sheet, call \`${ENABLE_SKILL_TOOL}\` with \`skillName\` exactly
 \`${framesSkill.name}\`.
@@ -160,7 +165,7 @@ your final message that it was not modified, and leave archiving to the user.
  * Sheet-to-frame availability MUST follow Frame functions (see isFramesV2FunctionsEnabled): the
  * whole workflow is expressed in Frame functions and databases that do not exist without it.
  */
-export const sheetToFrameSkill = {
+export const sheetToFrameSkill = defineGlobalSkillWithChildTags({
   sId: "sheet-to-frame",
   kind: "global",
   name: "Sheet to Frame",
@@ -170,7 +175,6 @@ export const sheetToFrameSkill = {
   agentFacingDescription:
     "Use when asked to convert a spreadsheet into a Frame.",
   instructions: SHEET_TO_FRAME_INSTRUCTIONS,
-  childSkills: [framesSkill],
   exposeInstructions: true,
   // No MCP servers: the Frame tooling and the linter both ship with the Frames skill, so the
   // first step of the workflow is enabling it rather than duplicating half of it here.
@@ -186,4 +190,4 @@ export const sheetToFrameSkill = {
     const featureFlags = await getFeatureFlags(auth);
     return !isFramesV2FunctionsEnabled(featureFlags);
   },
-} as const satisfies GlobalSkillDefinition;
+});

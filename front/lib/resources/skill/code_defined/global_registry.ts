@@ -1,6 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
 import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type {
+  GlobalSkillDefinition,
+  GlobalSkillWithChildrenDefinition,
+} from "@app/lib/resources/skill/code_defined/shared";
 import { filterSkillDefinitions } from "@app/lib/resources/skill/code_defined/shared";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { serializeSkillTag } from "@app/lib/skills/format";
@@ -12,6 +15,12 @@ const GLOBAL_SKILLS_BY_ID: Map<string, GlobalSkillDefinition> = new Map(
 
 // Type derived from the actual array.
 export type GlobalSkillId = (typeof GLOBAL_SKILLS_ARRAY)[number]["sId"];
+
+function hasChildSkills(
+  skill: GlobalSkillDefinition
+): skill is GlobalSkillWithChildrenDefinition {
+  return "childSkills" in skill;
+}
 
 export class GlobalSkillsRegistry {
   // Internal sync lookup that does not check restrictions.
@@ -59,9 +68,10 @@ export class GlobalSkillsRegistry {
    * in the current agent loop and resolve the child with the current loop context before enabling it.
    */
   static getChildSkillIds(sId: string): readonly string[] {
-    return (
-      this.getByIdInternal(sId)?.childSkills?.map((skill) => skill.sId) ?? []
-    );
+    const skill = this.getByIdInternal(sId);
+    return skill && hasChildSkills(skill)
+      ? skill.childSkills.map((child) => child.sId)
+      : [];
   }
 
   static doesSkillInheritAgentConfigurationDataSources(sId: string): boolean {
