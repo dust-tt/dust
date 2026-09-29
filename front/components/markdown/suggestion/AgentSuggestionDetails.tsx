@@ -2,6 +2,7 @@ import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { formatModelEffortLabel } from "@app/components/model_picker/modelPickerUtils";
+import { getModelProviderLogo } from "@app/components/providers/types";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { SuggestedChangeAction } from "@app/components/shared/SuggestedChangeRow";
 import { SuggestedChangeRow } from "@app/components/shared/SuggestedChangeRow";
@@ -9,6 +10,7 @@ import { SuggestedEditors } from "@app/components/shared/SuggestedEditors";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { SuggestionNewInstructionsBlock } from "@app/components/shared/SuggestionNewInstructionsBlock";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -18,20 +20,67 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerView } from "@app/lib/swr/mcp_servers";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
+import type {
+  AgentConfigurationScope,
+  AgentConfigurationType,
+} from "@app/types/assistant/agent";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Avatar } from "@dust-tt/sparkle";
+import { Avatar, Eye, EyeOff } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
-function formatModel(modelId: string, reasoningEffort?: ReasoningEffort) {
-  const modelName = getModelDisplayNameFromId(modelId);
-  return reasoningEffort
-    ? formatModelEffortLabel(modelName, reasoningEffort)
-    : modelName;
+interface SuggestedModelRowProps {
+  action: SuggestedChangeAction;
+  modelId: string;
+  reasoningEffort?: ReasoningEffort;
+}
+
+function SuggestedModelRow({
+  action,
+  modelId,
+  reasoningEffort,
+}: SuggestedModelRowProps) {
+  const { isDark } = useTheme();
+  const model = SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === modelId);
+  const modelName = model?.displayName ?? modelId;
+
+  return (
+    <SuggestedChangeRow
+      action={action}
+      visual={
+        <Avatar
+          size="xs"
+          icon={
+            model ? getModelProviderLogo(model.providerId, isDark) : undefined
+          }
+        />
+      }
+      title={
+        reasoningEffort
+          ? formatModelEffortLabel(modelName, reasoningEffort)
+          : modelName
+      }
+      description={model?.description}
+    />
+  );
+}
+
+interface SuggestedScopeRowProps {
+  action: SuggestedChangeAction;
+  scope: AgentConfigurationScope;
+}
+
+function SuggestedScopeRow({ action, scope }: SuggestedScopeRowProps) {
+  return (
+    <SuggestedChangeRow
+      action={action}
+      visual={<Avatar size="xs" icon={scope === "visible" ? Eye : EyeOff} />}
+      title={getAgentScopeLabel(scope)}
+    />
+  );
 }
 
 interface SuggestedSkillRowProps {
@@ -127,15 +176,15 @@ function SuggestedSubAgentRow({
   );
 }
 
-interface NewCapabilitiesSectionProps {
+interface SuggestedChangesSectionProps {
   label: string;
   children: ReactNode;
 }
 
-function NewCapabilitiesSection({
+function SuggestedChangesSection({
   label,
   children,
-}: NewCapabilitiesSectionProps) {
+}: SuggestedChangesSectionProps) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm text-muted-foreground">{label}</span>
@@ -184,7 +233,7 @@ export function AgentSuggestionDetails({
             extensions={buildAgentInstructionsReadOnlyExtensions()}
           />
           {skillIds.length > 0 && (
-            <NewCapabilitiesSection label="Skills">
+            <SuggestedChangesSection label="Skills">
               {skillIds.map((skillId) => (
                 <SuggestedSkillRow
                   key={skillId}
@@ -193,10 +242,10 @@ export function AgentSuggestionDetails({
                   skillId={skillId}
                 />
               ))}
-            </NewCapabilitiesSection>
+            </SuggestedChangesSection>
           )}
           {toolIds.length > 0 && (
-            <NewCapabilitiesSection label="Tools">
+            <SuggestedChangesSection label="Tools">
               {toolIds.map((toolId) => (
                 <SuggestedToolRow
                   key={toolId}
@@ -205,7 +254,7 @@ export function AgentSuggestionDetails({
                   toolId={toolId}
                 />
               ))}
-            </NewCapabilitiesSection>
+            </SuggestedChangesSection>
           )}
         </div>
       );
@@ -261,19 +310,20 @@ export function AgentSuggestionDetails({
     case "model": {
       const { modelId, reasoningEffort } = suggestion.suggestion;
       return (
-        <SuggestionFieldEditSection
-          layout="inline"
-          label="Model"
-          currentValue={
-            agentConfiguration
-              ? formatModel(
-                  agentConfiguration.model.modelId,
-                  agentConfiguration.model.reasoningEffort
-                )
-              : ""
-          }
-          newValue={formatModel(modelId, reasoningEffort)}
-        />
+        <SuggestedChangesSection label="Model">
+          {agentConfiguration && (
+            <SuggestedModelRow
+              action="remove"
+              modelId={agentConfiguration.model.modelId}
+              reasoningEffort={agentConfiguration.model.reasoningEffort}
+            />
+          )}
+          <SuggestedModelRow
+            action="add"
+            modelId={modelId}
+            reasoningEffort={reasoningEffort}
+          />
+        </SuggestedChangesSection>
       );
     }
 
@@ -289,16 +339,15 @@ export function AgentSuggestionDetails({
 
     case "scope":
       return (
-        <SuggestionFieldEditSection
-          layout="inline"
-          label="Visibility"
-          currentValue={
-            agentConfiguration
-              ? getAgentScopeLabel(agentConfiguration.scope)
-              : ""
-          }
-          newValue={getAgentScopeLabel(suggestion.suggestion.scope)}
-        />
+        <SuggestedChangesSection label="Visibility">
+          {agentConfiguration && (
+            <SuggestedScopeRow
+              action="remove"
+              scope={agentConfiguration.scope}
+            />
+          )}
+          <SuggestedScopeRow action="add" scope={suggestion.suggestion.scope} />
+        </SuggestedChangesSection>
       );
 
     case "skills":
