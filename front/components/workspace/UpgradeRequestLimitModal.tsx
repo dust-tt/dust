@@ -1,5 +1,6 @@
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
+import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useMembersUsage } from "@app/lib/swr/memberships";
 import { useDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
@@ -17,6 +18,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 interface UpgradeRequestLimitModalProps {
   owner: WorkspaceType;
@@ -62,9 +64,19 @@ export function UpgradeRequestLimitModal({
       pageIndex: 0,
       pageSize: 25,
     });
-  const member = membersUsage.find(
+  const loadedMember = membersUsage.find(
     (member) => member.sId === request.requester.sId
   );
+  const [member, setMember] = useState<MemberUsageType | null>(null);
+  // Keep the draft and its comparison values tied to the same snapshot.
+  if (
+    !member &&
+    loadedMember &&
+    !isMembersUsageLoading &&
+    !isMembersUsageError
+  ) {
+    setMember(loadedMember);
+  }
 
   // Delegates can see the inherited default in member usage but cannot read workspace settings.
   const inheritedDefault: DefaultUserSpendLimitState =
@@ -89,7 +101,7 @@ export function UpgradeRequestLimitModal({
       : inheritedDefault;
 
   // Never initialize the editor with fabricated limits when the member cannot be loaded.
-  if (isMembersUsageLoading || isMembersUsageError || !member) {
+  if (!member) {
     return (
       <Dialog open onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
