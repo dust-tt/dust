@@ -114,11 +114,17 @@ Keep inherited settings explanatory and read-only where appropriate, and retain 
 personal limit applies across the workspace. Existing workspace-wide views keep their current
 behavior. This depends on PR 5.
 
+#### PR 11a — [Observe v2] Extract shared Usage members section
+
+Move the member search, group filter, table layout, and optional Requests switch into a shared
+section. Keep the workspace Usage behavior unchanged. PR 12 builds on this.
+
 #### PR 12 — Open the restricted Usage page
 
 Allow group managers into the existing Usage route and navigation entry. Render the Members and
-Groups views with an “All groups you manage” filter, using the existing tables and controls.
-This delivers a complete usage-management path and depends on PRs 5 and 8–11.
+Groups views with an “All groups you manage” filter, using the shared member section and existing
+tables and limit editor. This delivers a complete usage-management path and depends on PRs 5, 8–11,
+and 11a.
 
 - Mount workspace-only data hooks in the workspace view, so hidden sections are not fetched.
 - Keep purchases, workspace settings, seat changes, and bulk usage actions under their existing permissions.
