@@ -170,15 +170,19 @@ function AgentSuggestionsDiff({
 }: AgentSuggestionsDiffProps) {
   const { openPanel } = useConversationSidePanelContext();
   const displayable = suggestions.filter(isAgentActionCardSuggestion);
-  // Each skill and each tool is its own suggestion: they are listed together, under a single
-  // heading per kind.
+  // Each skill, tool and sub-agent is its own suggestion: they are listed together, under a
+  // single heading per kind.
   const [skillSuggestions, otherSuggestions] = partition(
     displayable,
     (s) => s.kind === "skills"
   );
-  const [toolSuggestions, fieldSuggestions] = partition(
+  const [toolSuggestions, remainingSuggestions] = partition(
     otherSuggestions,
     (s) => s.kind === "tools"
+  );
+  const [subAgentSuggestions, fieldSuggestions] = partition(
+    remainingSuggestions,
+    (s) => s.kind === "sub_agent"
   );
   const { agentConfiguration, isAgentConfigurationLoading } =
     useAgentConfiguration({
@@ -237,6 +241,12 @@ function AgentSuggestionsDiff({
         owner={owner}
         label="Tools"
         suggestions={toolSuggestions}
+        agentConfiguration={agentConfiguration}
+      />
+      <AgentSuggestionGroup
+        owner={owner}
+        label="Sub-agents"
+        suggestions={subAgentSuggestions}
         agentConfiguration={agentConfiguration}
       />
     </SuggestionTargetSection>

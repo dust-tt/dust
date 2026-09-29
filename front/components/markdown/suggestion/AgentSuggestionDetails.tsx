@@ -12,6 +12,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAgentScopeLabel } from "@app/lib/agent_builder/labels";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerView } from "@app/lib/swr/mcp_servers";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -96,6 +97,49 @@ function SuggestedToolRow({ owner, action, toolId }: SuggestedToolRowProps) {
         {serverView && (
           <div className="truncate text-xs text-muted-foreground">
             {getMcpServerViewDescription(serverView)}
+          </div>
+        )}
+      </div>
+      <Chip
+        size="xs"
+        color={action === "add" ? "highlight" : "warning"}
+        label={action === "add" ? "Add" : "Remove"}
+      />
+    </div>
+  );
+}
+
+interface SuggestedSubAgentRowProps {
+  owner: LightWorkspaceType;
+  action: SuggestedAction;
+  childAgentId: string;
+}
+
+function SuggestedSubAgentRow({
+  owner,
+  action,
+  childAgentId,
+}: SuggestedSubAgentRowProps) {
+  const { agentConfiguration: subAgent, isAgentConfigurationLoading } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: childAgentId,
+    });
+
+  const displayName = subAgent
+    ? `@${subAgent.name}`
+    : isAgentConfigurationLoading
+      ? "Loading…"
+      : childAgentId;
+
+  return (
+    <div className="flex items-center gap-3 py-2.5">
+      <Avatar size="xs" visual={subAgent?.pictureUrl} />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm text-foreground">{displayName}</div>
+        {subAgent && (
+          <div className="truncate text-xs text-muted-foreground">
+            {subAgent.description}
           </div>
         )}
       </div>
@@ -280,6 +324,15 @@ export function AgentSuggestionDetails({
           owner={owner}
           action={suggestion.suggestion.action}
           skillId={suggestion.suggestion.skillId}
+        />
+      );
+
+    case "sub_agent":
+      return (
+        <SuggestedSubAgentRow
+          owner={owner}
+          action={suggestion.suggestion.action}
+          childAgentId={suggestion.suggestion.childAgentId}
         />
       );
 

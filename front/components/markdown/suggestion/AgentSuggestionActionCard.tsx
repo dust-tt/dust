@@ -15,6 +15,7 @@ import type {
   AgentNameSuggestionType,
   AgentScopeSuggestionType,
   AgentSkillsSuggestionType,
+  AgentSubAgentSuggestionType,
   AgentSuggestionState,
   AgentToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
@@ -48,6 +49,7 @@ export type AgentActionCardSuggestionType =
   | AgentNameSuggestionType
   | AgentScopeSuggestionType
   | AgentSkillsSuggestionType
+  | AgentSubAgentSuggestionType
   | AgentToolsSuggestionType;
 
 interface AgentSuggestionActionCardProps {
@@ -149,6 +151,18 @@ export function getAgentSuggestionLabels(
         rejectedTitle: isAddition
           ? "Skill addition rejected"
           : "Skill removal rejected",
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "sub_agent": {
+      const isAddition = agentSuggestion.suggestion.action === "add";
+      return {
+        title: isAddition ? "Add a sub-agent" : "Remove a sub-agent",
+        acceptedTitle: isAddition ? "Sub-agent added" : "Sub-agent removed",
+        rejectedTitle: isAddition
+          ? "Sub-agent addition rejected"
+          : "Sub-agent removal rejected",
         description: analysis ?? undefined,
       };
     }

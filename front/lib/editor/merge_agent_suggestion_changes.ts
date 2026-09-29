@@ -7,6 +7,7 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import { AgentSuggestionDataSchema } from "@app/types/suggestions/agent_suggestion";
@@ -19,6 +20,7 @@ export interface AgentEdits {
   instructions?: InstructionsSuggestionSchemaType[];
   skills?: SkillsSuggestionType[];
   tools?: ToolsSuggestionType[];
+  subAgents?: SubAgentSuggestionType[];
 }
 
 type AgentSuggestionChangeInput = Pick<
@@ -67,8 +69,10 @@ function fieldEditsForSuggestion(
     case "skills":
       return new Ok({ skills: [data.suggestion] });
 
-    case "knowledge":
     case "sub_agent":
+      return new Ok({ subAgents: [data.suggestion] });
+
+    case "knowledge":
       return new Err(
         new DustError(
           "invalid_request_error",
@@ -91,6 +95,7 @@ function mergeFieldEdits(merged: AgentEdits, next: AgentEdits): AgentEdits {
   ];
   const skills = [...(merged.skills ?? []), ...(next.skills ?? [])];
   const tools = [...(merged.tools ?? []), ...(next.tools ?? [])];
+  const subAgents = [...(merged.subAgents ?? []), ...(next.subAgents ?? [])];
 
   return {
     ...merged,
@@ -98,6 +103,7 @@ function mergeFieldEdits(merged: AgentEdits, next: AgentEdits): AgentEdits {
     ...(instructions.length > 0 ? { instructions } : {}),
     ...(skills.length > 0 ? { skills } : {}),
     ...(tools.length > 0 ? { tools } : {}),
+    ...(subAgents.length > 0 ? { subAgents } : {}),
   };
 }
 

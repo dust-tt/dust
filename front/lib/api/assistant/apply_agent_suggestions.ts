@@ -8,6 +8,12 @@ import {
   fetchSuggestableSkills,
 } from "@app/lib/api/assistant/suggestable_skills";
 import {
+  checkSubAgentAddition,
+  checkSubAgentRemoval,
+  fetchRunAgentTool,
+  fetchSuggestableSubAgents,
+} from "@app/lib/api/assistant/suggestable_sub_agents";
+import {
   checkToolAddition,
   checkToolRemoval,
   fetchSuggestableTools,
@@ -40,6 +46,7 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import {
@@ -310,8 +317,83 @@ async function resolveToolsEdits(
   return new Ok({ actions, hasRemovedTools: removedToolIds.size > 0 });
 }
 
-// TODO: save a separate field for manually added space ids like for skills
-// so we don't need to infer what is manual and what is not.
+/**
+ * Carries the agent's actions over, with the suggested sub-agents added or removed. Added
+ * sub-agents are checked again against live state (see `suggestable-sub-agents-match-builder`)
+ * and run through the `run_agent` tool with the builder's defaults. A sub-agent already added, or
+ * already removed, since the suggestion was recorded is skipped.
+ */
+async function resolveSubAgentsEdits(
+  auth: Authenticator,
+  currentActions: AgentActionPayload[],
+  subAgents: SubAgentSuggestionType[],
+  { agentId }: { agentId: string }
+): Promise<
+  Result<
+    { actions: AgentActionPayload[]; hasRemovedSubAgents: boolean },
+    ApplyAgentSuggestionsError
+  >
+> {
+  const hasSubAgent = (subAgentId: string) =>
+    currentActions.some((action) => action.childAgentId === subAgentId);
+  const removedSubAgentIds = new Set(
+    subAgents
+      .filter((s) => s.action === "remove" && hasSubAgent(s.childAgentId))
+      .map((s) => s.childAgentId)
+  );
+  const addedSubAgentIds = new Set(
+    subAgents
+      .filter((s) => s.action === "add" && !hasSubAgent(s.childAgentId))
+      .map((s) => s.childAgentId)
+  );
+
+  for (const subAgentId of removedSubAgentIds) {
+    const removal = checkSubAgentRemoval(subAgentId, currentActions);
+    if (removal.isErr()) {
+      return new Err(new DustError("invalid_request_error", removal.error));
+    }
+  }
+  const actions = currentActions.filter(
+    (action) =>
+      action.childAgentId === null ||
+      !removedSubAgentIds.has(action.childAgentId)
+  );
+
+  if (addedSubAgentIds.size > 0) {
+    const runAgentTool = await fetchRunAgentTool(auth);
+    if (!runAgentTool) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          "The tool to run sub-agents is not available."
+        )
+      );
+    }
+    const suggestable = await fetchSuggestableSubAgents(auth, [
+      ...addedSubAgentIds,
+    ]);
+    for (const subAgentId of addedSubAgentIds) {
+      const addition = checkSubAgentAddition(subAgentId, suggestable, {
+        agentId,
+      });
+      if (addition.isErr()) {
+        return new Err(new DustError("invalid_request_error", addition.error));
+      }
+      actions.push(
+        getDefaultMCPActionPayload(runAgentTool, {
+          takenNames: new Set(actions.map((action) => action.name)),
+          childAgent: addition.value,
+        })
+      );
+    }
+  }
+
+  return new Ok({
+    actions,
+    hasRemovedSubAgents: removedSubAgentIds.size > 0,
+  });
+}
+
 /**
  * Carries the agent's current skills over, with the suggested skills added or removed. Added skills
  * are checked again against live state. A skill already added, or already removed,
@@ -359,12 +441,14 @@ async function resolveSkillsEdits(
   });
 }
 
+// TODO: save a separate field for manually added space ids like for skills
+// so we don't need to infer what is manual and what is not.
 /**
  * @cc [owner:fabiencelier,label:security;product] removed-capability-lifts-its-space
- * When a batch removes a tool or a skill, the agent's additional requested spaces MUST be
- * recomputed as the builder does (its requested spaces minus those its current actions and skills
- * imply), so that a space only the removed tool or skill required no longer restricts the agent. Without a removal, the
- * requested spaces are carried over as they are.
+ * When a batch removes a tool, a sub-agent or a skill, the agent's additional requested spaces MUST
+ * be recomputed as the builder does (its requested spaces minus those its current actions and
+ * skills imply), so that a space only the removed capability required no longer restricts the
+ * agent. Without a removal, the requested spaces are carried over as they are.
  */
 async function getAdditionalRequestedSpaceModelIds(
   auth: Authenticator,
@@ -398,7 +482,16 @@ async function getAdditionalRequestedSpaceModelIds(
 async function resolveAgentFieldEdits(
   auth: Authenticator,
   agent: AgentResource,
-  { name, model, description, scope, instructions, skills, tools }: AgentEdits
+  {
+    name,
+    model,
+    description,
+    scope,
+    instructions,
+    skills,
+    tools,
+    subAgents,
+  }: AgentEdits
 ): Promise<
   Result<AgentConfigurationAssistantPayload, ApplyAgentSuggestionsError>
 > {
@@ -442,9 +535,19 @@ async function resolveAgentFieldEdits(
   if (resolvedActions.isErr()) {
     return resolvedActions;
   }
+  const resolvedToolsWithSubAgents = await resolveSubAgentsEdits(
+    auth,
+    resolvedActions.value.actions,
+    subAgents ?? [],
+    { agentId: agent.sId }
+  );
+  if (resolvedToolsWithSubAgents.isErr()) {
+    return resolvedToolsWithSubAgents;
+  }
   const additionalRequestedSpaceModelIds =
     resolvedSkills.value.hasRemovedSkills ||
-    resolvedActions.value.hasRemovedTools
+    resolvedActions.value.hasRemovedTools ||
+    resolvedToolsWithSubAgents.value.hasRemovedSubAgents
       ? await getAdditionalRequestedSpaceModelIds(auth, {
           requestedSpaceModelIds: current.requestedSpaceIds,
           actions: currentActions,
@@ -464,7 +567,7 @@ async function resolveAgentFieldEdits(
     status: current.status,
     scope: scope ?? current.scope,
     model: nextModel,
-    actions: resolvedActions.value.actions,
+    actions: resolvedToolsWithSubAgents.value.actions,
     templateId: current.templateId,
     tags: current.tags,
     editors: current.editors.map((editor) => ({ sId: editor.sId })),
@@ -489,6 +592,7 @@ function hasAgentFieldEdits({
   instructions,
   skills,
   tools,
+  subAgents,
 }: AgentEdits): boolean {
   return (
     name !== undefined ||
@@ -496,7 +600,8 @@ function hasAgentFieldEdits({
     description !== undefined ||
     (instructions?.length ?? 0) > 0 ||
     (skills?.length ?? 0) > 0 ||
-    (tools?.length ?? 0) > 0
+    (tools?.length ?? 0) > 0 ||
+    (subAgents?.length ?? 0) > 0
   );
 }
 

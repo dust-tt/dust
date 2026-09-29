@@ -7,6 +7,7 @@ const CONVERSATION_AGENT_SUGGESTION_KINDS = [
   "name",
   "scope",
   "skills",
+  "sub_agent",
   "tools",
 ] as const;
 

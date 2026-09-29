@@ -156,7 +156,7 @@ export const EditAgentSuggestionSchema = z.object({
         .optional()
         .describe(
           "Ids of the tools to add to the agent. Only tools that need no configuration (no " +
-            "knowledge, sub-agent or settings to pick) can be added."
+            "knowledge or settings to pick) can be added; add sub-agents with `subAgents`."
         ),
       removeToolIds: z
         .array(z.string())
@@ -165,6 +165,22 @@ export const EditAgentSuggestionSchema = z.object({
     })
     .optional()
     .describe("The tools to add to or remove from the agent."),
+  subAgents: z
+    .object({
+      addAgentIds: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Ids of the active agents to add as sub-agents, which the agent can run to delegate " +
+            "a task."
+        ),
+      removeAgentIds: z
+        .array(z.string())
+        .optional()
+        .describe("Ids of the agent's sub-agents to remove from it."),
+    })
+    .optional()
+    .describe("The sub-agents to add to or remove from the agent."),
 });
 
 export type EditAgentSuggestion = z.infer<typeof EditAgentSuggestionSchema>;

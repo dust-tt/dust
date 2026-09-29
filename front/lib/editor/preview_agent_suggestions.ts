@@ -150,7 +150,19 @@ export function previewAgentSuggestions({
     model,
     skills = [],
     tools = [],
+    subAgents,
   } = edits.value;
+
+  // Sub-agent changes are not previewed yet: showing the agent without them would misrepresent the
+  // suggestions.
+  if (subAgents) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Suggestions changing the agent's sub-agents cannot be previewed."
+      )
+    );
+  }
 
   const instructionsRes = previewInstructions(
     agent,
