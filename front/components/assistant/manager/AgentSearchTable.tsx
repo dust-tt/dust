@@ -13,7 +13,6 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useTags } from "@app/lib/swr/tags";
 import { tagsSorter } from "@app/lib/utils";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
-import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getTieredReasoningEffort } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -66,6 +65,11 @@ interface AgentSearchModelCellProps {
   isDark: boolean;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] compact-model-cell
+ * A supported model cell MUST show only the provider icon and tier at every width, while its
+ * tooltip retains the model display name and any non-none reasoning effort.
+ */
 function AgentSearchModelCell({ model, isDark }: AgentSearchModelCellProps) {
   const modelConfig = model ? getSupportedModelConfig(model) : null;
   if (!model || !modelConfig) {
@@ -95,12 +99,6 @@ function AgentSearchModelCell({ model, isDark }: AgentSearchModelCellProps) {
             iconClassName="mr-2"
           >
             <div className="flex min-w-0 items-center gap-2">
-              {/* Streams are named after their tier: the chip alone carries the info. */}
-              {!isModelStreamId(modelConfig.modelId) && (
-                <span className="hidden min-w-0 truncate @xl:inline">
-                  {modelName}
-                </span>
-              )}
               <div className="shrink-0">
                 <ModelTierChip
                   model={modelConfig}
@@ -314,7 +312,7 @@ export function AgentSearchTable({
           cell: ({ row: { original: agent } }) => (
             <AgentSearchModelCell model={agent.model} isDark={isDark} />
           ),
-          meta: { className: "hidden @sm:w-28 @sm:table-cell @xl:w-56" },
+          meta: { className: "hidden @sm:w-28 @sm:table-cell @xl:w-32" },
         },
         {
           id: "usage" as const,
@@ -367,7 +365,7 @@ export function AgentSearchTable({
               editors={agent.scope === "global" ? null : agent.editors}
             />
           ),
-          meta: { className: "hidden pl-6 @lg:w-28 @lg:table-cell" },
+          meta: { className: "hidden pl-8 @lg:w-32 @lg:table-cell" },
         },
         {
           id: "tags" as const,
