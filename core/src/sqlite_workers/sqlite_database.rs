@@ -33,6 +33,8 @@ pub struct SqliteDatabase {
 pub enum SqliteDatabaseError {
     #[error("Query returned more than {0} rows")]
     ExceededMaxRows(usize),
+    #[error("Query result payload exceeds the {0} byte limit")]
+    ExceededMaxBytes(usize),
     #[error("SQLite Worker Internal error: {0}")]
     InternalError(anyhow::Error),
     #[error("Query execution error: {0}")]
@@ -200,11 +202,7 @@ impl SqliteDatabase {
                 })
                 .sum();
             if total_bytes > MAX_RESULT_BYTES {
-                return Err(SqliteDatabaseError::InternalError(anyhow!(
-                    "Query result size ({} bytes) exceeds the {} byte limit",
-                    total_bytes,
-                    MAX_RESULT_BYTES
-                )));
+                return Err(SqliteDatabaseError::ExceededMaxBytes(MAX_RESULT_BYTES));
             }
 
             info!(
@@ -229,9 +227,12 @@ impl SqliteDatabase {
                     timeout_ms
                 )))
             }
-            Ok(Err(_join_err)) => Err(SqliteDatabaseError::InternalError(anyhow!(
-                "Query thread panicked"
-            ))),
+            Ok(Err(join_err)) => {
+                error!(error = ?join_err, "SQLite blocking thread panicked");
+                Err(SqliteDatabaseError::InternalError(anyhow!(
+                    "Query thread panicked"
+                )))
+            }
             Ok(Ok(r)) => r,
         }
     }

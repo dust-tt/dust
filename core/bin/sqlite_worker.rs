@@ -332,6 +332,12 @@ async fn run_database_query(
                 &format!("Result contains too many rows (max: {})", max),
                 Some(e.into()),
             ),
+            SqliteDatabaseError::ExceededMaxBytes(max) => error_response(
+                StatusCode::BAD_REQUEST,
+                "too_large_result_payload",
+                &format!("Result payload exceeds the {} byte limit", max),
+                Some(e.into()),
+            ),
             _ => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",
