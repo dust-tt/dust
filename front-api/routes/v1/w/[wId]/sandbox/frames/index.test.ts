@@ -116,7 +116,13 @@ async function setup({ registered = true }: { registered?: boolean } = {}) {
       : null
   );
 
-  return { ...context, frame, manifestPath };
+  return {
+    ...context,
+    frame,
+    manifestPath,
+    entrySourcePath: `${mountDirectoryPath}/index.tsx`,
+    sourceByPath,
+  };
 }
 
 async function setupLegacyFrame() {
@@ -231,6 +237,18 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
   it("publishes from a user-owned API key without impersonating its owner", async () => {
     const context = await setup();
     assert(context.frame);
+    const referencedFile = await FileFactory.create(context.auth, null, {
+      contentType: "text/plain",
+      fileName: "data.txt",
+      fileSize: 4,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: context.conversation.sId },
+    });
+    context.sourceByPath.set(
+      context.entrySourcePath,
+      `export default function Status() { const file = useFile("${referencedFile.sId}"); return <p>Ready</p>; }`
+    );
     const { globalGroup } = await GroupFactory.defaults(context.workspace);
     const key = await KeyResource.makeNew(
       {
@@ -244,7 +262,15 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
       [globalGroup]
     );
     const keyAuth = await Authenticator.fromKey(key, context.workspace.sId);
-    const token = await generateSandboxExecToken(keyAuth, {
+    const toolAuth = await Authenticator.fromJsonWithRefrehedGroups(
+      keyAuth.toJSON()
+    );
+    expect(toolAuth.user()).toBeNull();
+    expect(toolAuth.key()?.userModelId).toBe(
+      context.auth.getNonNullableUser().id
+    );
+
+    const token = await generateSandboxExecToken(toolAuth, {
       agentConfiguration: context.agentConfig,
       agentMessage: context.agentMessage,
       conversation: context.conversation,
@@ -253,10 +279,20 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
       sandboxAction: context.sandboxAction,
     });
     const claims = await verifySandboxExecToken(token);
-    expect(claims?.uId).toBeUndefined();
-    expect(claims?.fileAccessUserModelId).toBe(
+    assert(claims);
+    expect(claims.uId).toBeUndefined();
+    expect(claims.fileAccessUserModelId).toBe(
       context.auth.getNonNullableUser().id
     );
+    const callbackAuth = await Authenticator.fromSandboxToken(
+      claims,
+      context.workspace.sId
+    );
+    expect(callbackAuth.isOk()).toBe(true);
+    if (callbackAuth.isOk()) {
+      expect(callbackAuth.value.user()).toBeNull();
+      expect(callbackAuth.value.key()).toBeNull();
+    }
 
     const response = await requestFramePublish(
       context.workspace.sId,
@@ -265,10 +301,26 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     );
 
     expect(response.status, JSON.stringify(await response.json())).toBe(200);
+    const publishedFrame = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(publishedFrame?.useCaseMetadata?.activePublicationId).toBeTypeOf(
+      "string"
+    );
     expect(
-      (await FileResource.fetchById(context.auth, context.frame.sId))
-        ?.useCaseMetadata?.activePublicationId
-    ).toBeTypeOf("string");
+      (await publishedFrame?.getActiveAuthorizedFileAccessAllowlist())
+        ?.generatedByUserId
+    ).toBe(context.auth.getNonNullableUser().id);
+    expect(
+      (await publishedFrame?.getActiveAuthorizedFileAccessAllowlist())?.refs
+    ).toEqual([
+      {
+        kind: "file_id",
+        ref: referencedFile.sId,
+        fileName: referencedFile.fileName,
+      },
+    ]);
   });
 
   it("returns the existing Frame share link without changing use rights", async () => {
