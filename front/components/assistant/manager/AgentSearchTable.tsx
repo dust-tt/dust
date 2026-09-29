@@ -289,14 +289,6 @@ export function AgentSearchTable({
           meta: { className: "w-48 @lg:w-full", rowHeader: true },
         },
         {
-          id: "model" as const,
-          header: "Model",
-          cell: ({ row: { original: agent } }) => (
-            <AgentSearchModelCell model={agent.model} isDark={isDark} />
-          ),
-          meta: { className: "hidden @sm:w-28 @sm:table-cell @xl:w-56" },
-        },
-        {
           id: "access" as const,
           header: "Access",
           cell: ({ row: { original: agent } }) => (
@@ -317,45 +309,12 @@ export function AgentSearchTable({
           },
         },
         {
-          id: "editors" as const,
-          header: "Editors",
+          id: "model" as const,
+          header: "Model",
           cell: ({ row: { original: agent } }) => (
-            <SkillEditorsCell
-              editors={agent.scope === "global" ? null : agent.editors}
-            />
+            <AgentSearchModelCell model={agent.model} isDark={isDark} />
           ),
-          meta: { className: "hidden @lg:w-24 @lg:table-cell" },
-        },
-        {
-          id: "tags" as const,
-          header: "Tags",
-          cell: ({ row: { original: agent } }) => {
-            const tagNames = agent.tags.map((tag) => tag.name).join(", ");
-            return (
-              <DataTable.CellContent
-                grow
-                className="flex flex-row items-center"
-              >
-                <div className="group flex flex-row items-center gap-1">
-                  <div className="truncate text-muted-foreground">
-                    <Tooltip
-                      tooltipTriggerAsChild
-                      label={tagNames}
-                      trigger={<span>{tagNames}</span>}
-                    />
-                  </div>
-                  {canSelect(agent) && (
-                    <AgentSearchTagSelector
-                      owner={owner}
-                      agent={agent}
-                      onRefresh={onRefresh}
-                    />
-                  )}
-                </div>
-              </DataTable.CellContent>
-            );
-          },
-          meta: { className: "hidden @lg:table-cell @lg:w-24 @xl:w-40" },
+          meta: { className: "hidden @sm:w-28 @sm:table-cell @xl:w-56" },
         },
         {
           id: "usage" as const,
@@ -399,6 +358,47 @@ export function AgentSearchTable({
             type: "numeric",
             className: "hidden @lg:w-28 @lg:table-cell",
           },
+        },
+        {
+          id: "editors" as const,
+          header: "Editors",
+          cell: ({ row: { original: agent } }) => (
+            <SkillEditorsCell
+              editors={agent.scope === "global" ? null : agent.editors}
+            />
+          ),
+          meta: { className: "hidden @lg:w-24 @lg:table-cell" },
+        },
+        {
+          id: "tags" as const,
+          header: "Tags",
+          cell: ({ row: { original: agent } }) => {
+            const tagNames = agent.tags.map((tag) => tag.name).join(", ");
+            return (
+              <DataTable.CellContent
+                grow
+                className="flex flex-row items-center"
+              >
+                <div className="group flex flex-row items-center gap-1">
+                  <div className="truncate text-muted-foreground">
+                    <Tooltip
+                      tooltipTriggerAsChild
+                      label={tagNames}
+                      trigger={<span>{tagNames}</span>}
+                    />
+                  </div>
+                  {canSelect(agent) && (
+                    <AgentSearchTagSelector
+                      owner={owner}
+                      agent={agent}
+                      onRefresh={onRefresh}
+                    />
+                  )}
+                </div>
+              </DataTable.CellContent>
+            );
+          },
+          meta: { className: "hidden @lg:table-cell @lg:w-24 @xl:w-40" },
         },
         {
           id: "updatedAt" as const,

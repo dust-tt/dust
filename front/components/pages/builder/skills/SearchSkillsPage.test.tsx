@@ -45,10 +45,6 @@ vi.mock("@app/lib/platform", () => ({
   }),
 }));
 
-vi.mock("@app/components/assistant/details/AgentDetailsSheet", () => ({
-  AgentDetailsSheet: () => null,
-}));
-
 interface BatchAvailabilityDialogMockProps {
   action: { availability: string };
   onConfirm: () => Promise<void>;
@@ -320,6 +316,12 @@ describe("search-backed Manage Skills", () => {
     });
     mount();
     await screen.findByRole("button", { name: /Zebra/ });
+    expect(
+      screen
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent?.trim())
+        .filter(Boolean)
+    ).toEqual(["Name", "Availability", "Usage", "Editors", "Last edited"]);
     expect(screen.getByRole("columnheader", { name: "Usage" })).toHaveAttribute(
       "aria-sort",
       "descending"
