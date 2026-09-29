@@ -78,7 +78,7 @@ export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
     <>
       <NavigationListLabel
         label={`All ${categoryLabel}`}
-        className="shrink-0 justify-start gap-4 py-0 px-2 bg-transparent font-medium"
+        className="shrink-0 py-0 px-2 bg-transparent font-medium"
         action={
           <div className="flex items-center gap-2">
             {isUpdating && (
