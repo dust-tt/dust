@@ -186,12 +186,6 @@ export interface ContextWithLogger extends Context {
   logger: typeof logger;
 }
 
-/**
- * @cc [owner:PopDaph,label:product] final-errors-are-not-retried
- * When `categorizeFinalConnectorError` categorizes an activity error, `execute` MUST mark the
- * connector failed, pause it, and reject with a non-retryable `ApplicationFailure` so the
- * activity is not retried, whatever the provider's `stop()` terminates.
- */
 export class ActivityInboundLogInterceptor
   implements ActivityInboundCallsInterceptor
 {
@@ -395,15 +389,6 @@ export class ActivityInboundLogInterceptor
             );
           }
         }
-
-        // Retrying cannot help and stop() does not terminate every workflow of
-        // a provider, so fail the activity for good.
-        throw ApplicationFailure.create({
-          message: normalizeError(err).message,
-          type: finalConnectorError.connectorErrorType,
-          nonRetryable: true,
-          cause: normalizeError(err),
-        });
       }
 
       throw err;

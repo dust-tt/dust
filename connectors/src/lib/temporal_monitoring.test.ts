@@ -1,6 +1,6 @@
 import { BigQueryCastKnownErrorsInterceptor } from "@connectors/connectors/bigquery/temporal/cast_known_errors";
 import { WithRetriesError } from "@connectors/types";
-import { ApplicationFailure, Context, type Info } from "@temporalio/activity";
+import { Context, type Info } from "@temporalio/activity";
 import {
   noopMetricMeter,
   type Logger as TemporalLogger,
@@ -118,29 +118,6 @@ function makeActivityContext(workflowType = "snowflakeSyncWorkflow") {
   );
 }
 
-// Final errors reject with a non-retryable ApplicationFailure carrying the error type.
-async function expectFinalFailure(
-  promise: Promise<unknown>,
-  type: string,
-  cause?: unknown
-) {
-  const failure = await promise.then(
-    () => {
-      throw new Error("Expected the activity to fail");
-    },
-    (e: unknown) => e
-  );
-  expect(failure).toBeInstanceOf(ApplicationFailure);
-  if (!(failure instanceof ApplicationFailure)) {
-    return;
-  }
-  expect(failure.nonRetryable).toBe(true);
-  expect(failure.type).toBe(type);
-  if (cause !== undefined) {
-    expect(failure.cause).toBe(cause);
-  }
-}
-
 describe("ActivityInboundLogInterceptor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -184,11 +161,7 @@ describe("ActivityInboundLogInterceptor", () => {
       throw error;
     }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
 
-    await expectFinalFailure(
-      interceptor.execute(input, next),
-      "oauth_token_revoked",
-      error
-    );
+    await expect(interceptor.execute(input, next)).rejects.toBe(error);
 
     expect(mocks.syncFailed).toHaveBeenCalledWith(42, "oauth_token_revoked");
     expect(mocks.pauseAndStop).toHaveBeenCalledWith({
@@ -213,11 +186,7 @@ describe("ActivityInboundLogInterceptor", () => {
       throw error;
     }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
 
-    await expectFinalFailure(
-      interceptor.execute(input, next),
-      "remote_database_connection_not_readonly",
-      error
-    );
+    await expect(interceptor.execute(input, next)).rejects.toBe(error);
 
     expect(mocks.syncFailed).toHaveBeenCalledWith(
       42,
@@ -251,11 +220,7 @@ describe("ActivityInboundLogInterceptor", () => {
       throw error;
     }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
 
-    await expectFinalFailure(
-      interceptor.execute(input, next),
-      "workspace_plan_no_api_access",
-      error
-    );
+    await expect(interceptor.execute(input, next)).rejects.toBe(error);
 
     expect(mocks.syncFailed).toHaveBeenCalledWith(
       42,
@@ -286,11 +251,7 @@ describe("ActivityInboundLogInterceptor", () => {
       throw error;
     }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
 
-    await expectFinalFailure(
-      interceptor.execute(input, next),
-      "workspace_relocated",
-      error
-    );
+    await expect(interceptor.execute(input, next)).rejects.toBe(error);
 
     expect(mocks.syncFailed).toHaveBeenCalledWith(42, "workspace_relocated");
     expect(mocks.pauseAndStop).toHaveBeenCalledWith({
@@ -349,10 +310,7 @@ describe("ActivityInboundLogInterceptor", () => {
         throw error;
       }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
 
-      await expectFinalFailure(
-        interceptor.execute(input, next),
-        "workspace_relocated"
-      );
+      await expect(interceptor.execute(input, next)).rejects.toBe(error);
 
       expect(mocks.syncFailed).toHaveBeenCalledWith(42, "workspace_relocated");
       expect(mocks.pauseAndStop).toHaveBeenCalledWith({
@@ -413,9 +371,8 @@ describe("ActivityInboundLogInterceptor", () => {
       new BigQueryCastKnownErrorsInterceptor().execute(activityInput, activity)
     ) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
 
-    await expectFinalFailure(
-      interceptor.execute(input, next),
-      "third_party_internal_error"
+    await expect(interceptor.execute(input, next)).rejects.toThrow(
+      ThirdPartyConfigurationError
     );
 
     expect(mocks.syncFailed).toHaveBeenCalledWith(
@@ -444,11 +401,7 @@ describe("ActivityInboundLogInterceptor", () => {
       throw error;
     }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
 
-    await expectFinalFailure(
-      interceptor.execute(input, next),
-      "third_party_internal_error",
-      error
-    );
+    await expect(interceptor.execute(input, next)).rejects.toBe(error);
 
     expect(mocks.syncFailed).toHaveBeenCalledWith(
       42,
