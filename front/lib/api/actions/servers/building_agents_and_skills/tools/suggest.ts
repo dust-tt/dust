@@ -15,6 +15,7 @@ import {
   validateAgentCreationCapabilities,
   validateAgentDeletion,
   validateAgentDescriptionChange,
+  validateAgentEditorsSuggestion,
   validateAgentInstructionsChange,
   validateAgentModelChange,
   validateAgentNameChange,
@@ -198,6 +199,7 @@ async function planAgentEdit(
     skills: skillChanges,
     tools: toolChanges,
     subAgents: subAgentChanges,
+    editors: editorChanges,
   }: EditAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const agentRes = await fetchAgentForSuggestion(auth, agentId);
@@ -247,6 +249,17 @@ async function planAgentEdit(
     return new Err(
       new MCPError("`reasoningEffort` can only be suggested with a `modelId`.")
     );
+  }
+
+  if (editorChanges !== undefined) {
+    const validation = await validateAgentEditorsSuggestion(auth, agent, {
+      addUserIds: editorChanges.addUserIds ?? [],
+      removeUserIds: editorChanges.removeUserIds ?? [],
+    });
+    if (validation.isErr()) {
+      return validation;
+    }
+    singletons.push({ kind: "editors", suggestion: validation.value });
   }
 
   let instructions: {

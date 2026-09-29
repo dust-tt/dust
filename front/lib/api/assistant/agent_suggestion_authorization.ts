@@ -30,6 +30,7 @@ const AGENT_SUGGESTION_KIND_ACCEPTED_VERBS: Record<
   create: ["write"],
   model: ["write", "admin"],
   scope: ["write", "admin"],
+  editors: ["admin"],
   delete: ["admin"],
 };
 

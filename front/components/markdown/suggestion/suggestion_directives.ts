@@ -5,6 +5,7 @@ const CONVERSATION_AGENT_SUGGESTION_KINDS = [
   "create",
   "delete",
   "description",
+  "editors",
   "instructions",
   "model",
   "name",

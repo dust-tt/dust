@@ -5,6 +5,7 @@ import {
   LIST_MODELS_TOOL_NAME,
   WORKSPACE_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
+import { validateAgentEditorsChange } from "@app/lib/api/assistant/agent_editors_change";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { validateInstructionEdits } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
@@ -48,6 +49,7 @@ import type {
   CreateSuggestionType,
   DeleteSuggestionType,
   DescriptionSuggestionType,
+  EditorsSuggestionType,
   ModelSuggestionType,
   NameSuggestionType,
   ScopeSuggestionType,
@@ -228,6 +230,29 @@ export function validateAgentPublishStateChange(
   }
 
   return new Ok({ scope });
+}
+
+/**
+ * Applies the validation the suggestion is applied with (`validateAgentEditorsChange`), so a
+ * suggestion that is created as pending can be applied later.
+ */
+export async function validateAgentEditorsSuggestion(
+  auth: Authenticator,
+  agent: AgentResource,
+  {
+    addUserIds,
+    removeUserIds,
+  }: { addUserIds: string[]; removeUserIds: string[] }
+): Promise<Result<EditorsSuggestionType, MCPError>> {
+  const validation = await validateAgentEditorsChange(auth, agent, {
+    addUserIds,
+    removeUserIds,
+  });
+  if (validation.isErr()) {
+    return new Err(new MCPError(validation.error.message));
+  }
+
+  return new Ok({ addUserIds, removeUserIds });
 }
 
 /**
@@ -658,7 +683,7 @@ export async function validateAgentSubAgentChanges(
 /** Kinds of which a single suggestion may be pending per agent at a time. */
 export type SingletonAgentSuggestionData = Extract<
   AgentSuggestionData,
-  { kind: "name" | "description" | "scope" | "model" | "delete" }
+  { kind: "name" | "description" | "scope" | "model" | "editors" | "delete" }
 >;
 
 /**

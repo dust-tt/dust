@@ -181,6 +181,19 @@ export const EditAgentSuggestionSchema = z.object({
     })
     .optional()
     .describe("The sub-agents to add to or remove from the agent."),
+  editors: z
+    .object({
+      addUserIds: z
+        .array(z.string())
+        .optional()
+        .describe("Ids of the workspace members to add as editors."),
+      removeUserIds: z
+        .array(z.string())
+        .optional()
+        .describe("Ids of the agent's editors to remove."),
+    })
+    .optional()
+    .describe("The editors to add to or remove from the agent."),
 });
 
 export type EditAgentSuggestion = z.infer<typeof EditAgentSuggestionSchema>;

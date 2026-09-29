@@ -105,7 +105,7 @@ Tools operate on entity ids, not names. Use these tools to get up-to-date inform
 - \`${managementToolName(GET_TOOL_DETAILS_TOOL_NAME)}\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
 - \`${managementToolName(LIST_MODELS_TOOL_NAME)}\`: the models an agent can be set to, with their \`modelId\` and supported reasoning efforts. Use it before suggesting a model change.
 - \`${managementToolName(SEARCH_KNOWLEDGE_TOOL_NAME)}\`: without a query, the knowledge sources (data source views) of the workspace; with a query, the sources and document nodes matching it. Use it before referencing knowledge in a suggestion (see <knowledge_guidance> and <knowledge_nodes>).
-- \`${managementToolName(LIST_WORKSPACE_MEMBERS_TOOL_NAME)}\`: information about members (pass \`userIds\` to look up specific people, e.g. to change a skill's editors).
+- \`${managementToolName(LIST_WORKSPACE_MEMBERS_TOOL_NAME)}\`: information about members (pass \`userIds\` to look up specific people, e.g. to change an agent's or a skill's editors).
 - \`${buildingToolName(DESCRIBE_SKILL_TOOL_NAME)}\`: a custom skill's name, settings, and instructions as HTML whose blocks carry a \`data-block-id\`. Call it to get any info about a skill before acting on it; the block ids are required to target edits.
 - \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`: an agent's full configuration, with instructions as HTML whose blocks carry a \`data-block-id\`. Call it before targeting instruction edits on an agent; the block ids are required to target edits.
 
@@ -228,7 +228,7 @@ Suggestions: \`${SUGGEST}\`, with:
 - \`analysis\`: why these changes are needed (max 255 characters).
 - \`suggestions\`: the changes, one item per entity, discriminated by \`kind\`:
   - \`create_agent\`: a new agent from a \`name\`, a \`description\` and \`instructions\` (HTML).
-  - \`edit_agent\`: changes to an existing agent, by \`agentId\`: \`name\`, \`description\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`modelId\` with an optional \`reasoningEffort\`, \`scope\` (\`visible\` to publish, \`hidden\` to unpublish), \`skills\` (\`addSkillIds\` / \`removeSkillIds\`) and \`tools\` (\`addToolIds\` / \`removeToolIds\`), see <agent_capabilities>.
+  - \`edit_agent\`: changes to an existing agent, by \`agentId\`: \`name\`, \`description\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`modelId\` with an optional \`reasoningEffort\`, \`scope\` (\`visible\` to publish, \`hidden\` to unpublish), \`skills\` (\`addSkillIds\` / \`removeSkillIds\`), \`tools\` (\`addToolIds\` / \`removeToolIds\`), see <agent_capabilities>, and \`editors\`.
   - \`delete_agent\`: deletes an existing agent, by \`agentId\`.
   - \`create_skill\`: a new skill from a \`name\`, a \`userFacingDescription\`, an \`agentFacingDescription\` and \`instructions\` (HTML).
   - \`edit_skill\`: changes to an existing custom skill, by \`skillId\`: \`name\` (unique among the workspace's active skills), \`userFacingDescription\`, \`agentFacingDescription\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`availability\` (\`editors\`, \`workspace_users\` or \`users_and_agents\`, requires the workspace permission to publish skills), \`addEditorUserIds\` / \`removeEditorUserIds\` (a change leaving the skill without any editor is refused).

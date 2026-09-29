@@ -10,6 +10,7 @@ import type {
   AgentCreateSuggestionType,
   AgentDeleteSuggestionType,
   AgentDescriptionSuggestionType,
+  AgentEditorsSuggestionType,
   AgentInstructionsSuggestionType,
   AgentModelSuggestionType,
   AgentNameSuggestionType,
@@ -44,6 +45,7 @@ export type AgentActionCardSuggestionType =
   | AgentCreateSuggestionType
   | AgentDeleteSuggestionType
   | AgentDescriptionSuggestionType
+  | AgentEditorsSuggestionType
   | AgentInstructionsSuggestionType
   | AgentModelSuggestionType
   | AgentNameSuggestionType
@@ -130,6 +132,15 @@ function getAgentSuggestionLabels(
         title: isPublishing ? "Publish agent" : "Unpublish agent",
         acceptedTitle: isPublishing ? "Agent published" : "Agent unpublished",
         rejectedTitle: isPublishing ? "Publish rejected" : "Unpublish rejected",
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "editors": {
+      return {
+        title: "Update agent editors",
+        acceptedTitle: "Editors update accepted",
+        rejectedTitle: "Editors update rejected",
         description: analysis ?? undefined,
       };
     }

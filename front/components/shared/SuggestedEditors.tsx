@@ -1,6 +1,5 @@
 import type { MemberDisplayInfo } from "@app/lib/swr/assistants";
 import { useMemberDetails } from "@app/lib/swr/assistants";
-import type { SkillEditorsSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { Avatar, Chip } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -45,15 +44,15 @@ function SuggestedEditorRow({
   );
 }
 
-interface SuggestedSkillEditorsProps {
-  suggestion: SkillEditorsSuggestionType;
+interface SuggestedEditorsProps {
+  suggestion: { addUserIds: string[]; removeUserIds: string[] };
   workspaceId: string;
 }
 
-export function SuggestedSkillEditors({
+export function SuggestedEditors({
   suggestion,
   workspaceId,
-}: SuggestedSkillEditorsProps) {
+}: SuggestedEditorsProps) {
   const { addUserIds, removeUserIds } = suggestion;
 
   const userIds = useMemo(

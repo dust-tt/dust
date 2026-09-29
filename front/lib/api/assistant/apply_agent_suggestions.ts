@@ -1,5 +1,6 @@
 import { getDefaultMCPActionPayload } from "@app/lib/actions/default_mcp_action";
 import { DROID_AVATAR_URLS } from "@app/lib/agent_builder/avatars";
+import { validateAgentEditorsChange } from "@app/lib/api/assistant/agent_editors_change";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
@@ -43,6 +44,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   CreateSuggestionType,
+  EditorsSuggestionType,
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
@@ -54,6 +56,7 @@ import {
   getAgentSuggestionAction,
   INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
 } from "@app/types/suggestions/agent_suggestion";
+import type { UserType } from "@app/types/user";
 
 type ApplyAgentSuggestionsError = DustError<"invalid_request_error">;
 
@@ -71,9 +74,11 @@ export type ResolvedAgentChange =
       type: "edit";
       agentId: string;
       assistant: AgentConfigurationAssistantPayload | null;
-      // Applied in place on its own when there is no full save, which needs no read access to the
-      // agent's definition.
+      // Applied in place on their own when there is no full save, which needs no read access to
+      // the agent's definition.
       scope: Exclude<AgentConfigurationScope, "global"> | null;
+      // The complete editor set once the change is applied.
+      editors: UserType[] | null;
     }
   | { type: "delete"; agentId: string };
 
@@ -582,8 +587,31 @@ async function resolveAgentFieldEdits(
 }
 
 /**
- * Definition fields are saved as a new version, from the agent's full definition. The scope can be
- * applied in place, so a caller holding `admin` on an agent they cannot read can still change it.
+ * Re-validates the suggested editor change against live state and returns the resulting editor set.
+ */
+async function resolveEditorsEdit(
+  auth: Authenticator,
+  agent: AgentResource,
+  editors: EditorsSuggestionType | undefined
+): Promise<Result<UserType[] | null, ApplyAgentSuggestionsError>> {
+  if (!editors) {
+    return new Ok(null);
+  }
+
+  const validation = await validateAgentEditorsChange(auth, agent, editors);
+  if (validation.isErr()) {
+    return new Err(
+      new DustError("invalid_request_error", validation.error.message)
+    );
+  }
+
+  return new Ok(validation.value.nextEditors.map((u) => u.toJSON()));
+}
+
+/**
+ * Definition fields are saved as a new version, from the agent's full definition. The scope and the
+ * editors can be applied in place, so a caller holding `admin` on an agent they cannot read can
+ * still change them.
  */
 function hasAgentFieldEdits({
   name,
@@ -619,14 +647,26 @@ async function resolveAgentEdits(
     );
   }
 
-  // Saving the definition creates a version, so a change that only moves the scope must not.
+  const editorsRes = await resolveEditorsEdit(auth, agent, edits.editors);
+  if (editorsRes.isErr()) {
+    return editorsRes;
+  }
+  const editors = editorsRes.value;
+
+  // Saving the definition creates a version, so a change that only moves the scope or the editors
+  // must not.
   let assistant: AgentConfigurationAssistantPayload | null = null;
   if (hasAgentFieldEdits(edits)) {
     const assistantRes = await resolveAgentFieldEdits(auth, agent, edits);
     if (assistantRes.isErr()) {
       return assistantRes;
     }
-    assistant = assistantRes.value;
+    assistant = editors
+      ? {
+          ...assistantRes.value,
+          editors: editors.map((editor) => ({ sId: editor.sId })),
+        }
+      : assistantRes.value;
   }
 
   return new Ok({
@@ -634,6 +674,7 @@ async function resolveAgentEdits(
     agentId: agent.sId,
     assistant,
     scope: edits.scope ?? null,
+    editors,
   });
 }
 
@@ -760,12 +801,21 @@ async function saveAgentConfiguration(
   return new Ok(undefined);
 }
 
-async function updateAgentScope(
+async function updateAgentInPlace(
   auth: Authenticator,
   agent: AgentResource,
-  scope: Exclude<AgentConfigurationScope, "global">
+  {
+    scope,
+    editors,
+  }: {
+    scope: Exclude<AgentConfigurationScope, "global"> | null;
+    editors: UserType[] | null;
+  }
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
-  const res = await agent.updateConfiguration(auth, { scope });
+  const res = await agent.updateConfiguration(auth, {
+    ...(scope ? { scope } : {}),
+    ...(editors ? { editors } : {}),
+  });
   if (res.isErr()) {
     return new Err(new DustError("invalid_request_error", res.error.message));
   }
@@ -785,8 +835,8 @@ export async function writeAgentChange(
       if (change.assistant) {
         return saveAgentConfiguration(auth, change.agentId, change.assistant);
       }
-      if (change.scope) {
-        return updateAgentScope(auth, agent, change.scope);
+      if (change.scope || change.editors) {
+        return updateAgentInPlace(auth, agent, change);
       }
       return new Ok(undefined);
     case "delete":
