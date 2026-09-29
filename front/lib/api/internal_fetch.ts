@@ -2,7 +2,7 @@ import { Agent, interceptors, fetch as undiciFetch } from "undici";
 
 const { dns, retry } = interceptors;
 
-// One dead keep-alive socket per terminated pod; the first retry lands on a fresh connection.
+// One dead keep-alive socket per terminated pod, so one retry is enough; two is margin.
 const MAX_RETRIES = 2;
 const RETRY_MIN_TIMEOUT_MS = 200;
 
@@ -22,9 +22,8 @@ export const internalAgent = new Agent({
 );
 
 // Request/response calls only: retries idempotent methods on transport errors (ECONNREFUSED,
-// ECONNRESET, UND_ERR_SOCKET, ...), never on HTTP status. Covers a pod closing its keep-alive
-// sockets on SIGTERM, which endpoint removal does not protect against. Kept off `internalAgent`
-// so the MCP SSE transports that share it are not retried mid-stream.
+// ECONNRESET, UND_ERR_SOCKET, ...), never on HTTP status. Kept off `internalAgent` so the MCP
+// SSE transports that share it are not retried mid-stream.
 // undici calls the last composed interceptor first, so each retry goes back through the DNS cache.
 const internalFetchAgent = internalAgent.compose(
   retry({

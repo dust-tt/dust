@@ -1,6 +1,5 @@
 // @vitest-environment node
 import http from "node:http";
-import type { AddressInfo } from "node:net";
 import { internalFetch } from "@app/lib/api/internal_fetch";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -34,10 +33,17 @@ function startServer({
     counts: () => { connections: number; requests: number };
   }>((resolve) => {
     server.listen(0, "127.0.0.1", () => {
-      const { port } = server.address() as AddressInfo;
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        throw new Error("Expected a TCP address");
+      }
+      const { port } = address;
       resolve({
         url: `http://127.0.0.1:${port}/`,
-        close: () => server.close(),
+        close: () => {
+          server.closeAllConnections();
+          server.close();
+        },
         counts: () => ({ connections, requests }),
       });
     });
