@@ -256,6 +256,36 @@ describe("GET /api/w/:wId/assistant/agent_configurations", () => {
     );
   });
 
+  it("lists hidden agents without their editors for a manager with the analytics view", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "manager",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const hiddenAgent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { name: "Hidden agent", scope: "hidden" }
+    );
+    const visibleAgent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { name: "Visible agent", scope: "visible" }
+    );
+
+    const response = await listAgents(workspace, {
+      view: "analytics",
+      withEditors: "true",
+    });
+
+    expect(response.status).toBe(200);
+    const data: { agentConfigurations: LightAgentConfigurationType[] } =
+      await response.json();
+    const agentsById = new Map(
+      data.agentConfigurations.map((agent) => [agent.sId, agent])
+    );
+    expect(agentsById.get(hiddenAgent.sId)?.editors).toEqual([]);
+    expect(agentsById.get(visibleAgent.sId)?.editors).toHaveLength(1);
+  });
+
   it("narrows the analytics view to non-private agents below the manager role", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",

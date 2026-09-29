@@ -307,6 +307,94 @@ describe("AgentResource", () => {
     expect(await AgentResource.fetchByIds(otherAuth, [agent.sId])).toEqual([]);
   });
 
+  it.each([
+    "admin",
+    "manager",
+  ] as const)("lets the %s role list every custom agent without reading the ones it cannot read", async (role) => {
+    const hiddenAgent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "Hidden agent", scope: "hidden" }
+    );
+    const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+    const restrictedAgent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      {
+        name: "Restricted agent",
+        scope: "visible",
+        requestedSpaceIds: [restrictedSpace.id],
+      }
+    );
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, user, { role });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      testContext.workspace.sId
+    );
+
+    const resources = await AgentResource.fetchByIds(auth, [
+      hiddenAgent.sId,
+      restrictedAgent.sId,
+    ]);
+
+    expect(resources.map((resource) => resource.sId)).toEqual([
+      hiddenAgent.sId,
+      restrictedAgent.sId,
+    ]);
+    for (const resource of resources) {
+      expect(auth.can("list", resource)).toBe(true);
+      expect(auth.can("read", resource)).toBe(false);
+      expect(auth.can("write", resource)).toBe(false);
+      expect(resource.isFull()).toBe(false);
+    }
+  });
+
+  it("grants list to a member who can read the agent", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "Visible agent", scope: "visible" }
+    );
+
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, member, {
+      role: "user",
+    });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      testContext.workspace.sId
+    );
+
+    const resource = await AgentResource.fetchById(memberAuth, agent.sId);
+    assert(resource);
+    expect(memberAuth.can("read", resource)).toBe(true);
+    expect(memberAuth.can("list", resource)).toBe(true);
+  });
+
+  it("lists no editors for a manager who cannot read the agent", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "Hidden agent", scope: "hidden" }
+    );
+
+    const manager = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, manager, {
+      role: "manager",
+    });
+    const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      manager.sId,
+      testContext.workspace.sId
+    );
+
+    const resource = await AgentResource.fetchById(managerAuth, agent.sId);
+    assert(resource);
+    expect(await resource.listEditors(managerAuth)).toEqual([]);
+    expect(
+      (await resource.listEditors(testContext.authenticator))?.map(
+        (editor) => editor.id
+      )
+    ).toEqual([testContext.user.id]);
+  });
+
   it("resolves an archived agent to its latest version", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator

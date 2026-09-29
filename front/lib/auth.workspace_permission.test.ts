@@ -272,7 +272,7 @@ describe("Authenticator.fromKey permission resolution", () => {
           workspaceAuth.getNonNullableWorkspace().id
         ),
       ].sort()
-    ).toEqual(["admin", "read", "write"]);
+    ).toEqual(["admin", "list", "read", "write"]);
     expect(
       [
         ...workspaceAuth.getGovernanceGrantVerbs(
@@ -281,7 +281,7 @@ describe("Authenticator.fromKey permission resolution", () => {
           workspaceAuth.getNonNullableWorkspace().id
         ),
       ].sort()
-    ).toEqual(["admin", "read", "write"]);
+    ).toEqual(["admin", "list", "read", "write"]);
     // The type-level capabilities still hold at the type level (what `hasWorkspacePermission` reads).
     expect(
       [
@@ -361,7 +361,7 @@ describe("Authenticator.fromKey permission resolution", () => {
           workspaceAuth.getNonNullableWorkspace().id
         ),
       ].sort()
-    ).toEqual(["admin", "read", "write"]);
+    ).toEqual(["admin", "list", "read", "write"]);
     expect(
       workspaceAuth.getGovernanceGrantVerbs(
         "agent",
@@ -474,7 +474,7 @@ describe("Authenticator.refresh permission resolution", () => {
           workspaceAuth.getNonNullableWorkspace().id
         ),
       ].sort()
-    ).toEqual(["admin", "read", "write"]);
+    ).toEqual(["admin", "list", "read", "write"]);
     // It stays scoped to the requested groups: refreshing must not widen it back to everything the
     // system key itself holds.
     expect(

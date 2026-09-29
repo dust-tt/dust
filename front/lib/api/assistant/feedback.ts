@@ -181,6 +181,11 @@ export async function deleteMessageFeedback(
   return new Ok(undefined);
 }
 
+/**
+ * @cc [owner:sfriquet,label:security] agent-feedbacks-require-read
+ * MUST fail with `agent_configuration_not_found` unless the caller holds `read` on the agent or is
+ * a workspace admin. Fetchability of the agent alone MUST NOT grant access.
+ */
 export async function getAgentFeedbacks({
   auth,
   agentConfigurationId,
@@ -205,9 +210,8 @@ export async function getAgentFeedbacks({
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  // Make sure the user has access to the agent
   const agent = await AgentResource.fetchById(auth, agentConfigurationId);
-  if (!agent) {
+  if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
     return new Err(new Error("agent_configuration_not_found"));
   }
 

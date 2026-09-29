@@ -27,7 +27,7 @@ app.get(
     const { aId } = ctx.req.valid("param");
 
     const agent = await AgentResource.fetchById(auth, aId);
-    if (!agent) {
+    if (!agent || (!auth.can("read", agent) && !auth.can("admin", agent))) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

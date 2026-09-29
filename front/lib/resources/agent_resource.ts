@@ -125,7 +125,7 @@ import { Op, UniqueConstraintError, ValidationError } from "sequelize";
 
 // A draft belongs to its current author until it is published. This is ownership, not an editor
 // grant: once the agent leaves draft status, only explicit grants confer editorship.
-const DRAFT_OWNER_VERBS: GrantVerb[] = ["read", "write", "admin"];
+const DRAFT_OWNER_VERBS: GrantVerb[] = ["read", "write", "admin", "list"];
 
 // Agents in these statuses only exist inside the builder — behind its "try" button or before the
 // first save — and are never indexed.
@@ -153,16 +153,17 @@ const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
 // Human workspace admins manage editors but must grant themselves editor access to change the agent.
 // The admin role alone does not read a hidden agent (see the `hidden-agent-content` contract).
 const HIDDEN_AGENT_ROLE_GRANTS: RoleGrant[] = [
-  { role: "admin", permissions: ["admin"] },
+  { role: "admin", permissions: ["admin", "list"] },
+  { role: "manager", permissions: ["list"] },
 ];
 
 // Visible agents are readable by every workspace role. Kept explicit (not spread from
 // `HIDDEN_AGENT_ROLE_GRANTS`) so the admin role keeps `read` here even though it does not on hidden.
 const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
-  { role: "admin", permissions: ["read", "admin"] },
-  { role: "manager", permissions: ["read"] },
-  { role: "user", permissions: ["read"] },
-  { role: "none", permissions: ["read"] },
+  { role: "admin", permissions: ["read", "admin", "list"] },
+  { role: "manager", permissions: ["read", "list"] },
+  { role: "user", permissions: ["read", "list"] },
+  { role: "none", permissions: ["read", "list"] },
 ];
 
 // Full-only payload: every `AgentConfigurationModel` column that is not part of the identity/core
@@ -368,8 +369,8 @@ export interface AgentResource
  * instructions are the only private fields: the head fields (`name`, `status`, `scope`,
  * `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and carried by every
  * resource. This holds for every `fetch*` resolver, for `fromModels` and for global agents, so a
- * caller allowed to enumerate agents they cannot read (an admin listing hidden agents, a
- * superuser) sees identity and core fields only. Callers MUST NOT re-attach the instructions to a
+ * caller allowed to enumerate agents they cannot read (an admin or manager listing hidden agents,
+ * a superuser) sees identity and core fields only. Callers MUST NOT re-attach the instructions to a
  * `light` resource from another read path.
  */
 /**
@@ -391,6 +392,9 @@ export interface AgentResource
  *   management, archiving/restoring is gated on `admin` and is not additionally space-gated, so a
  *   workspace admin may archive/restore an agent it cannot read (e.g. hidden agents surfaced by
  *   "Show hidden agents").
+ * - `list`: seeing the agent's light core fields, including its version author, but not its
+ *   editors. `read` implies `list`. The `admin` and `manager` roles MUST hold it on every custom
+ *   agent, regardless of scope, status, or `requestedSpaceIds`.
  * Holding any verb makes the agent fetchable, but without `read` only its light core fields may be
  * exposed (see `unreadable-agent-is-light`). The explicit `admin_can_see_private_entities` admin
  * override is the only exception and may expose the full configuration.
@@ -1237,7 +1241,12 @@ export class AgentResource
   /**
    * @cc [owner:philipperolet,label:backend] editor-results-by-agent
    * Each input agent has a map entry: `null` for globals and active workspace members
-   * of its editor grant for custom agents, or `[]` when there are none.
+   * of its editor grant for custom agents, or `[]` when there are none or the caller holds
+   * neither `read` nor `admin` on it (see `editors-require-read-or-admin`).
+   */
+  /**
+   * @cc [owner:sfriquet,label:security] editors-require-read-or-admin
+   * A custom agent's editors MUST be `[]` unless the caller holds `read` or `admin` on it.
    */
   static async batchListEditors(
     auth: Authenticator,
@@ -1245,9 +1254,13 @@ export class AgentResource
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Map<string, UserResource[] | null>> {
     const result = new Map<string, UserResource[] | null>(
-      agents.map((agent) => [agent.sId, null])
+      agents.map((agent) => [agent.sId, agent.scope === "global" ? null : []])
     );
-    const customAgents = agents.filter((agent) => agent.scope !== "global");
+    const customAgents = agents.filter(
+      (agent) =>
+        agent.scope !== "global" &&
+        (auth.can("read", agent) || auth.can("admin", agent))
+    );
     if (customAgents.length === 0) {
       return result;
     }
@@ -2623,7 +2636,7 @@ export class AgentResource
       assert(isGlobalAgentId(this.sId));
 
       const roleGrants: RoleGrant[] = globalAgentReaderRoles(this.sId).map(
-        (role) => ({ role, permissions: ["read"] })
+        (role) => ({ role, permissions: ["read", "list"] })
       );
 
       return new Set(verbsFromRoleGrants(auth, roleGrants, this.workspaceId));
@@ -2661,6 +2674,15 @@ export class AgentResource
     if (!this.requestedSpacesReadable(auth)) {
       verbs.delete("read");
       verbs.delete("write");
+      verbs.delete("list");
+      // The hidden-agent role verbs hold on every custom agent, whatever its spaces.
+      for (const verb of verbsFromRoleGrants(
+        auth,
+        HIDDEN_AGENT_ROLE_GRANTS,
+        this.workspaceId
+      )) {
+        verbs.add(verb);
+      }
     }
 
     return verbs;
