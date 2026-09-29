@@ -259,7 +259,8 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           code_verifier,
           code_challenge,
           use_static_ip_proxy: String(
-            await shouldUseStaticIpProxy(auth, tokenEndpoint, {
+            await shouldUseStaticIpProxy(auth, {
+              url: tokenEndpoint,
               relatedMcpServerUrl: connection.metadata.resource,
             })
           ),
@@ -284,7 +285,8 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
       return {
         ...finalConfig,
         use_static_ip_proxy: String(
-          await shouldUseStaticIpProxy(auth, finalConfig.token_endpoint, {
+          await shouldUseStaticIpProxy(auth, {
+            url: finalConfig.token_endpoint,
             relatedMcpServerUrl:
               typeof finalConfig.resource === "string"
                 ? finalConfig.resource

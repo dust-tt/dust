@@ -43,8 +43,13 @@ export async function isHostUnderVerifiedDomain(
 // MCP server itself is on the hardcoded allowlist (via the OAuth `resource` field).
 export async function shouldUseStaticIpProxy(
   auth: Authenticator,
-  url: string | undefined,
-  { relatedMcpServerUrl }: { relatedMcpServerUrl?: string } = {}
+  {
+    url,
+    relatedMcpServerUrl,
+  }: {
+    url?: string;
+    relatedMcpServerUrl?: string;
+  }
 ): Promise<boolean> {
   if (isWorkspaceUsingStaticIP(auth.getNonNullableWorkspace())) {
     return true;
