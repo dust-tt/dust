@@ -22,15 +22,16 @@ import type {
 import { EventSourcePolyfill } from "event-source-polyfill";
 import { z } from "zod";
 
-const RECONNECT_DELAY_BASE_MS = 3000;
-const RECONNECT_DELAY_JITTER_MS = 5000;
+const RECONNECT_DELAY_BASE_MS = 3_000;
+const RECONNECT_DELAY_JITTER_MS = 5_000;
 const MAX_RECONNECT_ATTEMPTS = 10;
 const RESUME_COOLDOWN_MS = 90_000;
 const MAX_UNSUCCESSFUL_RESUMES = 3;
 const EMPTY_POLL_DELAY_BASE_MS = 250;
 const EMPTY_POLL_DELAY_JITTER_MS = 250;
-const HEARTBEAT_TIMEOUT_MS = 5 * 60 * 1000;
+const HEARTBEAT_TIMEOUT_MS = 5 * 60 * 1_000;
 const SSE_HANDSHAKE_TIMEOUT_MS = 2_500;
+const SSE_FAILURES_BEFORE_FALLBACK = 2;
 const MIN_HEALTHY_SSE_LIFETIME_MS = 30_000;
 const IDLE_CONNECTION_STATE = { kind: "idle" } as const;
 
@@ -44,7 +45,6 @@ type ActiveTransport =
   | {
       kind: "sse";
       source: EventSourceLike;
-      handshakeTimeout: ReturnType<typeof setTimeout> | null;
     }
   | {
       kind: "long_polling";
@@ -64,6 +64,7 @@ type ConnectionEntry = {
   unsuccessfulResumes: number;
   reconnectTimeout: ReturnType<typeof setTimeout> | null;
   pendingSseController: AbortController | null;
+  pendingSseHandshakeTimeout: ReturnType<typeof setTimeout> | null;
   state: EventSourceConnectionState;
   subscribers: Set<Subscriber>;
   transport: ActiveTransport | null;
@@ -343,6 +344,7 @@ export class EventSourceManager {
       unsuccessfulResumes: 0,
       reconnectTimeout: null,
       pendingSseController: null,
+      pendingSseHandshakeTimeout: null,
       state: { kind: "idle" },
       subscribers: new Set(),
       transport: null,
@@ -406,6 +408,12 @@ export class EventSourceManager {
    * An SSE connection MUST mark the browser session healthy only after receiving the managed
    * handshake, never from the HTTP open alone.
    */
+  /**
+   * @cc [owner:id13,label:concurrency;reliability] sse-setup-handshake-deadline
+   * The SSE handshake deadline MUST start before asynchronous source creation and MUST count a
+   * stalled source as a pre-handshake failure. Late sources MUST close without replacing a fallback
+   * transport; stopping a stream MUST cancel its deadline.
+   */
   private async startSse(streamId: string): Promise<void> {
     const entry = this.connections.get(streamId);
     if (!entry) {
@@ -430,6 +438,18 @@ export class EventSourceManager {
     if (controller.signal.aborted) {
       return;
     }
+    entry.pendingSseHandshakeTimeout = setTimeout(() => {
+      if (
+        this.connections.get(streamId) === entry &&
+        entry.generation === generation &&
+        entry.state.kind === "connecting"
+      ) {
+        this.handleSseDisconnect(streamId, {
+          kind: "failure",
+          failure: new Error("SSE handshake timed out."),
+        });
+      }
+    }, this.handshakeTimeoutMs);
 
     let source: EventSourceLike;
     try {
@@ -475,17 +495,8 @@ export class EventSourceManager {
     const transport: ActiveTransport = {
       kind: "sse",
       source,
-      handshakeTimeout: null,
     };
     current.transport = transport;
-    transport.handshakeTimeout = setTimeout(() => {
-      if (current.transport === transport) {
-        this.handleSseDisconnect(streamId, {
-          kind: "failure",
-          failure: new Error("SSE handshake timed out."),
-        });
-      }
-    }, this.handshakeTimeoutMs);
     source.addEventListener(MANAGED_SSE_HANDSHAKE_EVENT, () => {
       if (
         current.transport !== transport ||
@@ -493,9 +504,9 @@ export class EventSourceManager {
       ) {
         return;
       }
-      if (transport.handshakeTimeout) {
-        clearTimeout(transport.handshakeTimeout);
-        transport.handshakeTimeout = null;
+      if (current.pendingSseHandshakeTimeout) {
+        clearTimeout(current.pendingSseHandshakeTimeout);
+        current.pendingSseHandshakeTimeout = null;
       }
       const openedAt = Date.now();
       const handshakeLatencyMs = openedAt - current.state.startedAt;
@@ -555,17 +566,20 @@ export class EventSourceManager {
       entry.transport?.kind === "sse"
         ? entry.transport.source.readyState
         : null;
+    entry.generation++;
     this.stopTransport(streamId);
     if (outcome.kind === "failure") {
       entry.reconnectAttempts++;
       if (isPreHandshake) {
         this.consecutivePreHandshakeFailures++;
-        if (this.consecutivePreHandshakeFailures >= 2) {
+        if (
+          this.consecutivePreHandshakeFailures >= SSE_FAILURES_BEFORE_FALLBACK
+        ) {
           this.degradeSseHealth(streamId);
         }
       } else if (
         entry.config.buildLongPollURL &&
-        entry.reconnectAttempts >= 2
+        entry.reconnectAttempts >= SSE_FAILURES_BEFORE_FALLBACK
       ) {
         this.degradeSseHealth(streamId);
       }
@@ -890,14 +904,15 @@ export class EventSourceManager {
     if (!entry) {
       return;
     }
+    if (entry.pendingSseHandshakeTimeout) {
+      clearTimeout(entry.pendingSseHandshakeTimeout);
+      entry.pendingSseHandshakeTimeout = null;
+    }
     entry.pendingSseController?.abort();
     entry.pendingSseController = null;
     const transport = entry.transport;
     entry.transport = null;
     if (transport?.kind === "sse") {
-      if (transport.handshakeTimeout) {
-        clearTimeout(transport.handshakeTimeout);
-      }
       transport.source.close();
     } else {
       transport?.controller.abort();
@@ -1040,6 +1055,18 @@ export class EventSourceManager {
             },
             "Resuming stream after page wake."
           );
+          if (
+            entry.state.kind === "connecting" &&
+            entry.config.buildLongPollURL
+          ) {
+            this.consecutivePreHandshakeFailures++;
+            if (
+              this.consecutivePreHandshakeFailures >=
+              SSE_FAILURES_BEFORE_FALLBACK
+            ) {
+              this.degradeSseHealth(streamId);
+            }
+          }
           entry.generation++;
           this.stopTransport(streamId);
           if (entry.reconnectTimeout) {

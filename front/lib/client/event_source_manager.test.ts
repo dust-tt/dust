@@ -311,6 +311,33 @@ describe("EventSourceManager", () => {
     expect(sources[1].close).toHaveBeenCalledOnce();
   });
 
+  it("releases the handshake deadline when a connecting listener closes the stream", () => {
+    vi.useFakeTimers();
+    const sourceFactory = vi.fn();
+    const manager = new EventSourceManager(sourceFactory);
+    const timersBefore = vi.getTimerCount();
+    manager.subscribe({
+      streamId: "synchronous-close",
+      config: {
+        workspaceId: "w_1",
+        restartKey: "synchronous-close",
+        buildURL: () => "/events",
+        replayBufferedEventsOnSubscribe: false,
+      },
+      subscriber: {
+        onEvent: vi.fn(),
+        onStateChange: (state) => {
+          if (state.kind === "connecting") {
+            manager.releaseWorkspace("w_1");
+          }
+        },
+      },
+      keepAliveWithoutSubscribers: false,
+    });
+    expect(sourceFactory).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(timersBefore);
+  });
+
   it("serializes a restart behind a pending source factory", async () => {
     const resolveFactories: Array<(source: FakeEventSource) => void> = [];
     const sourceFactory = vi.fn(
@@ -677,6 +704,54 @@ describe("EventSourceManager", () => {
     expect(states.at(-1)?.kind).toBe("long_polling");
     expect(sources).toHaveLength(2);
 
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("falls back when SSE setup stalls before a source is returned", async () => {
+    vi.useFakeTimers();
+    const resolveSources: Array<(source: FakeEventSource) => void> = [];
+    const sourceFactory = vi.fn(
+      () =>
+        new Promise<FakeEventSource>((resolve) => {
+          resolveSources.push(resolve);
+        })
+    );
+    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const manager = new EventSourceManager(sourceFactory, () => 0, {
+      handshakeTimeoutMs: 100,
+      reconnectDelayBaseMs: 1,
+      reconnectDelayJitterMs: 0,
+      longPollFactory,
+    });
+    const unsubscribe = manager.subscribe({
+      streamId: "message-stalled",
+      config: {
+        buildURL: () => "/events",
+        buildLongPollURL: () => "/events/poll",
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "message-stalled",
+        workspaceId: "w_1",
+      },
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: false,
+    });
+
+    expect(sourceFactory).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(101);
+    expect(sourceFactory).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(longPollFactory).toHaveBeenCalledOnce();
+    expect(manager.getConnectionState("message-stalled").kind).toBe(
+      "long_polling"
+    );
+    for (const resolve of resolveSources) {
+      const lateSource = new FakeEventSource("/events");
+      resolve(lateSource);
+      await Promise.resolve();
+      expect(lateSource.close).toHaveBeenCalledOnce();
+    }
+    expect(longPollFactory).toHaveBeenCalledOnce();
+    unsubscribe();
     manager.releaseWorkspace("w_1");
   });
 
@@ -1303,6 +1378,48 @@ describe("EventSourceManager", () => {
     expect(manager.getConnectionState("message-msg_pending_wake").kind).toBe(
       "connecting"
     );
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("counts repeated pre-handshake wake cancellations toward fallback", async () => {
+    const resolveSources: Array<(source: FakeEventSource) => void> = [];
+    const sourceFactory = vi.fn(
+      () =>
+        new Promise<FakeEventSource>((resolve) => {
+          resolveSources.push(resolve);
+        })
+    );
+    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const manager = new EventSourceManager(sourceFactory, () => 0, {
+      longPollFactory,
+    });
+    manager.subscribe({
+      streamId: "message-wake-fallback",
+      config: {
+        buildURL: () => "/events",
+        buildLongPollURL: () => "/events/poll",
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "message-wake-fallback",
+        workspaceId: "w_1",
+      },
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+    for (let i = 0; i < 2; i++) {
+      window.dispatchEvent(new Event("blur"));
+      window.dispatchEvent(new Event("focus"));
+    }
+    expect(sourceFactory).toHaveBeenCalledTimes(2);
+    expect(longPollFactory).toHaveBeenCalledOnce();
+    expect(manager.getConnectionState("message-wake-fallback").kind).toBe(
+      "long_polling"
+    );
+    for (const resolve of resolveSources) {
+      const lateSource = new FakeEventSource("/events");
+      resolve(lateSource);
+      await Promise.resolve();
+      expect(lateSource.close).toHaveBeenCalledOnce();
+    }
     manager.releaseWorkspace("w_1");
   });
 
