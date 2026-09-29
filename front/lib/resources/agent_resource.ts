@@ -83,13 +83,17 @@ import type {
 } from "@app/types/agent_search/agent_search";
 import type { DiscoveryAgentType } from "@app/types/api/discovery";
 import type {
+  AgentActionsEnrichment,
   AgentConfigurationBaseType,
   AgentConfigurationScope,
   AgentConfigurationStatus,
   AgentConfigurationType,
+  AgentFavoriteEnrichment,
   AgentModelConfigurationType,
   AgentReinforcementMode,
   AgentStatus,
+  AgentTagsEnrichment,
+  LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { isAgentStatus } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -2824,11 +2828,12 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:security;backend] agent-json-redaction
-   * `toJSON` serializes every resource, custom or global, `full` or `light`. A `light` resource MUST
-   * serialize with `instructions: null` and `isRedacted: true` (a `full` one with `isRedacted:
-   * false`), and the configuration builders built on it (`toAgentConfigurations`) MUST also give it
-   * no `instructionsHtml`, no `actions` and no `codeDefinedSkillIds`: the head fields and the version
-   * metadata are not private and are always carried.
+   * `toJSON`, `toLightConfigurationJSON` and `toConfigurationJSON` serialize every resource, custom
+   * or global, `full` or `light`. A `light` resource MUST serialize with `instructions: null` and
+   * `isRedacted: true` (a `full` one with `isRedacted: false`), and `toConfigurationJSON` MUST also
+   * give it no `instructionsHtml`, no `actions` and no `codeDefinedSkillIds`, whatever enrichment it
+   * is handed: the head fields and the version metadata are not private and are always carried.
+   * These methods are the only place that shapes an agent's configuration JSON.
    */
   toJSON(): AgentConfigurationBaseType {
     const isGlobal = this.scope === "global";
@@ -2873,6 +2878,41 @@ export class AgentResource
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
       isRedacted: this._content === null,
+    };
+  }
+
+  toLightConfigurationJSON({
+    userFavorite,
+    tags,
+  }: AgentFavoriteEnrichment &
+    AgentTagsEnrichment): LightAgentConfigurationType {
+    return { ...this.toJSON(), userFavorite, tags };
+  }
+
+  toConfigurationJSON({
+    userFavorite,
+    tags,
+    actions,
+  }: AgentFavoriteEnrichment &
+    AgentTagsEnrichment &
+    AgentActionsEnrichment): AgentConfigurationType {
+    const light = this.toLightConfigurationJSON({ userFavorite, tags });
+    if (!this.isFull()) {
+      return {
+        ...light,
+        instructionsHtml: null,
+        actions: [],
+        codeDefinedSkillIds: [],
+      };
+    }
+
+    return {
+      ...light,
+      instructionsHtml: this.content.instructionsHtml,
+      actions,
+      ...(this.scope === "global"
+        ? { codeDefinedSkillIds: this.codeDefinedSkillIds }
+        : {}),
     };
   }
 

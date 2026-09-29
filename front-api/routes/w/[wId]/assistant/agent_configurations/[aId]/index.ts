@@ -1,9 +1,9 @@
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import {
   enrichWithRecentAuthors,
   toAgentConfigurations,
-} from "@app/lib/api/assistant/configuration/enrich";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+} from "@app/lib/resources/agent_resource_serialization";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";

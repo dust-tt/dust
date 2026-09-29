@@ -12,15 +12,11 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 
-// The `enrichWith*` steps below turn statically-loaded `AgentResource`s (their `toJSON` base) into
-// full/light configuration types. `toJSON` already carries every synchronously-available field,
-// including the caller's `canRead`/`canEdit` (resolved at load time); each step here adds one field
-// that needs a query. They have no dependency on one another, so `toLightAgentConfigurations`/
-// `toAgentConfigurations` fan them out in parallel and shallow-merge by a documented key —
-// composition is parallel + merge, not a pipe.
-//
-// Both builders accept any resource, custom or global, `full` or `light`: a `light` one serializes
-// redacted (no instructions, no tools; see `agent-json-redaction`).
+// The `enrichWith*` steps below each run the one query a configuration field needs, batched over
+// statically-loaded `AgentResource`s. They have no dependency on one another, so
+// `toLightAgentConfigurations`/`toAgentConfigurations` fan them out in parallel and hand the results
+// to the resource, which shapes and redacts the JSON (see `agent-json-redaction`). Both builders
+// accept any resource, custom or global, `full` or `light`.
 
 /**
  * @cc [owner:tdraier,label:backend] enrich-favorites-key-per-agent
@@ -104,65 +100,45 @@ export async function enrichWithActions(
 }
 
 /**
- * Renders `LightAgentConfigurationType`s from statically-loaded `AgentResource`s: the `toJSON` base
- * (which already carries `canRead`/`canEdit`) decorated with the queried `userFavorite` and `tags`.
- * The two independent steps run in parallel and merge by key.
+ * Renders `LightAgentConfigurationType`s: the queried `userFavorite` and `tags`, shaped by
+ * `AgentResource.toLightConfigurationJSON`.
  */
 export async function toLightAgentConfigurations(
   auth: Authenticator,
   resources: AgentResource[]
 ): Promise<LightAgentConfigurationType[]> {
-  const bases = resources.map((resource) => resource.toJSON());
-
   const [favorites, tags] = await Promise.all([
     enrichWithFavorites(auth, resources),
     enrichWithTags(auth, resources),
   ]);
 
-  return resources.map((resource, index) => {
-    const base = bases[index];
-    return {
-      ...base,
-      ...(favorites.get(base.sId) ?? { userFavorite: false }),
+  return resources.map((resource) =>
+    resource.toLightConfigurationJSON({
+      ...(favorites.get(resource.sId) ?? { userFavorite: false }),
       ...(tags.get(resource) ?? { tags: [] }),
-    };
-  });
+    })
+  );
 }
 
 /**
- * Renders full `AgentConfigurationType`s: the light shape plus the full-only `instructionsHtml`
- * (sync, from `content`) and `actions` (batched). Same parallel-and-merge composition as the light
- * builder, with `enrichWithActions` added to the fan-out.
+ * Renders full `AgentConfigurationType`s: the light enrichments plus the batched `actions`, shaped
+ * (and redacted for a `light` resource) by `AgentResource.toConfigurationJSON`.
  */
 export async function toAgentConfigurations(
   auth: Authenticator,
   resources: AgentResource[]
 ): Promise<AgentConfigurationType[]> {
-  const bases = resources.map((resource) => resource.toJSON());
-
   const [favorites, tags, actions] = await Promise.all([
     enrichWithFavorites(auth, resources),
     enrichWithTags(auth, resources),
     enrichWithActions(auth, resources),
   ]);
 
-  return resources.map((resource, index) => {
-    const base = bases[index];
-    const isGlobal = resource.scope === "global";
-    return {
-      ...base,
-      ...(favorites.get(base.sId) ?? { userFavorite: false }),
+  return resources.map((resource) =>
+    resource.toConfigurationJSON({
+      ...(favorites.get(resource.sId) ?? { userFavorite: false }),
       ...(tags.get(resource) ?? { tags: [] }),
-      instructionsHtml: resource.isFull()
-        ? resource.content.instructionsHtml
-        : null,
       ...(actions.get(resource) ?? { actions: [] }),
-      // A redacted agent exposes no skills (see `agent-json-redaction`).
-      ...(!resource.isFull()
-        ? { codeDefinedSkillIds: [] }
-        : isGlobal
-          ? { codeDefinedSkillIds: resource.codeDefinedSkillIds }
-          : {}),
-    };
-  });
+    })
+  );
 }
