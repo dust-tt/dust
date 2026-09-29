@@ -22,15 +22,29 @@ lazy_static! {
     static ref OAUTH_FRESHWORKS_CLIENT_ID: String = env::var("OAUTH_FRESHWORKS_CLIENT_ID").unwrap();
     static ref OAUTH_FRESHWORKS_CLIENT_SECRET: String =
         env::var("OAUTH_FRESHWORKS_CLIENT_SECRET").unwrap();
-    // Hostname only (no scheme, path, port, or IP). Accepts standard Freshworks
-    // hosts (*.myfreshworks.com) and custom organization domains
+    // Hostname only (no scheme, path, port, or IP). Restricted to
+    // Freshworks-owned TLDs to prevent client secret leakage to
+    // attacker-controlled domains.
     static ref FRESHWORKS_ORG_DOMAIN_RE: Regex = Regex::new(
         r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$"
     )
     .unwrap();
 }
 
-/// Parses a Freshworks organization URL into a hostname suitable for token requests.
+/// Returns true when `domain` is a Freshworks-owned hostname.
+///
+/// Allowed suffixes: `.myfreshworks.com`, `.freshworks.com`.
+/// The bare apex `freshworks.com` is also allowed.
+/// Restricting to these prevents the client secret from being sent
+/// to an attacker-controlled domain supplied via connection metadata.
+fn is_freshworks_domain(domain: &str) -> bool {
+    domain.ends_with(".myfreshworks.com")
+        || domain.ends_with(".freshworks.com")
+        || domain == "freshworks.com"
+}
+
+/// Parses a Freshworks organization URL into a hostname suitable for token
+/// requests and validates that it belongs to a Freshworks-owned domain.
 fn parse_freshworks_org_url(raw: &str) -> Result<String> {
     let trimmed = raw.trim();
     let without_scheme = trimmed
@@ -41,6 +55,13 @@ fn parse_freshworks_org_url(raw: &str) -> Result<String> {
 
     if domain.is_empty() || domain.len() > 253 || !FRESHWORKS_ORG_DOMAIN_RE.is_match(domain) {
         return Err(anyhow!("Freshservice domain format invalid"));
+    }
+
+    if !is_freshworks_domain(domain) {
+        return Err(anyhow!(
+            "Freshservice domain must be a Freshworks-owned hostname \
+             (*.myfreshworks.com or *.freshworks.com)"
+        ));
     }
 
     Ok(domain.to_string())
@@ -203,7 +224,7 @@ impl Provider for FreshserviceConnectionProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_freshworks_org_url;
+    use super::{is_freshworks_domain, parse_freshworks_org_url};
 
     #[test]
     fn accepts_standard_myfreshworks_domain() {
@@ -214,27 +235,45 @@ mod tests {
     }
 
     #[test]
-    fn accepts_custom_organization_domain() {
+    fn accepts_freshworks_subdomain() {
         assert_eq!(
-            parse_freshworks_org_url("it.test.com").unwrap(),
-            "it.test.com"
+            parse_freshworks_org_url("acme.freshworks.com").unwrap(),
+            "acme.freshworks.com"
         );
+    }
+
+    #[test]
+    fn rejects_non_freshworks_custom_domain() {
+        // Custom domains are no longer accepted: the client secret must not be
+        // sent to attacker-controlled hostnames (CWE-522).
+        assert!(parse_freshworks_org_url("it.test.com").is_err());
+        assert!(parse_freshworks_org_url("evil.attacker.com").is_err());
     }
 
     #[test]
     fn strips_scheme_and_trailing_slash() {
         assert_eq!(
-            parse_freshworks_org_url("https://it.test.com/").unwrap(),
-            "it.test.com"
+            parse_freshworks_org_url("https://acme.myfreshworks.com/").unwrap(),
+            "acme.myfreshworks.com"
         );
     }
 
     #[test]
     fn rejects_ips_paths_ports_and_bare_hosts() {
         assert!(parse_freshworks_org_url("127.0.0.1").is_err());
-        assert!(parse_freshworks_org_url("it.test.com/org").is_err());
-        assert!(parse_freshworks_org_url("it.test.com:443").is_err());
+        assert!(parse_freshworks_org_url("acme.myfreshworks.com/org").is_err());
+        assert!(parse_freshworks_org_url("acme.myfreshworks.com:443").is_err());
         assert!(parse_freshworks_org_url("localhost").is_err());
         assert!(parse_freshworks_org_url("").is_err());
+    }
+
+    #[test]
+    fn allowlist_covers_expected_freshworks_domains() {
+        assert!(is_freshworks_domain("acme.myfreshworks.com"));
+        assert!(is_freshworks_domain("acme.freshworks.com"));
+        assert!(is_freshworks_domain("freshworks.com"));
+        assert!(!is_freshworks_domain("it.test.com"));
+        assert!(!is_freshworks_domain("evil.myfreshworks.com.attacker.com"));
+        assert!(!is_freshworks_domain("notmyfreshworks.com"));
     }
 }

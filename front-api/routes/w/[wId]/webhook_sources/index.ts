@@ -1,5 +1,6 @@
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import config from "@app/lib/api/config";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/services";
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -164,6 +165,27 @@ app.post(
     }
 
     if (provider && connectionId && remoteMetadata) {
+      const ownershipCheck = await checkConnectionOwnership(auth, connectionId);
+      if (ownershipCheck.isErr()) {
+        const deleteResult = await deleteWebhookSource(auth, webhookSource);
+        if (deleteResult.isErr()) {
+          logger.error(
+            {
+              error: deleteResult.error,
+              webhookSourceId: webhookSource.sId,
+            },
+            "Failed to delete webhook source after connection ownership check failed"
+          );
+        }
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Connection does not belong to this workspace",
+          },
+        });
+      }
+
       // Allow redirection to public URL in local dev for webhook registrations.
       const baseUrl =
         config.getDustWebhooksPublicUrl() ?? config.getApiBaseUrl();
