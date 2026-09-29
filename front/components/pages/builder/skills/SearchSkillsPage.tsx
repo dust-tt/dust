@@ -33,6 +33,7 @@ import {
 } from "@app/lib/swr/skill_configurations";
 import type {
   SkillSearchFilters,
+  SkillSearchPermissionFiltering,
   SkillSearchSort,
   SkillSearchSortOrder,
 } from "@app/types/api/skills";
@@ -76,6 +77,7 @@ function canBatchEditSkill(skill: SkillListItemType) {
 interface SkillsListProps {
   searchTerm: string;
   filters: SkillSearchFilters;
+  permissionFiltering?: SkillSearchPermissionFiltering;
   onSelect: (skillId: string) => void;
   onAgentClick: (agentId: string) => void;
 }
@@ -83,6 +85,7 @@ interface SkillsListProps {
 function SkillsList({
   searchTerm,
   filters,
+  permissionFiltering,
   onSelect,
   onAgentClick,
 }: SkillsListProps) {
@@ -110,7 +113,13 @@ function SkillsList({
   const sortBy =
     selectedSort?.sortBy ?? (searchTerm.trim() ? "relevance" : "usage");
   const sortOrder = selectedSort?.sortOrder;
-  const queryKey = JSON.stringify({ searchTerm, filters, sortBy, sortOrder });
+  const queryKey = JSON.stringify({
+    searchTerm,
+    filters,
+    permissionFiltering,
+    sortBy,
+    sortOrder,
+  });
   const [previousQueryKey, setPreviousQueryKey] = useState(queryKey);
 
   if (queryKey !== previousQueryKey) {
@@ -124,6 +133,7 @@ function SkillsList({
       owner,
       searchTerm,
       filters,
+      permissionFiltering,
       offset: tablePagination.pageIndex * SKILL_SEARCH_PAGE_SIZE,
       limit: SKILL_SEARCH_PAGE_SIZE,
       sortBy,
@@ -267,17 +277,20 @@ function SkillsList({
 
 export function SearchSkillsPage() {
   const owner = useWorkspace();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
   const [skillId, setSkillId] = useHashParam("skillId");
   const [agentId, setAgentId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState<SearchTabId>("all");
+  const [showHiddenSkills, setShowHiddenSkills] = useState(false);
   const [filter, setFilter] = useState<SkillFilter>({});
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const searchFilters = toSkillSearchFilters(filter);
   const activeTab =
     SEARCH_TABS.find((tab) => tab.id === selectedTab) ?? SEARCH_TABS[0];
+  const permissionFiltering =
+    isAdmin && showHiddenSkills ? "redact_unreadable" : undefined;
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
 
@@ -332,8 +345,17 @@ export function SearchSkillsPage() {
                   owner={owner}
                   searchTerm={searchTerm}
                   tabFilters={activeTab.filters}
+                  permissionFiltering={permissionFiltering}
                   filter={filter}
                   onFilterChange={setFilter}
+                  hiddenSkills={
+                    isAdmin
+                      ? {
+                          isShown: showHiddenSkills,
+                          onChange: setShowHiddenSkills,
+                        }
+                      : undefined
+                  }
                 />
               </div>
             </TabsList>
@@ -346,7 +368,25 @@ export function SearchSkillsPage() {
               onClearCategory={(category) =>
                 setFilter(clearFilterCategory(filter, category))
               }
-              onClearAll={() => setFilter({})}
+              extraChips={
+                isAdmin && showHiddenSkills
+                  ? [
+                      {
+                        key: "hidden-skills",
+                        label: (
+                          <span className="min-w-0 truncate text-xs font-bold">
+                            Hidden skills
+                          </span>
+                        ),
+                        onRemove: () => setShowHiddenSkills(false),
+                      },
+                    ]
+                  : []
+              }
+              onClearAll={() => {
+                setFilter({});
+                setShowHiddenSkills(false);
+              }}
             />
             {SEARCH_TABS.map((tab) => (
               <TabsContent key={tab.id} value={tab.id}>
@@ -354,6 +394,7 @@ export function SearchSkillsPage() {
                   key={owner.sId}
                   searchTerm={searchTerm}
                   filters={{ ...tab.filters, ...searchFilters }}
+                  permissionFiltering={permissionFiltering}
                   onSelect={setSkillId}
                   onAgentClick={setAgentId}
                 />
