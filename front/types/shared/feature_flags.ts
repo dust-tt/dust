@@ -39,6 +39,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "tdraier",
   },
+  group_limits: {
+    description: "Enable shared group limits on the Usage page",
+    stage: "ask_owner",
+    owner: "rfrenoy",
+  },
   dust_filesystem: {
     description:
       "Allow fresh Pods and standalone conversations to use the database-backed filesystem",

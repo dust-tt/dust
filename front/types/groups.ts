@@ -138,6 +138,8 @@ export type GroupType = {
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // null means the group carries no cap (falls back to the workspace default).
   poolCapAwuCredits: number | null;
+  // Group budget (once reached, members are blocked regardless of their personal limit).
+  groupLimitAwuCredits: number | null;
   // Workspace role granted to this group's active members (admin or manager),
   // or null when the group grants no role.
   grantedRole: GroupGrantableRole | null;

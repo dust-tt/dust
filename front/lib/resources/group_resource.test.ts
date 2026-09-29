@@ -95,7 +95,7 @@ function getCacheKeyForUser(userId: number, workspaceId: number): string {
 function getCacheKeyForWorkspaceGroupsFromSystemKey(
   workspaceId: number
 ): string {
-  return `cacheWithRedis-_listWorkspaceGroupsFromSystemKeyUncached-workspace-groups-from-system-key:${workspaceId}`;
+  return `cacheWithRedis-_listWorkspaceGroupsFromSystemKeyUncached-workspace-groups-from-system-key-v2:${workspaceId}`;
 }
 
 describe("GroupResource", () => {
