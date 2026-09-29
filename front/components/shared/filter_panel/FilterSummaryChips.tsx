@@ -120,7 +120,12 @@ export function FilterSummaryChips<Category extends string>({
                   </m.div>
                 ))}
               </AnimatePresence>
-              {isLoading && <LoadingBlock className="h-6 w-28 rounded-[9px]" />}
+              {isLoading && (
+                <>
+                  <LoadingBlock className="h-6 w-24 rounded-[9px]" />
+                  <LoadingBlock className="h-6 w-32 rounded-[9px]" />
+                </>
+              )}
               <m.div layout={!shouldReduceMotion} transition={transition}>
                 <Button
                   label="Clear all"
