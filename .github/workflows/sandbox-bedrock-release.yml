@@ -40,8 +40,9 @@ jobs:
 
       - name: Calculate next version
         id: version
+        env:
+          BUMP_TYPE: ${{ inputs.bump || 'minor' }}
         run: |
-          BUMP_TYPE="${{ inputs.bump || 'minor' }}"
           LATEST=$(git tag -l 'sbx-bedrock/v*' --sort=-v:refname | head -1)
           if [ -z "$LATEST" ]; then
             NEXT_VERSION="0.1.0"

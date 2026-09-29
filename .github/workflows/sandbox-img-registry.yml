@@ -62,9 +62,10 @@ jobs:
       - name: Check sandbox images
         id: check
         working-directory: front
+        env:
+          REBUILD: ${{ inputs.rebuild || 'false' }}
         run: |
           set -eo pipefail
-          REBUILD="${{ inputs.rebuild || 'false' }}"
           echo "Running sandbox image check (${{ matrix.target.name }})... (rebuild=$REBUILD)"
           if ! RESULT=$(npx tsx scripts/sandbox_image_check.ts --json 2>&1); then
             echo "::error::Sandbox image check failed (${{ matrix.target.name }})"
@@ -115,9 +116,9 @@ jobs:
         working-directory: front
         env:
           SBX_GCP_ARTIFACT_SERVICE_ACCOUNT: /tmp/service-account.json
+          REBUILD: ${{ inputs.rebuild || 'false' }}
         run: |
           set -eo pipefail
-          REBUILD="${{ inputs.rebuild || 'false' }}"
           REBUILD_FLAG=""
           if [ "$REBUILD" == "true" ]; then
             REBUILD_FLAG="--rebuild"
