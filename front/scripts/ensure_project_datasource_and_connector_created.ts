@@ -126,13 +126,12 @@ async function processProjectSpace(
         );
       }
 
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
-
-      // Create new metadata
-      metadata ??= await ProjectMetadataResource.makeNew(auth, space, {
-        description: null,
-      });
+      const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+      if (!metadata) {
+        await ProjectMetadataResource.makeNew(auth, space, {
+          description: null,
+        });
+      }
     } else {
       if (hadConnectorBefore) {
         localLogger.info("Would ensure dust_project connector sync is running");
