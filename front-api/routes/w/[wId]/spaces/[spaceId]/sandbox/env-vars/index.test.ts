@@ -206,6 +206,32 @@ describe("GET/POST /api/w/:wId/spaces/:spaceId/sandbox/env-vars", () => {
     expect(await response.json()).toMatchObject({ created: false });
   });
 
+  it("rejects an HTTPS secret whose allowed domain has a single label", async () => {
+    const { workspace, auth, pod } = await setupTest();
+
+    const response = await postEnvVar(workspace.sId, pod.sId, {
+      name: "DSEC_API_TOKEN",
+      value: "super-secret-token",
+      kind: "https_secret",
+      allowedDomains: ["localhost"],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: {
+        type: "invalid_request_error",
+        message: expect.stringContaining("at least two DNS labels"),
+      },
+    });
+    expect(
+      await SandboxEnvVarResource.fetchByName(
+        auth,
+        { kind: "pod", pod },
+        "API_TOKEN"
+      )
+    ).toBeNull();
+  });
+
   it("rejects invalid POST body via zod", async () => {
     const { workspace, pod } = await setupTest();
 
