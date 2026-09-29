@@ -27,7 +27,7 @@ const PROMO_SCHEDULE: PromoConfig[] = [
   {
     id: "dust-for-gtm-engineers-with-1password-oct14",
     image: "/static/landing/GTM_Engineers_1Password_Webinar_Banner.png",
-    link: "https://watch.getcontrast.io/register/dust-dust-for-gtm-engineers-with-1password?utm_source=website",
+    link: "https://watch.getcontrast.io/register/dust-copy-of-dust-for-gtm-engineers-3?utm_source=website",
     badge: "Online Event",
     title: "Dust for GTM Engineers with 1Password",
     time: "October 14 · 12:00pm ET / 9:00am PT",
