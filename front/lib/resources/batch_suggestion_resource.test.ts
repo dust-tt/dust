@@ -176,6 +176,39 @@ describe("BatchSuggestionResource", () => {
     ]);
   });
 
+  it("records the reviewer on the batch and its skill suggestions", async () => {
+    const { batch } = await createBatchWithMembers(authenticator);
+    const userModelId = authenticator.getNonNullableUser().id;
+
+    await batch.updateState(authenticator, "approved");
+    expect(batch.updatedByUserId).toBe(userModelId);
+
+    const refetched = await BatchSuggestionResource.fetchById(
+      authenticator,
+      batch.sId
+    );
+    expect(refetched!.updatedByUserId).toBe(userModelId);
+    expect(refetched!.skillSuggestions.map((s) => s.updatedByUserId)).toEqual([
+      userModelId,
+    ]);
+  });
+
+  it("does not record a reviewer when outdating or resetting a batch", async () => {
+    const { batch } = await createBatchWithMembers(authenticator);
+
+    await batch.updateState(authenticator, "pending");
+    await BatchSuggestionResource.outdateBatchesOf(authenticator, [batch.id]);
+
+    const refetched = await BatchSuggestionResource.fetchById(
+      authenticator,
+      batch.sId
+    );
+    expect(refetched!.updatedByUserId).toBeNull();
+    expect(refetched!.skillSuggestions.map((s) => s.updatedByUserId)).toEqual([
+      null,
+    ]);
+  });
+
   it("outdates the whole batch of an outdated member", async () => {
     const { batch, agentSuggestion, skillSuggestion } =
       await createBatchWithMembers(authenticator);
