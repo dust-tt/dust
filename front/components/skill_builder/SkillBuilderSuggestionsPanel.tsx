@@ -43,7 +43,6 @@ export function SkillBuilderSuggestionsPanel({
     useSkillSuggestions({
       skillId,
       states: ["pending"],
-      sources: ["reinforcement"],
       workspaceId: owner.sId,
       disabled: !skillId,
     });

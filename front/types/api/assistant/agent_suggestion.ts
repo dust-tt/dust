@@ -1,8 +1,5 @@
 import { isString } from "@app/types/shared/utils/general";
-import {
-  AGENT_SUGGESTION_SOURCES,
-  AgentSuggestionSchema,
-} from "@app/types/suggestions/agent_suggestion";
+import { AgentSuggestionSchema } from "@app/types/suggestions/agent_suggestion";
 import { z } from "zod";
 
 export const PatchSuggestionRequestBodySchema = z.object({
@@ -30,7 +27,6 @@ const stringOrArrayToArray = <T extends z.ZodTypeAny>(schema: T) =>
 export const GetSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray(StateSchema).optional(),
   kind: z.enum(["instructions", "tools", "skills", "model"]).optional(),
-  sources: stringOrArrayToArray(z.enum(AGENT_SUGGESTION_SOURCES)).optional(),
   limit: z.string().optional(),
 });
 

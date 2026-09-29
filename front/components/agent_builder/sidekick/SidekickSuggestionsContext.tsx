@@ -187,7 +187,6 @@ function SidekickSuggestionsProviderContent({
     agentConfigurationId,
     disabled: false,
     state: ["pending"],
-    sources: ["sidekick"],
     workspaceId: owner.sId,
   });
 
@@ -199,7 +198,6 @@ function SidekickSuggestionsProviderContent({
     agentConfigurationId,
     disabled: false,
     state: ["outdated"],
-    sources: ["sidekick"],
     limit: 50,
     workspaceId: owner.sId,
   });
