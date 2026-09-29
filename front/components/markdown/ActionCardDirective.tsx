@@ -16,6 +16,19 @@ import { visit } from "unist-util-visit";
 const DEFAULT_ICON: InternalAllowedIconType | CustomResourceIconType =
   "ActionRobotIcon";
 
+const ALLOWED_ATTRS = new Set([
+  "title",
+  "subtitle",
+  "description",
+  "icon",
+  "cta",
+  "dismiss",
+  "actionMessage",
+  "dismissMessage",
+  "collapsibleLabel",
+  "collapsibleContent",
+]);
+
 /**
  * Remark plugin: transforms the `:::action_card{...attrs}` container directive
  * into a custom HTML element for React rendering.
@@ -40,18 +53,6 @@ export function actionCardDirective() {
       node.data ??= {};
       const data = node.data;
       data.hName = "action_card";
-      const ALLOWED_ATTRS = new Set([
-        "title",
-        "subtitle",
-        "description",
-        "icon",
-        "cta",
-        "dismiss",
-        "actionMessage",
-        "dismissMessage",
-        "collapsibleLabel",
-        "collapsibleContent",
-      ]);
       data.hProperties = Object.fromEntries(
         Object.entries(node.attributes ?? {}).filter(([key]) =>
           ALLOWED_ATTRS.has(key)
