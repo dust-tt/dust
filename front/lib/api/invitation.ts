@@ -39,6 +39,7 @@ import type { Transaction } from "sequelize";
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 
 const EMAIL_CONCURRENCY = 8;
+const INVITATION_UPDATE_CONCURRENCY = 8;
 
 export async function getInvitation(
   auth: Authenticator,
@@ -124,13 +125,14 @@ async function batchUnrevokeInvitations(
     );
   }
 
-  await Promise.all(
-    invitations.map(({ sId, role }) =>
+  await concurrentExecutor(
+    invitations,
+    ({ sId, role }) =>
       MembershipInvitationModel.update(
         { status: "pending", initialRole: role },
         { where: { sId, workspaceId: owner.id }, transaction }
-      )
-    )
+      ),
+    { concurrency: INVITATION_UPDATE_CONCURRENCY }
   );
 }
 
