@@ -6,6 +6,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getFilePathDownloadUrl } from "@app/lib/swr/files";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Citation,
@@ -155,9 +156,14 @@ function MCPExtractActionResults({
       return;
     }
 
+    const validated = validateUrl(downloadUrl);
+    if (!validated.valid) {
+      return;
+    }
+
     setIsDownloading(true);
     try {
-      window.open(downloadUrl, "_blank");
+      window.open(validated.standardized, "_blank", "noopener,noreferrer");
     } finally {
       setIsDownloading(false);
     }
