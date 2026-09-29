@@ -123,7 +123,7 @@ function GroupForm({
   const { doCreateGroup, isCreating } = useCreateGroup({ owner });
   const { doUpdateGroup, isUpdating } = useUpdateGroup({ owner, groupId });
   const isSubmitting = isCreating || isUpdating;
-  const canManageManagers = group?.allowedActions?.canAssignManagers === true;
+  const canAssignManagers = group?.allowedActions?.canAssignManagers === true;
   const { confirmAppointment } = useGroupManagerAppointmentReview({
     group,
     initialManagers,
@@ -140,7 +140,7 @@ function GroupForm({
     initialManagers.map((manager) => manager.sId)
   );
   const hasManagerChanges =
-    canManageManagers &&
+    canAssignManagers &&
     (selectedManagers.length !== initialManagerIds.size ||
       selectedManagers.some((manager) => !initialManagerIds.has(manager.sId)));
   const shouldDisableButton =
@@ -224,11 +224,18 @@ function GroupForm({
             disabled={readOnly}
             autoFocus
           />
-          {group && canManageManagers && (
+          {group && canAssignManagers && (
             <GroupManagersField
               owner={owner}
               group={group}
               managers={selectedManagers}
+              groupMemberIds={
+                new Set(
+                  [...initialMemberIds].filter((id) =>
+                    selectedMemberIds.has(id)
+                  )
+                )
+              }
               onChange={setSelectedManagers}
               disabled={isSubmitting}
             />

@@ -81,6 +81,13 @@ the design follow-up simplifies its copy and removes the Governance request.
 - Existing members, provisioned groups, and admin-granting groups skip this modal. For several non-members, confirm them together; cancellation sends no update.
 - Treat members removed in the same edit as non-members; an unsaved addition does not count as existing membership.
 
+#### PR 7 follow-up — Identify managers outside the group
+
+Add the blue “Not group member” badge and tooltip to selected managers in the picker, using the
+[updated design](group-management.md#confirm-appointments-outside-the-group). Keep the badge for
+unsaved member additions and show it for pending removals. Shorten the manual-group helper text;
+retain the directory-managed and Admin-only membership explanations for restricted groups.
+
 ## Stream 2: Usage and requests
 
 ### 2A. Read usage and edit limits
