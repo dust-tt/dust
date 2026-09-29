@@ -52,11 +52,6 @@ const SEARCH_TABS = [
     filters: { status: ["active"], scope: ["visible", "hidden"] },
   },
   {
-    id: "editable_by_me",
-    label: "Editable",
-    filters: { status: ["active"], editedByMe: true },
-  },
-  {
     id: "default",
     label: "Default",
     filters: { status: ["active"], scope: ["global"] },
