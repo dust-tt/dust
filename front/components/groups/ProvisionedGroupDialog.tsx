@@ -163,7 +163,7 @@ function ProvisionedGroupDetails({
               owner={owner}
               group={group}
               managers={selectedManagers}
-              memberIds={new Set(members.map((member) => member.sId))}
+              groupMemberIds={new Set(members.map((member) => member.sId))}
               onChange={setSelectedManagers}
               disabled={isUpdating}
             />

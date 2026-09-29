@@ -12,22 +12,22 @@ interface GroupManagersFieldProps {
   owner: LightWorkspaceType;
   group: GroupType;
   managers: SearchMemberType[];
-  memberIds: Set<string>;
+  groupMemberIds: Set<string>;
   onChange: (managers: SearchMemberType[]) => void;
   disabled?: boolean;
 }
 
 /**
  * @cc [owner:philipperolet,label:product] manager-membership-badge
- * Selected managers absent from memberIds MUST be marked as non-members. Callers MUST exclude
- * pending additions and removals from memberIds. Membership warnings MUST reflect the group's
- * directory-managed or Admin-only restrictions when applicable.
+ * Selected managers absent from groupMemberIds MUST be marked as non-members. Callers MUST exclude
+ * pending additions and removals from groupMemberIds. Membership warnings MUST reflect the
+ * group's directory-managed or Admin-only restrictions when applicable.
  */
 export function GroupManagersField({
   owner,
   group,
   managers,
-  memberIds,
+  groupMemberIds,
   onChange,
   disabled = false,
 }: GroupManagersFieldProps) {
@@ -43,7 +43,7 @@ export function GroupManagersField({
       id: "membership",
       cell: ({ row }) => {
         const { sId, fullName } = row.original;
-        if (!managerIds.has(sId) || memberIds.has(sId)) {
+        if (!managerIds.has(sId) || groupMemberIds.has(sId)) {
           return null;
         }
         return (
