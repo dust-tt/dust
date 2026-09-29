@@ -1,5 +1,5 @@
 import type { FilterSummary } from "@app/components/shared/filter_panel/filterState";
-import { Button, Chip, cn, LoadingBlock } from "@dust-tt/sparkle";
+import { Button, Chip, LoadingBlock } from "@dust-tt/sparkle";
 import {
   AnimatePresence,
   domMax,
@@ -76,17 +76,11 @@ export function FilterSummaryChips<Category extends string>({
         {chips.length > 0 && (
           <m.div
             key="filter-summary-chips"
-            initial={
-              shouldReduceMotion ? false : { opacity: 0, scale: 0.98, y: -4 }
-            }
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={
-              shouldReduceMotion
-                ? undefined
-                : { opacity: 0, scale: 0.98, y: -4 }
-            }
+            initial={shouldReduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={shouldReduceMotion ? undefined : { opacity: 0 }}
             transition={transition}
-            className={cn("origin-top", className)}
+            className={className}
           >
             <div
               aria-busy={isLoading}
@@ -97,14 +91,10 @@ export function FilterSummaryChips<Category extends string>({
                   <m.div
                     key={chip.key}
                     layout={!shouldReduceMotion}
-                    initial={
-                      shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }
-                    }
-                    animate={{ opacity: 1, scale: 1 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
                     exit={
-                      shouldReduceMotion
-                        ? undefined
-                        : { opacity: 0, scale: 0.96 }
+                      shouldReduceMotion ? undefined : { opacity: 0, x: -4 }
                     }
                     transition={transition}
                     className="max-w-full"
