@@ -117,8 +117,13 @@ describe("getEditedAgentSections", () => {
           dataSourceViewId: "dsv",
         },
       },
+      {
+        ...AGENT_SUGGESTION,
+        kind: "editors",
+        suggestion: { addUserIds: ["u1"], removeUserIds: [] },
+      },
     ]);
-    expect(sections).toEqual(new Set(["description", "knowledge"]));
+    expect(sections).toEqual(new Set(["description", "knowledge", "editors"]));
   });
 
   it("maps sub agents to tools", () => {

@@ -399,6 +399,11 @@ export function AgentDetailsBody({
                       value="editors"
                       label="Editors"
                       icon={Users01}
+                      iconRight={
+                        editedSections.has("editors") ? (
+                          <EditedDot />
+                        ) : undefined
+                      }
                       onClick={() => setSelectedTab("editors")}
                     />
                   )}

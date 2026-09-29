@@ -1109,6 +1109,8 @@ export function useAgentVersionMarkers({
 }
 
 export type MemberDisplayInfo = {
+  firstName: string;
+  lastName: string | null;
   fullName: string;
   email: string | null;
   image: string | null;
@@ -1168,6 +1170,8 @@ export function useMemberDetails({
             )) as GetMemberResponseBody;
 
             membersById[memberId] = {
+              firstName: response.member.firstName,
+              lastName: response.member.lastName,
               fullName: response.member.fullName,
               email: response.member.email,
               image: response.member.image,
@@ -1198,6 +1202,8 @@ export function useMemberDetails({
       : userDetails
         ? {
             [userDetails.id]: {
+              firstName: userDetails.firstName,
+              lastName: userDetails.lastName,
               fullName: userDetails.fullName,
               email: userDetails.email,
               image: userDetails.image,
