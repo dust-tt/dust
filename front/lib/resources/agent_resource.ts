@@ -724,17 +724,14 @@ export class AgentResource
       return [];
     }
 
-    const agents = await AgentModel.findAll({
-      attributes: ["id", "sId"],
-      where: {
-        id: agentModelIds,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+    const resources = await this.listCurrentVersions(auth, {
+      agentWhere: { id: agentModelIds },
     });
-    const idsByModelId = new Map(agents.map((agent) => [agent.id, agent.sId]));
-    return this.fetchByIds(
-      auth,
-      removeNulls(agentModelIds.map((id) => idsByModelId.get(id)))
+    const resourcesByModelId = new Map(
+      resources.map((resource) => [resource.id, resource])
+    );
+    return removeNulls(
+      uniq(agentModelIds).map((id) => resourcesByModelId.get(id))
     );
   }
 
@@ -767,24 +764,35 @@ export class AgentResource
     const customAgentIds = uniqueAgentIds.filter((id) => !isGlobalAgentId(id));
 
     const [customResources, globalResources] = await Promise.all([
-      this.fetchManyFromStore(auth, customAgentIds),
+      this.fetchManyFromStore(auth, customAgentIds).then((resources) =>
+        this.materializeFetchable(auth, resources)
+      ),
       this.fetchGlobalAgents(auth, globalAgentIds),
     ]);
 
-    const adminCanSeePrivateEntities =
-      await this.resolveAdminCanSeePrivateEntities(auth, customResources);
-
     const resourcesById = new Map(
-      [
-        ...customResources.map((resource) =>
-          resource.materialize(auth, { adminCanSeePrivateEntities })
-        ),
-        ...globalResources,
-      ]
-        .filter((resource) => resource.canFetch(auth))
-        .map((resource) => [resource.sId, resource])
+      [...customResources, ...globalResources].map((resource) => [
+        resource.sId,
+        resource,
+      ])
     );
     return removeNulls(uniqueAgentIds.map((id) => resourcesById.get(id)));
+  }
+
+  // The caller-dependent half of every custom-agent resolver: materializes caller-independent
+  // resources for `auth` and drops the ones it cannot fetch.
+  private static async materializeFetchable(
+    auth: Authenticator,
+    resources: FullAgentResource[]
+  ): Promise<AgentResource[]> {
+    const adminCanSeePrivateEntities =
+      await this.resolveAdminCanSeePrivateEntities(auth, resources);
+
+    return resources
+      .map((resource) =>
+        resource.materialize(auth, { adminCanSeePrivateEntities })
+      )
+      .filter((resource) => resource.canFetch(auth));
   }
 
   // Global agents are code-defined and have no `agent`/configuration rows, so they cannot be
@@ -901,61 +909,35 @@ export class AgentResource
     );
   }
 
-  // -- List resolvers: resolve matching agent ids, then hydrate through `fetchByIds` --
+  // -- List resolvers: load the matching current versions in one query, then gate like `fetchByIds` --
 
   /**
-   * @cc [owner:tdraier,label:backend] agent-list-through-fetch-by-ids
-   * The `listBy*`/`fetchByName` resolvers MUST NOT build resources themselves: they run a
-   * lightweight id-only query for the matching agents, then hydrate through the shared
-   * access-controlled resolver `fetchByIds`, so current-version resolution and access control stay
-   * centralized (see `fetch-current-version`). Predicates on head fields (`name`, `status`, `scope`)
-   * read the denormalized `agents` row directly; predicates on a version's rows (skills/tools/tags)
-   * match the agent's CURRENT version only, joined via `agent.currentVersion`. The id queries against
-   * `agents` never yield global agents; ids sourced elsewhere (e.g. favorites) may include globals,
-   * which `fetchByIds` resolves through its global path.
+   * @cc [owner:tdraier,label:backend;security] agent-list-single-query
+   * `fetchByModelIds` and the `listBy*`/`fetchByName` resolvers whose predicate is on the agent row or
+   * its current version MUST load their matching agents' current versions in a single query through
+   * `loadResource` (see `fetch-current-version`), then MUST run every loaded resource through
+   * `materializeFetchable`, the same caller-dependent gate `fetchByIds` applies. Predicates on head
+   * fields (`id`, `name`, `status`, `scope`) read the denormalized `agents` row; predicates on a
+   * version's rows (skills/tools/tags) match the agent's CURRENT version only. Resolvers whose ids come
+   * from another table (favorites, which may include global agents; authors of any version) hydrate
+   * through `fetchByIds` instead.
    */
-  private static async listCurrentVersionAgentIds(
+  private static async listCurrentVersions(
     auth: Authenticator,
     {
-      agentWhere,
-      configurationWhere,
+      agentWhere = {},
       configurationInclude,
     }: {
       agentWhere?: WhereOptions<AgentModel>;
-      configurationWhere?: WhereOptions<AgentConfigurationModel>;
       configurationInclude?: Includeable[];
-    } = {}
-  ): Promise<string[]> {
-    // Only join the configuration when a predicate targets the current version; head-field lists stay
-    // on the `agents` row alone.
-    const matchesCurrentVersion =
-      configurationWhere !== undefined || configurationInclude !== undefined;
-
-    const agents = await AgentModel.findAll({
-      attributes: ["sId"],
-      where: {
-        ...agentWhere,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      include: matchesCurrentVersion
-        ? [
-            {
-              model: AgentConfigurationModel,
-              required: true,
-              // Resolve the single current row via `agent.currentVersion` (mirrors `loadResource`).
-              where: {
-                version: { [Op.col]: "agent.currentVersion" },
-                ...configurationWhere,
-              },
-              attributes: [],
-              include: configurationInclude,
-            },
-          ]
-        : undefined,
-    });
-
-    // A `hasMany` join (skills/tools/tags) can repeat an agent row per matching link; dedupe.
-    return [...new Set(agents.map((agent) => agent.sId))];
+    }
+  ): Promise<AgentResource[]> {
+    const resources = await this.loadResource(
+      auth.getNonNullableWorkspace().id,
+      agentWhere,
+      { configurationInclude }
+    );
+    return this.materializeFetchable(auth, resources);
   }
 
   // The single active agent whose current version bears this exact name (active names are unique per
@@ -964,10 +946,9 @@ export class AgentResource
     auth: Authenticator,
     name: string
   ): Promise<AgentResource | null> {
-    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+    const [resource] = await this.listCurrentVersions(auth, {
       agentWhere: { name, status: "active" },
     });
-    const [resource] = await this.fetchByIds(auth, agentIds);
     return resource ?? null;
   }
 
@@ -977,10 +958,7 @@ export class AgentResource
     auth: Authenticator,
     { status = "active" }: { status?: AgentStatus | AgentStatus[] } = {}
   ): Promise<AgentResource[]> {
-    const agentIds = await this.listCurrentVersionAgentIds(auth, {
-      agentWhere: { status },
-    });
-    return this.fetchByIds(auth, agentIds);
+    return this.listCurrentVersions(auth, { agentWhere: { status } });
   }
 
   // Agents the current user has favorited. Favorites are keyed by agent `sId` (stable across
@@ -1048,7 +1026,7 @@ export class AgentResource
         : []),
       ...(globalSkillIds.length > 0 ? [{ globalSkillId: globalSkillIds }] : []),
     ];
-    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+    return this.listCurrentVersions(auth, {
       configurationInclude: [
         {
           model: AgentSkillModel,
@@ -1059,8 +1037,6 @@ export class AgentResource
         },
       ],
     });
-
-    return this.fetchByIds(auth, agentIds);
   }
 
   // Agents whose current version references one of the given MCP server views.
@@ -1072,7 +1048,7 @@ export class AgentResource
       return [];
     }
 
-    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+    return this.listCurrentVersions(auth, {
       configurationInclude: [
         {
           model: AgentMCPServerConfigurationModel,
@@ -1083,8 +1059,6 @@ export class AgentResource
         },
       ],
     });
-
-    return this.fetchByIds(auth, agentIds);
   }
 
   // Agents whose current version carries one of the given tags.
@@ -1096,7 +1070,7 @@ export class AgentResource
       return [];
     }
 
-    const agentIds = await this.listCurrentVersionAgentIds(auth, {
+    return this.listCurrentVersions(auth, {
       configurationInclude: [
         {
           model: TagAgentModel,
@@ -1107,8 +1081,6 @@ export class AgentResource
         },
       ],
     });
-
-    return this.fetchByIds(auth, agentIds);
   }
 
   // Caller-independent query: the current `full` resource of each identified agent — the row whose
@@ -1118,14 +1090,19 @@ export class AgentResource
   // access-controlled resolvers and the cache seam can share it.
   private static async loadResource(
     workspaceId: ModelId,
-    identityWhere: { id: ModelId[] } | { sId: string[] }
+    agentWhere: WhereOptions<AgentModel>,
+    {
+      configurationInclude,
+    }: {
+      configurationInclude?: Includeable[];
+    } = {}
   ): Promise<FullAgentResource[]> {
     // Driven from `agents` (its unique `sId` / PK index) with the current configuration inner-joined
     // on `agent_configuration.version = agent.currentVersion`, so the single current row is resolved
     // through the unique `(agentId, version)` index instead of scanning every version.
     const agents = await AgentModel.findAll({
       where: {
-        ...identityWhere,
+        ...agentWhere,
         workspaceId,
       },
       include: [
@@ -1133,23 +1110,29 @@ export class AgentResource
           model: AgentConfigurationModel,
           required: true,
           where: { version: { [Op.col]: "agent.currentVersion" } },
+          ...(configurationInclude ? { include: configurationInclude } : {}),
         },
       ],
     });
 
-    return agents.flatMap((agent) => {
+    // A `hasMany` join in `configurationInclude` can repeat an agent per matching link row.
+    const resourcesById = new Map<ModelId, FullAgentResource>();
+    for (const agent of agents) {
       const { agent_configurations: configurations, ...agentAttributes } =
         agent.get() as Attributes<AgentModel> & {
           agent_configurations: AgentConfigurationModel[];
         };
-      return configurations.map(
-        (configuration) =>
+      for (const configuration of configurations) {
+        resourcesById.set(
+          agent.id,
           new AgentResource(
             agentAttributes,
             configuration.get()
           ) as FullAgentResource
-      );
-    });
+        );
+      }
+    }
+    return [...resourcesById.values()];
   }
 
   /**

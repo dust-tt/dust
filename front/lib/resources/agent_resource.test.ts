@@ -2523,6 +2523,62 @@ describe("AgentResource", () => {
       expect(sIds).toEqual([agent.sId]);
     });
 
+    it("listByTag returns an agent matching several tags once, with its full content", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Multi tagged" }
+      );
+      const first = await TagFactory.create(testContext.workspace, {
+        name: "first",
+      });
+      const second = await TagFactory.create(testContext.workspace, {
+        name: "second",
+      });
+      await TagFactory.addToAgent(testContext.authenticator, first, agent);
+      await TagFactory.addToAgent(testContext.authenticator, second, agent);
+
+      const resources = await AgentResource.listByTag(
+        testContext.authenticator,
+        [first.id, second.id]
+      );
+
+      expect(resources.map((resource) => resource.sId)).toEqual([agent.sId]);
+      const [resource] = resources;
+      assert(resource.isFull());
+      expect(resource.content.instructions).toBe(agent.instructions);
+    });
+
+    it("listByWorkspace applies the same access gate as fetchByIds", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Hidden listed", scope: "hidden" }
+      );
+      const memberUser = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, memberUser, {
+        role: "user",
+      });
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        memberUser.sId,
+        testContext.workspace.sId
+      );
+      const adminUser = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, adminUser, {
+        role: "admin",
+      });
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        testContext.workspace.sId
+      );
+
+      const asMember = await AgentResource.listByWorkspace(memberAuth);
+      const asAdmin = (await AgentResource.listByWorkspace(adminAuth)).find(
+        (resource) => resource.sId === agent.sId
+      );
+
+      expect(asMember.map((resource) => resource.sId)).not.toContain(agent.sId);
+      expect(asAdmin?.isFull()).toBe(false);
+    });
+
     it("listBySkills returns agents whose current version links the skill", async () => {
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
