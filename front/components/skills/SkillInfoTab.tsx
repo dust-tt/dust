@@ -1,7 +1,4 @@
-import {
-  DetailsSectionHeading,
-  EditedSectionBar,
-} from "@app/components/assistant/details/DetailsSectionHeading";
+import { DetailsSectionHeading } from "@app/components/assistant/details/DetailsSectionHeading";
 import {
   useEditedSkillSections,
   useSkillSuggestionPreview,
@@ -33,6 +30,7 @@ import { isAdmin } from "@app/types/user";
 import {
   AttachmentChip,
   Chip,
+  cn,
   File02,
   Separator,
   Spinner,
@@ -130,8 +128,12 @@ export function SkillInfoTab({
   return (
     <div className="flex flex-col gap-4">
       {showDescription && skill.userFacingDescription ? (
-        <div className="relative text-sm text-foreground">
-          {editedSections.has("description") && <EditedSectionBar />}
+        <div
+          className={cn(
+            "text-sm text-foreground",
+            editedSections.has("description") && "rounded-md bg-highlight-50"
+          )}
+        >
           {skill.userFacingDescription}
         </div>
       ) : null}
@@ -143,23 +145,25 @@ export function SkillInfoTab({
       {showSeparator ? <Separator /> : null}
 
       {hasInstructions && skill.agentFacingDescription && (
-        <div className="relative flex flex-col gap-4">
-          {editedSections.has("when_to_use") && <EditedSectionBar />}
+        <div className="flex flex-col gap-4">
           <div className="heading-lg text-foreground">
             {SKILL_INVOCATION_LABEL}
           </div>
-          <SkillDescriptionReadOnlyEditor
-            content={skill.agentFacingDescription}
-          />
+          <div
+            className={cn(
+              editedSections.has("when_to_use") && "rounded-md bg-highlight-50"
+            )}
+          >
+            <SkillDescriptionReadOnlyEditor
+              content={skill.agentFacingDescription}
+            />
+          </div>
         </div>
       )}
 
       {hasInstructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
-          <DetailsSectionHeading
-            label="Guidelines"
-            isEdited={editedSections.has("guidelines")}
-          />
+          <DetailsSectionHeading label="Guidelines" />
           {/* Remounts the instructions editor on preview change, since it only reads its content once. */}
           <SkillInstructionsReadOnlyEditor
             key={previewSuggestions.map((s) => s.sId).join(",")}

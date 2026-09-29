@@ -20,17 +20,8 @@ export function EditedSectionBar() {
 
 interface DetailsSectionHeadingProps {
   label: string;
-  isEdited: boolean;
 }
 
-export function DetailsSectionHeading({
-  label,
-  isEdited,
-}: DetailsSectionHeadingProps) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="heading-lg text-foreground">{label}</div>
-      {isEdited && <EditedDot />}
-    </div>
-  );
+export function DetailsSectionHeading({ label }: DetailsSectionHeadingProps) {
+  return <div className="heading-lg text-foreground">{label}</div>;
 }
