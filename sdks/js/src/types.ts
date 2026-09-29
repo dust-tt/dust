@@ -851,6 +851,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_opus_feature"
   | "group_management"
   | "group_seat_provisioning"
+  | "group_limits"
   | "claude_fable_5_feature"
   | "deepseek_feature"
   | "exa_people_and_company"

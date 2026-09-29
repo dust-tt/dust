@@ -91,6 +91,8 @@ type CachedGroup = {
   workspaceId: ModelId;
   workOSGroupId: string | null;
   poolCapAwuCredits: number | null;
+  groupLimitAwuCredits: number | null;
+  groupLimitPriority: number | null;
   grantedRole: GroupGrantableRole | null;
   grantedSeatType: GroupGrantableSeatType | null;
   createdAt: number;
@@ -136,7 +138,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   private static readonly workspaceGroupsFromSystemKeyCacheKeyResolver = (
     workspaceModelId: ModelId
-  ) => `workspace-groups-from-system-key:${workspaceModelId}`;
+  ) => `workspace-groups-from-system-key-v2:${workspaceModelId}`;
 
   private static async _listWorkspaceGroupsFromSystemKeyUncached(
     workspaceModelId: ModelId
@@ -154,6 +156,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: g.workspaceId,
       workOSGroupId: g.workOSGroupId,
       poolCapAwuCredits: g.poolCapAwuCredits,
+      groupLimitAwuCredits: g.groupLimitAwuCredits,
+      groupLimitPriority: g.groupLimitPriority,
       grantedRole: g.grantedRole,
       grantedSeatType: g.grantedSeatType,
       createdAt: g.createdAt.getTime(),
@@ -196,6 +200,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: data.workspaceId,
       workOSGroupId: data.workOSGroupId,
       poolCapAwuCredits: data.poolCapAwuCredits,
+      groupLimitAwuCredits: data.groupLimitAwuCredits,
+      groupLimitPriority: data.groupLimitPriority,
       grantedRole: data.grantedRole,
       grantedSeatType: data.grantedSeatType,
       createdAt: new Date(data.createdAt),
@@ -3420,6 +3426,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: this.kind,
       memberCount: 0, // Default value, use toJSONWithMemberCount for actual count
       poolCapAwuCredits: this.poolCapAwuCredits,
+      groupLimitAwuCredits: this.groupLimitAwuCredits,
       grantedRole: this.grantedRole,
       grantedSeatType: this.grantedSeatType,
     };
@@ -3435,6 +3442,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: this.kind,
       memberCount,
       poolCapAwuCredits: this.poolCapAwuCredits,
+      groupLimitAwuCredits: this.groupLimitAwuCredits,
       grantedRole: this.grantedRole,
       grantedSeatType: this.grantedSeatType,
     };
