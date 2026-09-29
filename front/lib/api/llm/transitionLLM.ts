@@ -969,7 +969,10 @@ export class NoopStreamTransition extends StreamEndpointTransition {
       .replace(/<dust_system>[\s\S]*?<\/dust_system>/g, "")
       .trim();
     const consumeMatch = command.match(/consume \$(\d+(?:\.\d+)?)/i);
-    if (consumeMatch) {
+    if (
+      consumeMatch &&
+      (await this.authenticator.hasFeatureFlag("noop_model_feature"))
+    ) {
       const costMicroUsd = Math.round(parseFloat(consumeMatch[1]) * 1_000_000);
       this.simulatedRunUsages = [
         {
