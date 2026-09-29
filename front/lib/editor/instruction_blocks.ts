@@ -93,7 +93,12 @@ export function parseInstructionsHtml(
     // are loaded. Adopt the body element into the caller's document so that
     // ProseMirror's DOM parser, which uses the caller's schema, works normally.
     const isolated = htmlParser.parseFromString(paired, "text/html");
-    tempDiv = document.adoptNode(isolated.body) as Element;
+    // `isolated.body` is `HTMLBodyElement` (a subtype of `Element`).
+    // `adoptNode` returns `Node`, so we capture the typed reference first and
+    // adopt it; the result is the same object with the widened return type.
+    const body = isolated.body;
+    document.adoptNode(body);
+    tempDiv = body;
   } else {
     // Server path: jsdom never executes scripts, so innerHTML is safe here.
     const div = document.createElement("div");

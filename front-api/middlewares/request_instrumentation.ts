@@ -91,7 +91,10 @@ export const requestInstrumentation =
     const reqCtx: RequestContext = {
       method: c.req.method,
       route: matchedRoute,
-      url: c.req.path,
+      // Sanitize at storage time so every downstream logger (including the
+      // unhandled-rejection handler in global_error_handler.ts) gets the
+      // redacted form rather than the raw secret-bearing path.
+      url: sanitizeUrlForLogging(c.req.path),
     };
     c.set("requestContext", reqCtx);
     c.set("queryCache", new RequestQueryCache());
@@ -190,7 +193,7 @@ export const requestInstrumentation =
           sessionId: session?.sessionId ?? "unknown",
           statusCode,
           streaming,
-          url: sanitizeUrlForLogging(c.req.path),
+          url: reqCtx.url,
           ...(user ? { user: { sId: user.sId } } : {}),
           workspaceId:
             auth && typeof auth.workspace === "function"
