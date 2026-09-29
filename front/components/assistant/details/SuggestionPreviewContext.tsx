@@ -6,6 +6,12 @@ import { createContext, useContext, useMemo } from "react";
 
 const NO_SUGGESTIONS: never[] = [];
 
+export function isPreviewedSuggestion(
+  suggestion: AgentSuggestionType | SkillSuggestionType
+): boolean {
+  return suggestion.state === "pending" && suggestion.kind !== "delete";
+}
+
 interface SuggestionPreview<T> {
   suggestions: T[];
   isApplied: boolean;

@@ -341,12 +341,6 @@ export type AgentDeleteSuggestionType = Extract<
   { kind: "delete" }
 >;
 
-export function isDeleteAgentSuggestion(
-  suggestion: AgentSuggestionType
-): suggestion is AgentDeleteSuggestionType {
-  return suggestion.kind === "delete";
-}
-
 export type AgentDescriptionSuggestionType = Extract<
   AgentSuggestionType,
   { kind: "description" }
