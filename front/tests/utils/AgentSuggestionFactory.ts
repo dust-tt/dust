@@ -16,6 +16,7 @@ import type {
   ScopeSuggestionType,
   SkillsSuggestionType,
   SubAgentSuggestionType,
+  TagsSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import assert from "assert";
@@ -324,6 +325,32 @@ export class AgentSuggestionFactory {
         kind: "editors",
         suggestion: overrides.suggestion,
         analysis: overrides.analysis ?? "These members should edit the agent",
+        state: overrides.state ?? "pending",
+        conversationId: null,
+        source: overrides.source ?? "conversational",
+        batchId: overrides.batchModelId ?? null,
+      }
+    );
+  }
+
+  static async createTags(
+    auth: Authenticator,
+    agentConfiguration: { sId: string },
+    // No valid default: a tags suggestion must add or remove at least one tag.
+    overrides: { suggestion: TagsSuggestionType } & Partial<{
+      analysis: string | null;
+      state: AgentSuggestionState;
+      source: AgentSuggestionSource;
+      batchModelId: number | null;
+    }>
+  ): Promise<AgentSuggestionResource> {
+    return AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      await fetchAgent(auth, agentConfiguration.sId),
+      {
+        kind: "tags",
+        suggestion: overrides.suggestion,
+        analysis: overrides.analysis ?? "These tags describe the agent",
         state: overrides.state ?? "pending",
         conversationId: null,
         source: overrides.source ?? "conversational",

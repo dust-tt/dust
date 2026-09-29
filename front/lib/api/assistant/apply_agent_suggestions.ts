@@ -1,6 +1,8 @@
 import { getDefaultMCPActionPayload } from "@app/lib/actions/default_mcp_action";
 import { DROID_AVATAR_URLS } from "@app/lib/agent_builder/avatars";
 import { validateAgentEditorsChange } from "@app/lib/api/assistant/agent_editors_change";
+import type { AgentTagsChange } from "@app/lib/api/assistant/agent_tags_change";
+import { validateAgentTagsChange } from "@app/lib/api/assistant/agent_tags_change";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
@@ -33,6 +35,8 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { TagResource } from "@app/lib/resources/tags_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
 import type {
   AgentConfigurationScope,
@@ -49,6 +53,7 @@ import type {
   ModelSuggestionType,
   SkillsSuggestionType,
   SubAgentSuggestionType,
+  TagsSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import {
@@ -56,6 +61,7 @@ import {
   getAgentSuggestionAction,
   INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
 } from "@app/types/suggestions/agent_suggestion";
+import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
 
 type ApplyAgentSuggestionsError = DustError<"invalid_request_error">;
@@ -79,6 +85,8 @@ export type ResolvedAgentChange =
       scope: Exclude<AgentConfigurationScope, "global"> | null;
       // The complete editor set once the change is applied.
       editors: UserType[] | null;
+      // Its missing tags are only created when the change is written.
+      tags: AgentTagsChange | null;
     }
   | { type: "delete"; agentId: string };
 
@@ -609,9 +617,32 @@ async function resolveEditorsEdit(
 }
 
 /**
+ * Re-validates the suggested tag change against live state.
+ */
+async function resolveTagsEdit(
+  auth: Authenticator,
+  agent: AgentResource,
+  tags: TagsSuggestionType | undefined
+): Promise<Result<AgentTagsChange | null, ApplyAgentSuggestionsError>> {
+  if (!tags) {
+    return new Ok(null);
+  }
+
+  const validation = await validateAgentTagsChange(auth, agent, tags);
+  if (validation.isErr()) {
+    return new Err(
+      new DustError("invalid_request_error", validation.error.message)
+    );
+  }
+
+  return new Ok(validation.value);
+}
+
+/**
  * Definition fields are saved as a new version, from the agent's full definition. The scope and the
  * editors can be applied in place, so a caller holding `admin` on an agent they cannot read can
- * still change them.
+ * still change them. Tags are saved with the other definition fields when there are some, on their
+ * own otherwise.
  */
 function hasAgentFieldEdits({
   name,
@@ -653,6 +684,11 @@ async function resolveAgentEdits(
   }
   const editors = editorsRes.value;
 
+  const tagsRes = await resolveTagsEdit(auth, agent, edits.tags);
+  if (tagsRes.isErr()) {
+    return tagsRes;
+  }
+
   // Saving the definition creates a version, so a change that only moves the scope or the editors
   // must not.
   let assistant: AgentConfigurationAssistantPayload | null = null;
@@ -675,6 +711,7 @@ async function resolveAgentEdits(
     assistant,
     scope: edits.scope ?? null,
     editors,
+    tags: tagsRes.value,
   });
 }
 
@@ -801,20 +838,67 @@ async function saveAgentConfiguration(
   return new Ok(undefined);
 }
 
-async function updateAgentInPlace(
+/**
+ * Creates the tags named `names` that do not exist (restoring a soft-deleted one of the same name)
+ * and returns every tag.
+ */
+async function createMissingTags(
+  auth: Authenticator,
+  names: string[]
+): Promise<TagResource[]> {
+  if (names.length === 0) {
+    return [];
+  }
+
+  // Tags created since the change was resolved are reused rather than created again.
+  const existing = await TagResource.findByNames(auth, names);
+  const existingNames = new Set(existing.map((tag) => tag.name));
+  const created = await concurrentExecutor(
+    names.filter((name) => !existingNames.has(name)),
+    (name) => TagResource.makeNew(auth, { name, kind: "standard" }),
+    { concurrency: 4 }
+  );
+
+  return [...existing, ...created];
+}
+
+// Removes `removeTags` from `currentTags`, then adds `addTags` not already there.
+function applyTagsDelta(
+  currentTags: TagType[],
+  { addTags, removeTags }: { addTags: TagResource[]; removeTags: TagResource[] }
+): TagType[] {
+  const removedIds = new Set(removeTags.map((tag) => tag.sId));
+  const kept = currentTags.filter((tag) => !removedIds.has(tag.sId));
+  const keptIds = new Set(kept.map((tag) => tag.sId));
+
+  return [
+    ...kept,
+    ...addTags
+      .filter((tag) => !keptIds.has(tag.sId))
+      .map((tag) => tag.toJSON()),
+  ];
+}
+
+// Applies the changes that need no full save: scope and editors in place, and tags, which create a
+// version through `updateConfiguration` (so that a workspace admin who does not edit the agent can
+// change them).
+async function updateAgentWithoutFullSave(
   auth: Authenticator,
   agent: AgentResource,
   {
     scope,
     editors,
+    tags,
   }: {
     scope: Exclude<AgentConfigurationScope, "global"> | null;
     editors: UserType[] | null;
+    tags: { addTags: TagResource[]; removeTags: TagResource[] } | null;
   }
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
   const res = await agent.updateConfiguration(auth, {
     ...(scope ? { scope } : {}),
     ...(editors ? { editors } : {}),
+    ...(tags ?? {}),
   });
   if (res.isErr()) {
     return new Err(new DustError("invalid_request_error", res.error.message));
@@ -831,14 +915,33 @@ export async function writeAgentChange(
   switch (change.type) {
     case "create":
       return saveAgentConfiguration(auth, change.agentId, change.assistant);
-    case "edit":
+    case "edit": {
+      const tags = change.tags
+        ? {
+            addTags: [
+              ...change.tags.tagsToAdd,
+              ...(await createMissingTags(auth, change.tags.tagNamesToCreate)),
+            ],
+            removeTags: change.tags.tagsToRemove,
+          }
+        : null;
       if (change.assistant) {
-        return saveAgentConfiguration(auth, change.agentId, change.assistant);
+        return saveAgentConfiguration(
+          auth,
+          change.agentId,
+          tags
+            ? {
+                ...change.assistant,
+                tags: applyTagsDelta(change.assistant.tags, tags),
+              }
+            : change.assistant
+        );
       }
-      if (change.scope || change.editors) {
-        return updateAgentInPlace(auth, agent, change);
+      if (change.scope || change.editors || tags) {
+        return updateAgentWithoutFullSave(auth, agent, { ...change, tags });
       }
       return new Ok(undefined);
+    }
     case "delete":
       return archiveAgent(auth, change.agentId);
     default:

@@ -22,6 +22,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
+import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
@@ -1102,6 +1103,116 @@ describe("applyBatchSuggestions", () => {
 
     expect(res.isErr()).toBe(true);
     expect(await fetchAgentEditorIds(agent.sId)).toEqual([user.sId]);
+  });
+
+  async function fetchAgentTagNames(agentId: string) {
+    const agent = await AgentResource.fetchById(auth, agentId);
+    assert(agent);
+    return (await agent.listTags(auth)).map((tag) => tag.name).sort();
+  }
+
+  it("changes the tags of an agent in a new version", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const sales = await TagFactory.create(workspace, { name: "Sales" });
+    await TagFactory.create(workspace, { name: "Support" });
+    await AgentResource.bulkUpdate(auth, [agent.sId], { addTags: [sales] });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createTags(auth, agent, {
+      suggestion: { addTags: ["Support"], removeTags: ["Sales"] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    expect(await fetchAgentTagNames(agent.sId)).toEqual(["Support"]);
+  });
+
+  it("changes the tags along with a definition field", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    await TagFactory.create(workspace, { name: "Sales" });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createTags(auth, agent, {
+      suggestion: { addTags: ["Sales"], removeTags: [] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    expect(await fetchAgentName(agent.sId)).toBe("RenamedAgent");
+    expect(await fetchAgentTagNames(agent.sId)).toEqual(["Sales"]);
+  });
+
+  it("creates the missing tags when applied by an admin", async () => {
+    const { authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(adminAuth);
+    await AgentSuggestionFactory.createTags(adminAuth, agent, {
+      suggestion: { addTags: ["Brand New"], removeTags: [] },
+      batchModelId,
+    });
+    const batch = await BatchSuggestionResource.fetchById(adminAuth, sId);
+    assert(batch);
+
+    const res = await applyBatchSuggestions(adminAuth, batch);
+
+    expect(res.isOk()).toBe(true);
+    const updated = await AgentResource.fetchById(adminAuth, agent.sId);
+    assert(updated);
+    const tags = await updated.listTags(adminAuth);
+    expect(tags.map((tag) => [tag.name, tag.kind])).toEqual([
+      ["Brand New", "standard"],
+    ]);
+  });
+
+  it("writes nothing when a missing tag would be created by a non-admin", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createTags(auth, agent, {
+      suggestion: { addTags: ["Brand New"], removeTags: [] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    expect(await fetchAgentName(agent.sId)).toBe(agent.name);
+    expect(await fetchAgentTagNames(agent.sId)).toEqual([]);
+  });
+
+  it("writes nothing when a removed tag is no longer on the agent", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    await TagFactory.create(workspace, { name: "Sales" });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createTags(auth, agent, {
+      suggestion: { addTags: [], removeTags: ["Sales"] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    expect(await fetchAgentName(agent.sId)).toBe(agent.name);
   });
 
   it("leaves the batch pending once applied", async () => {
