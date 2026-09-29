@@ -7,7 +7,6 @@ import {
   MessageModel,
 } from "@app/lib/models/agent/conversation";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionType } from "@app/types/actions";
@@ -52,7 +51,7 @@ const SandboxTokenPayloadSchema = z
   .object({
     wId: z.string(),
     uId: z.string().optional(),
-    fileAccessUserId: z.string().optional(),
+    fileAccessUserModelId: z.number().int().positive().optional(),
     sbId: z.string(),
     execId: z.string(),
     cId: z.string().optional(),
@@ -339,15 +338,13 @@ export async function generateSandboxExecToken(
     expiryMs?: number;
   }
 ): Promise<string> {
-  const keyOwnerModelId = auth.user() ? null : auth.key()?.userModelId;
-  const keyOwner = keyOwnerModelId
-    ? await UserResource.fetchByModelId(keyOwnerModelId)
-    : null;
   const payload: SandboxExecTokenPayload = {
     wId: auth.getNonNullableWorkspace().sId,
     cId: conversation.sId,
     uId: auth.user()?.sId,
-    fileAccessUserId: keyOwner?.sId,
+    fileAccessUserModelId: auth.user()
+      ? undefined
+      : (auth.key()?.userModelId ?? undefined),
     aId: agentConfiguration.sId,
     aV: agentConfiguration.version,
     mId: agentMessage.sId,

@@ -254,8 +254,8 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     });
     const claims = await verifySandboxExecToken(token);
     expect(claims?.uId).toBeUndefined();
-    expect(claims?.fileAccessUserId).toBe(
-      context.auth.getNonNullableUser().sId
+    expect(claims?.fileAccessUserModelId).toBe(
+      context.auth.getNonNullableUser().id
     );
 
     const response = await requestFramePublish(

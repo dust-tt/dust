@@ -2580,8 +2580,8 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     {
       frameContent,
-      fileAccessUserId,
-    }: { frameContent: string; fileAccessUserId?: string }
+      fileAccessUserModelId,
+    }: { frameContent: string; fileAccessUserModelId?: number }
   ): Promise<ComputedAuthorizedFileAccess> {
     const frameContext = await this.resolveFrameScopedPathContext(auth);
     const packageRoot = this.getFrameV2SourceDirectoryPath(auth);
@@ -2596,9 +2596,8 @@ export class FileResource extends BaseResource<FileModel> {
     const generatedByUserId =
       auth.user()?.id ??
       auth.key()?.userModelId ??
-      (fileAccessUserId
-        ? (await UserResource.fetchById(fileAccessUserId))?.id
-        : null);
+      fileAccessUserModelId ??
+      null;
     if (!generatedByUserId) {
       logger.error(
         {

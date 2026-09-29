@@ -219,7 +219,7 @@ export type PublishFrameFromSourceParams = {
   conversation: ConversationWithoutContentType;
   publishedByAgentConfigurationId: string;
   sourcePath: string;
-  fileAccessUserId?: string;
+  fileAccessUserModelId?: number;
   /**
    * Entry file of a legacy Frame that the v2 manifest at `sourcePath` replaces. The legacy
    * Frame's identity is converted in place once the replacement builds.
@@ -234,7 +234,7 @@ export async function publishFrameFromSource(
     publishedByAgentConfigurationId,
     sourcePath,
     replacesPath,
-    fileAccessUserId,
+    fileAccessUserModelId,
   }: PublishFrameFromSourceParams
 ): Promise<Result<PublishFrameFromSourceResult, PublishFrameFromSourceError>> {
   if (replacesPath) {
@@ -243,7 +243,7 @@ export async function publishFrameFromSource(
       legacyEntryPath: replacesPath,
       manifestPath: sourcePath,
       publishedByAgentConfigurationId,
-      fileAccessUserId,
+      fileAccessUserModelId,
     });
   }
 
@@ -262,7 +262,7 @@ export async function publishFrameFromSource(
       frame,
       manifestPath: normalizedPath,
       publishedByAgentConfigurationId,
-      fileAccessUserId,
+      fileAccessUserModelId,
     });
     if (publication.isErr()) {
       return new Err(publication.error);
@@ -289,7 +289,7 @@ export async function publishFrameFromSource(
     entryRelPath,
     rootScopedPath: root,
     publishedByAgentConfigurationId,
-    fileAccessUserId,
+    fileAccessUserModelId,
   });
   if (publication.isErr()) {
     return new Err(publication.error);
@@ -308,7 +308,7 @@ type ReplaceLegacyFrameFromSourceParams = {
   legacyEntryPath: string;
   manifestPath: string;
   publishedByAgentConfigurationId: string;
-  fileAccessUserId?: string;
+  fileAccessUserModelId?: number;
 };
 
 type LegacyFrameReplacementTarget = {
@@ -534,7 +534,7 @@ async function replaceLegacyFrameFromSource(
         sourceFiles,
         uiBundleCode,
         publishedByAgentConfigurationId: params.publishedByAgentConfigurationId,
-        fileAccessUserId: params.fileAccessUserId,
+        fileAccessUserModelId: params.fileAccessUserModelId,
       });
       if (published.isErr()) {
         logger.warn(
@@ -827,13 +827,13 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
     frame,
     manifestPath,
     publishedByAgentConfigurationId,
-    fileAccessUserId,
+    fileAccessUserModelId,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifestPath: string;
     publishedByAgentConfigurationId?: string;
-    fileAccessUserId?: string;
+    fileAccessUserModelId?: number;
   }
 ): Promise<
   Result<
@@ -871,7 +871,7 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
     manifest: source.value.manifest,
     sourceFiles: source.value.sourceFiles,
     publishedByAgentConfigurationId,
-    fileAccessUserId,
+    fileAccessUserModelId,
   });
 }
 
@@ -882,13 +882,13 @@ export async function publishFrameV2FromSource(
     frame,
     manifestPath,
     publishedByAgentConfigurationId,
-    fileAccessUserId,
+    fileAccessUserModelId,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifestPath: string;
     publishedByAgentConfigurationId?: string;
-    fileAccessUserId?: string;
+    fileAccessUserModelId?: number;
   }
 ): Promise<
   Result<
@@ -917,7 +917,7 @@ export async function publishFrameV2FromSource(
       frame: freshFrame,
       manifestPath,
       publishedByAgentConfigurationId,
-      fileAccessUserId,
+      fileAccessUserModelId,
     });
   });
   if (publication.isErr()) {
