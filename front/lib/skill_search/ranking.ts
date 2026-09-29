@@ -92,7 +92,7 @@ export function buildSkillNameAutocompleteQuery(
         },
         {
           multi_match: {
-            query: terms.join(" "),
+            query: searchTerm,
             type: "bool_prefix",
             operator: "and",
             fields: ["name.keyword", ...NAME_AUTOCOMPLETE_FIELDS],

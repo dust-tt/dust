@@ -119,7 +119,7 @@ describe("custom skill search", () => {
                 },
                 {
                   multi_match: {
-                    query: "report b",
+                    query: "  report   b  ",
                     type: "bool_prefix",
                     operator: "and",
                     fields: [
