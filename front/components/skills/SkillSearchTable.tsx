@@ -5,9 +5,7 @@ import {
   SkillLastEditedCell,
   SkillNameCell,
 } from "@app/components/skills/SkillTableCells";
-import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { EntityTooltipCard } from "@app/components/workspace/analytics/creditsTableCells";
-import { useSkillsUsedBy } from "@app/hooks/useSkillsUsedBy";
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -28,23 +26,21 @@ import type {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import { createContext, useContext, useMemo } from "react";
+import { useMemo } from "react";
 
-// Leave room for Select, Usage and Actions, then Editors/Last edited at @sm, Availability at @md and
-// Used by at @lg.
+// Leave room for Select, Usage and Actions, then Editors/Last edited at @sm and Availability at @md.
 /**
  * @cc [owner:aubin-tchoi,label:product] skill-name-column-visibility
  * Secondary columns MUST hide based on available container width to keep skill names
  * visible.
  */
 const SKILL_SEARCH_NAME_COLUMN_WIDTH =
-  "w-[calc(100%-12rem)] @sm:w-[calc(100%-28rem)] @md:w-[calc(100%-38rem)] @lg:w-[calc(100%-46rem)]";
+  "w-[calc(100%-12rem)] @sm:w-[calc(100%-28rem)] @md:w-[calc(100%-38rem)]";
 
 interface SkillSearchTableProps {
   owner: LightWorkspaceType;
   skills: SkillListItemType[];
   onSelect: (skillId: string) => void;
-  onAgentClick: (agentId: string) => void;
   onRefresh: () => void;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
@@ -59,54 +55,13 @@ interface SkillSearchTableProps {
 
 type SkillSearchRow = SkillListItemType & { onClick: () => void };
 
-// The ids of the displayed page, computed once per page rather than in every cell.
-const PageSkillIdsContext = createContext<string[]>([]);
-
-interface SkillSearchUsedByCellProps {
-  owner: LightWorkspaceType;
-  skillId: string;
-  onAgentClick: (agentId: string) => void;
-  onSkillClick: (skillId: string) => void;
-}
-
-// Every cell of the page requests the same key, which SWR deduplicates into one call.
-function SkillSearchUsedByCell({
-  owner,
-  skillId,
-  onAgentClick,
-  onSkillClick,
-}: SkillSearchUsedByCellProps) {
-  const pageSkillIds = useContext(PageSkillIdsContext);
-  const { usedBy, isUsedByLoading } = useSkillsUsedBy({
-    owner,
-    skillIds: pageSkillIds,
-  });
-  const usage = usedBy?.[skillId];
-
-  return (
-    <div className="flex h-12 w-full items-center justify-center">
-      {isUsedByLoading ? (
-        <LoadingBlock className="h-5 w-14 rounded-md" />
-      ) : usage ? (
-        <UsedByButton
-          usage={usage}
-          onItemClick={onAgentClick}
-          onSkillClick={onSkillClick}
-        />
-      ) : (
-        "-"
-      )}
-    </div>
-  );
-}
-
 // Cells render as components, so a new `columns` identity remounts every cell: an open menu
 // closes and an in-flight checkbox click is lost.
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
- * `columns` MUST only be rebuilt when `onSelect`, `onAgentClick`, `onRefresh` or `owner` change,
- * never on data the table loads itself. Callers MUST keep `onSelect`, `onAgentClick` and
- * `onRefresh` referentially stable while the search inputs are unchanged.
+ * `columns` MUST only be rebuilt when `onSelect`, `onRefresh` or `owner` change, never on data the
+ * table loads itself. Callers MUST keep `onSelect` and `onRefresh` referentially stable while the
+ * search inputs are unchanged.
  */
 /**
  * @cc [owner:aubin-tchoi,label:product] skill-name-tooltip
@@ -116,7 +71,6 @@ export function SkillSearchTable({
   owner,
   skills,
   onSelect,
-  onAgentClick,
   onRefresh,
   pagination,
   setPagination,
@@ -128,10 +82,6 @@ export function SkillSearchTable({
   setSelectedSkillIds,
   canSelect,
 }: SkillSearchTableProps) {
-  const pageSkillIds = useMemo(
-    () => skills.map((skill) => skill.sId),
-    [skills]
-  );
   const columns = useMemo(
     () =>
       [
@@ -244,21 +194,6 @@ export function SkillSearchTable({
           meta: { className: "hidden w-40 @md:table-cell" },
         },
         {
-          id: "usedBy" as const,
-          header: () => (
-            <div className="flex w-full justify-center">Used by</div>
-          ),
-          cell: ({ row: { original: skill } }) => (
-            <SkillSearchUsedByCell
-              owner={owner}
-              skillId={skill.sId}
-              onAgentClick={onAgentClick}
-              onSkillClick={onSelect}
-            />
-          ),
-          meta: { className: "hidden w-32 px-0 @lg:table-cell" },
-        },
-        {
           id: "usage" as const,
           accessorKey: "activeUsersCount",
           header: "Usage",
@@ -312,7 +247,7 @@ export function SkillSearchTable({
           meta: { className: "w-14" },
         },
       ] satisfies ColumnDef<SkillSearchRow>[],
-    [onAgentClick, onRefresh, onSelect, owner]
+    [onRefresh, onSelect, owner]
   );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
@@ -336,8 +271,6 @@ export function SkillSearchTable({
                 );
               case "availability":
                 return <ChipCellSkeleton />;
-              case "usedBy":
-                return <LoadingBlock className="mx-auto h-5 w-14 rounded-md" />;
               case "usage":
                 return <TextCellSkeleton className="w-8" />;
               case "editors":
@@ -363,32 +296,30 @@ export function SkillSearchTable({
   }
 
   return (
-    <PageSkillIdsContext.Provider value={pageSkillIds}>
-      <DataTable
-        data={skills.map((skill) => ({
-          ...skill,
-          onClick: () => onSelect(skill.sId),
-        }))}
-        columns={columns}
-        getRowId={(skill) => skill.sId}
-        enableRowSelection={(row) => canSelect(row.original)}
-        disableRowClickSelection
-        rowSelection={Object.fromEntries(
-          selectedSkillIds.map((skillId) => [skillId, true])
-        )}
-        setRowSelection={(rowSelection) =>
-          setSelectedSkillIds(
-            Object.keys(rowSelection).filter((skillId) => rowSelection[skillId])
-          )
-        }
-        isLoading={isLoading}
-        pagination={pagination}
-        setPagination={setPagination}
-        sorting={sorting}
-        setSorting={setSorting}
-        isServerSideSorting
-        totalRowCount={total}
-      />
-    </PageSkillIdsContext.Provider>
+    <DataTable
+      data={skills.map((skill) => ({
+        ...skill,
+        onClick: () => onSelect(skill.sId),
+      }))}
+      columns={columns}
+      getRowId={(skill) => skill.sId}
+      enableRowSelection={(row) => canSelect(row.original)}
+      disableRowClickSelection
+      rowSelection={Object.fromEntries(
+        selectedSkillIds.map((skillId) => [skillId, true])
+      )}
+      setRowSelection={(rowSelection) =>
+        setSelectedSkillIds(
+          Object.keys(rowSelection).filter((skillId) => rowSelection[skillId])
+        )
+      }
+      isLoading={isLoading}
+      pagination={pagination}
+      setPagination={setPagination}
+      sorting={sorting}
+      setSorting={setSorting}
+      isServerSideSorting
+      totalRowCount={total}
+    />
   );
 }

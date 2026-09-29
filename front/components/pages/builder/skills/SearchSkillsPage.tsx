@@ -1,4 +1,3 @@
-import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import {
   clearFilterCategory,
@@ -71,7 +70,6 @@ interface SkillsListProps {
   filters: SkillSearchFilters;
   permissionFiltering?: SkillSearchPermissionFiltering;
   onSelect: (skillId: string) => void;
-  onAgentClick: (agentId: string) => void;
 }
 
 function SkillsList({
@@ -79,7 +77,6 @@ function SkillsList({
   filters,
   permissionFiltering,
   onSelect,
-  onAgentClick,
 }: SkillsListProps) {
   const owner = useWorkspace();
   const { hasPermission } = useWorkspacePermissions();
@@ -205,7 +202,6 @@ function SkillsList({
           owner={owner}
           skills={skills}
           onSelect={onSelect}
-          onAgentClick={onAgentClick}
           onRefresh={mutate}
           pagination={tablePagination}
           setPagination={(next) => {
@@ -272,7 +268,6 @@ export function SearchSkillsPage() {
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
   const [skillId, setSkillId] = useHashParam("skillId");
-  const [agentId, setAgentId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [hiddenSkillsParam, setHiddenSkillsParam] =
     useHashParam("hiddenSkills");
@@ -418,7 +413,6 @@ export function SearchSkillsPage() {
                   filters={{ ...tab.filters, ...searchFilters }}
                   permissionFiltering={permissionFiltering}
                   onSelect={setSkillId}
-                  onAgentClick={setAgentId}
                 />
               </TabsContent>
             ))}
@@ -436,12 +430,6 @@ export function SearchSkillsPage() {
         user={user}
         skillId={skillId ?? null}
         onClose={() => setSkillId(undefined)}
-      />
-      <AgentDetailsSheet
-        owner={owner}
-        user={user}
-        agentId={agentId}
-        onClose={() => setAgentId(null)}
       />
     </>
   );

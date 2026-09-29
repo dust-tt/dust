@@ -9,10 +9,7 @@ import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewTypeFactory } from "@app/tests/utils/MCPServerViewTypeFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import type {
-  PostSkillsUsedByResponseBody,
-  SearchSkillsResponseBody,
-} from "@app/types/api/skills";
+import type { SearchSkillsResponseBody } from "@app/types/api/skills";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
@@ -138,9 +135,6 @@ async function setup({
       facets: {},
     });
   const fetcherWithBody = vi.fn(async (..._args: unknown[]) => search());
-  const usedBy = vi
-    .fn<(body: object) => Promise<PostSkillsUsedByResponseBody>>()
-    .mockResolvedValue({ usedBy: {} });
   const mutation = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
   const serverView = MCPServerViewTypeFactory.build({ name: "Slack" });
   const otherSpaceServerView = MCPServerViewTypeFactory.build({
@@ -222,11 +216,9 @@ async function setup({
           <FetcherProvider
             fetcher={fetcher}
             fetcherWithBody={([url, body, method]) =>
-              url.endsWith("/skills/used_by")
-                ? usedBy(body)
-                : "limit" in body && body.limit === 0
-                  ? facetSearch(body)
-                  : fetcherWithBody([url, body, method])
+              "limit" in body && body.limit === 0
+                ? facetSearch(body)
+                : fetcherWithBody([url, body, method])
             }
           >
             <AuthContext.Provider value={context}>
@@ -244,7 +236,6 @@ async function setup({
     fetcher,
     fetcherWithBody,
     facetSearch,
-    usedBy,
     mutation,
     mount,
     mcpServerViewIds: [serverView.sId, otherSpaceServerView.sId],
@@ -764,25 +755,6 @@ describe("search-backed Manage Skills", () => {
     expect(fetcher).toHaveBeenCalledWith(
       `/api/w/${context.workspace.sId}/skills/${skill.sId}?withRelations=true`
     );
-  });
-
-  it("shows who uses the skills of the current page", async () => {
-    const { skill, usedBy, mount } = await setup();
-    usedBy.mockResolvedValue({
-      usedBy: {
-        [skill.sId]: {
-          count: 2,
-          agents: [{ sId: "agent-1", name: "Helper", pictureUrl: "" }],
-          skills: [{ sId: "parent-1", name: "Parent", icon: null }],
-        },
-      },
-    });
-    mount();
-
-    expect(
-      await screen.findByRole("button", { name: "Used by 1 agent and 1 skill" })
-    ).toBeInTheDocument();
-    expect(usedBy).toHaveBeenCalledWith({ skillIds: [skill.sId] });
   });
 
   it("requests Dust-provided and archived skills in their own tabs", async () => {
