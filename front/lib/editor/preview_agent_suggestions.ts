@@ -11,11 +11,12 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  TagsSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";
 
-type PreviewedAgentFields = Pick<
+export type PreviewedAgentFields = Pick<
   AgentConfigurationType,
   | "name"
   | "description"
@@ -23,6 +24,7 @@ type PreviewedAgentFields = Pick<
   | "instructions"
   | "instructionsHtml"
   | "model"
+  | "tags"
 >;
 
 export interface PreviewedAgentCapabilities {
@@ -102,6 +104,36 @@ function previewModel(
   });
 }
 
+// Tags are suggested by name: an added tag that is not on the agent is previewed with a placeholder
+// id, since it may not exist yet.
+function previewTags(
+  currentTags: PreviewedAgentFields["tags"],
+  tags: TagsSuggestionType | undefined
+): PreviewedAgentFields["tags"] {
+  if (!tags) {
+    return currentTags;
+  }
+
+  const removedNames = new Set(
+    tags.removeTags.map((name) => name.toLowerCase())
+  );
+  const kept = currentTags.filter(
+    (tag) => !removedNames.has(tag.name.toLowerCase())
+  );
+  const keptNames = new Set(kept.map((tag) => tag.name.toLowerCase()));
+
+  return [
+    ...kept,
+    ...tags.addTags
+      .filter((name) => !keptNames.has(name.toLowerCase()))
+      .map((name) => ({
+        sId: `suggested-tag-${name}`,
+        name,
+        kind: "standard" as const,
+      })),
+  ];
+}
+
 export function previewAgentSuggestions({
   agent,
   suggestions,
@@ -125,6 +157,7 @@ export function previewAgentSuggestions({
         description,
         scope: agent.scope,
         model: agent.model,
+        tags: agent.tags,
         instructions: agent.instructions,
         instructionsHtml: instructions,
       },
@@ -151,6 +184,7 @@ export function previewAgentSuggestions({
     skills = [],
     tools = [],
     subAgents,
+    tags,
   } = edits.value;
 
   // Sub-agent changes are not previewed yet: showing the agent without them would misrepresent the
@@ -184,6 +218,7 @@ export function previewAgentSuggestions({
       description: description ?? agent.description,
       scope: scope ?? agent.scope,
       model: modelRes.value,
+      tags: previewTags(agent.tags, tags),
       ...instructionsRes.value,
     },
     capabilities: previewCapabilities(tools, skills),

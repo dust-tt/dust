@@ -60,11 +60,16 @@ export function AgentInfoTab({
 
   return (
     <div className="flex flex-col gap-5">
-      {agentConfiguration.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {agentConfiguration.tags.map((tag) => (
-            <Chip key={tag.sId} color="info" label={tag.name} size="xs" />
-          ))}
+      {(agentConfiguration.tags.length > 0 || editedSections.has("tags")) && (
+        <div className="relative flex flex-wrap gap-2">
+          {editedSections.has("tags") && <EditedSectionBar />}
+          {agentConfiguration.tags.length > 0 ? (
+            agentConfiguration.tags.map((tag) => (
+              <Chip key={tag.sId} color="info" label={tag.name} size="xs" />
+            ))
+          ) : (
+            <span className="text-sm text-muted-foreground">No tags</span>
+          )}
         </div>
       )}
 

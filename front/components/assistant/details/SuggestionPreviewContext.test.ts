@@ -122,8 +122,15 @@ describe("getEditedAgentSections", () => {
         kind: "editors",
         suggestion: { addUserIds: ["u1"], removeUserIds: [] },
       },
+      {
+        ...AGENT_SUGGESTION,
+        kind: "tags",
+        suggestion: { addTags: ["Sales"], removeTags: [] },
+      },
     ]);
-    expect(sections).toEqual(new Set(["description", "knowledge", "editors"]));
+    expect(sections).toEqual(
+      new Set(["description", "knowledge", "editors", "tags"])
+    );
   });
 
   it("maps sub agents to tools", () => {
