@@ -107,14 +107,14 @@ export function UsageMembersSection({
             </div>
           )}
         </div>
-        {activeTab === "members" ? (
+        {activeTab === "members" && (
           <div className="flex flex-col gap-2">
             {membersTable}
             {selectionBanner}
           </div>
-        ) : (
-          requests?.table
         )}
+        {/* Keep pending request actions alive across tab changes. */}
+        <div hidden={activeTab !== "requests"}>{requests?.table}</div>
       </div>
     </div>
   );

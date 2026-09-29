@@ -1155,7 +1155,11 @@ export function UsagePage() {
               )}
             </TabsList>
 
-            <TabsContent value="members" className={TAB_CONTENT_CLASS}>
+            <TabsContent
+              value="members"
+              forceMount
+              className={usageTab === "members" ? TAB_CONTENT_CLASS : "hidden"}
+            >
               <UsageMembersSection
                 searchTerm={searchTerm}
                 onSearchChange={handleSetSearchTerm}
