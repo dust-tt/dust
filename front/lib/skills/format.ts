@@ -99,16 +99,20 @@ export function extractUniqueSkillReferenceIds(content: string): string[] {
  */
 export function serializeSkillTag<const Id extends string>(
   { id, name, icon }: SkillReference & { id: Id },
+  options?: { html?: boolean }
+): `<skill id="${Id}"${string}>`;
+export function serializeSkillTag(
+  { id, name, icon }: SkillReference,
   { html = false }: { html?: boolean } = {}
-): `<skill id="${Id}"${string}>` {
+): string {
   const iconAttribute = icon ? ` icon="${icon}"` : "";
   const attributes = `id="${id}" name="${escapeXml(name)}"${iconAttribute}`;
 
   if (html) {
-    return `<${SKILL_TAG_NAME} ${attributes}></${SKILL_TAG_NAME}>` as `<skill id="${Id}"${string}>`;
+    return `<${SKILL_TAG_NAME} ${attributes}></${SKILL_TAG_NAME}>`;
   }
 
-  return `<${SKILL_TAG_NAME} ${attributes} />` as `<skill id="${Id}"${string}>`;
+  return `<${SKILL_TAG_NAME} ${attributes} />`;
 }
 
 function parseSkillRef(attributes: string): string | null {
