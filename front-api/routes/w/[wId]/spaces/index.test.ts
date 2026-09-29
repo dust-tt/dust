@@ -81,6 +81,50 @@ describe("GET /api/w/:wId/spaces", () => {
     expect(metadataFetch).toHaveBeenCalledOnce();
   });
 
+  it("lists Pods to admins asking for them with the admin role", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces?role=admin&kind=project&kind=regular`
+    );
+
+    expect(response.status).toBe(200);
+    const data: unknown = await response.json();
+    expect(data).toEqual({
+      spaces: expect.arrayContaining([
+        expect.objectContaining({ sId: projectSpace.sId }),
+      ]),
+    });
+    expect(data).not.toEqual({
+      spaces: expect.arrayContaining([
+        expect.objectContaining({ kind: "global" }),
+      ]),
+    });
+  });
+
+  it("does not list Pods to non-admins asking with the admin role", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces?role=admin&kind=project`
+    );
+
+    expect(response.status).toBe(200);
+    const data: unknown = await response.json();
+    expect(data).toEqual({ spaces: expect.any(Array) });
+    expect(data).not.toEqual({
+      spaces: expect.arrayContaining([
+        expect.objectContaining({ sId: projectSpace.sId }),
+      ]),
+    });
+  });
+
   it("rejects invalid kinds", async () => {
     const { workspace } = await createPrivateApiMockRequest();
 

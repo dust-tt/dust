@@ -61,7 +61,13 @@ async function listRequestedSpaces(
     return systemSpace ? [systemSpace] : [];
   }
 
-  return SpaceResource.listWorkspaceSpaces(auth);
+  // `listWorkspaceSpaces` does not filter by permission, so Pods are only listed to admins.
+  const includeProjectSpaces =
+    auth.isAdmin() && (kinds?.includes("project") ?? false);
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeProjectSpaces,
+  });
+  return kinds ? spaces.filter((s) => kinds.includes(s.kind)) : spaces;
 }
 
 const GetSpacesQuerySchema = z.object({
