@@ -184,10 +184,10 @@ type PreviousState =
 
 /**
  * @cc [label:product] main-breakage-run-ordering
- * Runs complete out of order: a completed signal run newer than the current one MUST silence it,
- * and the comparison state is otherwise the newest older signal run within the 100 most recent
- * completed runs. A signal past that window is invisible by design; its transition MUST be
- * dropped silently, never guessed.
+ * Runs complete out of order: a completed signal run newer than the current one MUST silence it.
+ * Otherwise, unless a previous attempt of the current run supplies the comparison state, it is
+ * the newest older signal run within the 100 most recent completed runs. A signal past that
+ * window is invisible by design; its transition MUST be dropped silently, never guessed.
  */
 /**
  * @cc [label:product] main-breakage-reruns
