@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { ManageSkillsPage } from "@app/components/pages/builder/skills/ManageSkillsPage";
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
@@ -35,19 +36,14 @@ beforeEach(() => {
   }
 });
 
-const { routerQuery, replace } = vi.hoisted(() => ({
-  routerQuery: { current: {} as Record<string, string | string[] | undefined> },
-  replace: vi.fn(),
-}));
-
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({
     isReady: true,
     pathname: "/w/workspace/builder/skills",
     asPath: "/w/workspace/builder/skills",
-    query: routerQuery.current,
+    query: {},
     push: vi.fn(),
-    replace,
+    replace: vi.fn(),
     events: { on: vi.fn(), off: vi.fn() },
   }),
 }));
@@ -76,8 +72,6 @@ vi.mock("@app/components/skills/SkillsBatchEdit", async (importOriginal) => ({
 }));
 
 afterEach(() => {
-  routerQuery.current = {};
-  replace.mockClear();
   window.history.replaceState({}, "", "/");
   vi.unstubAllGlobals();
 });
@@ -258,16 +252,22 @@ async function setup({
 describe("search-backed Manage Skills", () => {
   it("restores a shared search URL, including grouped tools, and clears only its filters", async () => {
     const { context, fetcherWithBody, mcpServerViewIds, mount } = await setup();
-    routerQuery.current = {
+    const selection = {
       q: "report",
       tab: "archived",
       availability: "workspace_users",
       editor: context.user.sId,
       space: "selected-space",
       tool: mcpServerViewIds,
-      other: "keep",
     };
-    window.history.replaceState({}, "", "/#?modal=personal-settings");
+    const encoded = Buffer.from(JSON.stringify(selection)).toString(
+      "base64url"
+    );
+    window.history.replaceState(
+      {},
+      "",
+      `/w/workspace/builder/skills?other=keep#?modal=personal-settings&filter=${encoded}`
+    );
     mount();
 
     await screen.findByRole("button", { name: /Weekly report/ });
@@ -299,23 +299,14 @@ describe("search-backed Manage Skills", () => {
     ).toBeChecked();
     await userEvent.click(screen.getByRole("button", { name: "Apply" }));
     await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
-    expect(replace).toHaveBeenLastCalledWith(
-      {
-        pathname: "/w/workspace/builder/skills",
-        query: {
-          q: "report",
-          tab: "archived",
-          other: "keep",
-          availability: undefined,
-          editor: undefined,
-          tool: undefined,
-          space: undefined,
-        },
-        hash: "#?modal=personal-settings",
-      },
-      undefined,
-      { shallow: true }
-    );
+    expect(window.location.search).toBe("?other=keep");
+    const hash = new URLSearchParams(window.location.hash.slice(2));
+    expect(hash.get("modal")).toBe("personal-settings");
+    expect(
+      JSON.parse(
+        Buffer.from(hash.get("filter") ?? "", "base64url").toString("utf8")
+      )
+    ).toEqual({ q: "report", tab: "archived" });
   });
 
   it("sorts Name, Usage and Last edited in both directions without reordering the server page", async () => {
@@ -486,17 +477,16 @@ describe("search-backed Manage Skills", () => {
     expect(screen.getByText("Tool")).toBeInTheDocument();
     expect(screen.getByText("Editor")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(3);
-    expect(replace).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        query: expect.objectContaining({
-          availability: ["workspace_users", "users_and_agents"],
-          editor: [context.user.sId],
-          tool: mcpServerViewIds,
-        }),
-      }),
-      undefined,
-      { shallow: true }
+    const encoded = new URLSearchParams(window.location.hash.slice(2)).get(
+      "filter"
     );
+    expect(
+      JSON.parse(Buffer.from(encoded ?? "", "base64url").toString("utf8"))
+    ).toMatchObject({
+      availability: ["workspace_users", "users_and_agents"],
+      editor: [context.user.sId],
+      tool: mcpServerViewIds,
+    });
 
     await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
     await waitFor(() =>
