@@ -2,7 +2,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type {
   GetSkillSuggestionsResponseBody,
@@ -50,9 +49,7 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
   // repeats too. Build the input object explicitly.
   const queryInput = {
     states: ctx.req.queries("states"),
-    sources: ctx.req.queries("sources"),
     kind: ctx.req.query("kind"),
-    conversationId: ctx.req.query("conversationId"),
     limit: ctx.req.query("limit"),
   };
   const queryValidation = GetSkillSuggestionsQuerySchema.safeParse(queryInput);
@@ -66,7 +63,7 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
     });
   }
 
-  const { states, sources, kind, conversationId, limit } = queryValidation.data;
+  const { states, kind, limit } = queryValidation.data;
 
   const parsedLimit = limit ? parseInt(limit, 10) : undefined;
   if (parsedLimit !== undefined && isNaN(parsedLimit)) {
@@ -79,25 +76,8 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
     });
   }
 
-  const requestedSources = sources ?? ["reinforcement"];
-  const enabledSources = await listEnabledSources(auth);
-  const effectiveSources = requestedSources.filter((source) =>
-    enabledSources.has(source)
-  );
-  if (effectiveSources.length === 0) {
+  if (!(await hasReinforcementEnabled(auth))) {
     return ctx.json({ suggestions: [] });
-  }
-
-  let sourceConversationModelId: number | undefined;
-  if (conversationId) {
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-    if (!conversation) {
-      return ctx.json({ suggestions: [] });
-    }
-    sourceConversationModelId = conversation.id;
   }
 
   const suggestions = await SkillSuggestionResource.listBySkillConfigurationId(
@@ -105,9 +85,8 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
     skill.sId,
     {
       states,
-      sources: effectiveSources,
+      sources: ["reinforcement"],
       kinds: kind ? [kind] : undefined,
-      sourceConversationModelId,
       limit: parsedLimit,
     }
   );

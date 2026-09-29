@@ -17,10 +17,7 @@ import type {
   PatchSkillSuggestionResponseBody,
 } from "@app/types/api/assistant/skills/suggestions";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-import type {
-  ReviewableSkillSuggestionSource,
-  SkillSuggestionType,
-} from "@app/types/suggestions/skill_suggestion";
+import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -36,8 +33,6 @@ interface UseSkillSuggestionsParams {
   disabled?: boolean;
   kind?: GetSkillSuggestionsQuery["kind"];
   states?: GetSkillSuggestionsQuery["states"];
-  sources: ReviewableSkillSuggestionSource[];
-  conversationId?: string | null;
   limit?: number;
   workspaceId: string;
 }
@@ -47,8 +42,6 @@ export function useSkillSuggestions({
   disabled,
   kind,
   states,
-  sources,
-  conversationId,
   limit,
   workspaceId,
 }: UseSkillSuggestionsParams) {
@@ -59,12 +52,8 @@ export function useSkillSuggestions({
   if (states) {
     states.forEach((s) => urlParams.append("states", s));
   }
-  sources.forEach((s) => urlParams.append("sources", s));
   if (kind) {
     urlParams.append("kind", kind);
-  }
-  if (conversationId) {
-    urlParams.append("conversationId", conversationId);
   }
   if (limit !== undefined) {
     urlParams.append("limit", limit.toString());

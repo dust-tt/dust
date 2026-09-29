@@ -3,14 +3,12 @@
 // suggestions route so validation has a single source of truth.
 import { isString } from "@app/types/shared/utils/general";
 import {
-  REVIEWABLE_SKILL_SUGGESTION_SOURCES,
   SKILL_SUGGESTION_KINDS,
   SkillSuggestionSchema,
 } from "@app/types/suggestions/skill_suggestion";
 import { z } from "zod";
 
 const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
-const SourceSchema = z.enum(REVIEWABLE_SKILL_SUGGESTION_SOURCES);
 
 // Next.js serializes single query param values as string, multiple as array.
 const stringOrArrayToArray = <T extends z.ZodTypeAny>(schema: T) =>
@@ -18,9 +16,7 @@ const stringOrArrayToArray = <T extends z.ZodTypeAny>(schema: T) =>
 
 export const GetSkillSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray(StateSchema).optional(),
-  sources: stringOrArrayToArray(SourceSchema).optional(),
   kind: z.enum(SKILL_SUGGESTION_KINDS).optional(),
-  conversationId: z.string().optional(),
   limit: z.string().optional(),
 });
 

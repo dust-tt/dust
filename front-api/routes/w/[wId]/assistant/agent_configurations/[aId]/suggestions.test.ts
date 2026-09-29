@@ -417,6 +417,26 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/suggestions", () =
     expect(responseData.suggestions[0].sId).toBe(suggestion.sId);
   });
 
+  it("only returns Sidekick suggestions", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const sidekick = await AgentSuggestionFactory.createInstructions(
+      auth,
+      agent,
+      { state: "pending", source: "sidekick" }
+    );
+    await AgentSuggestionFactory.createInstructions(auth, agent, {
+      state: "pending",
+      source: "conversational",
+    });
+
+    const response = await getSuggestions(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    expect(
+      (await response.json()).suggestions.map((s: { sId: string }) => s.sId)
+    ).toEqual([sidekick.sId]);
+  });
+
   it("should not return other agent's suggestions", async () => {
     const { workspace, auth, agent } = await setupTest();
 
