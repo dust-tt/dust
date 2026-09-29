@@ -74,7 +74,6 @@ export function buildSkillNameAutocompleteQuery(
   if (terms.length === 0) {
     return { match_all: {} };
   }
-  const joinedTerms = terms.join(" ");
   return {
     bool: {
       must: terms.map((term) => ({
@@ -88,12 +87,12 @@ export function buildSkillNameAutocompleteQuery(
       should: [
         {
           constant_score: {
-            filter: { term: { "name.keyword": joinedTerms } },
+            filter: { term: { "name.keyword": searchTerm } },
           },
         },
         {
           multi_match: {
-            query: joinedTerms,
+            query: terms.join(" "),
             type: "bool_prefix",
             operator: "and",
             fields: ["name.keyword", ...NAME_AUTOCOMPLETE_FIELDS],

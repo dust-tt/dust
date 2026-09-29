@@ -114,7 +114,7 @@ describe("custom skill search", () => {
               should: [
                 {
                   constant_score: {
-                    filter: { term: { "name.keyword": "report b" } },
+                    filter: { term: { "name.keyword": "  report   b  " } },
                   },
                 },
                 {
