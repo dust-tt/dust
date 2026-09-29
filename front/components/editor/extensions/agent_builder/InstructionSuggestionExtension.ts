@@ -7,6 +7,7 @@ import {
 import { KNOWLEDGE_TAG } from "@app/lib/editor/knowledge_node_constants";
 import { SKILL_TAG_NAME, UNAVAILABLE_SKILL_TAG_NAME } from "@app/lib/skills/format";
 import { TOOL_TAG_NAME } from "@app/lib/tools/format";
+import type { Config } from "dompurify";
 import DOMPurify from "dompurify";
 import { Extension } from "@tiptap/core";
 import type { Node as PMNode, Schema, Slice } from "@tiptap/pm/model";
@@ -21,7 +22,7 @@ import { Transform } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { ChangeSet } from "prosemirror-changeset";
 
-const INSTRUCTION_PURIFY_CONFIG = {
+const INSTRUCTION_PURIFY_CONFIG: Config = {
   ADD_TAGS: [KNOWLEDGE_TAG, SKILL_TAG_NAME, TOOL_TAG_NAME, UNAVAILABLE_SKILL_TAG_NAME],
   ALLOW_DATA_ATTR: true,
 };
