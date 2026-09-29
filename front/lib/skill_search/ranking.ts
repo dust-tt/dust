@@ -89,7 +89,6 @@ export function buildSkillNameAutocompleteQuery(
         {
           constant_score: {
             filter: { term: { "name.keyword": joinedTerms } },
-            boost: 10,
           },
         },
         {
