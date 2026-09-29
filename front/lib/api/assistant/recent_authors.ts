@@ -244,8 +244,7 @@ export async function agentConfigurationWasUpdatedBy({
   agent: AgentResource;
   auth: Authenticator;
 }) {
-  const { sId: agentId, versionAuthorId: authorId } = agent;
-  const { version } = agent.content;
+  const { sId: agentId, versionAuthorId: authorId, version } = agent;
   if (!authorId) {
     return;
   }

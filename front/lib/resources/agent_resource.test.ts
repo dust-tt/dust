@@ -467,7 +467,7 @@ describe("AgentResource", () => {
     expect(resource).not.toBeNull();
     expect(resource?.id).toBe(agent.agentModelId);
     expect(resource?.status).toBe("active");
-    expect(resource?.content.version).toBe(currentConfig.version);
+    expect(resource?.version).toBe(currentConfig.version);
   });
 
   it("returns one resource per agent when fetching in batches", async () => {
@@ -545,7 +545,7 @@ describe("AgentResource", () => {
 
     // The snapshot round-trip must keep the agent row's `createdAt`, not fall back to the version's.
     expect(resource.createdAt.getTime()).toBe(agentCreatedAt.getTime());
-    expect(resource.content.createdAt.getTime()).not.toBe(
+    expect(resource.versionCreatedAt.getTime()).not.toBe(
       agentCreatedAt.getTime()
     );
   });
@@ -563,8 +563,8 @@ describe("AgentResource", () => {
     const snapshot = full.toSnapshot();
 
     // `content` must carry every `AgentConfigurationModel` column except the ones folded into the
-    // resource's identity/core, or explicitly excluded. When this fails the model changed shape:
-    // reconcile `AgentResourceContent` and bump `AGENT_RESOURCE_CACHE_VERSION`.
+    // resource's identity/core/version metadata, or explicitly excluded. When this fails the model
+    // changed shape: reconcile `AgentResourceContent` and bump `AGENT_RESOURCE_CACHE_VERSION`.
     const foldedIntoIdentityOrCore = new Set([
       // Carried as the core `agentConfigurationModelId`, not `content`.
       "id",
@@ -587,6 +587,12 @@ describe("AgentResource", () => {
       "temperature",
       "reasoningEffort",
       "responseFormat",
+      // Carried by the core version metadata, not `content`.
+      "version",
+      "maxStepsPerRun",
+      "creditSpendCheckpointThresholdAwuCredits",
+      "createdAt",
+      "updatedAt",
     ]);
     // Deliberately not carried by `AgentResource` (deprecated/unused column).
     const excludedColumns = new Set(["visualizationEnabled"]);
@@ -757,7 +763,7 @@ describe("AgentResource", () => {
     );
     assert(latest?.isFull());
     expect(latest.description).toBe("v1");
-    expect(latest.content.version).toBeGreaterThan(v0.content.version);
+    expect(latest.version).toBeGreaterThan(v0.version);
   });
 
   it("does not serve an agent to a caller from another workspace", async () => {
@@ -1690,7 +1696,7 @@ describe("AgentResource", () => {
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
       // A new version, with the new model, keeping the agent's own temperature.
-      expect(after.content.version).toBe(agent.version + 1);
+      expect(after.version).toBe(agent.version + 1);
       expect(after.modelConfiguration.modelId).toBe("gpt-5");
       expect(after.modelConfiguration.reasoningEffort).toBe("medium");
       expect(after.modelConfiguration.temperature).toBe(0.7);
@@ -1735,7 +1741,7 @@ describe("AgentResource", () => {
         agent.sId
       );
       assert(afterFirst?.isFull());
-      expect(afterFirst.content.version).toBe(agent.version + 1);
+      expect(afterFirst.version).toBe(agent.version + 1);
 
       // Re-applying the exact same model is a no-op: no new version is created.
       const second = await AgentResource.bulkUpdate(
@@ -1759,7 +1765,7 @@ describe("AgentResource", () => {
         agent.sId
       );
       assert(afterSecond?.isFull());
-      expect(afterSecond.content.version).toBe(afterFirst.content.version);
+      expect(afterSecond.version).toBe(afterFirst.version);
     });
 
     it("skips archived agents and reports them", async () => {
@@ -1836,7 +1842,7 @@ describe("AgentResource", () => {
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
       // A new version was created and both tags are attached to it.
-      expect(after.content.version).toBe(agent.version + 1);
+      expect(after.version).toBe(agent.version + 1);
       expect(await currentTagIds(authenticator, agent.sId)).toEqual(
         [existingTag.sId, newTag.sId].sort()
       );
@@ -1865,7 +1871,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(agent.version + 1);
+      expect(after.version).toBe(agent.version + 1);
       expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
     });
 
@@ -1889,7 +1895,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(agent.version);
+      expect(after.version).toBe(agent.version);
     });
 
     it("lets a workspace admin who is not an editor tag an agent", async () => {
@@ -1954,7 +1960,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(agent.version);
+      expect(after.version).toBe(agent.version);
       expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
     });
 
@@ -1992,7 +1998,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(agent.version);
+      expect(after.version).toBe(agent.version);
       expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
       const editorIds = (await after.listEditors(authenticator))?.map(
         (editor) => editor.id
@@ -2051,7 +2057,7 @@ describe("AgentResource", () => {
       assert(noop.isOk());
       const afterNoop = await AgentResource.fetchById(authenticator, agent.sId);
       assert(afterNoop?.isFull());
-      expect(afterNoop.content.version).toBe(before.content.version);
+      expect(afterNoop.version).toBe(before.version);
 
       // Editing the schema under the `id` property is a real change and MUST create a new version,
       // rather than being masked by the identity-key drop and silently skipped.
@@ -2069,7 +2075,7 @@ describe("AgentResource", () => {
       assert(edited.isOk());
       const afterEdit = await AgentResource.fetchById(authenticator, agent.sId);
       assert(afterEdit?.isFull());
-      expect(afterEdit.content.version).toBe(before.content.version + 1);
+      expect(afterEdit.version).toBe(before.version + 1);
     });
   });
 
@@ -2097,7 +2103,7 @@ describe("AgentResource", () => {
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
       // No new version was created for an editor-only change.
-      expect(after.content.version).toBe(before.content.version);
+      expect(after.version).toBe(before.version);
       const editorIds = (await after.listEditors(authenticator))?.map(
         (e) => e.id
       );
@@ -2123,7 +2129,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(before.content.version + 1);
+      expect(after.version).toBe(before.version + 1);
       expect(after.description).toBe("A brand new description");
       expect(after.scope).toBe("visible");
     });
@@ -2169,7 +2175,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(auth, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(before.content.version + 1);
+      expect(after.version).toBe(before.version + 1);
       expect(after.description).toBe("A brand new description");
       expect(after.scope).toBe("hidden");
     });
@@ -2197,7 +2203,7 @@ describe("AgentResource", () => {
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
-      expect(after.content.version).toBe(before.content.version);
+      expect(after.version).toBe(before.version);
       expect(after.scope).toBe("visible");
       expect(after.description).toBe(before.description);
     });
