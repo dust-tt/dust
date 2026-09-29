@@ -73,18 +73,6 @@ export function FilePreviewPanel({
   const fileName = path
     ? (path.split("/").pop() ?? path)
     : (fileMetadata?.fileName ?? "");
-  const urls = path
-    ? {
-        baseUrl: getFilePathViewUrl(owner, path),
-        downloadUrl: getFilePathDownloadUrl(owner, path),
-      }
-    : fileId
-      ? {
-          baseUrl: getFileViewUrl(owner, fileId),
-          downloadUrl: getFileDownloadUrl(owner, fileId),
-        }
-      : null;
-
   // Reuse the file-explorer entry when the sandbox listing has loaded so we get
   // the real content type, fileId, and version. Before it loads (or for files
   // missing from the listing) fall back to a minimal entry derived from the
@@ -95,6 +83,19 @@ export function FilePreviewPanel({
         (f): f is FileSystemFileEntry => !f.isDirectory && f.path === path
       )
     : undefined;
+  const urls = path
+    ? {
+        baseUrl: getFilePathViewUrl(owner, path),
+        downloadUrl: getFilePathDownloadUrl(owner, path, {
+          lastModifiedMs: sandboxFile?.lastModifiedMs,
+        }),
+      }
+    : fileId
+      ? {
+          baseUrl: getFileViewUrl(owner, fileId),
+          downloadUrl: getFileDownloadUrl(owner, fileId),
+        }
+      : null;
   const contentType =
     sandboxFile?.contentType ??
     fileMetadata?.contentType ??
