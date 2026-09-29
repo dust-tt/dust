@@ -14,6 +14,7 @@ import {
   markDuplicateSuggestionsAsOutdated,
   pruneSupersededSingletonSuggestions,
 } from "@app/lib/api/assistant/agent_suggestion_pruning";
+import { validateAgentTagsChange } from "@app/lib/api/assistant/agent_tags_change";
 import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
 import {
@@ -56,6 +57,7 @@ import type {
   ScopeSuggestionType,
   SkillsSuggestionType,
   SubAgentSuggestionType,
+  TagsSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import {
@@ -262,6 +264,29 @@ export async function validateAgentEditorsSuggestion(
   }
 
   return new Ok({ addUserIds, removeUserIds });
+}
+
+/**
+ * Applies the validation the suggestion is applied with (`validateAgentTagsChange`), so a
+ * suggestion that is created as pending can be applied later. Records the tags by name, as stored.
+ */
+export async function validateAgentTagsSuggestion(
+  auth: Authenticator,
+  agent: AgentResource,
+  { addTags, removeTags }: { addTags: string[]; removeTags: string[] }
+): Promise<Result<TagsSuggestionType, MCPError>> {
+  const validation = await validateAgentTagsChange(auth, agent, {
+    addTags,
+    removeTags,
+  });
+  if (validation.isErr()) {
+    return new Err(new MCPError(validation.error.message));
+  }
+
+  return new Ok({
+    addTags: validation.value.addTags,
+    removeTags: validation.value.removeTags,
+  });
 }
 
 /**
@@ -692,7 +717,16 @@ export async function validateAgentSubAgentChanges(
 /** Kinds of which a single suggestion may be pending per agent at a time. */
 export type SingletonAgentSuggestionData = Extract<
   AgentSuggestionData,
-  { kind: "name" | "description" | "scope" | "model" | "editors" | "delete" }
+  {
+    kind:
+      | "name"
+      | "description"
+      | "scope"
+      | "model"
+      | "editors"
+      | "tags"
+      | "delete";
+  }
 >;
 
 /**
