@@ -67,6 +67,10 @@ type SkillSearchRow = SkillListItemType & { onClick: () => void };
  * @cc [owner:aubin-tchoi,label:product] skill-name-tooltip
  * Hovering or focusing a skill name must show its name and user-facing description.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:react] matching-table-density
+ * The loaded table and its loading skeleton MUST use the same density.
+ */
 export function SkillSearchTable({
   owner,
   skills,
@@ -183,7 +187,10 @@ export function SkillSearchTable({
               </DataTable.CellContent>
             );
           },
-          meta: { className: SKILL_SEARCH_NAME_COLUMN_WIDTH },
+          meta: {
+            className: SKILL_SEARCH_NAME_COLUMN_WIDTH,
+            rowHeader: true,
+          },
         },
         {
           id: "availability" as const,
@@ -191,7 +198,10 @@ export function SkillSearchTable({
           cell: ({ row: { original: skill } }) => (
             <SkillAvailabilityCell availability={skill.availability} />
           ),
-          meta: { className: "hidden w-40 @md:table-cell" },
+          meta: {
+            type: "status",
+            className: "hidden w-40 @md:table-cell",
+          },
         },
         {
           id: "usage" as const,
@@ -209,7 +219,7 @@ export function SkillSearchTable({
               }
             />
           ),
-          meta: { className: "w-24 font-mono tabular-nums" },
+          meta: { type: "numeric", className: "w-24 font-mono" },
         },
         {
           id: "editors" as const,
@@ -256,7 +266,7 @@ export function SkillSearchTable({
       <div role="status" aria-label="Loading skills">
         <DataTableSkeleton
           columns={columns}
-          rowHeight={64}
+          density="relaxed"
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
               case "select":
@@ -302,6 +312,7 @@ export function SkillSearchTable({
         onClick: () => onSelect(skill.sId),
       }))}
       columns={columns}
+      density="relaxed"
       getRowId={(skill) => skill.sId}
       enableRowSelection={(row) => canSelect(row.original)}
       disableRowClickSelection

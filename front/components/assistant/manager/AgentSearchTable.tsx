@@ -155,6 +155,10 @@ function AgentSearchTagSelector({
  * @cc [owner:aubin-tchoi,label:product] agent-name-tooltip
  * Hovering or focusing an agent name must show its name and description.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:react] matching-table-density
+ * The loaded table and its loading skeleton MUST use the same density.
+ */
 export function AgentSearchTable({
   owner,
   agents,
@@ -282,7 +286,7 @@ export function AgentSearchTable({
               />
             </DataTable.CellContent>
           ),
-          meta: { className: "w-48 @lg:w-full" },
+          meta: { className: "w-48 @lg:w-full", rowHeader: true },
         },
         {
           id: "model" as const,
@@ -307,7 +311,10 @@ export function AgentSearchTable({
               )}
             </DataTable.CellContent>
           ),
-          meta: { className: "hidden @lg:w-32 @lg:table-cell" },
+          meta: {
+            type: "status",
+            className: "hidden @lg:w-32 @lg:table-cell",
+          },
         },
         {
           id: "editors" as const,
@@ -367,7 +374,10 @@ export function AgentSearchTable({
               }
             />
           ),
-          meta: { className: "hidden @sm:w-24 @sm:table-cell" },
+          meta: {
+            type: "numeric",
+            className: "hidden @sm:w-24 @sm:table-cell",
+          },
         },
         {
           id: "feedback" as const,
@@ -385,7 +395,10 @@ export function AgentSearchTable({
               />
             );
           },
-          meta: { className: "hidden @lg:w-28 @lg:table-cell" },
+          meta: {
+            type: "numeric",
+            className: "hidden @lg:w-28 @lg:table-cell",
+          },
         },
         {
           id: "updatedAt" as const,
@@ -423,7 +436,7 @@ export function AgentSearchTable({
       <div role="status" aria-label="Loading agents">
         <DataTableSkeleton
           columns={columns}
-          rowHeight={64}
+          density="relaxed"
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
               case "select":
@@ -476,6 +489,7 @@ export function AgentSearchTable({
         onClick: () => onSelect(agent.sId),
       }))}
       columns={columns}
+      density="relaxed"
       getRowId={(agent) => agent.sId}
       enableRowSelection={(row) => canSelect(row.original)}
       disableRowClickSelection
