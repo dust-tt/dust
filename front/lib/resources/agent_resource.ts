@@ -2924,9 +2924,12 @@ export class AgentResource
    * path. A pending agent is the sole versioning exception: a definition edit updates its single row
    * in place (preserving version 0 and its FK relationships, see `writeAgentConfigurationRow`) rather
    * than archiving it and creating a new version. All required permissions MUST be checked before any
-   * change is applied so a save never partially succeeds. A caller that cannot read the agent (a
-   * `light` resource) cannot create a version, so provided definition fields are ignored; it may
-   * still change scope/editors it is authorized for.
+   * change is applied so a save never partially succeeds. A caller that cannot view the agent's
+   * content (a `light` resource, see `agent-content-visibility`) cannot create a version, so provided
+   * definition fields are ignored; it may still change scope/editors it is authorized for. A caller
+   * that views the content without `read` (the `admin_can_see_private_entities` admin override) is
+   * handed a `full` resource, so its definition fields are NOT ignored but gated as above: only the
+   * model and tags may produce a version, through their `admin` paths.
    */
   /**
    * @cc [owner:tdraier,label:backend] save-skips-noop-version
