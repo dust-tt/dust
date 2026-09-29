@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSearchbar,
@@ -22,7 +23,7 @@ import {
   ListItemSection,
   MagicWand02,
   MessageChatSquare,
-  Plus,
+  MessageCircle01,
   ReplySection,
   Robot,
   SearchInput,
@@ -110,7 +111,7 @@ import { ConversationListItem } from "./ConversationListItem";
 /** Mirrors the Inbox clear menu, cut the way a pod's conversations are. */
 const MARK_READ_ACTIONS = [
   { id: "all", label: "All conversations", icon: MessageChatSquare },
-  { id: "automated", label: "All automated conversations", icon: Zap },
+  { id: "automated", label: "All automated", icon: Zap },
   { id: "group", label: "All group conversations", icon: Users01 },
   { id: "personal", label: "All personal conversations", icon: User01 },
 ] as const;
@@ -3264,6 +3265,7 @@ export function GroupConversationView({
                         />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuLabel label="Mark as read" />
                         {MARK_READ_ACTIONS.map(({ id, label, icon }) => (
                           <DropdownMenuItem
                             key={id}
@@ -3279,8 +3281,8 @@ export function GroupConversationView({
                       <Button
                         variant="highlight"
                         size="sm"
-                        icon={Plus}
-                        label="New"
+                        icon={MessageCircle01}
+                        tooltip="Create a new conversation"
                         onClick={() => onNewConversation()}
                       />
                     )}
@@ -3365,22 +3367,24 @@ export function GroupConversationView({
                                     conversation.id
                                   }
                                   replySection={
-                                    <ReplySection
-                                      replyCount={listItem.replyCount}
-                                      unreadCount={
-                                        isUnread ? listItem.messageCount : 0
-                                      }
-                                      mentionCount={
-                                        listItem.trigger || !isUnread
-                                          ? 0
-                                          : listItem.mentionCount
-                                      }
-                                      avatars={listItem.avatarProps}
-                                      lastMessageBy={
-                                        listItem.avatarProps[0]?.name ||
-                                        "Unknown"
-                                      }
-                                    />
+                                    // A trigger's run is not a thread you reply
+                                    // to, so it reads as it does in the Inbox.
+                                    listItem.trigger ? undefined : (
+                                      <ReplySection
+                                        replyCount={listItem.replyCount}
+                                        unreadCount={
+                                          isUnread ? listItem.messageCount : 0
+                                        }
+                                        mentionCount={
+                                          isUnread ? listItem.mentionCount : 0
+                                        }
+                                        avatars={listItem.avatarProps}
+                                        lastMessageBy={
+                                          listItem.avatarProps[0]?.name ||
+                                          "Unknown"
+                                        }
+                                      />
+                                    )
                                   }
                                   menuItems={buildConversationRowMenuItems({
                                     isUnread,

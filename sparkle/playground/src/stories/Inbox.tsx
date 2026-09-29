@@ -1928,8 +1928,7 @@ function Inbox() {
                 variant="highlight"
                 tooltip="Create a new conversation"
                 size="sm"
-                icon={Plus}
-                label="New"
+                icon={MessageCircle01}
                 className="shrink-0"
                 onClick={() => {
                   setP2View({ kind: "welcome" });

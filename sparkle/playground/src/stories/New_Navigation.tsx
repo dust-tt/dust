@@ -1118,7 +1118,7 @@ function NewNavigation() {
       return BUILD_SECTION_DISPLAY[p2View.section].label;
     if (p2View.kind === "inboxAlt") return "Inbox";
     if (p2View.kind === "requests") return "Requests";
-    if (p2View.kind === "conversations") return "Conversations";
+    if (p2View.kind === "conversations") return "Free conversations";
     if (p2View.kind === "automations") return "Automated work";
     if (podContext) return podContext.space.name;
     if (p2View.kind === "conversation")
@@ -1654,7 +1654,7 @@ function NewNavigation() {
     if (p2View.kind === "conversations")
       return (
         <Breadcrumbs
-          items={[{ label: "Conversations", icon: MessageChatSquare }]}
+          items={[{ label: "Free conversations", icon: MessageChatSquare }]}
           size="sm"
           hasLighterFont
         />
@@ -1782,8 +1782,7 @@ function NewNavigation() {
                 variant="highlight"
                 tooltip="Create a new conversation"
                 size="sm"
-                icon={Plus}
-                label="New"
+                icon={MessageCircle01}
                 className="shrink-0"
                 onClick={() => {
                   setP2View({ kind: "welcome" });
@@ -1820,7 +1819,7 @@ function NewNavigation() {
                 }}
               />
               <NavigationListItem
-                label="Conversations"
+                label="Free conversations"
                 icon={MessageChatSquare}
                 selected={p2View.kind === "conversations"}
                 onClick={() => {

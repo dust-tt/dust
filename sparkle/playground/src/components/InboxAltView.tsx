@@ -10,13 +10,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Inbox01,
   ListGroup,
   ListItemSection,
   MessageChatSquare,
+  MessageCircle01,
   MessageQuestionCircle,
   PauseFill,
-  Plus,
   Robot,
   SearchInput,
   Spinner,
@@ -110,18 +113,15 @@ type InboxAltRow =
 type RowState = ConversationWorkState | "read";
 
 /**
- * What the Clear menu offers: the rows you are done with, or a whole kind of
- * row at once. Work still in flight is never among them.
+ * The kinds of row the menu acts on, whole at a time. Both sections offer the
+ * same cuts: reading leaves the rows listed, clearing takes them out. Work
+ * still in flight is never among them.
  */
-const CLEAR_ACTIONS = [
-  { id: "read", label: "Clear all read", icon: Check },
-  {
-    id: "conversations",
-    label: "Clear all conversations",
-    icon: MessageChatSquare,
-  },
-  { id: "requests", label: "Clear all requests", icon: MessageQuestionCircle },
-  { id: "automated", label: "Clear all automated", icon: Zap },
+const ROW_GROUP_ACTIONS = [
+  { id: "everything", label: "Everything", icon: Inbox01 },
+  { id: "conversations", label: "All convo", icon: MessageChatSquare },
+  { id: "requests", label: "All requests", icon: MessageQuestionCircle },
+  { id: "automated", label: "All automated", icon: Zap },
 ] as const;
 
 /** The states you can narrow the list to, in the order work moves through. */
@@ -708,28 +708,38 @@ export function InboxAltView({
       (row) => !isInFlight(rowStates.get(row.id))
     );
     const conversations = takeable.filter((row) => row.kind === "conversation");
+    const idsOf = (list: InboxAltRow[]) => list.map((row) => row.id);
 
     return {
-      read: takeable
-        .filter((row) => rowStates.get(row.id) === "read")
-        .map((row) => row.id),
-      conversations: conversations
-        .filter(
+      everything: idsOf(takeable),
+      conversations: idsOf(
+        conversations.filter(
           (row) =>
             row.kind === "conversation" && row.source.kind !== "automated"
         )
-        .map((row) => row.id),
-      requests: takeable
-        .filter((row) => row.kind === "request")
-        .map((row) => row.id),
-      automated: conversations
-        .filter(
+      ),
+      requests: idsOf(takeable.filter((row) => row.kind === "request")),
+      automated: idsOf(
+        conversations.filter(
           (row) =>
             row.kind === "conversation" && row.source.kind === "automated"
         )
-        .map((row) => row.id),
+      ),
     };
   }, [rowStates, visibleRows]);
+
+  // Reading in bulk takes the same cuts, minus whatever is already read.
+  const markable = useMemo(() => {
+    const unread = (rowIds: string[]) =>
+      rowIds.filter((rowId) => rowStates.get(rowId) !== "read");
+
+    return {
+      everything: unread(clearable.everything),
+      conversations: unread(clearable.conversations),
+      requests: unread(clearable.requests),
+      automated: unread(clearable.automated),
+    };
+  }, [clearable, rowStates]);
 
   const clear = useCallback(
     (rowIds: string[]) => {
@@ -893,14 +903,26 @@ export function InboxAltView({
                   icon={CheckDouble}
                   size="sm"
                   variant="outline"
-                  tooltip="Clear rows out of the Inbox."
+                  tooltip="Mark rows as read, or clear them out of the Inbox."
                   isSelect
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {CLEAR_ACTIONS.map(({ id, label, icon }) => (
+                <DropdownMenuLabel label="Mark as read" />
+                {ROW_GROUP_ACTIONS.map(({ id, label, icon }) => (
                   <DropdownMenuItem
-                    key={id}
+                    key={`read-${id}`}
+                    label={label}
+                    icon={icon}
+                    disabled={markable[id].length === 0}
+                    onClick={() => onRowsRead?.(markable[id])}
+                  />
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel label="Clear" />
+                {ROW_GROUP_ACTIONS.map(({ id, label, icon }) => (
+                  <DropdownMenuItem
+                    key={`clear-${id}`}
                     label={label}
                     icon={icon}
                     disabled={clearable[id].length === 0}
@@ -913,8 +935,8 @@ export function InboxAltView({
               <Button
                 variant="highlight"
                 size="sm"
-                icon={Plus}
-                label="New"
+                icon={MessageCircle01}
+                tooltip="Create a new conversation"
                 onClick={() => onNewConversation()}
               />
             )}
