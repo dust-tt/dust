@@ -336,7 +336,7 @@ export function SearchAgentsPage() {
                 <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
               ))}
               <div className="grow" />
-              <div className="flex items-center">
+              <div className="self-start">
                 <AgentFilterPanel
                   owner={owner}
                   categories={filterCategories}

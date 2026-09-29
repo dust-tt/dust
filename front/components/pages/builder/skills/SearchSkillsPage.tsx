@@ -356,7 +356,7 @@ export function SearchSkillsPage() {
                 <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
               ))}
               <div className="grow" />
-              <div className="flex items-center">
+              <div className="self-start">
                 <SkillFilterPanel
                   owner={owner}
                   searchTerm={searchTerm}
