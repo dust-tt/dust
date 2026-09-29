@@ -466,32 +466,28 @@ export function FrameRenderer({
                   fileName={fileMetadata?.fileName}
                   hidden={!isFrameInPod}
                 />
-                {projectSaveState === "saved" && (
-                  <Button
-                    icon={CheckCircle}
-                    variant="ghost"
-                    disabled={true}
-                    label={isMobile ? undefined : "Saved"}
-                    tooltip={`Saved in "${projectInfo?.name ?? "unknown Pod"}"`}
-                  />
-                )}
-                {projectSaveState === "supported" && (
-                  <Button
-                    icon={UploadCloud02}
-                    variant="ghost"
-                    label={
-                      isMobile
-                        ? undefined
-                        : isSavingToProject
-                          ? "Saving…"
-                          : "Save"
-                    }
-                    isLoading={isSavingToProject}
-                    tooltip={`Save to "${projectInfo?.name ?? "unknown Pod"}"`}
-                    onClick={handleSaveToProject}
-                  />
-                )}
               </>
+            )}
+            {projectSaveState === "saved" && (
+              <Button
+                icon={CheckCircle}
+                variant="ghost"
+                disabled={true}
+                label={isMobile ? undefined : "Saved"}
+                tooltip={`Saved in "${projectInfo?.name ?? "unknown Pod"}"`}
+              />
+            )}
+            {projectSaveState === "supported" && (
+              <Button
+                icon={UploadCloud02}
+                variant="ghost"
+                label={
+                  isMobile ? undefined : isSavingToProject ? "Saving…" : "Save"
+                }
+                isLoading={isSavingToProject}
+                tooltip={`Save to "${projectInfo?.name ?? "unknown Pod"}"`}
+                onClick={handleSaveToProject}
+              />
             )}
           </div>
         </div>
