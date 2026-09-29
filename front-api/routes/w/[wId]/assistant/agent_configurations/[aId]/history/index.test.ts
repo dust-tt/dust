@@ -28,6 +28,32 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/history", () => {
     expect(history.map((a: { sId: string }) => a.sId)).toEqual([agent.sId]);
   });
 
+  it("returns every version newest first, with its instructions", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      instructions: "v0 instructions",
+    });
+    await AgentConfigurationFactory.updateTestAgent(auth, agent.sId, {
+      instructions: "v1 instructions",
+    });
+
+    const response = await getHistory(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    const { history } = await response.json();
+    expect(
+      history.map((a: { version: number; instructions: string }) => [
+        a.version,
+        a.instructions,
+      ])
+    ).toEqual([
+      [agent.version + 1, "v1 instructions"],
+      [agent.version, "v0 instructions"],
+    ]);
+  });
+
   it("returns not found to a member for a hidden agent they do not edit", async () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "user" });
     const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");

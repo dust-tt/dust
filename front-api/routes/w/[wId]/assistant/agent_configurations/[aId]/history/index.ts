@@ -1,5 +1,5 @@
-import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { GetAgentConfigurationsHistoryQuerySchema } from "@app/types/api/agent_configuration";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -28,8 +28,8 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const assistant = await AgentResource.fetchById(auth, aId);
-    if (!assistant || (!auth.can("read", assistant) && !auth.isAdmin())) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent || !auth.can("read", agent)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -61,26 +61,16 @@ app.get(
 
     const { limit } = queryValidation.data;
 
-    let agentConfigurations = await listsAgentConfigurationVersions(auth, {
-      agentId: aId,
-      variant: "light",
+    const versions = (await agent.listVersions(auth)).filter((version) =>
+      version.isFull()
+    );
+
+    return ctx.json({
+      history: await toLightAgentConfigurations(
+        auth,
+        limit ? versions.slice(0, limit) : versions
+      ),
     });
-
-    if (limit) {
-      agentConfigurations = agentConfigurations.slice(0, limit);
-    }
-
-    if (agentConfigurations.length === 0 || !agentConfigurations[0].canRead) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "agent_configuration_not_found",
-          message: "The agent you're trying to access was not found.",
-        },
-      });
-    }
-
-    return ctx.json({ history: agentConfigurations });
   }
 );
 

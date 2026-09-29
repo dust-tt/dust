@@ -168,7 +168,7 @@ export async function validateAction(
     try {
       // Resolved via the resource so the agent-message model lookup stays in
       // the resource layer (models-behind-resources/business-functions-use-resources).
-      const auditAgentConfig = await action.getLightAgentConfiguration(auth);
+      const auditAgent = await action.getAgent(auth);
       void emitAuditLogEvent({
         auth,
         action: "tool.approval_resolved",
@@ -187,10 +187,10 @@ export async function validateAction(
           tool_name: action.toolConfiguration.originalName,
           mcp_server_name: action.toolConfiguration.mcpServerName,
           stake_level: action.toolConfiguration.permission,
-          ...(auditAgentConfig
+          ...(auditAgent
             ? {
-                agent_id: auditAgentConfig.sId,
-                agent_name: auditAgentConfig.name,
+                agent_id: auditAgent.sId,
+                agent_name: auditAgent.name,
               }
             : {}),
           conversation_id: conversationId,
