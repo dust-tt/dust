@@ -66,6 +66,7 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const credentialsRes = await getCredentials({
       credentialsId: connectionId,
+      workspaceId: dataSourceConfig.workspaceId,
       isTypeGuard: isBigQueryWithLocationCredentials,
       logger,
     });
@@ -126,6 +127,7 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
 
     const newCredentialsRes = await getCredentials({
       credentialsId: connectionId,
+      workspaceId: c.workspaceId,
       isTypeGuard: isBigQueryWithLocationCredentials,
       logger,
     });

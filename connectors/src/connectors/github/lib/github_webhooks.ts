@@ -18,6 +18,9 @@ const InstallationSchema = t.type({
 const RepositorySchema = t.type({
   id: t.number,
   name: t.string,
+  owner: t.type({
+    login: t.string,
+  }),
 });
 
 const RepositoriesAddedPayloadSchema = t.type({
