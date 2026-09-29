@@ -120,6 +120,14 @@ export function redactObjectValues(
   );
 }
 
+const REDACTED_SECRET_PREFIX = "•••";
+
+// Detects a value that went through `redactSecret`, e.g. a client sending back a secret it only
+// ever received redacted.
+export function isRedactedSecret(value: string): boolean {
+  return value.startsWith(REDACTED_SECRET_PREFIX);
+}
+
 export function truncate(text: string, length: number, omission = "...") {
   return text.length > length
     ? `${text.substring(0, length - omission.length)}${omission}`
