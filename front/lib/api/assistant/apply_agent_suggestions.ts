@@ -61,7 +61,6 @@ import {
   AgentSuggestionDataSchema,
   getAgentSuggestionAction,
   INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
-  isCreateAgentSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
@@ -103,7 +102,8 @@ function pickDefaultAvatar(): string {
  * A `create` suggestion MUST only be applied to the `pending` placeholder agent it targets: it
  * turns that placeholder into an `active`, `hidden` agent (same `sId`, editors unchanged) carrying
  * the suggested name, description, instructions, tools and skills. Tools and skills are checked
- * again against live state, as when added to an existing agent. Applying it to an agent that is not
+ * again against live state, as when added to an existing agent, and a skill may also be a `pending`
+ * skill that the same batch creates. Applying it to an agent that is not
  * `pending`, or with a tool or skill that no longer qualifies, fails with `invalid_request_error`
  * and changes nothing.
  */
@@ -334,8 +334,9 @@ async function resolveToolsEdits(
 
 /**
  * Carries the agent's actions over, with the suggested sub-agents added or removed. Added
- * sub-agents are checked again against live state (see `suggestable-sub-agents-match-builder`)
- * and run through the `run_agent` tool with the builder's defaults. A sub-agent already added, or
+ * sub-agents are checked again against live state (see `suggestable-sub-agents-match-builder`),
+ * except a `pending` agent, named after its create suggestion, and run through the
+ * `run_agent` tool with the builder's defaults. A sub-agent already added, or
  * already removed, since the suggestion was recorded is skipped.
  */
 async function resolveSubAgentsEdits(
@@ -387,16 +388,22 @@ async function resolveSubAgentsEdits(
     const suggestable = await fetchSuggestableSubAgents(auth, [
       ...addedSubAgentIds,
     ]);
+
+    const pendingAgentNameById = await fetchPendingAgentNames(
+      auth,
+      [...addedSubAgentIds].filter((subAgentId) => !suggestable.has(subAgentId))
+    );
+
     for (const subAgentId of addedSubAgentIds) {
-      const placeholder = suggestable.has(subAgentId)
-        ? null
-        : await fetchPlaceholderAgent(auth, subAgentId);
-      const addition = placeholder
-        ? new Ok(placeholder)
+      const pendingAgentName = pendingAgentNameById.get(subAgentId);
+
+      const addition = pendingAgentName
+        ? new Ok({ sId: subAgentId, name: pendingAgentName })
         : checkSubAgentAddition(subAgentId, suggestable, { agentId });
       if (addition.isErr()) {
         return new Err(new DustError("invalid_request_error", addition.error));
       }
+
       actions.push(
         getDefaultMCPActionPayload(runAgentTool, {
           takenNames: new Set(actions.map((action) => action.name)),
@@ -412,29 +419,55 @@ async function resolveSubAgentsEdits(
   });
 }
 
-/** A `pending` placeholder agent, named after the agent its create suggestion proposes. */
-async function fetchPlaceholderAgent(
+/** The `pending` agents among `agentIds`, each named after the agent its create suggestion proposes. */
+async function fetchPendingAgentNames(
   auth: Authenticator,
-  agentId: string
-): Promise<{ sId: string; name: string } | null> {
-  const agent = await AgentResource.fetchById(auth, agentId);
-  if (agent?.status !== "pending") {
-    return null;
+  agentIds: string[]
+): Promise<Map<string, string>> {
+  const agents = await AgentResource.fetchByIds(auth, agentIds);
+  const pendingAgentIds = agents
+    .filter((agent) => agent.status === "pending")
+    .map((agent) => agent.sId);
+
+  const creations = await AgentSuggestionResource.listByAgentConfigurationIds(
+    auth,
+    pendingAgentIds,
+    { states: ["pending"], kind: "create" }
+  );
+
+  const nameById = new Map<string, string>();
+  for (const creation of creations) {
+    const parsed = AgentSuggestionDataSchema.safeParse({
+      kind: creation.kind,
+      suggestion: creation.suggestion,
+    });
+    if (parsed.success && parsed.data.kind === "create") {
+      nameById.set(creation._agentConfigurationId, parsed.data.suggestion.name);
+    }
   }
-  const [creation] = (
-    await AgentSuggestionResource.listByAgentConfigurationId(auth, agentId, {
-      states: ["pending"],
-      kind: "create",
-    })
-  )
-    .map((suggestion) => suggestion.toJSON())
-    .filter(isCreateAgentSuggestion);
-  return creation ? { sId: agentId, name: creation.suggestion.name } : null;
+
+  return nameById;
+}
+
+/** The `pending` skills among `skillIds`. */
+async function fetchPendingSkillIds(
+  auth: Authenticator,
+  skillIds: string[]
+): Promise<Set<string>> {
+  const skills = await SkillResource.fetchByIds(auth, skillIds, {
+    withInstructions: false,
+    withTools: false,
+    withFileAttachments: false,
+  });
+  const pendingSkills = skills.filter((skill) => skill.status === "pending");
+
+  return new Set(pendingSkills.map((skill) => skill.sId));
 }
 
 /**
  * Carries the agent's current skills over, with the suggested skills added or removed. Added skills
- * are checked again against live state. A skill already added, or already removed,
+ * are checked again against live state, except a `pending` skill (see
+ * `suggestable-skills-match-builder`). A skill already added, or already removed,
  * since the suggestion was recorded is skipped.
  */
 async function resolveSkillsEdits(
@@ -461,23 +494,14 @@ async function resolveSkillsEdits(
   );
 
   const suggestable = await fetchSuggestableSkills(auth, [...addedSkillIds]);
-  const placeholderSkillIds = new Set(
-    (
-      await SkillResource.fetchByIds(
-        auth,
-        [...addedSkillIds].filter((skillId) => !suggestable.has(skillId)),
-        {
-          withInstructions: false,
-          withTools: false,
-          withFileAttachments: false,
-        }
-      )
-    )
-      .filter((skill) => skill.status === "pending")
-      .map((skill) => skill.sId)
+
+  const pendingSkillIds = await fetchPendingSkillIds(
+    auth,
+    [...addedSkillIds].filter((skillId) => !suggestable.has(skillId))
   );
+
   for (const skillId of addedSkillIds) {
-    if (placeholderSkillIds.has(skillId)) {
+    if (pendingSkillIds.has(skillId)) {
       continue;
     }
     const addition = checkSkillAddition(skillId, suggestable);
