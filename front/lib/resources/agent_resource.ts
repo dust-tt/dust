@@ -818,33 +818,25 @@ export class AgentResource
    * @cc [owner:tdraier,label:backend;security] agent-versions
    * `fetchVersion`/`listVersions` resolve the configuration versions (current and previous) of this
    * agent, in its workspace. Each version is its own resource carrying that version's head fields,
-   * version metadata, tools, tags and skills, and MUST be materialized like every resolved resource:
-   * the caller's verbs are those its own row grants (its stored scope, status and requested spaces,
-   * see `agent-verbs`), a version the caller holds no verb on is dropped, and it is `light` unless
-   * the caller can view its content (see `agent-content-visibility`). A global agent is not
-   * versioned: it is its only version. A previous version is read-only: see `isCurrentVersion`.
+   * version metadata, tools, tags and skills, and MUST be materialized for the supplied `auth`, like
+   * every resolved resource, whatever authenticator `this` was resolved for: the caller's verbs are
+   * those its own row grants (its stored scope, status and requested spaces, see `agent-verbs`), a
+   * version the caller holds no verb on is dropped, and it is `light` unless the caller can view its
+   * content (see `agent-content-visibility`). Their `isCurrentVersion` MUST compare against the
+   * agent's current-version pointer read together with them, not the one `this` was loaded with. A
+   * global agent is not versioned: it is its only version, resolved for `auth` as `fetchById` does.
+   * A previous version is read-only: see `isCurrentVersion`.
    */
   async fetchVersion(
     auth: Authenticator,
     version: number
   ): Promise<AgentResource | null> {
-    if (
-      this.scope === "global" ||
-      (this.isCurrentVersion && version === this.version)
-    ) {
-      return this;
-    }
-
     const [resource] = await this.loadVersions(auth, { version });
     return resource ?? null;
   }
 
   // Newest first.
   async listVersions(auth: Authenticator): Promise<AgentResource[]> {
-    if (this.scope === "global") {
-      return [this];
-    }
-
     return this.loadVersions(auth, {});
   }
 
@@ -854,35 +846,35 @@ export class AgentResource
   ): Promise<AgentResource[]> {
     assert(auth.getNonNullableWorkspace().id === this.workspaceId);
 
-    const configurations = await AgentConfigurationModel.findAll({
-      where: {
-        workspaceId: this.workspaceId,
-        agentId: this.id,
-        ...(version !== undefined ? { version } : {}),
-      },
-      order: [["version", "DESC"]],
-    });
+    if (this.scope === "global") {
+      return AgentResource.fetchGlobalAgents(auth, [this.sId]);
+    }
 
-    const versions = configurations.map(
-      (configuration) =>
-        new AgentResource(
-          {
-            id: this.id,
-            workspaceId: this.workspaceId,
-            sId: this.sId,
-            createdAt: this.createdAt,
-            updatedAt: this.updatedAt,
-            currentVersion: this.currentVersion,
-            name: null,
-            status: null,
-            scope: null,
-            reinforcement: null,
-            lastReinforcementAnalysisAt: null,
-            templateId: null,
-          },
-          configuration.get()
-        )
-    );
+    // One statement, so the `currentVersion` pointer and the version rows are read consistently.
+    const agent = await AgentModel.findOne({
+      where: { id: this.id, workspaceId: this.workspaceId },
+      include: [
+        {
+          model: AgentConfigurationModel,
+          required: false,
+          where: version !== undefined ? { version } : undefined,
+        },
+      ],
+    });
+    if (!agent) {
+      return [];
+    }
+    const { agent_configurations: configurations, ...agentAttributes } =
+      agent.get() as Attributes<AgentModel> & {
+        agent_configurations: AgentConfigurationModel[];
+      };
+
+    const versions = configurations
+      .map(
+        (configuration) =>
+          new AgentResource(agentAttributes, configuration.get())
+      )
+      .sort((a, b) => b.version - a.version);
     const adminCanSeePrivateEntities =
       await AgentResource.resolveAdminCanSeePrivateEntities(auth, versions);
 
@@ -3040,6 +3032,60 @@ export class AgentResource
       instructions: this.content.instructions,
       toolIds,
       skillIds,
+    };
+  }
+
+  // What the sidekick's `get_agent_info` tool exposes; the instructions make it full-only.
+  toSidekickAgentInfoJSON(
+    this: FullAgentResource,
+    {
+      tags,
+      actions,
+      skills,
+    }: {
+      tags: TagResource[];
+      actions: MCPServerConfigurationType[];
+      skills: SkillResource[];
+    }
+  ): {
+    sId: string;
+    version: number;
+    name: string;
+    description: string;
+    instructions: string | null;
+    model: Pick<
+      AgentModelConfigurationType,
+      "providerId" | "modelId" | "temperature" | "reasoningEffort"
+    >;
+    scope: AgentConfigurationScope;
+    status: AgentConfigurationStatus;
+    tags: { sId: string; name: string }[];
+    tools: { sId: string; name: string; description: string | null }[];
+    skills: { sId: string; name: string; userFacingDescription: string }[];
+  } {
+    const { providerId, modelId, temperature, reasoningEffort } =
+      this.modelConfiguration;
+
+    return {
+      sId: this.sId,
+      version: this.version,
+      name: this.name,
+      description: this.description,
+      instructions: this.content.instructions,
+      model: { providerId, modelId, temperature, reasoningEffort },
+      scope: this.scope,
+      status: this.status,
+      tags: tags.map((tag) => ({ sId: tag.sId, name: tag.name })),
+      tools: actions.map((action) => ({
+        sId: action.sId,
+        name: action.name,
+        description: action.description,
+      })),
+      skills: skills.map((skill) => ({
+        sId: skill.sId,
+        name: skill.name,
+        userFacingDescription: skill.userFacingDescription,
+      })),
     };
   }
 

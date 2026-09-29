@@ -50,42 +50,16 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
         );
       }
 
-      const [tags, actions, agentSkills] = await Promise.all([
+      const [tags, actions, skills] = await Promise.all([
         agentVersionResource.listTags(auth),
         agentVersionResource.listActions(auth),
         agentVersionResource.listSkills(auth),
       ]);
-      const { modelConfiguration } = agentVersionResource;
-
-      const agentInfo = {
-        sId: agentVersionResource.sId,
-        version: agentVersionResource.version,
-        name: agentVersionResource.name,
-        description: agentVersionResource.description,
-        instructions: agentVersionResource.content.instructions,
-        model: {
-          providerId: modelConfiguration.providerId,
-          modelId: modelConfiguration.modelId,
-          temperature: modelConfiguration.temperature,
-          reasoningEffort: modelConfiguration.reasoningEffort,
-        },
-        scope: agentVersionResource.scope,
-        status: agentVersionResource.status,
-        tags: tags.map((tag) => ({
-          sId: tag.sId,
-          name: tag.name,
-        })),
-        tools: actions.map((action) => ({
-          sId: action.sId,
-          name: action.name,
-          description: action.description,
-        })),
-        skills: agentSkills.map((skill) => ({
-          sId: skill.sId,
-          name: skill.name,
-          userFacingDescription: skill.userFacingDescription,
-        })),
-      };
+      const agentInfo = agentVersionResource.toSidekickAgentInfoJSON({
+        tags,
+        actions,
+        skills,
+      });
 
       return new Ok([
         {

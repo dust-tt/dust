@@ -1660,7 +1660,7 @@ describe("AgentResource", () => {
       expect(await previous.listActions(authenticator)).toHaveLength(1);
     });
 
-    it("fetches a single version, the current one being the resource itself", async () => {
+    it("fetches a single version", async () => {
       const { authenticator } = testContext;
       const agent = await AgentConfigurationFactory.createTestAgent(
         authenticator,
@@ -1677,12 +1677,50 @@ describe("AgentResource", () => {
       const previous = await current.fetchVersion(authenticator, agent.version);
 
       expect(previous?.description).toBe("v0");
-      expect(await current.fetchVersion(authenticator, current.version)).toBe(
-        current
-      );
+      const latest = await current.fetchVersion(authenticator, current.version);
+      expect(latest?.description).toBe("v1");
+      expect(latest?.isCurrentVersion).toBe(true);
       expect(
         await current.fetchVersion(authenticator, current.version + 1)
       ).toBeNull();
+    });
+
+    it("resolves versions for the supplied caller, not the one the agent was fetched for", async () => {
+      const { authenticator, workspace } = testContext;
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "hidden" }
+      );
+      const editorView = await AgentResource.fetchById(
+        authenticator,
+        agent.sId
+      );
+      assert(editorView?.isFull());
+      const { agentOwnerAuth: memberAuth } = await setupAgentOwner(
+        workspace,
+        "user"
+      );
+
+      expect(
+        await editorView.fetchVersion(memberAuth, editorView.version)
+      ).toBeNull();
+      expect(await editorView.listVersions(memberAuth)).toEqual([]);
+    });
+
+    it("reads the current-version pointer with the versions, not from a stale resource", async () => {
+      const { authenticator } = testContext;
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const stale = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(stale);
+      await AgentConfigurationFactory.updateTestAgent(authenticator, agent.sId);
+
+      const [latest, previous] = await stale.listVersions(authenticator);
+
+      expect(latest?.version).toBe(agent.version + 1);
+      expect(latest?.isCurrentVersion).toBe(true);
+      expect(previous?.version).toBe(agent.version);
+      expect(previous?.isCurrentVersion).toBe(false);
     });
 
     it("refuses to mutate a previous version", async () => {
