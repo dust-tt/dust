@@ -1,9 +1,8 @@
 // @vitest-environment node
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterEach, describe, expect, it, vi } from "vitest";
-
 import { internalFetch } from "@app/lib/api/internal_fetch";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 // vite.setup.ts replaces `internalFetch` with a mock; this file tests the real one.
 vi.unmock("@app/lib/api/internal_fetch");
