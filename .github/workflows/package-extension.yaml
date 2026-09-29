@@ -51,13 +51,14 @@ jobs:
           DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
           DATADOG_SERVICE: extension
           COMMIT_HASH: ${{ steps.short_sha.outputs.short_sha }}
+          TARGET: ${{ inputs.target }}
         run: |
           set -a
           source ../.github/configs/us-central1/.env.prod
           # shellcheck disable=SC2034  # exported via set -a, consumed by the extension build
           BUILD_DATE=$(date +%s)
           set +a
-          npm run package:${{ inputs.target }}
+          npm run "package:${TARGET}"
 
       - name: Resolve artifact name
         id: artifact
