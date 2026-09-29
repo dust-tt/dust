@@ -264,21 +264,18 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     if (this.workspaceId !== workspace.id) {
       return { kind: "none" };
     }
-    const membership =
-      await MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user: this.requester,
-        workspace,
-      });
-    if (!membership) {
-      return { kind: "none" };
+    // Workspace managers can still clear requests after the requester leaves the workspace.
+    if (auth.isManager()) {
+      return { kind: "workspace" };
     }
     return getMemberVerbAuthority(auth, this.requester, "set_usage_limits");
   }
 
   /**
    * @cc [owner:philipperolet,label:security;concurrency] request-resolution-authority
-   * Resolution MUST recheck authority over the current requester and update only a pending
-   * request in the caller's workspace. Concurrent resolutions MUST have only one winner.
+   * Delegated resolution MUST recheck the requester's current workspace and group membership.
+   * Workspace managers may also resolve former members' requests. Only pending requests in the
+   * caller's workspace may change, and concurrent resolutions MUST have only one winner.
    */
   async markAsResolved(
     auth: Authenticator,

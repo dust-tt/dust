@@ -309,6 +309,34 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       ).not.toBeNull();
     });
 
+    it("keeps former members' requests resolvable by workspace managers", async () => {
+      const { workspace, adminAuth, member } = await createManagedRequests();
+      const request = await MembershipUpgradeRequestResource.getPendingForUser(
+        adminAuth,
+        { user: member }
+      );
+      expect(request).not.toBeNull();
+      if (!request) {
+        return;
+      }
+      await MembershipResource.revokeMembership({ user: member, workspace });
+      await createPrivateApiMockRequest({
+        method: "PATCH",
+        role: "manager",
+        workspace,
+      });
+      const response = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}/${request.sId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "denied" }),
+        }
+      );
+      expect(response.status).toBe(200);
+      expect((await response.json()).request.status).toBe("denied");
+    });
+
     it("allows only one concurrent resolution and emits one audit event", async () => {
       const { workspace, adminAuth, delegate, member } =
         await createManagedRequests();
