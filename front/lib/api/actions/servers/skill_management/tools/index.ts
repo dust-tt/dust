@@ -58,6 +58,14 @@ async function mountSkillFilesToConversation(
   });
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:security;product] enable-skill-authorization
+ * A skill MUST be enabled only when it is available to the current agent loop, explicitly
+ * referenced by a visible user message, or directly referenced by a parent skill available to
+ * the current agent loop.
+ * Global parent references MUST use the parent's instructions because they have no
+ * persisted skill reference rows.
+ */
 async function findAvailableSkillForAgentLoop({
   auth,
   agentLoopData,
@@ -107,6 +115,17 @@ async function findAvailableSkillForAgentLoop({
   });
   if (!candidate) {
     return null;
+  }
+
+  // Code-defined skills have no SkillReferenceModel rows. Only a global skill already available to
+  // this agent loop may authorize one of its direct children.
+  for (const parentSkill of parentSkillById.values()) {
+    if (
+      parentSkill.kind === "global" &&
+      extractUniqueSkillIds(parentSkill.instructions).includes(candidate.sId)
+    ) {
+      return candidate;
+    }
   }
 
   const usedBySkillsByChild = await SkillResource.batchFetchUsedBySkills(auth, [
