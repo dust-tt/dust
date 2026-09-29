@@ -40,12 +40,14 @@ jobs:
         uses: "google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db" # v3.0.1
 
       - name: List available tags
+        env:
+          COMPONENT: ${{ inputs.component }}
         run: |
           # The front releases run the front-api images.
-          case "${{ inputs.component }}" in
+          case "$COMPONENT" in
             front) IMAGE="front-api" ;;
             front-edge) IMAGE="front-api-edge" ;;
-            *) IMAGE="${{ inputs.component }}" ;;
+            *) IMAGE="$COMPONENT" ;;
           esac
           IMAGE_REPO="us-central1-docker.pkg.dev/dust-infra/dust-images/${IMAGE}"
 
