@@ -139,7 +139,7 @@ export class OAuthAPI {
   }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
     const redirectUri = finalizeUriForProvider({ provider, connection });
     const response = await this._fetchWithError(
-      `${this._url}/connections/${connection.connection_id}/finalize`,
+      `${this._url}/connections/${encodeURIComponent(connection.connection_id)}/finalize`,
       {
         method: "POST",
         headers: {
