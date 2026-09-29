@@ -61,15 +61,10 @@ app.get(
 
     const { limit } = queryValidation.data;
 
-    const versions = (await agent.listVersions(auth)).filter((version) =>
-      version.isFull()
-    );
+    const versions = await agent.listVersions(auth, { limit });
 
     return ctx.json({
-      history: await toLightAgentConfigurations(
-        auth,
-        limit ? versions.slice(0, limit) : versions
-      ),
+      history: await toLightAgentConfigurations(auth, versions),
     });
   }
 );

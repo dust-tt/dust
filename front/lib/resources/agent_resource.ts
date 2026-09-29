@@ -835,14 +835,17 @@ export class AgentResource
     return resource ?? null;
   }
 
-  // Newest first.
-  async listVersions(auth: Authenticator): Promise<AgentResource[]> {
-    return this.loadVersions(auth, {});
+  // Newest first, the `limit` newest ones when given.
+  async listVersions(
+    auth: Authenticator,
+    { limit }: { limit?: number } = {}
+  ): Promise<AgentResource[]> {
+    return this.loadVersions(auth, { limit });
   }
 
   private async loadVersions(
     auth: Authenticator,
-    { version }: { version?: number }
+    { version, limit }: { version?: number; limit?: number }
   ): Promise<AgentResource[]> {
     assert(auth.getNonNullableWorkspace().id === this.workspaceId);
 
@@ -851,30 +854,24 @@ export class AgentResource
     }
 
     // One statement, so the `currentVersion` pointer and the version rows are read consistently.
-    const agent = await AgentModel.findOne({
-      where: { id: this.id, workspaceId: this.workspaceId },
-      include: [
-        {
-          model: AgentConfigurationModel,
-          required: false,
-          where: version !== undefined ? { version } : undefined,
-        },
-      ],
+    const configurations = await AgentConfigurationModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        agentId: this.id,
+        ...(version !== undefined ? { version } : {}),
+      },
+      include: [{ model: AgentModel, required: true }],
+      order: [["version", "DESC"]],
+      limit,
     });
-    if (!agent) {
-      return [];
-    }
-    const { agent_configurations: configurations, ...agentAttributes } =
-      agent.get() as Attributes<AgentModel> & {
-        agent_configurations: AgentConfigurationModel[];
-      };
 
-    const versions = configurations
-      .map(
-        (configuration) =>
-          new AgentResource(agentAttributes, configuration.get())
-      )
-      .sort((a, b) => b.version - a.version);
+    const versions = configurations.map((configuration) => {
+      const { agent, ...configurationAttributes } =
+        configuration.get() as Attributes<AgentConfigurationModel> & {
+          agent: AgentModel;
+        };
+      return new AgentResource(agent.get(), configurationAttributes);
+    });
     const adminCanSeePrivateEntities =
       await AgentResource.resolveAdminCanSeePrivateEntities(auth, versions);
 
