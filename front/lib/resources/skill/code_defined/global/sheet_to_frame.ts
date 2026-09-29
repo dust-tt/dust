@@ -195,4 +195,4 @@ export const sheetToFrameSkill = {
     const featureFlags = await getFeatureFlags(auth);
     return !isFramesV2FunctionsEnabled(featureFlags);
   },
-} as const satisfies GlobalSkillDefinition<typeof SHEET_TO_FRAME_INSTRUCTIONS>;
+} as const satisfies GlobalSkillDefinition;

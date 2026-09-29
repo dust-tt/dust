@@ -114,9 +114,9 @@ type ChildSkillsForIds<T extends readonly string[]> = T extends readonly [
 
 /**
  * @cc [owner:aubin-tchoi,label:product;security] global-skill-children-match-tags
- * For static global skill instructions typed as a literal, `childSkills` MUST contain exactly the
- * unique global skill IDs emitted in `<skill>` tags, in first-appearance order. Global skills
- * without those tags MUST NOT declare children.
+ * When a static global skill is registered with literal instructions, `childSkills` MUST contain
+ * exactly the unique global skill IDs emitted in `<skill>` tags, in first-appearance order.
+ * Global skills without those tags MUST NOT declare children.
  */
 export type GlobalSkillDefinition<Instructions extends string = string> =
   SkillDefinition & { readonly kind: "global" } & (string extends Instructions
@@ -135,7 +135,7 @@ export type SystemSkillDefinition = SkillDefinition<"enabled"> & {
   readonly kind: "system";
 };
 
-// Helper function that enforces unique sIds.
+// Validate IDs and inferred child declarations when registering skills.
 export function ensureUniqueSIds<T extends readonly SkillDefinition[]>(
   skills: readonly [...T] & {
     // For each element in the array (I = index).
@@ -157,6 +157,15 @@ export function ensureUniqueSIds<T extends readonly SkillDefinition[]>(
         : // For non-sId properties, just pass through unchanged.
           T[I][K];
     };
+  } & {
+    [I in keyof T]: T[I] extends {
+      readonly kind: "global";
+      readonly instructions: infer Instructions extends string;
+    }
+      ? T[I] extends GlobalSkillDefinition<Instructions>
+        ? T[I]
+        : "ERROR: childSkills must match the skill tags in instructions"
+      : T[I];
   }
 ): T {
   return skills as T;
