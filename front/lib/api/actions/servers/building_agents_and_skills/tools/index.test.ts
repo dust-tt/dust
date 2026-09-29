@@ -23,6 +23,7 @@ import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -236,10 +237,38 @@ describe("building_agents_and_skills tools", () => {
       }
       expect(result.value[0].text).toContain(`Described Agent [${agent.sId}]`);
       expect(result.value[0].text).toContain("Describes things.");
+      expect(result.value[0].text).toContain("- Tags: none\n");
       expect(result.value[0].text).toContain('data-block-id="block1"');
       expect(result.value[0].text).toContain(
         "required to target block-level instruction edits"
       );
+    });
+
+    it("lists the agent's tags", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Tagged Agent" }
+      );
+      const sales = await TagFactory.create(workspace, { name: "Sales" });
+      const support = await TagFactory.create(workspace, { name: "Support" });
+      await TagFactory.addToAgent(authenticator, sales, agent);
+      await TagFactory.addToAgent(authenticator, support, agent);
+
+      const result = await getTool(DESCRIBE_AGENT_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      expect(result.value[0].text).toContain("- Tags: Sales, Support\n");
     });
 
     it("returns an MCPError for an unknown agent", async () => {
@@ -266,6 +295,8 @@ describe("building_agents_and_skills tools", () => {
         name: "Hidden Agent",
         scope: "hidden",
       });
+      const tag = await TagFactory.create(workspace, { name: "Sales" });
+      await TagFactory.addToAgent(ownerAuth, tag, agent);
 
       const result = await getTool(DESCRIBE_AGENT_TOOL_NAME).handler(
         { agentId: agent.sId },
@@ -280,6 +311,8 @@ describe("building_agents_and_skills tools", () => {
         throw new Error("Expected text output.");
       }
       expect(result.value[0].text).toContain("Hidden Agent");
+      // Tags are public, so they are not redacted.
+      expect(result.value[0].text).toContain("- Tags: Sales\n");
       expect(result.value[0].text).toContain(
         "Instructions, skills and tools are private"
       );

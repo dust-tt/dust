@@ -39,11 +39,17 @@ export async function describeAgentHandler(
   }
 
   const agent = result.value;
+  // Tags are public (`list_agents` shows them too), so they are not withheld from non-readers.
+  const tagNames = (await agent.listTags(auth))
+    .map((tag) => tag.name)
+    .sort((a, b) => a.localeCompare(b))
+    .join(", ");
   const header =
     `Agent ${agent.name} [${agent.sId}]\n` +
     `- Description: ${agent.description}\n` +
     `- Scope: ${agent.scope}\n` +
-    `- Model: ${agent.modelConfiguration.providerId}/${agent.modelConfiguration.modelId}\n`;
+    `- Model: ${agent.modelConfiguration.providerId}/${agent.modelConfiguration.modelId}\n` +
+    `- Tags: ${tagNames || "none"}\n`;
 
   if (!agent.isFull()) {
     return new Ok([
