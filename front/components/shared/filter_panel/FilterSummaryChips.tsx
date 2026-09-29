@@ -1,5 +1,5 @@
 import type { FilterSummary } from "@app/components/shared/filter_panel/filterState";
-import { Button, Chip, cn, Spinner } from "@dust-tt/sparkle";
+import { Button, Chip, cn, LoadingBlock } from "@dust-tt/sparkle";
 import {
   AnimatePresence,
   domMax,
@@ -88,7 +88,10 @@ export function FilterSummaryChips<Category extends string>({
             transition={transition}
             className={cn("origin-top", className)}
           >
-            <div className="flex flex-wrap items-center gap-2">
+            <div
+              aria-busy={isLoading}
+              className="flex flex-wrap items-center gap-2"
+            >
               <AnimatePresence initial={false}>
                 {chips.map((chip) => (
                   <m.div
@@ -117,7 +120,12 @@ export function FilterSummaryChips<Category extends string>({
                   </m.div>
                 ))}
               </AnimatePresence>
-              {isLoading && <Spinner size="xs" />}
+              {isLoading && (
+                <>
+                  <LoadingBlock className="h-6 w-24 rounded-[9px]" />
+                  <LoadingBlock className="h-6 w-32 rounded-[9px]" />
+                </>
+              )}
               <m.div layout={!shouldReduceMotion} transition={transition}>
                 <Button
                   label="Clear all"
