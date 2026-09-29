@@ -1851,5 +1851,99 @@ describe("building_agents_and_skills tools", () => {
         );
       });
     });
+
+    describe("editor changes", () => {
+      const editEditors = (
+        agentId: string,
+        editors: { addUserIds?: string[]; removeUserIds?: string[] }
+      ) => ({
+        title: "Update editors",
+        analysis: "The agent needs other editors.",
+        suggestions: [{ kind: "edit_agent", agentId, editors }],
+      });
+
+      it("records one pending editors suggestion without applying it", async () => {
+        const { authenticator, user, workspace } = await createResourceTest({
+          role: "user",
+        });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const newEditor = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, newEditor, {
+          role: "user",
+        });
+
+        const batchId = extractBatchId(
+          await runSuggest(
+            authenticator,
+            editEditors(agent.sId, {
+              addUserIds: [newEditor.sId],
+              removeUserIds: [user.sId],
+            })
+          )
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          authenticator,
+          batchId
+        );
+        expect(batch?.agentSuggestions.map((s) => s.toJSON())).toMatchObject([
+          {
+            kind: "editors",
+            state: "pending",
+            suggestion: {
+              addUserIds: [newEditor.sId],
+              removeUserIds: [user.sId],
+            },
+          },
+        ]);
+        const agentResource = await AgentResource.fetchById(
+          authenticator,
+          agent.sId
+        );
+        const editors = (await agentResource?.listEditors(authenticator)) ?? [];
+        expect(editors.map((editor) => editor.sId)).toEqual([user.sId]);
+      });
+
+      it("rejects changes that do not fit the current editors", async () => {
+        const { authenticator, user, workspace } = await createResourceTest({
+          role: "user",
+        });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+        const outsider = await UserFactory.basic();
+
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editEditors(agent.sId, { addUserIds: [user.sId] })
+          ),
+          "already editors"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editEditors(agent.sId, { removeUserIds: [member.sId] })
+          ),
+          "not editors"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editEditors(agent.sId, { addUserIds: [outsider.sId] })
+          ),
+          "not active members"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editEditors(agent.sId, { removeUserIds: [user.sId] })
+          ),
+          "without any editor"
+        );
+      });
+    });
   });
 });
