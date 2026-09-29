@@ -50,7 +50,7 @@ type OpenPanelParams =
   | {
       type: "skill";
       skillId: string;
-      previewSuggestionIds?: string[];
+      previewBatchId?: string;
     }
   | {
       type: "tool";
@@ -59,7 +59,7 @@ type OpenPanelParams =
   | {
       type: "agent";
       agentId: string;
-      previewSuggestionIds?: string[];
+      previewBatchId?: string;
     };
 
 const FILE_PREVIEW_FILE_ID_PREFIX = "id:";
@@ -83,14 +83,15 @@ export function parseFilePreviewData(
 
 export interface SuggestionPreviewTarget {
   entityId: string;
-  suggestionIds: string;
+  // `undefined` when the panel previews no batch.
+  batchId: string | undefined;
 }
 
 export function parseSuggestionPreviewData(
   data: string | undefined
 ): SuggestionPreviewTarget {
-  const [entityId, suggestionIds = ""] = (data ?? "").split("@");
-  return { entityId, suggestionIds };
+  const [entityId, batchId] = (data ?? "").split("@");
+  return { entityId, batchId };
 }
 
 function filePreviewDataKey(target: FilePreviewTarget): string {
@@ -122,14 +123,14 @@ function panelDataKey(params: OpenPanelParams): string {
     case PLAN_SIDE_PANEL_TYPE:
       return params.type;
     case SKILL_SIDE_PANEL_TYPE:
-      return params.previewSuggestionIds?.length
-        ? `${params.skillId}@${params.previewSuggestionIds.join(",")}`
+      return params.previewBatchId
+        ? `${params.skillId}@${params.previewBatchId}`
         : params.skillId;
     case TOOL_SIDE_PANEL_TYPE:
       return params.toolId;
     case AGENT_SIDE_PANEL_TYPE:
-      return params.previewSuggestionIds?.length
-        ? `${params.agentId}@${params.previewSuggestionIds.join(",")}`
+      return params.previewBatchId
+        ? `${params.agentId}@${params.previewBatchId}`
         : params.agentId;
     default:
       return assertNever(params);
@@ -181,26 +182,14 @@ function panelParamsFromHash(
     case PLAN_SIDE_PANEL_TYPE:
       return { type };
     case SKILL_SIDE_PANEL_TYPE: {
-      const { entityId, suggestionIds } = parseSuggestionPreviewData(data);
-      return {
-        type,
-        skillId: entityId,
-        previewSuggestionIds: suggestionIds
-          ? suggestionIds.split(",")
-          : undefined,
-      };
+      const { entityId, batchId } = parseSuggestionPreviewData(data);
+      return { type, skillId: entityId, previewBatchId: batchId };
     }
     case TOOL_SIDE_PANEL_TYPE:
       return { type, toolId: data };
     case AGENT_SIDE_PANEL_TYPE: {
-      const { entityId, suggestionIds } = parseSuggestionPreviewData(data);
-      return {
-        type,
-        agentId: entityId,
-        previewSuggestionIds: suggestionIds
-          ? suggestionIds.split(",")
-          : undefined,
-      };
+      const { entityId, batchId } = parseSuggestionPreviewData(data);
+      return { type, agentId: entityId, previewBatchId: batchId };
     }
     default:
       assertNeverAndIgnore(type);

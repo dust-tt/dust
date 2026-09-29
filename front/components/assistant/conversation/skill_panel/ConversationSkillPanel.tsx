@@ -10,10 +10,8 @@ import {
   SkillDetailsHeader,
   SkillLoadError,
 } from "@app/components/skills/SkillDetailsBody";
-import {
-  useSkillSuggestions,
-  useSkillSuggestionsPreview,
-} from "@app/hooks/useSkillSuggestions";
+import { useSkillSuggestionsPreview } from "@app/hooks/useSkillSuggestions";
+import { useSuggestionBatch } from "@app/hooks/useSuggestionBatches";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { useUser } from "@app/lib/swr/user";
 import { isCreateSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
@@ -27,22 +25,21 @@ interface ConversationSkillPanelProps {
 
 export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
   const { closePanel, data } = useConversationSidePanelContext();
-  const { entityId, suggestionIds } = parseSuggestionPreviewData(data);
+  const { entityId, batchId } = parseSuggestionPreviewData(data);
   const skillId = entityId || null;
   const { user } = useUser();
 
-  const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
-    skillId,
+  const { batch, isBatchLoading: isSuggestionsLoading } = useSuggestionBatch({
+    batchId: batchId ?? null,
     workspaceId: owner.sId,
-    sources: ["conversational"],
-    disabled: !suggestionIds,
   });
-  const previewSuggestions = useMemo(() => {
-    const ids = suggestionIds.split(",");
-    return suggestions.filter(
-      (s) => s.state === "pending" && ids.includes(s.sId)
-    );
-  }, [suggestions, suggestionIds]);
+  const previewSuggestions = useMemo(
+    () =>
+      (batch?.skillSuggestions ?? []).filter(
+        (s) => s.skillConfigurationId === skillId && s.state === "pending"
+      ),
+    [batch, skillId]
+  );
   const [hiddenPreviewData, setHiddenPreviewData] = useState<string>();
   const isApplied = hiddenPreviewData !== data;
   const hasPreview = previewSuggestions.length > 0;

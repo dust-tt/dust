@@ -193,13 +193,12 @@ export function ConversationSuggestionPile({
   batchIds,
   recap,
 }: ConversationSuggestionPileProps) {
-  const { batches, isBatchesLoading, mutateBatches } = useSuggestionBatches({
+  const { batches, isBatchesLoading } = useSuggestionBatches({
     batchIds,
     workspaceId: owner.sId,
   });
   const reviewBatches = useReviewSuggestionBatches({
     workspaceId: owner.sId,
-    mutateBatches,
   });
 
   const [isReviewing, setIsReviewing] = useState(false);
