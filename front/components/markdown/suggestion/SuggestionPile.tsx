@@ -154,7 +154,7 @@ function SuggestionPileRecapActions({
         <Button
           variant="outline"
           size="sm"
-          label="Accept all"
+          label="Allow all"
           onClick={onAcceptAll}
           disabled={isBusy}
           isLoading={bulkState === "approved"}
@@ -185,7 +185,7 @@ interface ConversationSuggestionPileProps {
 
 /**
  * @cc [owner:avervaet,label:product] bulk-review-pending-only
- * "Accept all", "Reject all" and "Accept remaining" MUST only review batches of this pile that are
+ * "Allow all", "Reject all" and "Allow remaining" MUST only review batches of this pile that are
  * still pending, and MUST leave a batch pending when its review request fails.
  */
 export function ConversationSuggestionPile({
@@ -293,7 +293,7 @@ export function ConversationSuggestionPile({
           <Button
             variant="ghost-secondary"
             size="sm"
-            label="Accept remaining"
+            label="Allow remaining"
             onClick={() => void review("approved")}
             disabled={isBusy}
             isLoading={bulkState === "approved"}

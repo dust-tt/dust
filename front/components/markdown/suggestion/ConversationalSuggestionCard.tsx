@@ -50,7 +50,7 @@ export function ConversationalSuggestionCard({
   onReject,
   onPreview,
   secondaryAction,
-  acceptLabel = "Accept",
+  acceptLabel = "Allow",
   rejectLabel = "Decline",
   disabled = false,
   isAccepting = false,
