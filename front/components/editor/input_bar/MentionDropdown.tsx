@@ -47,9 +47,9 @@ export const MentionDropdown = forwardRef<
     const triggerRect = clientRect?.();
 
     // Fetch suggestions from server using the query.
-    // Agent search ranking is preserved when interleaving user suggestions.
+    // Backend handles all prioritization logic (participants, preferred agent, etc.)
     const { suggestions, isLoading } = useMentionSuggestions({
-      owner,
+      workspaceId: owner.sId,
       conversationId,
       spaceId,
       query,

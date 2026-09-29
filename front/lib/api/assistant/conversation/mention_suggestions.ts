@@ -1,17 +1,19 @@
+import { searchAgents } from "@app/lib/api/agents/search";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getLastUserMessageMentions } from "@app/lib/api/assistant/conversation";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import type { Authenticator } from "@app/lib/auth";
 import {
   filterAndSortEditorSuggestionAgents,
-  interleaveMentionsPreservingAgentOrder,
   SUGGESTION_DISPLAY_LIMIT,
+  SUGGESTION_PRIORITY,
   sortEditorSuggestionUsers,
 } from "@app/lib/mentions/editor/suggestion";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   RichAgentMentionInConversation,
@@ -22,6 +24,124 @@ import {
   toRichAgentMentionType,
   toRichUserMentionType,
 } from "@app/types/assistant/mentions";
+
+export function interleaveMentionsPreservingAgentOrder(
+  agents: RichAgentMentionInConversation[],
+  users: RichUserMentionInConversation[],
+  lowerCaseQuery: string = "",
+  lastMentionedId: string | null = null,
+  conversationId: string | null = null
+): RichMention[] {
+  if (users.length === 0) {
+    return [...agents];
+  }
+
+  if (agents.length === 0) {
+    return [...users];
+  }
+
+  let result: RichMention[] = [];
+
+  let agentIndex = 0;
+  let userIndex = 0;
+
+  for (let position = 0; position < SUGGESTION_DISPLAY_LIMIT; position += 1) {
+    // Break if we have exhausted both lists
+    if (agentIndex >= agents.length && userIndex >= users.length) {
+      break;
+    }
+
+    const nextUser = users[userIndex];
+    const nextAgent = agents[agentIndex];
+
+    // First fill in users participants
+    if (nextUser?.isParticipant) {
+      result.push(nextUser);
+      userIndex += 1;
+      continue;
+    }
+
+    // Then fill in agents participants
+    if (nextAgent?.isParticipant) {
+      result.push(nextAgent);
+      agentIndex += 1;
+      continue;
+    }
+
+    // If no more participants, prioritize users/agents who start with the query
+    const nextUserStartsWithQuery =
+      lowerCaseQuery &&
+      nextUser?.label?.toLowerCase().startsWith(lowerCaseQuery);
+    const nextAgentStartsWithQuery =
+      lowerCaseQuery &&
+      nextAgent?.label?.toLowerCase().startsWith(lowerCaseQuery);
+
+    // Our high priority agents first
+    if (
+      nextAgentStartsWithQuery &&
+      SUGGESTION_PRIORITY[nextAgent.id] !== undefined
+    ) {
+      result.push(nextAgent);
+      agentIndex += 1;
+      continue;
+    }
+    if (conversationId) {
+      // In a conversation, prioritize users over agents.
+      if (nextUserStartsWithQuery) {
+        result.push(nextUser);
+        userIndex += 1;
+        continue;
+      }
+      if (nextAgentStartsWithQuery) {
+        result.push(nextAgent);
+        agentIndex += 1;
+        continue;
+      }
+    } else {
+      // Outside a conversation, prioritize agents over users.
+      if (nextAgentStartsWithQuery) {
+        result.push(nextAgent);
+        agentIndex += 1;
+        continue;
+      }
+      if (nextUserStartsWithQuery) {
+        result.push(nextUser);
+        userIndex += 1;
+        continue;
+      }
+    }
+
+    // Then interleave agents and users
+    if (position % 3 === 2 && userIndex < users.length) {
+      // Every 3rd position: add a user if available
+      result.push(users[userIndex]);
+      userIndex += 1;
+    } else if (agentIndex < agents.length) {
+      // Other positions: add an agent if available
+      result.push(agents[agentIndex]);
+      agentIndex += 1;
+    } else if (userIndex < users.length) {
+      // Fallback: if no agents left, add remaining users
+      result.push(users[userIndex]);
+      userIndex += 1;
+    }
+  }
+
+  // Move last mentioned agent to first position if specified
+  if (lastMentionedId) {
+    const lastMentioned =
+      agents.find((s) => s.id === lastMentionedId) ??
+      users.find((s) => s.id === lastMentionedId);
+    if (lastMentioned) {
+      result = [
+        lastMentioned,
+        ...result.filter((suggestion) => suggestion.id !== lastMentionedId),
+      ];
+    }
+  }
+
+  return result.slice(0, SUGGESTION_DISPLAY_LIMIT);
+}
 
 /**
  * Normalizes the `select` query parameter of the mention suggestions endpoint
@@ -49,6 +169,14 @@ export function parseMentionSelectParam(
   };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:backend;product] mention-agent-search-rollout
+ * When agents are requested and `new_manage_agents_page` is enabled, suggestions
+ * MUST use strict agent search in alphabetical name order, including for an empty
+ * query. Search order MUST be retained except for the existing conversation-specific
+ * promotions. With the flag off, or after a logged search failure, suggestions MUST
+ * use the legacy lookup and ordering. User-only requests MUST NOT search agents.
+ */
 export const suggestionsOfMentions = async (
   auth: Authenticator,
   {
@@ -158,20 +286,55 @@ export const suggestionsOfMentions = async (
   }
 
   if (select.agents) {
-    const agentConfigurations = await getAgentConfigurationsForView({
-      auth,
-      agentsGetView: "list",
-      variant: "light",
-    });
+    const useAgentSearch = await auth.hasFeatureFlag("new_manage_agents_page");
+    let activeAgents: RichAgentMentionInConversation[] | null = null;
+    if (useAgentSearch) {
+      const result = await searchAgents(auth, {
+        searchTerm: query,
+        limit: SUGGESTION_DISPLAY_LIMIT,
+        sortBy: "name",
+        sortOrder: "asc",
+        permissionFiltering: "strict",
+      });
+      if (result.isOk()) {
+        activeAgents = result.value.agents.map((agent) => ({
+          type: "agent",
+          id: agent.sId,
+          label: agent.name,
+          pictureUrl: agent.pictureUrl,
+          description: agent.description,
+        }));
+      } else {
+        logger.error(
+          {
+            error: result.error,
+            workspaceId: auth.getNonNullableWorkspace().sId,
+          },
+          "Failed to search mention suggestions, falling back to agent listing"
+        );
+      }
+    }
 
-    const activeAgents: RichAgentMentionInConversation[] = agentConfigurations
-      .filter((a) => a.status === "active")
-      .map((a) => ({
-        ...toRichAgentMentionType(a),
-        isParticipant: participantAgents.some((pa) => pa.id === a.sId),
-        lastActivityAt:
-          participantAgents.find((pa) => pa.id === a.sId)?.lastActivityAt ?? 0,
-      }));
+    const isSearchResult = activeAgents !== null;
+    if (activeAgents === null) {
+      const agentConfigurations = await getAgentConfigurationsForView({
+        auth,
+        agentsGetView: "list",
+        variant: "light",
+      });
+      activeAgents = agentConfigurations
+        .filter((agent) => agent.status === "active")
+        .map(toRichAgentMentionType);
+    }
+
+    const participantsById = new Map(
+      participantAgents.map((agent) => [agent.id, agent])
+    );
+    activeAgents = activeAgents.map((agent) => ({
+      ...agent,
+      isParticipant: participantsById.has(agent.id),
+      lastActivityAt: participantsById.get(agent.id)?.lastActivityAt ?? 0,
+    }));
 
     // The sidekick agent is excluded from default global agent listings but should
     // be mentionable when it's a conversation participant.
@@ -179,13 +342,20 @@ export const suggestionsOfMentions = async (
       (pa) => pa.id === GLOBAL_AGENTS_SID.SIDEKICK
     );
     if (sidekickParticipant) {
-      activeAgents.push(sidekickParticipant);
+      if (isSearchResult) {
+        agentSuggestions.push(
+          ...filterAndSortEditorSuggestionAgents(normalizedQuery, [
+            sidekickParticipant,
+          ])
+        );
+      } else {
+        activeAgents.push(sidekickParticipant);
+      }
     }
 
-    const filteredAgents = filterAndSortEditorSuggestionAgents(
-      normalizedQuery,
-      activeAgents
-    );
+    const filteredAgents = isSearchResult
+      ? activeAgents
+      : filterAndSortEditorSuggestionAgents(normalizedQuery, activeAgents);
 
     agentSuggestions.push(...filteredAgents);
   }

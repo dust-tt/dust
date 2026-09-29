@@ -1,13 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useSearchAgents } from "@app/hooks/useSearchAgents";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
-  interleaveMentionsPreservingAgentOrder,
-  SUGGESTION_DISPLAY_LIMIT,
-} from "@app/lib/mentions/editor/suggestion";
-import {
-  emptyArray,
   getErrorFromResponse,
   useFetcher,
   useSWRWithDefaults,
@@ -19,28 +12,15 @@ import type {
 } from "@app/types/api/assistant/conversation/mentions";
 import type { RichMentionWithStatus } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
-import { isRichUserMention } from "@app/types/assistant/mentions";
-import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
 type MentionSuggestionsResponseBody = {
   suggestions: RichMention[];
 };
 
-/**
- * @cc [owner:aubin-tchoi,label:react;product] mention-agent-search-order
- * With `new_manage_agents_page`, agent suggestions MUST use the agent search endpoint,
- * including for an empty query, request alphabetical name order, and retain it when
- * interleaved with user mentions. Without the flag, suggestions MUST come from the
- * existing mention suggestions endpoint in its returned order, without calling agent search.
- */
-/**
- * @cc [owner:aubin-tchoi,label:react;product] disabled-mention-types
- * Disabled mention types MUST NOT be fetched or included in the returned suggestions.
- */
 export function useMentionSuggestions({
-  owner,
+  workspaceId,
   conversationId,
   spaceId,
   query = "",
@@ -48,7 +28,7 @@ export function useMentionSuggestions({
   disabled = false,
   includeCurrentUser = false,
 }: {
-  owner: LightWorkspaceType;
+  workspaceId: string;
   conversationId: string | null;
   spaceId?: string;
   query?: string;
@@ -59,27 +39,8 @@ export function useMentionSuggestions({
   disabled?: boolean;
   includeCurrentUser?: boolean;
 }) {
-  const { hasFeature } = useFeatureFlags();
-  const useAgentSearch = hasFeature("new_manage_agents_page");
-  const isAgentSearchDisabled = disabled || !select.agents || !useAgentSearch;
-  const isMentionSuggestionsDisabled =
-    disabled || (!select.users && (useAgentSearch || !select.agents));
   const { fetcher } = useFetcher();
   const suggestionsFetcher: Fetcher<MentionSuggestionsResponseBody> = fetcher;
-  const {
-    agents,
-    isAgentsLoading,
-    isAgentsError,
-    mutate: mutateAgents,
-  } = useSearchAgents({
-    owner,
-    searchTerm: query,
-    limit: SUGGESTION_DISPLAY_LIMIT,
-    sortBy: "name",
-    sortOrder: "asc",
-    permissionFiltering: "strict",
-    disabled: isAgentSearchDisabled,
-  });
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(query);
@@ -93,7 +54,12 @@ export function useMentionSuggestions({
   }, [query]);
 
   const searchParams = new URLSearchParams({ query: debouncedSearchQuery });
-  if (select.agents && !useAgentSearch) {
+
+  // Without any select param the endpoint returns both agents and users, so
+  // skip the fetch entirely when nothing is selectable.
+  const nothingSelectable = !select.agents && !select.users;
+
+  if (select.agents) {
     searchParams.append("select", "agents");
   }
   if (select.users) {
@@ -109,15 +75,11 @@ export function useMentionSuggestions({
 
   const url =
     (conversationId
-      ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/mentions/suggestions`
-      : `/api/w/${owner.sId}/assistant/mentions/suggestions`) +
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/mentions/suggestions`
+      : `/api/w/${workspaceId}/assistant/mentions/suggestions`) +
     `?${searchParams.toString()}`;
 
-  const {
-    data,
-    error,
-    mutate: mutateSuggestions,
-  } = useSWRWithDefaults(url, suggestionsFetcher, {
+  const { data, error, mutate } = useSWRWithDefaults(url, suggestionsFetcher, {
     // Keep previous data while fetching new suggestions for better UX
     keepPreviousData: true,
     // We don't revalidate on focus to avoid unnecessary requests
@@ -126,72 +88,13 @@ export function useMentionSuggestions({
     revalidateOnReconnect: false,
     // Cache suggestions for 5 minutes
     dedupingInterval: 5 * 60 * 1000,
-    disabled: isMentionSuggestionsDisabled,
+    disabled: disabled || nothingSelectable,
   });
 
-  // Keep the array stable so keyboard navigation does not reset on every render.
-  const suggestions = useMemo(() => {
-    if (disabled || (!select.agents && !select.users)) {
-      return emptyArray<RichMention>();
-    }
-    if (!useAgentSearch) {
-      return (
-        data?.suggestions.filter((mention) =>
-          mention.type === "agent" ? select.agents : select.users
-        ) ?? emptyArray<RichMention>()
-      );
-    }
-    const agentMentions = agents.map((agent) => ({
-      id: agent.sId,
-      type: "agent" as const,
-      label: agent.name,
-      pictureUrl: agent.pictureUrl,
-      description: agent.description,
-    }));
-    const userMentions = select.users
-      ? (data?.suggestions.filter(isRichUserMention) ?? [])
-      : [];
-    if (agentMentions.length === 0 && userMentions.length === 0) {
-      return emptyArray<RichMention>();
-    }
-
-    return interleaveMentionsPreservingAgentOrder(
-      agentMentions,
-      userMentions,
-      query.toLowerCase(),
-      null,
-      conversationId
-    );
-  }, [
-    agents,
-    conversationId,
-    data,
-    disabled,
-    query,
-    select.agents,
-    select.users,
-    useAgentSearch,
-  ]);
-
-  const mutate = useCallback(async () => {
-    await Promise.all([
-      !isAgentSearchDisabled ? mutateAgents() : undefined,
-      !isMentionSuggestionsDisabled ? mutateSuggestions() : undefined,
-    ]);
-  }, [
-    isAgentSearchDisabled,
-    isMentionSuggestionsDisabled,
-    mutateAgents,
-    mutateSuggestions,
-  ]);
-
   return {
-    suggestions,
-    isLoading:
-      isAgentsLoading || (!isMentionSuggestionsDisabled && !error && !data),
-    isError:
-      (!isAgentSearchDisabled && isAgentsError) ||
-      (!isMentionSuggestionsDisabled && !!error),
+    suggestions: data?.suggestions ?? [],
+    isLoading: !error && !data && !(disabled || nothingSelectable),
+    isError: !!error,
     mutate,
   };
 }
