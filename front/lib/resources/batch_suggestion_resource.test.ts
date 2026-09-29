@@ -178,18 +178,18 @@ describe("BatchSuggestionResource", () => {
 
   it("records the reviewer on the batch and its skill suggestions", async () => {
     const { batch } = await createBatchWithMembers(authenticator);
-    const userId = authenticator.getNonNullableUser().id;
+    const userModelId = authenticator.getNonNullableUser().id;
 
     await batch.updateState(authenticator, "approved");
-    expect(batch.updatedByUserId).toBe(userId);
+    expect(batch.updatedByUserId).toBe(userModelId);
 
     const refetched = await BatchSuggestionResource.fetchById(
       authenticator,
       batch.sId
     );
-    expect(refetched!.updatedByUserId).toBe(userId);
+    expect(refetched!.updatedByUserId).toBe(userModelId);
     expect(refetched!.skillSuggestions.map((s) => s.updatedByUserId)).toEqual([
-      userId,
+      userModelId,
     ]);
   });
 
