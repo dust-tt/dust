@@ -5,7 +5,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 describe("sortAgentSuggestionsByBuilderOrder", () => {
-  it("lists agent changes in the agent builder's order", () => {
+  it("lists name and description first, then the agent builder's order", () => {
     const sorted = sortAgentSuggestionsByBuilderOrder([
       { kind: "scope" as const },
       { kind: "tools" as const },
@@ -17,12 +17,12 @@ describe("sortAgentSuggestionsByBuilderOrder", () => {
     ]);
 
     expect(sorted.map((s) => s.kind)).toEqual([
+      "name",
+      "description",
       "instructions",
       "model",
       "skills",
       "tools",
-      "name",
-      "description",
       "scope",
     ]);
   });
@@ -39,7 +39,7 @@ describe("sortAgentSuggestionsByBuilderOrder", () => {
 });
 
 describe("sortSkillSuggestionsByBuilderOrder", () => {
-  it("lists skill changes in the skill builder's order", () => {
+  it("lists name and description first, then the skill builder's order", () => {
     const sorted = sortSkillSuggestionsByBuilderOrder([
       { kind: "availability" as const },
       { kind: "editors" as const },
@@ -49,9 +49,9 @@ describe("sortSkillSuggestionsByBuilderOrder", () => {
     ]);
 
     expect(sorted.map((s) => s.kind)).toEqual([
-      "edit",
       "name",
       "user_facing_description",
+      "edit",
       "editors",
       "availability",
     ]);
