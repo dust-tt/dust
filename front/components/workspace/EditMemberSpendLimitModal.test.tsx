@@ -95,7 +95,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMemberUsage({ groups: ["Support", "Sales"] })}
         owner={owner}
@@ -122,7 +121,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMember("default")}
         owner={owner}
@@ -141,7 +139,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMember("default")}
         owner={owner}
@@ -161,7 +158,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMember("default")}
         owner={owner}
@@ -179,7 +175,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMember("default")}
         owner={owner}
@@ -197,7 +192,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMember("default")}
         owner={owner}
@@ -215,7 +209,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMember("default")}
         owner={owner}
@@ -233,7 +226,6 @@ describe("EditMemberSpendLimitModal", () => {
     const { rerender } = render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMember("default")}
         owner={owner}
@@ -248,7 +240,6 @@ describe("EditMemberSpendLimitModal", () => {
     rerender(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMember("default")}
         owner={owner}
@@ -267,7 +258,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMember("default")}
         owner={owner}
@@ -290,7 +280,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMember("default")}
         owner={owner}
@@ -310,7 +299,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMember("default", seatType)}
         owner={owner}
@@ -333,7 +321,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={vi.fn()}
         member={makeMember(spendLimitSource)}
         owner={owner}
@@ -356,7 +343,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={onClose}
         member={member}
         owner={owner}
@@ -385,7 +371,6 @@ describe("EditMemberSpendLimitModal", () => {
     render(
       <EditMemberSpendLimitModal
         isOpen
-        seatsHaveBuiltInAllowance
         onClose={onClose}
         member={makeMember("override")}
         owner={owner}
