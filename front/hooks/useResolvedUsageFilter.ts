@@ -1,6 +1,9 @@
-import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
+import type {
+  UsageFilter,
+  UsageFilterOption,
+} from "@app/components/workspace/analytics/usageFilter";
 import {
-  hasUnresolvedUsageFilterNames,
+  getUsageFilterOptions,
   resolveUsageFilter,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
@@ -13,6 +16,7 @@ interface UseResolvedUsageFilterParams {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   filter: UsageFilter;
+  restoredOptions: ReadonlySet<UsageFilterOption>;
   analyticsScope?: ConsumptionAnalyticsScope;
 }
 
@@ -21,13 +25,20 @@ interface UseResolvedUsageFilterResult {
   isFacetsLoading: boolean;
 }
 
-// A filter hydrated from the query string only carries ids, so its options
-// start with the id as display name and without a picture. The facets already
-// fetched by the filter panel carry the real labels.
+// A filter restored from the URL hash only carries ids and labels, so its
+// options start with the stored label and without a picture. The facets already
+// fetched by the filter panel carry the current labels.
+/**
+ * @cc [owner:tdraier,label:react;performance] resolve-restored-options-only
+ * The facet lookup MUST run while `filter` holds any option of `restoredOptions` (compared by
+ * identity) and MUST NOT run otherwise. Selected options missing from the facets MUST keep their
+ * stored label.
+ */
 export function useResolvedUsageFilter({
   workspaceId,
   period,
   filter,
+  restoredOptions,
   analyticsScope,
 }: UseResolvedUsageFilterParams): UseResolvedUsageFilterResult {
   const { options: facetOptions, isFacetsLoading } = useConsumptionFacets({
@@ -35,7 +46,9 @@ export function useResolvedUsageFilter({
     period,
     filter: toConsumptionScopeFilter(filter),
     analyticsScope,
-    disabled: !hasUnresolvedUsageFilterNames(filter),
+    disabled: !getUsageFilterOptions(filter).some((option) =>
+      restoredOptions.has(option)
+    ),
   });
 
   const resolved = useMemo(

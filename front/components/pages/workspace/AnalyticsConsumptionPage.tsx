@@ -166,11 +166,13 @@ export function AnalyticsConsumptionPage() {
   const { user } = useAuth();
   const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
   const [skillDetailsId, setSkillDetailsId] = useState<string | null>(null);
-  const state = useAnalyticsConsumptionState(useAnalyticsViewState());
+  const viewState = useAnalyticsViewState();
+  const state = useAnalyticsConsumptionState(viewState);
   const { filter, isFacetsLoading } = useResolvedUsageFilter({
     workspaceId: owner.sId,
     period: state.period,
     filter: state.filter,
+    restoredOptions: viewState.restoredOptions,
   });
 
   const [isOpen, setIsOpen] = useState(false);
