@@ -1416,28 +1416,37 @@ export const createMultipleItems = async (
     columnValues?: Record<string, any>;
   }>
 ): Promise<MondayItem[]> => {
-  const variables: Record<string, unknown> = {};
-  const varDefs: string[] = [];
-  const mutations = items
-    .map((item, index) => {
-      variables[`item${index}BoardId`] = item.boardId;
-      variables[`item${index}Name`] = item.itemName;
-      varDefs.push(`$item${index}BoardId: ID!, $item${index}Name: String!`);
+  const {
+    mutations,
+    variables,
+    varDefs,
+  } = items.reduce<{
+    mutations: string[];
+    variables: Record<string, unknown>;
+    varDefs: string[];
+  }>(
+    (acc, item, index) => {
+      acc.variables[`item${index}BoardId`] = item.boardId;
+      acc.variables[`item${index}Name`] = item.itemName;
+      acc.varDefs.push(`$item${index}BoardId: ID!, $item${index}Name: String!`);
+
       let groupArg = "";
       if (item.groupId !== undefined) {
-        variables[`item${index}GroupId`] = item.groupId;
-        varDefs.push(`$item${index}GroupId: String`);
+        acc.variables[`item${index}GroupId`] = item.groupId;
+        acc.varDefs.push(`$item${index}GroupId: String`);
         groupArg = `group_id: $item${index}GroupId`;
       }
+
       let columnArg = "";
       if (item.columnValues !== undefined) {
-        variables[`item${index}ColumnValues`] = JSON.stringify(
+        acc.variables[`item${index}ColumnValues`] = JSON.stringify(
           item.columnValues
         );
-        varDefs.push(`$item${index}ColumnValues: JSON`);
+        acc.varDefs.push(`$item${index}ColumnValues: JSON`);
         columnArg = `column_values: $item${index}ColumnValues`;
       }
-      return `
+
+      acc.mutations.push(`
       item${index}: create_item(
         board_id: $item${index}BoardId
         item_name: $item${index}Name
@@ -1472,13 +1481,15 @@ export const createMultipleItems = async (
           email
         }
       }
-    `;
-    })
-    .join("\n");
+    `);
+      return acc;
+    },
+    { mutations: [], variables: {}, varDefs: [] }
+  );
 
   const query = `
     mutation CreateMultipleItems(${varDefs.join(", ")}) {
-      ${mutations}
+      ${mutations.join("\n")}
     }
   `;
 
