@@ -43,12 +43,13 @@ fn is_unsafe_ipv4(ip: Ipv4Addr) -> bool {
         || ip == Ipv4Addr::new(169, 254, 169, 254)
 }
 
-// RFC 5737 documentation ranges — never globally routable.
+// RFC 6890/5737 documentation and protocol-assignment ranges — never globally routable.
 fn is_documentation_ipv4(ip: Ipv4Addr) -> bool {
     let [a, b, c, ..] = ip.octets();
-    (a == 192 && b == 0 && c == 2)       // 192.0.2.0/24   TEST-NET-1
-        || (a == 198 && b == 51 && c == 100) // 198.51.100.0/24 TEST-NET-2
-        || (a == 203 && b == 0 && c == 113) // 203.0.113.0/24  TEST-NET-3
+    (a == 192 && b == 0 && c == 0)       // 192.0.0.0/24   IETF Protocol Assignments (RFC 6890)
+        || (a == 192 && b == 0 && c == 2)    // 192.0.2.0/24   TEST-NET-1 (RFC 5737)
+        || (a == 198 && b == 51 && c == 100) // 198.51.100.0/24 TEST-NET-2 (RFC 5737)
+        || (a == 203 && b == 0 && c == 113) // 203.0.113.0/24  TEST-NET-3 (RFC 5737)
 }
 
 // RFC 2544 benchmarking range — not for production traffic.
@@ -201,6 +202,7 @@ mod tests {
     #[test]
     fn blocks_reserved_ipv4_ranges() {
         for value in [
+            "192.0.0.1",       // IETF Protocol Assignments (RFC 6890)
             "192.0.2.1",       // TEST-NET-1 (RFC 5737)
             "198.51.100.1",    // TEST-NET-2 (RFC 5737)
             "203.0.113.1",     // TEST-NET-3 (RFC 5737)
