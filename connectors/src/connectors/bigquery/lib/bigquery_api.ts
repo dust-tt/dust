@@ -192,9 +192,7 @@ export const fetchDatasets = async ({
 };
 
 /**
- * @cc [owner:aubin-tchoi,label:performance] bigquery-table-metadata-concurrency
- * When descriptions are requested, fetchTables MUST issue at most one table metadata request at a
- * time per dataset.
+ * Fetch the tables available in the BigQuery dataset.
  */
 export const fetchTables = async ({
   credentials,
@@ -253,61 +251,55 @@ export const fetchTables = async ({
         "[BigQuery] dataset.getTables (paginated)"
       );
 
-      const pageTables = await concurrentExecutor(
-        tables,
-        async (table) => {
-          if (!table.id) {
-            return null;
-          }
+      for (const table of tables) {
+        if (!table.id) {
+          continue;
+        }
 
-          if (fetchTablesDescription) {
-            try {
-              const metadata = await table.getMetadata();
-              logger?.info(
+        if (fetchTablesDescription) {
+          try {
+            const metadata = await table.getMetadata();
+            logger?.info(
+              {
+                dataset,
+                table: table.id,
+              },
+              "[BigQuery] table.getMetadata"
+            );
+            remoteDBTables.push({
+              name: table.id,
+              database_name: dataset.database_name,
+              schema_name: dataset.name,
+              description: metadata[0].description,
+            });
+          } catch (error) {
+            if (isBigqueryPermissionsError(error)) {
+              logger?.warn(
                 {
+                  projectId: dataset.database_name,
                   dataset,
                   table: table.id,
+                  error: normalizeError(error).message,
                 },
-                "[BigQuery] table.getMetadata"
+                "[BigQuery] Permission denied accessing table metadata, skipping table"
               );
-              return {
-                name: table.id!,
-                database_name: dataset.database_name,
-                schema_name: dataset.name,
-                description: metadata[0].description,
-              };
-            } catch (error) {
-              if (isBigqueryPermissionsError(error)) {
-                logger?.warn(
-                  {
-                    projectId: dataset.database_name,
-                    dataset,
-                    table: table.id,
-                    error: normalizeError(error).message,
-                  },
-                  "[BigQuery] Permission denied accessing table metadata, skipping table"
-                );
-                return null;
-              }
-              throw error;
+              continue;
             }
+            throw error;
           }
-
-          return {
-            name: table.id!,
+        } else {
+          remoteDBTables.push({
+            name: table.id,
             database_name: dataset.database_name,
             schema_name: dataset.name,
-          };
-        },
-        { concurrency: 1 }
-      );
-
-      remoteDBTables.push(...removeNulls(pageTables));
+          });
+        }
+      }
 
       nextQuery = q as typeof nextQuery;
     }
 
-    return new Ok(removeNulls(remoteDBTables));
+    return new Ok(remoteDBTables);
   } catch (error) {
     return new Err(normalizeError(error));
   }
