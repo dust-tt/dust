@@ -72,6 +72,7 @@ app.get(
       : false;
 
     const featureFlags = await getFeatureFlags(auth);
+    const locale = await user.getLocale(workspace);
 
     const workspacePermissions = await auth.getWorkspacePermissions();
     let groupManagement: GroupManagementAccess | undefined;
@@ -114,6 +115,7 @@ app.get(
       providersHealth: auth.providersHealth(),
       workspacePermissions,
       ...(groupManagement && { groupManagement }),
+      locale,
     });
   }
 );

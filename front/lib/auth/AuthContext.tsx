@@ -6,6 +6,7 @@ import {
 import { DEV_MODE_ACTIVE } from "@app/components/dev/devModeConstants";
 import type { GroupManagementAccess } from "@app/types/api/auth_context";
 import type { WorkspacePermissions } from "@app/types/group_permissions";
+import type { SupportedLocale } from "@app/types/locale";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -34,6 +35,7 @@ export interface AuthContextValue {
   providersHealth: ProvidersHealth | null;
   workspacePermissions: WorkspacePermissions;
   groupManagement?: GroupManagementAccess;
+  locale?: SupportedLocale;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
