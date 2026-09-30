@@ -1,9 +1,10 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -209,16 +210,18 @@ export async function getSimilarAgents(
   // "manage agents" list). Only agents with a description filled in are
   // considered "documented" enough to be worth comparing against, even
   // though the instructions (not the description) are what gets compared.
-  const allAgents = await getAgentConfigurationsForView({
-    auth,
-    agentsGetView: "list",
-    variant: "light",
-  });
-  const agents = allAgents.filter((a) => a.description.trim().length > 0);
+  const documentedAgents = (await AgentResource.listReadable(auth)).filter(
+    (a) => a.description.trim().length > 0
+  );
 
-  if (agents.length === 0) {
+  if (documentedAgents.length === 0) {
     return new Ok({ similar_agents: [] });
   }
+
+  const agents = await toLightAgentConfigurations(auth, documentedAgents, {
+    withFavorites: false,
+    withTags: false,
+  });
 
   // Check agents in batches, one LLM call per batch, so all agents are
   // considered regardless of how many the workspace has.

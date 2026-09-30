@@ -3010,6 +3010,59 @@ describe("AgentResource", () => {
   });
 
   describe("global agent list", () => {
+    it("listReadable returns active readable agents, global first then custom by name", async () => {
+      const { workspace } = testContext;
+      const { agentOwnerAuth: otherAuth } = await setupAgentOwner(
+        workspace,
+        "user"
+      );
+      const { agent: beta } = await buildAgentInState({
+        scope: "visible",
+        status: "active",
+        name: "Readable Beta",
+      });
+      const { agent: alpha } = await buildAgentInState({
+        scope: "hidden",
+        status: "active",
+        name: "Readable Alpha",
+      });
+      const { agent: archived } = await buildAgentInState({
+        scope: "visible",
+        status: "archived",
+        name: "Readable Archived",
+      });
+      const othersHidden = await AgentConfigurationFactory.createTestAgent(
+        otherAuth,
+        { name: "Readable Others Hidden", scope: "hidden" }
+      );
+
+      const agents = await AgentResource.listReadable(
+        testContext.authenticator
+      );
+      const sIds = agents.map((agent) => agent.sId);
+      const firstCustomIndex = agents.findIndex(
+        (agent) => agent.scope !== "global"
+      );
+
+      expect(sIds.filter((sId) => [alpha.sId, beta.sId].includes(sId))).toEqual(
+        [alpha.sId, beta.sId]
+      );
+      expect(sIds).not.toContain(archived.sId);
+      expect(sIds).not.toContain(othersHidden.sId);
+      expect(
+        agents
+          .slice(0, firstCustomIndex)
+          .every(
+            (agent) => agent.scope === "global" && agent.status === "active"
+          )
+      ).toBe(true);
+      expect(
+        agents
+          .slice(firstCustomIndex)
+          .every((agent) => agent.scope !== "global")
+      ).toBe(true);
+    });
+
     it("listGlobalAgents returns the workspace's global agents", async () => {
       const globalAgents = await AgentResource.listGlobalAgents(
         testContext.authenticator

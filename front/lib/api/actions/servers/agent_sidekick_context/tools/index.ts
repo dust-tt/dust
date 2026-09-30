@@ -15,7 +15,6 @@ import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
 import { markDuplicateSuggestionsAsOutdated } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
@@ -445,13 +444,14 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   get_available_agents: async ({ limit, agentPrefix }, { auth }) => {
-    const agents = await getAgentConfigurationsForView({
-      auth,
-      agentsGetView: "list",
-      variant: "light",
-      limit: limit ?? 100,
-      agentPrefix,
-    });
+    const lowerCasePrefix = agentPrefix?.toLowerCase();
+    const agents = (await AgentResource.listReadable(auth))
+      .filter(
+        (agent) =>
+          !lowerCasePrefix ||
+          agent.name.toLowerCase().startsWith(lowerCasePrefix)
+      )
+      .slice(0, limit ?? 100);
 
     const agentList = agents.map((agent) => ({
       sId: agent.sId,
