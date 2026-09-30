@@ -23,6 +23,7 @@ import { AuthorizedFileAccessModel } from "@app/lib/resources/storage/models/fil
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -41,7 +42,7 @@ import {
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -182,6 +183,33 @@ describe("isAuthorizedFileRef", () => {
 });
 
 describe("computeAuthorizedFileAccess", () => {
+  it("returns a handled error for a workspace API key", async () => {
+    const {
+      authenticator: auth,
+      workspace,
+      globalGroup,
+    } = await createResourceTest({});
+    const key = await KeyFactory.regular(globalGroup);
+    const apiKeyAuth = await Authenticator.fromKey(key, workspace.sId);
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+    });
+
+    const result = await frameFile.computeAuthorizedFileAccess(apiKeyAuth, {
+      frameContent: "export default function Frame() {}",
+    });
+
+    assert(result.isErr());
+    expect(result.error.code).toBe("invalid_request_error");
+    expect(result.error.message).toBe(
+      "Frame file access requires a user. Use a personal API key instead of a workspace API key."
+    );
+  });
+
   it("records verified fil_ refs and inaccessible refs as unverifiable", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
@@ -219,17 +247,20 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await frameFile.computeAuthorizedFileAccess(auth, {
       frameContent,
     });
+    assert(result.isOk());
 
-    expect(result.refs).toEqual([
+    expect(result.value.refs).toEqual([
       {
         kind: "file_id",
         ref: accessibleFile.sId,
         fileName: "data.txt",
       },
     ]);
-    expect(result.unverifiableRefs).toEqual(["fil_ZZZZZZZZZZ"]);
-    expect(result.generatedByUserId).toBe(auth.user()!.id);
-    expect(result.frameContentHash).toBe(computeFrameContentHash(frameContent));
+    expect(result.value.unverifiableRefs).toEqual(["fil_ZZZZZZZZZZ"]);
+    expect(result.value.generatedByUserId).toBe(auth.user()!.id);
+    expect(result.value.frameContentHash).toBe(
+      computeFrameContentHash(frameContent)
+    );
   });
 
   it("stores canonical paths and legacy aliases from scoped refs", async () => {
@@ -270,8 +301,9 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await frameFile.computeAuthorizedFileAccess(auth, {
       frameContent,
     });
+    assert(result.isOk());
 
-    expect(result.refs).toEqual(
+    expect(result.value.refs).toEqual(
       expect.arrayContaining([
         {
           kind: "canonical_path",
@@ -286,7 +318,7 @@ describe("computeAuthorizedFileAccess", () => {
         },
       ])
     );
-    expect(result.unverifiableRefs).toBeUndefined();
+    expect(result.value.unverifiableRefs).toBeUndefined();
   });
 
   it("resolves package-relative useFile refs against the Frame v2 source root", async () => {
@@ -331,15 +363,16 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await frameFile.computeAuthorizedFileAccess(auth, {
       frameContent,
     });
+    assert(result.isOk());
 
-    expect(result.refs).toEqual([
+    expect(result.value.refs).toEqual([
       {
         kind: "frame_relative_path",
         ref: "./data.csv",
         fileName: "data.csv",
       },
     ]);
-    expect(result.unverifiableRefs).toBeUndefined();
+    expect(result.value.unverifiableRefs).toBeUndefined();
     expect(mockFs.stat).toHaveBeenCalledWith(canonicalPath);
   });
 
@@ -404,8 +437,9 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await parentFrame.computeAuthorizedFileAccess(auth, {
       frameContent: parentContent,
     });
+    assert(result.isOk());
 
-    expect(result.refs).toEqual(
+    expect(result.value.refs).toEqual(
       expect.arrayContaining([
         {
           kind: "file_id",
@@ -419,7 +453,7 @@ describe("computeAuthorizedFileAccess", () => {
         },
       ])
     );
-    expect(result.unverifiableRefs).toBeUndefined();
+    expect(result.value.unverifiableRefs).toBeUndefined();
   });
 
   it("verifies pod-scoped refs for project-scoped frames", async () => {
@@ -455,8 +489,9 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await frameFile.computeAuthorizedFileAccess(auth, {
       frameContent,
     });
+    assert(result.isOk());
 
-    expect(result.refs).toEqual([
+    expect(result.value.refs).toEqual([
       {
         kind: "canonical_path",
         ref: `pod-${project.sId}/report.csv`,
@@ -522,8 +557,9 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await frameFile.computeAuthorizedFileAccess(apiKeyAuth, {
       frameContent,
     });
+    assert(result.isOk());
 
-    expect(result.generatedByUserId).toBe(user.id);
+    expect(result.value.generatedByUserId).toBe(user.id);
   });
 
   it("marks file_id refs without conversation or space metadata as unverifiable", async () => {
@@ -554,9 +590,10 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await frameFile.computeAuthorizedFileAccess(auth, {
       frameContent: `useFile("${fileWithoutContext.sId}");`,
     });
+    assert(result.isOk());
 
-    expect(result.refs).toEqual([]);
-    expect(result.unverifiableRefs).toEqual([fileWithoutContext.sId]);
+    expect(result.value.refs).toEqual([]);
+    expect(result.value.unverifiableRefs).toEqual([fileWithoutContext.sId]);
   });
 
   it("verifies tool_output file_id refs with conversation metadata", async () => {
@@ -588,15 +625,16 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await frameFile.computeAuthorizedFileAccess(auth, {
       frameContent: `useFile("${toolOutputFile.sId}");`,
     });
+    assert(result.isOk());
 
-    expect(result.refs).toEqual([
+    expect(result.value.refs).toEqual([
       {
         kind: "file_id",
         ref: toolOutputFile.sId,
         fileName: "tool-output.txt",
       },
     ]);
-    expect(result.unverifiableRefs).toBeUndefined();
+    expect(result.value.unverifiableRefs).toBeUndefined();
   });
 
   it.each([
@@ -635,9 +673,10 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await frameFile.computeAuthorizedFileAccess(auth, {
       frameContent: `useFile("${excludedFile.sId}");`,
     });
+    assert(result.isOk());
 
-    expect(result.refs).toEqual([]);
-    expect(result.unverifiableRefs).toEqual([excludedFile.sId]);
+    expect(result.value.refs).toEqual([]);
+    expect(result.value.unverifiableRefs).toEqual([excludedFile.sId]);
   });
 
   it("verifies file_id refs from another accessible conversation", async () => {
@@ -674,15 +713,16 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await frameFile.computeAuthorizedFileAccess(auth, {
       frameContent: `useFile("${crossConversationFile.sId}");`,
     });
+    assert(result.isOk());
 
-    expect(result.refs).toEqual([
+    expect(result.value.refs).toEqual([
       {
         kind: "file_id",
         ref: crossConversationFile.sId,
         fileName: "cross.txt",
       },
     ]);
-    expect(result.unverifiableRefs).toBeUndefined();
+    expect(result.value.unverifiableRefs).toBeUndefined();
   });
 
   it("verifies file_id refs from an accessible pod space", async () => {
@@ -718,15 +758,16 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await frameFile.computeAuthorizedFileAccess(auth, {
       frameContent: `useFile("${podFile.sId}");`,
     });
+    assert(result.isOk());
 
-    expect(result.refs).toEqual([
+    expect(result.value.refs).toEqual([
       {
         kind: "file_id",
         ref: podFile.sId,
         fileName: "pod-data.txt",
       },
     ]);
-    expect(result.unverifiableRefs).toBeUndefined();
+    expect(result.value.unverifiableRefs).toBeUndefined();
   });
 
   it("marks file_id refs from inaccessible spaces as unverifiable", async () => {
@@ -763,9 +804,10 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await frameFile.computeAuthorizedFileAccess(auth, {
       frameContent: `useFile("${restrictedFile.sId}");`,
     });
+    assert(result.isOk());
 
-    expect(result.refs).toEqual([]);
-    expect(result.unverifiableRefs).toEqual([restrictedFile.sId]);
+    expect(result.value.refs).toEqual([]);
+    expect(result.value.unverifiableRefs).toEqual([restrictedFile.sId]);
   });
 
   it("marks file_id refs from inaccessible conversations as unverifiable", async () => {
@@ -826,13 +868,49 @@ describe("computeAuthorizedFileAccess", () => {
     const result = await frameFile.computeAuthorizedFileAccess(otherAuth, {
       frameContent: `useFile("${restrictedFile.sId}");`,
     });
+    assert(result.isOk());
 
-    expect(result.refs).toEqual([]);
-    expect(result.unverifiableRefs).toEqual([restrictedFile.sId]);
+    expect(result.value.refs).toEqual([]);
+    expect(result.value.unverifiableRefs).toEqual([restrictedFile.sId]);
   });
 });
 
 describe("ensureAuthorizedFileAccessForShare", () => {
+  it("preserves the allowlist when a workspace API key cannot refresh it", async () => {
+    const {
+      authenticator: auth,
+      workspace,
+      globalGroup,
+      user,
+    } = await createResourceTest({});
+    const key = await KeyFactory.regular(globalGroup);
+    const apiKeyAuth = await Authenticator.fromKey(key, workspace.sId);
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+    });
+    const previous = makeAllowlist({
+      generatedByUserId: user.id,
+      refs: [{ kind: "file_id", ref: "fil_OLDREF0001" }],
+    });
+    await frameFile.persistAuthorizedFileAccess(previous);
+
+    const result = await ensureAuthorizedFileAccessForShare(
+      apiKeyAuth,
+      frameFile,
+      { frameContent: "export default function Frame() {}" }
+    );
+
+    assert(result.isErr());
+    expect(result.error.code).toBe("invalid_request_error");
+    expect(result.error.message).toContain("Use a personal API key");
+    const active = await frameFile.getActiveAuthorizedFileAccessAllowlist();
+    expect(active).toEqual(previous);
+  });
+
   it("blocks sharing when static refs cannot be verified", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
