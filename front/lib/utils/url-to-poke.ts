@@ -116,10 +116,6 @@ const ROUTE_MAPPINGS: RouteMapping[] = [
       /^\/w\/([^/]+)\/spaces\/([^/]+)\/apps\/([^/]+)\/(settings|specification|datasets)/,
     pokePath: null,
   },
-  {
-    pattern: /^\/w\/([^/]+)\/labs\/(transcripts|mcp_actions)/,
-    pokePath: null,
-  },
 ];
 
 export function convertUrlToPoke(url: string): string | null {
