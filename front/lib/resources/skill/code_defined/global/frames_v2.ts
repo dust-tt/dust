@@ -450,6 +450,22 @@ the legacy entry in place, and publish it with \`dsbx frame publish /files/<scop
 Tell the user the Frame stayed a legacy Frame and why.
 `;
 
+const POD_FRAME_PLACEMENT = `
+This conversation is in a Pod, but new Frames still go in the conversation folder. Use
+\`/files/pod-<podId>/<frame-folder>\` only when the user asks for the Pod or a Pod-wide app, or
+when the Frame relies on \`isPodMember\` or \`isPodEditor\`: Pod Frames are editable by every Pod
+editor and cannot move back. Otherwise, mention that the Frame's Save button adds it to the Pod.
+Edit existing Pod Frames in place.
+
+`;
+
+/**
+ * @cc [owner:davidebbo,label:product] pod-frame-placement
+ * In a Pod conversation, the instructions MUST have new Frames created in the conversation file
+ * system unless the user asks for the Pod, asks for a Pod-wide app, or the Frame depends on the
+ * viewer's Pod role. Existing Pod Frames MUST be changed in place. Outside a Pod, the
+ * instructions MUST NOT tell the agent to create Frames in a Pod.
+ */
 /**
  * @cc [owner:flvndvd,label:product] frame-document-selection
  * Document guidance MUST select narrative deliverables by their primary purpose, not editability
@@ -458,9 +474,11 @@ Tell the user the Frame stayed a legacy Frame and why.
 export const buildFramesV2Instructions = ({
   hasDocuments,
   hasFunctions,
+  isPod,
 }: {
   hasDocuments: boolean;
   hasFunctions: boolean;
+  isPod: boolean;
 }) => `\
 # Frames v2
 
@@ -550,8 +568,8 @@ bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME
 dsbx frame publish "$FRAME/manifest.json"
 \`\`\`
 
-In a Pod, write it under \`/files/pod-<podId>/...\` instead. The folder name is the Frame's name.
-Only use separate Computer commands when a step needs the previous one's output.
+The folder name is the Frame's name.
+${isPod ? POD_FRAME_PLACEMENT : ""}Only use separate Computer commands when a step needs the previous one's output.
 
 Always pass canonical \`/files/conversation-<conversationId>/...\` or
 \`/files/pod-<podId>/...\` paths to \`dsbx frame\`. Do not pass the convenience aliases
