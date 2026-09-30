@@ -54,7 +54,7 @@ The browser extension (`extension/`, built with `ts-loader`, no Babel) and the `
 entries have none yet: do not use Lingui in components they import.
 
 In front tests, `render` and `renderHook` from `@testing-library/react` already wrap the tree in an
-`I18nProvider` (see `front/vite.setup.ts`), around any `wrapper` the test passes, and the locale is
+`I18nProvider` (see `front/vite.i18nSetup.ts`), around any `wrapper` the test passes, and the locale is
 reset to `en-US` after each test. Do not add an `I18nProvider` in tests. To assert a translation,
 activate the locale inside `act`:
 

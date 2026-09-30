@@ -528,7 +528,7 @@ When existing Resource APIs cannot express a required fixture or assertion, dire
 is allowed under the `models-behind-resources` contract; do not add test-only Resource APIs.
 
 @cc [owner:sfriquet,label:testing;react] tests-render-with-i18n
-`vite.setup.ts` MUST make `render` and `renderHook` from `@testing-library/react` wrap the tree in
+`vite.i18nSetup.ts` MUST make `render` and `renderHook` from `@testing-library/react` wrap the tree in
 an `I18nProvider` with the `i18n` instance from `lib/i18n/i18n.ts`, outside any `wrapper` the test
 passes, and MUST reset `i18n` to `DEFAULT_LOCALE` after each test. Tests MUST NOT mount their own
 `I18nProvider`.
