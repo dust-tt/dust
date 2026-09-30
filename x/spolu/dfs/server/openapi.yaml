@@ -451,8 +451,7 @@ components:
       description: |
         Persisted attributes only. content_version and size_bytes are present for files and absent
         for directories. Modes contain the low nine permission bits and do not grant server access.
-        Legacy objects without timestamps use the Unix epoch until updated. Parent links,
-        names, paths, and grants are omitted. Revisions are meaningful only within the current
+        Parent links, names, paths, and grants are omitted. Revisions are meaningful only within the current
         session, workspace, and object; session recreation discards cached state.
       properties:
         object_id:

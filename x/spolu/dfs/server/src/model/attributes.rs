@@ -39,7 +39,7 @@ impl Timestamp {
  * @cc [owner:spolu,label:security] filesystem-attributes
  * Modes MUST contain only the low nine permission bits and MUST NOT confer server authority.
  * New objects MUST initialize all timestamps together. Only the server may set ctime; reads
- * MUST NOT change atime. Legacy records without times use the Unix epoch until updated.
+ * MUST NOT change atime.
  */
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PosixAttributes {

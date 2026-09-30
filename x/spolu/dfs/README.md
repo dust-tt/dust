@@ -109,7 +109,7 @@ Use a session key for these read-only JSON endpoints. Names and cursors stay in 
 
 Attributes include ID, kind, MIME type, base64 xattrs, metadata revision, and file content version/size.
 They include modes and `atime`/`mtime`/`ctime` as `{ "seconds": i64, "nanoseconds": u32 }`, and omit
-canonical parents, paths, and grants. Old records without timestamps read as the Unix epoch.
+canonical parents, paths, and grants.
 Stat can access a directly shared object without exposing its private ancestors; lookup/list require
 access to the containing directory. Missing and inaccessible objects both return `not_found`.
 

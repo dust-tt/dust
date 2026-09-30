@@ -157,7 +157,7 @@ require restarting traversal. An in-flight read may complete against its origina
 revision; stale revisions conflict. Both set server ctime, publish indexing events, and await durability.
 Xattr patches use base64 values, null deletions, and a 32 KiB total key/value limit. Authorization and
 publication share a lock until per-object concurrency is implemented; WAL waits release that lock.
-Old metadata remains readable, with default modes and epoch timestamps for absent POSIX attributes.
+Early development uses one metadata format; incompatible layout changes require a fresh store.
 
 ## Workspace creation, sessions, and virtual folders
 

@@ -35,15 +35,16 @@ Event sequences are local to a workspace and are distinct from object metadata r
 ## Format v1
 
 The database-level `dfs-format` key contains ASCII `1`. Unknown formats and unmarked nonempty
-databases fail opening; empty databases receive a durable marker. Object V1 records remain readable;
-updates write V2. No bulk migration runs.
+databases fail opening; empty databases receive a durable marker. Only one metadata layout is
+supported during early development. Incompatible layout changes require a fresh store; there are
+no migrations or compatibility decoders.
 
 Workspace keys start with byte `01`, a big-endian `u32` UTF-8 byte length, the exact workspace bytes,
 and a one-byte family tag. IDs below are raw 16-byte UUIDs; names and grants preserve exact UTF-8.
 
 | Tag | Family | Suffix after the workspace prefix and tag | Value before encoding |
 | --- | --- | --- | --- |
-| `01` | Objects | Object ID | `ObjectV1` or `ObjectV2` |
+| `01` | Objects | Object ID | `ObjectRecord` |
 | `02` | Children | Parent ID, name bytes | Child ID |
 | `03` | Grants by object | Object ID, grant bytes | Unit |
 | `04` | Objects by grant | Grant byte length (`u32` big-endian), grant bytes, object ID | Unit |
@@ -55,14 +56,13 @@ Length prefixes keep workspaces and grants distinct even with slashes, NUL, Unic
 prefixes. Names/grants at the end of a key need no length delimiter. Fixed-width big-endian change
 sequences preserve scan order.
 
-Each value starts with a version byte (`01`, or `02` for new object records), followed by
-[Postcard](https://docs.rs/postcard/1.1.3/postcard/) encoding. `ObjectV1` stores workspace, ID, optional parent/name, kind/content reference, MIME type,
-xattrs, and metadata revision in that order. `ObjectV2` stores that unchanged V1 structure followed
-by mode (`u16`), atime, mtime, ctime; each time is signed seconds (`i64`) then nanoseconds (`u32`).
-Legacy V1 defaults to mode 0644/0755 and epoch times; new objects initialize all times at creation.
-UUIDs occupy 16 bytes; xattr values remain binary.
-Decoding checks the version, complete consumption, validated names/MIME/xattr keys, and object-key
-identity, permission bits, and nanosecond bounds. Changing record layouts requires a new version;
+Each value starts with version byte `01`, followed by
+[Postcard](https://docs.rs/postcard/1.1.3/postcard/) encoding. `ObjectRecord` stores workspace, ID,
+optional parent/name, kind/content reference, MIME type, xattrs, metadata revision, and POSIX
+attributes in that order. POSIX attributes are mode (`u16`), atime, mtime, ctime; each time is signed
+seconds (`i64`) then nanoseconds (`u32`). UUIDs occupy 16 bytes; xattr values remain binary.
+Decoding checks the version, complete consumption, validated names/MIME/xattr keys, object-key
+identity, permission bits, and nanosecond bounds. All fields are required; no legacy defaults apply.
 HTTP representations are independent.
 
 SlateDB files live under `<prefix>/metadata/`. Content lives at
