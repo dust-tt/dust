@@ -7,7 +7,7 @@ import { isStaticModelId } from "@app/types/assistant/models/models";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
-  ModelProviderIdType,
+  WhitelistableModelMakerIdType,
 } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
@@ -145,7 +145,7 @@ export function isModelEnabled(
     plan: PlanType | null;
     regionalModelsOnly: boolean;
     region: RegionType;
-    whitelistedProviders: Set<ModelProviderIdType>;
+    whitelistedProviders: ReadonlySet<WhitelistableModelMakerIdType>;
   }
 ) {
   return (
@@ -167,7 +167,7 @@ export function filterEnabledModels(
     plan: PlanType | null;
     regionalModelsOnly: boolean;
     region: RegionType;
-    whitelistedProviders: Set<ModelProviderIdType>;
+    whitelistedProviders: ReadonlySet<WhitelistableModelMakerIdType>;
   }
 ): ModelConfigurationType[] {
   return models.filter((m) =>

@@ -32,7 +32,7 @@ import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type {
   ModelIdType,
-  ModelProviderIdType,
+  WhitelistableModelMakerIdType,
 } from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import compact from "lodash/compact";
@@ -87,63 +87,62 @@ function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
   return { eq: EUROPE };
 }
 
-function getWhitelistedProviderIds(auth: Authenticator): ModelProviderIdType[] {
-  const whitelistedProviderIds = [...getWhitelistedProviders(auth)];
+function getWhitelistedMakerIds(
+  auth: Authenticator
+): WhitelistableModelMakerIdType[] {
+  const whitelistedMakerIds = [...getWhitelistedProviders(auth)];
   const byok = auth.getNonNullablePlan().isByok;
 
   return byok
-    ? intersection(whitelistedProviderIds, BYOK_MODEL_PROVIDER_IDS)
-    : whitelistedProviderIds;
+    ? intersection(whitelistedMakerIds, BYOK_MODEL_PROVIDER_IDS)
+    : whitelistedMakerIds;
 }
 
-const PROVIDER_ID_TO_LAB: Record<ModelProviderIdType, Lab | null> = {
+const MAKER_ID_TO_LAB: Record<WhitelistableModelMakerIdType, Lab | null> = {
   openai: "openai",
   anthropic: "anthropic",
   mistral: "mistral",
   google_ai_studio: "google",
   deepseek: "deepseek",
-  fireworks: null,
   xai: "xai",
   noop: "noop",
   auto: null,
   auto_fast: null,
   auto_complex: null,
+  zai: "z_ai",
+  moonshot: "moonshot_ai",
+  // No MiniMax endpoint exists.
+  minimax: null,
+  thinking_machines: "thinking_machines",
 };
 
-const PROVIDER_ID_TO_HOST: Record<ModelProviderIdType, Host | null> = {
+const MAKER_ID_TO_HOST: Record<WhitelistableModelMakerIdType, Host | null> = {
   openai: null,
   anthropic: null,
   mistral: "mistral",
   google_ai_studio: null,
   deepseek: null,
-  fireworks: "fireworks",
   xai: null,
   noop: null,
   auto: null,
   auto_fast: null,
   auto_complex: null,
+  zai: null,
+  moonshot: null,
+  minimax: null,
+  thinking_machines: null,
 };
 
-// Whitelisting is keyed on the legacy provider id, which conflates a model's
-// lab (its developer) and its serving host — e.g. "fireworks" is really a host,
-// not a lab. When "fireworks" is whitelisted we match on host so its
-// lab-attributed models (deepseek/moonshot_ai/z_ai) surface; every other
-// provider id maps to a lab. This is a known domain naming error to be fixed
-// later.
+// Whitelisting "mistral" also matches on host, so every endpoint Mistral serves
+// surfaces; every other maker id maps to a lab only.
 function getLabAndHostFilter(
-  providerIds: ModelProviderIdType[]
+  makerIds: WhitelistableModelMakerIdType[]
 ): Where<EndpointConfig> {
-  const whitelistedLabs = compact(
-    providerIds.map((id) => PROVIDER_ID_TO_LAB[id])
-  );
   const labFilter: Where<EndpointConfig> = {
-    lab: { in: whitelistedLabs },
+    lab: { in: compact(makerIds.map((id) => MAKER_ID_TO_LAB[id])) },
   };
-  const whitelistedHosts = compact(
-    providerIds.map((id) => PROVIDER_ID_TO_HOST[id])
-  );
   const hostFilter: Where<EndpointConfig> = {
-    host: { in: whitelistedHosts },
+    host: { in: compact(makerIds.map((id) => MAKER_ID_TO_HOST[id])) },
   };
 
   return { or: [labFilter, hostFilter] };
@@ -179,10 +178,10 @@ function getLabAndHostFilter(
  */
 export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   const byok = auth.getNonNullablePlan().isByok;
-  const providerIds = getWhitelistedProviderIds(auth);
+  const makerIds = getWhitelistedMakerIds(auth);
 
   return {
-    ...getLabAndHostFilter(providerIds),
+    ...getLabAndHostFilter(makerIds),
     region: getRegionFilter(auth),
     // Conversely we route all non-byok gemini requests to agent platform.
     ...(byok

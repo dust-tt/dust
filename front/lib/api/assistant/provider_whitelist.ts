@@ -16,7 +16,7 @@ export type ModelIdentifier = Pick<
 // Handle the special case of the routing sentinels (auto, auto_fast, auto_complex),
 // which route to a concrete (whitelisted) model at message-send time.
 export function isProviderWhitelisted(
-  whitelistedProviders: Set<ModelProviderIdType>,
+  whitelistedProviders: ReadonlySet<ModelMakerIdType>,
   providerId: ModelProviderIdType
 ): boolean {
   return isModelStreamId(providerId) || whitelistedProviders.has(providerId);

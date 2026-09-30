@@ -2,8 +2,14 @@ import type { SubscriptionModel } from "@app/lib/models/plan";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
-import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
+import {
+  MODEL_PROVIDER_IDS,
+  WHITELISTABLE_MODEL_MAKER_IDS,
+} from "@app/types/assistant/models/providers";
+import type {
+  EmbeddingProviderIdType,
+  WhitelistableModelMakerIdType,
+} from "@app/types/assistant/models/types";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type { SupportedLocale } from "@app/types/locale";
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@app/types/locale";
@@ -16,6 +22,8 @@ import type { CreationOptional, NonAttribute } from "sequelize";
 const DEFAULT_SHARING_POLICY: WorkspaceSharingPolicy = "all_scopes";
 
 const modelProviders = [...MODEL_PROVIDER_IDS] as string[];
+const whitelistableModelMakers: readonly string[] =
+  WHITELISTABLE_MODEL_MAKER_IDS;
 // TODO(2025-10-16 flav) Move this away from the resource storage layer.
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
@@ -31,7 +39,8 @@ export class WorkspaceModel extends BaseModel<WorkspaceModel> {
   declare regionalModelsOnly: CreationOptional<boolean>;
   declare workOSOrganizationId: string | null;
   declare subscriptions: NonAttribute<SubscriptionModel[]>;
-  declare whiteListedProviders: ModelProviderIdType[] | null;
+  // Despite the name, holds whitelisted model labs (makers), not hosts.
+  declare whiteListedProviders: WhitelistableModelMakerIdType[] | null;
   declare defaultEmbeddingProvider: EmbeddingProviderIdType | null;
   declare metadata: Record<string, string | number | boolean | object> | null;
   declare sharingPolicy: CreationOptional<WorkspaceSharingPolicy>;
@@ -95,7 +104,10 @@ WorkspaceModel.init(
       allowNull: true,
       validate: {
         isProviderValid(value: string[] | null) {
-          if (value && !value.every((val) => modelProviders.includes(val))) {
+          if (
+            value &&
+            !value.every((val) => whitelistableModelMakers.includes(val))
+          ) {
             throw new Error("Invalid provider in whiteListedProviders");
           }
         },

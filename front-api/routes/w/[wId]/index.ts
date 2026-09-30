@@ -22,7 +22,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
-import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
+import { WhitelistableModelMakerIdSchema } from "@app/types/assistant/models/providers";
 import { SUPPORTED_LOCALES } from "@app/types/locale";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -109,7 +109,7 @@ const WorkspaceRegionalModelsOnlyUpdateBodySchema = z.object({
 });
 
 const WorkspaceProvidersUpdateBodySchema = z.object({
-  whiteListedProviders: z.array(ModelProviderIdSchema),
+  whiteListedProviders: z.array(WhitelistableModelMakerIdSchema),
   defaultEmbeddingProvider: EmbeddingProviderSchema.nullable(),
 });
 

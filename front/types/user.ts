@@ -2,7 +2,7 @@ import * as t from "io-ts";
 import { z } from "zod";
 import type {
   EmbeddingProviderIdType,
-  ModelProviderIdType,
+  WhitelistableModelMakerIdType,
 } from "./assistant/models/types";
 import type { SupportedLocale } from "./locale";
 import type { MembershipOriginType, MembershipSeatType } from "./memberships";
@@ -90,7 +90,8 @@ export type LightWorkspaceType = {
   name: string;
   role: RoleType;
   segmentation: WorkspaceSegmentationType;
-  whiteListedProviders: ModelProviderIdType[] | null;
+  // Despite the name, holds whitelisted model labs (makers), not hosts.
+  whiteListedProviders: WhitelistableModelMakerIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
   regionalModelsOnly: boolean;
   metadata?: {
