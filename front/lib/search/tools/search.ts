@@ -242,6 +242,14 @@ export async function* streamToolFiles({
   }
 }
 
+/**
+ * @cc [owner:frankaloia,label:security;api] mcp-server-view-space-authorization
+ * After fetching the MCPServerView by id, the caller's read or admin access to
+ * serverView.space MUST be verified before resolving or returning any token or tool
+ * data from that view. fetchById scopes only to the workspace; without the space
+ * check any workspace member can receive the workspace-level OAuth token attached
+ * to a restricted-space view by supplying an arbitrary serverViewId.
+ */
 export async function getToolAccessToken({
   auth,
   serverViewId,

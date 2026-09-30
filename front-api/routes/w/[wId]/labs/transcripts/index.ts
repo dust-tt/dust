@@ -1,6 +1,5 @@
 import config from "@app/lib/api/config";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/lib/api/labs/transcripts";
-import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import logger from "@app/logger/logger";
 import {
@@ -123,23 +122,6 @@ app.post(
       isDefaultWorkspaceConfiguration =
         currentDefaultConfiguration === null ||
         currentDefaultConfiguration === undefined;
-    }
-
-    if (oAuthConnectionId) {
-      const ownershipRes = await checkConnectionOwnership(
-        auth,
-        oAuthConnectionId
-      );
-      if (ownershipRes.isErr()) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "The provided OAuth connection does not belong to this user.",
-          },
-        });
-      }
     }
 
     const created = await LabsTranscriptsConfigurationResource.makeNew({

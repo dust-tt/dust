@@ -724,21 +724,3 @@ connectionId, the code MUST call checkConnectionOwnership(auth, connectionId) an
 if it returns Err. This ensures the connection belongs to the calling user in the calling
 workspace; without the check any workspace member can obtain another user's live OAuth
 access token by supplying a foreign connectionId.
-
-Applies to: createRemoteMCPServer, labs transcripts POST, and any future path that
-resolves a user-supplied connectionId to an access token.
-
-@cc [owner:frankaloia,label:security;api] mcp-server-view-space-authorization
-Every code path that resolves a caller-supplied MCPServerView must verify that the caller
-has read access to the view's space (auth.can("read", serverView.space) || auth.can("admin",
-serverView.space)) in addition to the workspace-level scoping that fetchById provides.
-
-Without this check any workspace member can supply an arbitrary serverViewId and receive
-the workspace-level OAuth token attached to a restricted-space view.
-
-@cc [owner:frankaloia,label:security;backend] query-tables-within-dsv-scope
-When persisting a Query Tables action configuration, each tableId MUST be verified to be
-within the data source view's parentsIn scope before any DB write. Use CoreAPI.getTable
-with the DSV's view filter (dsv.toViewFilter()). The check must run OUTSIDE any DB
-transaction (CoreAPI is a network call). If parentsIn is null the view covers all tables
-and no core check is needed.

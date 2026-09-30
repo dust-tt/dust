@@ -32,6 +32,14 @@ import type { Transaction } from "sequelize";
 
 /**
  * Called by Agent Builder to create an action configuration.
+ *
+ * @cc [owner:frankaloia,label:security;backend] query-tables-within-dsv-scope
+ * When `action.tables` is non-empty, each `tableId` MUST be verified to lie within
+ * the data source view's `parentsIn` scope before any DB write. The check uses
+ * `CoreAPI.getTable` with `dsv.toViewFilter()` and MUST run outside any DB transaction.
+ * If `parentsIn` is null the view covers the full data source and no core check is needed.
+ * Without this guard an agent editor can configure tables excluded by the space admin's
+ * parentsIn filter, reading arbitrary SQL rows from the underlying data source.
  */
 export async function createAgentActionConfiguration(
   auth: Authenticator,
