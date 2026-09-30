@@ -724,3 +724,9 @@ connectionId, the code MUST call checkConnectionOwnership(auth, connectionId) an
 if it returns Err. This ensures the connection belongs to the calling user in the calling
 workspace; without the check any workspace member can obtain another user's live OAuth
 access token by supplying a foreign connectionId.
+
+@cc [owner:sfriquet,label:product] no-locale-less-date-time-calls
+Outside tests, `toLocaleDateString` and `toLocaleTimeString` MUST NOT be called without a locale
+(no argument, or `undefined` as the locale): dates and times MUST be formatted with `formatDate` or
+`formatTime` from `@app/lib/i18n/format`, which follow `format-locale-resolution`. Enforced by the
+`noLocaleLessDateTimeFormat` lint rule.

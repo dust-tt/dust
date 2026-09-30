@@ -109,6 +109,13 @@
       "plugins": ["./.grit/patterns/noExpensiveConversationFetch.grit"]
     },
     {
+      "includes": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "!**/*.{test,spec}.{js,jsx,ts,tsx}"
+      ],
+      "plugins": ["./.grit/patterns/noLocaleLessDateTimeFormat.grit"]
+    },
+    {
       "includes": ["front-api/**/*.ts", "!front-api/routes/types.ts"],
       "plugins": ["./.grit/patterns/noInlineSuccessResponseBody.grit"]
     },
