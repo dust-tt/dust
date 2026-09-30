@@ -397,9 +397,79 @@ describe("GCS credential lifecycle", () => {
     const result = await adapter.refreshCredential(auth, sandbox, image);
 
     expect(result.isOk()).toBe(true);
-    expect(execRoot).toHaveBeenCalledTimes(2);
+    expect(execRoot).toHaveBeenCalledTimes(3);
     const firewallCommand = getRootCommandCall(execRoot, 0);
     expect(firewallCommand).toBe("/usr/local/bin/dust-gcs-token-firewall.sh");
+    expect(getRootCommandCall(execRoot, 2)).toBe("/usr/bin/cat /proc/mounts");
+    expect(requestKill).not.toHaveBeenCalled();
+  });
+
+  test("recreates the sandbox when a read-only mount gains write access", async () => {
+    const { auth, sandbox, execRoot, requestKill } = await createTestSandbox();
+    execRoot.mockReset();
+    execRoot
+      .mockResolvedValueOnce(successfulExec())
+      .mockResolvedValueOnce(successfulExec())
+      .mockResolvedValueOnce(
+        new Ok({
+          exitCode: 0,
+          stdout: "gcsfuse /files/pod-spc1 fuse.gcsfuse ro,allow_other 0 0\n",
+          stderr: "",
+        })
+      );
+    const adapter = new GCSSandboxMountAdapter("bucket-x", [
+      workloadTarget({ readOnly: false }),
+    ]);
+
+    const result = await adapter.refreshCredential(auth, sandbox, image);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected a permission change to recreate the sandbox");
+    }
+    expect(result.error.message).toBe(
+      "Sandbox file mount permissions changed; the sandbox will be recreated."
+    );
+    expect(requestKill).toHaveBeenCalledTimes(1);
+  });
+
+  test("leaves a sandbox running when the live mount matches the target", async () => {
+    const { auth, sandbox, execRoot, requestKill } = await createTestSandbox();
+    execRoot.mockReset();
+    execRoot
+      .mockResolvedValueOnce(successfulExec())
+      .mockResolvedValueOnce(successfulExec())
+      .mockResolvedValueOnce(
+        new Ok({
+          exitCode: 0,
+          stdout: "gcsfuse /files/pod-spc1 fuse.gcsfuse ro,allow_other 0 0\n",
+          stderr: "",
+        })
+      );
+    const adapter = new GCSSandboxMountAdapter("bucket-x", [
+      workloadTarget({ readOnly: true }),
+    ]);
+
+    const result = await adapter.refreshCredential(auth, sandbox, image);
+
+    expect(result.isOk()).toBe(true);
+    expect(requestKill).not.toHaveBeenCalled();
+  });
+
+  test("does not recreate a sandbox when the mount table cannot be read", async () => {
+    const { auth, sandbox, execRoot, requestKill } = await createTestSandbox();
+    execRoot.mockReset();
+    execRoot
+      .mockResolvedValueOnce(successfulExec())
+      .mockResolvedValueOnce(successfulExec())
+      .mockResolvedValueOnce(new Err(new Error("transient E2B error")));
+    const adapter = new GCSSandboxMountAdapter("bucket-x", [
+      workloadTarget({ readOnly: false }),
+    ]);
+
+    const result = await adapter.refreshCredential(auth, sandbox, image);
+
+    expect(result.isErr()).toBe(true);
     expect(requestKill).not.toHaveBeenCalled();
   });
 
