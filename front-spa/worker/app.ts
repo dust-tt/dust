@@ -1,25 +1,28 @@
 /**
  * Worker for the main app SPA.
  *
- * With `run_worker_first = true`, this Worker sees every request. Hashed
- * `/assets/*` and other non-HTML static files are passed through to ASSETS.
- * HTML (including `/` and `/share/`) is served via SPA fallbacks so security
- * headers always apply.
+ * Static assets (JS, CSS, images) are served directly by the Workers Static
+ * Assets layer. This worker is NOT invoked for those requests.
  *
- * 1. Pass through existing `/assets/*`; 404 missing ones (no SPA fallback).
- * 2. Pass through other non-HTML static files when present.
- * 3. Route sub-app paths to their dedicated index.html:
+ * This worker only runs when no static file matched the request path
+ * (not_found_handling = "none" in wrangler config). Its job is to:
+ *
+ * 1. Return 404 for missing assets under /assets/ (prevent SPA fallback
+ *    from serving index.html with a 200 for broken JS/CSS imports).
+ *
+ * 2. Route sub-app paths to their dedicated index.html:
  *    - /share/*                → share/index.html
  *    - /oauth/*, /w/* /oauth/* → oauth/index.html
  *    - /email/*                → email/index.html
- * 4. For /share/frame/:token, inject Open Graph meta tags.
- * 5. Fall back to the main index.html for all other navigations.
+ *
+ * 3. For /share/frame/:token, inject Open Graph meta tags into the HTML
+ *    by fetching frame metadata from the API before serving.
+ *
+ * 4. Fall back to the main index.html for all other paths (SPA routing).
  */
 
 import type { GetShareFrameMetadataResponseBody } from "@dust-tt/front/lib/api/files/share";
 import { z } from "zod";
-
-import { applySecurityHeaders } from "./security_headers";
 
 interface Env {
   ASSETS: Fetcher;
@@ -89,33 +92,13 @@ function buildOgMetaTags(
   ].join("\n    ");
 }
 
-function isNonHtmlStaticResponse(response: Response): boolean {
-  if (response.status === 404 || response.status >= 300) {
-    return false;
-  }
-  const contentType = response.headers.get("content-type") ?? "";
-  return !contentType.includes("text/html");
-}
-
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
     if (path.startsWith("/assets/")) {
-      const asset = await env.ASSETS.fetch(request);
-      if (asset.status === 404) {
-        return applySecurityHeaders(
-          new Response("Not Found", { status: 404 }),
-          path
-        );
-      }
-      return asset;
-    }
-
-    const maybeAsset = await env.ASSETS.fetch(request);
-    if (isNonHtmlStaticResponse(maybeAsset)) {
-      return maybeAsset;
+      return new Response("Not Found", { status: 404 });
     }
 
     let fallback: string;
@@ -138,18 +121,15 @@ export default {
     const frameMatch = SHARE_FRAME_RE.exec(path);
     if (frameMatch) {
       const token = frameMatch[1];
-      return applySecurityHeaders(
-        await injectFrameOgTags(
-          await htmlResponse,
-          token,
-          url.href,
-          env.DUST_API_URL
-        ),
-        path
+      return injectFrameOgTags(
+        await htmlResponse,
+        token,
+        url.href,
+        env.DUST_API_URL
       );
     }
 
-    return applySecurityHeaders(await htmlResponse, path);
+    return htmlResponse;
   },
 };
 

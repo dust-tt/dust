@@ -5,5 +5,4 @@ main = "./worker/poke.ts"
 [assets]
 directory = "./dist/poke"
 not_found_handling = "none"
-run_worker_first = true
 binding = "ASSETS"
