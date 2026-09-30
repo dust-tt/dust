@@ -45,7 +45,12 @@ import {
   Pin02,
   SearchInput,
   Spinner,
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
   Users01,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
@@ -583,7 +588,9 @@ interface CatalogRowProps {
 
 export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
   const name = getItemName(item);
+  const handle = item.kind === "agent" ? `@${name}` : `/${name}`;
   const isMobile = useIsMobile();
+  const [isCopied, copy] = useCopyToClipboard();
   const avatar =
     item.kind === "agent" ? (
       <Avatar size={isMobile ? "md" : "lg"} visual={item.agent.pictureUrl} />
@@ -619,11 +626,21 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
             {name}
           </button>
         )}
-        <Chip
-          size="xs"
-          label={item.kind === "agent" ? `@${name}` : `/${name}`}
-          className="shrink-0 font-mono"
-        />
+        <TooltipProvider>
+          <TooltipRoot open={isCopied}>
+            <TooltipTrigger asChild>
+              <span className="relative shrink-0">
+                <Chip
+                  size="xs"
+                  label={handle}
+                  className="font-mono"
+                  onClick={() => copy(handle)}
+                />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Copied !</TooltipContent>
+          </TooltipRoot>
+        </TooltipProvider>
       </div>
       <div className="col-start-1 col-end-3 row-start-2 flex min-w-0 flex-col gap-1 self-start md:col-start-2">
         <div className="flex h-5 items-center gap-4 copy-sm">
