@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import logger from "@app/logger/logger";
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@app/types/locale";
+import { CATALOG_LOCALES, DEFAULT_LOCALE } from "@app/types/locale";
 import { formatter } from "@lingui/format-po";
 
 const FRONT_DIR = path.resolve(__dirname, "../..");
@@ -39,8 +39,8 @@ async function listUntranslatedMessages(locale: string): Promise<string[]> {
 /**
  * @cc [owner:sfriquet,label:testing] i18n-check-fails-on-stale-or-missing
  * The check MUST exit non-zero when running `lingui extract --clean` leaves any file under `locales/`
- * modified or untracked, or when any non-obsolete message of a locale other than `DEFAULT_LOCALE` has an empty
- * translation.
+ * modified or untracked, or when any non-obsolete message of a `CATALOG_LOCALES` entry other than
+ * `DEFAULT_LOCALE` has an empty translation.
  */
 async function main() {
   const staleCatalogs = listStaleCatalogs();
@@ -53,7 +53,7 @@ async function main() {
   }
 
   let hasMissingTranslations = false;
-  for (const locale of SUPPORTED_LOCALES) {
+  for (const locale of CATALOG_LOCALES) {
     if (locale === DEFAULT_LOCALE) {
       continue;
     }

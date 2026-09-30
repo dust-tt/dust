@@ -5,9 +5,13 @@ description: Translate or fix Dust product UI translations in the Lingui catalog
 
 # Translating the product UI
 
-Catalogs are gettext `.po` files in `front/locales/{locale}/messages.po`. `en-US` is the source
-locale: its catalog is generated and never translated by hand. Every other locale must have a
-non-empty `msgstr` for every message.
+Catalogs are gettext `.po` files in `front/locales/{locale}/messages.po`, one per entry of
+`CATALOG_LOCALES` in `front/types/locale.ts`. `en-US` is the source locale: its catalog is generated
+and never translated by hand. Every other catalog must have a non-empty `msgstr` for every message.
+
+Some supported locales reuse another locale's catalog (`CATALOG_LOCALE_BY_LOCALE`): `en-GB` renders
+the `en-US` messages and only changes date and number formatting. Never create a catalog or write
+translations for them.
 
 ## Procedure
 

@@ -1,5 +1,5 @@
 import { UserLocaleSync } from "@app/components/app/UserLocaleSync";
-import { i18n } from "@app/lib/i18n/i18n";
+import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { SupportedLocale } from "@app/types/locale";
 import { I18nProvider } from "@lingui/react";
@@ -57,6 +57,17 @@ describe("UserLocaleSync", () => {
 
     await waitFor(() => expect(i18n.locale).toBe("fr-FR"));
     expect(document.documentElement.lang).toBe("fr-FR");
+  });
+
+  it("activates en-GB with the en-US messages", async () => {
+    state.hasLocalisation = true;
+    state.userLocale = "en-GB";
+
+    renderWithI18n();
+
+    await waitFor(() => expect(i18n.locale).toBe("en-GB"));
+    expect(document.documentElement.lang).toBe("en-GB");
+    expect(await loadCatalog("en-GB")).toBe(await loadCatalog("en-US"));
   });
 
   it("renders English for messages missing from the active catalog", async () => {
