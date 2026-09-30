@@ -1,7 +1,9 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { SelfImprovingSkillsConsumptionSection } from "@app/components/pages/workspace/developers/SelfImprovingSkillsConsumptionSection";
 import { SelfImprovingSkillsListSection } from "@app/components/workspace/settings/SelfImprovingSkillsListSection";
 import { SelfImprovingSkillsSettingsSection } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import {
@@ -52,16 +54,28 @@ export function SelfImprovingSkillsPage() {
     }
     return (
       <>
-        <SelfImprovingSkillsSettingsSection
-          owner={owner}
-          onCapSaved={setCap}
-          onDefaultCapPerSkillSaved={setDefaultCapPerSkill}
-        />
-        <SelfImprovingSkillsConsumptionSection owner={owner} cap={cap} />
-        <SelfImprovingSkillsListSection
-          owner={owner}
-          defaultCapPerSkill={defaultCapPerSkill}
-        />
+        <AdminSectionAnchor
+          sectionId={ADMIN_SECTION_IDS.selfImprovingSkills.settings}
+        >
+          <SelfImprovingSkillsSettingsSection
+            owner={owner}
+            onCapSaved={setCap}
+            onDefaultCapPerSkillSaved={setDefaultCapPerSkill}
+          />
+        </AdminSectionAnchor>
+        <AdminSectionAnchor
+          sectionId={ADMIN_SECTION_IDS.selfImprovingSkills.consumption}
+        >
+          <SelfImprovingSkillsConsumptionSection owner={owner} cap={cap} />
+        </AdminSectionAnchor>
+        <AdminSectionAnchor
+          sectionId={ADMIN_SECTION_IDS.selfImprovingSkills.skills}
+        >
+          <SelfImprovingSkillsListSection
+            owner={owner}
+            defaultCapPerSkill={defaultCapPerSkill}
+          />
+        </AdminSectionAnchor>
       </>
     );
   };

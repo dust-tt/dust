@@ -1,10 +1,13 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
+import { COMPUTER_NETWORK_SECTION_LABEL } from "@app/components/pages/workspace/developers/computerAdminSearchEntries";
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { AgentRequestedDomainsSetting } from "@app/components/sandbox/AgentRequestedDomainsSetting";
 import { MultiPodNetworkSection } from "@app/components/sandbox/MultiPodNetworkSection";
 import type { SandboxScopeSelection } from "@app/components/sandbox/SandboxScopeSelector";
 import { SandboxScopeSelector } from "@app/components/sandbox/SandboxScopeSelector";
 import { useComputerAdminAccess } from "@app/hooks/useComputerAdminAccess";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useEgressPolicyPods } from "@app/lib/swr/sandbox";
 import { ContentMessage, InfoCircle, Page } from "@dust-tt/sparkle";
@@ -46,7 +49,9 @@ export function SandboxPage() {
   const renderNetwork = () => (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
-        <div className="heading-xl text-foreground">Network</div>
+        <div className="heading-xl text-foreground">
+          {COMPUTER_NETWORK_SECTION_LABEL}
+        </div>
         <div className="shrink-0">
           <SandboxScopeSelector
             pods={pods}
@@ -93,9 +98,15 @@ export function SandboxPage() {
 
     return (
       <>
-        <AgentRequestedDomainsSetting />
-        {renderNetwork()}
-        <EnvironmentSection />
+        <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.computer.agentDomains}>
+          <AgentRequestedDomainsSetting />
+        </AdminSectionAnchor>
+        <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.computer.network}>
+          {renderNetwork()}
+        </AdminSectionAnchor>
+        <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.computer.environment}>
+          <EnvironmentSection />
+        </AdminSectionAnchor>
       </>
     );
   };

@@ -6,6 +6,9 @@ import {
 import { InputWithSave, Page, SettingsList } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+export const PROGRAMMATIC_USAGE_SECTION_LABEL = "Programmatic usage";
+export const PROGRAMMATIC_MONTHLY_LIMIT_LABEL = "Programmatic monthly limit";
+
 interface UsageProgrammaticLimitCardProps {
   workspaceId: string;
 }
@@ -47,11 +50,13 @@ export function UsageProgrammaticLimitCard({
   return (
     <Page.Vertical gap="sm" align="stretch">
       <div className="flex flex-col gap-0.5">
-        <span className="heading-base text-foreground">Programmatic usage</span>
+        <span className="heading-base text-foreground">
+          {PROGRAMMATIC_USAGE_SECTION_LABEL}
+        </span>
       </div>
       <SettingsList>
         <SettingsList.Row
-          title="Programmatic monthly limit"
+          title={PROGRAMMATIC_MONTHLY_LIMIT_LABEL}
           description={
             <>
               Maximum credits allowed for programmatic usage per month.{" "}
