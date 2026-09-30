@@ -3200,8 +3200,8 @@ export class AgentResource
    * @cc [owner:tdraier,label:security;backend] agent-json-without-instructions
    * `toJSON` serializes every resource, custom or global, with its head fields,
    * version metadata and the caller's permission snapshot, and MUST NOT carry the instructions: the
-   * configuration builders add them (see `agent-json-redaction`). `isRedacted` MUST be `true`
-   * exactly when the caller cannot view the content (`!canViewContent`).
+   * configuration builders add them (see `agent-json-redaction`). It MUST carry the resource's
+   * `canViewContent`.
    */
   toJSON(): AgentConfigurationBaseType {
     const isGlobal = this.scope === "global";
@@ -3244,7 +3244,7 @@ export class AgentResource
       canEdit:
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
-      isRedacted: !this.canViewContent,
+      canViewContent: this.canViewContent,
     };
   }
 
