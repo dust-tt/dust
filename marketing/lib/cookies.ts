@@ -58,6 +58,43 @@ export function hasCookiesAccepted(
   );
 }
 
+/**
+ * @cc [owner:dchristenhuis,label:product;security] explicit-analytics-consent-only
+ * Returns true only when the visitor clicked an accept action, i.e. the cookie is exactly `"true"`.
+ * The geolocation-based `"auto"` value, a missing cookie, and a logged-in session MUST NOT count as
+ * explicit consent.
+ */
+export function hasExplicitAnalyticsConsent(
+  cookieValue: string | boolean | undefined
+): boolean {
+  return cookieValue === "true" || cookieValue === true;
+}
+
+// Separate from DUST_COOKIES_ACCEPTED: accepting analytics cookies never implies replay consent.
+export const DUST_SESSION_REPLAY_CONSENT = "dust-session-replay-consent";
+
+export type SessionReplayConsentValue = "granted" | "denied";
+
+/**
+ * @cc [owner:dchristenhuis,label:product;security] replay-consent-explicit-only
+ * Returns true only when the replay consent cookie is exactly `"granted"`. A missing, unknown, or
+ * `"denied"` value MUST return false. Login state, geolocation, and the analytics consent cookie
+ * MUST NOT be inputs to this decision.
+ */
+export function hasSessionReplayConsent(
+  cookieValue: string | boolean | undefined
+): boolean {
+  return cookieValue === "granted";
+}
+
+// Host-only (no `domain`) on purpose: marketing replay consent must not be readable by, or leak
+// into, app.dust.tt where onboarding recording follows its own rules.
+export const CONSENT_COOKIE_OPTIONS = {
+  path: "/",
+  maxAge: 183 * 24 * 60 * 60, // 6 months
+  sameSite: "lax",
+} as const;
+
 export function shouldCheckGeolocation(
   cookieValue: string | boolean | undefined
 ): boolean {

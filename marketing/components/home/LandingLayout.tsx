@@ -1,5 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import { A } from "@marketing/components/home/ContentComponents";
+import type { CookieConsentChoices } from "@marketing/components/home/CookieBanner";
+import { CookieBanner } from "@marketing/components/home/CookieBanner";
 import { LogoListsProvider } from "@marketing/components/home/LogoListsContext";
 import { FooterNavigation } from "@marketing/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@marketing/components/home/menu/MainNavigation";
@@ -12,10 +13,14 @@ import { SkipLandingPrompt } from "@marketing/components/home/SkipLandingPrompt"
 import UTMButton from "@marketing/components/UTMButton";
 import { useStripUtmParams } from "@marketing/hooks/useStripUtmParams";
 import {
+  CONSENT_COOKIE_OPTIONS,
   DUST_COOKIES_ACCEPTED,
   DUST_HAS_SESSION,
+  DUST_SESSION_REPLAY_CONSENT,
   hasCookiesAccepted,
+  hasExplicitAnalyticsConsent,
   hasSessionIndicator,
+  hasSessionReplayConsent,
   shouldCheckGeolocation,
 } from "@marketing/lib/cookies";
 import type { LogoListMap } from "@marketing/lib/logo_bars";
@@ -25,7 +30,7 @@ import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { classNames, getFaviconPath } from "@marketing/lib/utils";
 import { getOrCreateAnonymousId } from "@marketing/lib/utils/anonymous_id";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
-import { Button, cn } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import Script from "next/script";
@@ -67,13 +72,17 @@ export default function LandingLayout({
   useStripUtmParams();
 
   const [cookies, setCookie] = useCookies(
-    [DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION],
+    [DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION, DUST_SESSION_REPLAY_CONSENT],
     {
       doNotParse: true,
     }
   );
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
+  // Only opened by the visitor through the footer "Cookie Settings" control.
+  const [isCookieSettingsOpen, setIsCookieSettingsOpen] =
+    useState<boolean>(false);
   const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
+  const replayCookieValue = cookies[DUST_SESSION_REPLAY_CONSENT];
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(
     hasCookiesAccepted(cookieValue, null)
   );
@@ -96,19 +105,22 @@ export default function LandingLayout({
     disabled: !shouldCheckGeo,
   });
 
-  const setCookieApproval = useCallback(
-    (type: "true" | "auto" | "false") => {
-      // true is when the user accepts all cookies.
-      // auto is when not in GDPR region
-      if (type === "true" || type === "auto") {
-        setHasAcceptedCookies(true);
-      }
+  const saveConsentChoices = useCallback(
+    ({ analytics, replay }: CookieConsentChoices) => {
+      setHasAcceptedCookies(analytics);
       setShowCookieBanner(false);
-      setCookie(DUST_COOKIES_ACCEPTED, type, {
-        path: "/",
-        maxAge: 183 * 24 * 60 * 60, // 6 months
-        sameSite: "lax",
-      });
+      setIsCookieSettingsOpen(false);
+      setCookie(
+        DUST_COOKIES_ACCEPTED,
+        analytics ? "true" : "false",
+        CONSENT_COOKIE_OPTIONS
+      );
+      // Replay requires analytics consent.
+      setCookie(
+        DUST_SESSION_REPLAY_CONSENT,
+        analytics && replay ? "granted" : "denied",
+        CONSENT_COOKIE_OPTIONS
+      );
     },
     [setCookie]
   );
@@ -231,16 +243,24 @@ export default function LandingLayout({
           {children}
         </div>
         <PromoBanner />
-        <CookieBanner
-          className="fixed bottom-0 left-0 z-50 w-full"
-          show={showCookieBanner}
-          onClickAccept={() => {
-            setCookieApproval("true");
-          }}
-          onClickRefuse={() => {
-            setCookieApproval("false");
-          }}
-        />
+        {(showCookieBanner || isCookieSettingsOpen) && (
+          <CookieBanner
+            // Remount when switching modes so the switches reset to the saved choices.
+            key={isCookieSettingsOpen ? "settings" : "first-visit"}
+            className="fixed bottom-0 left-0 z-50 w-full"
+            mode={isCookieSettingsOpen ? "settings" : "first-visit"}
+            savedChoices={{
+              // Only explicit choices pre-fill the switches: saving preferences
+              // must never turn analytics or replay on by itself.
+              analytics: hasExplicitAnalyticsConsent(cookieValue),
+              replay:
+                hasExplicitAnalyticsConsent(cookieValue) &&
+                hasSessionReplayConsent(replayCookieValue),
+            }}
+            onSave={saveConsentChoices}
+            onCancel={() => setIsCookieSettingsOpen(false)}
+          />
+        )}
         {hasAcceptedCookies && (
           <Script id="google-tag-manager" strategy="afterInteractive">
             {`
@@ -260,81 +280,15 @@ export default function LandingLayout({
             strategy="afterInteractive"
           />
         )}
-        {!hideNavigation && <FooterNavigation />}
+        {!hideNavigation && (
+          <FooterNavigation
+            onOpenCookieSettings={() => setIsCookieSettingsOpen(true)}
+          />
+        )}
       </main>
     </LogoListsProvider>
   );
 }
-
-const CookieBanner = ({
-  show,
-  onClickAccept,
-  onClickRefuse,
-  className,
-}: {
-  show: boolean;
-  onClickAccept: () => void;
-  onClickRefuse: () => void;
-  className?: string;
-}) => {
-  const [isVisible, setIsVisible] = useState(show);
-
-  useEffect(() => {
-    setIsVisible(show);
-  }, [show]);
-
-  if (!isVisible) {
-    return null;
-  }
-
-  return (
-    <div
-      className={cn(
-        "fixed bottom-0 left-0 z-30 flex w-full flex-col items-center justify-between gap-6 border-t border-slate-700 bg-slate-900/90 p-8 shadow-2xl backdrop-blur-sm md:flex-row md:gap-8",
-        "transition-opacity duration-300 ease-in-out",
-        isVisible ? "opacity-100" : "opacity-0",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        className || ""
-      )}
-    >
-      <div className="flex max-w-2xl flex-col gap-2">
-        <div className="text-base font-medium text-white md:text-lg">
-          We use cookies
-        </div>
-        <div className="text-sm font-normal text-slate-300 md:text-base">
-          By clicking "Accept All Cookies", you agree to the storing of cookies
-          on your device to enhance site navigation, analyze site usage, and
-          assist in our marketing efforts. You can also{" "}
-          <button
-            className="text-slate-400 underline transition-colors hover:text-slate-200"
-            onClick={() => {
-              setIsVisible(false);
-              onClickRefuse();
-            }}
-          >
-            reject non-essential cookies
-          </button>
-          . View our{" "}
-          <A variant="primary" href="/home/platform-privacy">
-            Privacy Policy
-          </A>{" "}
-          for more information.
-        </div>
-      </div>
-      <div className="flex shrink-0 gap-3">
-        <Button
-          variant="highlight"
-          size="md"
-          label="Accept All Cookies"
-          onClick={() => {
-            setIsVisible(false);
-            onClickAccept();
-          }}
-        />
-      </div>
-    </div>
-  );
-};
 
 const Header = () => {
   const faviconPath = getFaviconPath();
