@@ -430,6 +430,7 @@ export function AgentSearchTable({
   );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
+  // Mirror BasicCellContent's inner h-12 so the divider contributes equally to row height.
   if (isLoading && agents.length === 0) {
     return (
       <div role="status" aria-label="Loading agents">
@@ -464,9 +465,17 @@ export function AgentSearchTable({
               case "tags":
                 return <TextCellSkeleton className="w-16" />;
               case "feedback":
-                return <TextCellSkeleton className="ml-auto w-8" />;
+                return (
+                  <div className="flex h-12 items-center justify-end">
+                    <TextCellSkeleton className="w-8" />
+                  </div>
+                );
               case "usage":
-                return <TextCellSkeleton className="ml-auto w-8" />;
+                return (
+                  <div className="flex h-12 items-center justify-end">
+                    <TextCellSkeleton className="w-8" />
+                  </div>
+                );
               case "editors":
                 return (
                   <div className="flex -space-x-[18px]">
@@ -476,7 +485,11 @@ export function AgentSearchTable({
                   </div>
                 );
               case "updatedAt":
-                return <TextCellSkeleton className="w-20" />;
+                return (
+                  <div className="flex h-12 items-center">
+                    <TextCellSkeleton className="w-20" />
+                  </div>
+                );
               case "actions":
                 return <LoadingBlock className="h-8 w-8 rounded-xl" />;
               default:
