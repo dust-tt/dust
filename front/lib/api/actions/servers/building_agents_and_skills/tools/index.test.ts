@@ -586,7 +586,7 @@ describe("building_agents_and_skills tools", () => {
             },
           ],
         }),
-        "Only editors can suggest changing a workspace agent's instructions"
+        "The instructions of this agent are not readable"
       );
       expect(
         await AgentSuggestionResource.listByAgentConfigurationId(
@@ -1296,7 +1296,7 @@ describe("building_agents_and_skills tools", () => {
           ],
         });
 
-        expectMcpError(result, "Only editors");
+        expectMcpError(result, "You are not allowed to suggest a");
       });
 
       it("refuses a tool restricted to skills", async () => {
@@ -1731,7 +1731,7 @@ describe("building_agents_and_skills tools", () => {
           editSubAgents(agent.sId, { addAgentIds: [subAgent.sId] })
         );
 
-        expectMcpError(result, "Only editors");
+        expectMcpError(result, "You are not allowed to suggest a");
       });
 
       it("refuses to add a sub-agent the agent has, or remove one it does not have", async () => {
@@ -1932,19 +1932,22 @@ describe("building_agents_and_skills tools", () => {
         });
         const agent =
           await AgentConfigurationFactory.createTestAgent(authenticator);
-        const skill = await seedSkill(authenticator, { name: "New Skill" });
         const admin = await addMember(workspace, "admin");
         const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
           admin.sId,
           workspace.sId
         );
+        const skill = await seedSkill(adminAuth, { name: "New Skill" });
 
         const result = await runSuggest(
           adminAuth,
           editSkills(agent.sId, { addSkillIds: [skill.sId] })
         );
 
-        expectMcpError(result, "Only editors");
+        expectMcpError(
+          result,
+          'You are not allowed to suggest a "skills" change'
+        );
       });
 
       it("refuses to add a skill the agent has, or remove one it does not have", async () => {

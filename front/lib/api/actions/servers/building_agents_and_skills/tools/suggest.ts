@@ -9,6 +9,7 @@ import type {
   SingletonAgentSuggestionData,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import {
+  checkAgentSuggestionKindAuthorized,
   recordAgentCreationSuggestion,
   recordKeyedAgentSuggestions,
   recordSingletonAgentSuggestions,
@@ -67,7 +68,10 @@ import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { CreateSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type {
+  AgentSuggestionKind,
+  CreateSuggestionType,
+} from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillCreateSuggestionType,
   SkillSuggestionData,
@@ -180,6 +184,11 @@ async function planSkillCreation(
   });
 }
 
+/**
+ * @cc [owner:avervaet,label:security] every-planned-kind-authorized
+ * MUST return a planned change only when the caller is authorized for the kind of every suggestion
+ * it records (singletons, instructions and keyed kinds); otherwise it fails and nothing is recorded.
+ */
 async function planAgentEdit(
   auth: Authenticator,
   {
@@ -351,6 +360,18 @@ async function planAgentEdit(
     );
   }
 
+  const kinds = new Set<AgentSuggestionKind>([
+    ...singletons.map((s) => s.kind),
+    ...(instructions ? ["instructions" as const] : []),
+    ...keyed.map((k) => k.kind),
+  ]);
+  for (const kind of kinds) {
+    const authorized = checkAgentSuggestionKindAuthorized(auth, agent, kind);
+    if (authorized.isErr()) {
+      return authorized;
+    }
+  }
+
   return new Ok({
     type: "agent",
     agent,
@@ -373,6 +394,11 @@ async function planAgentDeletion(
   const validation = validateAgentDeletion(auth, agent);
   if (validation.isErr()) {
     return validation;
+  }
+
+  const authorized = checkAgentSuggestionKindAuthorized(auth, agent, "delete");
+  if (authorized.isErr()) {
+    return authorized;
   }
 
   return new Ok({

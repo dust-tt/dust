@@ -77,15 +77,9 @@ export async function validateAgentNameChange(
 ): Promise<
   Result<
     NameSuggestionType,
-    DustError<"unauthorized" | "invalid_request_error" | "name_conflict">
+    DustError<"invalid_request_error" | "name_conflict">
   >
 > {
-  if (!isAuthorizedForAgentSuggestionKind(auth, agent, "name")) {
-    return new Err(
-      new DustError("unauthorized", "Only editors of this agent can rename it.")
-    );
-  }
-
   if (agent.status !== "active") {
     return new Err(
       new DustError(
@@ -152,19 +146,7 @@ export function validateAgentDescriptionChange(
   auth: Authenticator,
   agent: AgentResource,
   { description }: { description: string }
-): Result<
-  DescriptionSuggestionType,
-  DustError<"unauthorized" | "invalid_request_error">
-> {
-  if (!isAuthorizedForAgentSuggestionKind(auth, agent, "description")) {
-    return new Err(
-      new DustError(
-        "unauthorized",
-        "Only editors of this agent can change its description."
-      )
-    );
-  }
-
+): Result<DescriptionSuggestionType, DustError<"invalid_request_error">> {
   if (agent.status !== "active") {
     return new Err(
       new DustError(
@@ -200,19 +182,7 @@ export function validateAgentPublishStateChange(
   auth: Authenticator,
   agent: AgentResource,
   { scope }: { scope: "hidden" | "visible" }
-): Result<
-  ScopeSuggestionType,
-  DustError<"unauthorized" | "invalid_request_error">
-> {
-  if (!isAuthorizedForAgentSuggestionKind(auth, agent, "scope")) {
-    return new Err(
-      new DustError(
-        "unauthorized",
-        "Only editors of this agent can change its publish state."
-      )
-    );
-  }
-
+): Result<ScopeSuggestionType, DustError<"invalid_request_error">> {
   if (agent.status !== "active") {
     return new Err(
       new DustError(
@@ -248,14 +218,6 @@ export async function validateAgentEditorsSuggestion(
     removeUserIds,
   }: { addUserIds: string[]; removeUserIds: string[] }
 ): Promise<Result<EditorsSuggestionType, MCPError>> {
-  if (!isAuthorizedForAgentSuggestionKind(auth, agent, "editors")) {
-    return new Err(
-      new MCPError(
-        "Only editors of this agent or workspace admins can change its editors."
-      )
-    );
-  }
-
   const validation = await validateAgentEditorsChange(auth, agent, {
     addUserIds,
     removeUserIds,
@@ -302,14 +264,6 @@ export async function validateAgentModelChange(
     reasoningEffort,
   }: { modelId: ModelIdType; reasoningEffort?: ReasoningEffort }
 ): Promise<Result<ModelSuggestionType, MCPError>> {
-  if (!isAuthorizedForAgentSuggestionKind(auth, agent, "model")) {
-    return new Err(
-      new MCPError(
-        "Only editors can suggest changing a workspace agent's model."
-      )
-    );
-  }
-
   if (agent.status !== "active") {
     return new Err(
       new MCPError("Only active agents can have their model changed.")
@@ -336,12 +290,6 @@ export function validateAgentDeletion(
   auth: Authenticator,
   agent: AgentResource
 ): Result<DeleteSuggestionType, MCPError> {
-  if (!isAuthorizedForAgentSuggestionKind(auth, agent, "delete")) {
-    return new Err(
-      new MCPError("Only editors can suggest deleting a workspace agent.")
-    );
-  }
-
   if (agent.status !== "active") {
     return new Err(new MCPError("Only active agents can be deleted."));
   }
@@ -358,14 +306,6 @@ export async function validateAgentInstructionsChange(
   agent: AgentResource,
   edits: InstructionSuggestionEditInput[]
 ): Promise<Result<InstructionSuggestionEditInput[], MCPError>> {
-  if (!isAuthorizedForAgentSuggestionKind(auth, agent, "instructions")) {
-    return new Err(
-      new MCPError(
-        "Only editors can suggest changing a workspace agent's instructions."
-      )
-    );
-  }
-
   if (agent.status !== "active") {
     return new Err(
       new MCPError("Only active agents can have their instructions changed.")
@@ -497,8 +437,7 @@ export async function validateAgentCreationCapabilities(
 /**
  * Checks each skill can be added to or removed from the agent. An added skill is one the builder
  * offers (see `checkSkillAddition`) that the agent does not have yet; a removed skill is one of the
- * agent's skills. Only editors can suggest it, as only editors can apply it. Returns one suggestion
- * per skill.
+ * agent's skills. Returns one suggestion per skill.
  */
 export async function validateAgentSkillChanges(
   auth: Authenticator,
@@ -508,12 +447,6 @@ export async function validateAgentSkillChanges(
     removeSkillIds,
   }: { addSkillIds: string[]; removeSkillIds: string[] }
 ): Promise<Result<SkillsSuggestionType[], MCPError>> {
-  if (!isAuthorizedForAgentSuggestionKind(auth, agent, "skills")) {
-    return new Err(
-      new MCPError("Only editors can suggest changing an agent's skills.")
-    );
-  }
-
   if (agent.status !== "active") {
     return new Err(
       new MCPError("Only active agents can have their skills changed.")
@@ -564,8 +497,7 @@ export async function validateAgentSkillChanges(
 
 /**
  * Checks each tool can be added to or removed from the agent (see `checkToolAddition` and
- * `checkToolRemoval`). Only editors can suggest it, as only editors can apply it. Returns one
- * suggestion per tool.
+ * `checkToolRemoval`). Returns one suggestion per tool.
  */
 export async function validateAgentToolChanges(
   auth: Authenticator,
@@ -575,12 +507,6 @@ export async function validateAgentToolChanges(
     removeToolIds,
   }: { addToolIds: string[]; removeToolIds: string[] }
 ): Promise<Result<ToolsSuggestionType[], MCPError>> {
-  if (!isAuthorizedForAgentSuggestionKind(auth, agent, "tools")) {
-    return new Err(
-      new MCPError("Only editors can suggest changing an agent's tools.")
-    );
-  }
-
   if (agent.status !== "active") {
     return new Err(
       new MCPError("Only active agents can have their tools changed.")
@@ -628,7 +554,6 @@ export async function validateAgentToolChanges(
 /**
  * Checks each sub-agent can be added to or removed from the agent. An added sub-agent
  * is run through the `run_agent` tool, with the builder's defaults.
- * Only editors can suggest it, as only editors can apply it.
  * Returns one suggestion per sub-agent.
  */
 export async function validateAgentSubAgentChanges(
@@ -639,12 +564,6 @@ export async function validateAgentSubAgentChanges(
     removeAgentIds,
   }: { addAgentIds: string[]; removeAgentIds: string[] }
 ): Promise<Result<SubAgentSuggestionType[], MCPError>> {
-  if (!isAuthorizedForAgentSuggestionKind(auth, agent, "sub_agent")) {
-    return new Err(
-      new MCPError("Only editors can suggest changing an agent's sub-agents.")
-    );
-  }
-
   if (agent.status !== "active") {
     return new Err(
       new MCPError("Only active agents can have their sub-agents changed.")
@@ -703,6 +622,26 @@ export async function validateAgentSubAgentChanges(
       childAgentId,
     })),
   ]);
+}
+
+/**
+ * Checked once all changes are validated and before any write, so a batch fails as a whole instead
+ * of the insert throwing mid-batch.
+ */
+export function checkAgentSuggestionKindAuthorized(
+  auth: Authenticator,
+  agent: AgentResource,
+  kind: AgentSuggestionKind
+): Result<undefined, MCPError> {
+  if (!isAuthorizedForAgentSuggestionKind(auth, agent, kind)) {
+    return new Err(
+      new MCPError(
+        `You are not allowed to suggest a "${kind}" change on this agent.`
+      )
+    );
+  }
+
+  return new Ok(undefined);
 }
 
 /** Kinds of which a single suggestion may be pending per agent at a time. */
