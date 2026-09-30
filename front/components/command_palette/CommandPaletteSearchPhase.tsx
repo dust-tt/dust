@@ -124,17 +124,10 @@ export function CommandPaletteSearchPhase({
   }, [selectedIndex, flatItems.length]);
 
   // Reset selection and trim stale refs when the number of results changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: section lengths are intentional triggers
   useEffect(() => {
     itemRefs.current.length = flatItems.length;
     onSelectedIndexChange(0);
-  }, [
-    agents.length,
-    conversations.length,
-    pods.length,
-    skills.length,
-    onSelectedIndexChange,
-  ]);
+  }, [flatItems.length, onSelectedIndexChange]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     const totalItems = flatItems.length;
