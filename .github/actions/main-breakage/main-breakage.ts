@@ -267,8 +267,13 @@ function isWithinRetryPoll(
   return !(durationMs >= RETRY_TIMEOUT_MS);
 }
 
-// Returns the conclusion of the retried attempt, or null when it could not be obtained within
-// the poll cap.
+type RetryOutcome = {
+  // Null when no attempt concluded within the poll cap.
+  conclusion: string | null;
+  // Set when the last poll failed, so the attempt may have concluded unseen within the cap.
+  unconfirmed: boolean;
+};
+
 async function retryFailedJobs({
   github,
   context,
@@ -278,7 +283,7 @@ async function retryFailedJobs({
 }: Pick<
   BreakageOptions,
   "github" | "context" | "core" | "sleep" | "nowMs"
->): Promise<string | null> {
+>): Promise<RetryOutcome> {
   const run = context.payload.workflow_run;
   try {
     await github.rest.actions.reRunWorkflowFailedJobs({
@@ -287,15 +292,17 @@ async function retryFailedJobs({
     });
   } catch (error) {
     core.warning(`Could not retry ${run.name} run ${run.id}: ${String(error)}`);
-    return null;
+    return { conclusion: null, unconfirmed: false };
   }
   core.info(`Retrying the failed jobs of ${run.name} run ${run.id}.`);
   const requestedAtMs = nowMs();
   let startedAtMs: number | null = null;
+  let lastPollFailed = false;
   // A failed poll must not end the wait early: a short attempt stays silent on its own, so this
   // job has to keep watching until the attempt has run for the whole cap.
   for (;;) {
     await sleep(RETRY_POLL_MS);
+    lastPollFailed = false;
     try {
       const { data } = await github.rest.actions.getWorkflowRun({
         ...context.repo,
@@ -304,13 +311,14 @@ async function retryFailedJobs({
       if (data.run_attempt > run.run_attempt) {
         if (data.status === "completed") {
           if (isWithinRetryPoll(data)) {
-            return data.conclusion;
+            return { conclusion: data.conclusion, unconfirmed: false };
           }
           break;
         }
         startedAtMs = Date.parse(data.run_started_at);
       }
     } catch (error) {
+      lastPollFailed = true;
       core.warning(
         `Could not poll the retry of ${run.name} run ${run.id}: ${String(error)}`
       );
@@ -324,7 +332,7 @@ async function retryFailedJobs({
   core.warning(
     `The retry of ${run.name} run ${run.id} did not complete in time.`
   );
-  return null;
+  return { conclusion: null, unconfirmed: lastPollFailed };
 }
 
 async function isSuperseded(
@@ -380,7 +388,9 @@ type PreviousState =
  * the previous-run lookup when it does not. An attempt started by the automatic infra retry MUST
  * stay silent when its own start-to-completion time is under the poll cap, and MUST report its own
  * transition otherwise; the job that started it MUST report its outcome in exactly the first case,
- * so it MUST keep polling through API errors until that cap has passed.
+ * so it MUST keep polling through API errors until that cap has passed. When its last poll at the
+ * cap fails, the outcome is unknown: it MUST still report the breakage, flagged as unconfirmed,
+ * accepting that a quick success of the attempt leaves that alert without a recovery.
  */
 async function getPreviousState({
   github,
@@ -416,7 +426,7 @@ type BreakageDetails = {
   pr: { number: number; html_url: string } | null;
   merger: string | null;
   mention: string | null;
-  retried?: boolean;
+  retry?: "failed" | "unconfirmed";
 };
 
 /**
@@ -432,7 +442,7 @@ export function formatBreakageMessage({
   pr,
   merger,
   mention,
-  retried = false,
+  retry,
 }: BreakageDetails): string {
   const shortSha = run.head_sha.slice(0, 7);
   const title = run.head_commit?.message.split("\n")[0] ?? shortSha;
@@ -451,10 +461,15 @@ export function formatBreakageMessage({
     failedJobs.length > 0
       ? ` Failed jobs: ${failedJobs.map(escapeSlackText).join(", ")}.`
       : "";
-  const retry = retried ? " Failed again after an automatic retry." : "";
+  const retryNote =
+    retry === "failed"
+      ? " Failed again after an automatic retry."
+      : retry === "unconfirmed"
+        ? " The outcome of an automatic retry could not be read."
+        : "";
   return (
     `:rotating_light: *main is broken*: ${workflow} failed on ${commit}${prPart}${mergedBy}.` +
-    `${jobs}${retry} <${escapeSlackText(run.html_url)}|See the run>.`
+    `${jobs}${retryNote} <${escapeSlackText(run.html_url)}|See the run>.`
   );
 }
 
@@ -547,9 +562,9 @@ export async function buildBreakageNotification({
   }
 
   let jobs = jobsData.jobs;
-  let retried = false;
+  let retry: BreakageDetails["retry"];
   if (run.run_attempt === 1 && isInfraFailure(jobs)) {
-    const conclusion = await retryFailedJobs({
+    const { conclusion, unconfirmed } = await retryFailedJobs({
       github,
       context,
       core,
@@ -559,6 +574,9 @@ export async function buildBreakageNotification({
     if (conclusion === "success") {
       core.info(`No notification: ${run.name} succeeded after a retry.`);
       return null;
+    }
+    if (unconfirmed) {
+      retry = "unconfirmed";
     }
     // A failed refresh falls back to reporting the original failure rather than dropping it.
     try {
@@ -576,7 +594,7 @@ export async function buildBreakageNotification({
           per_page: JOBS_PER_PAGE,
         });
         jobs = data.jobs;
-        retried = true;
+        retry = "failed";
       }
     } catch (error) {
       core.warning(
@@ -585,7 +603,15 @@ export async function buildBreakageNotification({
     }
   }
 
-  const { pr, merger } = await getMergedPullRequest({ github, context });
+  // Attribution is optional: a failed lookup must not drop the alert.
+  const { pr, merger } = await getMergedPullRequest({ github, context }).catch(
+    (error) => {
+      core.warning(
+        `Could not find the pull request of ${run.head_sha}: ${String(error)}`
+      );
+      return { pr: null, merger: run.actor?.login ?? null };
+    }
+  );
   const mentions = merger
     ? await resolveSlackMentions({
         handles: [merger],
@@ -604,6 +630,6 @@ export async function buildBreakageNotification({
     pr,
     merger,
     mention: merger ? (mentions.get(merger.toLowerCase()) ?? null) : null,
-    retried,
+    retry,
   });
 }

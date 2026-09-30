@@ -108,6 +108,7 @@ function fakeGithub({
   attempts = {},
   attemptJobs = {},
   pulls = [],
+  pullsError = false,
   mergedBy = null,
 }: {
   otherRuns: Array<{ run_number: number; conclusion: string | null }>;
@@ -132,6 +133,7 @@ function fakeGithub({
     Array<{ name: string; conclusion: string | null }>
   >;
   pulls?: Array<{ number: number; html_url: string; merged_at: string | null }>;
+  pullsError?: boolean;
   mergedBy?: string | null;
 }) {
   const calls = { reruns: 0, polls: 0 };
@@ -221,7 +223,12 @@ function fakeGithub({
         },
       },
       repos: {
-        listPullRequestsAssociatedWithCommit: async () => ({ data: pulls }),
+        listPullRequestsAssociatedWithCommit: async () => {
+          if (pullsError) {
+            throw new Error("GitHub is down");
+          }
+          return { data: pulls };
+        },
       },
       pulls: {
         get: async () => ({
@@ -598,6 +605,35 @@ describe("infra retry", () => {
     });
     assert.equal(await notifyWith(github), null);
     assert.equal(github.calls.polls, 4);
+  });
+
+  it("flags the retry as unconfirmed when polls fail through the cap", async () => {
+    globalThis.fetch = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: infraJobs,
+      retryConclusion: "success",
+      pollErrors: Number.POSITIVE_INFINITY,
+    });
+    const text = (await notifyWith(github)) ?? "";
+    assert.match(text, /main is broken/);
+    assert.match(text, /The outcome of an automatic retry could not be read\./);
+  });
+
+  it("reports the breakage without attribution when the PR lookup errors", async () => {
+    globalThis.fetch = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: infraJobs,
+      retryConclusion: "failure",
+      pullsError: true,
+    });
+    assert.match(
+      (await notifyWith(github)) ?? "",
+      /main is broken.* merged by @pusher\..*Failed again after an automatic retry\./
+    );
   });
 
   it("reports the breakage when the history refresh after the retry errors", async () => {
