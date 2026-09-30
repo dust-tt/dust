@@ -1,5 +1,9 @@
 import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
-import { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
+import type { ModelIdentifier } from "@app/lib/api/assistant/provider_whitelist";
+import {
+  isModelWhitelisted,
+  isProviderWhitelisted,
+} from "@app/lib/api/assistant/provider_whitelist";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -58,6 +62,13 @@ export function isProviderWhitelistedForAuth(
   providerId: ModelProviderIdType
 ): boolean {
   return isProviderWhitelisted(getWhitelistedProviders(auth), providerId);
+}
+
+export function isModelWhitelistedForAuth(
+  auth: Authenticator,
+  model: ModelIdentifier
+): boolean {
+  return isModelWhitelisted(getWhitelistedProviders(auth), model);
 }
 
 type ModelEnablementContext = Parameters<typeof isModelEnabled>[1];
