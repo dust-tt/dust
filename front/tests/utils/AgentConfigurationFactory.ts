@@ -158,8 +158,11 @@ export class AgentConfigurationFactory {
       throw result.error;
     }
 
+    const { resource } = result.value;
+    const content = resource.isFull() ? await resource.fetchContent() : null;
+
     return {
-      ...result.value.resource.toJSON(),
+      ...resource.toJSON({ content }),
       tags: [],
       userFavorite: false,
       instructionsHtml: overrides.instructionsHtml ?? null,

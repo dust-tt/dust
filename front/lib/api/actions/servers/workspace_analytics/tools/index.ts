@@ -208,7 +208,8 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       ]);
     }
 
-    const [actions, skills] = await Promise.all([
+    const [content, actions, skills] = await Promise.all([
+      agent.fetchContent(),
       agent.listActions(auth),
       agent.listSkills(auth),
     ]);
@@ -226,7 +227,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
           `- Skills: ${skillNames || "none"}\n` +
           `- Tools: ${toolNames || "none"}\n\n` +
           "Instructions (full system prompt):\n" +
-          `${agent.content.instructions ?? "(no instructions)"}`,
+          `${content.instructions ?? "(no instructions)"}`,
       },
     ]);
   },

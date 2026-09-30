@@ -41,7 +41,8 @@ export async function getAgentDetails(
     ]);
   }
 
-  const [actions, skills] = await Promise.all([
+  const [content, actions, skills] = await Promise.all([
+    agent.fetchContent(),
     agent.listActions(auth),
     agent.listSkills(auth),
   ]);
@@ -56,7 +57,7 @@ export async function getAgentDetails(
         `- Skills: ${skillNames || "none"}\n` +
         `- Tools: ${toolNames || "none"}\n\n` +
         "Instructions (full system prompt):\n" +
-        `${agent.content.instructions ?? "(no instructions)"}`,
+        `${content.instructions ?? "(no instructions)"}`,
     },
   ]);
 }

@@ -1,6 +1,7 @@
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentContentEnrichment } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { tagsSorter } from "@app/lib/utils";
 import type {
@@ -100,6 +101,21 @@ export async function enrichWithActions(
 }
 
 /**
+ * @cc [owner:tdraier,label:backend] enrich-content-key-per-version
+ * `enrichWithContent` keys its result by the input resource, which is one configuration version: the
+ * instructions belong to that version. A `light` resource gets `content: null`.
+ */
+export async function enrichWithContent(
+  resources: AgentResource[]
+): Promise<Map<AgentResource, AgentContentEnrichment>> {
+  const contentByAgent = await AgentResource.batchFetchContent(resources);
+
+  return new Map(
+    [...contentByAgent].map(([resource, content]) => [resource, { content }])
+  );
+}
+
+/**
  * Renders `LightAgentConfigurationType`s: the queried `userFavorite` and `tags`, shaped by
  * `AgentResource.toLightConfigurationJSON`.
  */
@@ -107,15 +123,17 @@ export async function toLightAgentConfigurations(
   auth: Authenticator,
   resources: AgentResource[]
 ): Promise<LightAgentConfigurationType[]> {
-  const [favorites, tags] = await Promise.all([
+  const [favorites, tags, contents] = await Promise.all([
     enrichWithFavorites(auth, resources),
     enrichWithTags(auth, resources),
+    enrichWithContent(resources),
   ]);
 
   return resources.map((resource) =>
     resource.toLightConfigurationJSON({
       ...(favorites.get(resource.sId) ?? { userFavorite: false }),
       ...(tags.get(resource) ?? { tags: [] }),
+      ...(contents.get(resource) ?? { content: null }),
     })
   );
 }
@@ -128,10 +146,11 @@ export async function toAgentConfigurations(
   auth: Authenticator,
   resources: AgentResource[]
 ): Promise<AgentConfigurationType[]> {
-  const [favorites, tags, actions] = await Promise.all([
+  const [favorites, tags, actions, contents] = await Promise.all([
     enrichWithFavorites(auth, resources),
     enrichWithTags(auth, resources),
     enrichWithActions(auth, resources),
+    enrichWithContent(resources),
   ]);
 
   return resources.map((resource) =>
@@ -139,6 +158,7 @@ export async function toAgentConfigurations(
       ...(favorites.get(resource.sId) ?? { userFavorite: false }),
       ...(tags.get(resource) ?? { tags: [] }),
       ...(actions.get(resource) ?? { actions: [] }),
+      ...(contents.get(resource) ?? { content: null }),
     })
   );
 }

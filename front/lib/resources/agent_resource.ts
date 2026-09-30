@@ -171,12 +171,16 @@ const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
   { role: "none", permissions: ["read", "list"] },
 ];
 
-// Full-only payload: the private `AgentConfigurationModel` columns. Present only on `full`
-// resources (see `AgentResource` variants).
+// Full-only payload: the private `AgentConfigurationModel` columns. Never loaded with the resource:
+// read on demand through `fetchContent`/`batchFetchContent` (see `agent-content-on-demand`).
 export type AgentResourceContent = {
   instructions: string | null;
   instructionsHtml: string | null;
 };
+
+export type AgentContentEnrichment = { content: AgentResourceContent | null };
+
+const AGENT_CONTENT_ATTRIBUTES = ["instructions", "instructionsHtml"] as const;
 
 // The outcome of a `bulkUpdate`: the agents whose save succeeded (`updatedAgentIds`, a change
 // applied or an already-satisfied no-op), and the requested ids that were skipped (not resolvable,
@@ -292,8 +296,7 @@ type SerializedModelConfiguration = {
 };
 
 // Cached shape of a `full` custom `AgentResource`. Hand-written (the resource spans two tables and
-// reshapes columns), so `AGENT_RESOURCE_CACHE_VERSION` MUST be bumped on any change; a test asserts
-// its `content` stays in sync with `AgentResourceContent`.
+// reshapes columns), so `AGENT_RESOURCE_CACHE_VERSION` MUST be bumped on any change.
 export type AgentResourceSnapshot = {
   agentModelId: ModelId;
   agentConfigurationModelId: ModelId;
@@ -318,7 +321,6 @@ export type AgentResourceSnapshot = {
   creditSpendCheckpointThresholdAwuCredits: number | null;
   versionCreatedAt: number;
   versionUpdatedAt: number;
-  content: AgentResourceContent;
 };
 
 // Rollout mode for the agent read cache. Progression: "dryRun" (wired end to end but touching no
@@ -448,9 +450,10 @@ export interface AgentResource
 /**
  * @cc [owner:tdraier,label:backend] batch-results-by-resource
  * Every `batch*` read (`batchListEditors`, `batchListActions`, `batchListTags`,
- * `batchCountFavorites`) MUST accept custom and global agents alike and return a `Map` keyed by the
- * input resource, with an entry for every input: a resource is one configuration version, whereas
- * `sId` spans every version of an agent and global agents share one sentinel configuration id.
+ * `batchCountFavorites`, `batchFetchContent`) MUST accept custom and global agents alike and return
+ * a `Map` keyed by the input resource, with an entry for every input: a resource is one
+ * configuration version, whereas `sId` spans every version of an agent and global agents share one
+ * sentinel configuration id.
  */
 export class AgentResource
   extends BaseResource<AgentModel>
@@ -458,7 +461,9 @@ export class AgentResource
 {
   private readonly requestedSpaceIds: ModelId[];
   private _codeDefinedSkillIds: string[] = [];
-  private _content: AgentResourceContent | null;
+  // Caller-independent resources (loaded, not yet materialized) are full; `materialize` narrows it.
+  private _canViewContent = true;
+  private _globalContent: AgentResourceContent | null = null;
 
   private _verbs: Set<GrantVerb> = new Set();
   private _isRegularApiKey = false;
@@ -515,27 +520,79 @@ export class AgentResource
       | "versionUpdatedAt"
     >);
     this.requestedSpaceIds = agentConfiguration.requestedSpaceIds;
-    this._content = {
-      instructions: agentConfiguration.instructions,
-      instructionsHtml: agentConfiguration.instructionsHtml,
-    };
   }
 
   get variant(): "light" | "full" {
-    return this._content === null ? "light" : "full";
+    return this._canViewContent ? "full" : "light";
   }
 
   isFull(): this is FullAgentResource {
-    return this._content !== null;
+    return this._canViewContent;
   }
 
-  get content(): AgentResourceContent {
-    assert(
-      this._content !== null,
-      "Unexpected: `content` accessed on a light AgentResource"
+  /**
+   * @cc [owner:tdraier,label:backend;performance] agent-content-on-demand
+   * The resolvers MUST NOT load a custom agent's content (`instructions`, `instructionsHtml`) and the
+   * cache snapshot MUST NOT carry it: it is read on demand through `fetchContent`/
+   * `batchFetchContent`, for the resource's own configuration version, and only for a `full`
+   * resource (see `unreadable-agent-is-light`). A global agent's content is code-defined, built with
+   * the resource and served from memory.
+   */
+  async fetchContent(this: FullAgentResource): Promise<AgentResourceContent> {
+    const contents = await AgentResource.batchFetchContent([this]);
+    const content = contents.get(this);
+    assert(content, `Unexpected: missing content for agent ${this.sId}`);
+
+    return content;
+  }
+
+  static async batchFetchContent(
+    resources: AgentResource[]
+  ): Promise<Map<AgentResource, AgentResourceContent | null>> {
+    const customResources = resources.filter(
+      (resource) => resource.isFull() && resource.scope !== "global"
+    );
+    const configurations =
+      customResources.length > 0
+        ? await AgentConfigurationModel.findAll({
+            attributes: ["id", ...AGENT_CONTENT_ATTRIBUTES],
+            where: {
+              id: uniq(
+                customResources.map(
+                  (resource) => resource.agentConfigurationModelId
+                )
+              ),
+              workspaceId: uniq(
+                customResources.map((resource) => resource.workspaceId)
+              ),
+            },
+          })
+        : [];
+    const contentByConfigurationId = new Map(
+      configurations.map((configuration) => [
+        configuration.id,
+        {
+          instructions: configuration.instructions,
+          instructionsHtml: configuration.instructionsHtml,
+        },
+      ])
     );
 
-    return this._content;
+    return new Map(
+      resources.map((resource) => {
+        if (!resource.isFull()) {
+          return [resource, null];
+        }
+        if (resource.scope === "global") {
+          return [resource, resource._globalContent];
+        }
+        return [
+          resource,
+          contentByConfigurationId.get(resource.agentConfigurationModelId) ??
+            null,
+        ];
+      })
+    );
   }
 
   static fromGlobalAgent(
@@ -598,6 +655,10 @@ export class AgentResource
       versionAuthorId: null,
     } satisfies Pick<AgentResource, "scope" | "status" | "versionAuthorId">);
     resource._codeDefinedSkillIds = configuration.codeDefinedSkillIds ?? [];
+    resource._globalContent = {
+      instructions: configuration.instructions,
+      instructionsHtml: configuration.instructionsHtml,
+    };
 
     return resource.materialize(auth);
   }
@@ -614,9 +675,7 @@ export class AgentResource
     this._isRegularApiKey = auth.isKey() && !auth.isSystemKey();
     this._adminCanSeePrivateEntities = adminCanSeePrivateEntities;
 
-    if (!this.canViewContent(auth)) {
-      this._content = null;
-    }
+    this._canViewContent = this.canViewContent(auth);
 
     return this;
   }
@@ -855,6 +914,7 @@ export class AgentResource
 
     // One statement, so the `currentVersion` pointer and the version rows are read consistently.
     const configurations = await AgentConfigurationModel.findAll({
+      attributes: { exclude: [...AGENT_CONTENT_ATTRIBUTES] },
       where: {
         workspaceId: this.workspaceId,
         agentId: this.id,
@@ -1132,6 +1192,7 @@ export class AgentResource
         {
           model: AgentConfigurationModel,
           required: true,
+          attributes: { exclude: [...AGENT_CONTENT_ATTRIBUTES] },
           where: { version: { [Op.col]: "agent.currentVersion" } },
         },
       ],
@@ -1229,7 +1290,7 @@ export class AgentResource
       this.scope !== "global",
       "Unexpected: attempted to cache a global AgentResource"
     );
-    const { content, modelConfiguration } = this;
+    const { modelConfiguration } = this;
 
     return {
       agentModelId: this.id,
@@ -1261,12 +1322,11 @@ export class AgentResource
         this.creditSpendCheckpointThresholdAwuCredits,
       versionCreatedAt: this.versionCreatedAt.getTime(),
       versionUpdatedAt: this.versionUpdatedAt.getTime(),
-      content: { ...content },
     };
   }
 
   static fromSnapshot(snapshot: AgentResourceSnapshot): FullAgentResource {
-    const { content, modelConfiguration } = snapshot;
+    const { modelConfiguration } = snapshot;
     assert(
       snapshot.versionAuthorId !== null,
       "Unexpected: cached custom agent is missing its author"
@@ -1313,8 +1373,8 @@ export class AgentResource
         scope: snapshot.scope,
         name: snapshot.name,
         description: snapshot.description,
-        instructions: content.instructions,
-        instructionsHtml: content.instructionsHtml,
+        instructions: null,
+        instructionsHtml: null,
         providerId: modelConfiguration.providerId,
         modelId: modelConfiguration.modelId,
         temperature: modelConfiguration.temperature,
@@ -1913,6 +1973,7 @@ export class AgentResource
     // Loaded custom agents are never global, and their stored status is always an `AgentStatus`
     // (the `disabled_*` values are global-only); narrow both from the resource's wider types.
     assert(this.scope !== "global");
+    assert(this.isFull(), "Unexpected: re-saving a light AgentResource");
     this.assertCurrentVersion();
     if (!isAgentStatus(this.status)) {
       throw new Error(
@@ -1920,7 +1981,8 @@ export class AgentResource
       );
     }
 
-    const [tags, editors, skills] = await Promise.all([
+    const [content, tags, editors, skills] = await Promise.all([
+      this.fetchContent(),
       this.listTags(auth),
       this.listEditors(auth),
       // No space filtering: tools and skills are carried over as-is, so re-saving an agent behind a
@@ -1938,8 +2000,8 @@ export class AgentResource
     return {
       name: this.name,
       description: this.description,
-      instructions: this.content.instructions,
-      instructionsHtml: this.content.instructionsHtml,
+      instructions: content.instructions,
+      instructionsHtml: content.instructionsHtml,
       pictureUrl: this.pictureUrl,
       status: this.status,
       scope: this.scope,
@@ -2929,8 +2991,12 @@ export class AgentResource
    * is handed: the head fields and the version metadata are not private and are always carried.
    * These methods are the only place that shapes an agent's configuration JSON.
    */
-  toJSON(): AgentConfigurationBaseType {
+  toJSON({ content }: AgentContentEnrichment): AgentConfigurationBaseType {
     const isGlobal = this.scope === "global";
+    assert(
+      !this.isFull() || content !== null,
+      `Unexpected: serializing agent ${this.sId} without its content`
+    );
 
     return {
       id: this.agentConfigurationModelId,
@@ -2939,7 +3005,7 @@ export class AgentResource
       sId: this.sId,
       version: this.version,
       versionAuthorId: this.versionAuthorId,
-      instructions: this._content?.instructions ?? null,
+      instructions: this.isFull() ? (content?.instructions ?? null) : null,
       model: this.modelConfiguration,
       status: this.status,
       scope: this.scope,
@@ -2971,26 +3037,34 @@ export class AgentResource
       canEdit:
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
-      isRedacted: this._content === null,
+      isRedacted: !this.isFull(),
     };
   }
 
   toLightConfigurationJSON({
     userFavorite,
     tags,
+    content,
   }: AgentFavoriteEnrichment &
-    AgentTagsEnrichment): LightAgentConfigurationType {
-    return { ...this.toJSON(), userFavorite, tags };
+    AgentTagsEnrichment &
+    AgentContentEnrichment): LightAgentConfigurationType {
+    return { ...this.toJSON({ content }), userFavorite, tags };
   }
 
   toConfigurationJSON({
     userFavorite,
     tags,
     actions,
+    content,
   }: AgentFavoriteEnrichment &
     AgentTagsEnrichment &
-    AgentActionsEnrichment): AgentConfigurationType {
-    const light = this.toLightConfigurationJSON({ userFavorite, tags });
+    AgentActionsEnrichment &
+    AgentContentEnrichment): AgentConfigurationType {
+    const light = this.toLightConfigurationJSON({
+      userFavorite,
+      tags,
+      content,
+    });
     if (!this.isFull()) {
       return {
         ...light,
@@ -3002,7 +3076,7 @@ export class AgentResource
 
     return {
       ...light,
-      instructionsHtml: this.content.instructionsHtml,
+      instructionsHtml: content?.instructionsHtml ?? null,
       actions,
       ...(this.scope === "global"
         ? { codeDefinedSkillIds: this.codeDefinedSkillIds }
@@ -3013,7 +3087,11 @@ export class AgentResource
   // What the sidekick's `inspect_available_agent` tool exposes; the instructions make it full-only.
   toInspectionJSON(
     this: FullAgentResource,
-    { toolIds, skillIds }: { toolIds: string[]; skillIds: string[] }
+    {
+      content,
+      toolIds,
+      skillIds,
+    }: { content: AgentResourceContent; toolIds: string[]; skillIds: string[] }
   ): {
     sId: string;
     name: string;
@@ -3026,7 +3104,7 @@ export class AgentResource
       sId: this.sId,
       name: this.name,
       description: this.description,
-      instructions: this.content.instructions,
+      instructions: content.instructions,
       toolIds,
       skillIds,
     };
@@ -3036,10 +3114,12 @@ export class AgentResource
   toSidekickAgentInfoJSON(
     this: FullAgentResource,
     {
+      content,
       tags,
       actions,
       skills,
     }: {
+      content: AgentResourceContent;
       tags: TagResource[];
       actions: MCPServerConfigurationType[];
       skills: SkillResource[];
@@ -3068,7 +3148,7 @@ export class AgentResource
       version: this.version,
       name: this.name,
       description: this.description,
-      instructions: this.content.instructions,
+      instructions: content.instructions,
       model: { providerId, modelId, temperature, reasoningEffort },
       scope: this.scope,
       status: this.status,

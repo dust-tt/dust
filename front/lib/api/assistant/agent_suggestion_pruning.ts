@@ -354,7 +354,7 @@ export async function pruneConflictingInstructionSuggestions(
     ...newTargetBlockIds,
     ...existingPending.map((s) => s.suggestion.targetBlockId),
   ]);
-  const { instructionsHtml } = agent.content;
+  const { instructionsHtml } = await agent.fetchContent();
   const descendantMap = instructionsHtml
     ? buildDescendantMap(instructionsHtml, allBlockIds)
     : new Map<string, Set<string>>();

@@ -515,7 +515,8 @@ describe("AgentResource", () => {
 
     // The restored resource is indistinguishable from the one it was serialized from.
     expect(restored.isFull()).toBe(true);
-    expect(restored.content).toEqual(full.content);
+    assert(restored.isFull());
+    expect(await restored.fetchContent()).toEqual(await full.fetchContent());
     expect(restored.toSnapshot()).toEqual(full.toSnapshot());
   });
 
@@ -563,9 +564,10 @@ describe("AgentResource", () => {
     assert(full?.isFull());
     const snapshot = full.toSnapshot();
 
-    // `content` must carry every `AgentConfigurationModel` column except the ones folded into the
-    // resource's identity/core/version metadata, or explicitly excluded. When this fails the model
-    // changed shape: reconcile `AgentResourceContent` and bump `AGENT_RESOURCE_CACHE_VERSION`.
+    // Every `AgentConfigurationModel` column is folded into the resource's identity/core/version
+    // metadata, explicitly excluded, or content — which is never cached (see
+    // `agent-content-on-demand`). When this fails the model changed shape: reconcile the snapshot
+    // and bump `AGENT_RESOURCE_CACHE_VERSION`.
     const foldedIntoIdentityOrCore = new Set([
       // Carried as the core `agentConfigurationModelId`, not `content`.
       "id",
@@ -605,9 +607,11 @@ describe("AgentResource", () => {
           !foldedIntoIdentityOrCore.has(column) && !excludedColumns.has(column)
       )
       .sort();
-    const actualContentColumns = Object.keys(snapshot.content).sort();
-
-    expect(actualContentColumns).toEqual(expectedContentColumns);
+    expect(expectedContentColumns).toEqual([
+      "instructions",
+      "instructionsHtml",
+    ]);
+    expect(Object.keys(snapshot)).not.toContain("content");
   });
 
   it("serves the same full content through single and batch reads", async () => {
@@ -1451,8 +1455,75 @@ describe("AgentResource", () => {
       );
 
       assert(helper?.isFull());
-      expect(helper.content.instructions).toContain("@help");
+      expect((await helper.fetchContent()).instructions).toContain("@help");
       expect(Array.isArray(await helper.listActions(authenticator))).toBe(true);
+    });
+  });
+
+  describe("content on demand", () => {
+    it("reads the content of the resource's own version when asked, not at fetch time", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { instructions: "before" }
+      );
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        agent.sId
+      );
+      assert(resource?.isFull());
+
+      await AgentConfigurationModel.update(
+        { instructions: "after", instructionsHtml: "<p>after</p>" },
+        { where: { id: agent.id, workspaceId: testContext.workspace.id } }
+      );
+
+      expect(await resource.fetchContent()).toEqual({
+        instructions: "after",
+        instructionsHtml: "<p>after</p>",
+      });
+    });
+
+    it("batches content by resource: null for a light one, in memory for a global one", async () => {
+      const hidden = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        {
+          name: "Hidden content agent",
+          scope: "hidden",
+          instructions: "hidden instructions",
+        }
+      );
+      const visible = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Visible content agent", instructions: "visible instructions" }
+      );
+      const adminUser = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, adminUser, {
+        role: "admin",
+      });
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        testContext.workspace.sId
+      );
+
+      const resources = await AgentResource.fetchByIds(adminAuth, [
+        hidden.sId,
+        visible.sId,
+        GLOBAL_AGENTS_SID.HELPER,
+      ]);
+      const [lightHidden, fullVisible, helper] = resources;
+      expect(lightHidden.isFull()).toBe(false);
+
+      const contents = await AgentResource.batchFetchContent(resources);
+
+      expect(contents.get(lightHidden)).toBeNull();
+      expect(contents.get(fullVisible)?.instructions).toBe(
+        "visible instructions"
+      );
+      expect(contents.get(helper)?.instructions).toContain("@help");
+      expect(lightHidden.toJSON({ content: null })).toMatchObject({
+        instructions: null,
+        isRedacted: true,
+      });
     });
   });
 
@@ -1509,7 +1580,9 @@ describe("AgentResource", () => {
       const resource = await AgentResource.fetchById(adminAuth, agent.sId);
 
       assert(resource?.isFull());
-      expect(resource.content.instructions).toBe(agent.instructions);
+      expect((await resource.fetchContent()).instructions).toBe(
+        agent.instructions
+      );
       expect(await resource.listActions(adminAuth)).toHaveLength(1);
       expect(adminAuth.can("read", resource)).toBe(false);
     });
@@ -1533,7 +1606,9 @@ describe("AgentResource", () => {
       );
 
       assert(resource?.isFull());
-      expect(resource.content.instructions).toBe(agent.instructions);
+      expect((await resource.fetchContent()).instructions).toBe(
+        agent.instructions
+      );
       expect(adminAuth.can("read", resource)).toBe(false);
     });
   });
@@ -1651,12 +1726,16 @@ describe("AgentResource", () => {
       assert(latest?.isFull() && previous?.isFull());
       expect(latest.isCurrentVersion).toBe(true);
       expect(latest.name).toBe("Versioned agent v1");
-      expect(latest.content.instructions).toBe("v1 instructions");
+      expect((await latest.fetchContent()).instructions).toBe(
+        "v1 instructions"
+      );
       expect(await latest.listActions(authenticator)).toEqual([]);
       expect(previous.isCurrentVersion).toBe(false);
       expect(previous.version).toBe(agent.version);
       expect(previous.name).toBe("Versioned agent");
-      expect(previous.content.instructions).toBe("v0 instructions");
+      expect((await previous.fetchContent()).instructions).toBe(
+        "v0 instructions"
+      );
       expect(await previous.listActions(authenticator)).toHaveLength(1);
     });
 

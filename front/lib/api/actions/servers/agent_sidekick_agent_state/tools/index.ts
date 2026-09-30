@@ -50,12 +50,14 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
         );
       }
 
-      const [tags, actions, skills] = await Promise.all([
+      const [content, tags, actions, skills] = await Promise.all([
+        agentVersionResource.fetchContent(),
         agentVersionResource.listTags(auth),
         agentVersionResource.listActions(auth),
         agentVersionResource.listSkills(auth),
       ]);
       const agentInfo = agentVersionResource.toSidekickAgentInfoJSON({
+        content,
         tags,
         actions,
         skills,

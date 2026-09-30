@@ -380,7 +380,7 @@ export async function validateAgentInstructionsChange(
     );
   }
 
-  const { instructionsHtml } = agent.content;
+  const { instructionsHtml } = await agent.fetchContent();
   if (!instructionsHtml) {
     return new Err(
       new MCPError(

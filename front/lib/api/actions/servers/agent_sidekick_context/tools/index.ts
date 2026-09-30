@@ -486,7 +486,8 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const [actions, skills] = await Promise.all([
+    const [content, actions, skills] = await Promise.all([
+      agent.fetchContent(),
       agent.listActions(auth),
       agent.listSkills(auth),
     ]);
@@ -497,6 +498,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       )
       .map((action) => action.mcpServerViewId);
     const agentDetails = agent.toInspectionJSON({
+      content,
       toolIds,
       skillIds: skills.map((skill) => skill.sId),
     });

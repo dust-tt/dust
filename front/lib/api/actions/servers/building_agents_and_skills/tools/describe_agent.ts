@@ -64,7 +64,8 @@ export async function describeAgentHandler(
     ]);
   }
 
-  const [actions, skills] = await Promise.all([
+  const [content, actions, skills] = await Promise.all([
+    agent.fetchContent(),
     agent.listActions(auth),
     agent.listSkills(auth),
   ]);
@@ -84,7 +85,7 @@ export async function describeAgentHandler(
     .map((skill) => `${skill.name} [${skill.sId}]`)
     .join(", ");
 
-  const { instructions, instructionsHtml } = agent.content;
+  const { instructions, instructionsHtml } = content;
   const instructionsBlock = instructionsHtml
     ? "Instructions (full system prompt), as HTML whose blocks carry a data-block-id — " +
       "required to target block-level instruction edits:\n" +
