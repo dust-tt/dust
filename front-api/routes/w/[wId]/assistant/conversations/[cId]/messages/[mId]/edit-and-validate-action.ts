@@ -69,6 +69,14 @@ app.post(
 
     if (result.isErr()) {
       switch (result.error.code) {
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: result.error.message,
+            },
+          });
         case "action_not_blocked":
         case "action_not_editable":
         case "invalid_edited_arguments":

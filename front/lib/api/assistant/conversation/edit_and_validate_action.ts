@@ -1,5 +1,7 @@
 import type { ActionApprovalStateType } from "@app/lib/actions/mcp";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -41,6 +43,12 @@ function getEditableArguments(
   return new Ok(editableArguments);
 }
 
+// @cc [owner:frankaloia,label:security] tool-approval-conversation-ownership
+// All human-in-the-loop endpoints (approve, answer, resolve-auth, edit-and-approve)
+// MUST call canCurrentUserRespondToParentUserMessage before acting on an action.
+// Workspace-scoped action lookup alone is insufficient — users must only act on
+// actions from their own conversation messages.
+
 export async function editAndValidateAction(
   auth: Authenticator,
   conversation: ConversationResource,
@@ -59,6 +67,7 @@ export async function editAndValidateAction(
   Result<
     void,
     DustError<
+      | "unauthorized"
       | "action_not_found"
       | "action_not_blocked"
       | "action_not_editable"
@@ -67,6 +76,26 @@ export async function editAndValidateAction(
     >
   >
 > {
+  const user = auth.user();
+
+  const { userMessageUserId } = await getUserMessageIdFromMessageId(auth, {
+    messageId,
+  });
+
+  if (
+    !canCurrentUserRespondToParentUserMessage({
+      parentUserId: userMessageUserId,
+      currentUserId: user?.id,
+    })
+  ) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "User is not authorized to edit and validate this action"
+      )
+    );
+  }
+
   const action = await AgentMCPActionResource.fetchById(auth, actionId);
   if (!action) {
     return new Err(

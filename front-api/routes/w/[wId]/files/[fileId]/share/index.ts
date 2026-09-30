@@ -13,6 +13,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { APIErrorResponse } from "@app/types/error";
 import {
   fileShareScopeSchema,
@@ -154,6 +155,10 @@ app.post(
   }
 );
 
+// @cc [owner:frankaloia,label:security] pod-frame-share-space-auth
+// Share/grant/export routes for project_context frames MUST verify the caller
+// has read access to the owning pod before returning frame metadata or grants.
+
 // Returns the file when it exists, is a Frame, and (if linked to a
 // conversation) the caller can access it. Otherwise returns a `Response` for
 // the handler to short-circuit on.
@@ -179,6 +184,19 @@ async function fetchShareableFile(
       file.useCaseMetadata.conversationId
     );
     if (!conversation) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
+      });
+    }
+  }
+
+  if (file.useCase === "project_context" && file.useCaseMetadata?.spaceId) {
+    const space = await SpaceResource.fetchById(
+      auth,
+      file.useCaseMetadata.spaceId
+    );
+    if (!space || !auth.can("read", space)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },
