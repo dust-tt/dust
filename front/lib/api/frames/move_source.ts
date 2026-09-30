@@ -21,6 +21,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import logger from "@app/logger/logger";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type { DustFileSystemError } from "@app/types/file_system";
+import type { FileUseCaseMetadata } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -74,9 +75,28 @@ async function repointPodFrameReferences(
 }
 
 /**
- * Move a registered Frames v2 source folder within one GCS mount. The caller resolves the
- * filesystem, as it does for `moveCanonicalFile` and `renameCanonicalFile`: a Pod rename has no
- * conversation to build one from.
+ * @cc [owner:davidebbo,label:product;backend] saved-frame-becomes-pod-content
+ * A conversation Frame saved to a Pod MUST end up registered as `project_context` with the Pod's
+ * `spaceId` and no `conversationId`, as if it had been created there. It MUST keep the rest of its
+ * metadata, including the publication it serves, and record its conversation as
+ * `sourceConversationId`.
+ */
+function podFrameUseCaseMetadata(
+  metadata: FileUseCaseMetadata | null,
+  podId: string
+): FileUseCaseMetadata {
+  const { conversationId, ...rest } = metadata ?? {};
+  return {
+    ...rest,
+    spaceId: podId,
+    sourceConversationId: conversationId,
+  };
+}
+
+/**
+ * Move a registered Frames v2 source folder within one GCS mount, or from a conversation to a
+ * Pod. The caller resolves the filesystem, as it does for `moveCanonicalFile` and
+ * `renameCanonicalFile`: a Pod rename has no conversation to build one from.
  *
  * This intentionally uses a non-transactional copy, DB update, then source delete sequence.
  * Until the DB update succeeds, the source FileResource path remains authoritative.
@@ -189,8 +209,15 @@ export async function moveFrameV2Source(
       await freshFrame.updateMount({
         destFileName: FRAME_MANIFEST_FILE,
         destMountFilePath: lockedDestinationMountPath,
-        destUseCase: freshFrame.useCase,
-        destUseCaseMetadata: freshFrame.useCaseMetadata ?? undefined,
+        destUseCase: paths.savedToPodId
+          ? "project_context"
+          : freshFrame.useCase,
+        destUseCaseMetadata: paths.savedToPodId
+          ? podFrameUseCaseMetadata(
+              freshFrame.useCaseMetadata,
+              paths.savedToPodId
+            )
+          : (freshFrame.useCaseMetadata ?? undefined),
       });
     } catch (error) {
       const normalized = normalizeError(error);
