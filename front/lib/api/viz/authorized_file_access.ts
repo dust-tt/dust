@@ -115,14 +115,20 @@ export async function computeAuthorizedFileAccessForShare(
   const authorized = await frameFile.computeAuthorizedFileAccess(auth, {
     frameContent,
   });
+  if (authorized.isErr()) {
+    return authorized;
+  }
 
-  if (authorized.unverifiableRefs && authorized.unverifiableRefs.length > 0) {
+  if (
+    authorized.value.unverifiableRefs &&
+    authorized.value.unverifiableRefs.length > 0
+  ) {
     return new Err(
-      unverifiableFrameFileRefsShareError(authorized.unverifiableRefs)
+      unverifiableFrameFileRefsShareError(authorized.value.unverifiableRefs)
     );
   }
 
-  return new Ok(authorized);
+  return authorized;
 }
 
 /**
