@@ -5,6 +5,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toParticipantJSON } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -44,7 +45,7 @@ async function fetchAllAgentsById(
     await AgentResource.fetchByIds(auth, agentConfigurationIds)
   ).filter((agent) => auth.can("read", agent));
 
-  return agents.map((agent) => agent.toParticipantJSON());
+  return agents.map(toParticipantJSON);
 }
 
 export async function fetchConversationParticipants(

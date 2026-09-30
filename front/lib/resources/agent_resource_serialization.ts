@@ -12,6 +12,7 @@ import type {
   AgentTagsEnrichment,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import type { AgentParticipantType } from "@app/types/assistant/conversation";
 
 // The `enrichWith*` steps below each run the one query a configuration field needs, batched over
 // statically-loaded `AgentResource`s. They have no dependency on one another, so
@@ -234,4 +235,14 @@ export async function toAgentConfigurations(
       ...(actions.get(resource) ?? { actions: [] }),
     })
   );
+}
+
+export function toParticipantJSON(
+  resource: AgentResource
+): AgentParticipantType {
+  return {
+    configurationId: resource.sId,
+    name: resource.name,
+    pictureUrl: resource.pictureUrl,
+  };
 }
