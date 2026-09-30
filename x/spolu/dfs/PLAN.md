@@ -1,7 +1,8 @@
 # Implementation plan
 
 [DESIGN.md](DESIGN.md) describes the architecture; [CONTRACTS](CONTRACTS) defines the invariants.
-The server scaffold, initial model types, and API error foundation are implemented today.
+The server scaffold, initial model types, API errors, and synchronous storage foundation are
+implemented today.
 
 Work in small increments: each checkbox should produce a reviewable change with a focused test or
 demo. Split a checkbox further when needed. Keep the server runnable, update API documentation and
@@ -11,7 +12,9 @@ The PoC uses **one server process serving one shard**. First build a synchronous
 read metadata from SlateDB and content from GCS; finish required GCS uploads and durable SlateDB
 batches before acknowledging mutations. Metadata-only operations need no blob upload. Do not add a
 dfs-managed content cache or metadata overlay until that baseline works through FUSE and survives
-restart. Request buffers, open handles, and ephemeral sessions can still live in memory.
+restart. Bounded request buffers, open handles, and ephemeral sessions can live in memory.
+Temporary disk files may assemble uncommitted content; acknowledged mutations must recover without
+them. Large-file transfers must not require whole-file buffering in RAM.
 
 Then add server caching, local write staging, and asynchronous persistence. This later phase changes
 fsync from the stronger synchronous baseline to the visibility-only semantics in the target design.
@@ -50,23 +53,27 @@ errors can later map consistently to FUSE errors.
   integration fixture alongside fast local tests.
 - [x] Run the opt-in GCS fixture against a development bucket; GCS and local memory/filesystem
   backends exercise durable writes, close/reopen, immutable blob creation, and scoped cleanup.
-- [ ] Define versioned metadata encodings and unambiguous workspace/key prefixes, including
+- [x] Define versioned metadata encodings and unambiguous workspace/key prefixes, including
   arbitrary grant strings. Verify workspace isolation and prefix scans at the byte-encoding
   boundary.
-- [ ] Implement immutable blob upload and download by workspace/object/content version.
-- [ ] Implement metadata get, prefix scan, and atomic batch operations directly against SlateDB. Use
+- [x] Implement immutable blob upload and download by workspace/object/content version.
+- [x] Implement metadata get, prefix scan, and atomic batch operations directly against SlateDB. Use
   consistent read views when an operation spans several keys.
-- [ ] Verify SlateDB batch, WAL, and durability guarantees. Wait for the required durability
+- [x] Verify SlateDB batch, WAL, and durability guarantees. Wait for the required durability
   boundary before acknowledging a synchronous mutation.
-- [ ] Implement the commit ordering: upload any new blobs, then atomically commit metadata, indexes,
+- [x] Implement the commit ordering: upload any new blobs, then atomically commit metadata, indexes,
   and replayable indexing events. Handle upload or database failure without dangling references.
-- [ ] Reopen persisted state on startup without relying on a surviving local cache or disk.
+- [x] Reopen persisted state on startup without relying on a surviving local cache or disk.
 
 **Done when:** storage fixtures survive a fresh process, and failed uploads cannot publish metadata
 that references missing bytes.
 
-GCS lifecycle fixture validated on 2026-09-30 against `dust-dev-dfs-poc-spolu-20260930` in `dust-dev`,
-under `dfs-dev/spolu/tests/<uuid>/`, with local ADC. Fresh-process crash recovery remains to be tested.
+Validated on 2026-09-30 against `dust-dev-dfs-poc-spolu-20260930` in `dust-dev`, under
+`dfs-dev/spolu/tests/<uuid>/`, with local ADC. Local and GCS subprocess tests kill an acknowledged
+writer and recover metadata, indexes, events, and blobs in a fresh process. Upload failures and
+withheld/failed WAL persistence are covered locally; the broader failure matrix remains in group 8.
+See [server/STORAGE.md](server/STORAGE.md) for formats and commit guarantees.
+The current blob API buffers whole files; group 6 replaces it with streaming before FUSE integration.
 
 ## 3. Workspace bootstrap and sessions
 
@@ -118,25 +125,37 @@ aliases survive target renames and cannot reveal hidden ancestors.
 
 - [ ] Define open-handle lifetime, writer serialization, append/truncate behavior, and visibility
   before fsync. Define what happens to open files after unlink and grant revocation.
-- [ ] Implement file creation and reads using GCS content and SlateDB metadata, including empty
-  files.
-- [ ] Implement writes and truncation with fresh immutable content versions. Use request-scoped
-  buffers to assemble uploads; no acknowledged content may exist only in server RAM/local disk.
-- [ ] Upload the complete content version before publishing its metadata/index batch. Wait for both
-  steps before acknowledging the mutation; metadata-only mutations wait only for their SlateDB
-  batch.
+- [ ] Separate content transfer from metadata commit. A completed upload produces an internal
+  workspace/object/version/size descriptor; metadata batches reference it instead of carrying bytes.
+- [ ] Stream sequential creation/replacement from HTTP to GCS in bounded chunks, including empty
+  files and streams whose size is initially unknown. Preserve create-only immutable blob semantics
+  and determine the actual size before publication.
+- [ ] Bound chunk sizes, queued bytes, and upload concurrency with backpressure and a shared server
+  memory budget. Apply limits across concurrent transfers, not just individually.
+- [ ] Stream reads from GCS through HTTP and support offset/length ranges against a fixed content
+  version. Avoid collecting full files in memory on either the server or client.
+- [ ] Implement random writes, append, and truncation using temporary disk files to assemble fresh
+  immutable versions; stream existing bytes into scratch storage when needed. Bound disk usage,
+  handle exhaustion, and clean up abandoned transfers. A version initially remains one whole blob.
+- [ ] Finish each content upload, then recheck authorization and expected revisions before atomically
+  publishing metadata, indexes, and events. Wait for SlateDB durability before acknowledging the
+  mutation; upload completion alone does not publish the file. Metadata-only mutations need no upload.
 - [ ] Implement fsync as a barrier for preceding writes. Another session must then see the persisted
   metadata and bytes through the server.
 - [ ] Add request IDs/revision checks where retries could duplicate or overwrite mutations. Resolve
   ambiguous commit outcomes without assuming that a timed-out request failed to commit.
+- [ ] Test files larger than the memory budget, concurrent transfers, range reads, slow consumers,
+  interrupted uploads, and disk exhaustion. Verify bounded memory and no partial publication.
 
 **Done when:** one session writes and fsyncs a file, another reads it from persisted state, and a
 server restart preserves acknowledged changes. A competing writer waits without blocking others.
+Large-file transfers stay within the configured memory budget and recovery needs no scratch files.
 
 ## 7. First Rust FUSE client and end-to-end baseline
 
 - [ ] Add a Rust API client and share protocol types where needed. Configure endpoint, session
-  credentials, and mount location without logging tokens or placing them in URLs.
+  credentials, and mount location without logging tokens or placing them in URLs. Preserve streaming,
+  range reads, and backpressure through the client.
 - [ ] Set up a Linux sandbox with `/dev/fuse` and mount permissions; use existing `dust-sandbox`
   conventions. Keep the server runnable natively on macOS.
 - [ ] Map object IDs and virtual namespace positions to mount-local inodes, with correct parent
@@ -265,6 +284,8 @@ machine with the documented durability tradeoff.
 
 ## Future work
 
+- [ ] Evaluate chunked immutable content and manifests if small edits to large files make whole-version
+  uploads too expensive. Define atomic publication, range reads, and reclamation for shared chunks.
 - [ ] Add owner epochs identifying each server's ownership tenure so stale revisions and cursors
   can be rejected across ownership transfers, beyond the PoC's session-reset behavior.
 - [ ] Implement writer fencing for foreground serving and background persistence; an epoch alone

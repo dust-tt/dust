@@ -8,10 +8,10 @@ Rust 2024 workspace. Architecture: [DESIGN.md](DESIGN.md). Implementation invari
 `dfs-server` provides an Axum/Tokio HTTP server, Clap configuration, JSON tracing to stderr, and
 graceful shutdown on SIGINT/SIGTERM. The health route supports `GET` (returning `{"status":"ok"}`)
 and `HEAD` for process liveness. The server library defines typed IDs, object URIs, relative paths,
-metadata, directory entries, revision tokens, and shared API errors with focused tests. Unknown routes and
-unsupported HTTP methods return JSON errors with stable codes. Initial filesystem semantics are
-defined in [DESIGN.md](DESIGN.md); their operations, sessions, storage, search, and the FUSE client
-follow in separate increments. Optional GCS configuration now opens SlateDB before serving HTTP and
+metadata, directory entries, revision tokens, and shared API errors with focused tests. Its storage
+API provides workspace-scoped snapshots, immutable blobs, and synchronous metadata/index/event
+batches. Filesystem HTTP operations, sessions, search, and FUSE follow in separate increments.
+Optional GCS configuration opens SlateDB before serving HTTP and
 closes it after requests drain. Without it, the HTTP scaffold still runs without external services.
 The server runs natively on macOS and Linux.
 
@@ -65,18 +65,20 @@ ignored so it cannot override the ADC identity. Authentication or storage failur
 startup. SlateDB adds no retries over the GCS client's bounded retry policy, so expired credentials
 do not cause an endless startup retry loop. Run only one server against a given prefix.
 
-SlateDB 0.17 stores WAL/SST/manifest objects under `<prefix>/metadata/`; file blobs are reserved under
-`<prefix>/blobs/`. This increment adds lifecycle and storage fixtures; workspace encodings and the
-filesystem storage API come next. No dfs content cache or metadata overlay is enabled.
+SlateDB 0.17 stores WAL/SST/manifest objects under `<prefix>/metadata/`; immutable file blobs live
+under `<prefix>/blobs/`. No dfs content cache or metadata overlay is enabled. See
+[server/STORAGE.md](server/STORAGE.md) for the internal API, versioned format, and durability rules.
 
 ## Storage and server checks
 
 Normal `cargo test --locked --workspace` runs real SlateDB against memory and temporary filesystem
 object stores, without GCS or database mocks. The opt-in cloud fixture uses the same exercise:
-create an immutable blob, write a metadata batch, wait on SlateDB's `await_durable()`, close/reopen,
-verify data, and clean up. It creates a fresh `<test-prefix>/tests/<uuid>/` for every run and deletes
-only that run's objects after success; failures leave the isolated prefix for inspection.
-This checks clean reopening; abrupt crash/recovery checks remain separate work.
+create immutable blobs, commit scoped metadata/index/event batches, and verify reads after reopening.
+Local tests also withhold WAL flushing and inject upload failures. A subprocess test kills the
+writer after acknowledgement and verifies the full batch from a fresh process, locally and on GCS.
+The cloud fixture creates a fresh `<test-prefix>/tests/<uuid>/` for every run and deletes only that
+run's objects after success; failures leave the isolated prefix for inspection. The ignored `worker`
+test is an internal subprocess helper, not a standalone test command.
 
 ```sh
 DFS_TEST_GCS_BUCKET=YOUR_BUCKET DFS_TEST_GCS_PREFIX=dfs-dev/spolu \

@@ -25,6 +25,10 @@ uploads followed by durable SlateDB batches before acknowledging mutations. Meta
 need no blob upload. Add the server caching and asynchronous write architecture below once that
 baseline works through FUSE and survives restart.
 
+The synchronous storage API and on-disk format are specified in [server/STORAGE.md](server/STORAGE.md).
+It uses workspace-scoped snapshots and atomic metadata/index/event batches, acknowledging commits
+only after referenced blobs exist and the SlateDB WAL is durable.
+
 - **Server RAM/SSD:** Staged file contents and a metadata overlay for pending mutations. The owner
   serves the latest state by combining this overlay with SlateDB and cached or persisted blobs.
 - **SlateDB, backed by GCS:** Persisted object metadata, directory entries, grants, and their indexes.

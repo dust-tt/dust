@@ -5,9 +5,15 @@ use clap::Args;
 use slatedb::{
     Db, Settings,
     config::{CompactorOptions, GarbageCollectorOptions},
-    object_store::{ObjectStore, gcp::GoogleCloudStorageBuilder, path::Path},
+    object_store::{ObjectStore, gcp::GoogleCloudStorageBuilder, path::Path, prefix::PrefixStore},
 };
 use thiserror::Error;
+use tokio::sync::Mutex;
+
+use crate::model::WorkspaceId;
+pub use commit::{BlobUpload, MetadataBatch, MetadataMutation};
+use keys::Keyspace;
+pub use read::{ChangeEvent, ReadView};
 
 /**
  * @cc [owner:spolu,label:backend] explicit-storage-configuration
@@ -103,17 +109,43 @@ pub struct InvalidStoragePrefix;
 
 pub struct Storage {
     metadata: Db,
+    blobs: Arc<dyn ObjectStore>,
+    publish: Mutex<()>,
+}
+
+/// A trusted internal handle. Session authorization is required before constructing or using it.
+pub struct WorkspaceStorage<'a> {
+    storage: &'a Storage,
+    keys: Keyspace,
+}
+
+impl WorkspaceStorage<'_> {
+    pub async fn read_view(&self) -> Result<ReadView> {
+        Ok(ReadView {
+            keys: self.keys.clone(),
+            snapshot: self.storage.metadata.snapshot().await?,
+        })
+    }
 }
 
 impl Storage {
+    pub fn workspace(&self, workspace: &WorkspaceId) -> Result<WorkspaceStorage<'_>> {
+        Ok(WorkspaceStorage {
+            storage: self,
+            keys: Keyspace::new(workspace.clone())?,
+        })
+    }
+
     /**
      * @cc [owner:spolu,label:error-handling] bounded-storage-retries
      * SlateDB and its background workers MUST NOT retry backend failures indefinitely. Rely on
      * the GCS client's bounded retries so credential and exhausted I/O failures can propagate.
      */
     async fn open(store: Arc<dyn ObjectStore>, prefix: &StoragePrefix) -> Result<Self> {
-        let metadata = Db::builder(prefix.metadata_path(), store)
-            .with_settings(Settings {
+        Self::open_with_settings(
+            store,
+            prefix,
+            Settings {
                 object_store_max_retries: Some(0),
                 compactor_options: Some(CompactorOptions {
                     object_store_max_retries: Some(0),
@@ -124,12 +156,35 @@ impl Storage {
                     ..Default::default()
                 }),
                 ..Default::default()
-            })
+            },
+        )
+        .await
+    }
+
+    async fn open_with_settings(
+        store: Arc<dyn ObjectStore>,
+        prefix: &StoragePrefix,
+        settings: Settings,
+    ) -> Result<Self> {
+        let blobs = Arc::new(PrefixStore::new(store.clone(), prefix.blobs_path()));
+        let metadata = Db::builder(prefix.metadata_path(), store)
+            .with_settings(settings)
             .with_db_cache_disabled()
             .build()
             .await
             .context("open SlateDB metadata store")?;
-        Ok(Self { metadata })
+        if let Err(error) = codec::check_format(&metadata).await {
+            metadata
+                .close()
+                .await
+                .context("close incompatible metadata store")?;
+            return Err(error);
+        }
+        Ok(Self {
+            metadata,
+            blobs,
+            publish: Mutex::new(()),
+        })
     }
 
     /**
@@ -145,5 +200,9 @@ impl Storage {
     }
 }
 
+mod codec;
+mod commit;
+mod keys;
+mod read;
 #[cfg(test)]
 mod tests;
