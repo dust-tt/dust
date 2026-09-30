@@ -252,9 +252,3 @@ export const PartnerFormSchema = z.object({
 });
 
 export type PartnerFormData = z.infer<typeof PartnerFormSchema>;
-
-// Response from the partner submit API
-export interface PartnerSubmitResponse {
-  success: boolean;
-  error?: string;
-}

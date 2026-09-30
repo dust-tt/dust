@@ -7,16 +7,6 @@ import type {
  * Model rendering of conversations.
  */
 
-interface ModelMessageType {
-  role: "action" | "agent" | "user" | "content_fragment" | "compaction";
-  name: string;
-  content: string;
-}
-
-export interface ModelConversationType {
-  messages: ModelMessageType[];
-}
-
 export interface ImageContent {
   type: "image_url";
   image_url: {
@@ -137,31 +127,3 @@ export type GenerationTokensEvent = {
       delimiterClassification: TokensClassification;
     }
 );
-
-export type GenerationErrorEvent = {
-  type: "generation_error";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  error: {
-    code: string;
-    message: string;
-  };
-};
-
-export type GenerationSuccessEvent = {
-  type: "generation_success";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  text: string;
-  chainOfThought: string;
-  runId: string;
-};
-
-export type GenerationCancelEvent = {
-  type: "generation_cancel";
-  created: number;
-  configurationId: string;
-  messageId: string;
-};

@@ -11,10 +11,6 @@ export const NO_GROUP_MODEL_TIER = "none" as const;
 
 export type UserModelTierSelection = typeof INHERIT_MODEL_TIER | ModelsTierName;
 
-export type GroupModelTierSelection =
-  | typeof NO_GROUP_MODEL_TIER
-  | ModelsTierName;
-
 export type ModelTierPickerOption = {
   value: string;
   label: string;

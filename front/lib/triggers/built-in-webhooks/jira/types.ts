@@ -68,10 +68,6 @@ export const JiraWebhooksResponseSchema = z.object({
   values: z.array(JiraWebhookSchema),
 });
 
-export type JiraWebhooksResponseType = z.infer<
-  typeof JiraWebhooksResponseSchema
->;
-
 export async function validateJiraApiResponse<T extends z.ZodTypeAny>(
   response: Response,
   schema: T

@@ -2,7 +2,6 @@ import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentMessageStatus,
   AgentMessageType,
-  LegacyLightMessageType,
   LightMessageType,
   MessageType,
   UserMessageType,
@@ -15,13 +14,6 @@ export type PostMessagesResponseBody = {
   contentFragments: ContentFragmentType[];
   agentMessages: AgentMessageType[];
 };
-
-// TODO remove after monday 2025-12-01 (once everyone has likely reloaded their browser)
-export interface LegacyFetchConversationMessagesResponse {
-  hasMore: boolean;
-  lastValue: number | null;
-  messages: LegacyLightMessageType[];
-}
 
 export interface FetchConversationMessagesResponse {
   hasMore: boolean;

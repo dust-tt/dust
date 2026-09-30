@@ -6,8 +6,6 @@ export const UpsertContextSchema = z.object({
   sync_type: z.enum(["batch", "incremental"]).optional(),
 });
 
-export type UpsertContext = z.infer<typeof UpsertContextSchema>;
-
 export const FrontDataSourceDocumentSection: z.ZodType<CoreAPIDataSourceDocumentSection> =
   z.lazy(() =>
     z.object({

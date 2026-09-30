@@ -102,11 +102,6 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
  * one aggregated document per message.
  */
 
-// The 5 item types of the agent_message_consumption_items table collapse to 2
-// here: the model token buckets (system, input, output, reasoning) become one
-// "llm" document whose buckets are carried by `tokens` and `gross_credit_micro`.
-export type AgentMessageConsumptionAnalyticsType = "llm" | "tool";
-
 // Billing slice of the consumption unit. USAGE_TYPE_FREE is deliberately absent:
 // the index holds billed consumption only, so free calls are never indexed.
 export type AgentMessageConsumptionAnalyticsUsageType =

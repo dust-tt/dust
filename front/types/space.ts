@@ -84,4 +84,3 @@ export const GROUP_SPACE_KINDS = [
   "project_editor", // can manage the project (not used for regular spaces)
   "project_viewer", // can see the project (not used for regular spaces)
 ] as const;
-export type GroupSpaceKind = (typeof GROUP_SPACE_KINDS)[number];

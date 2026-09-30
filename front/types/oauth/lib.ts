@@ -1,5 +1,4 @@
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
-import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import { z } from "zod";
@@ -963,11 +962,6 @@ export type ConnectionCredentials =
   | HubspotCredentials
   | LinearCredentials
   | NotionCredentials;
-
-export type ModelProviderPostCredentialsBody = {
-  provider: ByokModelProviderIdType;
-  credentials: ApiKeyCredentialsType;
-};
 
 export type OauthAPIPostConnectionCredentialsResponse = {
   credential: {

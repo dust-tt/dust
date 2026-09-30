@@ -39,10 +39,6 @@ export type FileExplorerScopedPreferences = z.infer<
   (typeof scopedUIPreferencesSchemaByScope)["fileExplorer"]
 >;
 
-export type PodPinnedBannerScopedPreferences = z.infer<
-  (typeof scopedUIPreferencesSchemaByScope)["podPinnedBanner"]
->;
-
 export type PodUiScopedPreferences = z.infer<
   (typeof scopedUIPreferencesSchemaByScope)["podUi"]
 >;

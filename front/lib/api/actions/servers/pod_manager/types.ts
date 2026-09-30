@@ -34,8 +34,6 @@ const PodManagerDefaultAgentInputSchema = z.object({
   dustPod: DustPodConfigurationSchema.optional(),
 });
 
-export type PodMemberRole = z.infer<typeof PodMemberRoleSchema>;
-export type PodAccess = z.infer<typeof PodAccessSchema>;
 type PodMembersToAdd = z.infer<typeof PodMembersToAddSchema>;
 export type PodManagerUpdateMembersInput = z.infer<
   typeof PodManagerUpdateMembersInputSchema

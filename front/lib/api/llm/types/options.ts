@@ -109,10 +109,6 @@ export type LLMParameters<E> = {
   omittedThinking?: boolean;
 } & LLMTraceCustomization;
 
-export type LLMParameterOverwrites<E> = Partial<
-  Omit<LLMParameters<E>, "credentials">
->;
-
 export type LLMClientMetadata = {
   clientId: ModelProviderIdType;
   // Holds the inference provider for legacy clients (e.g. "google_vertex_ai")

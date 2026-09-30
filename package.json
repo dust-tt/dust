@@ -26,7 +26,7 @@
     "test:grit": "command -v grit >/dev/null 2>&1 || { echo 'Error: grit CLI not found. Install it with: brew install getgrit/tap/grit (or: curl -fsSL https://docs.grit.io/install | bash)'; exit 1; } && grit patterns test",
     "doctor": "npx react-doctor@latest --diff",
     "doctor:full": "npx react-doctor@latest --diff false",
-    "knip:dead-code": "knip --production --workspace front --workspace front-api --workspace front-spa --include files,exports,types"
+    "knip:dead-code": "knip --production --workspace front --workspace front-api --workspace front-spa --workspace extension --include files,exports,types"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.1",

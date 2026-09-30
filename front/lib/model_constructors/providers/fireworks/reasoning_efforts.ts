@@ -12,6 +12,3 @@ export const FIREWORKS_SUPPORTED_REASONING_EFFORTS = [
   "xhigh",
   "maximal",
 ] as const;
-
-export type FireworksSupportedReasoningEffort =
-  (typeof FIREWORKS_SUPPORTED_REASONING_EFFORTS)[number];

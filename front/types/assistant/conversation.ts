@@ -24,11 +24,6 @@ import type {
 
 export type MessageVisibility = "visible" | "deleted" | "pending";
 
-export type ConversationMessageReactions = {
-  messageId: string;
-  reactions: MessageReactionType[];
-}[];
-
 /**
  * @swaggerschema PrivateReaction (swagger_private_schemas.ts)
  */
@@ -410,10 +405,6 @@ export type InlineActivityStep =
       toolName: string | null;
       step?: number;
     };
-
-export type ParsedContentItem =
-  | { kind: "reasoning"; content: string }
-  | { kind: "action"; action: AgentMCPActionWithOutputType };
 
 /**
  * @swaggerschema PrivateAgentMessage (swagger_private_schemas.ts)
@@ -824,16 +815,6 @@ export type UserMessagePromotedEvent = {
   type: "user_message_promoted";
   created: number;
   messageId: string;
-};
-
-// Event sent when the user message is created.
-export type UserMessageErrorEvent = {
-  type: "user_message_error";
-  created: number;
-  error: {
-    code: string;
-    message: string;
-  };
 };
 
 // Event sent when a new message is created (empty) and the agent is about to be executed.

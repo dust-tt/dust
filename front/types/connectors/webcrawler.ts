@@ -4,7 +4,6 @@ export const WEBCRAWLER_MAX_DEPTH = 5;
 export const WEBCRAWLER_MAX_PAGES = 1024;
 
 export const CrawlingModes = ["child", "website"] as const;
-export type CrawlingMode = (typeof CrawlingModes)[number];
 
 export const CrawlingFrequencies = [
   "never",
@@ -39,10 +38,6 @@ export const WebCrawlerConfigurationTypeSchema = z.object({
   crawlFrequency: z.enum(["never", "daily", "weekly", "monthly"]),
   headers: z.record(z.string(), z.string()),
 });
-
-export type WebCrawlerConfiguration = z.infer<
-  typeof WebCrawlerConfigurationTypeSchema
->;
 
 export const WebCrawlerHeaderRedactedValue = "<REDACTED>";
 

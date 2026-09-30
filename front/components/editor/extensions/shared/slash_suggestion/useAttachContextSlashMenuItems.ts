@@ -1,7 +1,4 @@
-import type {
-  ContextFileSlashSearchItem,
-  ContextFileSlashSearchSelection,
-} from "@app/components/editor/extensions/shared/slash_suggestion/ContextFileSlashSearch";
+import type { ContextFileSlashSearchItem } from "@app/components/editor/extensions/shared/slash_suggestion/ContextFileSlashSearch";
 import { useContextFileSlashSearchItems } from "@app/components/editor/extensions/shared/slash_suggestion/ContextFileSlashSearch";
 import type {
   ContextSlashSearchSelection,
@@ -185,5 +182,3 @@ export function useAttachContextSlashMenuItems({
     spaces: scopedSpaces,
   };
 }
-
-export type { ContextFileSlashSearchSelection };

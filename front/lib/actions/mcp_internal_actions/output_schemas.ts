@@ -1059,10 +1059,6 @@ export const UserAnswerRequiredOutputResourceSchema = z.object({
   uri: z.string(),
 });
 
-export type UserAnswerRequiredOutputResourceType = z.infer<
-  typeof UserAnswerRequiredOutputResourceSchema
->;
-
 export const AgentPauseOutputResourceSchema = z.union([
   AuthRequiredOutputResourceSchema,
   BlockedAwaitingInputOutputResourceSchema,

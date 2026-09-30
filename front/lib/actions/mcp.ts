@@ -52,7 +52,6 @@ import type {
 } from "@app/lib/actions/mcp_schemas";
 
 export type {
-  BaseMCPServerConfigurationType,
   ClientSideMCPServerConfigurationType,
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,

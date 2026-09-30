@@ -121,17 +121,8 @@ export {
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image/tool_manifest";
 export type {
-  BaseImage,
-  NetworkMode,
-  NetworkPolicy,
-  Operation,
-  SandboxCapability,
   SandboxImageId,
-  SandboxResources,
   ToolEntry,
-  ToolManifest,
-  ToolProfile,
-  ToolRuntime,
 } from "@app/lib/api/sandbox/image/types";
 export {
   devSandboxImageId,

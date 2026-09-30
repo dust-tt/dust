@@ -12,7 +12,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type {
-  FileSystemNodeType,
   FileSystemOperation,
   FileSystemOperationResponse,
 } from "./namespace_types";
