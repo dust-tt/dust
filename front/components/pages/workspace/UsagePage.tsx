@@ -309,27 +309,14 @@ export function UsagePage() {
   const [usageTab, setUsageTab] = useState<
     "members" | "groups" | "top-ups" | "settings"
   >("members");
-  const { upgradeRequests, isUpgradeRequestsLoading } = useUpgradeRequests({
-    workspaceId: owner.sId,
-    disabled: !isCreditPriced,
-  });
-
-  const filteredUpgradeRequests = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    return upgradeRequests.filter((request) => {
-      if (request.status !== "pending") {
-        return false;
-      }
-      if (!normalizedSearch) {
-        return true;
-      }
-      const { name, email } = request.requester;
-      return (
-        name.toLowerCase().includes(normalizedSearch) ||
-        (email?.toLowerCase().includes(normalizedSearch) ?? false)
-      );
+  const { upgradeRequests, isUpgradeRequestsLoading, isUpgradeRequestsError } =
+    useUpgradeRequests({
+      workspaceId: owner.sId,
+      disabled: !isCreditPriced,
+      searchTerm,
+      groupId: groupFilter ?? undefined,
     });
-  }, [upgradeRequests, searchTerm]);
+
   const handleChangeSeatFromTable = useCallback((member: MemberUsageType) => {
     setChangeSeatMember(member);
   }, []);
@@ -1182,14 +1169,15 @@ export function UsagePage() {
                 requests={
                   isCreditPriced
                     ? {
-                        count: filteredUpgradeRequests.length,
+                        count: upgradeRequests.length,
                         activeTab: membersTab,
                         onTabChange: setMembersTab,
                         table: (
                           <UpgradeRequests
                             owner={owner}
-                            requests={filteredUpgradeRequests}
+                            requests={upgradeRequests}
                             isLoading={isUpgradeRequestsLoading}
+                            isError={isUpgradeRequestsError}
                             groups={groups}
                             seatUpgrade={{
                               plans: seatPlans,
