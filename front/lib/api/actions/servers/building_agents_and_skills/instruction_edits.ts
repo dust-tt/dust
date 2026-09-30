@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { validateInstructionEdits } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
 import { hasSuggestionSelfConflict } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import type { Result } from "@app/types/shared/result";
@@ -10,6 +11,11 @@ export function validateInstructionEditTargets(
   instructionEdits: SkillInstructionEditItemType[],
   owner: "agent" | "skill"
 ): Result<undefined, MCPError> {
+  const editsValidation = validateInstructionEdits(instructionEdits);
+  if (editsValidation.isErr()) {
+    return new Err(new MCPError(editsValidation.error));
+  }
+
   const unknownBlockIds = findUnknownTargetBlockIds(
     instructionsHtml,
     instructionEdits.map((edit) => edit.targetBlockId)

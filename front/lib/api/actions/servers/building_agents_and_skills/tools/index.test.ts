@@ -12,6 +12,7 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
@@ -641,6 +642,55 @@ describe("building_agents_and_skills tools", () => {
         }),
         "do not exist in the skill's instructions"
       );
+    });
+
+    it("refuses skill instruction edits that are malformed as a set, recording nothing", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Format Skill",
+        instructionsHtml: '<p data-block-id="blk00002">Triage.</p>',
+      });
+
+      const runSkillEdits = (
+        instructionEdits: { targetBlockId: string; content: string }[]
+      ) =>
+        runSuggest(authenticator, {
+          title: "Edit skill",
+          analysis: "Edit.",
+          suggestions: [
+            {
+              kind: "edit_skill",
+              skillId: skill.sId,
+              instructionEdits: instructionEdits.map((edit) => ({
+                ...edit,
+                type: "replace",
+              })),
+            },
+          ],
+        });
+
+      expectMcpError(
+        await runSkillEdits([
+          { targetBlockId: "blk00002", content: "<p>One.</p>" },
+          { targetBlockId: "blk00002", content: "<p>Two.</p>" },
+        ]),
+        "Multiple suggestions target the same block ID"
+      );
+      expectMcpError(
+        await runSkillEdits([
+          {
+            targetBlockId: "blk00002",
+            content: "<p>One.</p><p>Two.</p>",
+          },
+        ]),
+        "contains 2 top-level elements"
+      );
+      expect(
+        await SkillSuggestionResource.listBySkillConfigurationId(
+          authenticator,
+          skill.sId
+        )
+      ).toEqual([]);
     });
 
     it("refuses creating an agent with the name of an existing agent", async () => {

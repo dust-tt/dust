@@ -8,7 +8,6 @@ import {
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import { validateAgentEditorsChange } from "@app/lib/api/assistant/agent_editors_change";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
-import { validateInstructionEdits } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { isAuthorizedForAgentSuggestionKind } from "@app/lib/api/assistant/agent_suggestion_authorization";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
 import {
@@ -458,11 +457,6 @@ export async function validateAgentInstructionsChange(
   });
   if (!limitCheck.allowed) {
     return new Err(new MCPError(limitCheck.errorMessage));
-  }
-
-  const editsValidation = validateInstructionEdits(edits);
-  if (editsValidation.isErr()) {
-    return new Err(new MCPError(editsValidation.error));
   }
 
   const targetsValidation = validateInstructionEditTargets(
