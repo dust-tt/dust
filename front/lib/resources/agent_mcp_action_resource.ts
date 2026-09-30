@@ -29,7 +29,6 @@ import { AGENT_DELEGATION_SERVER_NAME } from "@app/lib/api/actions/servers/agent
 import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { isRunAgentResumeState } from "@app/lib/api/actions/servers/run_agent/types";
 import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
-import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
@@ -413,8 +412,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     ];
 
     const [agentConfigurations, mcpServerViews] = await Promise.all([
-      getAgentConfigurationsWithVersion(auth, agentConfigVersionPairs, {
-        variant: "extra_light",
+      // The blocked actions' own agents are displayed by name even once the caller holds no verb
+      // on them (see `agent-dangerous-fetch`).
+      AgentResource.fetchByIdsAndVersions(auth, agentConfigVersionPairs, {
+        dangerouslySkipFetchCheck: true,
       }),
       MCPServerViewResource.fetchByIds(auth, mcpServerViewIds, {
         includeHeavyAttributes: ["authorization"],
@@ -878,13 +879,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       })
     );
 
-    const agentConfigurations = await getAgentConfigurationsWithVersion(
+    const agentConfigurations = await AgentResource.fetchByIdsAndVersions(
       auth,
       agentConfigVersionPairs,
       {
-        variant: "extra_light",
         // Historical agents in a conversation the user can already read.
-        dangerouslySkipPermissionFiltering: true,
+        dangerouslySkipFetchCheck: true,
       }
     );
     const agentConfigurationMap = new Map(
