@@ -190,7 +190,7 @@ export function AgentSearchTable({
             ).some((isSelected) => isSelected);
 
             return (
-              <DataTable.CellContent className="size-full items-center justify-center">
+              <div className="flex size-full items-center justify-center">
                 <Checkbox
                   checked={
                     areAllPageRowsSelected
@@ -217,7 +217,7 @@ export function AgentSearchTable({
                     }
                   }}
                 />
-              </DataTable.CellContent>
+              </div>
             );
           },
           cell: ({ row }) => {

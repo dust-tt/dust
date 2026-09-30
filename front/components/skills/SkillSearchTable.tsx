@@ -102,7 +102,7 @@ export function SkillSearchTable({
             ).some((isSelected) => isSelected);
 
             return (
-              <DataTable.CellContent className="size-full items-center justify-center">
+              <div className="flex size-full items-center justify-center">
                 <Checkbox
                   checked={
                     areAllPageRowsSelected
@@ -129,7 +129,7 @@ export function SkillSearchTable({
                     }
                   }}
                 />
-              </DataTable.CellContent>
+              </div>
             );
           },
           cell: ({ row }) => {
