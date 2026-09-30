@@ -1,12 +1,15 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { CoreAPIError, CoreAPITable } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
+import { isConversationFileUseCase } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -104,6 +107,50 @@ async function _deleteTable({
   return new Ok(null);
 }
 
+/**
+ * Returns true when the authenticated caller has read access to a file that
+ * will be passed to core (e.g. as a CSV source). Mirrors the access model of
+ * checkFileAccess in the files route handler.
+ *
+ * - upsert_table: caller must own the file or be a manager.
+ * - conversation / tool_output: caller must be able to see the conversation
+ *   when conversationId metadata is present; otherwise workspace membership
+ *   (enforced by FileResource.fetchById) is sufficient.
+ * - project_context: caller must have read access to the space.
+ */
+async function callerCanReadFile(
+  auth: Authenticator,
+  file: FileResource
+): Promise<boolean> {
+  if (file.useCase === "upsert_table") {
+    return file.userId === auth.user()?.id || auth.isManager();
+  }
+
+  if (isConversationFileUseCase(file.useCase)) {
+    const conversationId = file.useCaseMetadata?.conversationId;
+    if (conversationId) {
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        conversationId
+      );
+      return conversation !== null;
+    }
+    // No conversationId metadata — workspace membership is sufficient.
+    return true;
+  }
+
+  if (file.useCase === "project_context") {
+    const spaceId = file.useCaseMetadata?.spaceId;
+    if (!spaceId) {
+      return false;
+    }
+    const space = await SpaceResource.fetchById(auth, spaceId);
+    return space !== null && auth.can("read", space);
+  }
+
+  return false;
+}
+
 export async function upsertTableFromCsv({
   auth,
   dataSource,
@@ -170,6 +217,22 @@ export async function upsertTableFromCsv({
         message: `The file provided has not the expected use-case. Expected one of: ${VALID_USE_CASES.join(
           ", "
         )}`,
+      });
+    }
+
+    // @cc [owner:frankaloia,label:security] table-upsert-file-access
+    // upsertTableFromCsv and upsertTable MUST verify the caller has read access to
+    // the resolved file before passing its GCS path to core. Workspace-scoped
+    // fetchById alone is not sufficient authorization.
+    const hasFileAccess = await callerCanReadFile(auth, file);
+    if (!hasFileAccess) {
+      return new Err({
+        type: "not_found_error",
+        notFoundError: {
+          type: "file_not_found",
+          message:
+            "The file associated with the fileId you provided was not found",
+        },
       });
     }
   }

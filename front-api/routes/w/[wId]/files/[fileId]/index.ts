@@ -558,10 +558,18 @@ async function getSpaceForFile(
   return SpaceResource.fetchById(auth, file.useCaseMetadata.spaceId);
 }
 
+// @cc [owner:frankaloia,label:security] file-access-deny-by-default
+// checkFileAccess MUST explicitly handle every file useCase that grants access.
+// Any useCase not explicitly listed MUST be denied with 403 (deny-by-default).
+// Adding a new useCase to FileResource MUST add a corresponding access check here.
+
 /**
  * Validates that the caller can access the file based on its use case and
  * associated space/conversation. Returns a Response to short-circuit when
  * denied, or `null` when access is granted.
+ *
+ * Every FileUseCase value must be handled explicitly. Unrecognized or
+ * unhandled use cases are denied (deny-by-default posture).
  */
 async function checkFileAccess(
   ctx: Context,
@@ -591,25 +599,75 @@ async function checkFileAccess(
         },
       });
     }
+
+    return null;
   }
 
-  if (
-    isConversationFileUseCase(file.useCase) &&
-    file.useCaseMetadata?.conversationId
-  ) {
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      file.useCaseMetadata.conversationId
-    );
-    if (!conversation) {
+  if (isConversationFileUseCase(file.useCase)) {
+    if (file.useCaseMetadata?.conversationId) {
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        file.useCaseMetadata.conversationId
+      );
+      if (!conversation) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: { type: "file_not_found", message: "File not found." },
+        });
+      }
+    }
+    // conversation/tool_output files without a conversationId are legacy files;
+    // workspace membership (enforced by fetchById) is sufficient.
+    return null;
+  }
+
+  if (file.useCase === "upsert_table" || file.useCase === "upsert_document") {
+    // Upsert files belong to the uploader; only the owner or a manager may
+    // access them outside of the normal space/conversation flow.
+    const isFileOwner = file.userId === auth.user()?.id;
+    if (!isFileOwner && !auth.isManager()) {
       return apiError(ctx, {
-        status_code: 404,
-        api_error: { type: "file_not_found", message: "File not found." },
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You do not have access to this file.",
+        },
       });
     }
+    return null;
   }
 
-  return null;
+  if (file.useCase === "avatar" || file.useCase === "workspace_branding") {
+    // Avatar/branding files belong to the uploader; only the owner or an
+    // admin may access them.
+    const isFileOwner = file.userId === auth.user()?.id;
+    if (!isFileOwner && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You do not have access to this file.",
+        },
+      });
+    }
+    return null;
+  }
+
+  if (file.useCase === "skill_attachment") {
+    // skill_attachment access is enforced by canReadSkillFile / canWriteSkillFile
+    // called by the individual route handlers after checkFileAccess returns null.
+    return null;
+  }
+
+  // Deny-by-default: any use case not explicitly handled above is rejected.
+  // This prevents future use cases from accidentally inheriting allow-by-default.
+  return apiError(ctx, {
+    status_code: 403,
+    api_error: {
+      type: "workspace_auth_error",
+      message: "You do not have access to this file.",
+    },
+  });
 }
 
 export default app;
