@@ -1,4 +1,3 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { fetchPrecedingContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
@@ -105,6 +104,7 @@ import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import type { RunningAgentMessageContext } from "@app/lib/resources/conversation_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -133,6 +133,7 @@ import type {
 import { isContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type {
   AgentConfigurationStatus,
+  LightAgentConfigurationType,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -697,14 +698,12 @@ export async function postUserMessage(
     });
   }
 
-  // `getAgentConfiguration` checks that we're only pulling a configuration from the
+  // `AgentResource` checks that we're only pulling a configuration from the
   // same workspace or a global one.
   const results = await Promise.all([
-    getAgentConfigurations(auth, {
-      agentIds: mentions
-        .filter(isAgentMention)
-        .map((mention) => mention.configurationId),
-      variant: "extra_light",
+    loadMentionedAgentConfigurations(auth, mentions, {
+      withFavorites: false,
+      withTags: false,
     }),
     (() => {
       // If the origin of the user message is "run_agent", we do not want to update the
@@ -1065,6 +1064,28 @@ export async function postUserMessage(
   });
 }
 
+// Mentioned agents the caller holds no verb on are kept, so `canAccessAgent` rejects the message
+// instead of silently dropping the mention: the `canFetch` drop is skipped (see
+// `agent-dangerous-fetch`) and access is decided on `canRead` below.
+async function loadMentionedAgentConfigurations(
+  auth: Authenticator,
+  mentions: MentionType[],
+  options?: { withFavorites?: boolean; withTags?: boolean }
+): Promise<LightAgentConfigurationType[]> {
+  const agentIds = mentions
+    .filter(isAgentMention)
+    .map((mention) => mention.configurationId);
+  if (agentIds.length === 0) {
+    return [];
+  }
+
+  return toLightAgentConfigurations(
+    auth,
+    await AgentResource.dangerouslyFetchByIds(auth, agentIds),
+    options
+  );
+}
+
 /**
  * Can a user mention a given configuration
  */
@@ -1177,12 +1198,7 @@ export async function editUserMessage(
   let agentMessages: AgentMessageType[] = [];
 
   const results = await Promise.all([
-    getAgentConfigurations(auth, {
-      agentIds: mentions
-        .filter(isAgentMention)
-        .map((mention) => mention.configurationId),
-      variant: "light",
-    }),
+    loadMentionedAgentConfigurations(auth, mentions),
     ConversationResource.upsertParticipation(auth, {
       conversation,
       action: "posted",
