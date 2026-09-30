@@ -1,6 +1,5 @@
 import {
   AwuUsageAnalyticsQuerySchema,
-  type AwuUsageAnalyticsResponse,
   awuUsageToCsvRows,
   getAwuUsageFromAnalytics,
 } from "@app/lib/api/analytics/awu_usage_analytics";
@@ -10,8 +9,6 @@ import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type { AwuUsageAnalyticsResponse };
 
 const CSV_HEADERS = ["date", "granularity", "series", "credits"] as const;
 

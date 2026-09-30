@@ -4,8 +4,6 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { topUpsErrorToApi } from "@front-api/routes/w/[wId]/credits/top-ups";
 
-export type { GetAwuTopUpsHistoryResponseBody };
-
 // Mounted at /api/poke/workspaces/:wId/credits/top-ups.
 const app = pokeApp();
 

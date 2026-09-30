@@ -1,8 +1,5 @@
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import type {
-  PatchMCPServerToolsPermissionsResponseBody,
-  UpdateMCPToolSettingsBodyType,
-} from "@app/lib/api/mcp";
+import type { PatchMCPServerToolsPermissionsResponseBody } from "@app/lib/api/mcp";
 import { UpdateMCPToolSettingsBodySchema } from "@app/lib/api/mcp_schemas";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -11,11 +8,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type {
-  PatchMCPServerToolsPermissionsResponseBody,
-  UpdateMCPToolSettingsBodyType,
-};
 
 const ParamsSchema = z.object({
   serverId: z.string(),

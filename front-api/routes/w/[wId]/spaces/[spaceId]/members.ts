@@ -20,11 +20,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import type { Context } from "hono";
 
-export type {
-  PatchSpaceMembersRequestBodyType,
-  PostSpaceMembersRequestBodyType,
-} from "@app/lib/api/spaces/members";
-
 // Mounted at /api/w/:wId/spaces/:spaceId/members.
 const app = workspaceApp();
 

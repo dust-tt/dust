@@ -5,10 +5,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { checkFrameShareScopePermission } from "@app/lib/api/share/frame_sharing";
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
-import {
-  buildShareFileResponse,
-  type ShareFrameViewerFile,
-} from "@app/lib/api/viz/share_frame_viewer_files";
+import { buildShareFileResponse } from "@app/lib/api/viz/share_frame_viewer_files";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
@@ -27,8 +24,6 @@ import type { Context, TypedResponse } from "hono";
 import { z } from "zod";
 
 import grants from "./grants";
-
-export type { ShareFrameViewerFile };
 
 const ShareFileRequestBodySchema = z.object({
   shareScope: fileShareScopeSchema,

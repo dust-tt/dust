@@ -8,8 +8,6 @@ import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
-export type { GetAutomationsOverviewResponse };
-
 // Mounted at /api/w/:wId/analytics/automations/overview.
 const app = workspaceApp();
 
