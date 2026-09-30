@@ -11,10 +11,10 @@ import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { getPodRoute } from "@app/lib/utils/router";
 import { Attachment01, Button, DotsHorizontal } from "@dust-tt/sparkle";
-import type { PanelStateResponse } from "@extension/shared/messages";
+import { usePanelStateListener } from "@extension/shared/hooks/usePanelStateListener";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { ConversationContainer } from "../components/conversation/ConversationContainer";
 
 export const MainPage = () => {
@@ -32,48 +32,12 @@ export const MainPage = () => {
       workspaceId: workspace.sId,
     });
 
-  useEffect(() => {
-    const onGetPanelState = (
-      message: unknown,
-      _sender: chrome.runtime.MessageSender,
-      sendResponse: (response?: unknown) => void
-    ) => {
-      if (
-        typeof message !== "object" ||
-        message === null ||
-        !("type" in message) ||
-        message.type !== "EXT_GET_PANEL_STATE" ||
-        !("windowId" in message) ||
-        typeof message.windowId !== "number"
-      ) {
-        return false;
-      }
-
-      void chrome.windows.getCurrent().then((currentWindow) => {
-        if (currentWindow.id !== message.windowId) {
-          return;
-        }
-
-        const response: PanelStateResponse = {
-          status:
-            conversationId && isConversationLoading ? "loading" : "open",
-          workspaceId: workspace.sId,
-          conversationId,
-          podId: conversation?.spaceId ?? null,
-        };
-        sendResponse(response);
-      }).catch(() => sendResponse({ status: "unknown" }));
-      return true;
-    };
-
-    chrome.runtime.onMessage.addListener(onGetPanelState);
-    return () => chrome.runtime.onMessage.removeListener(onGetPanelState);
-  }, [
-    conversation?.spaceId,
+  usePanelStateListener({
+    workspaceId: workspace.sId,
     conversationId,
-    isConversationLoading,
-    workspace.sId,
-  ]);
+    podId: conversation?.spaceId ?? null,
+    isLoading: !!conversationId && isConversationLoading,
+  });
 
   const {
     isMenuOpen,

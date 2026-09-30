@@ -18,6 +18,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { usePanelStateListener } from "@extension/shared/hooks/usePanelStateListener";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
 import { useClientSideMCPServerIds } from "@extension/ui/components/conversation/ExtensionClientSideMCPServerProvider";
 import { useParams } from "react-router-dom";
@@ -49,6 +50,13 @@ export const PodMainPage = () => {
     podId: podId ?? null,
     podUiPreferences,
     setPodUiPreferences,
+  });
+
+  usePanelStateListener({
+    workspaceId: workspace.sId,
+    conversationId: null,
+    podId: podId ?? null,
+    isLoading: isPodInfoLoading,
   });
 
   if (isPodInfoLoading) {
