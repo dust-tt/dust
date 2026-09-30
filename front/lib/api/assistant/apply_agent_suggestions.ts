@@ -36,7 +36,6 @@ import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestio
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
 import type {
   AgentConfigurationScope,
@@ -46,6 +45,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   CreateSuggestionType,
   EditorsSuggestionType,
@@ -839,8 +839,8 @@ async function saveAgentConfiguration(
 }
 
 /**
- * Creates the tags named `names` that do not exist (restoring a soft-deleted one of the same name)
- * and returns every tag.
+ * Returns the tags named `names`, matching existing tags case-insensitively
+ * and creating the other ones.
  */
 async function createMissingTags(
   auth: Authenticator,
@@ -850,14 +850,20 @@ async function createMissingTags(
     return [];
   }
 
-  // Tags created since the change was resolved are reused rather than created again.
-  const existing = await TagResource.findByNames(auth, names);
-  const existingNames = new Set(existing.map((tag) => tag.name));
-  const created = await concurrentExecutor(
-    names.filter((name) => !existingNames.has(name)),
-    (name) => TagResource.makeNew(auth, { name, kind: "standard" }),
-    { concurrency: 4 }
+  // A tag created since the change was resolved (e.g. by another step of the batch) is reused.
+  const tagsByKey = new Map(
+    (await TagResource.findAll(auth)).map((tag) => [
+      tag.name.toLowerCase(),
+      tag,
+    ])
   );
+  const existing = removeNulls(
+    names.map((name) => tagsByKey.get(name.toLowerCase()) ?? null)
+  );
+  const created = await TagResource.makeNewForNames(auth, {
+    names: names.filter((name) => !tagsByKey.has(name.toLowerCase())),
+    kind: "standard",
+  });
 
   return [...existing, ...created];
 }

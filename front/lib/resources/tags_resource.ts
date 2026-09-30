@@ -68,6 +68,46 @@ export class TagResource extends BaseResource<TagModel> {
     return new this(TagModel, tag.get());
   }
 
+  // Batched `makeNew`: creates the tags named `names`, restoring the soft-deleted ones, and returns
+  // every tag named `names`. A tag created concurrently is returned rather than duplicated.
+  static async makeNewForNames(
+    auth: Authenticator,
+    { names, kind }: { names: string[]; kind: TagKind }
+  ): Promise<TagResource[]> {
+    if (names.length === 0) {
+      return [];
+    }
+
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const existing = await TagModel.findAll({
+      where: { workspaceId: workspaceModelId, name: names },
+      includeDeleted: true,
+    });
+    const deletedTagModelIds = existing
+      .filter((tag) => tag.deletedAt)
+      .map((tag) => tag.id);
+    if (deletedTagModelIds.length > 0) {
+      await TagModel.update(
+        { deletedAt: null, kind },
+        { where: { workspaceId: workspaceModelId, id: deletedTagModelIds } }
+      );
+    }
+    const existingNames = new Set(existing.map((tag) => tag.name));
+    const missingNames = names.filter((name) => !existingNames.has(name));
+    if (missingNames.length > 0) {
+      await TagModel.bulkCreate(
+        missingNames.map((name) => ({
+          workspaceId: workspaceModelId,
+          name,
+          kind,
+        })),
+        { ignoreDuplicates: true }
+      );
+    }
+
+    return this.findByNames(auth, names);
+  }
+
   private static async baseFetch(
     auth: Authenticator,
     options?: ResourceFindOptions<TagModel>
