@@ -157,12 +157,15 @@ grant checks and returned attributes. Stat omits parent links and paths; lookup/
 to the containing directory. Listing returns attributes with entries, ordered by name bytes, with
 exclusive name cursors and limits of 1–1000. Pages reauthorize independently; concurrent edits may
 require restarting traversal. An in-flight read may complete against its original snapshot.
+The synchronous baseline caches neither dfs metadata nor authorization decisions across requests.
 
 `POST /objects/mkdir` creates an authorized child and updates its parent atomically.
 `POST /objects/update` patches MIME, xattrs, mode, and atime/mtime with a required expected metadata
 revision; stale revisions conflict. Both set server ctime, publish indexing events, and await durability.
 Xattr patches use base64 values, null deletions, and a 32 KiB total key/value limit. Authorization and
 publication share a lock until per-object concurrency is implemented; WAL waits release that lock.
+Take mutation snapshots after acquiring the lock: queued operations must observe intervening moves
+and revocations. Authorize before checking collisions/revisions; denied mutations publish nothing.
 Early development uses one metadata format; incompatible layout changes require a fresh store.
 
 ## Workspace creation, sessions, and virtual folders

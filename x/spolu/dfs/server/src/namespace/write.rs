@@ -31,8 +31,9 @@ pub(crate) struct MetadataUpdate {
 /**
  * @cc [owner:spolu,label:security;backend] authorized-directory-creation
  * Creation MUST authorize the parent and check its kind and name vacancy under the publication
- * guard. Publish the fresh object's parent link, child entry, parent revision/times, and event in
- * one durable batch. New children MUST inherit access without attaching session grants.
+ * guard, using a snapshot acquired after the guard. Authorization failures MUST publish nothing
+ * and MUST NOT reveal name collisions. Publish the fresh object, parent link, child entry, parent
+ * times/revision, and event in one durable batch. Children MUST inherit access without copying grants.
  */
 pub(crate) async fn mkdir(
     storage: &Storage,
@@ -116,8 +117,10 @@ pub(crate) async fn mkdir(
 /**
  * @cc [owner:spolu,label:security;backend] authorized-metadata-update
  * Updates MUST authorize the current object and compare the required revision under the same
- * publication guard. Preserve identity, parent, content, and grants; modify only supplied fields,
- * set server ctime, and advance the revision atomically with the event before acknowledging.
+ * publication guard, using a snapshot acquired after the guard. Authorization failures MUST
+ * publish nothing and MUST NOT reveal revision conflicts. Preserve identity, parent, content, and
+ * grants; modify only supplied fields, set server ctime, and advance the revision atomically with
+ * the event before acknowledging.
  * Xattr patches MUST preserve omitted keys, remove null entries, and preserve empty byte values.
  */
 pub(crate) async fn update(

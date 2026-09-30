@@ -119,6 +119,8 @@ page; pass `next_after` verbatim for the next, stopping when it is null. Each pa
 and rechecks grants. Concurrent edits can cause skips/repeats across pages; restart traversal when
 a consistent full listing is required. Revocations and moves apply to subsequent requests; an
 already-started read may finish against its snapshot. Responses use `Cache-Control: no-store`.
+The synchronous path keeps no dfs metadata or authorization cache across requests. A matching grant
+on the object or any current ancestor authorizes access; nearer grants never restrict it.
 
 ## Directory creation and metadata updates
 
@@ -141,6 +143,9 @@ advances the revision and sets server ctime. Content, parent, ID, and grants rem
 Modes retain only permission bits and do not authorize server access; additional bits are unsupported.
 
 Authorization and validation remain serialized with publication; durability waits release the lock.
+Mkdir checks the parent; metadata updates check the target. Both take their authorization snapshot
+after acquiring the lock, so queued writes observe intervening revocations and moves. Denial publishes
+nothing and returns `not_found` before checking name collisions or revision conflicts.
 A failed/disconnected request can have committed: inspect the name or attributes before retrying.
 Per-object concurrency and a broader retry protocol arrive in later increments.
 

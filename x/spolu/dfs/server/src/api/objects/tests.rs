@@ -1,3 +1,4 @@
+mod authorization;
 mod grants;
 mod mutations;
 

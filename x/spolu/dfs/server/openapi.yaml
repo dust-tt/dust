@@ -10,6 +10,11 @@ info:
     oversized bodies return invalid_input (400). All authenticated responses disable caching.
     Missing and inaccessible objects
     produce the same not_found response; messages never contain resource or storage details.
+    Session object operations use current ancestor grants in one snapshot per request, with no
+    dfs metadata or authorization cache. An in-flight read may finish against its original snapshot.
+    Mutations acquire the publication lock before taking that snapshot, so queued mutations observe
+    intervening revocations and moves. Authorization failures publish nothing and return not_found
+    before checking name collisions or revision conflicts.
 paths:
   /health:
     get:

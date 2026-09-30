@@ -1,7 +1,7 @@
 use super::*;
 
 impl Fixture {
-    async fn patch_grants(
+    pub(super) async fn patch_grants(
         &self,
         object: ObjectId,
         revision: u64,

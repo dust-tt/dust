@@ -17,6 +17,7 @@ use crate::{
  * Callers MUST supply the authenticated session's workspace and grants. Every operation MUST
  * authorize against the same snapshot used for its metadata reads. Views MUST NOT be reused across
  * requests; subsequent requests MUST observe completed grant revocations and moves.
+ * The synchronous path MUST NOT cache dfs metadata or authorization decisions across requests.
  */
 pub(crate) struct NamespaceRead<'a> {
     view: ReadView,
@@ -49,9 +50,10 @@ impl<'a> NamespaceRead<'a> {
     /**
      * @cc [owner:spolu,label:security] live-ancestor-grants
      * Access MUST require a matching explicit grant on the object or a current ancestor in this
-     * workspace. Missing and inaccessible objects MUST return the same NotFound error. Ancestor
-     * cycles, missing ancestors, and inconsistent parent links encountered during traversal MUST
-     * fail closed as Unavailable; they MUST NOT expose private names or loop indefinitely.
+     * workspace; nonmatching attachments MUST NOT mask an ancestor's matching grant. Missing and
+     * inaccessible objects MUST return the same NotFound error. Ancestor cycles, missing ancestors,
+     * and inconsistent parent links encountered during traversal MUST fail closed as Unavailable;
+     * they MUST NOT expose private names or loop indefinitely.
      */
     pub async fn stat(&self, id: ObjectId) -> Result<ObjectMetadata, ApiError> {
         if self.grants.is_empty() {
