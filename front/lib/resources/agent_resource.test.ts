@@ -2,6 +2,7 @@ import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configurati
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   AgentConfigurationModel,
   AgentModel,
@@ -2913,6 +2914,49 @@ describe("AgentResource", () => {
         (await AgentResource.fetchById(authenticator, custom.sId))
           ?.modelConfiguration
       );
+    });
+  });
+
+  describe("agent loop inputs", () => {
+    it("serves a custom agent's default reasoning effort when none is stored", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Default effort agent" }
+      );
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        agent.sId
+      );
+      assert(resource);
+
+      expect(resource.modelConfiguration.reasoningEffort).toBeUndefined();
+      expect(resource.toJSON().model.reasoningEffort).toBe(
+        getSupportedModelConfig(resource.modelConfiguration)
+          ?.defaultReasoningEffort
+      );
+    });
+
+    it("lists a global agent's actions from its full build, without rebuilding it", async () => {
+      const { authenticator } = testContext;
+      const [helper] = await AgentResource.fetchByIds(
+        authenticator,
+        [GLOBAL_AGENTS_SID.HELPER],
+        { withGlobalActions: true }
+      );
+      assert(helper);
+      vi.mocked(getGlobalAgents).mockClear();
+
+      const actions = await AgentResource.batchListActions(authenticator, [
+        helper,
+      ]);
+
+      expect(getGlobalAgents).not.toHaveBeenCalled();
+      const [fullHelper] = await getGlobalAgents(
+        authenticator,
+        [GLOBAL_AGENTS_SID.HELPER],
+        "full"
+      );
+      expect(actions.get(helper)).toEqual(fullHelper?.actions);
     });
   });
 
