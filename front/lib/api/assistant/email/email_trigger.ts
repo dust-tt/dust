@@ -693,17 +693,22 @@ export async function userAndWorkspaceFromEmail({
   });
 }
 
+export type EmailAgent = Pick<
+  LightAgentConfigurationType,
+  "sId" | "name" | "scope"
+> & { userFavorite?: boolean };
+
 export function emailAssistantMatcher({
   targetEmail,
   allAgentConfigurations,
   emailBlacklistedAgentIds,
 }: {
   targetEmail: string;
-  allAgentConfigurations: LightAgentConfigurationType[];
+  allAgentConfigurations: EmailAgent[];
   emailBlacklistedAgentIds: Set<string>;
 }): Result<
   {
-    agentConfiguration: LightAgentConfigurationType;
+    agentConfiguration: EmailAgent;
   },
   EmailTriggerError
 > {
@@ -772,7 +777,7 @@ export async function triggerFromEmail(
     agentConfigurations,
     email,
   }: {
-    agentConfigurations: LightAgentConfigurationType[];
+    agentConfigurations: EmailAgent[];
     email: InboundEmail;
   }
 ): Promise<

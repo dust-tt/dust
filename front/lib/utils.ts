@@ -331,10 +331,11 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
   return 0;
 }
 
-export function filterAndSortAgents(
-  agents: LightAgentConfigurationType[],
-  searchText: string
-) {
+export function filterAndSortAgents<
+  T extends Pick<LightAgentConfigurationType, "sId" | "name" | "scope"> & {
+    userFavorite?: boolean;
+  },
+>(agents: T[], searchText: string): T[] {
   const lowerCaseSearchText = searchText.toLowerCase();
 
   const filtered = agents.filter((a) =>

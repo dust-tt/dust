@@ -1,5 +1,6 @@
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getWorkspaceTagSuggestions } from "@app/lib/api/assistant/tag_manager";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type { GetSuggestionsResponseBody } from "@app/types/api/assistant/tag_manager";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { isAdmin } from "@app/types/user";
@@ -47,14 +48,15 @@ app.get("/", async (ctx): HandlerResult<GetSuggestionsResponseBody> => {
     });
   }
 
-  const agents = await getAgentConfigurationsForView({
+  const agents = await toLightAgentConfigurations(
     auth,
-    agentsGetView: "list",
-    variant: "extra_light",
-  });
+    (await AgentResource.listReadable(auth)).filter(
+      (a) => a.scope !== "global"
+    ),
+    { withFavorites: false, withTags: false }
+  );
 
   const formattedAgents = agents
-    .filter((a) => a.scope !== "global")
     .map(
       (a) =>
         `Identifier: ${a.sId}\nName: ${a.name}\nDescription: ${a.description?.substring(0, 200).replaceAll("\n", " ")}\nInstructions: ${a.instructions?.substring(0, 200).replaceAll("\n", " ")}`

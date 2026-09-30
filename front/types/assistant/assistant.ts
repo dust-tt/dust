@@ -279,7 +279,7 @@ const globalAgentIndexMap = new Map(
 export function compareAgentsForSort<
   T extends {
     sId: string;
-    userFavorite: boolean | undefined;
+    userFavorite?: boolean;
     scope: AgentConfigurationScope;
     name: string;
   },

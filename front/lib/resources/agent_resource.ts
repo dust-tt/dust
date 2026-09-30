@@ -1234,6 +1234,24 @@ export class AgentResource
     return this.fetchByIds(auth, listDefaultGlobalAgentIds());
   }
 
+  /**
+   * @cc [owner:tdraier,label:security;product] list-readable-agents
+   * Returns the active agents, global and custom, the caller can `read` (the ones they can mention
+   * and run), and no other: global agents first in their default order, then custom agents in name
+   * order.
+   */
+  static async listReadable(auth: Authenticator): Promise<AgentResource[]> {
+    const [globalAgents, customAgents] = await Promise.all([
+      this.listGlobalAgents(auth),
+      this.listByWorkspace(auth),
+    ]);
+
+    return [
+      ...globalAgents.filter((agent) => agent.status === "active"),
+      ...customAgents.toSorted((a, b) => a.name.localeCompare(b.name)),
+    ].filter((agent) => auth.can("read", agent));
+  }
+
   // Every agent of the authed workspace whose current status is in `status` (active by default),
   // filtered to what the caller can fetch.
   static async listByWorkspace(
