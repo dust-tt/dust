@@ -84,8 +84,9 @@ app.get(
       return apiError(ctx, toApiError(res.error));
     }
 
+    const groups = res.value.filter((group) => auth.can("read_usage", group));
     return ctx.json({
-      groups: await GroupResource.toJSONWithMemberCounts(auth, res.value),
+      groups: await GroupResource.toJSONWithMemberCounts(auth, groups),
     });
   }
 );
