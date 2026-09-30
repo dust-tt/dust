@@ -257,6 +257,31 @@
                   "Intl": "Format with the functions of @app/lib/i18n/format instead of Intl."
                 }
               }
+            },
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["date-fns", "date-fns-tz"],
+                    "importNamePattern": "(format|intlFormat|lightFormat).*",
+                    "message": "Format dates with the functions of @app/lib/i18n/format instead of date-fns."
+                  },
+                  {
+                    "group": [
+                      "date-fns/format*",
+                      "date-fns/intlFormat*",
+                      "date-fns/lightFormat",
+                      "date-fns-tz/format*"
+                    ],
+                    "message": "Format dates with the functions of @app/lib/i18n/format instead of date-fns."
+                  },
+                  {
+                    "group": ["dayjs", "dayjs/**", "luxon", "luxon/**"],
+                    "message": "Format dates with the functions of @app/lib/i18n/format instead of dayjs or luxon."
+                  }
+                ]
+              }
             }
           }
         }
