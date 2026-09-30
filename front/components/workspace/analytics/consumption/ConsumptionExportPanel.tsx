@@ -5,7 +5,7 @@ import {
 import type { ConsumptionExportListItem } from "@app/lib/api/analytics/consumption/export_jobs";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
 import { getBaseUrl } from "@app/lib/api/config";
-import { formatFileSize } from "@app/lib/utils";
+import { formatFileSize } from "@app/lib/i18n/format";
 import {
   Button,
   Download01,
@@ -38,7 +38,7 @@ function ConsumptionExportRow({
         {new Date(item.createdAt).toLocaleString()}
       </span>
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {formatFileSize(item.sizeBytes)}
+        {formatFileSize(item.sizeBytes, "en-US")}
         <Download01 className="h-3.5 w-3.5" />
       </span>
     </a>

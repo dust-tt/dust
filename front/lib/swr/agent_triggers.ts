@@ -1,6 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { BulkTriggerSelection } from "@app/lib/api/triggers/bulk_selection";
 import { clientFetch } from "@app/lib/egress/client";
+import { getLocalTimeZone } from "@app/lib/i18n/format";
 import { parseMatcherExpression } from "@app/lib/matcher";
 import {
   emptyArray,
@@ -379,7 +380,7 @@ export function useTextAsCronRule({
             },
             body: JSON.stringify({
               naturalDescription,
-              defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              defaultTimezone: getLocalTimeZone(),
             } satisfies PostTextAsCronRuleRequestBody),
             signal,
           }

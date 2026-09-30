@@ -1,11 +1,20 @@
+import { formatAmount } from "@app/components/workspace/billing/seatTypeUtils";
 import {
+  formatCurrency,
   formatDate,
   formatDateTime,
+  formatFileSize,
   formatNumber,
   formatRelativeTime,
   formatTime,
+  getLocalTimeZone,
+  prefersTwentyFourHourTime,
   setFormatLocale,
 } from "@app/lib/i18n/format";
+import {
+  formatCurrencyAmount,
+  formatCurrencyAmountCents,
+} from "@app/lib/metronome/amounts";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
 import { formatDate as formatDatePattern } from "@app/lib/utils/timestamps";
 import type { SupportedLocale } from "@app/types/locale";
@@ -93,6 +102,47 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
       setFormatLocale(locale);
       expect(formatDateFromMillis(TIMESTAMP, timezone)).toBe(expected);
     });
+
+    it.each([
+      [1234.567, "usd", "$1,234.57"],
+      [1234.5, "eur", "€1,234.50"],
+      [0.0087, "gbp", "£0.01"],
+    ] as const)("formatCurrencyAmount %d %s", (amountCurrencyUnits, currency, expected) => {
+      setFormatLocale(locale);
+      expect(
+        formatCurrencyAmount({ amount: amountCurrencyUnits, currency })
+      ).toBe(expected);
+      expect(
+        formatCurrencyAmountCents({
+          amountCents: amountCurrencyUnits * 100,
+          currency,
+        })
+      ).toBe(expected);
+    });
+
+    it.each([
+      [123456, "usd", "$1,234.56"],
+      [123456, "USD", "$1,234.56"],
+      [123456, "eur", "1\u202f234,56\u00a0€"],
+      [5, "gbp", "0,05\u00a0£GB"],
+    ])("seat formatAmount %i %s", (amountCents, currency, expected) => {
+      setFormatLocale(locale);
+      expect(formatAmount(amountCents, currency)).toBe(expected);
+    });
+
+    it.each([
+      [0, "0 B"],
+      [1023, "1023 B"],
+      [1024, "1.0 KB"],
+      [1536, "1.5 KB"],
+      [1048575, "1024.0 KB"],
+      [1048576, "1.00 MB"],
+      [5244114, "5.00 MB"],
+      [3221225472, "3072.00 MB"],
+    ])("formatFileSize pinned to en-US for %i bytes", (bytes, expected) => {
+      setFormatLocale(locale);
+      expect(formatFileSize(bytes, "en-US")).toBe(expected);
+    });
   });
 
   describe("the module matches the native Intl calls", () => {
@@ -143,6 +193,33 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
         new Intl.RelativeTimeFormat(locale).format(-3, "day")
       );
     });
+
+    it("formatCurrency", () => {
+      setFormatLocale(locale);
+      expect(formatCurrency(1234.5, "EUR")).toBe(
+        new Intl.NumberFormat(locale, {
+          style: "currency",
+          currency: "EUR",
+        }).format(1234.5)
+      );
+    });
+
+    it("prefersTwentyFourHourTime", () => {
+      setFormatLocale(locale);
+      const { hourCycle } = new Intl.DateTimeFormat(locale, {
+        hour: "numeric",
+      }).resolvedOptions();
+      expect(prefersTwentyFourHourTime()).toBe(
+        hourCycle === "h23" || hourCycle === "h24"
+      );
+    });
+
+    it("getLocalTimeZone", () => {
+      setFormatLocale(locale);
+      expect(getLocalTimeZone()).toBe(
+        Intl.DateTimeFormat().resolvedOptions().timeZone
+      );
+    });
   });
 });
 
@@ -159,6 +236,16 @@ describe("format locale resolution", () => {
     ).toBe(date);
     expect(formatNumber(1234.5)).toBe(number);
     expect(formatRelativeTime(-3, "day")).toBe(relative);
+  });
+
+  it.each([
+    ["en-US", "€1,234.50", "1.5 KB", false],
+    ["fr-FR", "1\u202f234,50\u00a0€", "1,5 KB", true],
+  ] as const)("formats money, sizes and hour cycle in %s once set", (locale, currency, fileSize, twentyFourHour) => {
+    setFormatLocale(locale);
+    expect(formatCurrency(1234.5, "EUR")).toBe(currency);
+    expect(formatFileSize(1536)).toBe(fileSize);
+    expect(prefersTwentyFourHourTime()).toBe(twentyFourHour);
   });
 
   it("uses the explicit locale over the format locale", () => {

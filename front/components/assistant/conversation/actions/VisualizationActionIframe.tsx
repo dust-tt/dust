@@ -8,6 +8,7 @@ import type {
   SandboxFunctionToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { clientFetch } from "@app/lib/egress/client";
+import { getLocalTimeZone } from "@app/lib/i18n/format";
 import { useFrameFiles } from "@app/lib/swr/frame_files";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -986,7 +987,7 @@ export const VisualizationActionIframe = forwardRef<
         const body: PostSandboxFunctionInvocationRequestBody = {
           input,
           context: {
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            timezone: getLocalTimeZone(),
           },
         };
 
