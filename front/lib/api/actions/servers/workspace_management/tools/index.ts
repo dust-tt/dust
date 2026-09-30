@@ -13,7 +13,9 @@ import {
   LIST_TAGS_TOOL_NAME,
   LIST_TOOLS_TOOL_NAME,
   LIST_WORKSPACE_MEMBERS_TOOL_NAME,
+  SEARCH_AGENTS_TOOL_NAME,
   SEARCH_KNOWLEDGE_TOOL_NAME,
+  SEARCH_SKILLS_TOOL_NAME,
   UPDATE_GROUP_MEMBERS_TOOL_NAME,
   WORKSPACE_MANAGEMENT_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
@@ -29,13 +31,17 @@ import { listSkills } from "@app/lib/api/actions/servers/workspace_management/to
 import { listTags } from "@app/lib/api/actions/servers/workspace_management/tools/list_tags";
 import { listTools } from "@app/lib/api/actions/servers/workspace_management/tools/list_tools";
 import { listWorkspaceMembers } from "@app/lib/api/actions/servers/workspace_management/tools/list_workspace_members";
+import { searchAgentsTool } from "@app/lib/api/actions/servers/workspace_management/tools/search_agents";
 import { searchKnowledgeTool } from "@app/lib/api/actions/servers/workspace_management/tools/search_knowledge";
+import { searchSkillsTool } from "@app/lib/api/actions/servers/workspace_management/tools/search_skills";
 import { updateGroupMembers } from "@app/lib/api/actions/servers/workspace_management/tools/update_group_members";
 
 const handlers: ToolHandlers<typeof WORKSPACE_MANAGEMENT_TOOLS_METADATA> = {
   [LIST_AGENTS_TOOL_NAME]: listAgents,
+  [SEARCH_AGENTS_TOOL_NAME]: searchAgentsTool,
   [GET_AGENT_DETAILS_TOOL_NAME]: getAgentDetails,
   [LIST_SKILLS_TOOL_NAME]: listSkills,
+  [SEARCH_SKILLS_TOOL_NAME]: searchSkillsTool,
   [GET_SKILL_DETAILS_TOOL_NAME]: getSkillDetails,
   [LIST_TOOLS_TOOL_NAME]: listTools,
   [GET_TOOL_DETAILS_TOOL_NAME]: getToolDetails,

@@ -1,6 +1,7 @@
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import createWorkspaceManagementServer from "@app/lib/api/actions/servers/workspace_management";
 import { TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
+import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -15,10 +16,22 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+
+const { mockSearch, mockWithEs } = vi.hoisted(() => ({
+  mockSearch: vi.fn(),
+  mockWithEs: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/elasticsearch")>();
+  return { ...actual, withEs: mockWithEs };
+});
 
 function getToolByName(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -126,6 +139,13 @@ async function setupOtherMembersAgents(workspace: LightWorkspaceType) {
 }
 
 describe("workspace_management tools", () => {
+  beforeEach(() => {
+    mockSearch.mockReset();
+    mockWithEs.mockReset();
+    mockWithEs.mockImplementation(
+      async (fn) => new Ok(await fn({ search: mockSearch }))
+    );
+  });
   it.each([
     "list_agents",
     "get_agent_details",
@@ -303,6 +323,155 @@ describe("workspace_management tools", () => {
         authenticator
       );
       expect(paged.at(-1)).toContain("Pass cursor: 1 for the next page.");
+    });
+  });
+
+  describe("search tools", () => {
+    it("supports skill search without an interactive user", async () => {
+      const { workspace } = await createResourceTest({ role: "user" });
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      expect(auth.user()).toBeNull();
+      mockSearch.mockResolvedValue({
+        hits: { hits: [], total: { value: 0, relation: "eq" } },
+      });
+
+      expect(await callTool("search_skills", { query: "sales" }, auth)).toBe(
+        "Showing 0 of 0."
+      );
+    });
+
+    it("returns agents in ES relevance order and paginates in ES", async () => {
+      const { authenticator, user } = await createResourceTest({
+        role: "user",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Zulu Sales" }
+      );
+      const resource = await AgentResource.fetchById(authenticator, agent.sId);
+      expect(resource).not.toBeNull();
+      const document = resource!.toSearchDocument(authenticator, {
+        activeUsersCount: 0,
+        editors: [user],
+        favoriteCount: 0,
+        feedbackNegativeCount: 0,
+        feedbackPositiveCount: 0,
+        lastEditedByUser: user,
+        mcpServerViewIds: [],
+        skillIds: [],
+        tagIds: [],
+      });
+      mockSearch.mockResolvedValue({
+        hits: {
+          hits: [
+            { _source: document },
+            {
+              _source: { ...document, name: "Alpha Sales", agent_id: "alpha" },
+            },
+          ],
+          total: { value: 5, relation: "eq" },
+        },
+      });
+
+      const lines = await callToolLines(
+        "search_agents",
+        { query: "sales", cursor: 1, limit: 2 },
+        authenticator
+      );
+
+      expect(lines[0]).toContain(`Zulu Sales [${agent.sId}]`);
+      expect(lines[1]).toContain("Alpha Sales [alpha]");
+      expect(lines[2]).toBe(
+        "Showing 2 of 5. Pass cursor: 3 for the next page."
+      );
+      expect(mockSearch.mock.lastCall?.[0]).toMatchObject({ from: 1, size: 2 });
+      expect(lines.join("\n")).not.toContain("Test Instructions");
+    });
+
+    it("returns skill summaries from the index with the selected filters", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Marketing Sales",
+        availability: "users_and_agents",
+      });
+      const [document] = await SkillFactory.createSearchDocuments(
+        authenticator,
+        [skill]
+      );
+      mockSearch.mockResolvedValue({
+        hits: {
+          hits: [{ _source: document }],
+          total: { value: 1, relation: "eq" },
+        },
+      });
+
+      const lines = await callToolLines(
+        "search_skills",
+        { query: "sal mar", availability: ["users_and_agents"] },
+        authenticator
+      );
+
+      expect(lines[0]).toContain(`Marketing Sales [${skill.sId}]`);
+      expect(lines[0]).toContain("availability: users_and_agents");
+      expect(lines[1]).toBe("Showing 1 of 1.");
+      expect(mockSearch.mock.lastCall?.[0].query.bool.filter).toContainEqual({
+        terms: { availability: ["users_and_agents"] },
+      });
+      expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
+        from: 0,
+        size: 20,
+      });
+      expect(lines.join("\n")).not.toContain(skill.instructions);
+    });
+
+    it.each([
+      "search_agents",
+      "search_skills",
+    ])("%s distinguishes empty results, bad cursors and ES failures", async (toolName) => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      mockSearch.mockResolvedValue({
+        hits: { hits: [], total: { value: 0, relation: "eq" } },
+      });
+      expect(
+        await callTool(toolName, { query: "unknown" }, authenticator)
+      ).toBe("Showing 0 of 0.");
+
+      const invalidCursor = await runTool(
+        toolName,
+        { query: "unknown", cursor: 1 },
+        authenticator
+      );
+      expect(invalidCursor.isErr()).toBe(true);
+      if (invalidCursor.isErr()) {
+        expect(invalidCursor.error.message).toContain(
+          "cursor 1 is out of range"
+        );
+        expect(invalidCursor.error.tracked).toBe(false);
+      }
+
+      mockSearch.mockClear();
+      const invalidWindow = await runTool(
+        toolName,
+        { query: "unknown", cursor: 10_000 },
+        authenticator
+      );
+      expect(invalidWindow.isErr()).toBe(true);
+      expect(mockSearch).not.toHaveBeenCalled();
+
+      const error = new ElasticsearchError(
+        "connection_error",
+        "ES unavailable"
+      );
+      mockWithEs.mockResolvedValueOnce(new Err(error));
+      const failure = await runTool(
+        toolName,
+        { query: "unknown" },
+        authenticator
+      );
+      expect(failure.isErr()).toBe(true);
+      if (failure.isErr()) {
+        expect(failure.error.cause).toBe(error);
+      }
     });
   });
 

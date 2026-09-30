@@ -1,4 +1,4 @@
-import { MAX_AGENT_SEARCH_RESULTS } from "@app/lib/agent_search/query";
+import { MAX_AGENT_SEARCH_RESULTS } from "@app/lib/agent_search/constants";
 import {
   AGENT_SEARCH_FACETS,
   AGENT_SEARCH_PERMISSION_FILTERINGS,

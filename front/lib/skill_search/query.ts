@@ -13,7 +13,7 @@ import type {
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
-export const MAX_SKILL_SEARCH_RESULTS = 100;
+export { MAX_SKILL_SEARCH_RESULTS } from "@app/lib/skill_search/constants";
 // Elasticsearch's default `index.max_result_window`: `offset + limit` cannot go past it.
 export const MAX_SKILL_SEARCH_WINDOW = 10_000;
 export const MAX_SKILL_SEARCH_FACET_VALUES = 1_000;

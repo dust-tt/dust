@@ -1,4 +1,4 @@
-import { MAX_SKILL_SEARCH_RESULTS } from "@app/lib/skill_search/query";
+import { MAX_SKILL_SEARCH_RESULTS } from "@app/lib/skill_search/constants";
 import { SEARCH_TYPES } from "@app/types/api/search";
 import {
   SKILL_SEARCH_FACETS,

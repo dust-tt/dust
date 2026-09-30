@@ -1,4 +1,6 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { SearchAgentsQuerySchema } from "@app/lib/agent_search/query_schema";
+import { SearchSkillsQuerySchema } from "@app/lib/skill_search/query_schema";
 import { KNOWLEDGE_CATEGORIES } from "@app/types/api/public/spaces";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
@@ -13,8 +15,10 @@ import { z } from "zod";
 export const WORKSPACE_MANAGEMENT_SERVER_NAME = "workspace_management" as const;
 
 export const LIST_AGENTS_TOOL_NAME = "list_agents" as const;
+export const SEARCH_AGENTS_TOOL_NAME = "search_agents" as const;
 export const GET_AGENT_DETAILS_TOOL_NAME = "get_agent_details" as const;
 export const LIST_SKILLS_TOOL_NAME = "list_skills" as const;
+export const SEARCH_SKILLS_TOOL_NAME = "search_skills" as const;
 export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
 export const LIST_TOOLS_TOOL_NAME = "list_tools" as const;
 export const GET_TOOL_DETAILS_TOOL_NAME = "get_tool_details" as const;
@@ -112,6 +116,32 @@ const listAgentsSchema = {
     ),
   ...paginationSchemaShape,
 };
+
+const searchQuerySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(200)
+  .describe(
+    "Search by name. Words can appear anywhere in the name and in any order; " +
+      "partial words are supported. Results are ordered by relevance."
+  );
+
+const searchAgentsSchema = SearchAgentsQuerySchema.omit({
+  offset: true,
+  facets: true,
+  permissionFiltering: true,
+  sortBy: true,
+  sortOrder: true,
+}).extend({ query: searchQuerySchema, ...paginationSchemaShape });
+
+const searchSkillsSchema = SearchSkillsQuerySchema.omit({
+  offset: true,
+  facets: true,
+  permissionFiltering: true,
+  sortBy: true,
+  sortOrder: true,
+}).extend({ query: searchQuerySchema, ...paginationSchemaShape });
 
 const getAgentDetailsSchema = {
   agentId: z.string().describe("The agent's id, as returned by list_agents."),
@@ -313,13 +343,30 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     name: LIST_AGENTS_TOOL_NAME,
     description:
       "List the workspace's agents. Use this to inventory which agents exist, " +
-      "whether they are published, and who can edit them.",
+      "whether they are published, and who can edit them. Use search_agents " +
+      "to find an agent by name.",
     schema: listAgentsSchema,
     stake: "never_ask",
     eager: true,
     displayLabels: {
       running: "Listing agents",
       done: "Listed agents",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SEARCH_AGENTS_TOOL_NAME,
+    description:
+      "Search agents by name and return matching ids and descriptions, ordered " +
+      "by relevance. Matches partial words anywhere in the name and in any order. " +
+      "Only returns agents accessible to the caller, including eligible built-in agents.",
+    schema: searchAgentsSchema.shape,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Searching agents",
+      done: "Searched agents",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -346,13 +393,29 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     name: LIST_SKILLS_TOOL_NAME,
     description:
       "List the workspace's skills. Use this to inventory which skills exist " +
-      "and who can reach them.",
+      "and who can reach them. Use search_skills to find a skill by name.",
     schema: listSkillsSchema,
     stake: "never_ask",
     eager: true,
     displayLabels: {
       running: "Listing skills",
       done: "Listed skills",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SEARCH_SKILLS_TOOL_NAME,
+    description:
+      "Search skills by name and return matching ids and descriptions, ordered " +
+      "by relevance. Matches partial words anywhere in the name and in any order. " +
+      "Only returns skills accessible to the caller, including eligible built-in skills.",
+    schema: searchSkillsSchema.shape,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Searching skills",
+      done: "Searched skills",
     },
     toolCostCategory: "basic",
     freeUsage: true,
