@@ -12,9 +12,6 @@ import { createMiddleware } from "hono/factory";
  *
  * Mirrors `withSessionAuthentication` in `front/lib/api/auth_wrappers.ts`.
  * Apply to routes that need a logged-in user but no workspace scoping.
- *
- * Authenticated (and auth-failure) responses get `Cache-Control: private,
- * no-store` unless a handler already set Cache-Control.
  */
 export const sessionAuth = createMiddleware<SessionCtx>(async (ctx, next) => {
   const result = await resolveSession(ctx);
