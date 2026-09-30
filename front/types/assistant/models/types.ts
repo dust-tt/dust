@@ -19,6 +19,10 @@ export type ModelIdType = (typeof MODEL_IDS)[number];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 export type ByokModelProviderIdType = (typeof BYOK_MODEL_PROVIDER_IDS)[number];
 export type ModelMakerIdType = (typeof MODEL_MAKER_IDS)[number];
+export type WhitelistableModelMakerIdType = Exclude<
+  ModelMakerIdType,
+  "fireworks"
+>;
 
 // Raw model selection coming from the input-bar model picker: an explicit
 // provider/model pick, with an optional reasoning-effort override. Static ids only: custom

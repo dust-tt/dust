@@ -3,6 +3,7 @@ import type {
   ModelConfigurationType,
   ModelMakerIdType,
   ModelProviderIdType,
+  WhitelistableModelMakerIdType,
 } from "@app/types/assistant/models/types";
 import { z } from "zod";
 
@@ -77,6 +78,33 @@ export const MODEL_MAKER_IDS = [
   ...MODEL_PROVIDER_IDS,
   ...MODEL_MAKER_ONLY_IDS,
 ] as const;
+
+// What a workspace whitelists: model labs, not hosts. "fireworks" only serves
+// other labs' models, so it is not whitelistable.
+export const WHITELISTABLE_MODEL_MAKER_IDS = [
+  OPENAI_PROVIDER_ID,
+  ANTHROPIC_PROVIDER_ID,
+  "mistral",
+  GOOGLE_AI_STUDIO_PROVIDER_ID,
+  "deepseek",
+  "xai",
+  "noop",
+  "auto",
+  "auto_fast",
+  "auto_complex",
+  ...MODEL_MAKER_ONLY_IDS,
+] as const satisfies readonly ModelMakerIdType[];
+
+export const WhitelistableModelMakerIdSchema = z.enum(
+  WHITELISTABLE_MODEL_MAKER_IDS
+);
+
+export const isWhitelistableModelMakerId = (
+  makerId: string
+): makerId is WhitelistableModelMakerIdType =>
+  WHITELISTABLE_MODEL_MAKER_IDS.includes(
+    makerId as WhitelistableModelMakerIdType
+  );
 
 // The maker of a model: its explicit `modelMaker` if set, otherwise the serving
 // provider (which for native providers is also the maker).
