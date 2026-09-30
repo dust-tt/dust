@@ -1,3 +1,7 @@
+import {
+  formatDateTime,
+  NUMERIC_DATE_TIME_OPTIONS,
+} from "@app/lib/i18n/format";
 import { useMembersLookup } from "@app/lib/swr/memberships";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -14,7 +18,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { compareDesc } from "date-fns";
-import { format } from "date-fns/format";
 import { useCallback, useMemo } from "react";
 
 interface AgentInstructionsHistoryProps {
@@ -59,7 +62,10 @@ export function AgentInstructionsHistory({
   const formatVersionLabel = useCallback(
     (config: LightAgentConfigurationType) => {
       return config.versionCreatedAt
-        ? format(config.versionCreatedAt, "Pp")
+        ? formatDateTime(
+            new Date(config.versionCreatedAt),
+            NUMERIC_DATE_TIME_OPTIONS
+          )
         : `v${config.version}`;
     },
     []

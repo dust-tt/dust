@@ -1,3 +1,4 @@
+import { getPastedFileName } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { formatAmount } from "@app/components/workspace/billing/seatTypeUtils";
 import { formatPostSummary } from "@app/lib/api/actions/servers/slab/helpers";
 import type { SlabPost } from "@app/lib/api/actions/servers/slab/types";
@@ -10,7 +11,9 @@ import {
   formatNumber,
   formatRelativeTime,
   formatTime,
+  formatTimeDistance,
   getLocalTimeZone,
+  NUMERIC_DATE_TIME_OPTIONS,
   prefersTwentyFourHourTime,
   setFormatLocale,
 } from "@app/lib/i18n/format";
@@ -29,6 +32,7 @@ import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { SupportedLocale } from "@app/types/locale";
 import { SUPPORTED_LOCALES } from "@app/types/locale";
 import { formatDateFromMillis } from "@app/types/shared/utils/date_utils";
+import { format, intlFormatDistance } from "date-fns";
 import {
   afterAll,
   afterEach,
@@ -87,6 +91,7 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
       ["dd-MM-yyyy", "23-09-2025"],
       ["MMM d, yyyy h:mm a", "Sep 23, 2025 3:37 PM"],
       ["EEEE", "Tuesday"],
+      ["yyyy-MM-dd HH:mm", "2025-09-23 15:37"],
     ])("formatDate from timestamps with %s", (pattern, expected) => {
       setFormatLocale(locale);
       expect(formatDatePattern(TIMESTAMP, pattern)).toBe(expected);
@@ -154,6 +159,15 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
     ])("formatFileSize pinned to en-US for %i bytes with %i decimals", (bytes, decimals, expected) => {
       setFormatLocale(locale);
       expect(formatFileSize(bytes, { decimals }, "en-US")).toBe(expected);
+    });
+
+    it("getPastedFileName", () => {
+      setFormatLocale(locale);
+      vi.useFakeTimers();
+      vi.setSystemTime(TIMESTAMP);
+      expect(getPastedFileName(7)).toBe(
+        "pasted-text-7_2025-09-23_15-37-32.txt"
+      );
     });
   });
 
@@ -249,6 +263,52 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
         "a".localeCompare("A", locale, { sensitivity: "base" })
       );
     });
+
+    it("formatTimeDistance", () => {
+      setFormatLocale(locale);
+      expect(formatTimeDistance(TIMESTAMP - 3 * DAY_MS, TIMESTAMP)).toBe(
+        intlFormatDistance(TIMESTAMP - 3 * DAY_MS, TIMESTAMP, { locale })
+      );
+    });
+  });
+});
+
+describe("date library calls keep their en-US output", () => {
+  it("formatDateTime with NUMERIC_DATE_TIME_OPTIONS matches date-fns Pp", () => {
+    setFormatLocale("en-US");
+    expect(formatDateTime(TIMESTAMP, NUMERIC_DATE_TIME_OPTIONS)).toBe(
+      format(TIMESTAMP, "Pp")
+    );
+    expect(formatDateTime(TIMESTAMP, NUMERIC_DATE_TIME_OPTIONS)).toBe(
+      "09/23/2025, 3:37 PM"
+    );
+  });
+
+  it.each([
+    [-30 * SECOND_MS, "long"],
+    [-5 * MINUTE_MS, "long"],
+    [-3 * HOUR_MS, "long"],
+    [-DAY_MS, "long"],
+    [-3 * DAY_MS, "narrow"],
+    [-40 * DAY_MS, "long"],
+    [-400 * DAY_MS, "narrow"],
+    [2 * HOUR_MS, "long"],
+  ] as const)("formatTimeDistance %i ms from now in %s style matches intlFormatDistance", (offsetMs, style) => {
+    setFormatLocale("en-US");
+    expect(formatTimeDistance(TIMESTAMP + offsetMs, TIMESTAMP, { style })).toBe(
+      intlFormatDistance(TIMESTAMP + offsetMs, TIMESTAMP, {
+        style,
+        locale: "en-US",
+      })
+    );
+  });
+
+  it("formatTimeDistance keeps intlFormatDistance's wording", () => {
+    setFormatLocale("en-US");
+    expect(formatTimeDistance(TIMESTAMP - DAY_MS, TIMESTAMP)).toBe("yesterday");
+    expect(formatTimeDistance(TIMESTAMP - 3 * HOUR_MS, TIMESTAMP)).toBe(
+      "3 hours ago"
+    );
   });
 });
 
@@ -341,6 +401,15 @@ describe("format locale resolution", () => {
     expect(prefersTwentyFourHourTime()).toBe(twentyFourHour);
   });
 
+  it.each([
+    ["en-US", "09/23/2025, 3:37 PM", "yesterday"],
+    ["fr-FR", "23/09/2025 15:37", "hier"],
+  ] as const)("formats date times and distances in %s once set", (locale, dateTime, distance) => {
+    setFormatLocale(locale);
+    expect(formatDateTime(TIMESTAMP, NUMERIC_DATE_TIME_OPTIONS)).toBe(dateTime);
+    expect(formatTimeDistance(TIMESTAMP - DAY_MS, TIMESTAMP)).toBe(distance);
+  });
+
   it("uses the explicit locale over the format locale", () => {
     setFormatLocale("fr-FR");
     expect(formatNumber(1234.5, undefined, "en-US")).toBe("1,234.5");
@@ -370,6 +439,9 @@ describe("format locale resolution", () => {
     expect(formatNumber(1234.5)).toBe((1234.5).toLocaleString());
     expect(SORTABLE_STRINGS.toSorted((a, b) => compareStrings(a, b))).toEqual(
       SORTABLE_STRINGS.toSorted((a, b) => a.localeCompare(b))
+    );
+    expect(formatTimeDistance(TIMESTAMP - DAY_MS, TIMESTAMP)).toBe(
+      intlFormatDistance(TIMESTAMP - DAY_MS, TIMESTAMP)
     );
   });
 });

@@ -1,4 +1,6 @@
 import type { SupportedLocale } from "@app/types/locale";
+import type { IntlFormatDistanceOptions } from "date-fns";
+import { intlFormatDistance } from "date-fns";
 
 let activeFormatLocale: SupportedLocale | undefined;
 
@@ -11,6 +13,19 @@ let activeFormatLocale: SupportedLocale | undefined;
 export function setFormatLocale(locale: SupportedLocale | undefined): void {
   activeFormatLocale = locale;
 }
+
+/**
+ * @cc [owner:sfriquet,label:product] numeric-date-time-matches-date-fns-pp
+ * In `en-US`, `formatDateTime` with these options MUST render as the date-fns `Pp` pattern
+ * (`MM/dd/yyyy, h:mm a`, e.g. `09/23/2025, 3:37 PM`).
+ */
+export const NUMERIC_DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "numeric",
+  minute: "2-digit",
+};
 
 export function formatDate(
   date: Date | number,
@@ -149,4 +164,13 @@ export function compareStrings(
   locale: SupportedLocale | undefined = activeFormatLocale
 ): number {
   return getCollator(locale, options).compare(a, b);
+}
+
+export function formatTimeDistance(
+  date: Date | number,
+  baseDate: Date | number,
+  options?: Omit<IntlFormatDistanceOptions, "locale">,
+  locale: SupportedLocale | undefined = activeFormatLocale
+): string {
+  return intlFormatDistance(date, baseDate, { ...options, locale });
 }

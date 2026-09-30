@@ -21,6 +21,7 @@ import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
 import type { PlanLimitOverride } from "@app/lib/plans/plan_limit_overrides";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokeCancelPendingContract, usePokePlans } from "@app/lib/swr/poke";
+import { formatDate } from "@app/lib/utils/timestamps";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
@@ -48,7 +49,6 @@ import {
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
-import { format } from "date-fns/format";
 
 type SubscriptionStatus = "paymentFailed" | "ended" | "active" | "inconsistent";
 
@@ -216,7 +216,7 @@ function SubscriptionDetailsTable({
           <PokeTableCell>Start Date</PokeTableCell>
           <PokeTableCell>
             {subscription.startDate
-              ? format(subscription.startDate, "yyyy-MM-dd HH:mm")
+              ? formatDate(subscription.startDate, "yyyy-MM-dd HH:mm")
               : "/"}
           </PokeTableCell>
         </PokeTableRow>
@@ -231,7 +231,7 @@ function SubscriptionDetailsTable({
                     "font-semibold text-red-500"
                 )}
               >
-                {format(subscription.endDate, "yyyy-MM-dd HH:mm")}
+                {formatDate(subscription.endDate, "yyyy-MM-dd HH:mm")}
               </span>
             ) : (
               "/"
