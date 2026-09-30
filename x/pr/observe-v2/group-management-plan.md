@@ -3,6 +3,8 @@
 This plan implements the [group manager design](group-management.md): scoped People and Usage pages,
 manual-group membership editing, limit editing, and usage-request handling.
 
+Manual validation: [QA plan](group-management-qa.md).
+
 | Stream | Outcome | Can start after |
 | --- | --- | --- |
 | 1. Permissions and assignments | Store group managers, resolve their authority, and let admins appoint them. | Now |
@@ -66,6 +68,9 @@ management includes granting the group's access, Manager role, and seats, includ
 Explain that admin-granting groups keep membership admin-only while usage remains delegated. This
 depends on PRs 4–5 and stays behind the feature flag; it does not open group management to delegates
 by itself.
+
+Shipped follow-ups show [manager and member counts](https://github.com/dust-tt/dust/pull/33338) in
+the dialogs and [managers beside each group](https://github.com/dust-tt/dust/pull/33339) in People → Groups.
 
 #### PR 7 — Confirm manager appointments outside the group
 
