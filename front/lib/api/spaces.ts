@@ -14,8 +14,8 @@ import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_requested_spaces";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -48,7 +48,7 @@ import type { SpaceMembershipUpdate } from "@app/types/space";
 import assert from "assert";
 import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
-import { Op, UniqueConstraintError } from "sequelize";
+import { UniqueConstraintError } from "sequelize";
 
 /**
  * Summarizes a Space's contents by category (Connected Data, Folders, Websites, Tools,
@@ -423,15 +423,12 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       // requestedSpaceIds of every agent using it, so the set of agents still
       // referencing this space can change during the loop. This catches both
       // direct references and skill-driven references left over after the loop.
-      const agentsToClean = await AgentConfigurationModel.findAll({
-        attributes: ["id", "requestedSpaceIds"],
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          status: "active",
-          requestedSpaceIds: { [Op.contains]: [space.id] },
-        },
-        transaction: t,
-      });
+      const agentsToClean =
+        await AgentResource.listActiveConfigurationsRequestingSpace(
+          auth,
+          space.id,
+          { transaction: t }
+        );
 
       logger.info(
         { ...logContext, agentCount: agentsToClean.length },
@@ -446,7 +443,10 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           );
           const res = await updateAgentRequestedSpaceIdsInPlace(
             auth,
-            { agentConfigurationModelId: agent.id, newSpaceIds },
+            {
+              agentConfigurationModelId: agent.agentConfigurationModelId,
+              newSpaceIds,
+            },
             { transaction: t }
           );
 

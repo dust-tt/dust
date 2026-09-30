@@ -1,7 +1,6 @@
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import type { AgentResource } from "@app/lib/resources/agent_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
@@ -11,7 +10,6 @@ import type {
 import { getGlobalAgentAuthorName } from "@app/types/assistant/assistant";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
-import { Op, Sequelize } from "sequelize";
 
 // We keep the most recent authorIds for 3 days.
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.
@@ -37,25 +35,10 @@ async function fetchRecentAuthorIdsWithVersionForAgents(
     return new Map();
   }
 
-  const rows = await AgentConfigurationModel.findAll({
-    attributes: [
-      "sId",
-      "authorId",
-      [Sequelize.fn("MAX", Sequelize.col("version")), "version"],
-    ],
-    group: ["sId", "authorId"],
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      sId: { [Op.in]: agentIds },
-    },
-  });
+  const rows = await AgentResource.listVersionAuthors(auth, agentIds);
 
   const byAgentId = new Map<string, { authorId: number; version: number }[]>();
-  for (const row of rows) {
-    const agentId = row.get("sId") as string;
-    const authorId = row.get("authorId") as number;
-    // `version` is aliased from MAX(version) so read it via get().
-    const version = row.get("version") as number;
+  for (const { agentId, authorId, version } of rows) {
     const bucket = byAgentId.get(agentId) ?? [];
     bucket.push({ authorId, version });
     byAgentId.set(agentId, bucket);

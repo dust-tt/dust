@@ -1,6 +1,5 @@
 // biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -21,7 +20,7 @@ import {
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import { Context } from "@temporalio/activity";
 import type { Sequelize } from "sequelize";
-import { Op, QueryTypes } from "sequelize";
+import { QueryTypes } from "sequelize";
 
 const BATCH_SIZE = 100;
 const WORKSPACE_CONCURRENCY = 10;
@@ -149,30 +148,21 @@ export async function purgeExpiredPendingAgentsActivity(
       let hasMore = true;
 
       do {
-        const batch = await AgentConfigurationModel.findAll({
-          where: {
-            status: "pending",
-            createdAt: { [Op.lt]: cutoffDate },
-            workspaceId: workspace.id,
-          },
-          limit: batchSize,
-          order: [["createdAt", "ASC"]],
-        });
+        const agents = await AgentResource.dangerouslyListExpiredPendingAgents(
+          auth,
+          { createdBefore: cutoffDate, limit: batchSize }
+        );
 
-        hasMore = batch.length === batchSize;
+        hasMore = agents.length === batchSize;
 
-        if (batch.length > 0) {
+        if (agents.length > 0) {
           // `batchDelete` skips search-index deletion for pending agents on its own (they are never
           // indexed; see `batch-delete-search-index`), so no per-agent workflows are launched here.
-          const agents = await AgentResource.dangerouslyFromConfigurationModels(
-            auth,
-            batch
-          );
           const deleteRes = await AgentResource.batchDelete(auth, agents);
           if (deleteRes.isErr()) {
             throw deleteRes.error;
           }
-          deleted += batch.length;
+          deleted += agents.length;
         }
 
         Context.current().heartbeat();
