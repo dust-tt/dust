@@ -32,7 +32,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         featureFlags,
         subscription,
         hasPermission,
-        canManageUsage:
+        hasManagedGroups:
           featureFlags.includes("group_management") &&
           hasGroupManagementScope(groupManagement?.read_usage),
       }),

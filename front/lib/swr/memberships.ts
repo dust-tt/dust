@@ -130,6 +130,7 @@ export function useSearchMembers<
   pageIndex,
   pageSize,
   groupKind,
+  managedOnly,
   role,
   disabled,
 }: {
@@ -138,6 +139,7 @@ export function useSearchMembers<
   pageIndex: number;
   pageSize: number;
   groupKind?: UserVisibleGroupKind;
+  managedOnly?: boolean;
   role?: ActiveRoleType;
   disabled?: boolean;
 }) {
@@ -162,6 +164,10 @@ export function useSearchMembers<
     offset: (pageIndex * pageSize).toString(),
     limit: pageSize.toString(),
   });
+
+  if (managedOnly) {
+    searchParams.set("managedOnly", "true");
+  }
 
   if (groupKind) {
     searchParams.set("groupKind", groupKind);
