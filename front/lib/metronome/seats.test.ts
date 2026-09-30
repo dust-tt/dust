@@ -3,6 +3,7 @@ import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
   classifySeatChange,
   computeSeatCreditTransfers,
+  contractHasPersonalCreditSeats,
   getCachedSeatDataByUserId,
   getSeatCreditNameForSeatType,
   hasContractSeatSubscription,
@@ -188,6 +189,49 @@ describe("hasContractSeatSubscription", () => {
     const { contract } = makeContract();
     mockGetProductSeatTypes.mockResolvedValue(new Map());
     expect(await hasContractSeatSubscription(contract)).toBe(false);
+  });
+});
+
+describe("contractHasPersonalCreditSeats", () => {
+  beforeEach(() => {
+    mockGetProductSeatTypes.mockReset();
+  });
+
+  it("is false for a pool-only contract (workspace seats only)", async () => {
+    const { contract, productSeatTypes } = makeContract({
+      seats: [{ seatType: "workspace_yearly", entitled: true }],
+    });
+    mockGetProductSeatTypes.mockResolvedValue(productSeatTypes);
+    expect(await contractHasPersonalCreditSeats(contract)).toBe(false);
+  });
+
+  it("is true when a personal-credit seat is sold", async () => {
+    const { contract, productSeatTypes } = makeContract({
+      seats: [{ seatType: "pro", entitled: true }],
+    });
+    mockGetProductSeatTypes.mockResolvedValue(productSeatTypes);
+    expect(await contractHasPersonalCreditSeats(contract)).toBe(true);
+  });
+
+  it("ignores personal-credit seats the package carries but does not sell", async () => {
+    const { contract, productSeatTypes } = makeContract({
+      seats: [
+        { seatType: "workspace_yearly", entitled: true },
+        { seatType: "pro" },
+        { seatType: "free" },
+      ],
+    });
+    mockGetProductSeatTypes.mockResolvedValue(productSeatTypes);
+    expect(await contractHasPersonalCreditSeats(contract)).toBe(false);
+  });
+
+  it("is false on MAU contracts", async () => {
+    const { contract, productSeatTypes } = makeContract({
+      seats: [{ seatType: "pro", entitled: true }],
+      isMau: true,
+    });
+    mockGetProductSeatTypes.mockResolvedValue(productSeatTypes);
+    expect(await contractHasPersonalCreditSeats(contract)).toBe(false);
   });
 });
 

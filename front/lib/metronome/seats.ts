@@ -56,6 +56,7 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import {
   isMembershipSeatType,
   isPaidSeatType,
+  isSeatBased,
   SEAT_TYPE_ORDER,
 } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -88,6 +89,25 @@ export async function hasContractSeatSubscription(
   return subscriptions.some((s) =>
     productSeatTypes.has(s.subscription_rate.product.id)
   );
+}
+
+/**
+ * Returns true if the contract sells `isSeatBased` (free/pro/max) seats
+ * and false otherwise. Used to distinguish between Enterprise
+ * seat based contracts and Enterprise Pooled contracts.
+ */
+export async function contractHasPersonalCreditSeats(
+  contract: CachedContract
+): Promise<boolean> {
+  if (!(await hasContractSeatSubscription(contract))) {
+    return false;
+  }
+  const productSeatTypes = await getProductSeatTypes();
+  const soldSeatTypes = getSeatSubscriptionsFromContract(
+    contract,
+    productSeatTypes
+  );
+  return [...soldSeatTypes.keys()].some(isSeatBased);
 }
 
 async function fetchCachedContract({
