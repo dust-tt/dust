@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postNewContentFragment,
@@ -20,6 +19,8 @@ import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -30,7 +31,6 @@ import { isTriggerProgrammaticCapReached } from "@app/lib/triggers/rate_limits";
 import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationWithoutContentType,
   UserMessageContext,
@@ -46,13 +46,13 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 async function createConversationForAgentConfiguration({
   auth,
-  agentConfiguration,
+  agent,
   trigger,
   lastRunAt,
   webhookRequest,
 }: {
   auth: Authenticator;
-  agentConfiguration: AgentConfigurationType;
+  agent: AgentResource;
   trigger: TriggerType;
   lastRunAt: Date | null;
   webhookRequest: WebhookRequestResource | null;
@@ -159,9 +159,9 @@ async function createConversationForAgentConfiguration({
   const messageRes = await postUserMessage(auth, {
     conversationResource: newConversation,
     content:
-      serializeMention(agentConfiguration) +
+      serializeMention(agent) +
       (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : ""),
-    mentions: [{ configurationId: agentConfiguration.sId }],
+    mentions: [{ configurationId: agent.sId }],
     context: triggeredContext,
     skipToolsValidation: false,
   });
@@ -199,8 +199,11 @@ async function createConversationForAgentConfiguration({
       );
 
       const content =
-        serializeMention(agentConfiguration) +
+        serializeMention(agent) +
         (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : "");
+      const [agentConfiguration] = await toLightAgentConfigurations(auth, [
+        agent,
+      ]);
 
       await createTriggerLimitExceededMessages(auth, {
         conversation: newConversation.toJSON(),
@@ -287,19 +290,19 @@ export async function runTriggeredAgentsActivity({
 
   const trigger = triggerResource.toJSON();
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: trigger.agentConfigurationId,
-    variant: "extra_light",
-  });
+  const agent = await AgentResource.fetchById(
+    auth,
+    trigger.agentConfigurationId
+  );
 
-  if (!agentConfiguration) {
+  if (!agent || !auth.can("read", agent)) {
     logger.info(
       {
         triggerId: trigger.sId,
         agentConfigurationId: trigger.agentConfigurationId,
         workspaceId: auth.workspace()?.sId,
       },
-      "Disabling trigger: agent configuration not found."
+      "Disabling trigger: agent configuration not found or not readable."
     );
     await triggerResource.disable(auth);
     return;
@@ -414,7 +417,7 @@ export async function runTriggeredAgentsActivity({
   // Create a single conversation for the editor.
   const conversationResult = await createConversationForAgentConfiguration({
     auth,
-    agentConfiguration,
+    agent,
     trigger,
     lastRunAt,
     webhookRequest,
