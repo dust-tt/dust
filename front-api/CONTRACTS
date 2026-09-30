@@ -226,6 +226,10 @@ If the content type is unsafe to display inline (e.g. `image/svg+xml`,
 `Content-Disposition: attachment` header so the browser downloads rather than
 renders the file, preventing stored-XSS through attacker-controlled uploads.
 
-The sole exception is thumbnail routes, which should instead return HTTP 400
-for unsafe content types (thumbnails are by definition inline image previews,
-so rejecting is safer than downloading).
+Exceptions:
+- Thumbnail routes return HTTP 400 for unsafe content types (thumbnails are
+  inline image previews; rejection is safer than forcing a download).
+- Viz/frame package routes (`routes/v1/viz/files/[...segments].ts`) serve
+  JS, CSS, HTML, and other package assets to sandboxed iframe renderers and
+  are exempt: access is scoped to a short-lived viz access token and the
+  embedding page is responsible for iframe sandboxing.
