@@ -14,6 +14,7 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useAppRouter } from "@app/lib/platform";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import type { SpaceSectionGroupType } from "@app/lib/spaces";
@@ -102,7 +103,7 @@ export default function SpaceSideBarMenu({
       } else if (!s1IsMember && s2IsMember) {
         return 1;
       } else {
-        return s1.name.localeCompare(s2.name);
+        return compareStrings(s1.name, s2.name);
       }
     },
     [spacesAsUser]
@@ -646,7 +647,7 @@ const SpaceDataSourceViewSubMenu = ({
     });
   const sortedViews = useMemo(() => {
     return spaceDataSourceViews.sort((a, b) =>
-      getDataSourceNameFromView(a).localeCompare(getDataSourceNameFromView(b))
+      compareStrings(getDataSourceNameFromView(a), getDataSourceNameFromView(b))
     );
   }, [spaceDataSourceViews]);
 

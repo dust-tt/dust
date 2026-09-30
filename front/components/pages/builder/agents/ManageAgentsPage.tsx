@@ -16,6 +16,7 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -176,7 +177,7 @@ function LegacyManageAgentsPage() {
     const byName = (
       a: LightAgentConfigurationType,
       b: LightAgentConfigurationType
-    ) => a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    ) => compareStrings(a.name.toLowerCase(), b.name.toLowerCase());
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter(matchesFilters)
       .sort(byName);
@@ -231,7 +232,7 @@ function LegacyManageAgentsPage() {
     // Remove duplicate tags by unique sId
     const uniqueTags = Array.from(
       new Map(tags.map((tag) => [tag.sId, tag])).values()
-    ).sort((a, b) => a.name.localeCompare(b.name));
+    ).sort((a, b) => compareStrings(a.name, b.name));
 
     return { uniqueTags };
   }, [listedAgents]);

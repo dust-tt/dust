@@ -1,6 +1,7 @@
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { compareStrings } from "@app/lib/i18n/format";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
@@ -139,7 +140,7 @@ export function InvitationsList({
   const filteredInvitations = useMemo(
     () =>
       invitations
-        .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
+        .sort((a, b) => compareStrings(a.inviteEmail, b.inviteEmail))
         .filter((i) => i.status === "pending")
         .filter(
           (i) =>

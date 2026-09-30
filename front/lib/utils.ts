@@ -1,3 +1,4 @@
+import { compareStrings } from "@app/lib/i18n/format";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
@@ -187,9 +188,9 @@ function spreadLength(a: string, b: string) {
 
 export const tagsSorter = (a: TagType, b: TagType) => {
   if (a.kind !== b.kind) {
-    return a.kind.localeCompare(b.kind);
+    return compareStrings(a.kind, b.kind);
   }
-  return a.name.localeCompare(b.name);
+  return compareStrings(a.name, b.name);
 };
 
 /**
@@ -258,7 +259,7 @@ export function compareForAutocompleteSort(
   const normalizedB = b.toLowerCase();
 
   if (normalizedQuery.length === 0) {
-    return a.localeCompare(b);
+    return compareStrings(a, b);
   }
 
   const matchA = getAutocompleteMatch(normalizedQuery, normalizedA);
@@ -280,7 +281,7 @@ export function compareForAutocompleteSort(
     return a.length - b.length;
   }
 
-  return a.localeCompare(b);
+  return compareStrings(a, b);
 }
 
 /**

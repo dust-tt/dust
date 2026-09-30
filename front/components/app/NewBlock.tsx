@@ -1,3 +1,4 @@
+import { compareStrings } from "@app/lib/i18n/format";
 import { classNames } from "@app/lib/utils";
 import type { SpecificationType } from "@app/types/app";
 import type { BlockType } from "@app/types/run";
@@ -108,7 +109,7 @@ export default function NewBlock({
   ];
 
   blocks.sort((a, b) =>
-    a.type.toLowerCase().localeCompare(b.type.toLowerCase())
+    compareStrings(a.type.toLowerCase(), b.type.toLowerCase())
   );
 
   // Add input block on top if it doesn't exist.

@@ -1,4 +1,5 @@
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { compareStrings } from "@app/lib/i18n/format";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import type { EnrichedSpaceType, PodType, SpaceType } from "@app/types/space";
@@ -158,7 +159,7 @@ function SpaceSelectionPageContent({
         if (!a.isRestricted && b.isRestricted) {
           return -1;
         }
-        return getSpaceName(a).localeCompare(getSpaceName(b));
+        return compareStrings(getSpaceName(a), getSpaceName(b));
       });
   }, [allSpaces, includeProjects, searchQuery]);
 

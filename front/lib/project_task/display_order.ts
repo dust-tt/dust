@@ -1,3 +1,4 @@
+import { compareStrings } from "@app/lib/i18n/format";
 import type {
   PodTaskAssigneeType,
   PodTaskStatus,
@@ -82,7 +83,7 @@ export function comparePodTaskAssignees(
   }
   const aName = a?.fullName ?? POD_TASK_NO_ASSIGNEE_LABEL;
   const bName = b?.fullName ?? POD_TASK_NO_ASSIGNEE_LABEL;
-  return aName.localeCompare(bName, undefined, { sensitivity: "base" });
+  return compareStrings(aName, bName, { sensitivity: "base" });
 }
 
 /**

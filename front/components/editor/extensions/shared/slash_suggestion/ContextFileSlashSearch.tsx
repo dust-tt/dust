@@ -2,6 +2,7 @@ import { matchesSlashCommandCapabilityQuery } from "@app/components/editor/exten
 import { getSingularFileCategoryLabelForContentType } from "@app/components/file_explorer/utils";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import { compareStrings } from "@app/lib/i18n/format";
 import { usePodFiles } from "@app/lib/swr/pods";
 import type { ProjectFileSearchResult } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -61,7 +62,7 @@ function sortContextFileItemsByLabel(
   items: ContextFileSlashSearchItem[]
 ): ContextFileSlashSearchItem[] {
   return items.toSorted((a, b) =>
-    a.label.localeCompare(b.label, undefined, { sensitivity: "base" })
+    compareStrings(a.label, b.label, { sensitivity: "base" })
   );
 }
 

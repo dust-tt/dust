@@ -1,3 +1,4 @@
+import { compareStrings } from "@app/lib/i18n/format";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type { RelativeDateBucket } from "@app/lib/utils/timestamps";
 import { makeRelativeDateBucketer } from "@app/lib/utils/timestamps";
@@ -179,7 +180,7 @@ export function groupUnreadConversations(
     if (aIsPod && bIsPod) {
       const aName = podNameById.get(a.spaceId) ?? "";
       const bName = podNameById.get(b.spaceId) ?? "";
-      const nameCmp = aName.localeCompare(bName);
+      const nameCmp = compareStrings(aName, bName);
       if (nameCmp !== 0) {
         return nameCmp;
       }

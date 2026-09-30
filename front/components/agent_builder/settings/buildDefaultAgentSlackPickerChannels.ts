@@ -1,3 +1,4 @@
+import { compareStrings } from "@app/lib/i18n/format";
 export const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";
 
 type SlackPickerChannel = {
@@ -61,6 +62,6 @@ export function buildDefaultAgentSlackPickerChannels({
   }
 
   return Array.from(byId.values()).sort((a, b) =>
-    a.slackChannelName.localeCompare(b.slackChannelName)
+    compareStrings(a.slackChannelName, b.slackChannelName)
   );
 }

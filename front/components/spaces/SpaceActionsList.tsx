@@ -9,6 +9,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAddMCPServerToSpace,
@@ -195,7 +196,7 @@ export const SpaceActionsList = ({
           description: getMcpServerViewDescription(serverView),
           avatar: getAvatar(serverView.server),
         }))
-        .sort((a, b) => a.name.localeCompare(b.name)) || [],
+        .sort((a, b) => compareStrings(a.name, b.name)) || [],
     [serverViews]
   );
 

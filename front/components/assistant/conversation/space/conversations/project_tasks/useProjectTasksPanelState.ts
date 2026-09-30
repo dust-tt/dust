@@ -17,6 +17,7 @@ import {
 import { useTaskDiffAnimations } from "@app/hooks/useTaskDiffAnimations";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useAppRouter } from "@app/lib/platform";
 import { comparePodTaskAssignees } from "@app/lib/project_task/display_order";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -121,7 +122,7 @@ export function usePodTasksPanelState({
   const podMembers = useMemo(() => {
     const members = spaceInfo?.members ?? [];
     return [...members].sort((a, b) =>
-      a.fullName.localeCompare(b.fullName, undefined, { sensitivity: "base" })
+      compareStrings(a.fullName, b.fullName, { sensitivity: "base" })
     );
   }, [spaceInfo?.members]);
 

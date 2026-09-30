@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { compareStrings } from "@app/lib/i18n/format";
 import { classNames } from "@app/lib/utils";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { ActiveRoleType } from "@app/types/user";
@@ -35,7 +36,7 @@ export function PendingInvitationsTable({
     () =>
       invitations
         .slice()
-        .sort((a, b) => a.workspaceName.localeCompare(b.workspaceName)),
+        .sort((a, b) => compareStrings(a.workspaceName, b.workspaceName)),
     [invitations]
   );
 
@@ -61,7 +62,8 @@ export function PendingInvitationsTable({
         accessorKey: "workspaceName",
         header: t`Workspace`,
         sortingFn: (rowA, rowB) =>
-          rowA.original.workspaceName.localeCompare(
+          compareStrings(
+            rowA.original.workspaceName,
             rowB.original.workspaceName
           ),
         cell: ({ row }) => {

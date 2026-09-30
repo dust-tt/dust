@@ -3,7 +3,7 @@ import {
   seatTypeAvatarColors,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import type { SeatTypeInfo } from "@app/lib/api/credits/seat_plan";
-import { formatNumber } from "@app/lib/i18n/format";
+import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import { useMembersSeats, useSeatPlan } from "@app/lib/swr/credits";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, SEAT_TYPE_ORDER } from "@app/types/memberships";
@@ -80,7 +80,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
     (a, b) =>
       (SEAT_TYPE_ORDER[a.seatType] ?? Number.MAX_SAFE_INTEGER) -
         (SEAT_TYPE_ORDER[b.seatType] ?? Number.MAX_SAFE_INTEGER) ||
-      a.seatType.localeCompare(b.seatType)
+      compareStrings(a.seatType, b.seatType)
   );
 
   return (
