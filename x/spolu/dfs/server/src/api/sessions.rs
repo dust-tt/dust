@@ -5,15 +5,16 @@ use std::{
 
 use axum::{
     Json,
-    extract::{FromRequest, FromRequestParts, Path, Request, State},
-    http::{HeaderMap, StatusCode, header, request::Parts},
-    response::{IntoResponse, Response},
+    extract::{FromRequestParts, Path, Request, State},
+    http::{HeaderMap, StatusCode, request::Parts},
+    response::Response,
 };
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize};
 
 use super::{
     ApiError, ApiState,
     access::{self, Session},
+    json_body, no_store,
 };
 use crate::model::WorkspaceId;
 
@@ -184,22 +185,6 @@ fn grants(values: Vec<String>) -> Result<BTreeSet<String>, ApiError> {
         return Err(ApiError::InvalidInput);
     }
     Ok(grants)
-}
-
-async fn json_body<T: DeserializeOwned>(request: Request, state: &ApiState) -> Result<T, ApiError> {
-    Json::<T>::from_request(request, state)
-        .await
-        .map(|Json(body)| body)
-        .map_err(|_| ApiError::InvalidInput)
-}
-
-fn no_store(response: impl IntoResponse) -> Response {
-    let mut response = response.into_response();
-    response.headers_mut().insert(
-        header::CACHE_CONTROL,
-        axum::http::HeaderValue::from_static("no-store"),
-    );
-    response
 }
 
 #[cfg(test)]

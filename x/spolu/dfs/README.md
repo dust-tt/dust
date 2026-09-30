@@ -11,7 +11,8 @@ and `HEAD` for process liveness. The server library defines typed IDs, object UR
 metadata, directory entries, revision tokens, and shared API errors with focused tests. Its storage
 API provides workspace-scoped snapshots, immutable blobs, and synchronous metadata/index/event
 batches. Workspace creation issues a workspace key; that key issues sessions with fixed grants.
-Filesystem HTTP operations, search, and FUSE follow in separate increments.
+Session-authenticated stat, child lookup, and directory listing are available. Namespace mutations,
+file I/O, search, and FUSE follow in separate increments.
 Optional GCS configuration opens SlateDB before serving HTTP and
 closes it after requests drain. Without it, the HTTP scaffold still runs without external services.
 The server runs natively on macOS and Linux.
@@ -95,6 +96,27 @@ Root grants default to empty; sharing the root grants access through inheritance
 never attaches grants to objects. Nonempty virtual mounts return `unsupported` until group 5. Existing
 workspace IDs return `conflict` without changing their key or root. Key rotation/recovery is future
 work: a lost creation response may leave a workspace whose key cannot be recovered yet.
+
+## Object reads
+
+Use a session key for these read-only JSON endpoints. Names and cursors stay in request bodies.
+
+| Request | JSON body | Result |
+| --- | --- | --- |
+| `POST /objects/stat` | `{ "object_id": "<uuid>" }` | Object attributes |
+| `POST /objects/lookup` | `{ "parent_id": "<uuid>", "name": "file.txt" }` | Child attributes |
+| `POST /objects/list` | `{ "directory_id": "<uuid>", "limit": 100, "after": "file.txt" }` | Entries with attributes and `next_after` |
+
+Attributes include ID, kind, MIME type, base64 xattrs, metadata revision, and file content version/size.
+They omit canonical parents, paths, and grants. POSIX timestamps/modes arrive with metadata mutations.
+Stat can access a directly shared object without exposing its private ancestors; lookup/list require
+access to the containing directory. Missing and inaccessible objects both return `not_found`.
+
+Listing sorts exact UTF-8 name bytes, with a limit of 1–1000 (default 100). Omit `after` on the first
+page; pass `next_after` verbatim for the next, stopping when it is null. Each page uses a fresh snapshot
+and rechecks grants. Concurrent edits can cause skips/repeats across pages; restart traversal when
+a consistent full listing is required. Revocations and moves apply to subsequent requests; an
+already-started read may finish against its snapshot. Responses use `Cache-Control: no-store`.
 
 ## Storage and server checks
 

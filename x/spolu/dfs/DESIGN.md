@@ -131,6 +131,7 @@ Error responses carry `Cache-Control: no-store`; authentication failures also ca
 | `unauthenticated` | 401 | Recreate session; `EACCES` if unsuccessful. |
 | `forbidden` | 403 | `EACCES` |
 | `not_found` | 404 | `ENOENT` |
+| `not_directory` | 400 | `ENOTDIR` |
 | `method_not_allowed` | 405 | `EOPNOTSUPP` |
 | `conflict` | 409 | `EAGAIN` for stale revisions. |
 | `capacity_exhausted` | 507 | `ENOSPC` |
@@ -142,6 +143,13 @@ Add distinct codes for filesystem conditions such as existing names or nonempty 
 their endpoints; clients must not infer errno from message text or HTTP status alone. Unknown codes
 map to `EIO`. A failure or disconnect does not prove a mutation was uncommitted: do not blindly
 replay writes; define safe retries with the mutation protocol.
+
+Object reads use session-authenticated `POST /objects/stat`, `/objects/lookup`, and `/objects/list`;
+JSON bodies keep names/cursors out of URLs. Each request uses one SlateDB snapshot for inherited
+grant checks and returned attributes. Stat omits parent links and paths; lookup/list require access
+to the containing directory. Listing returns attributes with entries, ordered by name bytes, with
+exclusive name cursors and limits of 1–1000. Pages reauthorize independently; concurrent edits may
+require restarting traversal. An in-flight read may complete against its original snapshot.
 
 ## Workspace creation, sessions, and virtual folders
 

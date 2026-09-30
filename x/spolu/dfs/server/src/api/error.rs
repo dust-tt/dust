@@ -26,6 +26,8 @@ pub enum ApiError {
     Forbidden,
     #[error("Not found.")]
     NotFound,
+    #[error("Not a directory.")]
+    NotDirectory,
     #[error("HTTP method not allowed.")]
     MethodNotAllowed,
     #[error("Conflicting state.")]
@@ -49,6 +51,7 @@ impl ApiError {
             Self::Unauthenticated => StatusCode::UNAUTHORIZED,
             Self::Forbidden => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
+            Self::NotDirectory => StatusCode::BAD_REQUEST,
             Self::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
             Self::Conflict => StatusCode::CONFLICT,
             Self::CapacityExhausted => StatusCode::INSUFFICIENT_STORAGE,
@@ -118,6 +121,7 @@ mod tests {
             (ApiError::Unauthenticated, 401, "unauthenticated"),
             (ApiError::Forbidden, 403, "forbidden"),
             (ApiError::NotFound, 404, "not_found"),
+            (ApiError::NotDirectory, 400, "not_directory"),
             (ApiError::MethodNotAllowed, 405, "method_not_allowed"),
             (ApiError::Conflict, 409, "conflict"),
             (ApiError::NameTooLong, 400, "name_too_long"),

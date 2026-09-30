@@ -1,6 +1,7 @@
-use std::{ops::Bound, sync::Arc};
+use std::{collections::BTreeSet, ops::Bound, sync::Arc};
 
 use anyhow::{Context, Result, ensure};
+use futures::{StreamExt, TryStreamExt, stream};
 use slatedb::{
     DbSnapshot, KeyValue,
     config::{DurabilityLevel, ScanOptions},
@@ -27,6 +28,41 @@ pub struct ReadView {
 }
 
 impl ReadView {
+    /// SlateDB has point reads; keep page fetches bounded and preserve the requested order.
+    pub async fn objects(&self, ids: &[ObjectId]) -> Result<Vec<Option<ObjectMetadata>>> {
+        ensure!(ids.len() <= 1000, "object batch exceeds 1000 entries");
+        stream::iter(ids.iter().copied().map(|id| self.object(id)))
+            .buffered(16)
+            .try_collect()
+            .await
+    }
+
+    /**
+     * @cc [owner:spolu,label:security] bounded-grant-intersection
+     * Grant checks MUST use this view's workspace and snapshot, comparing exact opaque grant values.
+     * Check at most 512 session grants without enumerating an object's unbounded attachment set.
+     */
+    pub async fn has_any_grant(&self, object: ObjectId, grants: &BTreeSet<String>) -> Result<bool> {
+        ensure!(grants.len() <= 512, "too many session grants");
+        let keys: Vec<_> = grants
+            .iter()
+            .map(|grant| self.keys.grant(object, grant))
+            .collect();
+        stream::iter(keys)
+            .map(|key| async move {
+                let value = self.snapshot.get(key).await?;
+                if let Some(value) = value {
+                    codec::decode::<()>(&value)?;
+                    Ok::<_, anyhow::Error>(true)
+                } else {
+                    Ok(false)
+                }
+            })
+            .buffer_unordered(16)
+            .try_any(|present| async move { present })
+            .await
+    }
+
     pub async fn object(&self, id: ObjectId) -> Result<Option<ObjectMetadata>> {
         self.snapshot
             .get(self.keys.object(id))

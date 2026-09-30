@@ -97,14 +97,20 @@ restart while old session keys fail.
 
 ## 4. Persistent namespace and grant enforcement
 
-- [ ] Implement object lookup, stat, and paginated directory listing with entry attributes.
-- [ ] Implement directory creation and MIME type/xattr updates through synchronous metadata batches.
+- [x] Implement object lookup, stat, and paginated directory listing with entry attributes.
+- [ ] Implement directory creation and metadata updates (MIME type, xattrs, timestamps, and modes)
+  through synchronous metadata batches.
 - [ ] Maintain explicit object-to-grant and grant-to-object indexes atomically in SlateDB.
 - [ ] Resolve effective grants through current ancestors and authorize every operation against a
   consistent view. Do not cache dfs metadata or authorization decisions yet.
 - [ ] Implement rename/move, unlink, and directory removal, including collision checks, cycle
   prevention, and nonempty-directory errors. Specify replacement behavior explicitly.
 - [ ] Add per-object concurrency control without holding a file's write lock across unrelated files.
+
+Read-only operations now enforce current inherited grants within one snapshot per request. Stat
+returns the attributes currently persisted; timestamps/modes arrive with metadata mutations. Listing
+uses exclusive name cursors and fresh authorization per page; concurrent edits can require restarting
+the listing. Mutation authorization remains part of the later tasks above.
 
 **Done when:** sessions can traverse authorized persisted trees; moves and grant changes immediately
 affect access, and failed mutations leave namespace and indexes unchanged.

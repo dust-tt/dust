@@ -1,15 +1,18 @@
 mod access;
 mod error;
+mod objects;
 mod sessions;
 
 use std::sync::Arc;
 
 use axum::{
     Json, Router,
-    extract::DefaultBodyLimit,
+    extract::{DefaultBodyLimit, FromRequest, Request},
+    http::{HeaderValue, header},
+    response::{IntoResponse, Response},
     routing::{delete, get, post},
 };
-use serde::Serialize;
+use serde::{Serialize, de::DeserializeOwned};
 
 use crate::storage::Storage;
 pub use access::Access;
@@ -43,10 +46,28 @@ pub fn router(state: ApiState) -> Router {
         .route("/sessions", post(sessions::create_session))
         .route("/sessions/current", get(sessions::current_session))
         .route("/sessions/{session_id}", delete(sessions::close_session))
+        .route("/objects/stat", post(objects::stat))
+        .route("/objects/lookup", post(objects::lookup))
+        .route("/objects/list", post(objects::list))
         .layer(DefaultBodyLimit::max(64 * 1024))
         .fallback(|| async { ApiError::NotFound })
         .method_not_allowed_fallback(|| async { ApiError::MethodNotAllowed })
         .with_state(state)
+}
+
+async fn json_body<T: DeserializeOwned>(request: Request, state: &ApiState) -> Result<T, ApiError> {
+    Json::<T>::from_request(request, state)
+        .await
+        .map(|Json(body)| body)
+        .map_err(|_| ApiError::InvalidInput)
+}
+
+fn no_store(response: impl IntoResponse) -> Response {
+    let mut response = response.into_response();
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    response
 }
 
 #[derive(Serialize)]

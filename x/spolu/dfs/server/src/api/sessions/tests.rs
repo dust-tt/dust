@@ -2,7 +2,7 @@ use anyhow::{Context, Result, ensure};
 use axum::{
     Router,
     body::{Body, to_bytes},
-    http::Request,
+    http::{Request, header},
 };
 use serde_json::{Value, json};
 use slatedb::object_store::{ObjectStore, memory::InMemory};
@@ -14,9 +14,9 @@ use crate::{
     storage::{Storage, StoragePrefix},
 };
 
-const SERVER_KEY: &str = "test-server-key-012345678901234567890123456789";
+pub(crate) const SERVER_KEY: &str = "test-server-key-012345678901234567890123456789";
 
-async fn call(
+pub(crate) async fn call(
     app: &Router,
     method: &str,
     path: &str,
@@ -54,7 +54,7 @@ async fn call(
     Ok((status, body))
 }
 
-fn text<'a>(body: &'a Value, field: &str) -> Result<&'a str> {
+pub(crate) fn text<'a>(body: &'a Value, field: &str) -> Result<&'a str> {
     body[field].as_str().context("missing response field")
 }
 
@@ -171,6 +171,49 @@ pub(crate) async fn exercise_sessions(
         )
         .await?
         .0 == StatusCode::UNAUTHORIZED
+    );
+    let (status, reader) = call(
+        &app,
+        "POST",
+        "/sessions",
+        Some(workspace_key),
+        json!({"workspace_id":workspace.as_str(),"grants":["g:admins"]}),
+    )
+    .await?;
+    ensure!(status == StatusCode::CREATED);
+    let reader_key = text(&reader, "session_key")?;
+    let (status, attributes) = call(
+        &app,
+        "POST",
+        "/objects/stat",
+        Some(reader_key),
+        json!({"object_id":root_id.to_string()}),
+    )
+    .await?;
+    ensure!(status == StatusCode::OK && attributes["kind"] == "directory");
+    let (status, listing) = call(
+        &app,
+        "POST",
+        "/objects/list",
+        Some(reader_key),
+        json!({"directory_id":root_id.to_string()}),
+    )
+    .await?;
+    ensure!(
+        status == StatusCode::OK
+            && listing["entries"] == json!([])
+            && listing["next_after"].is_null()
+    );
+    ensure!(
+        call(
+            &app,
+            "POST",
+            "/objects/lookup",
+            Some(reader_key),
+            json!({"parent_id":root_id.to_string(),"name":"absent"}),
+        )
+        .await?
+        .0 == StatusCode::NOT_FOUND
     );
     drop(app);
     storage.close().await

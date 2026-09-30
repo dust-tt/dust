@@ -2,9 +2,11 @@
 
 `Storage::workspace()` creates a trusted internal handle. Each `read_view()` captures one SlateDB
 snapshot for related lookups and scans. Scans take typed exclusive cursors and a limit of 1–1000.
-The namespace service will authorize requests, check parent/cycle/collision/revision constraints,
-and serialize competing object mutations before calling this layer; there are no filesystem HTTP
-endpoints yet.
+Object batches fetch at most 1000 IDs, in order, with up to 16 concurrent point reads. Grant
+intersection checks at most 512 exact keys with the same concurrency bound, independent of the
+number of grants attached to the object. The namespace read service authorizes stat/lookup/list
+against current ancestors in one snapshot. Mutation callers will check parent/cycle/collision/revision
+constraints and serialize competing writes before calling this layer.
 
 Workspace creation atomically persists its root, explicit root grants in both directions, key hash,
 and initial change event. An existing workspace namespace is never replaced. Authentication reads

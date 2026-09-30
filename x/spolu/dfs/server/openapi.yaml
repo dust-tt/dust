@@ -6,7 +6,7 @@ info:
     Unknown routes return 404 with ErrorResponse (not_found). Unsupported methods on known routes
     return 405 with ErrorResponse (method_not_allowed) and an Allow header.
     Errors carry Cache-Control: no-store. HEAD responses omit the body.
-    Workspace/session requests accept at most 64 KiB of JSON. Malformed JSON, unknown fields, and
+    JSON requests accept at most 64 KiB. Malformed JSON, unknown fields, and
     oversized bodies return invalid_input (400). All workspace/session responses disable caching.
     Missing and inaccessible objects
     produce the same not_found response; messages never contain resource or storage details.
@@ -140,6 +140,89 @@ paths:
           description: Session closed; no response body.
         default:
           $ref: '#/components/responses/ApiError'
+  /objects/stat:
+    post:
+      operationId: statObject
+      summary: Read an authorized object's attributes by stable ID.
+      description: |
+        Authorization uses explicit grants on the object or its current ancestors within the
+        session's workspace. Missing, cross-workspace, and inaccessible objects return not_found
+        (404). A directly shared object is accessible without granting access to its ancestors.
+        Metadata and authorization use one fresh snapshot. Responses omit parent links, names,
+        paths, and grants. In-flight reads may finish against their original snapshot.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatRequest'
+      responses:
+        "200":
+          description: Current authorized attributes; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectAttributes'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/lookup:
+    post:
+      operationId: lookupObject
+      summary: Look up one named child of an authorized directory.
+      description: |
+        Requires access to the parent directory. Sharing the child alone does not permit lookup
+        through an inaccessible parent; use stat by ID instead. Names are exact case-sensitive
+        UTF-8 components, never paths. An authorized file used as parent returns not_directory
+        (400); missing/inaccessible parents or missing names return not_found (404).
+        Entry, attributes, and authorization use one snapshot. Names stay in JSON bodies.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LookupRequest'
+      responses:
+        "200":
+          description: Child attributes; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectAttributes'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/list:
+    post:
+      operationId: listObjects
+      summary: List an authorized directory with attributes for each entry.
+      description: |
+        Requires access to the directory; children inherit that access. An authorized file returns
+        not_directory (400); missing/inaccessible objects return not_found (404). Each page reads
+        entries, attributes, and continuation from one snapshot in exact UTF-8 name-byte order.
+        Pass next_after verbatim as after in the next request. Null next_after means this page
+        reached the end of its snapshot. Each page reauthorizes against a fresh snapshot; cursors
+        neither preserve access rights nor retain a listing snapshot. Concurrent edits can cause
+        skips/repeats across pages; restart traversal when necessary. Cursors stay in JSON bodies.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListRequest'
+      responses:
+        "200":
+          description: Authorized directory page; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
 components:
   securitySchemes:
     ServerKey:
@@ -157,7 +240,7 @@ components:
   responses:
     ApiError:
       description: |
-        Shared error envelope. Requests may fail with invalid_input (400), unauthenticated (401),
+        Shared error envelope. Requests may fail with invalid_input/name_too_long/not_directory (400), unauthenticated (401),
         not_found (404), conflict (409), internal (500), unsupported (501), unavailable (503), or
         capacity_exhausted (507). Credentials and resource/storage details are never included.
       headers:
@@ -175,6 +258,106 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    ObjectId:
+      type: string
+      pattern: '^[0-9a-f]{32}$'
+      description: Stable object UUID, encoded as 32 lowercase hexadecimal characters.
+    EntryName:
+      type: string
+      minLength: 1
+      maxLength: 255
+      description: |
+        One exact UTF-8 component, 1–255 bytes; no slash or NUL, and not '.' or '..'. Preserve
+        case and Unicode without normalization. Oversized names return name_too_long (400).
+    StatRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+    LookupRequest:
+      type: object
+      additionalProperties: false
+      required: [parent_id, name]
+      properties:
+        parent_id:
+          $ref: '#/components/schemas/ObjectId'
+        name:
+          $ref: '#/components/schemas/EntryName'
+    ListRequest:
+      type: object
+      additionalProperties: false
+      required: [directory_id]
+      properties:
+        directory_id:
+          $ref: '#/components/schemas/ObjectId'
+        after:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 255
+          description: Exclusive EntryName cursor, or omit/null to start from the beginning.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 100
+    ObjectAttributes:
+      type: object
+      additionalProperties: false
+      required: [object_id, kind, mime_type, xattrs, metadata_revision]
+      description: |
+        Persisted attributes only. content_version and size_bytes are present for files and absent
+        for directories. POSIX modes/timestamps arrive with metadata mutations. Parent links,
+        names, paths, and grants are omitted. Revisions are meaningful only within the current
+        session, workspace, and object; session recreation discards cached state.
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        kind:
+          type: string
+          enum: [file, directory]
+        mime_type:
+          type: string
+        xattrs:
+          type: object
+          additionalProperties:
+            type: string
+            format: byte
+          description: Opaque xattr values encoded as standard padded base64.
+        metadata_revision:
+          type: integer
+          minimum: 0
+          description: Unsigned 64-bit metadata counter; clients must preserve its full precision.
+        content_version:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        size_bytes:
+          type: integer
+          minimum: 0
+          description: Unsigned 64-bit file length; clients must preserve its full precision.
+    ListResponse:
+      type: object
+      additionalProperties: false
+      required: [entries, next_after]
+      properties:
+        entries:
+          type: array
+          maxItems: 1000
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, attributes]
+            properties:
+              name:
+                $ref: '#/components/schemas/EntryName'
+              attributes:
+                $ref: '#/components/schemas/ObjectAttributes'
+        next_after:
+          type: string
+          nullable: true
+          description: Last returned name when more entries exist in this snapshot; otherwise null.
     CreateWorkspaceRequest:
       type: object
       additionalProperties: false
@@ -265,7 +448,7 @@ components:
             code:
               type: string
               description: |
-                invalid_input and name_too_long (400), unauthenticated (401), forbidden (403),
+                invalid_input, name_too_long, and not_directory (400), unauthenticated (401), forbidden (403),
                 not_found (404), method_not_allowed (405), conflict (409), internal (500),
                 unsupported (501), unavailable (503), capacity_exhausted (507).
                 Unauthenticated responses include WWW-Authenticate: Bearer.
@@ -276,6 +459,7 @@ components:
                 - unauthenticated
                 - forbidden
                 - not_found
+                - not_directory
                 - method_not_allowed
                 - conflict
                 - internal
