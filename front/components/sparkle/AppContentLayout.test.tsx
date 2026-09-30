@@ -109,7 +109,7 @@ const LAYOUT_STATES: LayoutState[] = [
     title: undefined,
   },
   {
-    name: "no title bar, centered (/labs)",
+    name: "no title bar, centered",
     hasTitle: false,
     contentWidth: "centered",
     title: undefined,

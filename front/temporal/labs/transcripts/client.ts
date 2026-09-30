@@ -1,18 +1,10 @@
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { TRANSCRIPTS_QUEUE_NAME } from "@app/temporal/labs/transcripts/config";
-import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/transcripts/utils";
-import { retrieveNewTranscriptsWorkflow } from "@app/temporal/labs/transcripts/workflows";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { ScheduleOptions } from "@temporalio/client";
-import {
-  ScheduleNotFoundError,
-  ScheduleOverlapPolicy,
-} from "@temporalio/client";
+import { ScheduleNotFoundError } from "@temporalio/client";
 
 function makeScheduleId(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource
@@ -20,90 +12,19 @@ function makeScheduleId(
   return `retrieve-transcripts-${transcriptsConfiguration.workspaceId}-${transcriptsConfiguration.id}`;
 }
 
-async function getScheduleOptions(
-  transcriptsConfiguration: LabsTranscriptsConfigurationResource,
-  scheduleId: string
-): Promise<ScheduleOptions> {
-  const workspace = await WorkspaceResource.fetchByModelId(
-    transcriptsConfiguration.workspaceId
-  );
-  if (!workspace) {
-    throw new Error(
-      `Workspace not found for transcriptsConfiguration ${transcriptsConfiguration.sId}`
-    );
-  }
-
-  return {
-    action: {
-      type: "startWorkflow",
-      workflowType: retrieveNewTranscriptsWorkflow,
-      args: [
-        {
-          workspaceId: workspace.sId,
-          transcriptsConfigurationId: transcriptsConfiguration.sId,
-        },
-      ],
-      taskQueue: TRANSCRIPTS_QUEUE_NAME,
-      workflowId: makeRetrieveTranscriptWorkflowId(transcriptsConfiguration),
-    },
-    scheduleId,
-    policies: {
-      overlap: ScheduleOverlapPolicy.SKIP,
-    },
-    spec: {
-      cronExpressions: ["*/5 * * * *"],
-    },
-    memo: {
-      transcriptsConfigurationId: transcriptsConfiguration.sId,
-      IsProcessingTranscripts: transcriptsConfiguration.isActive(),
-      IsStoringTranscripts: transcriptsConfiguration.dataSourceViewId !== null,
-    },
-  };
-}
-
+// Labs transcripts are deprecated. Callers that used to create a schedule now
+// delete it, including the Gong connector path.
 export async function launchRetrieveTranscriptsWorkflow(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource
 ): Promise<Result<string, Error>> {
-  const client = await getTemporalClientForFrontNamespace();
   const scheduleId = makeScheduleId(transcriptsConfiguration);
-  const scheduleOptions = await getScheduleOptions(
-    transcriptsConfiguration,
-    scheduleId
+  const stopped = await stopRetrieveTranscriptsWorkflow(
+    transcriptsConfiguration
   );
-
-  const childLogger = logger.child({
-    scheduleId,
-    transcriptsConfigurationId: transcriptsConfiguration.sId,
-  });
-
-  // Try to update existing schedule first
-  const existingSchedule = client.schedule.getHandle(scheduleId);
-  try {
-    await existingSchedule.update((previous) => {
-      return {
-        ...scheduleOptions,
-        state: previous.state,
-      };
-    });
-
-    childLogger.info("Updated existing transcripts schedule.");
-    return new Ok(scheduleId);
-  } catch (err) {
-    if (!(err instanceof ScheduleNotFoundError)) {
-      childLogger.error({ err }, "Failed to update existing schedule.");
-      return new Err(normalizeError(err));
-    }
+  if (stopped.isErr()) {
+    return new Err(stopped.error);
   }
-
-  // Schedule doesn't exist, create new one
-  try {
-    await client.schedule.create(scheduleOptions);
-    childLogger.info("Created new transcripts schedule.");
-    return new Ok(scheduleId);
-  } catch (error) {
-    childLogger.error({ error }, "Failed to create new schedule.");
-    return new Err(normalizeError(error));
-  }
+  return new Ok(scheduleId);
 }
 
 export async function stopRetrieveTranscriptsWorkflow(

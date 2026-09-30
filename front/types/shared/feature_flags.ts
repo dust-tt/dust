@@ -180,11 +180,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "spolu",
   },
-  labs_transcripts: {
-    description: "Transcript feature (Labs)",
-    stage: "self_serve",
-    owner: "frankaloia",
-  },
   openai_o1_feature: {
     description: "Access to OpenAI o1 model",
     stage: "self_serve",

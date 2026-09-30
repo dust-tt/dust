@@ -1,11 +1,3 @@
-import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-
-export function makeRetrieveTranscriptWorkflowId(
-  transcriptsConfiguration: LabsTranscriptsConfigurationResource
-): string {
-  return `labs-transcripts-retrieve-${transcriptsConfiguration.workspaceId}-${transcriptsConfiguration.id}`;
-}
-
 export function makeProcessTranscriptWorkflowId({
   workspaceId,
   transcriptsConfigurationId,
