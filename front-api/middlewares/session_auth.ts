@@ -1,4 +1,8 @@
 import type { SessionCtx } from "@front-api/middlewares/ctx";
+import {
+  applyPrivateNoStoreCacheHeader,
+  ensurePrivateNoStoreCache,
+} from "@front-api/middlewares/private_no_store_cache";
 import { resolveSession } from "@front-api/middlewares/session_resolution";
 import { createMiddleware } from "hono/factory";
 
@@ -8,13 +12,17 @@ import { createMiddleware } from "hono/factory";
  *
  * Mirrors `withSessionAuthentication` in `front/lib/api/auth_wrappers.ts`.
  * Apply to routes that need a logged-in user but no workspace scoping.
+ *
+ * Authenticated (and auth-failure) responses get `Cache-Control: private,
+ * no-store` unless a handler already set Cache-Control.
  */
 export const sessionAuth = createMiddleware<SessionCtx>(async (ctx, next) => {
   const result = await resolveSession(ctx);
   if (result instanceof Response) {
-    return result;
+    return ensurePrivateNoStoreCache(result);
   }
 
   ctx.set("session", result);
   await next();
+  applyPrivateNoStoreCacheHeader(ctx);
 });
