@@ -15,6 +15,7 @@ import {
   toHydratedSkillCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { serializeSkillNodeClipboardHTML } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
@@ -591,6 +592,24 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
   const handle = item.kind === "agent" ? `@${name}` : `/${name}`;
   const isMobile = useIsMobile();
   const [isCopied, copy] = useCopyToClipboard();
+  const copyHandle = () =>
+    copy(
+      item.kind === "agent"
+        ? handle
+        : new ClipboardItem({
+            "text/plain": new Blob([handle], { type: "text/plain" }),
+            "text/html": new Blob(
+              [
+                serializeSkillNodeClipboardHTML({
+                  skillId: item.skill.sId,
+                  skillName: item.skill.name,
+                  skillIcon: item.skill.icon,
+                }),
+              ],
+              { type: "text/html" }
+            ),
+          })
+    );
   const avatar =
     item.kind === "agent" ? (
       <Avatar size={isMobile ? "md" : "lg"} visual={item.agent.pictureUrl} />
@@ -634,7 +653,7 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
                   size="xs"
                   label={handle}
                   className="font-mono"
-                  onClick={() => copy(handle)}
+                  onClick={copyHandle}
                 />
               </span>
             </TooltipTrigger>
