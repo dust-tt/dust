@@ -3,7 +3,9 @@ import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configur
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import logger from "@app/logger/logger";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   DeleteAgentConfigurationResponseType,
   GetOrPatchAgentConfigurationResponseType,
@@ -326,8 +328,28 @@ app.get(
       });
     }
 
+    // The legacy full variant carries the private fields regardless of access, so it is serialized
+    // from the caller's resource, which redacts them unless the caller can view the content (see
+    // `light-instructions-require-read`).
+    let configuration: LightAgentConfigurationType & {
+      codeDefinedSkillIds?: string[];
+    } = agentConfiguration;
+    if (configVariant === "full") {
+      const agent = await AgentResource.fetchById(auth, agentConfiguration.sId);
+      if (!agent) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "agent_configuration_not_found",
+            message: "The agent configuration you requested was not found.",
+          },
+        });
+      }
+      [configuration] = await toAgentConfigurations(auth, [agent]);
+    }
+
     const [serialized] = await toAgentConfigurationsWithSkills(auth, [
-      agentConfiguration,
+      configuration,
     ]);
 
     return ctx.json({ agentConfiguration: serialized });

@@ -2,6 +2,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -32,10 +33,13 @@ async function setupTest(role: "admin" | "user" = "admin") {
 function getAgentConfiguration(
   workspace: { sId: string },
   key: { secret: string },
-  agentId: string
+  agentId: string,
+  { variant }: { variant?: "light" | "full" } = {}
 ) {
   return honoApp.request(
-    `/api/v1/w/${workspace.sId}/assistant/agent_configurations/${agentId}`,
+    `/api/v1/w/${workspace.sId}/assistant/agent_configurations/${agentId}${
+      variant ? `?variant=${variant}` : ""
+    }`,
     {
       method: "GET",
       headers: {
@@ -251,6 +255,60 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
       );
       expect(patchResponse.status).toBe(400);
     }
+  });
+
+  it("redacts the private fields of the full variant from a caller who cannot view the content", async () => {
+    const { workspace, key, auth } = await setupTest("admin");
+    const hidden = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Hidden agent",
+      scope: "hidden",
+      instructions: "Private instructions",
+    });
+
+    const response = await getAgentConfiguration(workspace, key, hidden.sId, {
+      variant: "full",
+    });
+    const data = await response.json();
+
+    expect(response.status, JSON.stringify(data)).toBe(200);
+    expect(data.agentConfiguration.canRead).toBe(false);
+    expect(data.agentConfiguration.instructions).toBeNull();
+    expect(data.agentConfiguration.instructionsHtml).toBeNull();
+    expect(data.agentConfiguration.actions).toEqual([]);
+  });
+
+  it("returns the private fields of the full variant to an admin allowed to view private agents", async () => {
+    const { workspace, key, auth } = await setupTest("admin");
+    await FeatureFlagFactory.basic(auth, "admin_can_see_private_entities");
+    const hidden = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Hidden agent",
+      scope: "hidden",
+      instructions: "Private instructions",
+    });
+
+    const response = await getAgentConfiguration(workspace, key, hidden.sId, {
+      variant: "full",
+    });
+    const data = await response.json();
+
+    expect(response.status, JSON.stringify(data)).toBe(200);
+    expect(data.agentConfiguration.instructions).toBe("Private instructions");
+  });
+
+  it("returns the private fields of the full variant to a reader", async () => {
+    const { workspace, key, agentConfig } = await setupTest("admin");
+
+    const response = await getAgentConfiguration(
+      workspace,
+      key,
+      agentConfig.sId,
+      { variant: "full" }
+    );
+    const data = await response.json();
+
+    expect(response.status, JSON.stringify(data)).toBe(200);
+    expect(data.agentConfiguration.canRead).toBe(true);
+    expect(data.agentConfiguration.instructions).toBe(agentConfig.instructions);
   });
 
   it("returns 404 for a retired global agent (e.g. gpt-4)", async () => {
