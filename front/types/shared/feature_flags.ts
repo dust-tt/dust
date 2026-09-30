@@ -2,7 +2,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   group_management: {
     description:
       "Delegate group membership and usage management to group managers",
-    stage: "dust_only",
+    stage: "ask_owner",
     owner: "philipperolet",
   },
   skills_search: {
