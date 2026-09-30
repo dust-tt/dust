@@ -2166,6 +2166,15 @@ describe("building_agents_and_skills tools", () => {
           ),
           "protected tags"
         );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editTags(agent.sId, {
+              addTags: Array.from({ length: 21 }, (_, i) => `Tag ${i}`),
+            })
+          ),
+          "at most 20 tags"
+        );
       });
     });
   });
