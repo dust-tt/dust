@@ -4,6 +4,7 @@ mod entries;
 mod grants;
 mod mutations;
 mod projection;
+mod uploads;
 
 use std::sync::Arc;
 
@@ -19,7 +20,7 @@ use crate::{
         sessions::tests::{SERVER_KEY, call, text},
     },
     model::{ContentVersionId, FileContent, MetadataRevision, ParentLink, WorkspaceId, Xattrs},
-    storage::{BlobUpload, MetadataBatch, MetadataMutation, Storage},
+    storage::{MetadataBatch, MetadataMutation, Storage},
 };
 
 struct Fixture {
@@ -89,11 +90,16 @@ impl Fixture {
             file.xattrs
                 .insert("user.binary".to_owned(), vec![0, 128, 255]);
             add_object(&mut batch, &file)?;
-            batch.uploads.push(BlobUpload {
-                object_id: file.id,
-                version,
-                bytes: Bytes::from_static(b"hi"),
-            });
+            batch.uploads.push(
+                storage
+                    .workspace(&workspace)?
+                    .upload_blob(
+                        file.id,
+                        version,
+                        futures::stream::iter([Ok(Bytes::from_static(b"hi"))]),
+                    )
+                    .await?,
+            );
             files.push(file);
         }
         storage.workspace(&workspace)?.commit(batch).await?;

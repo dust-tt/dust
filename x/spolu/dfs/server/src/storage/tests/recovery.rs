@@ -80,7 +80,12 @@ async fn worker() -> Result<()> {
     match std::env::var("DFS_RECOVERY_MODE")?.as_str() {
         "write" => {
             let (_, file, batch) = fixture(&workspace)?;
-            ensure!(scoped.commit(batch).await? == 1);
+            ensure!(
+                scoped
+                    .commit(upload_fixture(&scoped, &file, batch).await?)
+                    .await?
+                    == 1
+            );
             let mut stdout = std::io::stdout();
             stdout.write_all(format!("DFS_ACK:{}\n", file.id).as_bytes())?;
             stdout.flush()?;

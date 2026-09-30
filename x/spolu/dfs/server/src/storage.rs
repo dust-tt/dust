@@ -11,9 +11,10 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 
 use crate::model::WorkspaceId;
-pub use commit::{BlobUpload, MetadataBatch, MetadataMutation};
+pub use commit::{MetadataBatch, MetadataMutation};
 use keys::Keyspace;
 pub use read::{ChangeEvent, ReadView};
+pub use upload::{UploadConfig, UploadError, UploadedBlob};
 
 /**
  * @cc [owner:spolu,label:backend] explicit-storage-configuration
@@ -31,6 +32,9 @@ pub struct StorageConfig {
     /// Dedicated prefix within the bucket, such as dfs-dev/spolu.
     #[arg(long, env = "DFS_GCS_PREFIX", requires = "gcs_bucket")]
     gcs_prefix: Option<StoragePrefix>,
+
+    #[command(flatten)]
+    uploads: UploadConfig,
 }
 
 impl StorageConfig {
@@ -40,7 +44,10 @@ impl StorageConfig {
             (None, None) => Ok(None),
             (Some(bucket), Some(prefix)) => {
                 let store = gcs_store(bucket)?;
-                Ok(Some(Storage::open(store, prefix).await?))
+                let transfers = self.uploads.budget()?;
+                let mut storage = Storage::open(store, prefix).await?;
+                storage.transfers = transfers;
+                Ok(Some(storage))
             }
             _ => bail!("GCS storage requires both --gcs-bucket and --gcs-prefix"),
         }
@@ -112,6 +119,7 @@ pub struct Storage {
     blobs: Arc<dyn ObjectStore>,
     publish: Mutex<()>,
     object_locks: locks::ObjectLockTable,
+    transfers: upload::TransferBudget,
 }
 
 /// A trusted internal handle. Session authorization is required before constructing or using it.
@@ -186,6 +194,7 @@ impl Storage {
             blobs,
             publish: Mutex::new(()),
             object_locks: locks::ObjectLockTable::default(),
+            transfers: UploadConfig::default().budget()?,
         })
     }
 
@@ -209,4 +218,5 @@ mod locks;
 mod read;
 #[cfg(test)]
 mod tests;
+mod upload;
 mod workspace;

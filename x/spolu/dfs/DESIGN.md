@@ -118,7 +118,7 @@ These are the baseline semantics; metadata fields and wire types arrive with the
   on both files and directories, defaulting to `application/octet-stream` and `inode/directory`.
 - **Unsupported:** Symlinks, hard links, special files, ownership changes, setuid/setgid/sticky bits,
   POSIX ACLs, and advisory locks return explicit unsupported errors; never silently succeed.
-  Open/append/truncate and unlink-with-open-handles semantics are specified with file I/O in group 6.
+  The file-handle contract below applies when those endpoints arrive.
 
 ## API errors
 
@@ -255,6 +255,51 @@ filtering may examine multiple bounded batches.
 Aliases return real object attributes and IDs; listing the target uses ordinary directory APIs.
 Renames, moves, revocations, and deletions affect subsequent requests. Returned metadata never
 includes canonical parents; client-side virtual parent navigation remains deferred with FUSE.
+
+## File I/O contract
+
+- **Handles:** Session-scoped, process-local, bound to stable object IDs and read/write access flags;
+  release, session closure/expiry, or restart invalidates them. Opening does not reserve a writer.
+  Rename preserves handles; every operation rechecks current grants. An already-authorized read
+  may finish against its original snapshot. Initially unlink/replacement invalidates handles to the
+  deleted object (`not_found`); POSIX open-after-unlink is future work.
+- **Writes:** Serialize content mutations per file, not for the lifetime of an open handle. Append
+  selects the current EOF within that serialization; truncation publishes a fresh version, including
+  length zero, and extension supplies zero bytes. `O_TRUNC` is a write during open; read-only handles
+  cannot mutate content. Replacement checks the expected content version
+  and preserves unrelated metadata edits. Concurrent uploads may proceed; they do not reserve a name
+  or permission, and a competing published replacement makes an older upload conflict.
+- **Visibility:** Incomplete uploads never change file contents, length, listings, or events. A
+  namespace commit publishes the entire version atomically; it may become visible before its WAL
+  wait finishes. In the synchronous baseline every successful write is durable and visible before
+  fsync. Fsync waits for preceding writes on that handle and reports their failures; release does not
+  substitute for it. Later server caching changes durability, not the visibility barrier.
+
+### Upload protocol (implemented)
+
+`POST /uploads/start` takes `operation: "create"`, `parent_id`, and `name`, or `operation: "replace"`,
+`object_id`, and `expected_content_version`. It authorizes the target and reserves fresh IDs for that
+session. `PUT /uploads/content` sends `application/octet-stream` with `Dfs-Upload-Id` and the session
+bearer key; Content-Length is optional. `POST /uploads/status` takes `upload_id` to recover a receipt.
+Completion reports the actual size and retains an internal workspace/object/version/size descriptor.
+It does **not** publish a file or acknowledge fsync; the publication endpoint arrives in 6.7.
+
+Reservations/receipts expire after 15 minutes, cap at 1024 server-wide, and disappear on restart.
+A transfer is one-shot; duplicate submission conflicts. Failed transfers discard their reservations;
+status distinguishes a retained completion from a lost receipt. Recheck session and current grants
+at completion, and recheck again when publication is implemented. Expiry leaves unreachable blobs
+for future reclamation; it never deletes immutable versions that might have been referenced.
+
+Stream one 8 MiB part at a time, with at most one 1 MiB input frame. Reserve 12 MiB per active upload
+from a shared 64 MiB budget, with at most four active transfers and 16 queued transfers; excess requests
+fail with `capacity_exhausted` without polling their body. Limits are configurable via
+`DFS_UPLOAD_MEMORY_MIB` and `DFS_UPLOAD_CONCURRENCY`; this budgets upload buffers, not total process RSS
+(HTTP/TLS, SlateDB, and allocator overhead are separate). Input idle timeout is 30 seconds; the reservation
+expiry also bounds total transfer time. A version is capped at 10,000 parts (about 78 GiB).
+Small/empty files use a single create-only PUT. Multipart uploads use temporary blobs followed by a
+create-only GCS copy; no full-file buffering or local disk is needed. Clean temporary blobs on normal
+completion/failure; cancellation or process death can leave temporary objects/incomplete multipart
+uploads for later cleanup. No orphan is ever published automatically.
 
 ## Writes, fsync, and recovery
 

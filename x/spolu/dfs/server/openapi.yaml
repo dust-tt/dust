@@ -149,6 +149,105 @@ paths:
           description: Session closed; no response body.
         default:
           $ref: '#/components/responses/ApiError'
+  /uploads/start:
+    post:
+      operationId: startUpload
+      summary: Reserve a session-scoped upload for a new file or a replacement version.
+      description: |
+        Requires access to the canonical parent for creation, or the existing file for replacement.
+        Creation rejects an existing name; replacement checks expected_content_version after
+        authorization. Returns fresh server-generated content/upload IDs and, for creation, an object
+        ID. Does not reserve the name, lock the file, publish metadata, or acknowledge fsync.
+        Reservations and receipts share a server-wide cap of 1024 and expire after 15 minutes;
+        expiry is not extended by status or transfer. Session closure/expiry/restart invalidates access.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartUploadRequest'
+      responses:
+        "201":
+          description: Reserved upload; complete is false and size_bytes is null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /uploads/content:
+    put:
+      operationId: uploadContent
+      summary: Stream one complete immutable blob into a reserved upload.
+      description: |
+        Raw binary body, including empty files; Content-Length is optional. Only the session that
+        reserved the upload may send it. Content-Encoding is rejected. Rechecks target access and
+        replacement version at start and completion, plus session validity at completion.
+        One-shot: an active or completed upload returns conflict (409); use status after a lost
+        response. Failure discards its reservation. Partial or completed bytes never publish a file,
+        update its size, emit events, or acknowledge a filesystem write/fsync. Namespace publication
+        remains a separate, not-yet-exposed operation and must reauthorize and check preconditions.
+        Streams bounded 8 MiB parts with no full-body collection; server input frames must be at most
+        1 MiB (HTTP wire chunks may be split by the transport). Defaults allow four active transfers
+        within a shared 64 MiB upload-buffer budget, plus 16 waiters; excess returns capacity_exhausted
+        (507). No waiting body is polled. One version is limited to 10,000 parts (about 78 GiB).
+        Interrupted/invalid bodies and 30-second input idle timeouts return invalid_input (400).
+        Reservation expiry also bounds total transfer time; expiry/backend failure returns unavailable
+        (503). Failed cleanup can leave unreferenced temporary or immutable blobs for later reclamation.
+      security:
+        - SessionKey: []
+      parameters:
+        - in: header
+          name: Dfs-Upload-Id
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{32}$'
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Completed blob receipt with measured size; namespace remains unchanged.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /uploads/status:
+    post:
+      operationId: uploadStatus
+      summary: Recover a reserved or completed upload receipt in its original session.
+      description: |
+        Takes a fresh authorization snapshot and checks the original target/preconditions. Missing,
+        expired, failed, restarted, or other-session reservations return not_found (404). A pending or
+        in-flight upload has complete false and null size. A completed receipt does not imply namespace
+        publication. Status does not renew its lifetime; a missing receipt does not prove no orphan blob
+        was uploaded. No endpoint yet consumes these receipts to publish filesystem metadata.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadStatusRequest'
+      responses:
+        "200":
+          description: Upload receipt, authorized against current grants and target state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
   /objects/stat:
     post:
       operationId: statObject
@@ -495,6 +594,67 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    StartUploadRequest:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [operation, parent_id, name]
+          properties:
+            operation:
+              type: string
+              enum: [create]
+            parent_id:
+              $ref: '#/components/schemas/ObjectId'
+            name:
+              $ref: '#/components/schemas/EntryName'
+        - type: object
+          additionalProperties: false
+          required: [operation, object_id, expected_content_version]
+          properties:
+            operation:
+              type: string
+              enum: [replace]
+            object_id:
+              $ref: '#/components/schemas/ObjectId'
+            expected_content_version:
+              type: string
+              pattern: '^[0-9a-f]{32}$'
+    UploadStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [upload_id]
+      properties:
+        upload_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+    UploadReceipt:
+      type: object
+      additionalProperties: false
+      required: [upload_id, object_id, content_version, complete, size_bytes, expires_in_seconds]
+      properties:
+        upload_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+          description: Session-scoped reservation ID; currently equal to content_version.
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        content_version:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+          description: Fresh server-generated immutable content version, not yet published.
+        complete:
+          type: boolean
+        size_bytes:
+          type: integer
+          format: uint64
+          minimum: 0
+          nullable: true
+          description: Measured size once the entire upload has completed, otherwise null.
+        expires_in_seconds:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Remaining lifetime rounded down; status does not renew it.
     ObjectId:
       type: string
       pattern: '^[0-9a-f]{32}$'

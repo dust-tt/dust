@@ -13,7 +13,9 @@ API provides workspace-scoped snapshots, immutable blobs, and synchronous metada
 batches. Workspace creation issues a workspace key; that key issues sessions with fixed grants and
 authorizes explicit grant listing/updates.
 Session-authenticated reads, mkdir, metadata updates, moves/removal, and root/shared projections
-are available. File I/O, virtual mounts, search, and FUSE follow in separate increments.
+are available. Session-scoped sequential uploads stream to GCS with bounded buffers and completion
+receipts; file publication, streamed reads, and handle operations follow next. Virtual mounts, search,
+and FUSE remain later increments.
 Optional GCS configuration opens SlateDB before serving HTTP and
 closes it after requests drain. Without it, the HTTP scaffold still runs without external services.
 The server runs natively on macOS and Linux.

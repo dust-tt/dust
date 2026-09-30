@@ -44,20 +44,24 @@ fn storage_prefixes_cannot_select_the_bucket_root_or_normalize_paths() -> Result
 async fn storage_configuration_requires_a_pair_without_fallback() -> Result<()> {
     let disabled = StorageConfig {
         gcs_bucket: None,
+        uploads: UploadConfig::default(),
         gcs_prefix: None,
     };
     ensure!(disabled.open().await?.is_none());
     for config in [
         StorageConfig {
             gcs_bucket: Some("bucket".to_owned()),
+            uploads: UploadConfig::default(),
             gcs_prefix: None,
         },
         StorageConfig {
             gcs_bucket: None,
+            uploads: UploadConfig::default(),
             gcs_prefix: Some("dev".parse()?),
         },
         StorageConfig {
             gcs_bucket: Some("gs://bucket".to_owned()),
+            uploads: UploadConfig::default(),
             gcs_prefix: Some("dev".parse()?),
         },
     ] {
@@ -164,9 +168,11 @@ async fn exercise_storage(store: Arc<dyn ObjectStore>, prefix: &StoragePrefix) -
     let storage = Storage::open(store.clone(), prefix).await?;
     let write_result: Result<()> = async {
         let scoped = storage.workspace(&workspace)?;
+        let batch = upload_fixture(&scoped, &file, batch).await?;
         ensure!(scoped.commit(batch.clone()).await? == 1);
         verify_fixture(&scoped, file.id).await?;
-        ensure!(scoped.commit(batch).await.is_err());
+        super::upload::tests::exercise_streams(&scoped).await?;
+        ensure!(upload_fixture(&scoped, &file, batch).await.is_err());
         ensure!(scoped.read_view().await?.changes(0, 10).await?.len() == 1);
         ensure!(scoped.read_blob(file.id, content(&file)?.version).await? == FIXTURE_BYTES);
         let other = storage.workspace(&WorkspaceId::new("workspace/\0é/other")?)?;
@@ -248,13 +254,26 @@ fn fixture(workspace: &WorkspaceId) -> Result<(ObjectMetadata, ObjectMetadata, M
                 attached: true,
             },
         ],
-        uploads: vec![BlobUpload {
-            object_id: file.id,
-            version: content(&file)?.version,
-            bytes: Bytes::from_static(FIXTURE_BYTES),
-        }],
+        uploads: vec![],
     };
     Ok((root, file, batch))
+}
+
+async fn upload_fixture(
+    scoped: &WorkspaceStorage<'_>,
+    file: &ObjectMetadata,
+    mut batch: MetadataBatch,
+) -> Result<MetadataBatch> {
+    batch.uploads.push(
+        scoped
+            .upload_blob(
+                file.id,
+                content(file)?.version,
+                futures::stream::iter([Ok(Bytes::from_static(FIXTURE_BYTES))]),
+            )
+            .await?,
+    );
+    Ok(batch)
 }
 
 fn content(file: &ObjectMetadata) -> Result<&FileContent> {
@@ -311,7 +330,9 @@ async fn moves_and_grants_publish_atomically_while_old_snapshots_stay_stable() -
     let workspace = WorkspaceId::new("w")?;
     let scoped = storage.workspace(&workspace)?;
     let (root, file, initial) = fixture(&workspace)?;
-    scoped.commit(initial).await?;
+    scoped
+        .commit(upload_fixture(&scoped, &file, initial).await?)
+        .await?;
     let old = scoped.read_view().await?;
     let old_parent = file.parent.as_ref().context("missing parent")?;
     let updated = ObjectMetadata {
@@ -375,9 +396,7 @@ async fn invalid_batches_missing_blobs_and_failed_uploads_leave_metadata_unchang
     let workspace = WorkspaceId::new("w")?;
     let scoped = storage.workspace(&workspace)?;
     let (root, file, initial) = fixture(&workspace)?;
-    let mut missing = initial.clone();
-    missing.uploads.clear();
-    ensure!(scoped.commit(missing).await.is_err());
+    ensure!(scoped.commit(initial.clone()).await.is_err());
     let mut duplicate = initial.clone();
     duplicate
         .mutations
@@ -386,7 +405,11 @@ async fn invalid_batches_missing_blobs_and_failed_uploads_leave_metadata_unchang
     let other = storage.workspace(&WorkspaceId::new("w/other")?)?;
     ensure!(other.commit(initial.clone()).await.is_err());
     std::fs::write(directory.path().join("test/blobs"), b"block uploads")?;
-    ensure!(scoped.commit(initial.clone()).await.is_err());
+    ensure!(
+        upload_fixture(&scoped, &file, initial.clone())
+            .await
+            .is_err()
+    );
     let view = scoped.read_view().await?;
     ensure!(view.object(file.id).await?.is_none());
     ensure!(view.children(root.id, None, 10).await?.is_empty());
@@ -397,7 +420,12 @@ async fn invalid_batches_missing_blobs_and_failed_uploads_leave_metadata_unchang
     );
     ensure!(view.changes(0, 10).await?.is_empty());
     std::fs::remove_file(directory.path().join("test/blobs"))?;
-    ensure!(scoped.commit(initial).await? == 1);
+    ensure!(
+        scoped
+            .commit(upload_fixture(&scoped, &file, initial).await?)
+            .await?
+            == 1
+    );
     verify_fixture(&scoped, file.id).await?;
     let mut changed_content = file.clone();
     changed_content.kind = ObjectKind::File(FileContent {
@@ -435,6 +463,7 @@ async fn commits_and_change_events_wait_for_wal_durability() -> Result<()> {
         );
         let workspace = WorkspaceId::new("w")?;
         let (root, file, initial) = fixture(&workspace)?;
+        let initial = upload_fixture(&storage.workspace(&workspace)?, &file, initial).await?;
         let writer_store = storage.clone();
         let writer_workspace = workspace.clone();
         let writer = tokio::spawn(async move {

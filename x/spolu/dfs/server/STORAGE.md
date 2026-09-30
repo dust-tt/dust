@@ -20,11 +20,30 @@ Workspace creation atomically persists its root, explicit root grants in both di
 and initial change event. An existing workspace namespace is never replaced. Authentication reads
 workspace records at remote durability; only the SHA-256 digest of a workspace key is persisted.
 
-`commit(MetadataBatch)` validates records and uploads, uploads new immutable content, verifies
-existing content references, and publishes one atomic SlateDB batch. The caller supplies all related
-object and child-index mutations; `SetGrant` always changes both grant indexes. Duplicate keys and
-cross-workspace records are rejected before uploading. Uploaded versions use create-only writes;
-an existing version is never overwritten, even with identical bytes.
+`upload_blob` streams content and returns an internal `UploadedBlob` descriptor containing workspace,
+object, content version, and measured size. It holds a private origin reference to the exact storage
+instance. `commit(MetadataBatch)` accepts these descriptors instead of file bytes, rejects mismatched
+scope/origin/references, and verifies existing references without descriptors through blob HEAD.
+The caller supplies all related object and child-index mutations; `SetGrant` changes both grant
+indexes. Duplicate keys and cross-workspace records are rejected before publication. Upload success
+alone never creates metadata, entries, or indexing events.
+
+The shared transfer budget reserves 12 MiB per upload: one 8 MiB part, one incoming frame of at most
+1 MiB, and bounded multipart bookkeeping. At most one part is in flight per upload, with no byte queue.
+Defaults are 64 MiB and four active uploads, plus 16 admitted waiters that do not poll their streams.
+Configure `--upload-memory-mib` / `DFS_UPLOAD_MEMORY_MIB` and `--upload-concurrency` /
+`DFS_UPLOAD_CONCURRENCY`; lower budgets reduce concurrency. This is an upload-buffer budget, excluding
+HTTP/TLS buffers, backend storage itself, SlateDB, and general process overhead. Unknown lengths are
+measured while streaming; reject more than 10,000 parts and input idle periods over 30 seconds.
+
+Small and empty files use `PutMode::Create`. The pinned object_store multipart API lacks conditional
+completion, so larger files use a fresh `blobs/staging/<workspace hex>/<uuid>` key and a
+`CopyMode::Create` copy into the final immutable key. A duplicate version fails without overwriting.
+Normally abort failed multipart uploads and remove completed temporary blobs. Cleanup is best effort;
+cancellation, ambiguous backend responses, or process death may leave multipart uploads or temporary
+objects. Orphan reclamation remains future work and must never delete live/recoverable versions.
+HTTP upload reservations and receipts are session-scoped, expire after 15 minutes, and cap at 1024.
+They carry no file bytes; namespace publication is implemented separately in group 6.7.
 
 Each batch includes a per-workspace change sequence and the sorted, deduplicated IDs of affected
 objects/parents. A shared publication lock protects sequence allocation and submission;
@@ -89,3 +108,9 @@ withheld WAL flushing. Closing before durability produces an error and recovers 
 A subprocess test kills the writer after commit acknowledgement and verifies metadata, indexes,
 events, and content from a fresh reader process; the GCS variant requires no surviving local data.
 The broader failure/interruption matrix remains in group 8.
+
+Streaming tests exercise an 80 MiB file with a 12 MiB upload budget, shared admission/backpressure,
+interrupted bodies, idle timeouts, descriptor scope, and immutable-version collisions. The real-GCS
+fixture also covers empty files and multipart/copy uploads of 17 MiB plus three bytes, including
+failed attempts to replace an existing version. Validated against the development bucket on
+2026-09-30. HTTP tests cover unknown lengths, session isolation, and mid-transfer revocation/closure.

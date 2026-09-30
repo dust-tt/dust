@@ -3,6 +3,7 @@ mod error;
 mod grants;
 mod objects;
 mod sessions;
+mod uploads;
 
 use std::sync::Arc;
 
@@ -11,7 +12,7 @@ use axum::{
     extract::{DefaultBodyLimit, FromRequest, Request},
     http::{HeaderValue, header},
     response::{IntoResponse, Response},
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
 };
 use serde::{Serialize, de::DeserializeOwned};
 
@@ -25,6 +26,7 @@ pub(crate) use sessions::tests::exercise_sessions;
 pub struct ApiState {
     storage: Option<Arc<Storage>>,
     access: Arc<Access>,
+    uploads: Arc<crate::uploads::Uploads>,
 }
 
 impl ApiState {
@@ -32,6 +34,7 @@ impl ApiState {
         Self {
             storage,
             access: Arc::new(access),
+            uploads: Arc::new(crate::uploads::Uploads::default()),
         }
     }
 
@@ -47,6 +50,9 @@ pub fn router(state: ApiState) -> Router {
         .route("/sessions", post(sessions::create_session))
         .route("/sessions/current", get(sessions::current_session))
         .route("/sessions/{session_id}", delete(sessions::close_session))
+        .route("/uploads/start", post(uploads::start))
+        .route("/uploads/status", post(uploads::status))
+        .route("/uploads/content", put(uploads::content))
         .route("/objects/stat", post(objects::stat))
         .route("/objects/lookup", post(objects::lookup))
         .route("/objects/list", post(objects::list))

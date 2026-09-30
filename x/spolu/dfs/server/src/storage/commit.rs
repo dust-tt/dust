@@ -4,11 +4,11 @@ use anyhow::{Context, Result, ensure};
 use slatedb::{
     WriteBatch, WriteHandle,
     bytes::Bytes,
-    object_store::{ObjectStoreExt, PutMode, path::Path},
+    object_store::{ObjectStoreExt, path::Path},
 };
 use tokio::sync::MutexGuard;
 
-use super::{ReadView, WorkspaceStorage, codec};
+use super::{ReadView, UploadedBlob, WorkspaceStorage, codec};
 use crate::model::{
     ContentVersionId, DirectoryEntry, EntryName, ObjectId, ObjectKind, ObjectMetadata, WorkspaceId,
 };
@@ -30,13 +30,6 @@ pub enum MetadataMutation {
     },
 }
 
-#[derive(Clone, Debug)]
-pub struct BlobUpload {
-    pub object_id: ObjectId,
-    pub version: ContentVersionId,
-    pub bytes: Bytes,
-}
-
 /**
  * @cc [owner:spolu,label:backend] complete-metadata-batch
  * Callers MUST include all related namespace changes in one batch, including object parent links
@@ -47,7 +40,7 @@ pub struct BlobUpload {
 #[derive(Clone, Debug, Default)]
 pub struct MetadataBatch {
     pub mutations: Vec<MetadataMutation>,
-    pub uploads: Vec<BlobUpload>,
+    pub uploads: Vec<UploadedBlob>,
 }
 
 impl WorkspaceStorage<'_> {
@@ -105,25 +98,13 @@ impl WorkspaceStorage<'_> {
         let mut uploaded = HashSet::new();
         for upload in &batch.uploads {
             let reference = references
-                .get(&upload.object_id)
+                .get(&upload.object_id())
                 .context("upload has no object record")?;
             ensure!(
-                reference.version == upload.version
-                    && reference.size_bytes == u64::try_from(upload.bytes.len())?,
+                upload.matches(self, reference),
                 "upload does not match content reference"
             );
-            ensure!(uploaded.insert(upload.object_id), "duplicate blob upload");
-        }
-        for upload in batch.uploads {
-            self.storage
-                .blobs
-                .put_opts(
-                    &self.blob_path(upload.object_id, upload.version),
-                    upload.bytes.into(),
-                    PutMode::Create.into(),
-                )
-                .await
-                .context("upload immutable content")?;
+            ensure!(uploaded.insert(upload.object_id()), "duplicate blob upload");
         }
         for (id, content) in references {
             if !uploaded.contains(&id) {
@@ -257,7 +238,7 @@ impl WorkspaceStorage<'_> {
             .context("read content bytes")
     }
 
-    fn blob_path(&self, object: ObjectId, version: ContentVersionId) -> Path {
+    pub(super) fn blob_path(&self, object: ObjectId, version: ContentVersionId) -> Path {
         Path::from(format!(
             "v1/{}/{object}/{version}",
             hex::encode(self.keys.workspace.as_str().as_bytes())

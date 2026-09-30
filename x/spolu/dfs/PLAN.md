@@ -74,7 +74,8 @@ Validated on 2026-09-30 against `dust-dev-dfs-poc-spolu-20260930` in `dust-dev`,
 writer and recover metadata, indexes, events, and blobs in a fresh process. Upload failures and
 withheld/failed WAL persistence are covered locally; the broader failure matrix remains in group 8.
 See [server/STORAGE.md](server/STORAGE.md) for formats and commit guarantees.
-The current blob API buffers whole files; group 6 replaces it with streaming before FUSE integration.
+Uploads now stream with bounded buffers (6.1–4); the legacy internal read helper still buffers files
+until streamed range reads in 6.5, before FUSE integration.
 
 ## 3. Workspace creation and sessions
 
@@ -153,14 +154,14 @@ aliases survive target renames and cannot reveal hidden ancestors.
 
 ## 6. Synchronous file I/O
 
-- [ ] Define open-handle lifetime, writer serialization, append/truncate behavior, and visibility
+- [x] Define open-handle lifetime, writer serialization, append/truncate behavior, and visibility
   before fsync. Define what happens to open files after unlink and grant revocation.
-- [ ] Separate content transfer from metadata commit. A completed upload produces an internal
+- [x] Separate content transfer from metadata commit. A completed upload produces an internal
   workspace/object/version/size descriptor; metadata batches reference it instead of carrying bytes.
-- [ ] Stream sequential creation/replacement from HTTP to GCS in bounded chunks, including empty
+- [x] Stream sequential creation/replacement from HTTP to GCS in bounded chunks, including empty
   files and streams whose size is initially unknown. Preserve create-only immutable blob semantics
   and determine the actual size before publication.
-- [ ] Bound chunk sizes, queued bytes, and upload concurrency with backpressure and a shared server
+- [x] Bound chunk sizes, queued bytes, and upload concurrency with backpressure and a shared server
   memory budget. Apply limits across concurrent transfers, not just individually.
 - [ ] Stream reads from GCS through HTTP and support offset/length ranges against a fixed content
   version. Avoid collecting full files in memory on either the server or client.
@@ -176,6 +177,11 @@ aliases survive target renames and cannot reveal hidden ancestors.
   ambiguous commit outcomes without assuming that a timed-out request failed to commit.
 - [ ] Test files larger than the memory budget, concurrent transfers, range reads, slow consumers,
   interrupted uploads, and disk exhaustion. Verify bounded memory and no partial publication.
+
+The first four tasks define the handle contract and implement session-scoped upload preparation,
+streaming, and completion receipts. Uploads do not publish files; the authorized namespace commit
+endpoint remains in 6.7. Handle endpoints arrive with the remaining I/O tasks. The initial PoC
+invalidates handles after unlink; POSIX retention is deferred. Streamed range reads remain in 6.5.
 
 **Done when:** one session writes and fsyncs a file, another reads it from persisted state, and a
 server restart preserves acknowledged changes. A competing writer waits without blocking others.
@@ -314,6 +320,8 @@ machine with the documented durability tradeoff.
 
 ## Future work
 
+- [ ] Preserve open files after unlink/replacement, with detached metadata, explicit grant semantics,
+  retained content, and last-handle reclamation, before claiming POSIX open-after-unlink support.
 - [ ] Add workspace-key rotation/recovery and revocation, including lost creation responses and
   explicit decisions about invalidating already-issued sessions.
 - [ ] Evaluate chunked immutable content and manifests if small edits to large files make whole-version

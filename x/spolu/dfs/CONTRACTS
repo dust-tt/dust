@@ -103,3 +103,19 @@ MUST NOT block filesystem writes or fsync; search MUST be rebuildable from persi
 @cc [owner:spolu,label:rust] propagate-rust-errors
 Rust code MUST propagate or explicitly handle fallible operations instead of calling unwrap() or
 expect().
+
+@cc [owner:spolu,label:product] file-handle-semantics
+When file handles are exposed, bind them to one session, stable object ID, and access mode. Opening
+MUST NOT hold a writer lock. Serialize content mutations per file; append MUST choose EOF within
+that serialization, and truncate/extension MUST publish a fresh version with zero-filled growth.
+O_TRUNC MUST execute as a write during open; read-only handles MUST NOT mutate content.
+Every operation MUST recheck current access. Rename preserves handles; the initial PoC rejects
+further operations after unlink/replacement deletes their object. Release, session closure/expiry,
+and restart invalidate handles. Fsync MUST wait for preceding handle writes and report failures.
+
+@cc [owner:spolu,label:backend] upload-is-not-publication
+Completed uploads MUST contain no namespace side effects and MUST NOT acknowledge write/fsync.
+Metadata commits MUST accept internal completed-upload descriptors instead of file bytes, validate
+workspace/object/version/size and storage origin, then publish atomically and await durability.
+Clients MUST NOT be able to construct trusted descriptors. Publication MUST reauthorize and check
+current namespace/content preconditions even when the upload previously passed authorization.
