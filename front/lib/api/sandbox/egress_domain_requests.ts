@@ -71,30 +71,3 @@ function requestPolicyDomainsForScope(
       return assertNever(scope);
   }
 }
-
-export function formatEgressDomainRequestsNote(
-  summary: EgressDomainRequestsSummary
-): string | null {
-  switch (summary.kind) {
-    case "failed":
-      return (
-        `Could not request ${summary.domains.join(", ")}: ${summary.message} ` +
-        "Retry with request_egress_domain once resolved."
-      );
-    case "filed": {
-      const target = summary.scope === "pod" ? "Pod" : "workspace";
-      const parts: string[] = [];
-      if (summary.requested.length > 0) {
-        parts.push(
-          `Requested for the ${target} (pending admin approval): ${summary.requested.join(", ")}.`
-        );
-      }
-      if (summary.alreadyAllowed.length > 0) {
-        parts.push(`Already allowed: ${summary.alreadyAllowed.join(", ")}.`);
-      }
-      return parts.length > 0 ? parts.join(" ") : null;
-    }
-    default:
-      return assertNever(summary);
-  }
-}

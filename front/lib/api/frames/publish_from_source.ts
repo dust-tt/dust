@@ -40,6 +40,7 @@ import {
   parseFrameManifest,
 } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { DustFileSystemError } from "@app/types/file_system";
 import {
   contentTypeFromFileName,
@@ -315,6 +316,11 @@ export async function publishFrameFromSource(
 // Requests land where the Frame's functions run: the Pod whose policy the Frame
 // sandbox inherits, else the workspace. Never the Frame's own owner file, which
 // no admin surface lists.
+/**
+ * @cc [owner:smb2268,label:backend] egress-filing-never-fails-publish
+ * MUST NOT throw or surface an error to the caller: the publication is already active when
+ * domains are filed, so failures are reported inside the returned summary (`kind: "failed"`).
+ */
 async function requestFrameEgressDomains(
   auth: Authenticator,
   { frame, domains }: { frame: FileResource; domains: string[] }
@@ -475,7 +481,7 @@ async function replaceLegacyFrameFromSource(
   const target = resolved.value;
 
   const publication = await withFrameSourceLock<
-    { publicationId: string },
+    { publicationId: string; manifest: FrameManifest },
     PublishFrameFromSourceError
   >(target.legacyFrameId, async () => {
     const legacyFrame = await FileResource.fetchById(
@@ -567,8 +573,12 @@ async function replaceLegacyFrameFromSource(
           "Legacy Frame v2 publication failed, restoring legacy Frame"
         );
         await legacyFrame.restoreLegacyFrame(legacyFields);
+        return published;
       }
-      return published;
+      return new Ok({
+        publicationId: published.value.publicationId,
+        manifest,
+      });
     } catch (error) {
       logger.error(
         { ...logContext, error },
@@ -611,12 +621,34 @@ async function replaceLegacyFrameFromSource(
     );
   }
 
+  // Same contract as the fresh-publish path: declared domains are filed once
+  // the publication is live, outside the source lock, on the scope the Frame's
+  // sandbox inherits — the Pod for pod mounts and Pod conversations, else the
+  // workspace (the same rule as FrameSandboxAdapter.resolveScope).
+  const { domains } = publication.value.manifest;
+  const scopePodId =
+    target.mount.kind === "pod"
+      ? target.mount.id
+      : isPodConversation(params.conversation)
+        ? params.conversation.spaceId
+        : null;
+  const egressDomains =
+    domains.length > 0
+      ? await requestEgressDomainsForScope(auth, {
+          scope: scopePodId
+            ? { kind: "pod", podId: scopePodId }
+            : { kind: "workspace" },
+          domains,
+        })
+      : null;
+
   return new Ok({
     kind: "v2",
     frameId: target.legacyFrameId,
     sourcePath: target.manifestPath,
     publicationId: publication.value.publicationId,
     created: false,
+    egressDomains,
   });
 }
 

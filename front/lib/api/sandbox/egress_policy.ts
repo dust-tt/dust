@@ -460,6 +460,11 @@ function classifyDomainRequest(
 // request is reviewed by an admin before it grants, the same trust boundary
 // as the admin settings PUT, which also allows them. The batch is rejected
 // whole when it would push the pending section past the cap.
+/**
+ * @cc [owner:smb2268,label:security] requests-never-touch-allowlist
+ * Filing requests MUST only append to `requestedDomains`; it MUST NOT add to or remove from
+ * `allowedDomains`. Only an admin approval path may promote a domain into the allowlist.
+ */
 async function requestPolicyDomains(
   scope: PolicyDomainScope,
   { domains }: { domains: string[] }

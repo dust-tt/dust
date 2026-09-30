@@ -13,10 +13,7 @@ vi.mock("@app/lib/api/sandbox/egress_policy", () => ({
   requestWorkspacePolicyDomains: mockRequestWorkspacePolicyDomains,
 }));
 
-import {
-  formatEgressDomainRequestsNote,
-  requestEgressDomainsForScope,
-} from "./egress_domain_requests";
+import { requestEgressDomainsForScope } from "./egress_domain_requests";
 
 const mockAuth = {} as unknown as Authenticator;
 const EMPTY_POLICY = { allowedDomains: [] };
@@ -93,43 +90,5 @@ describe("requestEgressDomainsForScope", () => {
       domains: ["api.stripe.com", "*.stripe.com"],
       message: "cap reached",
     });
-  });
-});
-
-describe("formatEgressDomainRequestsNote", () => {
-  it("names the scope and lists pending and already allowed domains", () => {
-    expect(
-      formatEgressDomainRequestsNote({
-        kind: "filed",
-        scope: "pod",
-        requested: ["*.stripe.com"],
-        alreadyAllowed: ["api.stripe.com"],
-      })
-    ).toBe(
-      "Requested for the Pod (pending admin approval): *.stripe.com. Already allowed: api.stripe.com."
-    );
-  });
-
-  it("returns null when nothing was requested or already allowed", () => {
-    expect(
-      formatEgressDomainRequestsNote({
-        kind: "filed",
-        scope: "workspace",
-        requested: [],
-        alreadyAllowed: [],
-      })
-    ).toBeNull();
-  });
-
-  it("carries the failure reason and the retry hint", () => {
-    expect(
-      formatEgressDomainRequestsNote({
-        kind: "failed",
-        domains: ["api.stripe.com"],
-        message: "cap reached.",
-      })
-    ).toBe(
-      "Could not request api.stripe.com: cap reached. Retry with request_egress_domain once resolved."
-    );
   });
 });

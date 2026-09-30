@@ -460,14 +460,18 @@ describe("publishFrameFromSource", () => {
   });
 });
 
-type LegacyFrameReplacementScope = "conversation" | "pod";
+// "pod-conversation" places the legacy Frame on the conversation mount of a
+// Pod conversation — the mount agents normally author on inside a Pod.
+type LegacyFrameReplacementScope = "conversation" | "pod" | "pod-conversation";
 
 async function setupLegacyFrameReplacement({
   scope,
   replacementUiSource = uiSource,
+  manifestContent = manifest,
 }: {
   scope: LegacyFrameReplacementScope;
   replacementUiSource?: string;
+  manifestContent?: string;
 }) {
   const {
     authenticator: auth,
@@ -475,7 +479,9 @@ async function setupLegacyFrameReplacement({
     workspace,
   } = await createResourceTest({ role: "admin" });
   const pod =
-    scope === "pod" ? await SpaceFactory.project(workspace, user.id) : null;
+    scope === "conversation"
+      ? null
+      : await SpaceFactory.project(workspace, user.id);
   const podAuth = pod
     ? await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId)
     : auth;
@@ -486,15 +492,17 @@ async function setupLegacyFrameReplacement({
     spaceId: pod?.id,
   });
 
-  const scopedRoot = pod
-    ? `pod-${pod.sId}`
+  const onPodMount = scope === "pod";
+  const scopedRoot = onPodMount
+    ? `pod-${pod?.sId}`
     : `conversation-${conversation.sId}`;
-  const gcsRoot = pod
-    ? getPodFilesBasePath({ workspaceId: workspace.sId, podId: pod.sId })
-    : getConversationFilesBasePath({
-        workspaceId: workspace.sId,
-        conversationId: conversation.sId,
-      });
+  const gcsRoot =
+    onPodMount && pod
+      ? getPodFilesBasePath({ workspaceId: workspace.sId, podId: pod.sId })
+      : getConversationFilesBasePath({
+          workspaceId: workspace.sId,
+          conversationId: conversation.sId,
+        });
   const legacyPath = `${scopedRoot}/dashboards/Sales.tsx`;
   const manifestPath = `${scopedRoot}/dashboards/Sales/${FRAME_MANIFEST_FILE}`;
   const gcsSourceDirectoryPath = `${gcsRoot}dashboards/Sales`;
@@ -504,10 +512,11 @@ async function setupLegacyFrameReplacement({
     fileName: "Sales.tsx",
     fileSize: Buffer.byteLength(uiSource),
     status: "created",
-    useCase: pod ? "project_context" : "conversation",
-    useCaseMetadata: pod
-      ? { spaceId: pod.sId }
-      : { conversationId: conversation.sId },
+    useCase: onPodMount ? "project_context" : "conversation",
+    useCaseMetadata:
+      onPodMount && pod
+        ? { spaceId: pod.sId }
+        : { conversationId: conversation.sId },
     mountFilePath: `${gcsRoot}dashboards/Sales.tsx`,
   });
   await legacyFrame.ensureShareableFrame(podAuth);
@@ -515,7 +524,7 @@ async function setupLegacyFrameReplacement({
   fileStorageMock.setObject(legacyGcsPath, uiSource);
 
   const sourceByPath = new Map([
-    [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
+    [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifestContent],
     [`${gcsSourceDirectoryPath}/index.tsx`, replacementUiSource],
     [`${gcsSourceDirectoryPath}/theme.ts`, "export const theme = {};"],
   ]);
@@ -535,6 +544,13 @@ async function setupLegacyFrameReplacement({
   fileStorageMock.setFileContent(
     (filePath) => sourceByPath.get(filePath) ?? null
   );
+  // Egress policy files are absent until written, so domain requests start
+  // from an empty policy instead of the mock's placeholder content.
+  fileStorageMock.setFetchFileContentNotFound(
+    (filePath) =>
+      filePath.endsWith("/sandbox-egress-policy.json") ||
+      /\/sandboxes\/[^/]+\.json$/.test(filePath)
+  );
 
   return {
     auth: podAuth,
@@ -544,6 +560,7 @@ async function setupLegacyFrameReplacement({
     legacyPath,
     manifestPath,
     pod,
+    workspace,
   };
 }
 
@@ -646,6 +663,88 @@ describe("publishFrameFromSource replacing a legacy Frame", () => {
     expect(metadata.pinnedFramePath).toBe(manifestPath);
     expect(metadata.frameTabs.map((tab) => tab.path)).toEqual([manifestPath]);
     expect(metadata.tabsOrder).toContain(manifestPath);
+  });
+
+  it("files declared domains on the Pod for a pod-mount replacement", async () => {
+    const { auth, conversation, legacyPath, manifestPath, pod, workspace } =
+      await setupLegacyFrameReplacement({
+        scope: "pod",
+        manifestContent: manifestWithDomains,
+      });
+    assert(pod, "Pod not created");
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: legacyPath,
+    });
+
+    assert(result.isOk(), "Replacement publish failed");
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toMatchObject({
+      kind: "filed",
+      scope: "pod",
+    });
+    expect(
+      requestedDomainsAt(`w/${workspace.sId}/sandboxes/${pod.sId}.json`)
+    ).toEqual(["api.stripe.com", "*.stripe.com"]);
+  });
+
+  it("files declared domains on the Pod for a conversation-mount replacement in a Pod conversation", async () => {
+    const { auth, conversation, legacyPath, manifestPath, pod, workspace } =
+      await setupLegacyFrameReplacement({
+        scope: "pod-conversation",
+        manifestContent: manifestWithDomains,
+      });
+    assert(pod, "Pod not created");
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: legacyPath,
+    });
+
+    assert(result.isOk(), "Replacement publish failed");
+    assert(result.value.kind === "v2");
+    // The sandbox of a Pod conversation's Frame inherits the Pod's policy, so
+    // the request must land there, not on the workspace.
+    expect(result.value.egressDomains).toMatchObject({
+      kind: "filed",
+      scope: "pod",
+    });
+    expect(
+      requestedDomainsAt(`w/${workspace.sId}/sandboxes/${pod.sId}.json`)
+    ).toEqual(["api.stripe.com", "*.stripe.com"]);
+    expect(
+      fileStorageMock.getObject(`w/${workspace.sId}/sandbox-egress-policy.json`)
+    ).toBeUndefined();
+  });
+
+  it("files declared domains on the workspace for a plain-conversation replacement", async () => {
+    const { auth, conversation, legacyPath, manifestPath, workspace } =
+      await setupLegacyFrameReplacement({
+        scope: "conversation",
+        manifestContent: manifestWithDomains,
+      });
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: legacyPath,
+    });
+
+    assert(result.isOk(), "Replacement publish failed");
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toMatchObject({
+      kind: "filed",
+      scope: "workspace",
+    });
+    expect(
+      requestedDomainsAt(`w/${workspace.sId}/sandbox-egress-policy.json`)
+    ).toEqual(["api.stripe.com", "*.stripe.com"]);
   });
 
   it("refuses to replace a file that is not a legacy Frame", async () => {
