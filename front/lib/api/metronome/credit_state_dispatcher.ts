@@ -282,22 +282,6 @@ export async function dispatchCreditsAdded({
   });
 }
 
-export async function dispatchPaygDisabled({
-  workspace,
-}: {
-  workspace: WorkspaceResource;
-}): Promise<void> {
-  await transitionWorkspacePool(workspace, { type: "payg_disabled" });
-}
-
-export async function dispatchPaygEnabled({
-  workspace,
-}: {
-  workspace: WorkspaceResource;
-}): Promise<void> {
-  await transitionWorkspacePool(workspace, { type: "payg_enabled" });
-}
-
 export async function dispatchLowBalance({
   workspace,
   balanceAwu,

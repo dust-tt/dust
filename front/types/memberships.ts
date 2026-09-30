@@ -78,15 +78,6 @@ export const NORMALIZED_POOL_LIMIT_SEAT_TYPES = [
 export type NormalizedPoolLimitSeatType =
   (typeof NORMALIZED_POOL_LIMIT_SEAT_TYPES)[number];
 
-export function isNormalizedPoolLimitSeatType(
-  value: unknown
-): value is NormalizedPoolLimitSeatType {
-  return (
-    typeof value === "string" &&
-    (NORMALIZED_POOL_LIMIT_SEAT_TYPES as readonly string[]).includes(value)
-  );
-}
-
 /**
  * Collapse a seat type's `_yearly` variant onto its base tier (e.g.
  * `pro_yearly` → `pro`). Yearly and monthly variants share a tier, icon and

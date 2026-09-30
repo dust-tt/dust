@@ -45,8 +45,6 @@ import {
   useRef,
 } from "react";
 
-export { SELECT_ATTACH_CONTEXT_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
-
 const BROWSE_EMPTY_MESSAGE = "Nothing to browse here";
 
 function toSlashCommandItem(

@@ -9,11 +9,6 @@
 export const PROJECT_TASK_DIRECTIVE_REGEX =
   /(?::pod_task|:project_task|:todo)\[([^\]]+)]\{sId=([^}]+?)}/g;
 
-export const PROJECT_TASK_DIRECTIVE_REGEX_BEGINNING = new RegExp(
-  "^" + PROJECT_TASK_DIRECTIVE_REGEX.source,
-  PROJECT_TASK_DIRECTIVE_REGEX.flags
-);
-
 export function serializeProjectTaskDirective(mention: {
   label: string;
   sId: string;

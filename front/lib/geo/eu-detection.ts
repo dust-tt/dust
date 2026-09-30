@@ -39,13 +39,6 @@ export const GDPR_COUNTRY_CODES = new Set([
   "CH", // Switzerland (has similar data protection laws)
 ]);
 
-export function isEUCountry(countryCode: string | null | undefined): boolean {
-  if (!countryCode) {
-    return false;
-  }
-  return EU_COUNTRY_CODES.has(countryCode.toUpperCase());
-}
-
 export function isGDPRCountry(countryCode: string | null | undefined): boolean {
   if (!countryCode) {
     return false;

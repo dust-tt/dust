@@ -1,16 +1,7 @@
 import type { DustStreamEndpointConfiguration } from "@app/lib/llms/stream/types/configuration";
-import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
+import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
-
-// Generic over raw payload `I`, raw stream event `O`, input config `C`.
-export abstract class DustStreamEndpoint<
-  I = unknown,
-  O = unknown,
-  C extends InputConfig = InputConfig,
-> extends StreamEndpoint<I, O> {
-  declare ["constructor"]: DustStreamEndpointConfiguration<C>;
-}
 
 // Like `StreamEndpointConstructor`, but with `DustStreamEndpointConfiguration`.
 export type DustStreamEndpointConstructor<

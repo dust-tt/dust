@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
-export function JoinPage() {
+function JoinPage() {
   const wId = useRequiredPathParam("wId");
   const token = useSearchParam("t");
   const conversationId = useSearchParam("cId");

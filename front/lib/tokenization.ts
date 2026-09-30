@@ -3,10 +3,8 @@ import logger from "@app/logger/logger";
 import { DEFAULT_TOKEN_COUNT_ADJUSTMENT } from "@app/types/assistant/assistant";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { CredentialsType } from "@app/types/provider";
-import type { LLMCredentialsType } from "@app/types/provider_credential";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import type { TokenizerConfig } from "@app/types/tokenizer";
 import chunk from "lodash/chunk";
 import config from "./api/config";
@@ -64,36 +62,6 @@ export async function tokenCountForTexts(
     }
 
     return new Ok(counts);
-  } catch (err) {
-    return new Err(new Error(`Error tokenizing model message: ${err}`));
-  }
-}
-
-export async function tokenSplit(
-  text: string,
-  model: { providerId: string; modelId: string; tokenizer: TokenizerConfig },
-  splitAt: number,
-  credentials: LLMCredentialsType
-): Promise<Result<string, Error>> {
-  try {
-    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const res = await coreAPI.tokenize({
-      text,
-      providerId: model.providerId,
-      modelId: model.modelId,
-      tokenizer: model.tokenizer,
-      credentials,
-    });
-    if (res.isErr()) {
-      return new Err(
-        new Error(`Error tokenizing model message: ${res.error.message}`)
-      );
-    }
-    const remainingText = res.value.tokens
-      .slice(0, splitAt)
-      .map(([, tokenText]) => tokenText)
-      .join("");
-    return new Ok(safeSubstring(remainingText, 0, remainingText.length));
   } catch (err) {
     return new Err(new Error(`Error tokenizing model message: ${err}`));
   }

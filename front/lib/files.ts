@@ -12,15 +12,6 @@ export const isPastedFile = (contentType: string | undefined): boolean => {
   return contentType === PASTED_FILE_CONTENT_TYPE;
 };
 
-// We use this to detect if a Interactive Content file uses conversation files.
-// In which case, we don't want to display it publicly. Our proxy here is to look for usage of the
-// `useFile` hook.
-export function isUsingConversationFiles(content: string): boolean {
-  // Simple regex to detect useFile hook usage.
-  const useFileRegex = /useFile\s*\(/;
-  return useFileRegex.test(content);
-}
-
 /**
  * Converts a filename to a human-friendly format suitable for display.
  *

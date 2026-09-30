@@ -7,7 +7,6 @@ let connectorsPrimaryDbInstance: Sequelize | null = null;
 let coreReplicaDbInstance: Sequelize | null = null;
 let corePrimaryDbInstance: Sequelize | null = null;
 let frontReplicaDbInstance: Sequelize | null = null;
-let frontPrimaryDbInstance: Sequelize | null = null;
 
 export function getConnectorsReplicaDbConnection() {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -74,18 +73,4 @@ export function getCorePrimaryDbConnection() {
   }
 
   return corePrimaryDbInstance;
-}
-
-export function getFrontPrimaryDbConnection() {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  if (!frontPrimaryDbInstance) {
-    frontPrimaryDbInstance = new Sequelize(
-      config.getFrontDatabasePrimaryUri(),
-      {
-        logging: false,
-      }
-    );
-  }
-
-  return frontPrimaryDbInstance;
 }

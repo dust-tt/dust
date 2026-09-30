@@ -721,17 +721,3 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
 
   return consumptionUpdate;
 }
-
-/**
- * Returns the action snapshot loaded for attribution so the immediately following analytics index
- * can reuse it instead of querying the same rows again.
- */
-export async function computeAndStoreAgentMessageConsumptionAttributionForAnalytics(
-  auth: Authenticator,
-  message: { agentMessageId: string; conversationId: string }
-): Promise<AgentMessageConsumptionAttributionComputation> {
-  return computeAndStoreAgentMessageConsumptionAttributionComputation(
-    auth,
-    message
-  );
-}

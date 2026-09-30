@@ -1,17 +1,11 @@
-import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import type {
   DataSourceViewWithUsage,
-  PokeGetDataSourceViewContentNodes,
   PokeListDataSourceViews,
 } from "@app/lib/api/poke/data_source_views";
 import { createUseInfiniteContentNodes } from "@app/lib/swr/data_source_views";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
-import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
-import type { DataSourceViewType } from "@app/types/data_source_view";
-import type { LightWorkspaceType } from "@app/types/user";
-import { useMemo } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
+import type { Fetcher } from "swr";
 
 export function usePokeDataSourceViews({
   disabled,
@@ -30,95 +24,6 @@ export function usePokeDataSourceViews({
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
-  };
-}
-
-interface DataSourceViewContentNodesProps {
-  dataSourceView?: DataSourceViewType;
-  disabled?: boolean;
-  internalIds?: string[];
-  owner: LightWorkspaceType;
-  pagination?: CursorPaginationParams;
-  parentId?: string;
-  viewType?: ContentNodesViewType;
-}
-
-export function usePokeDataSourceViewContentNodes({
-  dataSourceView,
-  disabled = false,
-  internalIds,
-  owner,
-  pagination,
-  parentId,
-  viewType,
-}: DataSourceViewContentNodesProps): {
-  isNodesError: boolean;
-  isNodesLoading: boolean;
-  isNodesValidating: boolean;
-  mutate: KeyedMutator<PokeGetDataSourceViewContentNodes>;
-  mutateRegardlessOfQueryParams: KeyedMutator<PokeGetDataSourceViewContentNodes>;
-  nodes: PokeGetDataSourceViewContentNodes["nodes"];
-  totalNodesCount: number;
-  totalNodesCountIsAccurate: boolean;
-  nextPageCursor: string | null;
-} {
-  const { fetcherWithBody } = useFetcher();
-  const params = new URLSearchParams();
-  if (pagination && pagination.cursor) {
-    params.set("cursor", pagination.cursor.toString());
-  }
-  if (pagination && pagination.limit) {
-    params.set("limit", pagination.limit.toString());
-  }
-
-  const url =
-    dataSourceView && viewType
-      ? `/api/poke/workspaces/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
-      : null;
-
-  const body = JSON.stringify({
-    internalIds,
-    parentId,
-    viewType,
-  });
-
-  const fetchKey = useMemo(() => {
-    return JSON.stringify({
-      url,
-      body,
-    }); // Serialize with body to ensure uniqueness.
-  }, [url, body]);
-
-  const { data, error, mutate, isValidating, mutateRegardlessOfQueryParams } =
-    useSWRWithDefaults(
-      fetchKey,
-      async () => {
-        if (!url) {
-          return undefined;
-        }
-
-        return fetcherWithBody([
-          url,
-          { internalIds, parentId, viewType },
-          "POST",
-        ]);
-      },
-      {
-        disabled: disabled || !viewType,
-      }
-    );
-
-  return {
-    isNodesError: !!error,
-    isNodesLoading: !error && !data && !disabled,
-    isNodesValidating: isValidating,
-    mutate,
-    mutateRegardlessOfQueryParams,
-    nodes: data?.nodes ?? emptyArray(),
-    totalNodesCount: data ? data.total : 0,
-    totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    nextPageCursor: data?.nextPageCursor || null,
   };
 }
 

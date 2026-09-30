@@ -4,7 +4,6 @@ export { useCompactConversation } from "./useCompactConversation";
 export { useConversation } from "./useConversation";
 export { useConversationContextUsage } from "./useConversationContextUsage";
 export { useConversationFeedbacks } from "./useConversationFeedbacks";
-export { useConversationFileContent } from "./useConversationFileContent";
 export {
   requestConversationMarkAsRead,
   useConversationMarkAsRead,
@@ -12,7 +11,6 @@ export {
 export { useConversationMarkAsUnread } from "./useConversationMarkAsUnread";
 export {
   CONVERSATION_MESSAGES_PAGE_LIMIT,
-  useConversationMessage,
   useConversationMessageAction,
   useConversationMessages,
 } from "./useConversationMessages";

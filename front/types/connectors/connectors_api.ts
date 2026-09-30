@@ -71,10 +71,6 @@ export const CONNECTORS_ERROR_TYPES = [
 
 export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];
 
-export function isConnectorError(val: string): val is ConnectorErrorType {
-  return (CONNECTORS_ERROR_TYPES as unknown as string[]).includes(val);
-}
-
 export type InternalConnectorType = {
   id: string;
   type: ConnectorProvider;

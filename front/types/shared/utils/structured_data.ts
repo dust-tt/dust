@@ -1,8 +1,4 @@
-import { CsvError, parse } from "csv-parse";
-import { stringify } from "csv-stringify";
-
-export class InvalidStructuredDataHeaderError extends Error {}
-class ParsingCsvError extends Error {}
+import { parse } from "csv-parse";
 
 export async function guessDelimiter(csv: string): Promise<string | undefined> {
   // Detect the delimiter: try to parse the first 2 lines with different delimiters,
@@ -41,39 +37,4 @@ export async function guessDelimiter(csv: string): Promise<string | undefined> {
   }
 
   return delimiter;
-}
-
-// This function is used by connectors to turn a , ; \t separated file into a comma separated file.
-// It also will raise if the file can't be parsed.
-export async function parseAndStringifyCsv(tableCsv: string): Promise<string> {
-  const delimiter = await guessDelimiter(tableCsv);
-  const records: unknown[] = [];
-
-  try {
-    const parser = parse(tableCsv, {
-      delimiter,
-      skipEmptyLines: true,
-      columns: (c) => c,
-    });
-
-    for await (const record of parser) {
-      records.push(record);
-    }
-  } catch (err) {
-    throw new ParsingCsvError(
-      err instanceof CsvError
-        ? `Unable to parse CSV string : ${err.message}`
-        : "Unable to parse CSV string"
-    );
-  }
-
-  return new Promise((resolve, reject) => {
-    stringify(records, { header: true }, (err, output) => {
-      if (err) {
-        reject(new ParsingCsvError("Unable to stringify parsed CSV data"));
-      } else {
-        resolve(output);
-      }
-    });
-  });
 }

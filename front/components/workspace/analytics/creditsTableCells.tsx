@@ -10,10 +10,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { ComponentProps, ReactNode } from "react";
 
-function EmptyCell() {
-  return <span className="text-xs text-muted-foreground">—</span>;
-}
-
 interface AvatarNameCellProps {
   name: string;
   imageUrl: string | null;
@@ -125,25 +121,5 @@ export function CreditsCell({
       tooltipTriggerAsChild
       trigger={<span className="text-sm">{formatCreditsCompact(credits)}</span>}
     />
-  );
-}
-
-// Vertical list of up to 3 entities (top agents/users/skills) with the shared
-// empty-state placeholder. Per-item rendering is left to the caller since the
-// item content differs (avatar, secondary text, tooltip).
-export function EntityList<I>({
-  items,
-  renderItem,
-}: {
-  items: I[];
-  renderItem: (item: I, index: number) => ReactNode;
-}) {
-  if (items.length === 0) {
-    return <EmptyCell />;
-  }
-  return (
-    <div className="flex flex-col gap-2 py-1">
-      {items.slice(0, 3).map((item, index) => renderItem(item, index))}
-    </div>
   );
 }

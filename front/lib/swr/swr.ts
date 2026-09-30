@@ -1,4 +1,4 @@
-export { FetcherProvider, useFetcher } from "@app/lib/swr/FetcherContext";
+export { useFetcher } from "@app/lib/swr/FetcherContext";
 
 import { isAPIErrorResponse } from "@app/types/error";
 import { useCallback, useRef } from "react";

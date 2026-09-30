@@ -31,11 +31,3 @@ export type SlackConfigurationType = z.infer<
 >;
 
 // Whitelist.
-
-export type SlackbotWhitelistType = "summon_agent" | "index_messages";
-
-export function isSlackbotWhitelistType(
-  value: unknown
-): value is SlackbotWhitelistType {
-  return value === "summon_agent" || value === "index_messages";
-}

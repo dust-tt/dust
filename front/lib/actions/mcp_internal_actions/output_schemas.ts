@@ -1,13 +1,5 @@
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { UserQuestionSchema } from "@app/lib/actions/types";
-import type {
-  ClariCall,
-  ClariCallDetails,
-} from "@app/lib/api/actions/servers/clari_copilot/types";
-import {
-  ClariCallDetailsSchema,
-  ClariCallSchema,
-} from "@app/lib/api/actions/servers/clari_copilot/types";
 import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { ALL_FILE_FORMATS } from "@app/types/files";
@@ -173,25 +165,6 @@ export function isThinkingOutput(
 
 // Final output of the reasoning when successful with the non-CoT tokens.
 
-export const ReasoningSuccessOutputSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.REASONING_SUCCESS),
-  text: z.string(),
-  uri: z.literal(""),
-});
-
-export type ReasoningSuccessOutputType = z.infer<
-  typeof ReasoningSuccessOutputSchema
->;
-
-export function isReasoningSuccessOutput(
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: ReasoningSuccessOutputType } {
-  return (
-    outputBlock.type === "resource" &&
-    ReasoningSuccessOutputSchema.safeParse(outputBlock.resource).success
-  );
-}
-
 // SQL query generated during the tool execution.
 
 const SqlQueryOutputSchema = z.object({
@@ -256,19 +229,6 @@ export const QueryWritingInstructionsResourceSchema = z.object({
 export type QueryWritingInstructionsResourceType = z.infer<
   typeof QueryWritingInstructionsResourceSchema
 >;
-
-export const isQueryWritingInstructionsResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: QueryWritingInstructionsResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    QueryWritingInstructionsResourceSchema.safeParse(outputBlock.resource)
-      .success
-  );
-};
 
 export const ExampleRowsResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXAMPLE_ROWS),
@@ -565,28 +525,6 @@ export const isRunAgentResultResourceType = (
   return (
     outputBlock.type === "resource" &&
     RunAgentResultResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
-const RunAgentHandoverResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_HANDOVER),
-  text: z.string(),
-  uri: z.string(),
-});
-
-type RunAgentHandoverResourceType = z.infer<
-  typeof RunAgentHandoverResourceSchema
->;
-
-export const isRunAgentHandoverResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: RunAgentHandoverResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    RunAgentHandoverResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 
@@ -1088,91 +1026,10 @@ export const isAgentPauseOutputResourceType = (
 export const OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE =
   "application/vnd.dust.tool-output.outlook-mail-folder-list" as const;
 
-const OutlookFolderItemSchema = z.object({
-  name: z.string(),
-  childFolderCount: z.number().optional(),
-  unreadItemCount: z.number().optional(),
-  totalItemCount: z.number().optional(),
-});
-
-const OutlookMailFolderListResourceSchema = z.object({
-  mimeType: z.literal(OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE),
-  uri: z.literal(""),
-  text: z.string(),
-  path: z.array(z.string()),
-  folders: z.array(OutlookFolderItemSchema),
-});
-
-type OutlookMailFolderListResourceType = z.infer<
-  typeof OutlookMailFolderListResourceSchema
->;
-
-export const isOutlookMailFolderListResource = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: OutlookMailFolderListResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    OutlookMailFolderListResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
 // Clari Copilot tool outputs.
 
 export const CLARI_CALL_LIST_MIME_TYPE =
   "application/vnd.dust.tool-output.clari-call-list" as const;
 
-const ClariCallListResourceSchema = z.object({
-  mimeType: z.literal(CLARI_CALL_LIST_MIME_TYPE),
-  uri: z.literal(""),
-  text: z.string(),
-  calls: z.array(ClariCallSchema),
-  pagination: z
-    .object({
-      matched: z.number().optional(),
-      hasMore: z.boolean().optional(),
-      nextPageSkip: z.number().optional(),
-    })
-    .optional(),
-});
-
-type ClariCallListResourceType = z.infer<typeof ClariCallListResourceSchema> & {
-  calls: ClariCall[];
-};
-
-export const isClariCallListResource = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: ClariCallListResourceType } => {
-  return (
-    outputBlock.type === "resource" &&
-    ClariCallListResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
 export const CLARI_CALL_DETAILS_MIME_TYPE =
   "application/vnd.dust.tool-output.clari-call-details" as const;
-
-const ClariCallDetailsResourceSchema = z.object({
-  mimeType: z.literal(CLARI_CALL_DETAILS_MIME_TYPE),
-  uri: z.string(),
-  text: z.string(),
-  call: ClariCallDetailsSchema,
-});
-
-type ClariCallDetailsResourceType = z.infer<
-  typeof ClariCallDetailsResourceSchema
-> & { call: ClariCallDetails };
-
-export const isClariCallDetailsResource = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: ClariCallDetailsResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    ClariCallDetailsResourceSchema.safeParse(outputBlock.resource).success
-  );
-};

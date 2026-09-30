@@ -53,8 +53,6 @@ export function getWhitelistedProviders(
   return whiteListedProviders.intersection(configuredProviders);
 }
 
-export { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
-
 export function isProviderWhitelistedForAuth(
   auth: Authenticator,
   providerId: ModelProviderIdType

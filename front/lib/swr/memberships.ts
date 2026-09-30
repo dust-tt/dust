@@ -10,7 +10,6 @@ import type {
   MembersLookupResponseBody,
 } from "@app/types/api/members";
 import type {
-  GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
   UserSpendLimit,
 } from "@app/types/api/users/spend_limit";
@@ -625,31 +624,6 @@ function getSeatUpdateNotification({
 
 function spendLimitUrl(workspaceId: string, memberId: string): string {
   return `/api/w/${workspaceId}/members/${memberId}/spend_limit`;
-}
-
-export function useUserSpendLimit({
-  workspaceId,
-  memberId,
-  disabled,
-}: {
-  workspaceId: string;
-  memberId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const spendLimitFetcher: Fetcher<GetUserSpendLimitResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    spendLimitUrl(workspaceId, memberId),
-    spendLimitFetcher,
-    { disabled }
-  );
-
-  return {
-    spendLimit: data,
-    isSpendLimitLoading: !error && !data && !disabled,
-    isSpendLimitError: !!error,
-    mutateSpendLimit: mutate,
-  };
 }
 
 export function useUpdateUserSpendLimit({

@@ -11,19 +11,9 @@ import {
   isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { classNames } from "@app/lib/utils";
 import type { BillingPeriod, PlanType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  Button,
-  Hoverable,
-  PriceTable,
-  Rocket02,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@dust-tt/sparkle";
+import { Button, Hoverable, PriceTable, Rocket02 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -34,64 +24,6 @@ type PriceTableItem = {
   variant: "check" | "dash" | "xmark";
   display: PriceTableDisplay[];
 };
-
-const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
-  {
-    label: "Everything in Pro, plus:",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Advanced security and controls",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Larger storage and file size limits",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Custom price on programmatic usage (API, GSheet, Zapier)",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Flexible payment options (SEPA, Credit Card)",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Priority support & dedicated account management",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Priority access to new features",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "US / EU data hosting",
-    variant: "check",
-    display: ["landing"],
-  },
-  {
-    label: "User provisioning (SCIM)",
-    variant: "check",
-    display: ["landing"],
-  },
-  {
-    label: "Salesforce Tool",
-    variant: "check",
-    display: ["landing"],
-  },
-];
 
 type SeatBasedPlan = "pro" | "business";
 
@@ -361,114 +293,5 @@ export function BusinessPriceTable({
       onClick={onClick}
       size={size}
     />
-  );
-}
-
-function EnterprisePriceTable({
-  size,
-  isProcessing,
-}: {
-  size: "sm" | "xs";
-  isProcessing?: boolean;
-}) {
-  const biggerButtonSize = size === "xs" ? "sm" : "md";
-  return (
-    <PriceTable
-      title="Enterprise"
-      price="Custom"
-      size={size}
-      priceLabel=" based on active users"
-      magnified={false}
-    >
-      <PriceTable.ActionContainer position="top">
-        <Button
-          href="/home/contact"
-          variant="highlight"
-          size={biggerButtonSize}
-          disabled={isProcessing}
-          label="Contact Sales"
-          onClick={withTracking(
-            TRACKING_AREAS.PRICING,
-            "plan_enterprise_contact"
-          )}
-        />
-      </PriceTable.ActionContainer>
-      {ENTERPRISE_PLAN_ITEMS.map((item, index) => (
-        <PriceTable.Item
-          key={index}
-          label={item.label}
-          variant={item.variant}
-        />
-      ))}
-    </PriceTable>
-  );
-}
-
-interface PricePlanProps {
-  owner?: WorkspaceType;
-  plan?: PlanType;
-  onClickProPlan?: () => void;
-  isProcessing?: boolean;
-  flexCSS?: string;
-  display: PriceTableDisplay;
-}
-
-export function PricePlans({
-  owner,
-  flexCSS = "mx-4 flex flex-row w-full md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
-  plan,
-  onClickProPlan,
-  isProcessing,
-  display,
-}: PricePlanProps) {
-  return (
-    <>
-      {/* Tabs view for smaller screens (hidden on lg and above) */}
-      <div
-        className={classNames(
-          "mx-0 sm:mx-24 lg:hidden",
-          "w-full max-w-md px-2 sm:px-0"
-        )}
-      >
-        <Tabs defaultValue="pro">
-          <TabsList>
-            <TabsTrigger value="pro" label="Pro" variant="outline" />
-            <TabsTrigger
-              value="enterprise"
-              label="Enterprise"
-              variant="outline"
-            />
-          </TabsList>
-          <div className="mt-8">
-            <TabsContent value="pro">
-              <ProPriceTable
-                owner={owner}
-                display={display}
-                size="xs"
-                plan={plan}
-                isProcessing={isProcessing}
-                onClick={onClickProPlan}
-              />
-            </TabsContent>
-            <TabsContent value="enterprise">
-              <EnterprisePriceTable size="xs" isProcessing={isProcessing} />
-            </TabsContent>
-          </div>
-        </Tabs>
-      </div>
-
-      {/* Cards view for larger screens (hidden below lg) */}
-      <div className={classNames(flexCSS, "hidden lg:flex")}>
-        <ProPriceTable
-          owner={owner}
-          size="sm"
-          plan={plan}
-          isProcessing={isProcessing}
-          onClick={onClickProPlan}
-          display={display}
-        />
-        <EnterprisePriceTable size="sm" isProcessing={isProcessing} />
-      </div>
-    </>
   );
 }

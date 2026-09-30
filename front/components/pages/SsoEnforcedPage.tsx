@@ -5,7 +5,7 @@ import { useUser } from "@app/lib/swr/user";
 import { Button, Logo } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-export function SsoEnforcedPage() {
+function SsoEnforcedPage() {
   const workspaceId = useSearchParam("workspaceId");
   const returnTo = useSearchParam("returnTo");
   const { user } = useUser();

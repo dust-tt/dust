@@ -511,11 +511,6 @@ export const SlackCommandSchema = t.type({
   ),
 });
 
-export const SlackJoinResponseSchema = t.type({
-  total: t.number,
-  processed: t.number,
-});
-
 export const SlackCheckChannelResponseSchema = t.type({
   success: t.literal(true),
   channel: t.type({

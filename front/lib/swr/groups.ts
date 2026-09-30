@@ -1,9 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  GetWorkspaceGrantedRolesResponseBody,
-  GetWorkspaceGrantedSeatTypesResponseBody,
-} from "@app/lib/api/workspace";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import type { GetWorkspaceGrantedRolesResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
 import type { BulkSeatChangePreviewBody } from "@app/lib/swr/memberships";
 import {
@@ -129,37 +125,6 @@ export function useWorkspaceGrantedRoles({
 // manual seat editing in the members UI.
 function grantedSeatTypesUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/granted-seat-types`;
-}
-
-export function useWorkspaceGrantedSeatTypes({
-  workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const { hasFeature } = useFeatureFlags();
-  const grantedSeatTypesFetcher: Fetcher<GetWorkspaceGrantedSeatTypesResponseBody> =
-    fetcher;
-
-  // Skip the request entirely when the feature is off: the endpoint returns an
-  // empty list in that case, so there is nothing to fetch and no reason to lock
-  // seat editing in the members UI.
-  const isDisabled = disabled || !hasFeature("group_seat_provisioning");
-
-  const { data, error } = useSWRWithDefaults(
-    grantedSeatTypesUrl(workspaceId),
-    grantedSeatTypesFetcher,
-    { disabled: isDisabled }
-  );
-
-  return {
-    grantedSeatTypes:
-      data?.grantedSeatTypes ?? emptyArray<GroupGrantableSeatType>(),
-    isGrantedSeatTypesLoading: !error && !data && !isDisabled,
-    isGrantedSeatTypesError: error,
-  };
 }
 
 export function useGroup({

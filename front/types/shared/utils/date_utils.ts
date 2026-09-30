@@ -4,10 +4,6 @@ import { formatInTimeZone } from "date-fns-tz";
 export const ONE_HOUR_MS = 60 * 60 * 1000;
 export const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 
-export function isValidDate(date: Date) {
-  return !isNaN(date.valueOf());
-}
-
 export function dateToHumanReadable(date: Date) {
   return format(date, "MMM d, yyyy 'at' h:mm a");
 }

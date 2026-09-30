@@ -4,9 +4,3 @@ export class GCSMountDirectoryAlreadyExistsError extends Error {
     this.name = "GCSMountDirectoryAlreadyExistsError";
   }
 }
-
-export function isGCSMountDirectoryAlreadyExistsError(
-  error: unknown
-): error is GCSMountDirectoryAlreadyExistsError {
-  return error instanceof GCSMountDirectoryAlreadyExistsError;
-}
