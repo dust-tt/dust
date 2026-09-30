@@ -252,6 +252,47 @@ describe("approving skill suggestions", () => {
     expect(updated?.instructions).not.toContain("Original instructions");
   });
 
+  it("keeps HTML special characters escaped once when applying an edit", async () => {
+    // The skill builder stores `<role>` typed as text as a single-escaped paragraph. Applying an
+    // edit must not add an escaping layer to the untouched blocks, or the editor shows
+    // `&lt;role&gt;` on the next load.
+    const instructionsHtml =
+      '<div data-type="instructions-root" data-block-id="instructions-root">' +
+      '<p data-block-id="2e7f7a15">&lt;role&gt;</p>' +
+      '<p data-block-id="555b2873">you say hello</p>' +
+      '<p data-block-id="efe0e7a3">&lt;/role&gt;</p>' +
+      "</div>";
+    const { workspace, auth, skill, batch } = await setupSkill({
+      skill: {
+        instructions: "<role>\n\nyou say hello\n\n</role>",
+        instructionsHtml,
+      },
+    });
+    await SkillSuggestionFactory.create(auth, skill, {
+      batchModelId: batch.id,
+      state: "pending",
+      suggestion: instructionEditSuggestion(
+        "555b2873",
+        '<p>You say "hello" &amp; &lt;wave&gt;.</p>'
+      ),
+    });
+
+    const response = await approve(workspace, batch.sId);
+
+    expect(response.status).toBe(200);
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.instructions).toBe(
+      '<role>\n\nYou say "hello" & <wave>.\n\n</role>'
+    );
+    const html = updated?.instructionsHtml ?? "";
+    expect(html).toContain(
+      '<p data-block-id="555b2873">You say "hello" &amp; &lt;wave&gt;.</p>'
+    );
+    expect(html).toContain('<p data-block-id="2e7f7a15">&lt;role&gt;</p>');
+    expect(html).toContain('<p data-block-id="efe0e7a3">&lt;/role&gt;</p>');
+  });
+
   it("applies an edit holding a closed <tool></tool> tag", async () => {
     const { workspace, auth, globalSpace, skill, blockIds, batch } =
       await setupSkillWithBlockInstructions();

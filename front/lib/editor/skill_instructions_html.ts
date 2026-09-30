@@ -114,17 +114,9 @@ const NODE_TYPES_WITH_BLOCK_ID = new Set<string>([
   INSTRUCTIONS_ROOT_NODE_NAME,
 ]);
 
-function htmlEncode(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
 function prepareNodesForStaticRenderer(node: JSONContent): JSONContent {
   if (node.type === "text" && typeof node.text === "string") {
-    return { ...node, text: htmlEncode(node.text.replace(/\u200B/g, "")) };
+    return { ...node, text: node.text.replace(/\u200B/g, "") };
   }
 
   if (
@@ -133,7 +125,10 @@ function prepareNodesForStaticRenderer(node: JSONContent): JSONContent {
   ) {
     return {
       ...node,
-      attrs: { ...node.attrs, rawContent: htmlEncode(node.attrs.rawContent) },
+      attrs: {
+        ...node.attrs,
+        rawContent: node.attrs.rawContent.replace(/\u200B/g, ""),
+      },
     };
   }
 
