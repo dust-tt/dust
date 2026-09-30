@@ -1,3 +1,5 @@
+import { useSkillSuggestionPreviewBatchId } from "@app/components/assistant/details/SuggestionPreviewContext";
+import { trackSuggestionPreviewEdit } from "@app/components/markdown/suggestion/suggestionTracking";
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
 import config from "@app/lib/api/config";
@@ -44,6 +46,7 @@ export function SkillDetailsButtonBar({
 }: SkillDetailsButtonBarProps) {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [isSkillLinkCopied, copySkillLink] = useCopyToClipboard();
+  const previewBatchId = useSkillSuggestionPreviewBatchId();
 
   // The API redacts the private fields of the skills an admin cannot read (built on spaces they
   // are not a member of) and flags it with `canRead: false`; only admins ever get such a skill.
@@ -86,6 +89,15 @@ export function SkillDetailsButtonBar({
             size="sm"
             tooltip="Edit skill"
             href={getSkillBuilderRoute(owner.sId, skill.sId)}
+            onClick={() => {
+              if (previewBatchId) {
+                trackSuggestionPreviewEdit({
+                  batchId: previewBatchId,
+                  targetKind: "skill",
+                  targetId: skill.sId,
+                });
+              }
+            }}
             replace={replaceOnEdit}
             variant="outline"
             icon={Edit04}
