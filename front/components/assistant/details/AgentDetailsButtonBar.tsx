@@ -1,4 +1,6 @@
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
+import { useAgentSuggestionPreviewBatchId } from "@app/components/assistant/details/SuggestionPreviewContext";
+import { trackSuggestionPreviewEdit } from "@app/components/markdown/suggestion/suggestionTracking";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -47,6 +49,7 @@ export function AgentDetailsButtonBar({
 }: AgentDetailsButtonBarProps) {
   const { user, providersHealth } = useAuth();
   const router = useAppRouter();
+  const previewBatchId = useAgentSuggestionPreviewBatchId();
 
   const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
     owner,
@@ -113,6 +116,15 @@ export function AgentDetailsButtonBar({
               : undefined
           }
           disabled={!canEditAgent || !hasHealthyProviders(providersHealth)}
+          onClick={() => {
+            if (previewBatchId) {
+              trackSuggestionPreviewEdit({
+                batchId: previewBatchId,
+                targetKind: "agent",
+                targetId: agentConfiguration.sId,
+              });
+            }
+          }}
           variant="outline"
           icon={Edit04}
         />

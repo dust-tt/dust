@@ -8,7 +8,11 @@ import {
 } from "@app/components/markdown/suggestion/BatchSuggestionDirective";
 import { DEFAULT_SUGGESTION_VISUAL } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import type { SuggestionPileBulkAction } from "@app/components/markdown/suggestion/suggestionTracking";
-import { trackSuggestionPileBulkReview } from "@app/components/markdown/suggestion/suggestionTracking";
+import {
+  trackSuggestionCardDecision,
+  trackSuggestionPileBulkReview,
+  useTrackSuggestionCardViews,
+} from "@app/components/markdown/suggestion/suggestionTracking";
 import { getSuggestionStateChip } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
   useReviewSuggestionBatches,
@@ -210,6 +214,7 @@ export function ConversationSuggestionPile({
 
   const [isReviewing, setIsReviewing] = useState(false);
   const [inFlight, setInFlight] = useState<InFlightReview | null>(null);
+  useTrackSuggestionCardViews(batches, { inPile: true });
 
   if (isBatchesLoading) {
     return <LoadingBlock className="h-24 w-full max-w-lg" />;
@@ -254,6 +259,18 @@ export function ConversationSuggestionPile({
     void review(state);
   };
 
+  const decide = (
+    state: SuggestionBatchReviewState,
+    batch: BatchSuggestionType
+  ) => {
+    trackSuggestionCardDecision({
+      decision: state === "approved" ? "allow" : "decline",
+      batchId: batch.id,
+      inPile: true,
+    });
+    void review(state, batch);
+  };
+
   // Only the front card is interactive; the ones behind it are drawn as decorative layers.
   if (pendingBatches.length === 0) {
     return (
@@ -285,7 +302,13 @@ export function ConversationSuggestionPile({
             <SuggestionPileRecapActions
               isBusy={isBusy}
               bulkState={bulkState}
-              onReview={() => setIsReviewing(true)}
+              onReview={() => {
+                trackSuggestionPileBulkReview({
+                  bulkAction: "review",
+                  batchIds: pendingBatches.map((b) => b.id),
+                });
+                setIsReviewing(true);
+              }}
               onAcceptAll={() => bulkReview("approved", "allow_all")}
               onRejectAll={() => bulkReview("rejected", "reject_all")}
             />
@@ -303,8 +326,8 @@ export function ConversationSuggestionPile({
         key={batch.id}
         owner={owner}
         batch={batch}
-        onAccept={() => void review("approved", batch)}
-        onReject={() => void review("rejected", batch)}
+        onAccept={() => decide("approved", batch)}
+        onReject={() => decide("rejected", batch)}
         disabled={isBusy}
         isAccepting={cardState === "approved"}
         isDeclining={cardState === "rejected"}
