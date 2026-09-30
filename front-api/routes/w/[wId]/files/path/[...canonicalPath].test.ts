@@ -7,6 +7,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import {
   DUST_FILE_CAN_WRITE_HEADER,
@@ -677,6 +678,57 @@ describe("DELETE /api/w/:wId/files/path/:canonicalPath", () => {
 
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("file_not_found");
+  });
+
+  it("deletes a linked pod file when the caller can write", async () => {
+    const { auth, workspace, user } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const project = await SpaceFactory.project(workspace, user.id);
+    const file = await ProjectFileFactory.create(auth, user, project, {
+      contentType: "text/plain",
+      fileName: "notes.txt",
+      fileSize: 42,
+      status: "ready",
+    });
+    const scopedPath = file.toScopedPath(auth);
+    assert(scopedPath);
+    expect(scopedPath).toBe(`pod-${project.sId}/notes.txt`);
+
+    const response = await request(workspace, scopedPath, {
+      method: "DELETE",
+    });
+
+    expect(response.status).toBe(204);
+    await expect(FileResource.fetchById(auth, file.sId)).resolves.toBeNull();
+  });
+
+  it("refuses to delete a linked pod file without write access", async () => {
+    const { auth, workspace, user, globalGroup } =
+      await createPrivateApiMockRequest({ role: "user" });
+    const project = await SpaceFactory.project(workspace);
+    await SpaceFactory.attachGroup(project, globalGroup, "project_viewer");
+    const file = await ProjectFileFactory.create(auth, user, project, {
+      contentType: "text/plain",
+      fileName: "shared.txt",
+      fileSize: 42,
+      status: "ready",
+    });
+    const scopedPath = file.toScopedPath(auth);
+    assert(scopedPath);
+    expect(scopedPath).toBe(`pod-${project.sId}/shared.txt`);
+    const lookup = vi.spyOn(FileResource, "fetchByMountFilePaths");
+
+    const response = await request(workspace, scopedPath, {
+      method: "DELETE",
+    });
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe("workspace_auth_error");
+    expect(lookup).not.toHaveBeenCalled();
+    await expect(FileResource.fetchById(auth, file.sId)).resolves.toEqual(
+      expect.objectContaining({ sId: file.sId })
+    );
   });
 });
 

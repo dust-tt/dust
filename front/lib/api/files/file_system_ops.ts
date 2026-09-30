@@ -921,11 +921,24 @@ export async function convertCanonicalFileToPdf(
  * created directly in the sandbox), falls back to deleting the raw GCS object.
  */
 // TODO(FILE_SYSTEM): Remove once no more dependencies on FileResource.
+/**
+ * @cc [owner:frankaloia,label:security] linked-delete-requires-write
+ * Deletion MUST fail with unauthorized, before any FileResource lookup, when the resolved mount's
+ * permissions.canWrite is false. A linked FileResource MUST be left unchanged: FileResource.delete
+ * performs no authorization of its own.
+ */
 export async function deleteCanonicalFile(
   auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string
 ): Promise<Result<void, DustFileSystemError>> {
+  // FileResource.delete does not check mount permissions. Refuse before the lookup so a
+  // read-only caller neither deletes the linked file nor learns that one is registered.
+  const writable = dustFs.checkWriteAccess(scopedPath);
+  if (writable.isErr()) {
+    return writable;
+  }
+
   const linkedFileResource = await fetchLinkedFileResource(
     auth,
     dustFs,
