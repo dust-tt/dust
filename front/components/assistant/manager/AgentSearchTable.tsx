@@ -190,34 +190,38 @@ export function AgentSearchTable({
             ).some((isSelected) => isSelected);
 
             return (
-              <div className="flex size-full items-center justify-center">
-                <Checkbox
-                  checked={
-                    areAllPageRowsSelected
-                      ? true
-                      : hasSelection
-                        ? "partial"
-                        : false
-                  }
-                  disabled={
-                    !table.getRowModel().rows.some((row) => row.getCanSelect())
-                  }
-                  tooltip={
-                    areAllPageRowsSelected
-                      ? "Clear selection"
-                      : "Select all on page"
-                  }
-                  onClick={(event) => event.stopPropagation()}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      table.toggleAllPageRowsSelected(true);
-                    } else {
-                      // Unticking clears the whole selection across pages.
-                      table.resetRowSelection();
+              <DataTable.CellContent className="size-full items-center justify-center">
+                <div className="flex items-center">
+                  <Checkbox
+                    checked={
+                      areAllPageRowsSelected
+                        ? true
+                        : hasSelection
+                          ? "partial"
+                          : false
                     }
-                  }}
-                />
-              </div>
+                    disabled={
+                      !table
+                        .getRowModel()
+                        .rows.some((row) => row.getCanSelect())
+                    }
+                    tooltip={
+                      areAllPageRowsSelected
+                        ? "Clear selection"
+                        : "Select all on page"
+                    }
+                    onClick={(event) => event.stopPropagation()}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        table.toggleAllPageRowsSelected(true);
+                      } else {
+                        // Unticking clears the whole selection across pages.
+                        table.resetRowSelection();
+                      }
+                    }}
+                  />
+                </div>
+              </DataTable.CellContent>
             );
           },
           cell: ({ row }) => {
