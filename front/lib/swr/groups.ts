@@ -11,6 +11,7 @@ import {
   invalidateMembersUsage,
 } from "@app/lib/swr/memberships";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { workspaceAuthContextUrl } from "@app/lib/swr/workspaces";
 import type { GetGroupsResponseBody } from "@app/types/api/groups";
 import type {
   GetGroupResponseBody,
@@ -293,6 +294,7 @@ export function useAddMemberToGroup({
         );
         // Member counts changed in the workspace groups list.
         await invalidateWorkspaceGroups(owner.sId);
+        await invalidatePeople(owner.sId);
 
         return true;
       } finally {
@@ -367,6 +369,7 @@ export function useRemoveMemberFromGroup({
         );
         // Member counts changed in the workspace groups list.
         await invalidateWorkspaceGroups(owner.sId);
+        await invalidatePeople(owner.sId);
 
         return true;
       } finally {
@@ -396,6 +399,15 @@ async function invalidateWorkspaceGroups(workspaceId: string): Promise<void> {
   await mutate(
     (key) =>
       typeof key === "string" && key.startsWith(`/api/w/${workspaceId}/groups`)
+  );
+}
+
+async function invalidatePeople(workspaceId: string): Promise<void> {
+  await mutate(
+    (key) =>
+      typeof key === "string" &&
+      (key.startsWith(`/api/w/${workspaceId}/members/search`) ||
+        key === workspaceAuthContextUrl(workspaceId))
   );
 }
 
@@ -535,6 +547,9 @@ export function useUpdateGroup({
         );
 
         await invalidateWorkspaceGroups(owner.sId);
+        if (memberIds !== undefined || managerIds !== undefined) {
+          await invalidatePeople(owner.sId);
+        }
 
         return body;
       } finally {
