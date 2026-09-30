@@ -3461,7 +3461,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: this.kind,
       memberCount: 0, // Default value, use toJSONWithMemberCount for actual count
       poolCapAwuCredits: this.poolCapAwuCredits,
-      groupLimitAwuCredits: this.groupLimitAwuCredits,
       grantedRole: this.grantedRole,
       grantedSeatType: this.grantedSeatType,
     };
@@ -3477,7 +3476,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: this.kind,
       memberCount,
       poolCapAwuCredits: this.poolCapAwuCredits,
-      groupLimitAwuCredits: this.groupLimitAwuCredits,
       grantedRole: this.grantedRole,
       grantedSeatType: this.grantedSeatType,
     };
