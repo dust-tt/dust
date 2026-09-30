@@ -46,13 +46,11 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import {
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   EmptyCTA,
   Page,
   SearchInput,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import { useState } from "react";
@@ -341,83 +339,76 @@ export function SearchSkillsPage() {
             className="w-full"
           />
         </div>
-        <Tabs
-          value={selectedTab}
-          onValueChange={(value) => {
-            const tab = SKILL_SEARCH_TABS.find(({ id }) => id === value);
-            if (tab) {
-              setSelectedTab(tab.id);
-            }
-          }}
-        >
-          <div className="flex flex-col gap-2">
-            <TabsList>
-              {SKILL_SEARCH_TABS.map((tab) => (
-                <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
-              ))}
-              <div className="grow" />
-              <div className="self-start">
-                <SkillFilterPanel
-                  owner={owner}
-                  searchTerm={searchTerm}
-                  tabFilters={activeTab.filters}
-                  permissionFiltering={permissionFiltering}
-                  filter={filter}
-                  onFilterChange={setFilter}
-                  hiddenSkills={
-                    isAdmin
-                      ? {
-                          isShown: showHiddenSkills,
-                          onChange: setShowHiddenSkills,
-                        }
-                      : undefined
-                  }
-                />
-              </div>
-            </TabsList>
-            <FilterSummaryChips
-              isLoading={isSelectionLoading}
-              summaries={getFilterSummaries(
-                filter,
-                SKILL_FILTER_CATEGORIES,
-                SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
-              )}
-              onClearCategory={(category) =>
-                setFilter(clearFilterCategory(filter, category))
-              }
-              extraChips={
-                isAdmin && showHiddenSkills
-                  ? [
-                      {
-                        key: "hidden-skills",
-                        label: (
-                          <span className="min-w-0 truncate text-xs font-bold">
-                            Hidden skills
-                          </span>
-                        ),
-                        onRemove: () => setShowHiddenSkills(false),
-                      },
-                    ]
-                  : []
-              }
-              onClearAll={() => {
-                setFilter({});
-                setShowHiddenSkills(false);
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ButtonsSwitchList
+              value={selectedTab}
+              onValueChange={(value) => {
+                const tab = SKILL_SEARCH_TABS.find(({ id }) => id === value);
+                if (tab) {
+                  setSelectedTab(tab.id);
+                }
               }}
+            >
+              {SKILL_SEARCH_TABS.map((tab) => (
+                <ButtonsSwitch key={tab.id} value={tab.id} label={tab.label} />
+              ))}
+            </ButtonsSwitchList>
+            <SkillFilterPanel
+              owner={owner}
+              searchTerm={searchTerm}
+              tabFilters={activeTab.filters}
+              permissionFiltering={permissionFiltering}
+              filter={filter}
+              onFilterChange={setFilter}
+              hiddenSkills={
+                isAdmin
+                  ? {
+                      isShown: showHiddenSkills,
+                      onChange: setShowHiddenSkills,
+                    }
+                  : undefined
+              }
             />
-            {SKILL_SEARCH_TABS.map((tab) => (
-              <TabsContent key={tab.id} value={tab.id}>
-                <SkillsList
-                  key={owner.sId}
-                  searchTerm={searchTerm}
-                  filters={{ ...tab.filters, ...searchFilters }}
-                  permissionFiltering={permissionFiltering}
-                  onSelect={setSkillId}
-                />
-              </TabsContent>
-            ))}
           </div>
-        </Tabs>
+          <FilterSummaryChips
+            isLoading={isSelectionLoading}
+            summaries={getFilterSummaries(
+              filter,
+              SKILL_FILTER_CATEGORIES,
+              SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
+            )}
+            onClearCategory={(category) =>
+              setFilter(clearFilterCategory(filter, category))
+            }
+            extraChips={
+              isAdmin && showHiddenSkills
+                ? [
+                    {
+                      key: "hidden-skills",
+                      label: (
+                        <span className="min-w-0 truncate text-xs font-bold">
+                          Hidden skills
+                        </span>
+                      ),
+                      onRemove: () => setShowHiddenSkills(false),
+                    },
+                  ]
+                : []
+            }
+            onClearAll={() => {
+              setFilter({});
+              setShowHiddenSkills(false);
+            }}
+          />
+          <SkillsList
+            key={`${owner.sId}-${activeTab.id}`}
+            searchTerm={searchTerm}
+            filters={{ ...activeTab.filters, ...searchFilters }}
+            permissionFiltering={permissionFiltering}
+            onSelect={setSkillId}
+          />
+        </div>
       </div>
       {isImportDialogOpen && (
         <ImportSkillsDialog

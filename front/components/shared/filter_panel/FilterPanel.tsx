@@ -139,7 +139,11 @@ export function FilterPanel<
           counterValue={String(appliedSelectionCount)}
         />
       </PopoverTrigger>
-      <PopoverContent fullWidth align="end" className="w-auto rounded-2xl p-0">
+      <PopoverContent
+        fullWidth
+        align="start"
+        className="w-auto rounded-2xl p-0"
+      >
         <div className="flex h-96 flex-row divide-x divide-border">
           <FilterCategoryNav
             categories={categories}
