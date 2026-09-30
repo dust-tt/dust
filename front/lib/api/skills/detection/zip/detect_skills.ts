@@ -19,6 +19,12 @@ export const MAX_ZIP_SIZE_BYTES = 5 * 1024 * 1024;
 // Total uncompressed size limit (prevents issues with small zip but
 // super large uncompressed data).
 const MAX_DECOMPRESSED_SIZE_BYTES = 10 * 1024 * 1024;
+// Entry count cap. The SKILL.md scanner is O(entries × skill-dirs); without
+// this a 5 MB zip with ~80 k tiny entries would cause quadratic CPU work that
+// blocks the shared front-api event loop for all tenants.
+const MAX_ZIP_ENTRIES = 1_000;
+// Skill-directory cap. Bounds the inner scan dimension independently.
+const MAX_SKILL_DIRS = 50;
 
 /**
  * Extracts a flat list of ZipEntry from a ZIP buffer using adm-zip.
@@ -84,6 +90,15 @@ function openAndValidateZip(
   }
   const { entries: rawEntries, zip } = extractResult.value;
 
+  if (rawEntries.length > MAX_ZIP_ENTRIES) {
+    return new Err(
+      new Error(
+        `ZIP contains too many entries (${rawEntries.length}). ` +
+          `Maximum allowed is ${MAX_ZIP_ENTRIES}.`
+      )
+    );
+  }
+
   let totalDecompressedSizeBytes = 0;
   for (const entry of rawEntries) {
     totalDecompressedSizeBytes += entry.sizeBytes;
@@ -129,10 +144,11 @@ export function detectSkillsFromZip({
     .filter((e) => !e.isDirectory)
     .map((e) => ({ path: e.path, sizeBytes: e.sizeBytes }));
 
-  const skillDirs = findSkillDirectories(fileEntries);
-  if (skillDirs.length === 0) {
+  const allSkillDirs = findSkillDirectories(fileEntries);
+  if (allSkillDirs.length === 0) {
     return new Ok([]);
   }
+  const skillDirs = allSkillDirs.slice(0, MAX_SKILL_DIRS);
 
   const allSkills: ZipDetectedSkill[] = [];
 

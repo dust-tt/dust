@@ -141,6 +141,12 @@ const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
 const MCP_TOOL_ERROR_EVENT_NAME = "TOOL_ERROR" as const;
 const MCP_TOOL_HEARTBEAT_EVENT_NAME = "TOOL_HEARTBEAT" as const;
+
+// Per-tool-call notification limits. Remote and client-side MCP servers can
+// send unbounded notifications; without these caps a malicious server can exhaust
+// Redis, Postgres JSONB, and GCS for all tenants on the cell.
+const MAX_PROGRESS_NOTIFICATIONS_PER_CALL = 100;
+const MAX_PROGRESS_NOTIFICATION_TOTAL_BYTES = 5 * 1024 * 1024; // 5 MB
 // Threshold above which a tools/list duration is logged, to build the latency
 // distribution behind the MCP_LIST_TOOLS_TIMEOUT_MS cap.
 const SLOW_MCP_TOOLS_LIST_THRESHOLD_MS = 5_000;
@@ -548,14 +554,28 @@ export async function* tryCallMCPTool(
     // Longer term we should use the `onprogress` callback of the `callTool` method. Right now,
     // `progressToken` is not accessible in the `ToolCallback` interface. PR has been merged, but
     // not released yet (https://github.com/modelcontextprotocol/typescript-sdk/pull/328).
+    let notificationCount = 0;
+    let notificationTotalBytes = 0;
     mcpClient.setNotificationHandler(
       ProgressNotificationSchema,
       async (notification) => {
-        // For now, we only handle internal notifications.
-        // TODO(MCP 2025-04-30): Add rate limiting.
-        if (isMCPProgressNotificationType(notification)) {
-          emitter.emit(MCP_NOTIFICATION_EVENT_NAME, notification);
+        if (!isMCPProgressNotificationType(notification)) {
+          return;
         }
+        const notificationBytes = JSON.stringify(notification).length;
+        notificationCount += 1;
+        notificationTotalBytes += notificationBytes;
+        if (
+          notificationCount > MAX_PROGRESS_NOTIFICATIONS_PER_CALL ||
+          notificationTotalBytes > MAX_PROGRESS_NOTIFICATION_TOTAL_BYTES
+        ) {
+          logger.warn(
+            { ...toolLogContext, notificationCount, notificationTotalBytes },
+            "MCP progress notification limits exceeded; dropping notification"
+          );
+          return;
+        }
+        emitter.emit(MCP_NOTIFICATION_EVENT_NAME, notification);
       }
     );
 

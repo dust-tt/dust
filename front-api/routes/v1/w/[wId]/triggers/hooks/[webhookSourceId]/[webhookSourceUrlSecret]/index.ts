@@ -27,6 +27,41 @@ const ParamsSchema = z.object({
 const WEBHOOK_REQUEST_MAX_SIZE_BYTES = 2 * 1024 * 1024;
 
 /**
+ * Streams the request body into a Buffer, aborting as soon as `maxBytes` is
+ * exceeded. Returns null when the body is over the limit so the caller can
+ * reject *before* the full allocation completes, preventing OOM on
+ * unauthenticated, anonymous-accessible endpoints.
+ */
+async function readBodyWithSizeLimit(
+  request: Request,
+  maxBytes: number
+): Promise<Buffer | null> {
+  const reader = request.body?.getReader();
+  if (!reader) {
+    return Buffer.alloc(0);
+  }
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
  * @swagger
  * /api/v1/w/{wId}/triggers/hooks/{webhookSourceId}:
  *   post:
@@ -84,10 +119,14 @@ app.post(
       });
     }
 
-    // Read the raw body for signature verification (must match exactly what the
-    // sender signed), then parse JSON for processing.
-    const arrayBuffer = await ctx.req.arrayBuffer();
-    if (arrayBuffer.byteLength > WEBHOOK_REQUEST_MAX_SIZE_BYTES) {
+    // Stream the body into a buffer, aborting as soon as the size cap is
+    // exceeded. The cap is enforced before the full allocation, so a
+    // large-body DoS is stopped incrementally rather than after OOM.
+    const bodyBuffer = await readBodyWithSizeLimit(
+      ctx.req.raw,
+      WEBHOOK_REQUEST_MAX_SIZE_BYTES
+    );
+    if (bodyBuffer === null) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -96,7 +135,7 @@ app.post(
         },
       });
     }
-    const rawBody = Buffer.from(arrayBuffer).toString("utf8");
+    const rawBody = bodyBuffer.toString("utf8");
     let body: Record<string, unknown>;
     try {
       body = JSON.parse(rawBody) as Record<string, unknown>;
