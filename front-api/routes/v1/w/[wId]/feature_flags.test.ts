@@ -32,7 +32,7 @@ describe("GET /api/v1/w/:wId/feature_flags", () => {
     });
 
     await FeatureFlagFactory.basic(auth, "deepseek_feature");
-    await FeatureFlagFactory.basic(auth, "labs_transcripts");
+    await FeatureFlagFactory.basic(auth, "dummy_feature_for_flag_testing");
 
     const response = await getFeatureFlags(workspace, key);
 
@@ -40,7 +40,7 @@ describe("GET /api/v1/w/:wId/feature_flags", () => {
     expect(await response.json()).toEqual({
       feature_flags: expect.arrayContaining([
         "deepseek_feature",
-        "labs_transcripts",
+        "dummy_feature_for_flag_testing",
       ]),
     });
   });
@@ -65,7 +65,7 @@ describe("GET /api/v1/w/:wId/feature_flags", () => {
     await FeatureFlagFactory.basic(auth, "deepseek_feature");
     await FeatureFlagFactory.basic(
       await Authenticator.internalAdminForWorkspace(otherWorkspace.sId),
-      "labs_transcripts"
+      "dummy_feature_for_flag_testing"
     );
 
     const response = await getFeatureFlags(workspace, key);
@@ -73,6 +73,6 @@ describe("GET /api/v1/w/:wId/feature_flags", () => {
     expect(response.status).toBe(200);
     const { feature_flags } = await response.json();
     expect(feature_flags).toEqual(expect.arrayContaining(["deepseek_feature"]));
-    expect(feature_flags).not.toContain("labs_transcripts");
+    expect(feature_flags).not.toContain("dummy_feature_for_flag_testing");
   });
 });

@@ -2,22 +2,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import {
-  launchRetrieveTranscriptsWorkflow,
-  stopRetrieveTranscriptsWorkflow,
-} from "@app/temporal/labs/transcripts/client";
+import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
 import type { LabsTranscriptsConfigurationStatus } from "@app/types/labs";
 import { Ok } from "@app/types/shared/result";
-import { z } from "zod";
-
-export const PostRequestFeatureAccessBodySchema = z.object({
-  emailMessage: z.string(),
-  featureName: z.string(),
-});
-
-export type PostRequestFeatureAccessBody = z.infer<
-  typeof PostRequestFeatureAccessBodySchema
->;
 
 /**
  * Pauses all Labs transcripts temporal workflows and their schedules for a workspace.
@@ -68,92 +55,29 @@ export async function pauseAllLabsWorkflows(
 }
 
 /**
- * Starts workflows for all active Labs transcripts configurations.
- * A config is considered active if status is "active" or if it has a dataSourceViewId
- * (retrieval-only mode).
+ * Labs transcripts are deprecated. This stops schedules instead of starting them,
+ * so older scripts cannot turn the Gong or Google transcript processors back on.
  */
 export async function startActiveLabsWorkflows(auth: Authenticator) {
-  const allLabsConfigs =
-    await LabsTranscriptsConfigurationResource.listByWorkspace({
-      auth,
-    });
-
-  const activeConfigs = allLabsConfigs.filter(
-    (config): config is LabsTranscriptsConfigurationResource =>
-      config !== null &&
-      (config.status === "active" || !!config.dataSourceViewId)
+  logger.info(
+    "Labs transcripts are deprecated. Stopping workflows instead of starting them."
   );
-
-  logger.info(`Found ${activeConfigs.length} active Labs configs`);
-
-  let startedWorkflows = 0;
-
-  await concurrentExecutor(
-    activeConfigs,
-    async (config) => {
-      logger.info(
-        {
-          labsTranscriptsConfigurationId: config.id,
-          workspaceId: config.workspaceId,
-        },
-        "Starting Labs workflow"
-      );
-      await launchRetrieveTranscriptsWorkflow(config);
-      startedWorkflows++;
-    },
-    { concurrency: 3 }
-  );
-
-  logger.info(`Started ${startedWorkflows} Labs workflows`);
-
-  return new Ok(startedWorkflows);
+  return pauseAllLabsWorkflows(auth);
 }
 
 /**
- * Unpauses Labs workflows that were paused with a specific status.
- * Restores configs from the specified fromStatus back to "active" and restarts workflows.
- * This preserves user intent: configs that were manually disabled stay disabled.
+ * Labs transcripts are deprecated and are not resumed after relocation.
  */
 export async function unpauseAllLabsWorkflows(
   auth: Authenticator,
   fromStatus: Exclude<LabsTranscriptsConfigurationStatus, "active">
 ) {
-  const allLabsConfigs =
-    await LabsTranscriptsConfigurationResource.listByWorkspace({
-      auth,
-    });
-
-  // Only unpause configs that match the fromStatus
-  const configsToUnpause = allLabsConfigs.filter(
-    (config): config is LabsTranscriptsConfigurationResource =>
-      config !== null && config.status === fromStatus
-  );
-
   logger.info(
-    `Found ${configsToUnpause.length} Labs configs with status "${fromStatus}" to unpause`
-  );
-
-  let startedWorkflows = 0;
-
-  await concurrentExecutor(
-    configsToUnpause,
-    async (config) => {
-      logger.info(
-        {
-          labsTranscriptsConfigurationId: config.id,
-          workspaceId: config.workspaceId,
-          fromStatus,
-        },
-        "Unpausing Labs workflow"
-      );
-      await config.setStatus("active");
-      await launchRetrieveTranscriptsWorkflow(config);
-      startedWorkflows++;
+    {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      fromStatus,
     },
-    { concurrency: 3 }
+    "Labs transcripts are deprecated. Leaving workflows stopped."
   );
-
-  logger.info(`Unpaused ${startedWorkflows} Labs workflows`);
-
-  return new Ok(startedWorkflows);
+  return new Ok(0);
 }
