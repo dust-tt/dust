@@ -245,29 +245,6 @@ export async function getDataSourceViewsUsageByModelIds({
   );
 
   // Step 4: fetch the agent configurations
-  const getAgentsForUser = () => AgentResource.listEditorConfigModelIds(auth);
-
-  const getAgentWhereClauseAdmin = () => ({
-    status: "active",
-    workspaceId: owner.id,
-  });
-
-  const getAgentWhereClauseNonAdmin = async () => ({
-    status: "active",
-    workspaceId: owner.id,
-    // If user is non-admin, only include agents that either they have access to or are published.
-    [Op.or]: [
-      {
-        scope: "visible",
-      },
-      {
-        id: {
-          [Op.in]: await getAgentsForUser(),
-        },
-      },
-    ],
-  });
-
   // 4A. Agents for AgentDataSourceConfigurationModel links.
   const dataSourceAgentConfigurationModelIds = uniq(
     removeNulls(
@@ -282,15 +259,9 @@ export async function getDataSourceViewsUsageByModelIds({
 
   const dataSourceAgents =
     dataSourceAgentConfigurationModelIds.length > 0
-      ? await AgentConfigurationModel.findAll({
-          raw: true,
-          attributes: ["id", "sId", "name", "pictureUrl"],
-          where: {
-            ...(auth.isAdmin()
-              ? getAgentWhereClauseAdmin()
-              : await getAgentWhereClauseNonAdmin()),
-            id: { [Op.in]: dataSourceAgentConfigurationModelIds },
-          },
+      ? await AgentResource.listActiveConfigurationIdentities(auth, {
+          configurationModelIds: dataSourceAgentConfigurationModelIds,
+          usageVisibleOnly: true,
         })
       : [];
 
@@ -307,14 +278,9 @@ export async function getDataSourceViewsUsageByModelIds({
 
   const tableAgents =
     tableAgentConfigurationModelIds.length > 0
-      ? await AgentConfigurationModel.findAll({
-          raw: true,
-          attributes: ["id", "sId", "name", "pictureUrl"],
-          where: {
-            status: "active",
-            workspaceId: owner.id,
-            id: { [Op.in]: tableAgentConfigurationModelIds },
-          },
+      ? await AgentResource.listActiveConfigurationIdentities(auth, {
+          configurationModelIds: tableAgentConfigurationModelIds,
+          usageVisibleOnly: false,
         })
       : [];
 

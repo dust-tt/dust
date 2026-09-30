@@ -52,7 +52,6 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
@@ -811,19 +810,17 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
     };
   }
 
-  const owner = auth.getNonNullableWorkspace();
-
-  const agentConfiguration = await AgentConfigurationModel.findOne({
-    where: {
-      sId: agentId,
-      workspaceId: owner.id,
-      status: ["active", "archived"],
-    },
-    attributes: ["name", "description"],
-    order: [["version", "DESC"]],
+  // Skips the `canFetch` drop (see `agent-dangerous-fetch`): the child agent's name and description
+  // are exposed even when the caller holds no verb on it, as documented above.
+  const agentConfiguration = await AgentResource.fetchById(auth, agentId, {
+    dangerouslySkipFetchCheck: true,
   });
 
-  if (!agentConfiguration) {
+  if (
+    !agentConfiguration ||
+    (agentConfiguration.status !== "active" &&
+      agentConfiguration.status !== "archived")
+  ) {
     return null;
   }
 

@@ -1423,6 +1423,148 @@ export class AgentResource
     return this.fetchByIds(auth, agentIds);
   }
 
+  // -- Workspace-wide row reads: plain data about every agent of the workspace, for callers that
+  // need the whole workspace whatever they can read (name uniqueness, model availability, usage
+  // listings, space cleanup, purges). --
+
+  // The names of every active configuration row of the workspace.
+  static async listActiveAgentNames(auth: Authenticator): Promise<string[]> {
+    const configurations = await AgentConfigurationModel.findAll({
+      attributes: ["name"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+      },
+    });
+    return configurations.map((configuration) => configuration.name);
+  }
+
+  // The model of every active configuration row of the workspace.
+  static async listActiveAgentModels(
+    auth: Authenticator
+  ): Promise<
+    { agentId: string; providerId: ModelProviderIdType; modelId: ModelIdType }[]
+  > {
+    const configurations = await AgentConfigurationModel.findAll({
+      attributes: ["sId", "providerId", "modelId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+      },
+    });
+    return configurations.map(({ sId, providerId, modelId }) => ({
+      agentId: sId,
+      providerId,
+      modelId,
+    }));
+  }
+
+  // For each agent, every author of one of its versions with the latest version they authored.
+  static async listVersionAuthors(
+    auth: Authenticator,
+    agentIds: string[]
+  ): Promise<{ agentId: string; authorId: ModelId; version: number }[]> {
+    if (agentIds.length === 0) {
+      return [];
+    }
+
+    const rows = await AgentConfigurationModel.findAll({
+      attributes: ["sId", "authorId", [fn("MAX", col("version")), "version"]],
+      group: ["sId", "authorId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: { [Op.in]: agentIds },
+      },
+    });
+
+    return rows.map((row) => ({
+      agentId: row.get("sId") as string,
+      authorId: row.get("authorId") as ModelId,
+      // `version` is aliased from MAX(version) so read it via get().
+      version: row.get("version") as number,
+    }));
+  }
+
+  // The identity of active configuration rows (restricted to `configurationModelIds` when given).
+  // With `usageVisibleOnly`, a non-admin caller only gets the visible ones and those they edit.
+  static async listActiveConfigurationIdentities(
+    auth: Authenticator,
+    {
+      configurationModelIds,
+      usageVisibleOnly,
+    }: { configurationModelIds?: ModelId[]; usageVisibleOnly: boolean }
+  ): Promise<{ id: ModelId; sId: string; name: string; pictureUrl: string }[]> {
+    if (configurationModelIds?.length === 0) {
+      return [];
+    }
+
+    const restrictToUsageVisible = usageVisibleOnly && !auth.isAdmin();
+    return AgentConfigurationModel.findAll({
+      raw: true,
+      attributes: ["id", "sId", "name", "pictureUrl"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+        ...(configurationModelIds
+          ? { id: { [Op.in]: configurationModelIds } }
+          : {}),
+        ...(restrictToUsageVisible
+          ? {
+              [Op.or]: [
+                { scope: "visible" },
+                {
+                  id: {
+                    [Op.in]: await AgentResource.listEditorConfigModelIds(auth),
+                  },
+                },
+              ],
+            }
+          : {}),
+      },
+    });
+  }
+
+  // The active configuration rows whose requested spaces include `spaceModelId`.
+  static async listActiveConfigurationsRequestingSpace(
+    auth: Authenticator,
+    spaceModelId: ModelId,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<
+    { agentConfigurationModelId: ModelId; requestedSpaceIds: ModelId[] }[]
+  > {
+    const configurations = await AgentConfigurationModel.findAll({
+      attributes: ["id", "requestedSpaceIds"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+        requestedSpaceIds: { [Op.contains]: [spaceModelId] },
+      },
+      transaction,
+    });
+    return configurations.map(({ id, requestedSpaceIds }) => ({
+      agentConfigurationModelId: id,
+      requestedSpaceIds,
+    }));
+  }
+
+  // Oldest first, the pending agents created before `createdBefore`, for the purge. Not
+  // `canFetch`-filtered: the purge runs as an internal admin over every pending agent.
+  static async dangerouslyListExpiredPendingAgents(
+    auth: Authenticator,
+    { createdBefore, limit }: { createdBefore: Date; limit: number }
+  ): Promise<AgentResource[]> {
+    const configurations = await AgentConfigurationModel.findAll({
+      where: {
+        status: "pending",
+        createdAt: { [Op.lt]: createdBefore },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      limit,
+      order: [["createdAt", "ASC"]],
+    });
+    return this.dangerouslyFromConfigurationModels(auth, configurations);
+  }
+
   // Caller-independent query: the current resource of each identified agent — the row whose
   // `version` equals the agent's `currentVersion` pointer, joined via the unique `(agentId, version)`
   // index — one per agent, scoped to the workspace. No read-access decision is folded in; that is the
