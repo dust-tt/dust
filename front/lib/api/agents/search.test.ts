@@ -22,8 +22,10 @@ import {
   MAX_AGENT_SEARCH_WINDOW,
 } from "@app/lib/agent_search/query";
 import { buildAgentNameAutocompleteQuery } from "@app/lib/agent_search/ranking";
-import { searchAgents } from "@app/lib/api/agents/search";
+import { resolveAgentIdByName, searchAgents } from "@app/lib/api/agents/search";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { matchesAgentSearchFilters } from "@app/tests/utils/agent_search";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -433,5 +435,75 @@ describe("searchAgents", () => {
     expect(
       await searchAgentIds(auth, { filters: { scope: ["visible", "hidden"] } })
     ).toEqual(["visible", "hidden-editor", "readable-spaces"]);
+  });
+});
+
+describe("resolveAgentIdByName", () => {
+  beforeEach(() => {
+    mockSearch.mockReset();
+    mockHits([]);
+  });
+
+  it("resolves the Dust aliases and rejects blank names without searching", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+
+    expect(await resolveAgentIdByName(auth, " Dust Agent ")).toBe(
+      GLOBAL_AGENTS_SID.DUST
+    );
+    expect(await resolveAgentIdByName(auth, "dust")).toBe(
+      GLOBAL_AGENTS_SID.DUST
+    );
+    expect(await resolveAgentIdByName(auth, "   ")).toBeNull();
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it("resolves an exact custom agent name from the database, without searching", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Sales Helper",
+    });
+
+    expect(await resolveAgentIdByName(auth, " Sales Helper ")).toBe(agent.sId);
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the top search hit", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "user",
+    });
+    mockSearch.mockResolvedValue({
+      hits: {
+        total: { value: 1, relation: "eq" },
+        hits: [
+          {
+            _source: makeDocument({
+              workspace_id: workspace.sId,
+              agent_id: "fuzzy",
+              name: "Marketing Sales",
+            }),
+          },
+        ],
+      },
+    });
+
+    expect(await resolveAgentIdByName(auth, " sales ")).toBe("fuzzy");
+    expect(mockSearch.mock.calls[0][0]).toMatchObject({ size: 1 });
+    expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([
+      buildAgentNameAutocompleteQuery("sales"),
+    ]);
+  });
+
+  it("does not resolve an exact name the caller cannot read", async () => {
+    const { authenticator: adminAuth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
+      name: "Private Helper",
+      scope: "hidden",
+    });
+
+    expect(await resolveAgentIdByName(adminAuth, "Private Helper")).toBeNull();
+    expect(mockSearch).toHaveBeenCalledTimes(1);
   });
 });

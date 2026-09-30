@@ -1,4 +1,4 @@
-import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
+import { resolveAgentIdByName } from "@app/lib/api/agents/search";
 import {
   createConversation,
   postUserMessage,
@@ -95,10 +95,7 @@ export function registerConversationsCreateTool(server: McpServer) {
 
         let mentions: { configurationId: string }[] = [];
         if (agentName !== null) {
-          const matchedAgentId = await resolveAgentConfigurationIdByName(
-            auth,
-            agentName
-          );
+          const matchedAgentId = await resolveAgentIdByName(auth, agentName);
           if (!matchedAgentId) {
             return mcpError(`No agent found matching name: "${agentName}"`);
           }
