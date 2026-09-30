@@ -8,6 +8,7 @@ import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
 import { filterAndSortAgents, subFilter } from "@app/lib/utils";
 import type { AgentSearchListItemType } from "@app/types/agent_search/agent_search";
@@ -19,11 +20,15 @@ import type {
   SkillWithoutInstructionsAndToolsType,
 } from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
-import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  LightUserTypeWithWorkspace,
+  LightWorkspaceType,
+} from "@app/types/user";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const MAX_DISPLAYED_AGENTS = 5;
 const MAX_DISPLAYED_CONVERSATIONS = 5;
+const MAX_DISPLAYED_MEMBERS = 5;
 const MAX_DISPLAYED_PODS = 5;
 const MAX_DISPLAYED_SKILLS = 5;
 
@@ -250,6 +255,52 @@ function useCommandPalettePods({
   };
 }
 
+function useCommandPaletteMembers({
+  owner,
+  isOpen,
+  trimmedQuery,
+  currentUserId,
+}: {
+  owner: LightWorkspaceType;
+  isOpen: boolean;
+  trimmedQuery: string;
+  currentUserId: string;
+}) {
+  // Same member search as People / editor pickers. Only when typing — there is
+  // no sidebar "recent members" cache to reuse for an empty-query default.
+  const isMemberSearchEnabled = isOpen && trimmedQuery.length > 0;
+  const {
+    members: searchMembers,
+    totalMembersCount,
+    isLoading: isSearchingMembers,
+  } = useSearchMembers({
+    workspaceId: owner.sId,
+    searchTerm: trimmedQuery,
+    pageIndex: 0,
+    pageSize: MAX_DISPLAYED_MEMBERS + 1,
+    disabled: !isMemberSearchEnabled,
+  });
+
+  const members = useMemo(() => {
+    const withoutSelf = searchMembers.filter(
+      (member) => member.sId !== currentUserId
+    );
+    return withoutSelf.slice(
+      0,
+      MAX_DISPLAYED_MEMBERS
+    ) as LightUserTypeWithWorkspace[];
+  }, [searchMembers, currentUserId]);
+
+  return {
+    members,
+    hasMoreMembers:
+      totalMembersCount > MAX_DISPLAYED_MEMBERS ||
+      searchMembers.filter((member) => member.sId !== currentUserId).length >
+        MAX_DISPLAYED_MEMBERS,
+    isLoading: isSearchingMembers,
+  };
+}
+
 function useCommandPaletteConversations({
   owner,
   isOpen,
@@ -356,10 +407,12 @@ export function useCommandPaletteSearch({
   owner,
   isOpen,
   searchQuery,
+  currentUserId,
 }: {
   owner: LightWorkspaceType;
   isOpen: boolean;
   searchQuery: string;
+  currentUserId: string;
 }) {
   const trimmedQuery = searchQuery.trim();
   const { debouncedQuery, isDebouncing } =
@@ -383,14 +436,22 @@ export function useCommandPaletteSearch({
     isOpen,
     trimmedQuery,
   });
+  const members = useCommandPaletteMembers({
+    owner,
+    isOpen,
+    trimmedQuery,
+    currentUserId,
+  });
 
   return {
     agents: agents.agents,
     conversations: conversations.conversations,
+    members: members.members,
     pods: pods.pods,
     skills: skills.skills,
     hasMoreAgents: agents.hasMoreAgents,
     hasMoreConversations: conversations.hasMoreConversations,
+    hasMoreMembers: members.hasMoreMembers,
     hasMorePods: pods.hasMorePods,
     hasMoreSkills: skills.hasMoreSkills,
     isLoading:
@@ -398,6 +459,7 @@ export function useCommandPaletteSearch({
       skills.isLoading ||
       pods.isLoading ||
       conversations.isLoading ||
+      members.isLoading ||
       isDebouncing,
   };
 }

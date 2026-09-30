@@ -1,4 +1,5 @@
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import type {
   ActionPhaseItem,
   CommandPaletteAction,
@@ -39,14 +40,17 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   // Detail sheet state (lives outside the dialog lifecycle).
   const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
   const [skillDetailsId, setSkillDetailsId] = useState<string | null>(null);
+  const [memberDetailsId, setMemberDetailsId] = useState<string | null>(null);
 
   const {
     agents,
     conversations,
+    members,
     pods,
     skills,
     hasMoreAgents,
     hasMoreConversations,
+    hasMoreMembers,
     hasMorePods,
     hasMoreSkills,
     isLoading,
@@ -54,6 +58,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     owner,
     isOpen,
     searchQuery,
+    currentUserId: user.sId,
   });
 
   // Reset state when dialog opens/closes.
@@ -76,6 +81,10 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             void router.push(
               getConversationRoute(owner.sId, "new", `agent=${item.agent.sId}`)
             );
+          } else if (item.kind === "member") {
+            void router.push(
+              getConversationRoute(owner.sId, "new", `user=${item.member.sId}`)
+            );
           }
           break;
         case "view_details":
@@ -83,6 +92,8 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             setAgentDetailsId(item.agent.sId);
           } else if (item.kind === "skill") {
             setSkillDetailsId(item.skill.sId);
+          } else if (item.kind === "member") {
+            setMemberDetailsId(item.member.sId);
           }
           break;
         case "edit":
@@ -155,10 +166,12 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               onSearchQueryChange={setSearchQuery}
               agents={agents}
               conversations={conversations}
+              members={members}
               pods={pods}
               skills={skills}
               hasMoreAgents={hasMoreAgents}
               hasMoreConversations={hasMoreConversations}
+              hasMoreMembers={hasMoreMembers}
               hasMorePods={hasMorePods}
               hasMoreSkills={hasMoreSkills}
               isLoading={isLoading}
@@ -191,6 +204,12 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         user={user}
         skillId={skillDetailsId}
         onClose={() => setSkillDetailsId(null)}
+      />
+
+      <MemberDetails
+        owner={owner}
+        userId={memberDetailsId}
+        onClose={() => setMemberDetailsId(null)}
       />
     </>
   );

@@ -15,6 +15,7 @@ import type {
   SkillWithoutInstructionsAndToolsType,
 } from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
+import type { LightUserTypeWithWorkspace } from "@app/types/user";
 import {
   Avatar,
   cn,
@@ -39,9 +40,12 @@ type CommandPaletteConversation = ConversationListItemType & {
   spaceName: string | null;
 };
 
+export type CommandPaletteMember = LightUserTypeWithWorkspace;
+
 export type CommandPaletteItem =
   | { kind: "agent"; agent: CommandPaletteAgent }
   | { kind: "conversation"; conversation: CommandPaletteConversation }
+  | { kind: "member"; member: CommandPaletteMember }
   | { kind: "pod"; pod: CommandPalettePod }
   | { kind: "skill"; skill: CommandPaletteSkill };
 
@@ -50,10 +54,12 @@ interface CommandPaletteSearchPhaseProps {
   onSearchQueryChange: (query: string) => void;
   agents: CommandPaletteAgent[];
   conversations: CommandPaletteConversation[];
+  members: CommandPaletteMember[];
   pods: CommandPalettePod[];
   skills: CommandPaletteSkill[];
   hasMoreAgents: boolean;
   hasMoreConversations: boolean;
+  hasMoreMembers: boolean;
   hasMorePods: boolean;
   hasMoreSkills: boolean;
   isLoading: boolean;
@@ -65,8 +71,9 @@ interface CommandPaletteSearchPhaseProps {
 
 function getFlatItems(
   conversations: CommandPaletteConversation[],
-  agents: CommandPaletteAgent[],
   pods: CommandPalettePod[],
+  agents: CommandPaletteAgent[],
+  members: CommandPaletteMember[],
   skills: CommandPaletteSkill[]
 ): CommandPaletteItem[] {
   return [
@@ -76,8 +83,11 @@ function getFlatItems(
         conversation,
       })
     ),
-    ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
     ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
+    ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
+    ...members.map(
+      (member): CommandPaletteItem => ({ kind: "member", member })
+    ),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
   ];
 }
@@ -87,10 +97,12 @@ export function CommandPaletteSearchPhase({
   onSearchQueryChange,
   agents,
   conversations,
+  members,
   pods,
   skills,
   hasMoreAgents,
   hasMoreConversations,
+  hasMoreMembers,
   hasMorePods,
   hasMoreSkills,
   isLoading,
@@ -100,8 +112,8 @@ export function CommandPaletteSearchPhase({
   onClose,
 }: CommandPaletteSearchPhaseProps) {
   const flatItems = useMemo(
-    () => getFlatItems(conversations, agents, pods, skills),
-    [conversations, agents, pods, skills]
+    () => getFlatItems(conversations, pods, agents, members, skills),
+    [conversations, pods, agents, members, skills]
   );
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -123,7 +135,7 @@ export function CommandPaletteSearchPhase({
     }
   }, [selectedIndex, flatItems.length]);
 
-  // Reset selection and trim stale refs when the number of results changes.
+  // Keep keyboard selection valid when the result list shrinks (e.g. typing).
   useEffect(() => {
     itemRefs.current.length = flatItems.length;
     onSelectedIndexChange(0);
@@ -131,7 +143,6 @@ export function CommandPaletteSearchPhase({
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     const totalItems = flatItems.length;
-
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
@@ -158,25 +169,21 @@ export function CommandPaletteSearchPhase({
     }
   }
 
+  const podsOffset = conversations.length;
+  const agentsOffset = podsOffset + pods.length;
+  const membersOffset = agentsOffset + agents.length;
+  const skillsOffset = membersOffset + members.length;
+
   return (
     <div className="flex flex-col">
-      <div className="px-1.5 py-3">
+      <div className="border-b border-separator p-3">
         <SearchInput
           ref={searchInputRef}
-          className={cn(
-            // Command palette: the dialog is the container, so the search input
-            // drops its border, background and focus ring. border-0 (not just
-            // transparent) removes the 1px offset so the input text lines up
-            // with the items below, which share the px-1.5 + px-3 inset.
-            "[&_input]:border-0 [&_input]:bg-transparent",
-            "[&_input]:focus-visible:ring-0"
-          )}
           name="command-palette-search"
-          placeholder="Search agents, conversations, pods and skills…"
+          placeholder="Search…"
           value={searchQuery}
           onChange={onSearchQueryChange}
           onKeyDown={handleKeyDown}
-          isLoading={isLoading}
         />
       </div>
       <div className="flex max-h-125 flex-col gap-2 overflow-y-auto p-1.5">
@@ -198,7 +205,7 @@ export function CommandPaletteSearchPhase({
         )}
         {!isLoading && flatItems.length === 0 && searchQuery.length === 0 && (
           <ItemEmptyState>
-            Type to search agents, conversations, pods and skills.
+            Type to search conversations, pods, agents, members and skills.
           </ItemEmptyState>
         )}
 
@@ -246,45 +253,11 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {agents.length > 0 && (
-          <div>
-            <ItemTitle>Agents</ItemTitle>
-            {agents.map((agent, i) => {
-              const globalIndex = conversations.length + i;
-              return (
-                <ItemRow
-                  key={agent.sId}
-                  ref={(el) => {
-                    itemRefs.current[globalIndex] = el;
-                  }}
-                  isSelected={selectedIndex === globalIndex}
-                  onClick={() => onItemSelect({ kind: "agent", agent })}
-                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
-                >
-                  <Avatar visual={agent.pictureUrl} size="xs" />
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="shrink-0 font-medium">{agent.name}</span>
-                    <span className="shrink-0 text-muted-foreground">-</span>
-                    <span className="min-w-0 truncate text-muted-foreground">
-                      {agent.description}
-                    </span>
-                  </div>
-                </ItemRow>
-              );
-            })}
-            {hasMoreAgents && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">
-                More agents available. Type to filter.
-              </div>
-            )}
-          </div>
-        )}
-
         {pods.length > 0 && (
           <div>
             <ItemTitle>Pods</ItemTitle>
             {pods.map((pod, i) => {
-              const globalIndex = conversations.length + agents.length + i;
+              const globalIndex = podsOffset + i;
               return (
                 <ItemRow
                   key={pod.sId}
@@ -327,12 +300,92 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
+        {agents.length > 0 && (
+          <div>
+            <ItemTitle>Agents</ItemTitle>
+            {agents.map((agent, i) => {
+              const globalIndex = agentsOffset + i;
+              return (
+                <ItemRow
+                  key={agent.sId}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() => onItemSelect({ kind: "agent", agent })}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <Avatar visual={agent.pictureUrl} size="xs" />
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="shrink-0 font-medium">{agent.name}</span>
+                    <span className="shrink-0 text-muted-foreground">-</span>
+                    <span className="min-w-0 truncate text-muted-foreground">
+                      {agent.description}
+                    </span>
+                  </div>
+                </ItemRow>
+              );
+            })}
+            {hasMoreAgents && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">
+                More agents available. Type to filter.
+              </div>
+            )}
+          </div>
+        )}
+
+        {members.length > 0 && (
+          <div>
+            <ItemTitle>Members</ItemTitle>
+            {members.map((member, i) => {
+              const globalIndex = membersOffset + i;
+              return (
+                <ItemRow
+                  key={member.sId}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() => onItemSelect({ kind: "member", member })}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <Avatar
+                    name={member.fullName}
+                    visual={member.image ?? undefined}
+                    size="xs"
+                    isRounded
+                  />
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="shrink-0 font-medium">
+                      {member.fullName}
+                    </span>
+                    {member.email && (
+                      <>
+                        <span className="shrink-0 text-muted-foreground">
+                          -
+                        </span>
+                        <span className="min-w-0 truncate text-muted-foreground">
+                          {member.email}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </ItemRow>
+              );
+            })}
+            {hasMoreMembers && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">
+                More members available. Type to filter.
+              </div>
+            )}
+          </div>
+        )}
+
         {skills.length > 0 && (
           <div>
             <ItemTitle>Skills</ItemTitle>
             {skills.map((skill, i) => {
-              const globalIndex =
-                conversations.length + agents.length + pods.length + i;
+              const globalIndex = skillsOffset + i;
               const SkillAvatar = getSkillAvatarIcon(skill);
               return (
                 <ItemRow
