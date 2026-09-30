@@ -219,7 +219,8 @@ const SINGLETON_SKILL_SUGGESTION_KINDS: SkillSuggestionKind[] = [
  * @cc [owner:achilleburah;avervaet,label:product] single-pending-per-singleton-kind
  * For each singleton kind (`name`, `user_facing_description`, `availability`, `delete`) among the
  * `recorded` suggestions, every other pending suggestion of that kind on the same skill MUST be
- * marked `outdated`, and never the recorded ones. Other kinds are left untouched.
+ * marked `outdated`, and never the recorded ones. Pruning selects only those kinds; suggestions of
+ * other kinds are outdated solely when they share a batch with a superseded one.
  */
 export async function pruneSupersededSingletonSkillSuggestions(
   auth: Authenticator,
