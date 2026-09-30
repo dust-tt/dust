@@ -110,7 +110,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
                 }}
               >
                 {filteredPlugins
-                  .sort((a, b) => compareStrings(a.name, b.name))
+                  .toSorted((a, b) => compareStrings(a.name, b.name))
                   .map((plugin) => (
                     <Tooltip
                       key={plugin.id}
