@@ -4,7 +4,7 @@ import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ModelMakerIdType,
-  ModelProviderIdType,
+  WhitelistableModelMakerIdType,
 } from "@app/types/assistant/models/types";
 
 export type ModelIdentifier = Pick<
@@ -12,12 +12,12 @@ export type ModelIdentifier = Pick<
   "providerId" | "modelId"
 >;
 
-// Canonical way to check if a provider is whitelisted.
+// Canonical way to check if a lab is whitelisted.
 // Handle the special case of the routing sentinels (auto, auto_fast, auto_complex),
 // which route to a concrete (whitelisted) model at message-send time.
 export function isProviderWhitelisted(
   whitelistedProviders: ReadonlySet<ModelMakerIdType>,
-  providerId: ModelProviderIdType
+  providerId: WhitelistableModelMakerIdType
 ): boolean {
   return isModelStreamId(providerId) || whitelistedProviders.has(providerId);
 }

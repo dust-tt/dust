@@ -60,7 +60,7 @@ export function getWhitelistedProviders(
 
 export function isProviderWhitelistedForAuth(
   auth: Authenticator,
-  providerId: ModelProviderIdType
+  providerId: WhitelistableModelMakerIdType
 ): boolean {
   return isProviderWhitelisted(getWhitelistedProviders(auth), providerId);
 }
