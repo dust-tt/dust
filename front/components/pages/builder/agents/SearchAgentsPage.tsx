@@ -36,13 +36,11 @@ import type {
 } from "@app/types/agent_search/agent_search";
 import {
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   EmptyCTA,
   Page,
   SearchInput,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
@@ -321,84 +319,77 @@ export function SearchAgentsPage() {
             className="w-full"
           />
         </div>
-        <Tabs
-          value={selectedTab}
-          onValueChange={(value) => {
-            const tab = AGENT_SEARCH_TABS.find(({ id }) => id === value);
-            if (tab) {
-              setSelectedTab(tab.id);
-            }
-          }}
-        >
-          <div className="flex flex-col gap-2">
-            <TabsList>
-              {AGENT_SEARCH_TABS.map((tab) => (
-                <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
-              ))}
-              <div className="grow" />
-              <div className="self-start">
-                <AgentFilterPanel
-                  owner={owner}
-                  categories={filterCategories}
-                  searchTerm={searchTerm}
-                  tabFilters={activeTab.filters}
-                  permissionFiltering={getPermissionFiltering(activeTab.id)}
-                  filter={filter}
-                  onFilterChange={setFilter}
-                  hiddenAgents={
-                    canShowHiddenAgents
-                      ? {
-                          isShown: showHiddenAgents,
-                          onChange: setShowHiddenAgents,
-                        }
-                      : undefined
-                  }
-                />
-              </div>
-            </TabsList>
-            <FilterSummaryChips
-              isLoading={isSelectionLoading}
-              summaries={getFilterSummaries(
-                filter,
-                filterCategories,
-                SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
-              )}
-              onClearCategory={(category) =>
-                setFilter(clearFilterCategory(filter, category))
-              }
-              extraChips={
-                canShowHiddenAgents && showHiddenAgents
-                  ? [
-                      {
-                        key: "hidden-agents",
-                        label: (
-                          <span className="min-w-0 truncate text-xs font-bold">
-                            Hidden agents
-                          </span>
-                        ),
-                        onRemove: () => setShowHiddenAgents(false),
-                      },
-                    ]
-                  : []
-              }
-              onClearAll={() => {
-                setFilter({});
-                setShowHiddenAgents(false);
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ButtonsSwitchList
+              value={selectedTab}
+              onValueChange={(value) => {
+                const tab = AGENT_SEARCH_TABS.find(({ id }) => id === value);
+                if (tab) {
+                  setSelectedTab(tab.id);
+                }
               }}
+            >
+              {AGENT_SEARCH_TABS.map((tab) => (
+                <ButtonsSwitch key={tab.id} value={tab.id} label={tab.label} />
+              ))}
+            </ButtonsSwitchList>
+            <AgentFilterPanel
+              owner={owner}
+              categories={filterCategories}
+              searchTerm={searchTerm}
+              tabFilters={activeTab.filters}
+              permissionFiltering={getPermissionFiltering(activeTab.id)}
+              filter={filter}
+              onFilterChange={setFilter}
+              hiddenAgents={
+                canShowHiddenAgents
+                  ? {
+                      isShown: showHiddenAgents,
+                      onChange: setShowHiddenAgents,
+                    }
+                  : undefined
+              }
             />
-            {AGENT_SEARCH_TABS.map((tab) => (
-              <TabsContent key={tab.id} value={tab.id}>
-                <AgentsList
-                  key={owner.sId}
-                  searchTerm={searchTerm}
-                  filters={toAgentSearchFilters(filter, tab.filters)}
-                  permissionFiltering={getPermissionFiltering(tab.id)}
-                  onSelect={setDetailedAgentId}
-                />
-              </TabsContent>
-            ))}
           </div>
-        </Tabs>
+          <FilterSummaryChips
+            isLoading={isSelectionLoading}
+            summaries={getFilterSummaries(
+              filter,
+              filterCategories,
+              SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
+            )}
+            onClearCategory={(category) =>
+              setFilter(clearFilterCategory(filter, category))
+            }
+            extraChips={
+              canShowHiddenAgents && showHiddenAgents
+                ? [
+                    {
+                      key: "hidden-agents",
+                      label: (
+                        <span className="min-w-0 truncate text-xs font-bold">
+                          Hidden agents
+                        </span>
+                      ),
+                      onRemove: () => setShowHiddenAgents(false),
+                    },
+                  ]
+                : []
+            }
+            onClearAll={() => {
+              setFilter({});
+              setShowHiddenAgents(false);
+            }}
+          />
+          <AgentsList
+            key={`${owner.sId}-${activeTab.id}`}
+            searchTerm={searchTerm}
+            filters={toAgentSearchFilters(filter, activeTab.filters)}
+            permissionFiltering={getPermissionFiltering(activeTab.id)}
+            onSelect={setDetailedAgentId}
+          />
+        </div>
       </div>
       <AgentDetailsSheet
         owner={owner}
