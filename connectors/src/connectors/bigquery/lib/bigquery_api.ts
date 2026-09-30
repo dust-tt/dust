@@ -13,6 +13,8 @@ import { Err, normalizeError, Ok, removeNulls } from "@dust-tt/client";
 import { BigQuery } from "@google-cloud/bigquery";
 import { ProjectsClient } from "@google-cloud/resource-manager";
 
+import { withBigQueryStaticIpProxy } from "./bigquery_proxy";
+
 const MAX_TABLES_PER_SCHEMA = 1500;
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
 
@@ -62,16 +64,20 @@ export function connectToBigQuery(
   credentials: BigQueryCredentialsWithLocation,
   projectId: string
 ): BigQuery {
-  return new BigQuery({
-    credentials,
-    scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
-    location: credentials.location,
-    retryOptions: {
-      autoRetry: true,
-      maxRetries: 3,
-    },
-    projectId,
-  });
+  // Use the static IP proxy when configured so BigQuery traffic shares the same
+  // allowlisted egress IP as Snowflake (customers IP-restrict warehouse access).
+  return new BigQuery(
+    withBigQueryStaticIpProxy({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
+      location: credentials.location,
+      retryOptions: {
+        autoRetry: true,
+        maxRetries: 3,
+      },
+      projectId,
+    })
+  );
 }
 
 async function listAccessibleProjects(
