@@ -11,6 +11,7 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  SubAgentSuggestionType,
   TagsSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
@@ -32,6 +33,8 @@ export interface PreviewedAgentCapabilities {
   removedToolIds: string[];
   addedSkillIds: string[];
   removedSkillIds: string[];
+  addedSubAgentIds: string[];
+  removedSubAgentIds: string[];
 }
 
 export interface AgentSuggestionsPreview {
@@ -166,6 +169,8 @@ export function previewAgentSuggestions({
         removedToolIds: [],
         addedSkillIds: skillIds,
         removedSkillIds: [],
+        addedSubAgentIds: [],
+        removedSubAgentIds: [],
       },
     });
   }
@@ -183,21 +188,10 @@ export function previewAgentSuggestions({
     model,
     skills = [],
     tools = [],
-    subAgents,
+    subAgents = [],
     tags,
     structuredOutput,
   } = edits.value;
-
-  // Sub-agent changes are not previewed yet: showing the agent without them would misrepresent the
-  // suggestions.
-  if (subAgents) {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        "Suggestions changing the agent's sub-agents cannot be previewed."
-      )
-    );
-  }
 
   const instructionsRes = previewInstructions(
     agent,
@@ -227,13 +221,14 @@ export function previewAgentSuggestions({
       tags: previewTags(agent.tags, tags),
       ...instructionsRes.value,
     },
-    capabilities: previewCapabilities(tools, skills),
+    capabilities: previewCapabilities(tools, skills, subAgents),
   });
 }
 
 function previewCapabilities(
   tools: ToolsSuggestionType[],
-  skills: SkillsSuggestionType[]
+  skills: SkillsSuggestionType[],
+  subAgents: SubAgentSuggestionType[]
 ): PreviewedAgentCapabilities {
   return {
     addedToolIds: tools.filter((t) => t.action === "add").map((t) => t.toolId),
@@ -246,5 +241,11 @@ function previewCapabilities(
     removedSkillIds: skills
       .filter((s) => s.action === "remove")
       .map((s) => s.skillId),
+    addedSubAgentIds: subAgents
+      .filter((s) => s.action === "add")
+      .map((s) => s.childAgentId),
+    removedSubAgentIds: subAgents
+      .filter((s) => s.action === "remove")
+      .map((s) => s.childAgentId),
   };
 }

@@ -191,6 +191,8 @@ describe("previewAgentSuggestions", () => {
         removedToolIds: [],
         addedSkillIds: ["skl_1"],
         removedSkillIds: [],
+        addedSubAgentIds: [],
+        removedSubAgentIds: [],
       });
     }
   });
@@ -227,6 +229,50 @@ describe("previewAgentSuggestions", () => {
         removedToolIds: ["msv_2"],
         addedSkillIds: [],
         removedSkillIds: ["skl_1"],
+        addedSubAgentIds: [],
+        removedSubAgentIds: [],
+      });
+    }
+  });
+
+  it("splits sub-agent suggestions into additions and removals, next to a skill", () => {
+    const suggestions: AgentSuggestionType[] = [
+      {
+        ...BASE_SUGGESTION,
+        kind: "skills",
+        suggestion: { action: "add", skillId: "skl_1" },
+      },
+      {
+        ...BASE_SUGGESTION,
+        kind: "sub_agent",
+        suggestion: { action: "add", toolId: "msv_run", childAgentId: "agt_1" },
+      },
+      {
+        ...BASE_SUGGESTION,
+        kind: "sub_agent",
+        suggestion: {
+          action: "remove",
+          toolId: "msv_run",
+          childAgentId: "agt_2",
+        },
+      },
+    ];
+
+    const result = previewAgentSuggestions({
+      agent: AGENT,
+      suggestions,
+      pipeline,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.capabilities).toEqual({
+        addedToolIds: [],
+        removedToolIds: [],
+        addedSkillIds: ["skl_1"],
+        removedSkillIds: [],
+        addedSubAgentIds: ["agt_1"],
+        removedSubAgentIds: ["agt_2"],
       });
     }
   });

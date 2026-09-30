@@ -654,9 +654,10 @@ function agentSkillRefsOf(suggestions: Suggestion[]): string[] {
 }
 
 /**
- * Checks that each ref is declared only once, by a skill or agent creation. Every skill tag citing
- * a ref in the call's instructions, and every skill ref given to an agent, must point at a declared
- * skill ref. Every sub-agent ref must point at a declared agent ref.
+ * Checks that each skill ref is declared once among the skill creations, and each agent ref once
+ * among the agent creations. Every skill tag citing a ref in the call's instructions, and every
+ * skill ref given to an agent, must point at a declared skill ref. Every sub-agent ref must point
+ * at a declared agent ref.
  */
 function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
   const pendingSkillRefs = new Set<string>();
@@ -1090,8 +1091,10 @@ async function recordPlannedChange(
  * `suggest` MUST validate every suggestion of the call against live state before recording any of
  * them: when one suggestion is invalid or unsupported, or two suggestions target the same agent or
  * skill, or a skill is both deleted and added to an agent, or an agent is both deleted and added
- * as a sub-agent, or a ref is declared twice or used without being declared, the call fails and no batch,
- * placeholder agent or skill, or suggestion row is created.
+ * as a sub-agent, or a skill ref or agent ref is declared twice among the creations of its kind or
+ * used without being declared, the call fails and no batch, placeholder agent or skill, or
+ * suggestion row is created. A skill and an agent may share a ref, as each is only resolved among
+ * the refs of its own kind.
  */
 /**
  * @cc [owner:achilleburah,label:product;mcp] refs-resolved-before-storage

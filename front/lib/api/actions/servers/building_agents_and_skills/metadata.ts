@@ -33,8 +33,8 @@ export const CreateAgentSuggestionSchema = z.object({
     .regex(SUGGESTION_REF_REGEX)
     .optional()
     .describe(
-      "A temporary name for the new agent, unique in this call. Use it anywhere in the same " +
-        "call, in place of the id of this agent, which does not exist yet."
+      "A temporary name for the new agent, unique among the agents created in this call. Use it " +
+        "anywhere in the same call, in place of the id of this agent, which does not exist yet."
     ),
   name: z
     .string()
@@ -83,8 +83,8 @@ export const CreateSkillSuggestionSchema = z.object({
     .regex(SUGGESTION_REF_REGEX)
     .optional()
     .describe(
-      "A temporary name for the new skill, unique in this call. Use it anywhere in the same " +
-        "call, in place of the id of this skill, which does not exist yet."
+      "A temporary name for the new skill, unique among the skills created in this call. Use it " +
+        "anywhere in the same call, in place of the id of this skill, which does not exist yet."
     ),
   name: z
     .string()
