@@ -61,7 +61,7 @@ describe("UserLocaleSync", () => {
     state.hasLocalisation = true;
     state.userLocale = "en-GB";
 
-    renderWithI18n();
+    renderUserLocaleSync();
 
     await waitFor(() => expect(i18n.locale).toBe("en-GB"));
     expect(document.documentElement.lang).toBe("en-GB");
