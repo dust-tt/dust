@@ -500,6 +500,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "sfriquet",
   },
+  co_edition: {
+    description: "Collaborative editing features",
+    stage: "dust_only",
+    owner: "PopDaph",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";
