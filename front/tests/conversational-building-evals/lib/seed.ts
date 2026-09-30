@@ -2,6 +2,7 @@ import { Authenticator } from "@app/lib/auth";
 import {
   convertBlockHtmlToMarkdown,
   convertMarkdownToBlockHtml,
+  getMarkdownPipeline,
 } from "@app/lib/editor/skill_instructions_html";
 import type {
   SeededKnowledgeNode,
@@ -131,7 +132,10 @@ export async function seedScenario(
       const created = await AgentConfigurationFactory.createTestAgent(auth, {
         name: agent.name,
         description: agent.description,
-        instructions: convertBlockHtmlToMarkdown(agent.instructionsHtml),
+        instructions: convertBlockHtmlToMarkdown(
+          agent.instructionsHtml,
+          getMarkdownPipeline("agent")
+        ),
         instructionsHtml: agent.instructionsHtml,
       });
       agentIdsByKey.set(agent.key, created.sId);

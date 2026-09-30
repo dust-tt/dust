@@ -8,6 +8,7 @@ import {
 import {
   GET_TOOL_DETAILS_TOOL_NAME,
   LIST_AGENTS_TOOL_NAME,
+  LIST_MODELS_TOOL_NAME,
   LIST_SKILLS_TOOL_NAME,
   LIST_TOOLS_TOOL_NAME,
   LIST_WORKSPACE_MEMBERS_TOOL_NAME,
@@ -102,6 +103,7 @@ Tools operate on entity ids, not names. Use these tools to get up-to-date inform
 - \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\`: find all skills and resolve a name to an id.
 - \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`: find the tools that can be equipped on agents and skills and resolve a name to an id.
 - \`${managementToolName(GET_TOOL_DETAILS_TOOL_NAME)}\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
+- \`${managementToolName(LIST_MODELS_TOOL_NAME)}\`: the models an agent can be set to, with their \`modelId\` and supported reasoning efforts. Use it before suggesting a model change.
 - \`${managementToolName(SEARCH_KNOWLEDGE_TOOL_NAME)}\`: without a query, the knowledge sources (data source views) of the workspace; with a query, the sources and document nodes matching it. Use it before referencing knowledge in a suggestion (see <knowledge_guidance> and <knowledge_nodes>).
 - \`${managementToolName(LIST_WORKSPACE_MEMBERS_TOOL_NAME)}\`: information about members (pass \`userIds\` to look up specific people, e.g. to change a skill's editors).
 - \`${buildingToolName(DESCRIBE_SKILL_TOOL_NAME)}\`: a custom skill's name, settings, and instructions as HTML whose blocks carry a \`data-block-id\`. Call it to get any info about a skill before acting on it; the block ids are required to target edits.
@@ -189,6 +191,7 @@ ${MODEL_GUIDANCE_LINE}
 Skills and tools are added to or removed from an agent with the \`skills\` and \`tools\` fields of \`edit_agent\`, never by writing about them in its instructions.
 - Skills: take the ids of the skills to add from \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\`; only active skills can be added, and an unpublished skill only by one of its editors. Take the ids of the skills to remove from the agent's skills in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`.
 - Tools: take the ids of the tools to add from \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`, and the ids of the tools to remove from the agent's tools in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`. Only tools that need no configuration can be added or removed: for a knowledge tool, a sub-agent (Run Agent) or a tool with settings to pick, tell the user to change it from the agent builder.
+- Model: take the \`modelId\` from \`${managementToolName(LIST_MODELS_TOOL_NAME)}\`, resolving the model the user names to its exact \`modelId\`, without the provider prefix \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\` shows. Only pass a \`reasoningEffort\` the model lists as supported, and only when the user asks for one or the model change calls for it.
 - Prefer adding a skill that wraps a tool over adding the tool alone (see <skills_tools_guidance>).
 - When the agent needs instructions telling it when to use the new skill or tool, put the instruction edits and the addition in the same call (see <batching>).
 </agent_capabilities>`,

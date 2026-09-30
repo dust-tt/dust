@@ -7,11 +7,12 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import { AgentSuggestionDataSchema } from "@app/types/suggestions/agent_suggestion";
 
-export interface AgentFieldEdits {
+export interface AgentEdits {
   name?: string;
   model?: ModelSuggestionType;
   description?: string;
@@ -19,6 +20,7 @@ export interface AgentFieldEdits {
   instructions?: InstructionsSuggestionSchemaType[];
   skills?: SkillsSuggestionType[];
   tools?: ToolsSuggestionType[];
+  subAgents?: SubAgentSuggestionType[];
 }
 
 type AgentSuggestionChangeInput = Pick<
@@ -28,7 +30,7 @@ type AgentSuggestionChangeInput = Pick<
 
 function fieldEditsForSuggestion(
   suggestion: AgentSuggestionChangeInput
-): Result<AgentFieldEdits, DustError<"invalid_request_error">> {
+): Result<AgentEdits, DustError<"invalid_request_error">> {
   const parsed = AgentSuggestionDataSchema.safeParse({
     kind: suggestion.kind,
     suggestion: suggestion.suggestion,
@@ -67,8 +69,10 @@ function fieldEditsForSuggestion(
     case "skills":
       return new Ok({ skills: [data.suggestion] });
 
-    case "knowledge":
     case "sub_agent":
+      return new Ok({ subAgents: [data.suggestion] });
+
+    case "knowledge":
       return new Err(
         new DustError(
           "invalid_request_error",
@@ -84,16 +88,14 @@ function fieldEditsForSuggestion(
   }
 }
 
-function mergeFieldEdits(
-  merged: AgentFieldEdits,
-  next: AgentFieldEdits
-): AgentFieldEdits {
+function mergeFieldEdits(merged: AgentEdits, next: AgentEdits): AgentEdits {
   const instructions = [
     ...(merged.instructions ?? []),
     ...(next.instructions ?? []),
   ];
   const skills = [...(merged.skills ?? []), ...(next.skills ?? [])];
   const tools = [...(merged.tools ?? []), ...(next.tools ?? [])];
+  const subAgents = [...(merged.subAgents ?? []), ...(next.subAgents ?? [])];
 
   return {
     ...merged,
@@ -101,13 +103,14 @@ function mergeFieldEdits(
     ...(instructions.length > 0 ? { instructions } : {}),
     ...(skills.length > 0 ? { skills } : {}),
     ...(tools.length > 0 ? { tools } : {}),
+    ...(subAgents.length > 0 ? { subAgents } : {}),
   };
 }
 
-export function mergeAgentFieldEdits(
+export function mergeAgentEdits(
   suggestions: AgentSuggestionChangeInput[]
-): Result<AgentFieldEdits, DustError<"invalid_request_error">> {
-  let merged: AgentFieldEdits = {};
+): Result<AgentEdits, DustError<"invalid_request_error">> {
+  let merged: AgentEdits = {};
 
   for (const suggestion of suggestions) {
     const edits = fieldEditsForSuggestion(suggestion);

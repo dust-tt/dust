@@ -1,12 +1,16 @@
 import type {
   CatalogItem,
   DiscoverSkill,
-} from "@app/components/assistant/conversation/discover/DiscoverCatalog";
+} from "@app/components/assistant/conversation/discover/catalog";
 import {
-  CatalogRow,
   getItemDescription,
   getItemId,
   getItemName,
+  toHydratedAgentCatalogItem,
+  toHydratedSkillCatalogItem,
+} from "@app/components/assistant/conversation/discover/catalog";
+import {
+  CatalogRow,
   ItemAuthor,
   SkillCatalogAvatar,
 } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
@@ -15,6 +19,7 @@ import {
   trackDiscoverySuggestionClick,
   trackDiscoverySuggestionView,
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
+import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { getSkillIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -25,6 +30,7 @@ import {
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import type { DiscoveryRankedItemType } from "@app/types/api/discovery";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -63,14 +69,14 @@ function resolveCatalogItems(
       case "agent": {
         const agent = agentsById.get(target.sId);
         if (agent) {
-          resolved.push({ kind: "agent", agent });
+          resolved.push(toHydratedAgentCatalogItem(agent));
         }
         break;
       }
       case "skill": {
         const skill = skillsById.get(target.sId);
         if (skill) {
-          resolved.push({ kind: "skill", skill });
+          resolved.push(toHydratedSkillCatalogItem(skill));
         }
         break;
       }
@@ -83,8 +89,8 @@ function resolveCatalogItems(
 
 interface DiscoverHomeProps {
   owner: WorkspaceType;
-  onAgentClick: (agent: LightAgentConfigurationType) => void;
-  onSkillClick: (skill: DiscoverSkill) => void;
+  onAgentClick: (agent: RichAgentMentionCandidate) => void;
+  onSkillClick: (skill: PendingSkill) => void;
   onPin?: (item: CatalogItem) => void;
   onDetails: (item: CatalogItem) => void;
   onFindMore: () => void;
@@ -450,9 +456,13 @@ function FeaturedCard({ item, onClick }: FeaturedCardProps) {
           </>
         ) : (
           <>
-            <SkillBackdrop skill={item.skill} />
+            <SkillBackdrop icon={item.skill.icon} />
             <span className="relative">
-              <SkillCatalogAvatar skill={item.skill} size="md" />
+              <SkillCatalogAvatar
+                icon={item.skill.icon}
+                isDustProvided={item.isDustProvided}
+                size="md"
+              />
             </span>
           </>
         )}
@@ -473,11 +483,11 @@ function FeaturedCard({ item, onClick }: FeaturedCardProps) {
 }
 
 interface SkillBackdropProps {
-  skill: DiscoverSkill;
+  icon: string | null;
 }
 
-function SkillBackdrop({ skill }: SkillBackdropProps) {
-  const SkillIcon = useMemo(() => getSkillIcon(skill.icon), [skill.icon]);
+function SkillBackdrop({ icon }: SkillBackdropProps) {
+  const SkillIcon = useMemo(() => getSkillIcon(icon), [icon]);
   return (
     <span
       aria-hidden

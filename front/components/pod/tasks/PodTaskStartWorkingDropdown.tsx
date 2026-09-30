@@ -1,6 +1,7 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
@@ -101,7 +102,7 @@ export function PodTaskStartWorkingDropdown({
     defaultGoToConversation
   );
   const [selectedStartAgent, setSelectedStartAgent] =
-    useState<LightAgentConfigurationType | null>(null);
+    useState<RichAgentMentionCandidate | null>(null);
 
   useEffect(() => {
     setGoToConversationAfterStart(defaultGoToConversation);

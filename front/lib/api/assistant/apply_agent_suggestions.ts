@@ -1,7 +1,5 @@
 import { getDefaultMCPActionPayload } from "@app/lib/actions/default_mcp_action";
-import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { DROID_AVATAR_URLS } from "@app/lib/agent_builder/avatars";
-import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
@@ -10,16 +8,23 @@ import {
   fetchSuggestableSkills,
 } from "@app/lib/api/assistant/suggestable_skills";
 import {
+  checkSubAgentAddition,
+  checkSubAgentRemoval,
+  fetchRunAgentTool,
+  fetchSuggestableSubAgents,
+} from "@app/lib/api/assistant/suggestable_sub_agents";
+import {
   checkToolAddition,
   checkToolRemoval,
   fetchSuggestableTools,
 } from "@app/lib/api/assistant/suggestable_tools";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
-import { mergeAgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import type { AgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import { mergeAgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
 import {
   applyInstructionEditsToHtml,
   convertMarkdownToBlockHtml,
+  getMarkdownPipeline,
 } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
@@ -29,9 +34,10 @@ import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
 import type {
-  AgentConfigurationType,
+  AgentConfigurationScope,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -40,6 +46,7 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import {
@@ -56,9 +63,17 @@ type ApplyAgentSuggestionsError = DustError<"invalid_request_error">;
  */
 export type ResolvedAgentChange =
   | {
-      type: "create" | "edit";
+      type: "create";
       agentId: string;
       assistant: AgentConfigurationAssistantPayload;
+    }
+  | {
+      type: "edit";
+      agentId: string;
+      assistant: AgentConfigurationAssistantPayload | null;
+      // Applied in place on its own when there is no full save, which needs no read access to the
+      // agent's definition.
+      scope: Exclude<AgentConfigurationScope, "global"> | null;
     }
   | { type: "delete"; agentId: string };
 
@@ -104,13 +119,14 @@ async function resolveCreateSuggestion(
   // The suggested instructions are HTML: run them through the editor schema so the stored
   // markdown and block HTML match what the builder would have saved.
   const converted = applyInstructionEditsToHtml(
-    convertMarkdownToBlockHtml(""),
+    convertMarkdownToBlockHtml("", getMarkdownPipeline("agent")),
     [
       {
         targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
         content: instructions,
       },
-    ]
+    ],
+    getMarkdownPipeline("agent")
   );
   if (converted.isErr()) {
     return converted;
@@ -210,7 +226,8 @@ function resolveInstructionsEdits(
 
   return applyInstructionEditsToHtml(
     agentConfiguration.instructionsHtml,
-    edits.map(({ targetBlockId, content }) => ({ targetBlockId, content }))
+    edits.map(({ targetBlockId, content }) => ({ targetBlockId, content })),
+    getMarkdownPipeline("agent")
   );
 }
 
@@ -300,8 +317,83 @@ async function resolveToolsEdits(
   return new Ok({ actions, hasRemovedTools: removedToolIds.size > 0 });
 }
 
-// TODO: save a separate field for manually added space ids like for skills
-// so we don't need to infer what is manual and what is not.
+/**
+ * Carries the agent's actions over, with the suggested sub-agents added or removed. Added
+ * sub-agents are checked again against live state (see `suggestable-sub-agents-match-builder`)
+ * and run through the `run_agent` tool with the builder's defaults. A sub-agent already added, or
+ * already removed, since the suggestion was recorded is skipped.
+ */
+async function resolveSubAgentsEdits(
+  auth: Authenticator,
+  currentActions: AgentActionPayload[],
+  subAgents: SubAgentSuggestionType[],
+  { agentId }: { agentId: string }
+): Promise<
+  Result<
+    { actions: AgentActionPayload[]; hasRemovedSubAgents: boolean },
+    ApplyAgentSuggestionsError
+  >
+> {
+  const hasSubAgent = (subAgentId: string) =>
+    currentActions.some((action) => action.childAgentId === subAgentId);
+  const removedSubAgentIds = new Set(
+    subAgents
+      .filter((s) => s.action === "remove" && hasSubAgent(s.childAgentId))
+      .map((s) => s.childAgentId)
+  );
+  const addedSubAgentIds = new Set(
+    subAgents
+      .filter((s) => s.action === "add" && !hasSubAgent(s.childAgentId))
+      .map((s) => s.childAgentId)
+  );
+
+  for (const subAgentId of removedSubAgentIds) {
+    const removal = checkSubAgentRemoval(subAgentId, currentActions);
+    if (removal.isErr()) {
+      return new Err(new DustError("invalid_request_error", removal.error));
+    }
+  }
+  const actions = currentActions.filter(
+    (action) =>
+      action.childAgentId === null ||
+      !removedSubAgentIds.has(action.childAgentId)
+  );
+
+  if (addedSubAgentIds.size > 0) {
+    const runAgentTool = await fetchRunAgentTool(auth);
+    if (!runAgentTool) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          "The tool to run sub-agents is not available."
+        )
+      );
+    }
+    const suggestable = await fetchSuggestableSubAgents(auth, [
+      ...addedSubAgentIds,
+    ]);
+    for (const subAgentId of addedSubAgentIds) {
+      const addition = checkSubAgentAddition(subAgentId, suggestable, {
+        agentId,
+      });
+      if (addition.isErr()) {
+        return new Err(new DustError("invalid_request_error", addition.error));
+      }
+      actions.push(
+        getDefaultMCPActionPayload(runAgentTool, {
+          takenNames: new Set(actions.map((action) => action.name)),
+          childAgent: addition.value,
+        })
+      );
+    }
+  }
+
+  return new Ok({
+    actions,
+    hasRemovedSubAgents: removedSubAgentIds.size > 0,
+  });
+}
+
 /**
  * Carries the agent's current skills over, with the suggested skills added or removed. Added skills
  * are checked again against live state. A skill already added, or already removed,
@@ -349,38 +441,35 @@ async function resolveSkillsEdits(
   });
 }
 
+// TODO: save a separate field for manually added space ids like for skills
+// so we don't need to infer what is manual and what is not.
 /**
  * @cc [owner:fabiencelier,label:security;product] removed-capability-lifts-its-space
- * When a batch removes a tool or a skill, the agent's additional requested spaces MUST be
- * recomputed as the builder does (its requested spaces minus those its current actions and skills
- * imply), so that a space only the removed tool or skill required no longer restricts the agent. Without a removal, the
- * requested spaces are carried over as they are.
+ * When a batch removes a tool, a sub-agent or a skill, the agent's additional requested spaces MUST
+ * be recomputed as the builder does (its requested spaces minus those its current actions and
+ * skills imply), so that a space only the removed capability required no longer restricts the
+ * agent. Without a removal, the requested spaces are carried over as they are.
  */
-async function getAdditionalRequestedSpaceIds(
+async function getAdditionalRequestedSpaceModelIds(
   auth: Authenticator,
   {
-    agentConfiguration,
+    requestedSpaceModelIds,
     actions,
     skills,
   }: {
-    agentConfiguration: AgentConfigurationType;
+    requestedSpaceModelIds: ModelId[];
     actions: AgentActionPayload[];
     skills: SkillResource[];
   }
-): Promise<string[]> {
-  const { requestedSpaceIds } =
-    await getAgentConfigurationRequirementsFromCapabilities(auth, {
-      actions,
-      skills,
-    });
-  const impliedSpaceIds = new Set(
-    (await SpaceResource.fetchByModelIds(auth, requestedSpaceIds)).map(
-      (space) => space.sId
-    )
+): Promise<ModelId[]> {
+  const implied = await getAgentConfigurationRequirementsFromCapabilities(
+    auth,
+    { actions, skills }
   );
+  const impliedSpaceModelIds = new Set(implied.requestedSpaceIds);
 
-  return agentConfiguration.requestedSpaceIds.filter(
-    (spaceId) => !impliedSpaceIds.has(spaceId)
+  return requestedSpaceModelIds.filter(
+    (spaceId) => !impliedSpaceModelIds.has(spaceId)
   );
 }
 
@@ -401,25 +490,17 @@ async function resolveAgentFieldEdits(
     instructions,
     skills,
     tools,
-  }: AgentFieldEdits
-): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
-  const contextRes = await getAgentConfigurationContext(auth, agent.sId, {
-    requireEditorGroup: true,
-  });
-  if (contextRes.isErr()) {
-    return new Err(
-      new DustError("invalid_request_error", contextRes.error.api_error.message)
-    );
-  }
-
-  const {
-    agentConfiguration,
-    editorUsers,
-    skills: currentSkills,
-  } = contextRes.value;
+    subAgents,
+  }: AgentEdits
+): Promise<
+  Result<AgentConfigurationAssistantPayload, ApplyAgentSuggestionsError>
+> {
+  // The agent as stored, which is what the save compares the new version against: every field no
+  // suggestion touches is carried over exactly as it is.
+  const current = await agent.buildResaveParams(auth);
 
   const resolvedInstructions = resolveInstructionsEdits(
-    agentConfiguration,
+    current,
     instructions ?? []
   );
   if (resolvedInstructions.isErr()) {
@@ -430,16 +511,13 @@ async function resolveAgentFieldEdits(
     instructionsHtml: nextInstructionsHtml,
   } = resolvedInstructions.value;
 
-  const resolvedModel = await resolveModelEdit(
-    auth,
-    agentConfiguration.model,
-    model
-  );
+  const resolvedModel = await resolveModelEdit(auth, current.model, model);
   if (resolvedModel.isErr()) {
     return resolvedModel;
   }
   const nextModel = resolvedModel.value;
 
+  const currentSkills = current.skills ?? [];
   const resolvedSkills = await resolveSkillsEdits(
     auth,
     currentSkills,
@@ -448,9 +526,7 @@ async function resolveAgentFieldEdits(
   if (resolvedSkills.isErr()) {
     return resolvedSkills;
   }
-  const currentActions = agentConfiguration.actions.filter(
-    isServerSideMCPServerConfiguration
-  );
+  const currentActions = current.actions ?? [];
   const resolvedActions = await resolveToolsEdits(
     auth,
     currentActions,
@@ -459,38 +535,105 @@ async function resolveAgentFieldEdits(
   if (resolvedActions.isErr()) {
     return resolvedActions;
   }
-  const additionalRequestedSpaceIds =
+  const resolvedToolsWithSubAgents = await resolveSubAgentsEdits(
+    auth,
+    resolvedActions.value.actions,
+    subAgents ?? [],
+    { agentId: agent.sId }
+  );
+  if (resolvedToolsWithSubAgents.isErr()) {
+    return resolvedToolsWithSubAgents;
+  }
+  const additionalRequestedSpaceModelIds =
     resolvedSkills.value.hasRemovedSkills ||
-    resolvedActions.value.hasRemovedTools
-      ? await getAdditionalRequestedSpaceIds(auth, {
-          agentConfiguration,
+    resolvedActions.value.hasRemovedTools ||
+    resolvedToolsWithSubAgents.value.hasRemovedSubAgents
+      ? await getAdditionalRequestedSpaceModelIds(auth, {
+          requestedSpaceModelIds: current.requestedSpaceIds,
           actions: currentActions,
           skills: currentSkills,
         })
-      : agentConfiguration.requestedSpaceIds;
+      : current.requestedSpaceIds;
 
   // Some skills may not be readable by the caller because of their requested spaces,
   // however in that case also the agent would be unreadable as it would request the
   // same spaces.
   return new Ok({
+    name: name ?? current.name,
+    description: description ?? current.description,
+    instructions: nextInstructions,
+    instructionsHtml: nextInstructionsHtml,
+    pictureUrl: current.pictureUrl,
+    status: current.status,
+    scope: scope ?? current.scope,
+    model: nextModel,
+    actions: resolvedToolsWithSubAgents.value.actions,
+    templateId: current.templateId,
+    tags: current.tags,
+    editors: current.editors.map((editor) => ({ sId: editor.sId })),
+    skills: resolvedSkills.value.skillIds.map((sId) => ({ sId })),
+    additionalRequestedSpaceIds: additionalRequestedSpaceModelIds.map((id) =>
+      SpaceResource.modelIdToSId({
+        id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      })
+    ),
+  });
+}
+
+/**
+ * Definition fields are saved as a new version, from the agent's full definition. The scope can be
+ * applied in place, so a caller holding `admin` on an agent they cannot read can still change it.
+ */
+function hasAgentFieldEdits({
+  name,
+  model,
+  description,
+  instructions,
+  skills,
+  tools,
+  subAgents,
+}: AgentEdits): boolean {
+  return (
+    name !== undefined ||
+    model !== undefined ||
+    description !== undefined ||
+    (instructions?.length ?? 0) > 0 ||
+    (skills?.length ?? 0) > 0 ||
+    (tools?.length ?? 0) > 0 ||
+    (subAgents?.length ?? 0) > 0
+  );
+}
+
+async function resolveAgentEdits(
+  auth: Authenticator,
+  agent: AgentResource,
+  edits: AgentEdits
+): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
+  if (agent.scope === "global" || agent.status !== "active") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Archived and global agents cannot be updated."
+      )
+    );
+  }
+
+  // Saving the definition creates a version, so a change that only moves the scope must not.
+  let assistant: AgentConfigurationAssistantPayload | null = null;
+  if (hasAgentFieldEdits(edits)) {
+    const assistantRes = await resolveAgentFieldEdits(auth, agent, edits);
+    if (assistantRes.isErr()) {
+      return assistantRes;
+    }
+    assistant = assistantRes.value;
+  }
+
+  return new Ok({
     type: "edit",
-    agentId: agentConfiguration.sId,
-    assistant: {
-      name: name ?? agentConfiguration.name,
-      description: description ?? agentConfiguration.description,
-      instructions: nextInstructions,
-      instructionsHtml: nextInstructionsHtml,
-      pictureUrl: agentConfiguration.pictureUrl,
-      status: agentConfiguration.status,
-      scope: scope ?? agentConfiguration.scope,
-      model: nextModel,
-      actions: resolvedActions.value.actions,
-      templateId: agentConfiguration.templateId,
-      tags: agentConfiguration.tags,
-      editors: editorUsers.map((user) => ({ sId: user.sId })),
-      skills: resolvedSkills.value.skillIds.map((sId) => ({ sId })),
-      additionalRequestedSpaceIds,
-    },
+    agentId: agent.sId,
+    assistant,
+    scope: edits.scope ?? null,
   });
 }
 
@@ -551,11 +694,11 @@ export async function resolveAgentSuggestions(
       return resolveCreateSuggestion(auth, agent, parsed.data.suggestion);
     }
     case "edit": {
-      const edits = mergeAgentFieldEdits(suggestions);
+      const edits = mergeAgentEdits(suggestions);
       if (edits.isErr()) {
         return edits;
       }
-      return resolveAgentFieldEdits(auth, agent, edits.value);
+      return resolveAgentEdits(auth, agent, edits.value);
     }
     case "delete":
       return resolveDeleteSuggestion(agent);
@@ -597,25 +740,55 @@ async function archiveAgent(
   return new Ok(undefined);
 }
 
+async function saveAgentConfiguration(
+  auth: Authenticator,
+  agentId: string,
+  assistant: AgentConfigurationAssistantPayload
+): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+  const res = await createOrUpgradeAgentConfiguration({
+    auth,
+    agentConfigurationId: agentId,
+    assistant,
+    // Pruning cleans up after edits made in the agent builder. Here we only apply suggestions:
+    // they are still `pending` during the save, so pruning would wrongly outdate them.
+    skipSuggestionPruning: true,
+  });
+  if (res.isErr()) {
+    return new Err(new DustError("invalid_request_error", res.error.message));
+  }
+
+  return new Ok(undefined);
+}
+
+async function updateAgentScope(
+  auth: Authenticator,
+  agent: AgentResource,
+  scope: Exclude<AgentConfigurationScope, "global">
+): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+  const res = await agent.updateConfiguration(auth, { scope });
+  if (res.isErr()) {
+    return new Err(new DustError("invalid_request_error", res.error.message));
+  }
+
+  return new Ok(undefined);
+}
+
 export async function writeAgentChange(
   auth: Authenticator,
+  agent: AgentResource,
   change: ResolvedAgentChange
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
   switch (change.type) {
     case "create":
-    case "edit": {
-      const res = await createOrUpgradeAgentConfiguration({
-        auth,
-        agentConfigurationId: change.agentId,
-        assistant: change.assistant,
-      });
-      if (res.isErr()) {
-        return new Err(
-          new DustError("invalid_request_error", res.error.message)
-        );
+      return saveAgentConfiguration(auth, change.agentId, change.assistant);
+    case "edit":
+      if (change.assistant) {
+        return saveAgentConfiguration(auth, change.agentId, change.assistant);
+      }
+      if (change.scope) {
+        return updateAgentScope(auth, agent, change.scope);
       }
       return new Ok(undefined);
-    }
     case "delete":
       return archiveAgent(auth, change.agentId);
     default:
@@ -641,5 +814,5 @@ export async function applyAgentSuggestions(
     return change;
   }
 
-  return writeAgentChange(auth, change.value);
+  return writeAgentChange(auth, params.agent, change.value);
 }

@@ -168,8 +168,9 @@ export function AgentDetailsBody({
   });
   const agentConfiguration =
     fetchedAgentConfiguration && preview
-      ? { ...fetchedAgentConfiguration, ...preview }
+      ? { ...fetchedAgentConfiguration, ...preview.fields }
       : fetchedAgentConfiguration;
+  const previewedCapabilities = preview?.capabilities ?? null;
 
   // Fetch webhook source views when triggers tab is active so they're ready
   // when the user clicks edit on a webhook trigger.
@@ -415,6 +416,7 @@ export function AgentDetailsBody({
                     <TabsContent value="info">
                       <AgentInfoTab
                         agentConfiguration={agentConfiguration}
+                        previewedCapabilities={previewedCapabilities}
                         owner={owner}
                       />
                     </TabsContent>
@@ -456,6 +458,7 @@ export function AgentDetailsBody({
             ) : agentConfiguration ? (
               <AgentInfoTab
                 agentConfiguration={agentConfiguration}
+                previewedCapabilities={previewedCapabilities}
                 owner={owner}
               />
             ) : (

@@ -28,6 +28,7 @@ import {
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
+  ModelProviderIdType,
   ReasoningEffort,
   ReasoningEffortSupport,
 } from "@app/types/assistant/models/types";
@@ -120,6 +121,21 @@ export async function getEnabledModelsForAuth(
     models: availableModels,
     allowedTierNamesOverride,
   });
+}
+
+/**
+ * @cc [owner:fabiencelier,label:product] agent-model-change-source
+ * Returns exactly the models, each restricted to its reasoning efforts, the caller can set an agent
+ * to: the workspace's available models that are selectable under the caller's model tiers.
+ */
+export async function getSelectableModelsForAuth(
+  auth: Authenticator,
+  { providerId }: { providerId?: ModelProviderIdType } = {}
+): Promise<EnabledModelConfigurationType[]> {
+  const models = await getEnabledModelsForAuth(auth);
+  return models.filter(
+    (m) => m.isSelectable && (!providerId || m.providerId === providerId)
+  );
 }
 
 export async function getDefaultStreamConfigForAuth(

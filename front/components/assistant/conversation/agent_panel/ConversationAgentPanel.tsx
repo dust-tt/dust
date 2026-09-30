@@ -8,6 +8,7 @@ import { AgentSuggestionPreviewProvider } from "@app/components/assistant/detail
 import { SuggestionPreviewHeader } from "@app/components/assistant/details/SuggestionPreviewHeader";
 import { useAgentSuggestions } from "@app/lib/swr/agent_suggestions";
 import { useUser } from "@app/lib/swr/user";
+import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Spinner } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
@@ -55,6 +56,7 @@ export function ConversationAgentPanel({
       {hasPreview ? (
         <SuggestionPreviewHeader
           isApplied={isApplied}
+          hasCreation={previewSuggestions.some(isCreateAgentSuggestion)}
           onToggle={() => setHiddenPreviewData(isApplied ? data : undefined)}
           onClose={closePanel}
         />

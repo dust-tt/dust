@@ -30,7 +30,6 @@ import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shar
 import { useAttachContextSearchSections } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSearchSections";
 import type { AttachContextSlashMenuItem } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";
 import { useAttachContextSlashMenuItems } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -65,17 +64,12 @@ function toSlashCommandItem(
 type SubMenuMode = "browse" | "search" | "scoped-search";
 
 function getSubMenuMode({
-  isBrowserEnabled,
   query,
   canNavigateUp,
 }: {
-  isBrowserEnabled: boolean;
   query: string;
   canNavigateUp: boolean;
 }): SubMenuMode {
-  if (!isBrowserEnabled) {
-    return "search";
-  }
   if (query.trim().length === 0) {
     return "browse";
   }
@@ -136,15 +130,14 @@ interface AttachContextSubMenuDropdownRef {
 
 /**
  * @cc [owner:smb2268,label:product] browse-when-query-empty
- * With the `knowledge_browser` feature enabled and an empty query the sub-menu MUST list the
- * current navigation level of the knowledge browser (spaces at the root, then categories, data
- * source views and folder contents). A non-empty query at the root MUST show the global search
- * results; below the root it MUST show two sections, the matches within the browsed level first
- * and then the remaining global results with those matches removed, while keeping the breadcrumbs
- * and the navigation state. Back and Escape MUST leave the sub-menu from any level; Backspace on
- * an empty query MUST go up one level while below the root (skipping levels the pod shortcut
- * owns) and leave the sub-menu from the root; a leading space in the query MUST NOT dismiss it.
- * Without the feature the sub-menu MUST behave as a search-only menu.
+ * With an empty query the sub-menu MUST list the current navigation level of the knowledge
+ * browser (spaces at the root, then categories, data source views and folder contents). A
+ * non-empty query at the root MUST show the global search results; below the root it MUST show
+ * two sections, the matches within the browsed level first and then the remaining global results
+ * with those matches removed, while keeping the breadcrumbs and the navigation state. Back and
+ * Escape MUST leave the sub-menu from any level; Backspace on an empty query MUST go up one level
+ * while below the root (skipping levels the pod shortcut owns) and leave the sub-menu from the
+ * root; a leading space in the query MUST NOT dismiss it.
  */
 export const AttachContextSubMenuDropdown = forwardRef<
   AttachContextSubMenuDropdownRef,
@@ -167,8 +160,6 @@ export const AttachContextSubMenuDropdown = forwardRef<
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
 
-    const { hasFeature } = useFeatureFlags();
-    const isBrowserEnabled = hasFeature("knowledge_browser");
     const excludeNonRemoteDatabaseTables = useCase === "skill-builder";
 
     const {
@@ -190,17 +181,14 @@ export const AttachContextSubMenuDropdown = forwardRef<
     const { spaces, isLoading: isBrowsableSpacesLoading } = useBrowsableSpaces({
       owner,
       spaces: scopedSpaces,
-      enabled: isBrowserEnabled,
+      enabled: true,
     });
 
-    const navigation = useKnowledgeBrowserNavigation({
-      spaces,
-      enabled: isBrowserEnabled,
-    });
+    const navigation = useKnowledgeBrowserNavigation({ spaces });
     const { navigationHistory, navigateTo, navigateUp } = navigation;
     const currentEntry = navigationHistory[navigationHistory.length - 1];
     const canNavigateUp = navigationHistory.length > 1;
-    const mode = getSubMenuMode({ isBrowserEnabled, query, canNavigateUp });
+    const mode = getSubMenuMode({ query, canNavigateUp });
 
     const browser = useKnowledgeBrowserItems({
       owner,
@@ -259,7 +247,7 @@ export const AttachContextSubMenuDropdown = forwardRef<
 
     const breadcrumbs = useMemo(
       () =>
-        isBrowserEnabled && canNavigateUp ? (
+        canNavigateUp ? (
           // Keep the editor focused: a focused breadcrumb button would trap focus in the menu.
           // `w-0 min-w-full` gives the trail a definite width inside the Radix scroll viewport,
           // whose `display: table` wrapper would otherwise grow with the trail and clip it.
@@ -277,7 +265,7 @@ export const AttachContextSubMenuDropdown = forwardRef<
             />
           </div>
         ) : undefined,
-      [canNavigateUp, isBrowserEnabled, navigateTo, navigationHistory]
+      [canNavigateUp, navigateTo, navigationHistory]
     );
 
     const handleSelect = (item: SlashCommand) => {

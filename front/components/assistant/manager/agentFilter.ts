@@ -10,6 +10,7 @@ export const AGENT_FILTER_CATEGORIES = [
   "access",
   "editor",
   "model",
+  "skill",
   "tag",
   "space",
 ] as const;
@@ -24,6 +25,7 @@ export const AGENT_FILTER_CATEGORY_FACET: Partial<
 > = {
   editor: "editors",
   model: "models",
+  skill: "skills",
   tag: "tags",
   space: "spaces",
 };
@@ -45,6 +47,7 @@ export function toAgentSearchFilters(
       : [];
   const editorIds = getSearchFilterIds(filter, "editor");
   const modelIds = getSearchFilterIds(filter, "model");
+  const skillIds = getSearchFilterIds(filter, "skill");
   const tagIds = getSearchFilterIds(filter, "tag");
   const spaceIds = getSearchFilterIds(filter, "space");
 
@@ -53,7 +56,24 @@ export function toAgentSearchFilters(
     ...(scope.length > 0 ? { scope } : {}),
     ...(editorIds.length > 0 ? { editorIds } : {}),
     ...(modelIds.length > 0 ? { modelIds } : {}),
+    ...(skillIds.length > 0 ? { skillIds } : {}),
     ...(tagIds.length > 0 ? { tagIds } : {}),
     ...(spaceIds.length > 0 ? { spaceIds } : {}),
   };
 }
+
+export const AGENT_SEARCH_TABS = [
+  {
+    id: "all",
+    label: "All",
+    filters: { status: ["active"], scope: ["visible", "hidden"] },
+  },
+  {
+    id: "default",
+    label: "Default",
+    filters: { status: ["active"], scope: ["global"] },
+  },
+  { id: "archived", label: "Archived", filters: { status: ["archived"] } },
+] satisfies { id: string; label: string; filters: AgentSearchFilters }[];
+
+export const AGENT_SEARCH_TAB_IDS = AGENT_SEARCH_TABS.map(({ id }) => id);

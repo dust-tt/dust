@@ -15,6 +15,7 @@ import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
 import { markDuplicateSuggestionsAsOutdated } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
@@ -29,12 +30,12 @@ import {
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import {
   describeMcpServer,
-  getAvailableModelsForWorkspace,
   listAvailableSkills,
   listAvailableTools,
   searchKnowledge,
 } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
+import { getSelectableModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import {
   DESCRIBE_MCP_TOOL_NAME,
@@ -58,8 +59,6 @@ import {
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { isAgentMention } from "@app/types/assistant/mentions";
-import { isModelProviderId } from "@app/types/assistant/models/providers";
-import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
@@ -384,18 +383,7 @@ async function createSkillsSuggestions({
 
 const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   get_available_models: async ({ providerId }, { auth }) => {
-    let models = await getAvailableModelsForWorkspace(auth);
-
-    if (providerId) {
-      if (!isModelProviderId(providerId)) {
-        return new Err(
-          new MCPError(`Invalid provider ID: ${providerId}`, {
-            tracked: false,
-          })
-        );
-      }
-      models = models.filter((m) => m.providerId === providerId);
-    }
+    const models = await getSelectableModelsForAuth(auth, { providerId });
 
     return new Ok([
       {
@@ -867,7 +855,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     const limitCheck = canAddPendingSuggestions({
       kind: "sub_agent",
       newPendingCount: 1,
-      currentPendingCount: remainingPending.length,
+      // Conversational sub-agent suggestions have no limit and cannot be resolved from the
+      // sidekick: only the sidekick's own count.
+      currentPendingCount: remainingPending.filter(
+        (s) => s.source === "sidekick"
+      ).length,
       resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
     });
     if (!limitCheck.allowed) {
@@ -964,34 +956,18 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   suggest_model: async (params, { auth, runContext }) => {
-    const availableModels = await getAvailableModelsForWorkspace(auth);
-
     const { modelId, reasoningEffort } = params.suggestion;
-    const modelConfiguration = availableModels.find(
-      (m) => m.modelId === modelId
-    );
-    if (!modelConfiguration) {
+    const resolved = await resolveAgentModelChange(auth, {
+      modelId,
+      reasoningEffort,
+    });
+    if (resolved.isErr()) {
       return new Err(
         new MCPError(
-          `Invalid model ID: ${modelId}. Check <workspace_context> for valid model IDs.`,
+          `${resolved.error.message} Check <workspace_context> for valid model IDs and reasoning efforts.`,
           { tracked: false }
         )
       );
-    }
-
-    if (reasoningEffort) {
-      const supportedReasoningEfforts = getAvailableReasoningEfforts(
-        modelConfiguration.supportedReasoningEfforts
-      );
-      if (!supportedReasoningEfforts.includes(reasoningEffort)) {
-        return new Err(
-          new MCPError(
-            `Invalid reasoning effort "${reasoningEffort}" for model ${modelId}. ` +
-              `Supported reasoning efforts for this model: ${supportedReasoningEfforts.join(", ")}.`,
-            { tracked: false }
-          )
-        );
-      }
     }
 
     const agentConfigurationId = getAgentConfigurationIdFromContext({

@@ -3,9 +3,13 @@ import { MemberGroupLimitTable } from "@app/components/workspace/MemberGroupLimi
 import {
   groupRowsForMember,
   parseCreditsInput,
-  parseDefaultLimitInput,
   toSpendLimit,
 } from "@app/components/workspace/member_spend_limit_helpers";
+import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
+import {
+  useWorkspaceDefaultLimitField,
+  WorkspaceDefaultLimitInput,
+} from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits } from "@app/lib/client/credits";
 import { useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
@@ -31,21 +35,13 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-// Fetched by the caller since the customer-facing app and poke reach the
-// value through different routes. "unavailable" means the workspace has no
-// default pool limit at all, so the field is not shown.
-export type DefaultUserSpendLimitState =
-  | { status: "loading" }
-  | { status: "error" }
-  | { status: "unavailable" }
-  | { status: "ready"; awuCredits: number };
-
 interface EditMemberSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
   member: MemberUsageType | null;
   owner: LightWorkspaceType;
   groups: GroupType[];
+  editableGroupIds?: ReadonlySet<string>;
   readOnly?: boolean;
   // The workspace default applies to every member, so editing it is reserved
   // to admins even where managers may edit personal and group limits.
@@ -61,6 +57,7 @@ interface MemberSpendLimitFormProps {
   member: MemberUsageType | null;
   owner: LightWorkspaceType;
   groups: GroupType[];
+  editableGroupIds?: ReadonlySet<string>;
   readOnly: boolean;
   canEditDefaultLimit: boolean;
   defaultUserSpendLimit: DefaultUserSpendLimitState;
@@ -73,6 +70,7 @@ function MemberSpendLimitForm({
   member,
   owner,
   groups,
+  editableGroupIds,
   readOnly,
   canEditDefaultLimit,
   defaultUserSpendLimit,
@@ -101,34 +99,10 @@ function MemberSpendLimitForm({
     normalizeToPoolLimitSeatType(member.seatType) !== null;
   const showDefaultLimit =
     isDefaultActive && defaultUserSpendLimit.status !== "unavailable";
-  const canChangeDefaultLimit =
-    showDefaultLimit && canEditDefaultLimit && !readOnly;
-  const isDefaultLimitLoaded = defaultUserSpendLimit.status === "ready";
-  const loadedDefaultLimitAwuCredits = isDefaultLimitLoaded
-    ? defaultUserSpendLimit.awuCredits
-    : undefined;
-  // While the workspace default is still loading, block saving instead of
-  // treating the unresolved value as unchanged (which would let an admin
-  // silently commit whatever ends up in the input once it finally arrives).
-  // Viewers who cannot edit it are not held back by its loading state, and a
-  // failed fetch only locks this field rather than the whole form.
-  const isDefaultLimitPending =
-    canChangeDefaultLimit && defaultUserSpendLimit.status === "loading";
-  const canSubmitDefaultLimit = canChangeDefaultLimit && isDefaultLimitLoaded;
-
-  // The draft stays null until the user types, so the loaded value can show
-  // up once fetched without remounting the form (which would drop whatever
-  // was typed in the other fields meanwhile).
-  const [defaultLimitDraft, setDefaultLimitDraft] = useState<string | null>(
-    null
-  );
-  const defaultLimitInput =
-    defaultLimitDraft ??
-    (loadedDefaultLimitAwuCredits !== undefined
-      ? String(loadedDefaultLimitAwuCredits)
-      : "");
-  const [defaultLimitValidationMessage, setDefaultLimitValidationMessage] =
-    useState<string | null>(null);
+  const defaultLimitField = useWorkspaceDefaultLimitField({
+    defaultUserSpendLimit,
+    canEdit: showDefaultLimit && canEditDefaultLimit && !readOnly,
+  });
 
   const seatAllowanceAwuCredits = member?.memberUsageLimit ?? 0;
   const effectiveLimitAwuCredits = member?.spendLimitAwuCredits ?? 0;
@@ -178,17 +152,19 @@ function MemberSpendLimitForm({
 
   async function handleValidate(event: React.MouseEvent) {
     event.preventDefault();
-    if (!member || isDefaultLimitPending) {
+    if (!member || defaultLimitField.isPending) {
       return;
     }
 
     const personalResult = parseCreditsInput(personalLimitInput);
     setValidationMessage(personalResult.ok ? null : personalResult.message);
 
-    const groupResults = memberGroupRows.map((row) => ({
-      row,
-      result: parseCreditsInput(groupLimitInputs[row.groupId] ?? ""),
-    }));
+    const groupResults = memberGroupRows
+      .filter((row) => !editableGroupIds || editableGroupIds.has(row.groupId))
+      .map((row) => ({
+        row,
+        result: parseCreditsInput(groupLimitInputs[row.groupId] ?? ""),
+      }));
     setGroupValidationMessages(
       Object.fromEntries(
         groupResults.map(({ row, result }) => [
@@ -198,21 +174,11 @@ function MemberSpendLimitForm({
       )
     );
 
-    // Only validated when this viewer may change it and the current value is
-    // known, so a locked or unloaded field can never block saving the other
-    // limits.
-    const defaultLimitResult = canSubmitDefaultLimit
-      ? parseDefaultLimitInput(defaultLimitInput)
-      : null;
-    setDefaultLimitValidationMessage(
-      defaultLimitResult && !defaultLimitResult.ok
-        ? defaultLimitResult.message
-        : null
-    );
+    const newDefaultLimit = defaultLimitField.validate();
 
     if (
       !personalResult.ok ||
-      (defaultLimitResult && !defaultLimitResult.ok) ||
+      newDefaultLimit === "invalid" ||
       groupResults.some(({ result }) => !result.ok)
     ) {
       return;
@@ -225,12 +191,6 @@ function MemberSpendLimitForm({
         ? [{ row, awuCredits: result.awuCredits }]
         : []
     );
-    const newDefaultLimit =
-      defaultLimitResult?.ok &&
-      defaultLimitResult.awuCredits !== loadedDefaultLimitAwuCredits
-        ? defaultLimitResult.awuCredits
-        : null;
-
     if (
       !personalChanged &&
       newDefaultLimit === null &&
@@ -318,25 +278,14 @@ function MemberSpendLimitForm({
             // caps this member: no personal override, and no group they're
             // in carries its own cap. Otherwise editing it here wouldn't
             // change this member's effective limit.
-            <CreditLimitInput
-              label="Workspace default limit"
-              value={defaultLimitInput}
-              readOnly={!canSubmitDefaultLimit}
+            <WorkspaceDefaultLimitInput
+              field={defaultLimitField}
               readOnlyTooltip={
                 !readOnly && !canEditDefaultLimit
                   ? "Only workspace admins can edit the workspace default limit."
                   : undefined
               }
               isActive={isDefaultActive}
-              validationMessage={
-                defaultUserSpendLimit.status === "error"
-                  ? "The workspace default limit could not be loaded."
-                  : defaultLimitValidationMessage
-              }
-              onChange={(cleaned) => {
-                setDefaultLimitDraft(cleaned);
-                setDefaultLimitValidationMessage(null);
-              }}
             />
           )}
 
@@ -362,6 +311,11 @@ function MemberSpendLimitForm({
                 : undefined
             }
           />
+          {editableGroupIds && (
+            <span className="copy-xs text-muted-foreground">
+              A personal limit applies to this member across the workspace.
+            </span>
+          )}
 
           {memberGroupRows.length > 0 && (
             <Page.Vertical gap="xs" align="stretch">
@@ -371,6 +325,7 @@ function MemberSpendLimitForm({
               <MemberGroupLimitTable
                 rows={memberGroupRows}
                 readOnly={readOnly}
+                editableGroupIds={editableGroupIds}
                 groupLimitInputs={groupLimitInputs}
                 groupValidationMessages={groupValidationMessages}
                 onChange={handleGroupLimitChange}
@@ -388,7 +343,7 @@ function MemberSpendLimitForm({
         rightButtonProps={{
           label: "Validate",
           variant: "highlight",
-          disabled: isSaving || readOnly || isDefaultLimitPending,
+          disabled: isSaving || readOnly || defaultLimitField.isPending,
           isLoading: isSaving,
           onClick: handleValidate,
         }}
@@ -403,6 +358,7 @@ export function EditMemberSpendLimitModal({
   member,
   owner,
   groups,
+  editableGroupIds,
   readOnly = false,
   canEditDefaultLimit = false,
   defaultUserSpendLimit,
@@ -432,6 +388,7 @@ export function EditMemberSpendLimitModal({
           member={displayedMember}
           owner={owner}
           groups={groups}
+          editableGroupIds={editableGroupIds}
           readOnly={readOnly}
           canEditDefaultLimit={canEditDefaultLimit}
           defaultUserSpendLimit={defaultUserSpendLimit}

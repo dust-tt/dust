@@ -149,7 +149,7 @@ export function FilterPanel<
             }}
             footer={categoryNavFooter}
           />
-          <div className="flex h-full w-80 flex-col gap-2 p-2">
+          <div className="flex h-full w-80 flex-col gap-3 p-2">
             <FilterSection
               title={categoryLabels[activeCategory]}
               action={
@@ -177,7 +177,7 @@ export function FilterPanel<
             </FilterSection>
             <div
               ref={setContentScrollContainer}
-              className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
+              className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto"
             >
               {isError ? (
                 <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">

@@ -60,12 +60,15 @@ export async function describeAgentHandler(
     ]);
   }
 
-  // Tools carry their id, as `list_tools` prints them, so that they can be removed by id.
+  // Tools carry their id, as `list_tools` prints them, so that they can be removed by id. Sub-agent
+  // actions carry the id of the agent they run instead, which is how sub-agents are removed.
   const toolNames = agent.actions
     .map((action) =>
-      isServerSideMCPServerConfiguration(action)
-        ? `${action.name} [${action.mcpServerViewId}]`
-        : action.name
+      !isServerSideMCPServerConfiguration(action)
+        ? action.name
+        : action.childAgentId
+          ? `${action.name} [sub-agent ${action.childAgentId}]`
+          : `${action.name} [${action.mcpServerViewId}]`
     )
     .join(", ");
   // Only reached for an agent the caller can read, so its skills are not private.

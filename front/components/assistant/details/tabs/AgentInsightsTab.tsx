@@ -170,7 +170,7 @@ export function AgentInsightsTab({
                 />
 
                 <div className="flex flex-col gap-4">
-                  <div className="flex flex-col">
+                  <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between gap-4">
                       <h3 className="text-base font-semibold text-foreground">
                         Explore

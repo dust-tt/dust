@@ -91,7 +91,7 @@ export function AgentFilterPanel({
       idPrefix="agent-filter"
       categoryNavFooter={
         hiddenAgents && (
-          <div className="flex items-center gap-1.5 py-1 pl-1 pr-2">
+          <div className="flex items-center gap-2 p-2">
             <Checkbox
               id="agent-filter-hidden-agents"
               checked={draftShowHiddenAgents}

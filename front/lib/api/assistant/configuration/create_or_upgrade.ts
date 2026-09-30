@@ -17,6 +17,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -51,6 +52,7 @@ export async function createOrUpgradeAgentConfiguration({
   agentConfigurationId,
   authorId,
   dangerouslySkipPermissionFiltering,
+  skipSuggestionPruning,
 }: {
   auth: Authenticator;
   assistant: AgentConfigurationAssistantPayload;
@@ -61,6 +63,7 @@ export async function createOrUpgradeAgentConfiguration({
   // updates): without it those spaces are rejected and those skills silently dropped, which would
   // unrestrict the agent and strip its skills. It grants no access to what the spaces protect.
   dangerouslySkipPermissionFiltering?: boolean;
+  skipSuggestionPruning?: boolean;
 }): Promise<
   Result<
     { agentConfiguration: AgentConfigurationType; changed: boolean },
@@ -197,6 +200,13 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
+  // Custom models are only reachable through the global agents bound to them.
+  if (!isStaticModelId(modelConfig.modelId)) {
+    return new Err(
+      new Error(`Model "${modelConfig.modelId}" cannot be used by an agent.`)
+    );
+  }
+
   const { reasoningEffort } = assistant.model;
   if (
     reasoningEffort &&
@@ -325,7 +335,7 @@ export async function createOrUpgradeAgentConfiguration({
 
   // Prune outdated suggestions after saving an existing agent.
   // This must happen after skills/tools are added to the new version.
-  if (agentConfigurationId) {
+  if (agentConfigurationId && !skipSuggestionPruning) {
     await pruneSuggestionsForAgent(auth, savedConfig);
   }
 

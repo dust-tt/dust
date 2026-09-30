@@ -2,7 +2,7 @@ import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 // Prompt fragments about editing skills. Shared by the reinforcement analysis
-// (edit_skill tool) and the conversational-building skill (suggest_skill_update tool).
+// (edit_skill tool) and the conversational-building skill (suggest tool).
 
 // Bodies without their wrapping tag: consumers wrap them in the tag they need.
 export const SKILL_INSTRUCTIONS_GUIDANCE_BODY = `When suggesting instruction improvements for skills, follow these principles:

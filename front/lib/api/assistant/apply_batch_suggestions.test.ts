@@ -1,6 +1,7 @@
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { applyBatchSuggestions } from "@app/lib/api/assistant/apply_batch_suggestions";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { fetchRunAgentTool } from "@app/lib/api/assistant/suggestable_sub_agents";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
@@ -22,6 +23,7 @@ import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory"
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -519,8 +521,8 @@ describe("applyBatchSuggestions", () => {
     expect(edited?.instructions).toContain(SKILL_CREATION.name);
   });
 
-  it.skip("requests the restricted spaces of a skill created in the same batch", async () => {
-    await grantSkillCreation();
+  // A tool of a restricted space the caller belongs to: a skill using it requests that space.
+  async function createToolViewInRestrictedSpace() {
     const restrictedSpace = await SpaceFactory.regular(workspace);
     await restrictedSpace.addMembers(
       await Authenticator.internalAdminForWorkspace(workspace.sId),
@@ -535,6 +537,33 @@ describe("applyBatchSuggestions", () => {
       server.sId,
       restrictedSpace
     );
+
+    return {
+      restrictedSpace,
+      toolHtml: `<tool id="${view.sId}" name="GitHub"></tool>`,
+    };
+  }
+
+  function skillReferenceHtml(skillId: string, name: string) {
+    return serializeSkillTag({ icon: null, id: skillId, name }, { html: true });
+  }
+
+  function replaceInstructions(content: string) {
+    return {
+      instructionEdits: [
+        {
+          targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+          content,
+          type: "replace" as const,
+        },
+      ],
+    };
+  }
+
+  it("requests the restricted spaces of a skill created in the same batch", async () => {
+    await grantSkillCreation();
+    const { restrictedSpace, toolHtml } =
+      await createToolViewInRestrictedSpace();
     const pendingRes = await SkillResource.createPending(auth);
     assert(pendingRes.isOk());
     const pending = pendingRes.value;
@@ -542,29 +571,18 @@ describe("applyBatchSuggestions", () => {
     await auth.refresh();
     const { id: batchModelId, sId } =
       await BatchSuggestionFactory.createEmpty(auth);
-    // The created skill uses a tool of the restricted space, so it requests that space.
     await SkillSuggestionFactory.create(auth, pending, {
       kind: "create",
       suggestion: {
         ...SKILL_CREATION,
-        instructions: `<p>Use <tool id="${view.sId}" name="GitHub"></tool> then summarize.</p>`,
+        instructions: `<p>Use ${toolHtml} then summarize.</p>`,
       },
       batchModelId,
     });
-    const reference = serializeSkillTag(
-      { icon: null, id: pending.sId, name: SKILL_CREATION.name },
-      { html: true }
-    );
     await SkillSuggestionFactory.create(auth, skill, {
-      suggestion: {
-        instructionEdits: [
-          {
-            targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
-            content: `<p>Start with ${reference}.</p>`,
-            type: "replace",
-          },
-        ],
-      },
+      suggestion: replaceInstructions(
+        `<p>Start with ${skillReferenceHtml(pending.sId, SKILL_CREATION.name)}.</p>`
+      ),
       batchModelId,
     });
 
@@ -840,5 +858,296 @@ describe("applyBatchSuggestions", () => {
     assert(res.isErr());
     expect(res.error.message).toContain("invalid or not accessible");
     expect(await fetchAgentToolIds(agent.sId)).toEqual([]);
+  });
+
+  it("requests the restricted spaces a skill edited earlier in the same batch gains", async () => {
+    const { restrictedSpace, toolHtml } =
+      await createToolViewInRestrictedSpace();
+    const child = await SkillFactory.create(auth, { name: "Child Skill" });
+    const parent = await SkillFactory.create(auth, { name: "Parent Skill" });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    // Edits apply in batch order: the child gains the restricted tool before the parent is edited.
+    await SkillSuggestionFactory.create(auth, child, {
+      suggestion: replaceInstructions(`<p>Use ${toolHtml}.</p>`),
+      batchModelId,
+    });
+    await SkillSuggestionFactory.create(auth, parent, {
+      suggestion: replaceInstructions(
+        `<p>Start with ${skillReferenceHtml(child.sId, child.name)}.</p>`
+      ),
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const edited = await SkillResource.fetchById(auth, parent.sId);
+    expect(edited?.requestedSpaceIds).toContain(restrictedSpace.id);
+  });
+
+  it("lifts a space from a skill referencing one that loses it in the same batch", async () => {
+    const { restrictedSpace } = await createToolViewInRestrictedSpace();
+    const child = await SkillFactory.create(auth, {
+      name: "Child Skill",
+      requestedSpaceIds: [globalSpace.id, restrictedSpace.id],
+    });
+    const parent = await SkillFactory.create(auth, {
+      name: "Parent Skill",
+      instructions: `Start with ${serializeSkillTag({ icon: null, id: child.sId, name: child.name })}.`,
+      requestedSpaceIds: [globalSpace.id, restrictedSpace.id],
+    });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    // The child no longer uses anything of the restricted space; the parent is only renamed.
+    await SkillSuggestionFactory.create(auth, child, {
+      suggestion: replaceInstructions("<p>Summarize.</p>"),
+      batchModelId,
+    });
+    await SkillSuggestionFactory.create(auth, parent, {
+      kind: "name",
+      suggestion: { name: "Renamed Parent" },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const edited = await SkillResource.fetchById(auth, parent.sId);
+    expect(edited?.name).toBe("Renamed Parent");
+    expect(edited?.requestedSpaceIds).not.toContain(restrictedSpace.id);
+  });
+
+  it("writes nothing when an editor added with a restricted space cannot read it", async () => {
+    const { toolHtml } = await createToolViewInRestrictedSpace();
+    const newEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, newEditor, { role: "user" });
+    const skill = await SkillFactory.create(auth);
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    // The new editor can read the skill as it is, but not the space the edit pulls in.
+    await SkillSuggestionFactory.create(auth, skill, {
+      suggestion: replaceInstructions(`<p>Use ${toolHtml}.</p>`),
+      batchModelId,
+    });
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "editors",
+      suggestion: { addUserIds: [newEditor.sId], removeUserIds: [] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    const unchanged = await SkillResource.fetchById(auth, skill.sId);
+    expect(unchanged?.instructions).toBe(skill.instructions);
+    const editors = (await unchanged?.listEditors(auth)) ?? [];
+    expect(editors.map((user) => user.sId)).not.toContain(newEditor.sId);
+  });
+
+  it("changes the scope of an agent without creating a version", async () => {
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "publish",
+      resourceType: "agent",
+    });
+    await auth.refresh();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      scope: "visible",
+    });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createScope(auth, agent, {
+      suggestion: { scope: "hidden" },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(updated?.scope).toBe("hidden");
+    expect(updated?.version).toBe(agent.version);
+  });
+
+  it("lets a workspace admin change the scope of an agent they cannot read", async () => {
+    // The agent lives behind a restricted space the admin is not a member of: they hold only its
+    // `admin` verb, which is enough to change its scope.
+    const { restrictedSpace } = await createToolViewInRestrictedSpace();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      scope: "visible",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(adminAuth);
+    await AgentSuggestionFactory.createScope(adminAuth, agent, {
+      suggestion: { scope: "hidden" },
+      batchModelId,
+    });
+    const batch = await BatchSuggestionResource.fetchById(adminAuth, sId);
+    assert(batch);
+
+    const res = await applyBatchSuggestions(adminAuth, batch);
+
+    expect(res.isOk()).toBe(true);
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(updated?.scope).toBe("hidden");
+  });
+
+  it("leaves the batch pending once applied", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const newSkill = await SkillFactory.create(auth, { name: "New Skill" });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    // Once saved, the agent holds the skill: pruning its pending suggestions sees this one as done.
+    await AgentSuggestionFactory.createSkills(auth, agent, {
+      suggestion: { action: "add", skillId: newSkill.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const batch = await fetchBatch(sId);
+    expect(batch.state).toBe("pending");
+    expect(batch.agentSuggestions.map((s) => s.state)).toEqual(["pending"]);
+  });
+
+  async function applySubAgentChange(
+    agent: LightAgentConfigurationType,
+    suggestion: { action: "add" | "remove"; childAgentId: string }
+  ) {
+    const runAgentTool = await fetchRunAgentTool(auth);
+    assert(runAgentTool);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createSubAgent(auth, agent, {
+      suggestion: { ...suggestion, toolId: runAgentTool.sId },
+      source: "conversational",
+      batchModelId,
+    });
+    return applyBatchSuggestions(auth, await fetchBatch(sId));
+  }
+
+  async function fetchAgentSubAgentActions(agentId: string) {
+    const agent = await getAgentConfiguration(auth, {
+      agentId,
+      variant: "full",
+    });
+    return (agent?.actions ?? [])
+      .filter(isServerSideMCPServerConfiguration)
+      .filter((action) => action.childAgentId !== null);
+  }
+
+  it("adds a sub-agent as a run_agent action named after it", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const subAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Pricing Helper",
+    });
+
+    const res = await applySubAgentChange(agent, {
+      action: "add",
+      childAgentId: subAgent.sId,
+    });
+
+    if (res.isErr()) {
+      throw res.error;
+    }
+    expect(await fetchAgentSubAgentActions(agent.sId)).toMatchObject([
+      { childAgentId: subAgent.sId, name: "run_pricing_helper" },
+    ]);
+  });
+
+  it("removes a sub-agent", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const subAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Helper",
+    });
+    const added = await applySubAgentChange(agent, {
+      action: "add",
+      childAgentId: subAgent.sId,
+    });
+    assert(added.isOk());
+
+    const res = await applySubAgentChange(agent, {
+      action: "remove",
+      childAgentId: subAgent.sId,
+    });
+
+    if (res.isErr()) {
+      throw res.error;
+    }
+    expect(await fetchAgentSubAgentActions(agent.sId)).toEqual([]);
+  });
+
+  it("writes nothing when an added sub-agent was archived since", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const subAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Archived Helper",
+    });
+    const subAgentResource = await AgentResource.fetchById(auth, subAgent.sId);
+    assert(subAgentResource);
+    await subAgentResource.archive(auth);
+
+    const res = await applySubAgentChange(agent, {
+      action: "add",
+      childAgentId: subAgent.sId,
+    });
+
+    assert(res.isErr());
+    expect(res.error.message).toContain("invalid or not accessible");
+    expect(await fetchAgentSubAgentActions(agent.sId)).toEqual([]);
+  });
+
+  it("keeps a space the agent was restricted to by hand when a sub-agent is removed", async () => {
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const addMembers = await restrictedSpace.addMembers(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      { userIds: [auth.getNonNullableUser().sId] }
+    );
+    assert(addMembers.isOk());
+    await auth.refresh();
+    // No capability of the agent requires the space: it was picked by hand.
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const subAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Helper",
+    });
+    const added = await applySubAgentChange(agent, {
+      action: "add",
+      childAgentId: subAgent.sId,
+    });
+    assert(added.isOk());
+
+    const res = await applySubAgentChange(agent, {
+      action: "remove",
+      childAgentId: subAgent.sId,
+    });
+
+    if (res.isErr()) {
+      throw res.error;
+    }
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(updated?.requestedSpaceIds).toEqual([restrictedSpace.sId]);
+    expect(await fetchAgentSubAgentActions(agent.sId)).toEqual([]);
   });
 });

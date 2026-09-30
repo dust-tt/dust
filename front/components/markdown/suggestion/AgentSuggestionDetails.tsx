@@ -5,12 +5,14 @@ import { formatModelEffortLabel } from "@app/components/model_picker/modelPicker
 import { getIcon } from "@app/components/resources/resources_icons";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
+import { SuggestionNewInstructionsBlock } from "@app/components/shared/SuggestionNewInstructionsBlock";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import { getAgentScopeLabel } from "@app/lib/agent_builder/labels";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerView } from "@app/lib/swr/mcp_servers";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -18,8 +20,7 @@ import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Avatar, Chip, DiffBlock } from "@dust-tt/sparkle";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { Avatar, Chip } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
@@ -28,31 +29,6 @@ function formatModel(modelId: string, reasoningEffort?: ReasoningEffort) {
   return reasoningEffort
     ? formatModelEffortLabel(modelName, reasoningEffort)
     : modelName;
-}
-
-interface NewInstructionsBlockProps {
-  instructionsHtml: string;
-}
-
-function NewInstructionsBlock({ instructionsHtml }: NewInstructionsBlockProps) {
-  const editor = useEditor(
-    {
-      extensions: buildAgentInstructionsReadOnlyExtensions(),
-      editable: false,
-      content: instructionsHtml,
-      immediatelyRender: false,
-    },
-    [instructionsHtml]
-  );
-
-  return (
-    <div className="flex flex-col gap-2">
-      <span className="text-sm text-muted-foreground">Instructions</span>
-      <DiffBlock className="[&_.rounded-2xl.border]:border-0">
-        {editor && <EditorContent editor={editor} />}
-      </DiffBlock>
-    </div>
-  );
 }
 
 type SuggestedAction = "add" | "remove";
@@ -133,6 +109,49 @@ function SuggestedToolRow({ owner, action, toolId }: SuggestedToolRowProps) {
   );
 }
 
+interface SuggestedSubAgentRowProps {
+  owner: LightWorkspaceType;
+  action: SuggestedAction;
+  childAgentId: string;
+}
+
+function SuggestedSubAgentRow({
+  owner,
+  action,
+  childAgentId,
+}: SuggestedSubAgentRowProps) {
+  const { agentConfiguration: subAgent, isAgentConfigurationLoading } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: childAgentId,
+    });
+
+  const displayName = subAgent
+    ? `@${subAgent.name}`
+    : isAgentConfigurationLoading
+      ? "Loading…"
+      : childAgentId;
+
+  return (
+    <div className="flex items-center gap-3 py-2.5">
+      <Avatar size="xs" visual={subAgent?.pictureUrl} />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm text-foreground">{displayName}</div>
+        {subAgent && (
+          <div className="truncate text-xs text-muted-foreground">
+            {subAgent.description}
+          </div>
+        )}
+      </div>
+      <Chip
+        size="xs"
+        color={action === "add" ? "highlight" : "warning"}
+        label={action === "add" ? "Add" : "Remove"}
+      />
+    </div>
+  );
+}
+
 interface NewCapabilitiesSectionProps {
   label: string;
   children: ReactNode;
@@ -173,16 +192,22 @@ export function AgentSuggestionDetails({
       return (
         <div className="flex flex-col gap-3">
           <SuggestionFieldEditSection
+            layout="inline"
             label="Name"
             currentValue=""
             newValue={name}
           />
           <SuggestionFieldEditSection
+            layout="inline"
             label="Description"
             currentValue=""
             newValue={description}
           />
-          <NewInstructionsBlock instructionsHtml={instructions} />
+          <SuggestionNewInstructionsBlock
+            layout="inline"
+            instructionsHtml={instructions}
+            extensions={buildAgentInstructionsReadOnlyExtensions()}
+          />
           {skillIds.length > 0 && (
             <NewCapabilitiesSection label="Skills">
               {skillIds.map((skillId) => (
@@ -223,6 +248,7 @@ export function AgentSuggestionDetails({
     case "description":
       return (
         <SuggestionFieldEditSection
+          layout="inline"
           label="Description"
           currentValue={agentConfiguration?.description ?? ""}
           newValue={suggestion.suggestion.description}
@@ -234,12 +260,14 @@ export function AgentSuggestionDetails({
         <div className="flex flex-col gap-2">
           <span className="text-sm text-muted-foreground">Instructions</span>
           <SuggestionInstructionsDiffBlock
+            layout="inline"
             instructionsHtml={agentConfiguration?.instructionsHtml ?? ""}
             targetBlockId={suggestion.suggestion.targetBlockId}
             content={suggestion.suggestion.content}
             extensions={[
               ...buildAgentInstructionsReadOnlyExtensions(),
               InstructionSuggestionExtension.configure({
+                hideUnchangedBlocks: true,
                 showBlockHighlight: false,
               }),
             ]}
@@ -251,6 +279,7 @@ export function AgentSuggestionDetails({
       const { modelId, reasoningEffort } = suggestion.suggestion;
       return (
         <SuggestionFieldEditSection
+          layout="inline"
           label="Model"
           currentValue={
             agentConfiguration
@@ -268,6 +297,7 @@ export function AgentSuggestionDetails({
     case "name":
       return (
         <SuggestionFieldEditSection
+          layout="inline"
           label="Name"
           currentValue={agentConfiguration?.name ?? ""}
           newValue={suggestion.suggestion.name}
@@ -277,6 +307,7 @@ export function AgentSuggestionDetails({
     case "scope":
       return (
         <SuggestionFieldEditSection
+          layout="inline"
           label="Visibility"
           currentValue={
             agentConfiguration
@@ -293,6 +324,15 @@ export function AgentSuggestionDetails({
           owner={owner}
           action={suggestion.suggestion.action}
           skillId={suggestion.suggestion.skillId}
+        />
+      );
+
+    case "sub_agent":
+      return (
+        <SuggestedSubAgentRow
+          owner={owner}
+          action={suggestion.suggestion.action}
+          childAgentId={suggestion.suggestion.childAgentId}
         />
       );
 

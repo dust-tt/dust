@@ -27,6 +27,7 @@ import type { Model } from "@app/lib/model_constructors/types/models";
 import { isModel, NOOP_MODEL } from "@app/lib/model_constructors/types/models";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { EUROPE } from "@app/lib/model_constructors/types/regions";
+import { CUSTOM_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type {
@@ -72,6 +73,9 @@ const EAP_MODELS = compact(
   )
 );
 
+// Custom models are test models that run on Dust's keys, whichever one they use.
+const BYOK_EXCLUDED_MODELS: Model[] = [...EAP_MODELS, ...CUSTOM_MODEL_IDS];
+
 function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
   const dustRegion = multiRegionsConfig.getCurrentRegion();
 
@@ -109,7 +113,7 @@ const PROVIDER_ID_TO_LAB: Record<ModelProviderIdType, Lab | null> = {
 const PROVIDER_ID_TO_HOST: Record<ModelProviderIdType, Host | null> = {
   openai: null,
   anthropic: null,
-  mistral: null,
+  mistral: "mistral",
   google_ai_studio: null,
   deepseek: null,
   fireworks: "fireworks",
@@ -167,6 +171,12 @@ function getLabAndHostFilter(
  * The `DUST_BYOK` check in `withEapAnthropicKey` is a backstop, not the guarantee: it turns a leak
  * into an error instead of a request billed to Dust's Anthropic organization.
  */
+/**
+ * @cc [owner:pmilliotte,label:security;product] custom-models-are-never-byok-reachable
+ * A custom model (generated from the infra custom-models config) must leave a BYOK workspace no
+ * endpoint, whether or not it carries `useEapKey`: it is a test model served on Dust's keys.
+ * `isModelAvailable` must reject it too.
+ */
 export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   const byok = auth.getNonNullablePlan().isByok;
   const providerIds = getWhitelistedProviderIds(auth);
@@ -180,7 +190,7 @@ export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
           not: {
             or: [
               { host: { eq: AGENT_PLATFORM_HOST } },
-              { model: { in: EAP_MODELS } },
+              { model: { in: BYOK_EXCLUDED_MODELS } },
             ],
           },
         }

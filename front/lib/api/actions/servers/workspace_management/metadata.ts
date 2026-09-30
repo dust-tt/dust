@@ -1,6 +1,7 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { KNOWLEDGE_CATEGORIES } from "@app/types/api/public/spaces";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
+import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
 import {
   SKILL_AVAILABILITIES,
   SKILL_STATUSES,
@@ -17,6 +18,7 @@ export const LIST_SKILLS_TOOL_NAME = "list_skills" as const;
 export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
 export const LIST_TOOLS_TOOL_NAME = "list_tools" as const;
 export const GET_TOOL_DETAILS_TOOL_NAME = "get_tool_details" as const;
+export const LIST_MODELS_TOOL_NAME = "list_models" as const;
 export const SEARCH_KNOWLEDGE_TOOL_NAME = "search_knowledge" as const;
 export const LIST_WORKSPACE_MEMBERS_TOOL_NAME =
   "list_workspace_members" as const;
@@ -273,6 +275,12 @@ const listToolsSchema = {
   ...paginationSchemaShape,
 };
 
+const listModelsSchema = {
+  providerId: ModelProviderIdSchema.optional().describe(
+    "Only return the models of this provider (e.g. 'anthropic', 'openai', 'google_ai_studio', 'mistral')."
+  ),
+};
+
 const getToolDetailsSchema = {
   toolId: z.string().describe("The tool's id, as returned by list_tools."),
 };
@@ -393,6 +401,21 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving tool details",
       done: "Retrieved tool details",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: LIST_MODELS_TOOL_NAME,
+    description:
+      "List the models agents of this workspace can be set to, with their modelId, name, " +
+      "description and the reasoning efforts they support.",
+    schema: listModelsSchema,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Listing models",
+      done: "Listed models",
     },
     toolCostCategory: "basic",
     freeUsage: true,

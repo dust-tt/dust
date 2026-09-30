@@ -1,7 +1,7 @@
 export { FetcherProvider, useFetcher } from "@app/lib/swr/FetcherContext";
 
 import { isAPIErrorResponse } from "@app/types/error";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import type {
   Fetcher,
   Key,
@@ -40,6 +40,10 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
   const disabled = !!mergedConfig.disabled;
 
   const result = useSWR(disabled ? null : key, fetcher, mergedConfig);
+  // Callers often rebuild array keys on every render; reading the key from a ref keeps the
+  // disabled mutate functions stable instead of changing identity with each render.
+  const keyRef = useRef(key);
+  keyRef.current = key;
 
   // If the key looks like an url, we need to remove the query params
   // to make sure we don't cache different pages together
@@ -85,19 +89,19 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
       // When using globalMutate with undefined data or options, it does a weird visual glitch in the UI.
       // I don't really understand why.
       if (data !== undefined || options !== undefined) {
-        return globalMutate(key, data, options);
+        return globalMutate(keyRef.current, data, options);
       } else {
         // Using a separate globalMutate call without data or options args does not have this issue.
-        return globalMutate(key);
+        return globalMutate(keyRef.current);
       }
     },
-    [key, globalMutate]
+    [globalMutate]
   );
 
   const myMutateWhenDisabledRegardlessOfQueryParams = useCallback(() => {
-    mutateKeysWithSameUrl(key);
-    return globalMutate(key);
-  }, [key, mutateKeysWithSameUrl, globalMutate]);
+    mutateKeysWithSameUrl(keyRef.current);
+    return globalMutate(keyRef.current);
+  }, [mutateKeysWithSameUrl, globalMutate]);
 
   const myMutateRegardlessOfQueryParams: typeof result.mutate = useCallback(
     (...args) => {

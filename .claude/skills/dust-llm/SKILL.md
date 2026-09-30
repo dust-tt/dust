@@ -83,8 +83,8 @@ Adding the id to `STATIC_MODEL_IDS` makes these fail to compile until updated:
 | File | What to add |
 |------|-------------|
 | `front/lib/api/assistant/token_pricing/global.ts` | `CURRENT_MODEL_PRICING` entry (input/output/`cache_read_input_tokens` per 1M) + doc URL comment. |
-| `front/types/assistant/models/static_model_reasoning_efforts.ts` | `{ none, light, medium, high }` support map (`satisfies Record<StaticModelIdType, ReasoningEffortSupport>`). **Must match the config's `supportedReasoningEfforts`** (enforced by `model_tiers.test.ts`). |
-| `front/types/assistant/models/model_tiers.ts` | `STATIC_MODEL_TIERS` entry mapping each supported effort → tier name. |
+| `front/types/assistant/models/static_model_reasoning_efforts.ts` | `{ none, minimal, low, medium, high, xhigh, maximal }` support map (`satisfies Record<StaticModelIdType, ReasoningEffortSupport>`). **Must match the config's `supportedReasoningEfforts`** (enforced by `model_tiers.test.ts`). |
+| `front/types/assistant/models/model_tiers.ts` | `STATIC_MODEL_TIERS` entry mapping each supported effort → tier name (omit unsupported efforts). |
 
 And one that is **not** compile-forced, so nothing turns red if you skip it:
 
@@ -104,12 +104,20 @@ And one that is **not** compile-forced, so nothing turns red if you skip it:
 > charge 10% over global for both Anthropic and Google, so a new Gemini registered on
 > `eu/agent-platform` belongs in the list just as much as a Claude does. OpenAI uplifts only
 > the models whose pricing page lists a data-residency premium (gpt-5.4/5.5/5.6/6 yes,
-> gpt-5/5.1/5.2 no). Mistral's EU endpoints are its native region with no global sibling, so
-> nothing to add.
+> gpt-5/5.1/5.2 no). Mistral's own models are EU-only with no global sibling, so nothing to
+> add for them.
 >
 > `EU_MODEL_PRICING` derives every field by multiplying the global entry by
 > `EU_PRICING_MULTIPLIER`, so it is only correct when the EU endpoint is a flat 1.1× of global.
-> A non-uniform regional price needs an explicit entry, not the multiplier.
+> A non-uniform regional price needs an explicit entry in `EU_HOST_MODEL_PRICING`, not the
+> multiplier — always the case when the EU host differs from the global one (GLM-5.3:
+> Fireworks global, Mistral EU).
+
+> **Third-party model on a lab's own host** (e.g. GLM-5.3 on Mistral): set `lab` on the
+> endpoint (a host serving several labs leaves it off its base client), map the host's model
+> name with `modelToHostModel`, and check `PROVIDER_ID_TO_HOST` in `front/lib/api/llm/index.ts`.
+> Routing matches `lab ∈ whitelisted labs OR host ∈ whitelisted hosts`, so an endpoint whose
+> lab and host are both unmapped is silently unreachable.
 
 > **Gating is inherited, and lives in two unlinked places.** A new version of a gated model
 > stays gated — being newer is not a reason to release it. Copy the predecessor's
@@ -261,10 +269,17 @@ documents a model-specific override — generic host guidance is not a contradic
 each documented effort actually works on the live endpoint, and record any effort the endpoint
 accepts but the docs omit, with a note that undocumented efforts can change without notice.
 
-When the product still offers an effort the model does not have, map it in the **llms layer** with
-a `configParsers` entry (`mapReasoningNoneToMinimal`, `mapNonNoneReasoningToHigh`,
-`mapReasoningEffortToLowHighMax`, `forceHighReasoningEffort`) — never with a schema `.transform()`, and never by widening the
-endpoint schema to swallow it.
+The product vocabulary covers the full range (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`,
+`maximal`; the legacy `light` is read as `low`), and the picker offers exactly the efforts a model
+marks supported. So **an effort the model does not have is marked `false` in
+`supportedReasoningEfforts` — never remapped to another one.** `configParsers` must not rewrite
+`reasoning.effort` (`effort-sent-as-selected` contract in `front/lib/llms/CONTRACTS`); the only
+exceptions are `disableReasoningWhenForcingTool` and `dropReasoning`. No schema `.transform()`
+either, and no widening the endpoint schema to swallow it.
+
+When the new model replaces one whose efforts differ (e.g. Sonnet 5.5 drops `none`, which Sonnet 5
+supports), repointing agents to it needs a `reasoningEffort` migration too
+(`replacement-model-preserves-reasoning-effort` contract).
 
 ### 1. Widen
 
@@ -296,6 +311,11 @@ Env-var names live in the sibling's `createInstance` (`DUST_MANAGED_ANTHROPIC_AP
 `VERTEX_AI_PROJECT_ID` plus GCP credentials — a `GOOGLE_APPLICATION_CREDENTIALS` service-account
 key works and needs no `gcloud auth application-default login`. Add `--bail 1` or
 `-t "<substring>"` only later, when iterating on a single case.
+
+A Vertex 404 *"Publisher model … was not found or your project does not have access to it"* on
+**every** location (`global` included), while the sibling model works on the same project, means
+the model is not enabled in the project's Model Garden yet, not that the region lacks it. Ask
+for it to be enabled before concluding anything about EU availability.
 
 ### 4. Sort every failure into one of three buckets
 
@@ -490,7 +510,7 @@ on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models
 | `contextSize` / `generationTokensCount` | Real provider values (legacy config). Caps go in the dust layer. |
 | `supportsVision` | Can process images. |
 | `supportsResponseFormat` | Structured output (JSON). Often incompatible with tool use — verify. |
-| `supportedReasoningEfforts` | `{ none, light, medium, high }`. Must match `static_model_reasoning_efforts.ts`. |
+| `supportedReasoningEfforts` | `{ none, minimal, low, medium, high, xhigh, maximal }`. Must match `static_model_reasoning_efforts.ts`. |
 | `defaultReasoningEffort` | Default effort. |
 | `isLatest` / `isLegacy` | Exactly one `isLatest` per family; flip the previous one to `false`. |
 | `regionalAvailability` | `{ "us-central1", "europe-west1" }` — reflect real availability. |

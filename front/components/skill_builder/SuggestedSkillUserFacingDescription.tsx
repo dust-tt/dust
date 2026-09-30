@@ -1,3 +1,4 @@
+import type { SuggestionDiffLayout } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { SkillUserFacingDescriptionSuggestionType } from "@app/types/suggestions/skill_suggestion";
@@ -7,12 +8,14 @@ interface SuggestedSkillUserFacingDescriptionProps {
   suggestion: SkillUserFacingDescriptionSuggestionType;
   skillId: string;
   workspaceId: string;
+  layout?: SuggestionDiffLayout;
 }
 
 export function SuggestedSkillUserFacingDescription({
   suggestion,
   skillId,
   workspaceId,
+  layout = "boxed",
 }: SuggestedSkillUserFacingDescriptionProps) {
   const { skill, isSkillLoading } = useSkill({ workspaceId, skillId });
 
@@ -25,6 +28,7 @@ export function SuggestedSkillUserFacingDescription({
       label="Description"
       currentValue={skill?.userFacingDescription ?? ""}
       newValue={suggestion.userFacingDescription}
+      layout={layout}
     />
   );
 }

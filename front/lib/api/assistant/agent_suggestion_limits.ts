@@ -36,7 +36,7 @@ function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
  * kind can accumulate without bound. `resolutionHint` is caller-supplied because the remediation
  * can differs per surface.
  * Exception: suggestions with source `conversational` (the `suggest` tool) have no limit, and the
- * sidekick does not count conversational `skills` suggestions against its own limit.
+ * sidekick does not count conversational `skills` and `sub_agent` suggestions against its own limit.
  */
 export function canAddPendingSuggestions({
   kind,
