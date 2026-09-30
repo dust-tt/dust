@@ -6,6 +6,8 @@ import {
   parseSkillTag,
   renameSkillReferencesInContent,
   resolveSkillRefTags,
+  SKILL_REFERENCE_TAG_REGEX,
+  SKILL_TAG_REGEX,
   serializeSkillTag,
 } from "./format";
 
@@ -52,6 +54,37 @@ describe("skill tag names", () => {
       id: "ski_A",
       name: "Notes",
     });
+  });
+
+  it("does not match a raw < inside an attribute", () => {
+    expect([
+      ...'<skill id="ski_A" name="a<b" />'.matchAll(SKILL_TAG_REGEX),
+    ]).toEqual([]);
+  });
+});
+
+describe("skill tag regex backtracking", () => {
+  const repeatedMalformedOpenings = "<skill ".repeat(16_000);
+
+  it("rejects repeated malformed openings without rescanning the input", () => {
+    for (const pattern of [SKILL_TAG_REGEX, SKILL_REFERENCE_TAG_REGEX]) {
+      const startedAt = performance.now();
+      const matches = [...repeatedMalformedOpenings.matchAll(pattern)];
+
+      expect(performance.now() - startedAt).toBeLessThan(50);
+      expect(matches).toEqual([]);
+    }
+  });
+
+  it("still matches a valid tag after a malformed opening", () => {
+    const content = '<skill <skill id="ski_A" name="Notes" />';
+
+    expect(
+      [...content.matchAll(SKILL_TAG_REGEX)].map((match) => match[0])
+    ).toEqual(['<skill id="ski_A" name="Notes" />']);
+    expect(
+      [...content.matchAll(SKILL_REFERENCE_TAG_REGEX)].map((match) => match[0])
+    ).toEqual(['<skill id="ski_A" name="Notes" />']);
   });
 });
 
