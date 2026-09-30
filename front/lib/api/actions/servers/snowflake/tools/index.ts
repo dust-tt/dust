@@ -131,6 +131,20 @@ async function getClientFromAuthInfo(
     return new Err(CONNECTION_ERROR);
   }
 
+  // @cc[label:security;product owner:frankaloia]
+  // The credential ID comes from OAuth connection metadata supplied at
+  // connection time. Verify workspace ownership here to prevent an agent
+  // or tool invocation from using a credential that belongs to a different
+  // workspace (e.g. via a crafted OAuth connection payload).
+  if (auth) {
+    const owner = auth.getNonNullableWorkspace();
+    if (
+      credentialRes.value.credential.metadata.workspace_id !== owner.sId
+    ) {
+      return new Err(CONNECTION_ERROR);
+    }
+  }
+
   const contentValidation = SnowflakeKeyPairCredentialsSchema.safeParse(
     credentialRes.value.credential.content
   );

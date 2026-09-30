@@ -3,6 +3,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/types/api/data_sources/managed_config";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -158,6 +159,38 @@ app.post(
     }
 
     const { configValue } = ctx.req.valid("json");
+
+    // @cc[label:security;product owner:frankaloia]
+    // When the config key is `privateIntegrationCredentialId`, `configValue`
+    // is a credential ID supplied by the client. Verify that the credential
+    // belongs to this workspace before binding it to the connector, to prevent
+    // a workspace admin from attaching another workspace's private credential.
+    if (configKey === "privateIntegrationCredentialId" && configValue) {
+      const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+      const credentialRes = await oauthApi.getCredentials({
+        credentialsId: configValue,
+      });
+      if (credentialRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The credential you requested was not found.",
+          },
+        });
+      }
+      const owner = auth.getNonNullableWorkspace();
+      if (credentialRes.value.credential.metadata.workspace_id !== owner.sId) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The credential you requested does not belong to your workspace.",
+          },
+        });
+      }
+    }
 
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
