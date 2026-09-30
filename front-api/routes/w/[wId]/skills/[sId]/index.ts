@@ -1,4 +1,3 @@
-import { emitSkillAuditLogEvent } from "@app/lib/api/skills/audit";
 import type { SkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
@@ -451,7 +450,6 @@ app.patch(
 
     // When saving a suggested skill, automatically activate it.
     const shouldActivate = skill.status === "suggested";
-    const previousAvailability = skill.availability;
 
     if (shouldActivate) {
       logger.info(
@@ -479,21 +477,6 @@ app.patch(
       userFacingDescription: body.userFacingDescription,
       ...(shouldActivate ? { status: "active" as const } : {}),
     });
-
-    emitSkillAuditLogEvent(auth, {
-      action: shouldActivate ? "skill.created" : "skill.updated",
-      skill,
-    });
-    if (availabilityChange) {
-      emitSkillAuditLogEvent(auth, {
-        action: "skill.availability_updated",
-        skill,
-        metadata: {
-          previous_availability: previousAvailability,
-          new_availability: availabilityChange.availability,
-        },
-      });
-    }
 
     await pruneOutdatedSkillEditSuggestions(auth, skill);
 
@@ -545,11 +528,7 @@ app.delete(
       );
     }
 
-    const wasActive = skill.status === "active";
     await skill.archive(auth);
-    if (wasActive) {
-      emitSkillAuditLogEvent(auth, { action: "skill.archived", skill });
-    }
 
     return ctx.json({ success: true });
   }

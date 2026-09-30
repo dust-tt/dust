@@ -1,4 +1,3 @@
-import { emitSkillAuditLogEvent } from "@app/lib/api/skills/audit";
 import {
   findAddedEditorsWithoutSpaceAccess,
   resolveSkillEditorUsers,
@@ -196,18 +195,6 @@ app.patch(
           assertNever(removeRes.error.code);
       }
     }
-
-    emitSkillAuditLogEvent(auth, {
-      action: "skill.editors_updated",
-      skill: skillRes,
-      metadata: {
-        added_editor_ids: usersToAdd.map((u) => u.sId).join(","),
-        removed_editor_ids: usersToRemove.map((u) => u.sId).join(","),
-        actor_added_self: String(
-          usersToAdd.some((u) => u.sId === auth.user()?.sId)
-        ),
-      },
-    });
 
     const updatedMembers = (await skillRes.listEditors(auth)) ?? [];
     const updatedEditors = updatedMembers.map((m) => m.toJSON());

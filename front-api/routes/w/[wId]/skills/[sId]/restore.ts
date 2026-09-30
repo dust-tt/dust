@@ -1,4 +1,3 @@
-import { emitSkillAuditLogEvent } from "@app/lib/api/skills/audit";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -60,10 +59,6 @@ app.post(
     }
 
     await skillResource.restore(auth);
-    emitSkillAuditLogEvent(auth, {
-      action: "skill.restored",
-      skill: skillResource,
-    });
 
     return ctx.json({ success: true });
   }

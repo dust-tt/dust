@@ -1,4 +1,3 @@
-import { emitSkillAuditLogEvent } from "@app/lib/api/skills/audit";
 import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
@@ -228,17 +227,8 @@ async function writeAvailabilityChange(
   availability: SkillAvailability,
   batch: BatchSuggestionResource
 ): Promise<void> {
-  const previousAvailability = skill.availability;
-  await SkillResource.updateAvailabilities(auth, [skill], availability);
-
-  emitSkillAuditLogEvent(auth, {
-    action: "skill.availability_updated",
-    skill,
-    metadata: {
-      previous_availability: previousAvailability,
-      new_availability: availability,
-      ...getBatchAuditMetadata(batch),
-    },
+  await SkillResource.updateAvailabilities(auth, [skill], availability, {
+    auditMetadata: getBatchAuditMetadata(batch),
   });
 }
 
@@ -261,32 +251,22 @@ async function writeEditorsChange(
   { usersToAdd, usersToRemove }: SkillEditorsChange,
   batch: BatchSuggestionResource
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
-  const addRes = await skill.addEditors(auth, usersToAdd);
+  const auditMetadata = getBatchAuditMetadata(batch);
+  const addRes = await skill.addEditors(auth, usersToAdd, { auditMetadata });
   if (addRes.isErr()) {
     return new Err(
       new DustError("invalid_request_error", addRes.error.message)
     );
   }
 
-  const removeRes = await skill.removeEditors(auth, usersToRemove);
+  const removeRes = await skill.removeEditors(auth, usersToRemove, {
+    auditMetadata,
+  });
   if (removeRes.isErr()) {
     return new Err(
       new DustError("invalid_request_error", removeRes.error.message)
     );
   }
-
-  emitSkillAuditLogEvent(auth, {
-    action: "skill.editors_updated",
-    skill,
-    metadata: {
-      added_editor_ids: usersToAdd.map((u) => u.sId).join(","),
-      removed_editor_ids: usersToRemove.map((u) => u.sId).join(","),
-      actor_added_self: String(
-        usersToAdd.some((u) => u.sId === auth.user()?.sId)
-      ),
-      ...getBatchAuditMetadata(batch),
-    },
-  });
 
   return new Ok(undefined);
 }
@@ -513,12 +493,11 @@ export async function writeSkillChange(
         }
       );
 
-      await skill.updateSkill(auth, { ...update, requestedSpaceIds });
-      emitSkillAuditLogEvent(auth, {
-        action: "skill.created",
-        skill,
-        metadata: getBatchAuditMetadata(batch),
-      });
+      await skill.updateSkill(
+        auth,
+        { ...update, requestedSpaceIds },
+        { auditMetadata: getBatchAuditMetadata(batch) }
+      );
       return new Ok(undefined);
     }
     case "edit": {
@@ -552,12 +531,11 @@ export async function writeSkillChange(
       // TODO(achilleburah): make the editor change and skill update atomic so if editors changes
       //  fails, the skill update is rolled back.
       if (update) {
-        await skill.updateSkill(auth, { ...update, requestedSpaceIds });
-        emitSkillAuditLogEvent(auth, {
-          action: "skill.updated",
-          skill,
-          metadata: getBatchAuditMetadata(batch),
-        });
+        await skill.updateSkill(
+          auth,
+          { ...update, requestedSpaceIds },
+          { auditMetadata: getBatchAuditMetadata(batch) }
+        );
       }
       if (availability) {
         await writeAvailabilityChange(auth, skill, availability, batch);
@@ -568,11 +546,8 @@ export async function writeSkillChange(
       return new Ok(undefined);
     }
     case "delete":
-      await skill.archive(auth);
-      emitSkillAuditLogEvent(auth, {
-        action: "skill.archived",
-        skill,
-        metadata: getBatchAuditMetadata(batch),
+      await skill.archive(auth, {
+        auditMetadata: getBatchAuditMetadata(batch),
       });
       return new Ok(undefined);
     default:

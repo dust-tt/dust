@@ -1,4 +1,3 @@
-import { emitSkillAuditLogEvent } from "@app/lib/api/skills/audit";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -131,22 +130,7 @@ app.patch(
       });
     }
 
-    const changes = skills
-      .filter((skill) => skill.availability !== availability)
-      .map((skill) => ({ skill, previousAvailability: skill.availability }));
-
     await SkillResource.updateAvailabilities(auth, skills, availability);
-
-    for (const { skill, previousAvailability } of changes) {
-      emitSkillAuditLogEvent(auth, {
-        action: "skill.availability_updated",
-        skill,
-        metadata: {
-          previous_availability: previousAvailability,
-          new_availability: availability,
-        },
-      });
-    }
 
     // Re-fetch: the bulk update does not refresh the in-memory resources.
     const updatedSkills = await SkillResource.fetchByIds(auth, skillIds, {

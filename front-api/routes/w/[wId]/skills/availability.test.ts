@@ -87,6 +87,8 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
       availability: "workspace_users",
     });
 
+    mockEmitAuditLogEvent.mockClear();
+
     const response = await patchSkillsAvailability(workspace, {
       skillIds: [firstSkill.sId, secondSkill.sId, unchangedSkill.sId],
       availability: "workspace_users",

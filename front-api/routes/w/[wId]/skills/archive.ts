@@ -1,4 +1,3 @@
-import { emitSkillAuditLogEvent } from "@app/lib/api/skills/audit";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -76,10 +75,7 @@ app.post(
     // Archiving a skill updates its dependent agents, parent skills, and editor
     // memberships in one transaction, so preserve that resource-level operation.
     for (const skill of skills) {
-      const { affectedCount } = await skill.archive(auth);
-      if (affectedCount > 0) {
-        emitSkillAuditLogEvent(auth, { action: "skill.archived", skill });
-      }
+      await skill.archive(auth);
     }
 
     return ctx.json({ archived: skills.length });
