@@ -169,6 +169,8 @@ describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
       sId: agent.sId,
       canRead: scope === "visible",
       instructions,
+      actions: [],
+      instructionsHtml: null,
     });
   });
 

@@ -188,16 +188,25 @@ function toConfigurationJSON(
 
 /**
  * Renders `LightAgentConfigurationType`s: the queried `instructions`, `userFavorite` and `tags` on
- * top of `AgentResource.toJSON`.
+ * top of `AgentResource.toJSON`. Callers that never surface favorites or tags (e.g. rendered
+ * messages) can skip their queries, and get `userFavorite: false` and `tags: []`.
  */
 export async function toLightAgentConfigurations(
   auth: Authenticator,
-  resources: AgentResource[]
+  resources: AgentResource[],
+  {
+    withFavorites = true,
+    withTags = true,
+  }: { withFavorites?: boolean; withTags?: boolean } = {}
 ): Promise<LightAgentConfigurationType[]> {
   const [instructions, favorites, tags] = await Promise.all([
     enrichWithInstructions(resources),
-    enrichWithFavorites(auth, resources),
-    enrichWithTags(auth, resources),
+    withFavorites
+      ? enrichWithFavorites(auth, resources)
+      : new Map<string, AgentFavoriteEnrichment>(),
+    withTags
+      ? enrichWithTags(auth, resources)
+      : new Map<AgentResource, AgentTagsEnrichment>(),
   ]);
 
   return resources.map((resource) =>
