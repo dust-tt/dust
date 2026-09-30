@@ -14,11 +14,11 @@ import {
 } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
 import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
-import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   SkillAttachedKnowledge,
+  SkillAuditOptions,
   UpdateSkillParams,
 } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -225,23 +225,11 @@ async function writeAvailabilityChange(
   auth: Authenticator,
   skill: SkillResource,
   availability: SkillAvailability,
-  batch: BatchSuggestionResource
+  { auditMetadata }: SkillAuditOptions
 ): Promise<void> {
   await SkillResource.updateAvailabilities(auth, [skill], availability, {
-    auditMetadata: getBatchAuditMetadata(batch),
+    auditMetadata,
   });
-}
-
-// Ties the audit event of an applied suggestion to its batch and to the conversation it was made in.
-function getBatchAuditMetadata(
-  batch: BatchSuggestionResource
-): Record<string, string> {
-  return {
-    suggestion_batch_id: batch.sId,
-    ...(batch.sourceConversationId
-      ? { conversation_id: batch.sourceConversationId }
-      : {}),
-  };
 }
 
 // Adding before removing to prevent orphaning the skill
@@ -249,9 +237,8 @@ async function writeEditorsChange(
   auth: Authenticator,
   skill: SkillResource,
   { usersToAdd, usersToRemove }: SkillEditorsChange,
-  batch: BatchSuggestionResource
+  { auditMetadata }: SkillAuditOptions
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
-  const auditMetadata = getBatchAuditMetadata(batch);
   const addRes = await skill.addEditors(auth, usersToAdd, { auditMetadata });
   if (addRes.isErr()) {
     return new Err(
@@ -477,7 +464,7 @@ export async function writeSkillChange(
   auth: Authenticator,
   skill: SkillResource,
   change: ResolvedSkillChange,
-  batch: BatchSuggestionResource
+  { auditMetadata }: SkillAuditOptions = {}
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
   switch (change.type) {
     case "create": {
@@ -496,7 +483,7 @@ export async function writeSkillChange(
       await skill.updateSkill(
         auth,
         { ...update, requestedSpaceIds },
-        { auditMetadata: getBatchAuditMetadata(batch) }
+        { auditMetadata }
       );
       return new Ok(undefined);
     }
@@ -534,21 +521,23 @@ export async function writeSkillChange(
         await skill.updateSkill(
           auth,
           { ...update, requestedSpaceIds },
-          { auditMetadata: getBatchAuditMetadata(batch) }
+          { auditMetadata }
         );
       }
       if (availability) {
-        await writeAvailabilityChange(auth, skill, availability, batch);
+        await writeAvailabilityChange(auth, skill, availability, {
+          auditMetadata,
+        });
       }
       if (editorsChange) {
-        return writeEditorsChange(auth, skill, editorsChange, batch);
+        return writeEditorsChange(auth, skill, editorsChange, {
+          auditMetadata,
+        });
       }
       return new Ok(undefined);
     }
     case "delete":
-      await skill.archive(auth, {
-        auditMetadata: getBatchAuditMetadata(batch),
-      });
+      await skill.archive(auth, { auditMetadata });
       return new Ok(undefined);
     default:
       return assertNever(change);

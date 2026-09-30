@@ -249,7 +249,7 @@ export interface SkillAttachedKnowledge {
 }
 
 // Extra metadata added to the audit events of a write, e.g. the suggestion batch it applies.
-type SkillAuditOptions = { auditMetadata?: Record<string, string> };
+export type SkillAuditOptions = { auditMetadata?: Record<string, string> };
 
 export type UpdateSkillParams = {
   agentFacingDescription: string;

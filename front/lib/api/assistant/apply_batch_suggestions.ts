@@ -204,11 +204,11 @@ async function applyStep(
   step: ResolvedStep,
   {
     agentsById,
-    batch,
+    auditMetadata,
     skillsById,
   }: {
     agentsById: Map<string, AgentResource>;
-    batch: BatchSuggestionResource;
+    auditMetadata: Record<string, string>;
     skillsById: Map<string, SkillResource>;
   }
 ): Promise<Result<undefined, ApplyBatchSuggestionsError>> {
@@ -216,7 +216,7 @@ async function applyStep(
     case "skill": {
       const skill = skillsById.get(step.skillId);
       assert(skill, "The skill this suggestion targets disappeared.");
-      return writeSkillChange(auth, skill, step.change, batch);
+      return writeSkillChange(auth, skill, step.change, { auditMetadata });
     }
     case "agent": {
       const agent = agentsById.get(step.agentId);
@@ -278,10 +278,17 @@ export async function applyBatchSuggestions(
     resolvedSteps.push(res.value);
   }
 
+  // Ties the audit event of every write to the batch and to the conversation it was made in.
+  const auditMetadata = {
+    suggestion_batch_id: batch.sId,
+    ...(batch.sourceConversationId
+      ? { conversation_id: batch.sourceConversationId }
+      : {}),
+  };
   for (const step of resolvedSteps) {
     const res = await applyStep(auth, step, {
       agentsById,
-      batch,
+      auditMetadata,
       skillsById,
     });
     if (res.isErr()) {
