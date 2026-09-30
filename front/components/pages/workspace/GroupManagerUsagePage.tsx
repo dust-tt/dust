@@ -5,6 +5,7 @@ import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { UpgradeRequests } from "@app/components/workspace/UpgradeRequests";
 import { UsageMembersSection } from "@app/components/workspace/UsageMembersSection";
 import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
@@ -28,7 +29,11 @@ const NOOP_MEMBER_ACTION = (_member: MemberUsageType) => {};
 export function GroupManagerUsagePage() {
   const owner = useWorkspace();
   const { subscription, groupManagement } = useAuth();
-  const [tab, setTab] = useState<"members" | "groups">("members");
+  const { tab: tabParam } = useQueryParams(["tab"]);
+  const tab = tabParam.value === "groups" ? "groups" : "members";
+  const setTab = (next: "members" | "groups") => {
+    tabParam.setParam(next === "members" ? undefined : next);
+  };
   const [membersTab, setMembersTab] = useState<"members" | "requests">(
     "members"
   );
