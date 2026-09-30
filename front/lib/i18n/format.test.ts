@@ -24,23 +24,17 @@ import {
 // Tue 2025-09-23 15:37:32 UTC.
 const TIMESTAMP = Date.UTC(2025, 8, 23, 15, 37, 32);
 
-const SECOND = 1000;
-const MINUTE = 60 * SECOND;
-const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
-
-const originalTz = process.env.TZ;
+const SECOND_MS = 1000;
+const MINUTE_MS = 60 * SECOND_MS;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
 
 beforeAll(() => {
-  process.env.TZ = "UTC";
+  vi.stubEnv("TZ", "UTC");
 });
 
 afterAll(() => {
-  if (originalTz === undefined) {
-    delete process.env.TZ;
-  } else {
-    process.env.TZ = originalTz;
-  }
+  vi.unstubAllEnvs();
 });
 
 afterEach(() => {
@@ -61,23 +55,23 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
     });
 
     it.each([
-      [30 * SECOND, "<1m", "<1m"],
-      [MINUTE, "1min", "1 minute"],
-      [5 * MINUTE, "5min", "5 minutes"],
-      [HOUR, "1h", "1 hour"],
-      [3 * HOUR, "3h", "3 hours"],
-      [DAY, "1d", "1 day"],
-      [3 * DAY, "3d", "3 days"],
-      [31 * DAY, "1m", "1 month"],
-      [62 * DAY, "2m", "2 months"],
-      [366 * DAY, "1y", "1 year"],
-      [800 * DAY, "2y", "2 years"],
-    ])("timeAgoFrom %i ms ago", (elapsed, short, long) => {
+      [30 * SECOND_MS, "<1m", "<1m"],
+      [MINUTE_MS, "1min", "1 minute"],
+      [5 * MINUTE_MS, "5min", "5 minutes"],
+      [HOUR_MS, "1h", "1 hour"],
+      [3 * HOUR_MS, "3h", "3 hours"],
+      [DAY_MS, "1d", "1 day"],
+      [3 * DAY_MS, "3d", "3 days"],
+      [31 * DAY_MS, "1m", "1 month"],
+      [62 * DAY_MS, "2m", "2 months"],
+      [366 * DAY_MS, "1y", "1 year"],
+      [800 * DAY_MS, "2y", "2 years"],
+    ])("timeAgoFrom %i ms ago", (elapsedMs, short, long) => {
       setFormatLocale(locale);
       vi.useFakeTimers();
       vi.setSystemTime(TIMESTAMP);
-      expect(timeAgoFrom(TIMESTAMP - elapsed)).toBe(short);
-      expect(timeAgoFrom(TIMESTAMP - elapsed, { useLongFormat: true })).toBe(
+      expect(timeAgoFrom(TIMESTAMP - elapsedMs)).toBe(short);
+      expect(timeAgoFrom(TIMESTAMP - elapsedMs, { useLongFormat: true })).toBe(
         long
       );
     });
