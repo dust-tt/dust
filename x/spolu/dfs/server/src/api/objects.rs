@@ -41,7 +41,7 @@ struct ListRequest {
     limit: usize,
 }
 
-fn default_limit() -> usize {
+pub(super) fn default_limit() -> usize {
     100
 }
 
@@ -268,7 +268,7 @@ pub(super) async fn update(
     Ok(no_store(Json(ObjectAttributes::from(object))))
 }
 
-fn object_id(value: &str) -> Result<ObjectId, ApiError> {
+pub(super) fn object_id(value: &str) -> Result<ObjectId, ApiError> {
     value.parse().map_err(|_| ApiError::InvalidInput)
 }
 

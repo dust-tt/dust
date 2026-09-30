@@ -10,7 +10,8 @@ graceful shutdown on SIGINT/SIGTERM. The health route supports `GET` (returning 
 and `HEAD` for process liveness. The server library defines typed IDs, object URIs, relative paths,
 metadata, directory entries, revision tokens, and shared API errors with focused tests. Its storage
 API provides workspace-scoped snapshots, immutable blobs, and synchronous metadata/index/event
-batches. Workspace creation issues a workspace key; that key issues sessions with fixed grants.
+batches. Workspace creation issues a workspace key; that key issues sessions with fixed grants and
+authorizes explicit grant listing/updates.
 Session-authenticated stat, child lookup, directory listing, mkdir, and metadata updates are available.
 Moves/removal, file I/O, search, and FUSE follow in separate increments.
 Optional GCS configuration opens SlateDB before serving HTTP and
@@ -143,6 +144,29 @@ Authorization and validation remain serialized with publication; durability wait
 A failed/disconnected request can have committed: inspect the name or attributes before retrying.
 Per-object concurrency and a broader retry protocol arrive in later increments.
 
+## Grant administration
+
+Use the **workspace key**, with `workspace_id` and `object_id` in the JSON body. Session keys cannot
+list or change grants, even when they authorize the object. Workspace authority can administer any
+object in its workspace, including a root with no remaining grants.
+
+| Request | Additional JSON fields | Result |
+| --- | --- | --- |
+| `POST /objects/grants/list` | Optional `limit` (default 100, max 1000) and `after` | Explicit `grants`, `metadata_revision`, `next_after` |
+| `POST /objects/grants/update` | `"expected_metadata_revision": 0, "grants": {"g:engineering": true, "u:former": false}` | Object ID and new metadata revision |
+
+Patches contain 1–512 entries: true attaches, false removes an explicit attachment, and omitted grants
+remain unchanged. An object can have more than 512 attachments across patches. Grants are opaque,
+including empty strings and NUL. Listing uses exact byte ordering and exclusive cursors; only null
+means the end. Each page has a fresh snapshot, so concurrent changes may require restarting the scan.
+
+Every accepted patch advances the object's revision and ctime, even when the requested states already
+hold. It persists both index directions, metadata, and an indexing event atomically. Stale revisions
+return `conflict`; re-list before retrying an ambiguous failure or after a server restart.
+Grant removal never denies inherited access: an ancestor or another matching grant may still grant
+access. Otherwise, subsequent session reads and mutations lose access immediately; existing read
+snapshots may finish. Parent/content, modes, xattrs, atime, and mtime remain unchanged.
+
 ## Storage and server checks
 
 Normal `cargo test --locked --workspace` runs real SlateDB against memory and temporary filesystem
@@ -151,7 +175,8 @@ create immutable blobs, commit scoped metadata/index/event batches, and verify r
 Local tests also withhold WAL flushing and inject upload failures. A subprocess test kills the
 writer after acknowledgement and verifies the full batch from a fresh process, locally and on GCS.
 The same cloud fixture exercises workspace/session HTTP handlers against GCS, including restart:
-workspace keys remain valid, old session keys fail, and created directories/edited attributes recover.
+workspace keys remain valid, old session keys fail, and directories, attributes, and both grant
+indexes recover.
 The cloud fixture creates a fresh `<test-prefix>/tests/<uuid>/` for every run and deletes only that
 run's objects after success; failures leave the isolated prefix for inspection. The ignored `worker`
 test is an internal subprocess helper, not a standalone test command.

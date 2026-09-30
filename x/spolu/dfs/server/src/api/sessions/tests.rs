@@ -135,6 +135,29 @@ pub(crate) async fn exercise_sessions(
     )
     .await?;
     ensure!(status == StatusCode::OK && persisted["metadata_revision"] == 1);
+    for (revision, grants) in [
+        (1, json!({"u:alice":true,"remove/me":true})),
+        (2, json!({"remove/me":false,"arbitrary/\u{0000}é":true})),
+    ] {
+        let (status, updated) = call(
+            &app,
+            "POST",
+            "/objects/grants/update",
+            Some(workspace_key),
+            json!({"workspace_id":workspace.as_str(), "object_id":directory["object_id"],
+                "expected_metadata_revision":revision, "grants":grants}),
+        )
+        .await?;
+        ensure!(status == StatusCode::OK && updated["metadata_revision"] == revision + 1);
+    }
+    let (_, persisted) = call(
+        &app,
+        "POST",
+        "/objects/stat",
+        Some(writer_key),
+        json!({"object_id":directory["object_id"]}),
+    )
+    .await?;
     let request = json!({"workspace_id": workspace.as_str(), "grants": ["u:alice", "arbitrary/\u{0000}é", "u:alice"]});
     let (status, created_session) = call(
         &app,
@@ -245,6 +268,34 @@ pub(crate) async fn exercise_sessions(
     )
     .await?;
     ensure!(status == StatusCode::OK && recovered == persisted);
+    let (status, grants) = call(
+        &app,
+        "POST",
+        "/objects/grants/list",
+        Some(workspace_key),
+        json!({"workspace_id":workspace.as_str(),"object_id":persisted["object_id"]}),
+    )
+    .await?;
+    ensure!(
+        status == StatusCode::OK && grants["grants"] == json!(["arbitrary/\u{0000}é", "u:alice"])
+    );
+    ensure!(grants["metadata_revision"] == 3 && grants["next_after"].is_null());
+    let recovered_view = storage.workspace(&workspace)?.read_view().await?;
+    let id = text(&persisted, "object_id")?.parse()?;
+    ensure!(recovered_view.granted_objects("u:alice", None, 10).await? == [id]);
+    ensure!(
+        recovered_view
+            .granted_objects("arbitrary/\0é", None, 10)
+            .await?
+            == [id]
+    );
+    ensure!(
+        recovered_view
+            .granted_objects("remove/me", None, 10)
+            .await?
+            .is_empty()
+    );
+    drop(recovered_view);
     ensure!(
         call(
             &app,

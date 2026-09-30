@@ -9,7 +9,10 @@ against current ancestors in one snapshot. Mkdir/metadata updates acquire `begin
 then read/authorize/validate through its view and publish with that guard. The shared publication lock
 prevents collisions, lost updates, and authorization races; the guard releases before the durability
 wait. This metadata-only path verifies unchanged file references against existing records, without
-blob I/O. Rename/removal validation and per-object concurrency arrive in later increments.
+blob I/O. Workspace-authorized grant patches use the same guard and commit path, updating both
+indexes, the object revision/ctime, and the indexing event together. They touch only the supplied
+attachments, without enumerating all grants or materializing inheritance. Grant listing pages the
+object index with its revision from one snapshot. Rename/removal and per-object concurrency follow.
 
 Workspace creation atomically persists its root, explicit root grants in both directions, key hash,
 and initial change event. An existing workspace namespace is never replaced. Authentication reads

@@ -53,9 +53,9 @@ grants**. Reject larger sets. Session creation authenticates the caller and auth
 and grant set; dfs does not resolve user identities or group membership from grant names.
 
 Attach grants to files and directories by object ID. Directory grants inherit: an object's effective
-grants are the union of its own and its ancestors' grants. Access requires an intersection with the
-session's grants. The server checks this on every request; cross-workspace access is forbidden
-even when grant strings match.
+grants are the union of its own and its ancestors' grants. Session access requires an intersection
+with the session's grants. The server checks this on every session request; cross-workspace access
+is forbidden even when grant strings match.
 
 Store explicit grant attachments in both directions:
 
@@ -68,6 +68,12 @@ Update both indexes atomically, first in the owner's overlay and later in SlateD
 uses the current ancestor chain; do not copy inherited grants into these indexes. Root discovery
 scans at most 512 grant prefixes and merges/deduplicates object IDs. Paginate results: the grant cap
 bounds scan fan-out and search filter size, not the number of matching objects.
+
+`POST /objects/grants/list` pages explicit attachments and returns the object's metadata revision.
+`POST /objects/grants/update` uses workspace authority and an expected revision to patch 1–512
+attachments (`grant: true/false`). Total attachments per object are uncapped. Both indexes, revision,
+server ctime, and an indexing event persist together; content and other attributes stay unchanged.
+Removing an attachment does not deny access inherited from ancestors or supplied by other grants.
 
 ## Object URIs
 
@@ -168,7 +174,7 @@ indexes, and workspace key hash in one batch, then returns `workspace_id`, `root
 creation. Root grants default to empty; do not implicitly grant every session access to the root.
 
 The trusted workspace key may create sessions with any grant set in that workspace. It stays with
-the trusted Product/caller; sandboxes receive session keys. Future grant attachment/revocation APIs
+the trusted Product/caller; sandboxes receive session keys. Grant listing and attachment/revocation
 also require the workspace key. Session creation never attaches grants to objects.
 
 `POST /sessions`, authenticated with the workspace key, creates an ephemeral session with fixed

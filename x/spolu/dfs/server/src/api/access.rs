@@ -12,7 +12,7 @@ use tokio::{sync::Mutex, time::Instant};
 use uuid::Uuid;
 
 use super::ApiError;
-use crate::model::WorkspaceId;
+use crate::{model::WorkspaceId, storage::Storage};
 
 const SESSION_TTL_SECONDS: u64 = 3600;
 const MAX_SESSIONS: usize = 10_000;
@@ -176,6 +176,28 @@ pub(super) fn fingerprint(key: &str) -> [u8; 32] {
 
 pub(super) fn matches_hash(expected: &[u8; 32], key: &str) -> bool {
     bool::from(expected.ct_eq(&fingerprint(key)))
+}
+
+/**
+ * @cc [owner:spolu,label:security] durable-workspace-authority
+ * Workspace administration and session issuance MUST verify the workspace key's kind and hash
+ * against durable state for the requested workspace. Missing workspaces and wrong keys MUST both
+ * return Unauthenticated, without consulting or exposing that workspace's objects or grants.
+ */
+pub(super) async fn authorize_workspace(
+    storage: &Storage,
+    workspace: &WorkspaceId,
+    key: &str,
+) -> Result<(), ApiError> {
+    require_key_kind(key, "dfsw_")?;
+    let record = storage
+        .workspace_record(workspace)
+        .await
+        .map_err(|_| ApiError::Unavailable)?;
+    if !record.is_some_and(|record| matches_hash(&record.key_hash, key)) {
+        return Err(ApiError::Unauthenticated);
+    }
+    Ok(())
 }
 
 pub(super) fn require_key_kind(key: &str, prefix: &str) -> Result<(), ApiError> {

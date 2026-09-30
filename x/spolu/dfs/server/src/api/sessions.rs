@@ -110,14 +110,7 @@ pub(super) async fn create_session(
     access::require_key_kind(key, "dfsw_")?;
     let body: CreateSessionRequest = json_body(request, &state).await?;
     let workspace = WorkspaceId::new(body.workspace_id).map_err(|_| ApiError::InvalidInput)?;
-    let record = state
-        .storage()?
-        .workspace_record(&workspace)
-        .await
-        .map_err(|_| ApiError::Unavailable)?;
-    if !record.is_some_and(|record| access::matches_hash(&record.key_hash, key)) {
-        return Err(ApiError::Unauthenticated);
-    }
+    access::authorize_workspace(state.storage()?, &workspace, key).await?;
     if !body.mounts.is_empty() {
         return Err(ApiError::Unsupported);
     }

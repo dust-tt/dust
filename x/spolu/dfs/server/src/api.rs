@@ -1,5 +1,6 @@
 mod access;
 mod error;
+mod grants;
 mod objects;
 mod sessions;
 
@@ -51,6 +52,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/objects/list", post(objects::list))
         .route("/objects/mkdir", post(objects::mkdir))
         .route("/objects/update", post(objects::update))
+        .route("/objects/grants/list", post(grants::list))
+        .route("/objects/grants/update", post(grants::update))
         .layer(DefaultBodyLimit::max(64 * 1024))
         .fallback(|| async { ApiError::NotFound })
         .method_not_allowed_fallback(|| async { ApiError::MethodNotAllowed })

@@ -1,3 +1,6 @@
+mod grants;
+pub(crate) use grants::{list_grants, update_grants};
+
 mod write;
 pub(crate) use write::{CreateDirectory, MetadataUpdate, mkdir, update};
 

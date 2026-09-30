@@ -281,6 +281,69 @@ paths:
                 $ref: '#/components/schemas/ObjectAttributes'
         default:
           $ref: '#/components/responses/ApiError'
+  /objects/grants/list:
+    post:
+      operationId: listObjectGrants
+      summary: List explicit grant attachments with workspace authority.
+      description: |
+        Requires the matching workspace key, including for roots with no grants. Session and server
+        keys are rejected. The response contains explicit attachments only, sorted by exact UTF-8
+        bytes, with the object's metadata revision from the same snapshot. Inherited grants are
+        not copied or listed. An authenticated workspace cannot address objects in another workspace.
+        Pass next_after as after; null means the end, while an empty string is a valid grant/cursor.
+        Each page uses a fresh snapshot; concurrent edits can require restarting traversal.
+      security:
+        - WorkspaceKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListGrantsRequest'
+      responses:
+        "200":
+          description: Explicit grant page; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListGrantsResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/grants/update:
+    post:
+      operationId: updateObjectGrants
+      summary: Attach or revoke explicit grants with workspace authority.
+      description: |
+        Requires the matching workspace key, an existing object, and its expected_metadata_revision.
+        Wrong key/workspace combinations return unauthenticated (401); a missing object in the
+        authenticated workspace returns not_found (404); stale revisions return conflict (409).
+        Each patch contains 1–512 grant-to-boolean entries: true attaches, false removes the explicit
+        attachment. Omitted grants stay unchanged. Empty strings, NUL, slashes, and Unicode are opaque
+        grant values. The bound is per request; an object may have more than 512 attachments.
+        Every accepted patch advances the object's revision and server ctime, even if the requested
+        states already hold. Both index directions, metadata, and an event commit atomically and
+        durably before returning. Parent, content, xattrs, modes, atime, and mtime stay unchanged.
+        Revocation is not a deny: an ancestor or another matching grant can still authorize access.
+        Subsequent session requests see the new grants; in-flight reads may use their prior snapshot.
+        An error/disconnect may have committed. Re-read the grant list/revision before retrying,
+        including after reconnecting to a restarted server; this endpoint has no idempotency token.
+      security:
+        - WorkspaceKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateGrantsRequest'
+      responses:
+        "200":
+          description: Grant patch persisted; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateGrantsResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
 components:
   securitySchemes:
     ServerKey:
@@ -290,7 +353,7 @@ components:
     WorkspaceKey:
       type: http
       scheme: bearer
-      description: Workspace key returned by POST /workspaces; used to create sessions.
+      description: Workspace key returned by POST /workspaces; authorizes sessions and grant administration.
     SessionKey:
       type: http
       scheme: bearer
@@ -361,6 +424,77 @@ components:
           minimum: 1
           maximum: 1000
           default: 100
+    ListGrantsRequest:
+      type: object
+      additionalProperties: false
+      required: [workspace_id, object_id]
+      properties:
+        workspace_id:
+          type: string
+          minLength: 1
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        after:
+          type: string
+          nullable: true
+          description: Exclusive opaque grant cursor; omitted/null starts at the beginning.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 100
+    UpdateGrantsRequest:
+      type: object
+      additionalProperties: false
+      required: [workspace_id, object_id, expected_metadata_revision, grants]
+      properties:
+        workspace_id:
+          type: string
+          minLength: 1
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        expected_metadata_revision:
+          type: integer
+          minimum: 0
+          description: Required unsigned 64-bit revision from a fresh grant listing for this object.
+        grants:
+          type: object
+          minProperties: 1
+          maxProperties: 512
+          additionalProperties:
+            type: boolean
+          description: Opaque grant strings mapped to true (attach) or false (revoke explicit attachment).
+    ListGrantsResponse:
+      type: object
+      additionalProperties: false
+      required: [object_id, metadata_revision, grants, next_after]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        metadata_revision:
+          type: integer
+          minimum: 0
+          description: Unsigned 64-bit object revision in this page's snapshot.
+        grants:
+          type: array
+          maxItems: 1000
+          items:
+            type: string
+        next_after:
+          type: string
+          nullable: true
+          description: Last returned grant if more exist; null when exhausted. Empty is a valid cursor.
+    UpdateGrantsResponse:
+      type: object
+      additionalProperties: false
+      required: [object_id, metadata_revision]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        metadata_revision:
+          type: integer
+          minimum: 0
+          description: New unsigned 64-bit object revision; preserve full precision.
     Timestamp:
       type: object
       additionalProperties: false

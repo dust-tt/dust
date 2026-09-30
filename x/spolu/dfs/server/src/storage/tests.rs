@@ -578,7 +578,7 @@ async fn cleanup_fixture(store: Arc<dyn ObjectStore>, prefix: &StoragePrefix) ->
 #[tokio::test]
 async fn namespace_writes_release_publication_before_durability_and_recover_atomically()
 -> Result<()> {
-    use crate::namespace::{CreateDirectory, mkdir};
+    use crate::namespace::{CreateDirectory, mkdir, update_grants};
 
     for succeed in [true, false] {
         let store: Arc<dyn ObjectStore> = Arc::new(InMemory::new());
@@ -666,12 +666,55 @@ async fn namespace_writes_release_publication_before_durability_and_recover_atom
                 == 2
         );
         ensure!(pending.changes(1, 10).await?.is_empty());
+        let writer_store = storage.clone();
+        let writer_workspace = workspace.clone();
+        let grant_writer = tokio::spawn(async move {
+            update_grants(
+                &writer_store,
+                &writer_workspace,
+                root,
+                2,
+                [("owner".to_owned(), false), ("reader".to_owned(), true)].into(),
+            )
+            .await
+        });
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while storage
+                .workspace(&workspace)?
+                .read_view()
+                .await?
+                .grants(root, None, 10)
+                .await?
+                != ["reader"]
+            {
+                tokio::time::sleep(Duration::from_millis(1)).await;
+            }
+            Ok::<_, anyhow::Error>(())
+        })
+        .await??;
+        ensure!(!grant_writer.is_finished());
+        let changed = storage.workspace(&workspace)?.read_view().await?;
+        ensure!(
+            changed
+                .object(root)
+                .await?
+                .context("root")?
+                .metadata_revision
+                .get()
+                == 3
+        );
+        ensure!(changed.granted_objects("reader", None, 10).await? == [root]);
+        ensure!(changed.granted_objects("owner", None, 10).await?.is_empty());
+        ensure!(changed.changes(1, 10).await?.is_empty());
+        ensure!(pending.grants(root, None, 10).await? == ["owner"]);
+        drop(changed);
         drop(pending);
         if succeed {
             storage.metadata.flush().await?;
             for writer in writers {
                 writer.await??;
             }
+            ensure!(grant_writer.await??.get() == 3);
             storage.close().await?;
         } else {
             storage
@@ -681,20 +724,30 @@ async fn namespace_writes_release_publication_before_durability_and_recover_atom
             for writer in writers {
                 ensure!(writer.await?.is_err());
             }
+            ensure!(grant_writer.await?.is_err());
         }
         let recovered = Storage::open(store, &prefix).await?;
         let view = recovered.workspace(&workspace)?.read_view().await?;
         let count = if succeed { 2 } else { 0 };
         ensure!(view.children(root, None, 10).await?.len() == count);
-        ensure!(view.changes(1, 10).await?.len() == count);
+        let mutations = if succeed { 3 } else { 0 };
+        ensure!(view.changes(1, 10).await?.len() == mutations);
         ensure!(
             view.object(root)
                 .await?
                 .context("root")?
                 .metadata_revision
                 .get()
-                == u64::try_from(count)?
+                == u64::try_from(mutations)?
         );
+        let (present, absent) = if succeed {
+            ("reader", "owner")
+        } else {
+            ("owner", "reader")
+        };
+        ensure!(view.grants(root, None, 10).await? == [present]);
+        ensure!(view.granted_objects(present, None, 10).await? == [root]);
+        ensure!(view.granted_objects(absent, None, 10).await?.is_empty());
         for entry in view.children(root, None, 10).await? {
             let object = view.object(entry.object_id).await?.context("child")?;
             ensure!(object.directory_entry() == Some(entry));
