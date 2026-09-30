@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { GroupGrantableRole } from "@app/types/groups";
 import type { WorkspaceType } from "@app/types/user";
@@ -37,6 +38,24 @@ export class GroupFactory {
       workspaceId: workspace.id,
       workOSGroupId: `workos-group-${name}`,
     });
+  }
+
+  // Writes the group limit columns directly, bypassing `GroupResource.updateGroupLimit`, to create
+  // states it forbids so that code reading them can be tested.
+  static async withRawGroupLimit(
+    group: GroupResource,
+    {
+      groupLimitAwuCredits,
+      groupLimitPriority,
+    }: {
+      groupLimitAwuCredits: number | null;
+      groupLimitPriority: number | null;
+    }
+  ) {
+    await GroupModel.update(
+      { groupLimitAwuCredits, groupLimitPriority },
+      { where: { id: group.id, workspaceId: group.workspaceId } }
+    );
   }
 
   static async withMembers(

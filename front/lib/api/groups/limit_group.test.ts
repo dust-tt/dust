@@ -6,10 +6,9 @@ import {
   resolveLimitGroupsForUsers,
 } from "@app/lib/api/groups/limit_group";
 import { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import type { GroupResource } from "@app/lib/resources/group_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -45,14 +44,17 @@ async function makeMember(workspace: WorkspaceType): Promise<UserResource> {
 }
 
 async function makeGroup(
+  auth: Authenticator,
   workspace: WorkspaceType,
   name: string,
   members: UserResource[]
 ): Promise<GroupResource> {
-  return GroupResource.makeNew(
-    { name, workspaceId: workspace.id, kind: "regular_manual" },
-    { memberIds: members.map((m) => m.id) }
-  );
+  const group = await GroupFactory.regularManual(workspace, name);
+  const added = await GroupFactory.withMembers(auth, group, members);
+  if (added.isErr()) {
+    throw added.error;
+  }
+  return group;
 }
 
 async function limit(
@@ -77,7 +79,7 @@ describe("resolveLimitGroupForUser", () => {
   it("returns nothing when none of the member's groups has a limit", async () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
-    await makeGroup(workspace, "Engineering", [remy]);
+    await makeGroup(auth, workspace, "Engineering", [remy]);
 
     expect(await resolveLimitGroupForUser(auth, { user: remy })).toBeNull();
   });
@@ -85,8 +87,8 @@ describe("resolveLimitGroupForUser", () => {
   it("returns the member's only limited group", async () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
-    const engineering = await makeGroup(workspace, "Engineering", [remy]);
-    await makeGroup(workspace, "Sales", [remy]);
+    const engineering = await makeGroup(auth, workspace, "Engineering", [remy]);
+    await makeGroup(auth, workspace, "Sales", [remy]);
     await limit(auth, engineering, 10_000);
 
     const limitGroup = await resolveLimitGroupForUser(auth, { user: remy });
@@ -98,8 +100,8 @@ describe("resolveLimitGroupForUser", () => {
   it("returns the group whose limit was set first", async () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
-    const engineering = await makeGroup(workspace, "Engineering", [remy]);
-    const sales = await makeGroup(workspace, "Sales", [remy]);
+    const engineering = await makeGroup(auth, workspace, "Engineering", [remy]);
+    const sales = await makeGroup(auth, workspace, "Sales", [remy]);
     await limit(auth, engineering, 10_000);
     await limit(auth, sales, 6_000);
 
@@ -111,8 +113,8 @@ describe("resolveLimitGroupForUser", () => {
   it("falls back to the next limited group when the first one loses its limit", async () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
-    const engineering = await makeGroup(workspace, "Engineering", [remy]);
-    const sales = await makeGroup(workspace, "Sales", [remy]);
+    const engineering = await makeGroup(auth, workspace, "Engineering", [remy]);
+    const sales = await makeGroup(auth, workspace, "Sales", [remy]);
     await limit(auth, engineering, 10_000);
     await limit(auth, sales, 6_000);
 
@@ -131,8 +133,8 @@ describe("resolveLimitGroupForUser", () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
     const alice = await makeMember(workspace);
-    await makeGroup(workspace, "Engineering", [remy]);
-    const sales = await makeGroup(workspace, "Sales", [alice]);
+    await makeGroup(auth, workspace, "Engineering", [remy]);
+    const sales = await makeGroup(auth, workspace, "Sales", [alice]);
     await limit(auth, sales, 6_000);
 
     expect(await resolveLimitGroupForUser(auth, { user: remy })).toBeNull();
@@ -141,12 +143,18 @@ describe("resolveLimitGroupForUser", () => {
   it("ignores group memberships that have ended", async () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
-    const engineering = await makeGroup(workspace, "Engineering", [remy]);
+    const alice = await makeMember(workspace);
+    const engineering = await makeGroup(auth, workspace, "Engineering", [
+      remy,
+      alice,
+    ]);
     await limit(auth, engineering, 10_000);
-    await GroupMembershipModel.update(
-      { endAt: new Date(Date.now() - 60_000) },
-      { where: { groupId: engineering.id, userId: remy.id } }
-    );
+    const removed = await engineering.dangerouslyRemoveMembers(auth, {
+      users: [remy.toJSON()],
+    });
+    if (removed.isErr()) {
+      throw removed.error;
+    }
 
     expect(await resolveLimitGroupForUser(auth, { user: remy })).toBeNull();
   });
@@ -154,14 +162,17 @@ describe("resolveLimitGroupForUser", () => {
   it("ignores groups whose kind cannot carry a group limit", async () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
-    const autoGroup = await GroupResource.makeNew(
-      { name: "Auto", workspaceId: workspace.id, kind: "regular_auto" },
-      { memberIds: [remy.id] }
-    );
-    await GroupModel.update(
-      { groupLimitAwuCredits: 1_000, groupLimitPriority: 1 },
-      { where: { id: autoGroup.id, workspaceId: workspace.id } }
-    );
+    const autoGroup = await GroupFactory.regularAuto(workspace, "Auto");
+    const added = await autoGroup.dangerouslyAddMembers(auth, {
+      users: [remy.toJSON()],
+    });
+    if (added.isErr()) {
+      throw added.error;
+    }
+    await GroupFactory.withRawGroupLimit(autoGroup, {
+      groupLimitAwuCredits: 1_000,
+      groupLimitPriority: 1,
+    });
 
     expect(await resolveLimitGroupForUser(auth, { user: remy })).toBeNull();
   });
@@ -169,7 +180,7 @@ describe("resolveLimitGroupForUser", () => {
   it("returns nothing when group limits are not enabled", async () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
-    const engineering = await makeGroup(workspace, "Engineering", [remy]);
+    const engineering = await makeGroup(auth, workspace, "Engineering", [remy]);
     await limit(auth, engineering, 10_000);
     vi.mocked(areGroupLimitsEnabled).mockResolvedValue(false);
 
@@ -183,12 +194,12 @@ describe("resolveLimitGroupsForUsers", () => {
     const remy = await makeMember(workspace);
     const alice = await makeMember(workspace);
     const bruno = await makeMember(workspace);
-    const engineering = await makeGroup(workspace, "Engineering", [
+    const engineering = await makeGroup(auth, workspace, "Engineering", [
       remy,
       alice,
     ]);
-    const sales = await makeGroup(workspace, "Sales", [remy, bruno]);
-    await makeGroup(workspace, "Marketing", [bruno]);
+    const sales = await makeGroup(auth, workspace, "Sales", [remy, bruno]);
+    await makeGroup(auth, workspace, "Marketing", [bruno]);
     await limit(auth, sales, 6_000);
     await limit(auth, engineering, 10_000);
     const carol = await makeMember(workspace);
