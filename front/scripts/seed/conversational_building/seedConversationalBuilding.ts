@@ -1,4 +1,5 @@
 import { pruneSupersededSkillSuggestions } from "@app/lib/api/actions/servers/building_agents_and_skills/skill_suggestion_changes";
+import { fetchRunAgentTool } from "@app/lib/api/assistant/suggestable_sub_agents";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
@@ -39,7 +40,7 @@ export const STANDUP_DIGEST_SKILL_NAME = "StandupDigest";
 export const LUKE_USER_SID = "SeedUserLuke";
 export const CONVERSATION_SID = "ConvBuildingConv01";
 export const BATCH_CONVERSATION_SID = "ConvBuildingConv02";
-export const SKILL_REFERENCES_CONVERSATION_SID = "ConvBuildingConv03";
+export const REFERENCES_CONVERSATION_SID = "ConvBuildingConv03";
 export const ACTION_ITEM_TRACKER_SKILL_PLACEHOLDER =
   "__ACTION_ITEM_TRACKER_SKILL_SID__";
 export const TEAM_CALENDAR_TOOL_PLACEHOLDER = "__TEAM_CALENDAR_TOOL_ID__";
@@ -176,8 +177,8 @@ export async function seedConversationalBuilding(
     createdBatches
   );
 
-  logger.info("Seeding the skill references batch...");
-  const skillReferences = await seedSkillReferencesBatch(ctx);
+  logger.info("Seeding the references batch...");
+  const references = await seedReferencesBatch(ctx);
 
   // 6. The Dust conversations embedding the suggestions as `:skill_suggestion[]` and
   // `:batch_edit[]` directives.
@@ -234,9 +235,9 @@ export async function seedConversationalBuilding(
           createdBatches.get("renameToTeamDigest")?.sId ?? "",
         __MEMBERS_ONLY_BATCH_SID__:
           createdBatches.get("membersOnly")?.sId ?? "",
-        __TEAM_ASSISTANT_AGENT_SID__: skillReferences?.teamAssistant.sId ?? "",
-        __DECISION_LOG_SKILL_SID__: skillReferences?.decisionLog.sId ?? "",
-        __SKILL_REFERENCES_BATCH_SID__: skillReferences?.batch.sId ?? "",
+        __TEAM_ASSISTANT_AGENT_SID__: references?.teamAssistant.sId ?? "",
+        __DECISION_LOG_SKILL_SID__: references?.decisionLog.sId ?? "",
+        __REFERENCES_BATCH_SID__: references?.batch.sId ?? "",
       },
       additionalUsers: createdUsers,
     }
@@ -253,8 +254,8 @@ export async function seedConversationalBuilding(
   );
   await linkSuggestionsToConversation(
     ctx,
-    conversationSIds.get(SKILL_REFERENCES_CONVERSATION_SID),
-    skillReferences?.skillSuggestions ?? new Map()
+    conversationSIds.get(REFERENCES_CONVERSATION_SID),
+    references?.skillSuggestions ?? new Map()
   );
   logger.info(
     { conversationSIds: [...conversationSIds.values()] },
@@ -346,9 +347,10 @@ async function linkSuggestionsToConversation(
   );
 }
 
-// A batch whose agent changes use the skill it creates, as `suggest` records skill refs: the new
-// DecisionLog skill is added to TeamAssistant, and the new MeetingPrep agent is created with it.
-async function seedSkillReferencesBatch(ctx: SeedContext): Promise<{
+// A batch whose agent changes use the skill and the agent it creates, as `suggest` records refs:
+// the new DecisionLog skill is added to TeamAssistant, and the new MeetingPrep agent is created
+// with it and added as a sub-agent of TeamAssistant.
+async function seedReferencesBatch(ctx: SeedContext): Promise<{
   batch: BatchSuggestionResource;
   teamAssistant: CreatedAgent;
   decisionLog: SkillResource;
@@ -405,7 +407,10 @@ async function seedSkillReferencesBatch(ctx: SeedContext): Promise<{
     batchModelId: batch.id,
   });
 
-  const meetingPrep = await AgentResource.createPending(ctx.auth);
+  const meetingPrep = await AgentResource.createPending(
+    ctx.auth,
+    "MeetingPrep"
+  );
   if (meetingPrep.isErr()) {
     throw meetingPrep.error;
   }
@@ -419,6 +424,22 @@ async function seedSkillReferencesBatch(ctx: SeedContext): Promise<{
       skillIds: [decisionLog.value.sId],
     },
     analysis: null,
+    batchModelId: batch.id,
+  });
+
+  const runAgentTool = await fetchRunAgentTool(ctx.auth);
+  if (!runAgentTool) {
+    throw new Error("The run_agent tool is not available.");
+  }
+
+  await AgentSuggestionFactory.createSubAgent(ctx.auth, teamAssistant, {
+    suggestion: {
+      action: "add",
+      toolId: runAgentTool.sId,
+      childAgentId: meetingPrep.value.sId,
+    },
+    analysis: null,
+    source: "conversational",
     batchModelId: batch.id,
   });
 

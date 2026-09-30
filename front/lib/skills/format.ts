@@ -15,7 +15,7 @@ export const UNAVAILABLE_SKILL_TAG_NAME = "unavailable_skill";
 export const UNAVAILABLE_SKILL_LABEL = "Unavailable skill";
 
 // Letters, digits, underscores and hyphens only, e.g. "meeting-notes".
-export const SKILL_REF_REGEX = /^[\w-]+$/;
+export const SUGGESTION_REF_REGEX = /^[\w-]+$/;
 
 // Attributes group anchors on [^>\/\s] so it cannot overlap with the preceding
 // \s+ separator. Without this, \s+ and [^>]*? both match spaces and produce
@@ -117,7 +117,7 @@ export function serializeSkillTag(
 
 function parseSkillRef(attributes: string): string | null {
   const ref = attributes.match(/\bref=(["'])(.*?)\1/)?.[2];
-  return ref !== undefined && SKILL_REF_REGEX.test(ref) ? ref : null;
+  return ref !== undefined && SUGGESTION_REF_REGEX.test(ref) ? ref : null;
 }
 
 export function extractSkillRefs(content: string): string[] {

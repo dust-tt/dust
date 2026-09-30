@@ -38,7 +38,7 @@ import {
 } from "@app/lib/api/assistant/suggestable_tools";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -814,14 +814,15 @@ export async function recordSingletonAgentSuggestions(
 
 /**
  * @cc [owner:avervaet,label:product] no-direct-mutation
- * Recording an agent creation MUST NOT make the proposed agent usable: the only agent it creates
- * is a `pending`, `hidden` placeholder editable solely by the caller, and the proposal is recorded
- * as a `pending` `create` suggestion targeting it. No other suggestion can target that
- * placeholder, so there are no conflicting suggestions to mark `outdated`. Turning the suggestion
- * into a usable agent is a separate, human-reviewed step.
+ * Recording an agent creation MUST NOT make the proposed agent usable: the proposal is recorded
+ * as a `pending` `create` suggestion on a `pending`, `hidden` placeholder editable solely by the
+ * caller (see `AgentResource.createPending`). No other suggestion can target that placeholder, so
+ * there are no conflicting suggestions to mark `outdated`. Turning the suggestion into a usable
+ * agent is a separate, human-reviewed step.
  */
 export async function recordAgentCreationSuggestion(
   auth: Authenticator,
+  pendingAgent: AgentResource,
   {
     create,
     analysis,
@@ -833,26 +834,16 @@ export async function recordAgentCreationSuggestion(
     conversation: ConversationType;
     batch: BatchSuggestionResource | null;
   }
-): Promise<Result<AgentSuggestionResource, MCPError>> {
-  const pendingResult = await AgentResource.createPending(auth, create.name);
-  if (pendingResult.isErr()) {
-    return new Err(new MCPError(pendingResult.error.message));
-  }
-
-  const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
-    auth,
-    pendingResult.value,
-    {
-      kind: "create",
-      suggestion: create,
-      analysis,
-      state: "pending",
-      conversationId: conversation.id,
-      source: "conversational",
-      batchId: batch?.id ?? null,
-    }
-  );
-  return new Ok(suggestion);
+): Promise<AgentSuggestionResource> {
+  return AgentSuggestionResource.createSuggestionForAgent(auth, pendingAgent, {
+    kind: "create",
+    suggestion: create,
+    analysis,
+    state: "pending",
+    conversationId: conversation.id,
+    source: "conversational",
+    batchId: batch?.id ?? null,
+  });
 }
 
 /** Kinds of which a single suggestion may be pending per agent and per item at a time. */

@@ -1517,7 +1517,11 @@ describe("building_agents_and_skills tools", () => {
     describe("sub-agent changes", () => {
       const editSubAgents = (
         agentId: string,
-        subAgents: { addAgentIds?: string[]; removeAgentIds?: string[] }
+        subAgents: {
+          addAgentIds?: string[];
+          addAgentRefs?: string[];
+          removeAgentIds?: string[];
+        }
       ) => ({
         title: "Update sub-agents",
         analysis: "The agent needs to delegate.",
@@ -1763,6 +1767,107 @@ describe("building_agents_and_skills tools", () => {
           ),
           "does not have the sub-agent"
         );
+      });
+      describe("by ref", () => {
+        const createPricingAgent = {
+          kind: "create_agent",
+          ref: "pricing",
+          name: "PricingHelper",
+          description: "Answers pricing questions.",
+          instructions: "<p>Answer pricing questions.</p>",
+        };
+
+        it("records a sub-agent created in the same call with the id of its pending agent", async () => {
+          const { authenticator } = await createAgentAuthorTestContext();
+          const agent =
+            await AgentConfigurationFactory.createTestAgent(authenticator);
+
+          const batchId = extractBatchId(
+            await runSuggest(authenticator, {
+              title: "Pricing helper",
+              analysis: "The agent needs to delegate pricing.",
+              suggestions: [
+                {
+                  kind: "edit_agent",
+                  agentId: agent.sId,
+                  subAgents: { addAgentRefs: ["pricing"] },
+                },
+                createPricingAgent,
+              ],
+            })
+          );
+
+          const batch = await BatchSuggestionResource.fetchById(
+            authenticator,
+            batchId
+          );
+          const creation = batch?.agentSuggestions
+            .map((s) => s.toJSON())
+            .find((s) => s.kind === "create");
+          assert(creation);
+          const pendingAgent = await AgentResource.fetchById(
+            authenticator,
+            creation.agentId
+          );
+          expect(pendingAgent).toMatchObject({
+            status: "pending",
+            name: "PricingHelper",
+          });
+          expect(
+            batch?.agentSuggestions
+              .map((s) => s.toJSON())
+              .filter((s) => s.kind === "sub_agent")
+          ).toMatchObject([
+            {
+              agentId: agent.sId,
+              suggestion: {
+                action: "add",
+                childAgentId: creation.agentId,
+                toolId: expect.any(String),
+              },
+            },
+          ]);
+        });
+
+        it("refuses an agent ref no agent creation declares", async () => {
+          const { authenticator } = await createAgentAuthorTestContext();
+          const agent =
+            await AgentConfigurationFactory.createTestAgent(authenticator);
+
+          const result = await runSuggest(
+            authenticator,
+            editSubAgents(agent.sId, { addAgentRefs: ["missing"] })
+          );
+
+          expectMcpError(result, "not declared by any agent creation");
+        });
+
+        it("refuses an admin who is not an editor of the agent", async () => {
+          const { authenticator, workspace } =
+            await createAgentAuthorTestContext();
+          const agent =
+            await AgentConfigurationFactory.createTestAgent(authenticator);
+          const admin = await addMember(workspace, "admin");
+          const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            admin.sId,
+            workspace.sId
+          );
+
+          const result = await runSuggest(adminAuth, {
+            title: "Pricing helper",
+            analysis: "The agent needs to delegate pricing.",
+            suggestions: [
+              {
+                kind: "edit_agent",
+                agentId: agent.sId,
+                subAgents: { addAgentRefs: ["pricing"] },
+              },
+              createPricingAgent,
+            ],
+          });
+
+          expectMcpError(result, "Only editors");
+        });
       });
     });
 
