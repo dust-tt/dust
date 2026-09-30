@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::{ApiError, ApiState, json_body, no_store, sessions::AuthenticatedSession};
 use crate::{
     model::{EntryName, ObjectId, ObjectKind, ObjectMetadata, PosixAttributes, Timestamp},
-    namespace::{self, NamespaceRead},
+    namespace::{self, NamespaceId, NamespaceNode, NamespaceRead, SyntheticDirectory},
 };
 
 /// @swaggerschema StatRequest in server/openapi.yaml.
@@ -47,9 +47,10 @@ pub(super) fn default_limit() -> usize {
 
 /**
  * @cc [owner:spolu,label:security] object-response-boundary
- * Object attributes MUST omit canonical parent IDs, ancestor paths, and grants. Lookup/list may
- * expose entry names only after authorizing the containing directory. Xattrs MUST use padded
- * standard base64 so arbitrary bytes round-trip without loss.
+ * Object attributes MUST omit canonical parent IDs, ancestor paths, and grants. Canonical lookup/list
+ * MUST authorize the containing directory; synthetic projections MUST authorize each target without
+ * exposing its hidden ancestry. Xattrs MUST use padded standard base64 so arbitrary bytes round-trip
+ * without loss.
  */
 /// @swaggerschema ObjectAttributes in server/openapi.yaml.
 #[derive(Serialize)]
@@ -97,6 +98,25 @@ impl From<ObjectMetadata> for ObjectAttributes {
     }
 }
 
+impl From<NamespaceNode> for ObjectAttributes {
+    fn from(node: NamespaceNode) -> Self {
+        match node {
+            NamespaceNode::Object(object) => Self::from(*object),
+            NamespaceNode::Synthetic(directory) => Self {
+                object_id: directory.as_str().to_owned(),
+                kind: KindAttributes::Directory,
+                mime_type: "inode/directory".to_owned(),
+                xattrs: BTreeMap::new(),
+                metadata_revision: 0,
+                posix: PosixAttributes {
+                    mode: 0o555,
+                    ..PosixAttributes::new(true, Timestamp::EPOCH)
+                },
+            },
+        }
+    }
+}
+
 /// @swaggerschema ListResponse in server/openapi.yaml.
 #[derive(Serialize)]
 struct ListResponse {
@@ -117,9 +137,11 @@ pub(super) async fn stat(
     request: Request,
 ) -> Result<Response, ApiError> {
     let body: StatRequest = json_body(request, &state).await?;
-    let id = object_id(&body.object_id)?;
+    let id = body.object_id.parse()?;
     let view = NamespaceRead::new(state.storage()?, &session.workspace, &session.grants).await?;
-    Ok(no_store(Json(ObjectAttributes::from(view.stat(id).await?))))
+    Ok(no_store(Json(ObjectAttributes::from(
+        view.session_stat(id).await?,
+    ))))
 }
 
 /// @swagger See POST /objects/lookup in server/openapi.yaml.
@@ -129,11 +151,11 @@ pub(super) async fn lookup(
     request: Request,
 ) -> Result<Response, ApiError> {
     let body: LookupRequest = json_body(request, &state).await?;
-    let parent = object_id(&body.parent_id)?;
+    let parent = body.parent_id.parse()?;
     let name = EntryName::new(body.name)?;
     let view = NamespaceRead::new(state.storage()?, &session.workspace, &session.grants).await?;
     Ok(no_store(Json(ObjectAttributes::from(
-        view.lookup(parent, &name).await?,
+        view.session_lookup(parent, &name).await?,
     ))))
 }
 
@@ -144,10 +166,11 @@ pub(super) async fn list(
     request: Request,
 ) -> Result<Response, ApiError> {
     let body: ListRequest = json_body(request, &state).await?;
-    let directory = object_id(&body.directory_id)?;
-    let after = body.after.map(EntryName::new).transpose()?;
+    let directory = body.directory_id.parse()?;
     let view = NamespaceRead::new(state.storage()?, &session.workspace, &session.grants).await?;
-    let page = view.list(directory, after.as_ref(), body.limit).await?;
+    let page = view
+        .session_list(directory, body.after.as_deref(), body.limit)
+        .await?;
     Ok(no_store(Json(ListResponse {
         entries: page
             .entries
@@ -157,7 +180,7 @@ pub(super) async fn list(
                 attributes: object.into(),
             })
             .collect(),
-        next_after: page.next_after.map(|name| name.to_string()),
+        next_after: page.next_after,
     })))
 }
 
@@ -351,7 +374,12 @@ async fn remove(
 }
 
 pub(super) fn object_id(value: &str) -> Result<ObjectId, ApiError> {
-    value.parse().map_err(|_| ApiError::InvalidInput)
+    match value.parse()? {
+        NamespaceId::Object(id) => Ok(id),
+        NamespaceId::Synthetic(SyntheticDirectory::Root | SyntheticDirectory::Shared) => {
+            Err(ApiError::Forbidden)
+        }
+    }
 }
 
 #[cfg(test)]

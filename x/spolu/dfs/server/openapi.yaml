@@ -84,7 +84,7 @@ paths:
         another workspace all return unauthenticated (401). Server and session keys are not accepted.
         Grants are opaque; deduplicate before enforcing the limit of 512 distinct grants. Empty
         sets and empty grant strings are allowed. Creating a session never attaches grants to objects.
-        Nonempty mounts return unsupported (501) until mount validation is implemented.
+        Only workspace_id and grants are accepted; unknown fields, including mounts, return invalid_input.
         Sessions expire after one hour, on explicit closure, or on server restart. A process supports
         at most 10000 live sessions (capacity_exhausted, 507). Expired entries are cleaned on access.
       security:
@@ -159,6 +159,7 @@ paths:
         (404). A directly shared object is accessible without granting access to its ancestors.
         Metadata and authorization use one fresh snapshot. Responses omit parent links, names,
         paths, and grants. In-flight reads may finish against their original snapshot.
+        Well-known root/shared IDs return fixed synthetic directory attributes for any valid session.
       security:
         - SessionKey: []
       requestBody:
@@ -186,6 +187,14 @@ paths:
         UTF-8 components, never paths. An authorized file used as parent returns not_directory
         (400); missing/inaccessible parents or missing names return not_found (404).
         Entry, attributes, and authorization use one snapshot. Names stay in JSON bodies.
+        Well-known root exposes authorized workspace-root children plus synthetic shared. Well-known
+        shared exposes authorized targets whose ancestors are hidden, omitting ordinary root entries.
+        Every direct shared entry uses basename--uuid, with the full 32-character object ID. Truncate
+        only the basename at a UTF-8 boundary to fit 255 bytes. Canonical names inside targets remain
+        unchanged. Lookup extracts the ID, checks access and shared eligibility, and validates the
+        current rendered name. Bare, stale, or inaccessible aliases return not_found.
+        A persisted workspace-root child called shared is exposed inside synthetic shared instead.
+        Returned targets have their real object IDs; responses never expose canonical ancestors.
       security:
         - SessionKey: []
       requestBody:
@@ -210,7 +219,14 @@ paths:
       description: |
         Requires access to the directory; children inherit that access. An authorized file returns
         not_directory (400); missing/inaccessible objects return not_found (404). Each page reads
-        entries, attributes, and continuation from one snapshot in exact UTF-8 name-byte order.
+        entries, attributes, and continuation from one snapshot. Canonical directories and well-known
+        root use exact UTF-8 name-byte order; root filters unauthorized entries and reserves shared.
+        Well-known shared merges the session grant indexes in object-ID order with deduplication,
+        omitting targets reachable through an authorized ancestor or ordinary root entry. A persisted
+        root child named shared is the exception and remains discoverable here through inherited access.
+        Every direct shared name carries its object-ID suffix. Each page scans at most max(limit, 64) grant
+        candidates; filtering may yield an empty page with non-null next_after. Continue until null.
+        Root filtering may read multiple bounded batches.
         Pass next_after verbatim as after in the next request. Null next_after means this page
         reached the end of its snapshot. Each page reauthorizes against a fresh snapshot; cursors
         neither preserve access rights nor retain a listing snapshot. Concurrent edits can cause
@@ -483,6 +499,12 @@ components:
       type: string
       pattern: '^[0-9a-f]{32}$'
       description: Stable object UUID, encoded as 32 lowercase hexadecimal characters.
+    NamespaceId:
+      type: string
+      pattern: '^(root|shared|[0-9a-f]{32})$'
+      description: |
+        A persistent object UUID or the session-scoped well-known root/shared directory.
+        Synthetic IDs are read-only and are not valid dfs URI targets. Mutations return forbidden.
     EntryName:
       type: string
       minLength: 1
@@ -496,14 +518,14 @@ components:
       required: [object_id]
       properties:
         object_id:
-          $ref: '#/components/schemas/ObjectId'
+          $ref: '#/components/schemas/NamespaceId'
     LookupRequest:
       type: object
       additionalProperties: false
       required: [parent_id, name]
       properties:
         parent_id:
-          $ref: '#/components/schemas/ObjectId'
+          $ref: '#/components/schemas/NamespaceId'
         name:
           $ref: '#/components/schemas/EntryName'
     ListRequest:
@@ -512,13 +534,13 @@ components:
       required: [directory_id]
       properties:
         directory_id:
-          $ref: '#/components/schemas/ObjectId'
+          $ref: '#/components/schemas/NamespaceId'
         after:
           type: string
           nullable: true
           minLength: 1
           maxLength: 255
-          description: Exclusive EntryName cursor, or omit/null to start from the beginning.
+          description: Exclusive name cursor for root/canonical directories, object ID for shared; omit/null to start.
         limit:
           type: integer
           minimum: 1
@@ -713,13 +735,15 @@ components:
       additionalProperties: false
       required: [object_id, kind, mime_type, xattrs, metadata_revision, mode, atime, mtime, ctime]
       description: |
-        Persisted attributes only. content_version and size_bytes are present for files and absent
+        content_version and size_bytes are present for files and absent
         for directories. Modes contain the low nine permission bits and do not grant server access.
         Parent links, names, paths, and grants are omitted. Revisions are meaningful only within the current
-        session, workspace, and object; session recreation discards cached state.
+        session, workspace, and object; session recreation discards cached state. Synthetic root/shared
+        have fixed directory attributes: mode 0555, inode/directory MIME, empty xattrs, revision zero,
+        and epoch timestamps. These synthetic attributes are not change tokens.
       properties:
         object_id:
-          $ref: '#/components/schemas/ObjectId'
+          $ref: '#/components/schemas/NamespaceId'
         kind:
           type: string
           enum: [file, directory]
@@ -772,7 +796,7 @@ components:
         next_after:
           type: string
           nullable: true
-          description: Last returned name when more entries exist in this snapshot; otherwise null.
+          description: Continuation to pass verbatim; null when exhausted. Shared pages may be empty with a continuation.
     CreateWorkspaceRequest:
       type: object
       additionalProperties: false
@@ -814,12 +838,6 @@ components:
           type: array
           description: At most 512 distinct opaque strings; duplicates are deduplicated.
           items:
-            type: string
-        mounts:
-          type: object
-          default: {}
-          description: Only an empty map is supported in this increment.
-          additionalProperties:
             type: string
     SessionResponse:
       type: object

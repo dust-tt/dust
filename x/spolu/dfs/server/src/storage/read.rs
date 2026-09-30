@@ -1,4 +1,9 @@
-use std::{collections::BTreeSet, ops::Bound, sync::Arc};
+use std::{
+    cmp::Reverse,
+    collections::{BTreeSet, BinaryHeap, VecDeque},
+    ops::Bound,
+    sync::Arc,
+};
 
 use anyhow::{Context, Result, ensure};
 use futures::{StreamExt, TryStreamExt, stream};
@@ -29,6 +34,17 @@ pub struct ReadView {
 }
 
 impl ReadView {
+    /// Resolve the workspace root from the same snapshot as its namespace and grants.
+    pub(crate) async fn root_id(&self) -> Result<ObjectId> {
+        let bytes = self
+            .snapshot
+            .get(self.keys.workspace_record())
+            .await?
+            .context("missing workspace record")?;
+        let record: super::workspace::WorkspaceRecord = codec::decode(&bytes)?;
+        Ok(ObjectId::from_bytes(record.root_id))
+    }
+
     /// Memory-visible mutation sequence from the same snapshot as metadata and authorization.
     pub(crate) async fn sequence(&self) -> Result<u64> {
         self.snapshot
@@ -162,6 +178,59 @@ impl ReadView {
             ))
         })
         .collect()
+    }
+
+    /**
+     * @cc [owner:spolu,label:security;performance] paginated-grant-union
+     * Discovery MUST merge at most 512 exact grant prefixes in this workspace and snapshot, ordered
+     * by object ID with duplicates removed before applying the page limit. Memory MUST be bounded
+     * by grant count and page size, never the total number of matching objects. Cursors MUST only
+     * advance the scan; they MUST NOT confer access.
+     */
+    pub(crate) async fn granted_union(
+        &self,
+        grants: &BTreeSet<String>,
+        after: Option<ObjectId>,
+        limit: usize,
+    ) -> Result<Vec<ObjectId>> {
+        ensure!(grants.len() <= 512, "too many session grants");
+        ensure!((1..=1000).contains(&limit), "invalid discovery limit");
+        let chunk_size = limit.min(32);
+        let mut scans: Vec<_> = stream::iter(grants.iter().cloned())
+            .map(|grant| async move {
+                let ids = self.granted_objects(&grant, after, chunk_size).await?;
+                let exhausted = ids.len() < chunk_size;
+                Ok::<_, anyhow::Error>((grant, VecDeque::from(ids), exhausted))
+            })
+            .buffered(16)
+            .try_collect()
+            .await?;
+        let mut heads = BinaryHeap::new();
+        for (index, (_, ids, _)) in scans.iter_mut().enumerate() {
+            if let Some(id) = ids.pop_front() {
+                heads.push(Reverse((*id.as_bytes(), index)));
+            }
+        }
+        let mut result = Vec::with_capacity(limit);
+        while let Some(Reverse((bytes, index))) = heads.pop() {
+            let id = ObjectId::from_bytes(bytes);
+            if result.last() != Some(&id) {
+                result.push(id);
+                if result.len() == limit {
+                    break;
+                }
+            }
+            let (grant, ids, exhausted) = &mut scans[index];
+            if ids.is_empty() && !*exhausted {
+                let next = self.granted_objects(grant, Some(id), chunk_size).await?;
+                *exhausted = next.len() < chunk_size;
+                *ids = next.into();
+            }
+            if let Some(next) = ids.pop_front() {
+                heads.push(Reverse((*next.as_bytes(), index)));
+            }
+        }
+        Ok(result)
     }
 
     /**

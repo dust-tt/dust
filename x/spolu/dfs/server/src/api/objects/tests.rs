@@ -3,6 +3,7 @@ mod concurrency;
 mod entries;
 mod grants;
 mod mutations;
+mod projection;
 
 use std::sync::Arc;
 

@@ -12,8 +12,8 @@ metadata, directory entries, revision tokens, and shared API errors with focused
 API provides workspace-scoped snapshots, immutable blobs, and synchronous metadata/index/event
 batches. Workspace creation issues a workspace key; that key issues sessions with fixed grants and
 authorizes explicit grant listing/updates.
-Session-authenticated stat, child lookup, directory listing, mkdir, and metadata updates are available.
-Moves/removal, file I/O, search, and FUSE follow in separate increments.
+Session-authenticated reads, mkdir, metadata updates, moves/removal, and root/shared projections
+are available. File I/O, virtual mounts, search, and FUSE follow in separate increments.
 Optional GCS configuration opens SlateDB before serving HTTP and
 closes it after requests drain. Without it, the HTTP scaffold still runs without external services.
 The server runs natively on macOS and Linux.
@@ -94,7 +94,7 @@ on session access/creation/closure. Grants are opaque strings, including empty s
 are deduplicated. Bodies are limited to 64 KiB and reject unknown fields.
 
 Root grants default to empty; sharing the root grants access through inheritance. Session creation
-never attaches grants to objects. Nonempty virtual mounts return `unsupported` until group 5. Existing
+never attaches grants to objects. The `mounts` argument is absent; unknown fields are rejected. Existing
 workspace IDs return `conflict` without changing their key or root. Key rotation/recovery is future
 work: a lost creation response may leave a workspace whose key cannot be recovered yet.
 
@@ -112,7 +112,8 @@ Attributes include ID, kind, MIME type, base64 xattrs, metadata revision, and fi
 They include modes and `atime`/`mtime`/`ctime` as `{ "seconds": i64, "nanoseconds": u32 }`, and omit
 canonical parents, paths, and grants.
 Stat can access a directly shared object without exposing its private ancestors; lookup/list require
-access to the containing directory. Missing and inaccessible objects both return `not_found`.
+access to the containing directory for canonical object IDs. Missing and inaccessible objects both
+return `not_found`. Synthetic projections authorize each exposed target independently.
 
 Listing sorts exact UTF-8 name bytes, with a limit of 1–1000 (default 100). Omit `after` on the first
 page; pass `next_after` verbatim for the next, stopping when it is null. Each page uses a fresh snapshot
@@ -121,6 +122,35 @@ a consistent full listing is required. Revocations and moves apply to subsequent
 already-started read may finish against its snapshot. Responses use `Cache-Control: no-store`.
 The synchronous path keeps no dfs metadata or authorization cache across requests. A matching grant
 on the object or any current ancestor authorizes access; nearer grants never restrict it.
+
+## Session root and shared folder
+
+The same read endpoints accept `root` and `shared` as well-known IDs. For example:
+
+```json
+{"directory_id": "root", "limit": 100}
+{"parent_id": "root", "name": "shared"}
+{"directory_id": "shared", "limit": 100}
+{"parent_id": "shared", "name": "C--550e8400e29b41d4a716446655440000"}
+```
+
+The root exposes authorized immediate workspace-root children plus synthetic `/shared`. Sharing
+`/spolu/C` exposes `/shared/C--<uuid>` without revealing `/spolu`. Shared entries return real object
+IDs; use those for ordinary stat/list/mutations, with the usual live grant and parent checks. Entries
+already reachable through authorized ancestors or ordinary root entries are omitted.
+
+Every direct shared entry appends `--<object-id>`. Long basenames are truncated at UTF-8 boundaries
+to fit 255 bytes, including the full suffix. Names inside shared directories remain ordinary names.
+Lookup extracts the ID and verifies access, shared eligibility, and the current rendered name; bare
+or stale aliases return `not_found`. A canonical root child called `shared` is accessible as
+`/shared/shared--<uuid>`. No basename index or collision scan is needed.
+
+Shared listings use object-ID order and cursors, scanning at most `max(limit, 64)` candidates per
+request. A filtered page can be empty with non-null `next_after`; keep paging until null. Root and
+canonical listings use name order/cursors. All requests recheck grants, ancestry, and current names.
+Synthetic stat returns directory mode `0555`, empty xattrs, revision zero, and epoch timestamps;
+these fixed attributes are not change tokens. Synthetic mutations return `forbidden`.
+Virtual mounts and virtual parent navigation remain deferred; session creation has no `mounts` field.
 
 ## Directory creation and metadata updates
 

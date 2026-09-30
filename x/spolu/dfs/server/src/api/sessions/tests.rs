@@ -39,7 +39,7 @@ pub(crate) async fn call(
     if status == StatusCode::UNAUTHORIZED {
         ensure!(response.headers()[header::WWW_AUTHENTICATE] == "Bearer");
     }
-    let bytes = to_bytes(response.into_body(), 100_000).await?;
+    let bytes = to_bytes(response.into_body(), 2 * 1024 * 1024).await?;
     let body = if bytes.is_empty() {
         Value::Null
     } else {
@@ -478,7 +478,7 @@ async fn credential_levels_and_workspaces_cannot_be_substituted() -> Result<()> 
 }
 
 #[tokio::test]
-async fn session_input_is_bounded_and_unsupported_mounts_are_rejected() -> Result<()> {
+async fn session_input_is_bounded_and_unknown_fields_are_rejected() -> Result<()> {
     let storage = Arc::new(Storage::open(Arc::new(InMemory::new()), &"inputs".parse()?).await?);
     let app = router(ApiState::new(
         Some(storage.clone()),
@@ -508,11 +508,11 @@ async fn session_input_is_bounded_and_unsupported_mounts_are_rejected() -> Resul
         ),
         (
             json!({"workspace_id":"w","grants":[],"mounts":{}}),
-            StatusCode::CREATED,
+            StatusCode::BAD_REQUEST,
         ),
         (
             json!({"workspace_id":"w","grants":[],"mounts":{"current":"dfs://anything"}}),
-            StatusCode::NOT_IMPLEMENTED,
+            StatusCode::BAD_REQUEST,
         ),
         (
             json!({"workspace_id":"w","grants":[],"admin":true}),

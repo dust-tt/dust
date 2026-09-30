@@ -1,7 +1,7 @@
 use super::*;
 
 impl Fixture {
-    async fn rename_entry(
+    pub(super) async fn rename_entry(
         &self,
         object: ObjectId,
         revision: u64,
@@ -19,7 +19,7 @@ impl Fixture {
         .await
     }
 
-    async fn remove_entry(
+    pub(super) async fn remove_entry(
         &self,
         route: &str,
         object: ObjectId,
@@ -34,7 +34,7 @@ impl Fixture {
         .await
     }
 
-    async fn mkdir_id(&self, parent: ObjectId, name: &str) -> Result<ObjectId> {
+    pub(super) async fn mkdir_id(&self, parent: ObjectId, name: &str) -> Result<ObjectId> {
         let (status, body) = self
             .request(
                 "/objects/mkdir",

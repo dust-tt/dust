@@ -5,14 +5,16 @@ snapshot for related lookups and scans. Scans take typed exclusive cursors and a
 Object batches fetch at most 1000 IDs, in order, with up to 16 concurrent point reads. Grant
 intersection checks at most 512 exact keys with the same concurrency bound, independent of the
 number of grants attached to the object. The namespace read service authorizes stat/lookup/list
-against current ancestors in one snapshot. Mkdir/metadata updates acquire `begin_metadata_write()`,
-then read/authorize/validate through its view and publish with that guard. The shared publication lock
-prevents collisions, lost updates, and authorization races; the guard releases before the durability
-wait. This metadata-only path verifies unchanged file references against existing records, without
-blob I/O. Workspace-authorized grant patches use the same guard and commit path, updating both
-indexes, the object revision/ctime, and the indexing event together. They touch only the supplied
-attachments, without enumerating all grants or materializing inheritance. Grant listing pages the
-object index with its revision from one snapshot. Rename/removal and per-object concurrency follow.
+against current ancestors in one snapshot. Namespace mutations prepare outside publication, lock
+touched objects/parents in ID order, then validate the snapshot's workspace sequence under the
+publication guard. Stale attempts reauthorize and rebuild; all locks release before durability waits.
+Metadata-only updates verify preserved content references without blob I/O. Grant patches atomically
+update both grant indexes. Rename/removal use the same path. Grant listing includes its revision
+from one snapshot.
+
+Grant discovery merges at most 512 prefixes with 32-ID buffers and 16 concurrent initial scans,
+deduplicating before the page limit. Shared rendering filters current access and ancestry, then
+appends object IDs to basenames. Shared lookup uses that ID directly, with the same access checks.
 
 Workspace creation atomically persists its root, explicit root grants in both directions, key hash,
 and initial change event. An existing workspace namespace is never replaced. Authentication reads

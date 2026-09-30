@@ -10,6 +10,9 @@ pub(crate) use entries::{RemovalKind, RemoveObject, RenameObject, remove, rename
 mod mutation;
 use mutation::mutate;
 
+mod session;
+pub(crate) use session::{NamespaceId, NamespaceNode, SyntheticDirectory};
+
 use std::collections::{BTreeSet, HashSet};
 
 use crate::{

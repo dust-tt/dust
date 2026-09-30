@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-};
+use std::{collections::BTreeSet, sync::Arc};
 
 use axum::{
     Json,
@@ -41,8 +38,6 @@ struct CreateWorkspaceResponse {
 pub(super) struct CreateSessionRequest {
     workspace_id: String,
     grants: Vec<String>,
-    #[serde(default)]
-    mounts: BTreeMap<String, String>,
 }
 
 /// @swaggerschema SessionResponse in server/openapi.yaml.
@@ -111,9 +106,6 @@ pub(super) async fn create_session(
     let body: CreateSessionRequest = json_body(request, &state).await?;
     let workspace = WorkspaceId::new(body.workspace_id).map_err(|_| ApiError::InvalidInput)?;
     access::authorize_workspace(state.storage()?, &workspace, key).await?;
-    if !body.mounts.is_empty() {
-        return Err(ApiError::Unsupported);
-    }
     let (session, session_key) = state
         .access
         .create_session(workspace, grants(body.grants)?)

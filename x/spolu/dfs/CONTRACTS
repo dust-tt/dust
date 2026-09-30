@@ -8,8 +8,8 @@ Workspace creation MUST require the configured server API key. Session creation 
 workspace key against durable workspace state; that key may delegate any grant set in its workspace.
 Session keys MUST NOT authorize workspace creation, grant administration, or further sessions.
 Grants are opaque strings; dfs MUST NOT infer identities or membership from their prefixes.
-Session creation MUST reject more than 512 distinct grants. Workspace, grants, and virtual mounts
-are fixed for a session; subsequent requests MUST NOT override them. Expired or closed sessions
+Session creation MUST reject more than 512 distinct grants. Workspace and grants are fixed for a
+session; subsequent requests MUST NOT override them. Expired or closed sessions
 MUST be rejected.
 
 @cc [owner:spolu,label:security] workspace-grant-administration
@@ -49,8 +49,10 @@ access. Synthetic parents and mount entries cannot be mutated by filesystem oper
 Discover shared roots through the session's grant-to-object index prefixes, reading SlateDB and
 merging overlay state when caching is implemented. Deduplicate and paginate results; 512 limits
 grant fan-out, not object count. Omit objects already reachable through an authorized ancestor or
-workspace-root entry. Disambiguate
-basename collisions using stable object IDs; reserve /shared in the session namespace.
+workspace-root entry. Every direct /shared entry MUST use <basename>--<object ID>, preserving the full
+ID and truncating only the basename at a UTF-8 boundary to fit 255 bytes. Canonical entries inside
+shared directories retain their ordinary names. Reserve /shared in the session namespace; a persisted
+workspace-root child named shared MUST remain discoverable inside the synthetic folder.
 
 @cc [owner:spolu,label:concurrency] single-shard-owner
 The PoC assumes exactly one server process serving one shard; overlapping server instances are

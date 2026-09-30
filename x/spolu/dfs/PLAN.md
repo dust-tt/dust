@@ -2,7 +2,8 @@
 
 [DESIGN.md](DESIGN.md) describes the architecture; [CONTRACTS](CONTRACTS) defines the invariants.
 The server scaffold, object model, synchronous storage, workspace/session APIs, namespace reads,
-directory creation, metadata updates, and grant administration are implemented today.
+directory creation, metadata updates, grant administration, moves/removal, and root/shared views
+are implemented today.
 
 Work in small increments: each checkbox should produce a reviewable change with a focused test or
 demo. Split a checkbox further when needed. Keep the server runnable, update API documentation and
@@ -86,7 +87,7 @@ The current blob API buffers whole files; group 6 replaces it with streaming bef
   of 512 distinct grants. Treat grant strings as opaque values.
 - [x] Add bearer-session lookup, explicit closure, expiry cleanup, and rejection after server
   restart. Recreated sessions discard previous namespace state and subscriptions.
-- [x] Reject unsupported mount requests until mount validation exists in group 5.
+- [x] Keep session creation limited to workspace and grants; reject unknown fields.
 
 **Done when:** two sessions can connect to one workspace, while expired keys, invalid credentials,
 and cross-workspace requests fail. Session-supplied grants never attach to objects.
@@ -129,17 +130,25 @@ affect access, and failed mutations leave namespace and indexes unchanged.
 
 ## 5. Session roots, shared entries, and virtual mounts
 
-- [ ] Discover accessible roots through SlateDB's grant indexes, with deduplication and pagination.
-- [ ] Render authorized workspace-root entries and reserve the synthetic `/shared` folder.
-- [ ] Populate `/shared`, omit entries reachable through authorized ancestors, and disambiguate
-  basename collisions using object IDs.
+- [x] Discover accessible roots through SlateDB's grant indexes, with deduplication and pagination.
+- [x] Render authorized workspace-root entries and reserve the synthetic `/shared` folder.
+- [x] Populate `/shared`, omit entries reachable through authorized ancestors, and append
+  `--<object ID>` to every direct shared entry.
+- [ ] Reintroduce the session-creation `mounts` argument when implementing virtual mounts.
 - [ ] Validate mount paths, overlaps, namespace collisions, target directory type, workspace, and
   current access when creating sessions.
 - [ ] Resolve mount targets by ID and synthesize virtual parents such as `/current`.
 - [ ] Implement alias traversal and virtual `..`; reject mutations of synthetic parents and mount
   entries. Recheck access when a target is moved, deleted, or has its grants revoked.
 
-**Done when:** sharing `/spolu/C` exposes `/shared/C` without exposing `/spolu`; conversation/pod
+The first three tasks are implemented. Read APIs accept well-known `root` and `shared` IDs.
+Shared discovery merges grant prefixes in object-ID order with bounded candidate pages; filtering
+can produce empty pages with a continuation. Root/canonical listings use name order. Shared lookup
+extracts the ID from its mandatory suffix and rechecks access and the current rendered name; no
+extra index is needed. Synthetic directories are read-only; virtual mounts, alias parent navigation,
+and the tasks above remain deferred.
+
+**Done when:** sharing `/spolu/C` exposes `/shared/C--<uuid>` without exposing `/spolu`; conversation/pod
 aliases survive target renames and cannot reveal hidden ancestors.
 
 ## 6. Synchronous file I/O

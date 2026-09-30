@@ -203,21 +203,14 @@ the trusted Product/caller; sandboxes receive session keys. Grant listing and at
 also require the workspace key. Session creation never attaches grants to objects.
 
 `POST /sessions`, authenticated with the workspace key, creates an ephemeral session with fixed
-grants and optional virtual mounts:
+grants. Session creation currently accepts only workspace and grants; `mounts` is deferred.
 
 ```json
 {
   "workspace_id": "workspace_123",
-  "grants": ["u:spolu@dust.tt", "g:engineering"],
-  "mounts": {
-    "current/conversation": "dfs://initiative-dfs--550e8400e29b41d4a716446655440000",
-    "current/pod": "dfs://initiative-dfs--f47ac10b58cc4372a5670e02b2c3d479"
-  }
+  "grants": ["u:spolu@dust.tt", "g:engineering"]
 }
 ```
-
-These targets might currently live at `/spolu@dust.tt/conversations/AXXX` and
-`/jd@dust.tt/pods/podZZZ`; their URIs survive changes to those paths.
 
 The server returns `session_id`, an opaque `session_key`, workspace/grants, and `expires_at` in Unix
 seconds. Workspace/session keys contain 256 random bits; retain only SHA-256 hashes. Sessions expire
@@ -226,35 +219,42 @@ expired entries on access. Workspace/session JSON requests are capped at 64 KiB.
 
 `GET /sessions/current` returns the authenticated session's scope and expiry without its key.
 Filesystem operations, search, and change subscriptions carry `Authorization: Bearer <session_key>`;
-workspace, grants, and virtual paths come from the session rather than individual requests.
+workspace and grants come from the session rather than individual requests.
+`DELETE /sessions/{session_id}` requires that session's own key and closes it. Recreate on expiry,
+server restart, or to change grants; discard cached namespace views and reestablish subscriptions.
 
-- Resolve mount target URIs to directories at creation, requiring access within the workspace.
-  Target renames/moves preserve the alias; current grants still govern every access.
-- Mount paths are relative to the session root and appear alongside its ordinary authorized entries.
-  Synthesize parents such as `/current`; reject invalid paths, overlapping mounts, and name collisions.
-- Mounts provide aliases only. They grant no additional access and create no persistent directories.
-  Operations inside them affect the target; `..` follows virtual parents without exposing target
-  ancestors. Synthetic parents and mount entries cannot be mutated through filesystem operations.
-- `DELETE /sessions/{session_id}` requires that session's own key and closes it. Recreate on expiry,
-  owner restart, or to change grants/mounts; discard cached namespace views and reestablish subscriptions.
+Virtual mounts remain future work in group 5: reintroduce `mounts`, validate authorized directory
+URIs and nonoverlapping relative paths, synthesize parents such as `/current`, and preserve virtual
+`..` navigation without exposing hidden ancestors. Mounts must not grant additional access.
 
-Nonempty mounts are currently rejected until mount validation is implemented in group 5. Key rotation
-and recovery of a workspace key lost with its creation response are future work. Use authenticated
-TLS termination when exposing the API beyond local development; keys travel only in response bodies
-and Authorization headers, never URLs or logs.
+Key rotation and recovery of a workspace key lost with its creation response are future work. Use
+authenticated TLS termination beyond local development; keys travel only in response bodies and
+Authorization headers, never URLs or logs.
 
 ### Root and shared folder rendering
 
-The session root combines authorized workspace-root entries, a synthetic `/shared` folder, and
-configured virtual folders such as `/current`. Reserve `/shared` in the session namespace.
+Read APIs accept the well-known IDs `root` and `shared` alongside real object UUIDs. These synthetic
+directories are session-scoped, read-only, and have fixed attributes; they are not persistent objects
+or URI targets. The session root combines authorized immediate workspace-root entries and `/shared`.
+Root discovery never reveals private ancestors. A persisted root child named `shared` appears inside
+synthetic `/shared`, preserving access without hiding the well-known folder.
 
-Populate `/shared` from the grant-to-object index, using the owner's overlay plus SlateDB. Omit
-objects already reachable through an authorized ancestor or directly from the workspace root.
-Render each remaining object under its basename, disambiguating collisions with stable object IDs.
-Thus a grant on `/spolu/C` exposes `/shared/C` without exposing `/spolu`.
+Populate `/shared` from the session's grant-to-object prefixes, merging and deduplicating by object
+ID. Omit objects reachable through an authorized ancestor or ordinary root entry. Every direct entry
+uses `<basename>--<uuid>`; truncate only the basename at a UTF-8 boundary to fit 255 bytes. Sharing
+`/spolu/C` exposes `/shared/C--<uuid>` without exposing `/spolu`. Canonical names inside C are unchanged.
+Names do not depend on other shared objects, and shared rendering requires no extra storage index.
 
-These entries are aliases, not copied directories. Listing `/shared/C` reads C's ordinary directory
-entries; grant changes update the rendered view through session notifications and cache invalidation.
+Shared lookup extracts the ID from the suffix, then checks current access, shared-root eligibility,
+and the exact rendered name. Grant discovery uses bounded buffers and examines at most
+`max(limit, 64)` deduplicated candidates per page. Shared cursors are exclusive object IDs; filtered
+pages may be empty with a continuation. Root/canonical pages retain exclusive name cursors. Follow
+`next_after` until null; every page and lookup uses fresh authorization in one snapshot. Root
+filtering may examine multiple bounded batches.
+
+Aliases return real object attributes and IDs; listing the target uses ordinary directory APIs.
+Renames, moves, revocations, and deletions affect subsequent requests. Returned metadata never
+includes canonical parents; client-side virtual parent navigation remains deferred with FUSE.
 
 ## Writes, fsync, and recovery
 
