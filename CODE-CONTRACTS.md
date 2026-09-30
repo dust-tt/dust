@@ -8,6 +8,13 @@ part of a code change, an important assumptions about a component's or function'
 not covered by an existing code contract, create a new code contract for that component and check
 that existing callers comply to the new contract.
 
+For `front-api` code, also read `front/CONTRACTS`: `front-api/CONTRACTS` applies those TypeScript
+rules in prose (`shared-typescript-contracts`), and `cc-check list` on a front-api path does not
+surface them because it only walks ancestor `CONTRACTS` files.
+
+`@cc` blocks are specifications, not commentary. When trimming verbose comments, cut the prose down
+to the obligation, keep the directive, and only delete a contract after telling the user.
+
 **Well-known labels:**
 
 - `coding`: general coding conventions, simplicity, and consistency.

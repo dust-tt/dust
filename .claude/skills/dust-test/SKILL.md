@@ -18,7 +18,9 @@ When writing tests for a file:
     - Only mock external services (APIs, third-party services)
     - Prefer real implementations when possible
 4. **Use factories**: Leverage test factories to set up data efficiently
-5. **Focus on behavior**: Test what the code does, not how it does it
+5. **Focus on behavior**: Test what the code does, not how it does it. Assert literal expected
+   outputs (especially security allowlists such as CSP `frame-ancestors`); do not build the
+   expectation by importing the production constant under test.
 
 ## For Front and Front-api (TypeScript)
 
@@ -27,6 +29,9 @@ When writing tests for a file:
 - Import factories from `front/tests/utils/factories`
 - Import utilities from `front/tests/utils/utils`
 - Use the test database (no mocking)
+- For front-api endpoint and middleware changes, exercise behavior through HTTP requests
+  (`honoApp.request(...)`, or a small Hono app that mounts the middleware). Do not add
+  standalone helper-only unit tests for those packages.
 
 ### Structure
 
@@ -65,6 +70,22 @@ describe ("ComponentName or FunctionName", () => {
 - Unlikely edge cases
 - Internal implementation details
 - UI component rendering (unless critical)
+
+## For Front-spa (Workers / headers)
+
+After any change to response headers, cache policy, HTML handling, or Worker vs Static Assets
+routing in `front-spa`:
+
+1. Build or copy assets into `dist/` with the real `_headers` file.
+2. Run `wrangler dev` against that dist (same major wrangler as deploy) **or** hit a
+   `deploy-app-preview` URL.
+3. Curl `/`, each HTML entry (`/share/`, `/oauth/`, `/email/`), a deep SPA link, `/share/frame/<id>`,
+   one hashed `/assets/*` hit, and one missing `/assets/*` path.
+4. Assert CSP / `X-Frame-Options` / `X-Content-Type-Options` / `Cache-Control` on those responses.
+   Worker unit tests alone do not cover responses served from Static Assets.
+
+`front-spa` may have no `npm test` / CI runner for `worker/**`; treat `node --test` coverage as
+local/manual unless a workflow runs it, and still do the probe above for header changes.
 
 ## For Connectors/Core
 
@@ -109,4 +130,5 @@ describe ("createConversation", () => {
 3. Identify the 2-4 most important functions/behaviors to test
 4. Find or create appropriate factories for test data
 5. Write concise, focused tests
-6. Run tests with `npm test -- filetotest` to verify they pass
+6. Run tests with `npm test -- filetotest` to verify they pass (for front-api, set
+   `TEST_REDIS_URI="${TEST_REDIS_URI:-$REDIS_URI}"` when `TEST_REDIS_URI` is unset)
