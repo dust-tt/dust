@@ -35,11 +35,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
           ? await agent.fetchVersion(auth, agentVersion)
           : agent;
 
-      if (
-        !agentVersionResource ||
-        !agentVersionResource.canViewContent ||
-        !auth.can("read", agentVersionResource)
-      ) {
+      if (!agentVersionResource || !auth.can("read", agentVersionResource)) {
         return new Err(
           new MCPError(
             `Agent configuration not found: ${agentConfigurationId}`,
