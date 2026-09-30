@@ -26,7 +26,10 @@ import {
   isValidInternalMCPServerId,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  getModelFacingToolNames,
+  tryGetPrefixedToolName,
+} from "@app/lib/actions/tool_name_utils";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type {
   MCPServerLightType,
@@ -260,11 +263,20 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   /**
    * Check whether the given name conflicts with an existing view in the target
-   * space. When the candidate tools are known before creation, also compare the
-   * model-facing names generated after the server-name prefix is truncated. On
+   * space. When the candidate tools are known before creation, also check their
+   * model-facing names: prefixed candidates are compared by re-prefixing them
+   * under each existing view's name (crop check, no tool payloads needed),
+   * while candidates whose prefix is dropped are compared against the
+   * model-facing names of the tools existing views actually expose. On
    * conflict, `conflictDetails` names the existing view (and the shared
-   * model-facing tool name for cropped-tool collisions) so callers can surface
-   * what the new server collides with.
+   * model-facing tool name for tool collisions) so callers can surface what
+   * the new server collides with.
+   *
+   * @cc [owner:ykmsd,label:mcp;product] dropped-prefix-conflicts-require-actual-tool
+   * A candidate tool whose model-facing name drops the server-name prefix MUST be reported as
+   * conflicting only with a view that actually exposes a tool with that same model-facing name —
+   * never against views that do not, even though the dropped name is identical under every
+   * server name.
    */
   static async hasNameConflictInSpaceByName(
     auth: Authenticator,
@@ -277,15 +289,24 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     name: string;
     conflictDetails: MCPServerViewNameConflictDetails | null;
   }> {
-    const candidateToolNames = removeNulls(
-      tools.map((tool) => {
-        const toolName = tryGetPrefixedToolName(name, tool.name);
-        return toolName.isOk()
-          ? { originalName: tool.name, prefixedName: toolName.value }
-          : null;
-      })
+    // A tool name too long to carry a server-name prefix gets the same model-facing name under
+    // every server, so ruling out a conflict for those requires the tools existing views
+    // actually expose — for remote views the `cachedTools` heavy attribute. Prefix-carrying
+    // candidates are compared on names alone, without loading tool payloads.
+    const {
+      droppedPrefixNames: droppedPrefixCandidateNames,
+      prefixedNames: prefixedCandidates,
+    } = getModelFacingToolNames(
+      name,
+      tools.map((tool) => tool.name)
     );
-    const existingViews = await this.listBySpace(auth, space);
+    const existingViews = await this.listBySpace(
+      auth,
+      space,
+      droppedPrefixCandidateNames.size > 0
+        ? { includeHeavyAttributes: ["cachedTools"] }
+        : undefined
+    );
     for (const view of existingViews) {
       if (view.sId === excludedMCPServerViewId) {
         continue;
@@ -300,17 +321,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         };
       }
 
-      // Use the candidate tool names for both prefixes: this check is about the
-      // server-name crop and does not require loading existing tool payloads.
-      for (const { originalName, prefixedName } of candidateToolNames) {
+      // Prefix-carrying candidates: re-prefix them under the existing view's name — flags the
+      // views whose prefix crops to the candidate's, assuming they expose the same tool names.
+      for (const { originalName, prefixedName } of prefixedCandidates) {
         const existingToolName = tryGetPrefixedToolName(
           existingName,
           originalName
         );
-        if (
-          existingToolName.isOk() &&
-          existingToolName.value === prefixedName
-        ) {
+        if (existingToolName.isOk() && existingToolName.value === prefixedName) {
           return {
             hasConflict: true,
             name,
@@ -319,6 +337,30 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
               conflictingToolName: prefixedName,
             },
           };
+        }
+      }
+
+      if (droppedPrefixCandidateNames.size > 0) {
+        // Dropped-prefix candidates: compare against the model-facing names of the tools the
+        // view actually exposes.
+        for (const existingTool of view.getServerTools()) {
+          const existingToolName = tryGetPrefixedToolName(
+            existingName,
+            existingTool.name
+          );
+          if (
+            existingToolName.isOk() &&
+            droppedPrefixCandidateNames.has(existingToolName.value)
+          ) {
+            return {
+              hasConflict: true,
+              name,
+              conflictDetails: {
+                conflictingServerName: existingName,
+                conflictingToolName: existingToolName.value,
+              },
+            };
+          }
         }
       }
     }

@@ -1,5 +1,9 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
-import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  getPrefixedToolName,
+  getModelFacingToolNames,
+  wouldDropToolNamePrefix,
+} from "@app/lib/actions/tool_name_utils";
 import { describe, expect, it } from "vitest";
 
 describe("getPrefixedToolName", () => {
@@ -60,5 +64,47 @@ describe("getPrefixedToolName", () => {
     const longToolName = "3" + "a".repeat(59);
     const result = getPrefixedToolName(shortServerName, longToolName);
     expect(result).toBe("_3" + "a".repeat(59));
+  });
+});
+
+describe("wouldDropToolNamePrefix", () => {
+  // Enforces the `dropped-prefix-detection` contract: true exactly when
+  // `getPrefixedToolName` returns the bare tool name.
+  it("matches getPrefixedToolName's dropped-prefix regime around the threshold", () => {
+    // 59 slugified chars still leave room for a 3-char prefix plus separator; 60 do not.
+    expect(wouldDropToolNamePrefix("a".repeat(59))).toBe(false);
+    expect(getPrefixedToolName("Test Server", "a".repeat(59))).toBe(
+      `tes${TOOL_NAME_SEPARATOR}${"a".repeat(59)}`
+    );
+    expect(wouldDropToolNamePrefix("a".repeat(60))).toBe(true);
+    expect(getPrefixedToolName("Test Server", "a".repeat(60))).toBe(
+      "a".repeat(60)
+    );
+  });
+
+  it("measures the slugified name, not the raw one", () => {
+    // Consecutive spaces collapse to a single underscore, so a long raw name can still take a
+    // full prefix.
+    const longRawShortSlug = `${"a".repeat(20)}${" ".repeat(25)}${"b".repeat(20)}`;
+    expect(wouldDropToolNamePrefix(longRawShortSlug)).toBe(false);
+    expect(getPrefixedToolName("Test Server", longRawShortSlug)).toBe(
+      `test_server${TOOL_NAME_SEPARATOR}${"a".repeat(20)}_${"b".repeat(20)}`
+    );
+  });
+});
+
+describe("getModelFacingToolNames", () => {
+  it("splits tool names by prefixing regime and skips names too long to use", () => {
+    const { droppedPrefixNames, prefixedNames } = getModelFacingToolNames(
+      "Test Server",
+      ["My Tool", "a".repeat(60), "a".repeat(65)]
+    );
+    expect(prefixedNames).toEqual([
+      {
+        originalName: "My Tool",
+        prefixedName: `test_server${TOOL_NAME_SEPARATOR}my_tool`,
+      },
+    ]);
+    expect(droppedPrefixNames).toEqual(new Set(["a".repeat(60)]));
   });
 });

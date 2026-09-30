@@ -413,6 +413,134 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
     ).toBe(customName);
   });
 
+  it("does not flag a dropped-prefix tool name against servers without that tool", async () => {
+    const { workspace, auth } = await setup();
+
+    // Existing connection with unrelated tools.
+    const existingServer = await RemoteMCPServerFactory.create(workspace, {
+      name: "existing-unrelated-server",
+      url: "https://existing.example.com",
+      tools: [
+        {
+          name: "generate_image",
+          description: "Generate an image",
+          inputSchema: undefined,
+        },
+      ],
+    });
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        existingServer.sId
+      );
+    expect(systemView).toBeDefined();
+
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    await MCPServerViewResource.create(auth, {
+      systemView: systemView!,
+      space: globalSpace,
+    });
+
+    // 62-char tool name: no room for the server-name prefix, so the model-facing
+    // name is the bare tool name whatever the server is called. It must not be
+    // reported as conflicting with servers that do not expose that tool.
+    const longToolName = `get_${"a".repeat(58)}`;
+    expect(longToolName).toHaveLength(62);
+    vi.mocked(fetchRemoteServerMetaDataByURL).mockResolvedValueOnce(
+      new Ok({
+        name: "candidate-server",
+        version: DEFAULT_MCP_ACTION_VERSION,
+        description: "Test description",
+        icon: DEFAULT_MCP_SERVER_ICON,
+        authorization: null,
+        tools: [
+          {
+            name: longToolName,
+            description: "Tool with a very long name",
+            inputSchema: undefined,
+          },
+        ],
+        availability: "manual",
+        allowMultipleInstances: true,
+        documentationUrl: null,
+      })
+    );
+
+    const response = await postMcp(workspace, {
+      serverType: "remote",
+      url: "https://new-server.example.com",
+      includeGlobal: true,
+    });
+
+    expect(response.status).toBe(201);
+  });
+
+  it("flags a dropped-prefix tool name against a server exposing the same tool", async () => {
+    const { workspace, auth } = await setup();
+
+    const longToolName = `get_${"a".repeat(58)}`;
+    const existingServer = await RemoteMCPServerFactory.create(workspace, {
+      name: "existing-long-tool-server",
+      url: "https://existing.example.com",
+      tools: [
+        {
+          name: longToolName,
+          description: "Tool with a very long name",
+          inputSchema: undefined,
+        },
+      ],
+    });
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        existingServer.sId
+      );
+    expect(systemView).toBeDefined();
+
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    await MCPServerViewResource.create(auth, {
+      systemView: systemView!,
+      space: globalSpace,
+    });
+
+    // Both servers expose the same 62-char tool: the model-facing name is the bare tool name on
+    // both sides, so this is a genuine collision.
+    vi.mocked(fetchRemoteServerMetaDataByURL).mockResolvedValueOnce(
+      new Ok({
+        name: "candidate-server",
+        version: DEFAULT_MCP_ACTION_VERSION,
+        description: "Test description",
+        icon: DEFAULT_MCP_SERVER_ICON,
+        authorization: null,
+        tools: [
+          {
+            name: longToolName,
+            description: "Tool with a very long name",
+            inputSchema: undefined,
+          },
+        ],
+        availability: "manual",
+        allowMultipleInstances: true,
+        documentationUrl: null,
+      })
+    );
+
+    const response = await postMcp(workspace, {
+      serverType: "remote",
+      url: "https://new-server.example.com",
+      includeGlobal: true,
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.nameConflict.conflictDetails.conflictingServerName).toBe(
+      "existing-long-tool-server"
+    );
+    expect(body.nameConflict.conflictDetails.conflictingToolName).toBe(
+      longToolName
+    );
+  });
+
   it("normalizes custom view names before checking exact conflicts", async () => {
     const { workspace, auth } = await setup();
     const existingName = "existing-name";
