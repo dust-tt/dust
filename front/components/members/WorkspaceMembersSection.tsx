@@ -180,6 +180,7 @@ function WorkspaceMembersList({
   roleFilter,
   isProvisioningEnabled,
 }: WorkspaceMembersListProps) {
+  const { isManager } = useAuth();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -192,6 +193,7 @@ function WorkspaceMembersList({
 
   const membersData = useSearchMembers<SearchMemberWithWorkspaceType>({
     workspaceId: owner.sId,
+    managedOnly: !isManager,
     searchTerm,
     pageIndex: pagination.pageIndex,
     pageSize: DEFAULT_PAGE_SIZE,

@@ -67,13 +67,13 @@ export const NavigationSidebar = React.forwardRef<
   const { featureFlags, groupManagement } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
 
-  const canManageUsage =
+  const hasManagedGroups =
     featureFlags.includes("group_management") &&
     hasGroupManagementScope(groupManagement?.read_usage);
   const adminSectionHref = getAdminSectionHref(
     owner,
     hasPermission,
-    canManageUsage
+    hasManagedGroups
   );
 
   const showAdminSection = adminSectionHref !== null;

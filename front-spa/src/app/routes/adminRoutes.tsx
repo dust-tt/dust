@@ -106,6 +106,22 @@ const GroupManagerUsagePage = withSuspense(
   "GroupManagerUsagePage"
 );
 
+function PeopleRoute() {
+  const { isManager, featureFlags, groupManagement } = useAuth();
+  if (
+    !isManager &&
+    (!featureFlags.includes("group_management") ||
+      !hasGroupManagementScope(groupManagement?.read_usage))
+  ) {
+    return <Custom404 />;
+  }
+  return (
+    <AdminLayout>
+      <MembersPage />
+    </AdminLayout>
+  );
+}
+
 function UsageRoute() {
   const { workspace, featureFlags, groupManagement } = useAuth();
   if (isManager(workspace)) {
@@ -144,7 +160,6 @@ export const adminRoutes: RouteObject[] = [
     // Accessible to admins and managers.
     element: <RequireRoleLayout requiredRole="manager" />,
     children: [
-      { path: "members", element: <MembersPage /> },
       // Legacy analytics page, now superseded by consumption analytics.
       {
         path: "analytics",
@@ -163,6 +178,7 @@ export const adminRoutes: RouteObject[] = [
       { path: "workspace", element: <Navigate to="../governance" replace /> },
     ],
   },
+  { path: "members", element: <PeopleRoute /> },
   { path: "usage", element: <UsageRoute /> },
   {
     // Admin-only areas.

@@ -183,7 +183,7 @@ export function getAdminSectionHref(
     verb: GrantVerb,
     resourceType: ConcreteResourceType
   ) => boolean,
-  canManageUsage: boolean
+  hasManagedGroups: boolean
 ): string | null {
   if (isManager(owner)) {
     return `/w/${owner.sId}/members`;
@@ -194,7 +194,7 @@ export function getAdminSectionHref(
   if (hasPermission("admin", "security")) {
     return `/w/${owner.sId}/identity-and-provisioning`;
   }
-  return canManageUsage ? `/w/${owner.sId}/usage` : null;
+  return hasManagedGroups ? `/w/${owner.sId}/usage` : null;
 }
 
 export const getTopNavigationTabs = (
@@ -272,13 +272,13 @@ export const subNavigationAdmin = ({
   featureFlags,
   subscription,
   hasPermission,
-  canManageUsage = false,
+  hasManagedGroups = false,
 }: {
   owner: WorkspaceType;
   currentRoute: string;
   featureFlags: WhitelistableFeature[];
   subscription: SubscriptionType;
-  canManageUsage?: boolean;
+  hasManagedGroups?: boolean;
   hasPermission: (
     verb: GrantVerb,
     resourceType: ConcreteResourceType
@@ -295,7 +295,7 @@ export const subNavigationAdmin = ({
     !isManager(owner) &&
     !canAdminBilling &&
     !canAdminSecurity &&
-    !canManageUsage
+    !hasManagedGroups
   ) {
     return nav;
   }
@@ -316,7 +316,7 @@ export const subNavigationAdmin = ({
         icon: Users01,
         href: `/w/${owner.sId}/members`,
         current: isCurrent("members"),
-        disabled: !hasManagerRole,
+        disabled: !hasManagerRole && !hasManagedGroups,
       },
       {
         id: "identity_and_provisioning",
@@ -352,7 +352,7 @@ export const subNavigationAdmin = ({
         icon: PieChart01,
         href: `/w/${owner.sId}/usage`,
         current: isCurrent("usage"),
-        disabled: !hasManagerRole && !canManageUsage,
+        disabled: !hasManagerRole && !hasManagedGroups,
       },
       {
         id: "model_providers",
