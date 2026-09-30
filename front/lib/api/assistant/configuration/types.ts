@@ -1,6 +1,4 @@
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { TagsFilterSchema } from "@app/types/data_source_view";
-import type { Order } from "sequelize";
 import { z } from "zod";
 
 export const DataSourceFilterSchema = z.object({
@@ -45,11 +43,3 @@ export const ProjectConfigurationSchema = z.object({
 export type ProjectConfiguration = z.infer<typeof ProjectConfigurationSchema>;
 
 export type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
-
-export interface SortStrategy {
-  dbOrder: Order | undefined;
-  compareFunction: (
-    a: AgentConfigurationType,
-    b: AgentConfigurationType
-  ) => number;
-}

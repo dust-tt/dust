@@ -1,431 +1,177 @@
-import { filterAgentsByRequestedSpaces } from "@app/lib/api/assistant/configuration/agent";
-import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
-import type {
-  SortStrategy,
-  SortStrategyType,
-} from "@app/lib/api/assistant/configuration/types";
-import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
-import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import type { SortStrategyType } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentConfigurationModel,
-  AgentUserRelationModel,
-} from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type {
-  AgentConfigurationType,
   AgentFetchVariant,
   AgentsGetViewType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
-import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceType } from "@app/types/user";
-import { Op, Sequelize } from "sequelize";
 
-const HEAVY_AGENT_CONFIGURATION_ATTRIBUTES = [
-  "instructions",
-  "instructionsHtml",
-] as const;
-
-type EditorFilter = { kind: "all" } | { kind: "agent"; modelIds: ModelId[] };
-
-function editorWhere(filter: EditorFilter) {
-  // Stable agent ids use the agentId index.
-  switch (filter.kind) {
-    case "all":
-      return {};
-    case "agent":
-      return { agentId: { [Op.in]: filter.modelIds } };
-    default:
-      return assertNever(filter);
-  }
-}
-
-const sortStrategies: Record<SortStrategyType, SortStrategy> = {
-  alphabetical: {
-    dbOrder: [["name", "ASC"]],
-    compareFunction: (a: AgentConfigurationType, b: AgentConfigurationType) =>
-      a.name.localeCompare(b.name),
-  },
-  priority: {
-    dbOrder: [["name", "ASC"]],
-    compareFunction: compareAgentsForSort,
-  },
-  updatedAt: {
-    dbOrder: [["updatedAt", "DESC"]],
-    compareFunction: () => 0,
-  },
-};
-
-function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
-  return (results: AgentConfigurationType[]) => {
-    const sortStrategy = sort && sortStrategies[sort];
-
-    const sortedResults = sortStrategy
-      ? results.sort(sortStrategy.compareFunction)
-      : results;
-
-    return limit ? sortedResults.slice(0, limit) : sortedResults;
-  };
-}
-
-function determineGlobalAgentIdsToFetch(
-  agentsGetView: AgentsGetViewType
-): string[] | undefined {
-  switch (agentsGetView) {
-    case "archived":
-    case "published":
-    case "current_user":
-      return []; // fetch no global agents
-    case "global":
-    case "list":
-    case "manage":
-    case "manage_unrestricted":
-    case "all":
-    case "analytics":
-    case "favorites":
-    case "admin_internal":
-      return undefined; // undefined means all global agents will be fetched
-    default:
-      assertNever(agentsGetView);
-  }
-}
-
-async function fetchGlobalAgentConfigurationForView(
-  auth: Authenticator,
-  {
-    agentPrefix,
-    agentsGetView,
-    variant,
-    omitHeavyAttributes,
-  }: {
-    agentPrefix?: string;
-    agentsGetView: AgentsGetViewType;
-    variant: AgentFetchVariant;
-    omitHeavyAttributes?: boolean;
-  }
-) {
-  const globalAgentIdsToFetch = determineGlobalAgentIdsToFetch(agentsGetView);
-  const allGlobalAgents = await getGlobalAgents(
-    auth,
-    globalAgentIdsToFetch,
-    variant
-  );
-  // Global agents have `instructions` baked in; strip when not needed.
-  const normalizedGlobalAgents = omitHeavyAttributes
-    ? allGlobalAgents.map((a) => ({ ...a, instructions: null }))
-    : allGlobalAgents;
-  const matchingGlobalAgents = normalizedGlobalAgents.filter(
-    (a) =>
-      !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
-  );
-
-  if (
-    agentsGetView === "global" ||
-    agentsGetView === "manage" ||
-    agentsGetView === "manage_unrestricted"
-  ) {
-    // All global agents in global and manage views.
-    return matchingGlobalAgents;
-  }
-
-  if (agentsGetView === "favorites") {
-    const favoriteStates = await getFavoriteStates(auth, {
-      configurationIds: matchingGlobalAgents.map((a) => a.sId),
-    });
-    return matchingGlobalAgents.filter(
-      (a) => favoriteStates.get(a.sId) && a.status === "active"
+function assertViewAllowed(auth: Authenticator, view: AgentsGetViewType) {
+  if (view === "admin_internal" && !auth.isDustSuperUser() && !auth.isAdmin()) {
+    throw new Error(
+      "Superuser view is for dust superusers or internal admin auths only."
     );
   }
 
-  // If not in global or agent view, filter out global agents that are not active.
-  return matchingGlobalAgents.filter((a) => a.status === "active");
+  if (view === "manage_unrestricted" && !auth.isAdmin()) {
+    throw new Error("The unrestricted manage view is for admins only.");
+  }
+
+  if (
+    !auth.user() &&
+    (view === "list" || view === "manage" || view === "favorites")
+  ) {
+    throw new Error(`'${view}' view is specific to a user.`);
+  }
 }
 
+async function listGlobalAgentsForView(
+  auth: Authenticator,
+  view: AgentsGetViewType
+): Promise<AgentResource[]> {
+  switch (view) {
+    case "archived":
+    case "published":
+    case "current_user":
+    case "favorites":
+      return [];
+    case "global":
+    case "manage":
+    case "manage_unrestricted":
+      return AgentResource.listGlobalAgents(auth);
+    case "list":
+    case "all":
+    case "analytics":
+    case "admin_internal":
+      return (await AgentResource.listGlobalAgents(auth)).filter(
+        (agent) => agent.status === "active"
+      );
+    default:
+      assertNever(view);
+  }
+}
+
+// The custom agents of a view, and for `favorites` the favorited global agents too.
+async function listViewAgents(
+  auth: Authenticator,
+  view: Exclude<AgentsGetViewType, "global">
+): Promise<AgentResource[]> {
+  const isReadable = (agent: AgentResource) => auth.can("read", agent);
+  const isActiveAndReadable = (agent: AgentResource) =>
+    agent.status === "active" && isReadable(agent);
+
+  switch (view) {
+    case "list":
+    case "manage":
+      return (await AgentResource.listByWorkspace(auth)).filter(isReadable);
+    case "all":
+    case "published":
+      return (await AgentResource.listByWorkspace(auth)).filter(
+        (agent) => agent.scope === "visible" && isReadable(agent)
+      );
+    case "favorites":
+      return (await AgentResource.listFavoritesForCurrentUser(auth)).filter(
+        isActiveAndReadable
+      );
+    case "current_user":
+      return (
+        await AgentResource.listByAuthor(auth, {
+          authorModelId: auth.getNonNullableUser().id,
+        })
+      ).filter(isActiveAndReadable);
+    case "archived":
+      return (
+        await AgentResource.listByWorkspace(auth, { status: "archived" })
+      ).filter((agent) => auth.isAdmin() || auth.can("write", agent));
+    case "admin_internal":
+    case "manage_unrestricted":
+    case "analytics":
+      return AgentResource.listByWorkspace(auth);
+    default:
+      assertNever(view);
+  }
+}
+
+/**
+ * @cc [owner:tdraier,label:security;product] agent-view-sets
+ * Each view returns exactly these agents, filtered to the resources the caller can fetch:
+ * - `list`/`manage`: active custom agents the caller can `read`; `list` adds the active global
+ *   agents, `manage` every global agent.
+ * - `all`: active visible custom agents the caller can `read`, plus the active global agents;
+ *   `published`: the same custom agents, without global agents.
+ * - `favorites`: the caller's active favorited agents, global or custom, they can `read`.
+ * - `current_user`: active custom agents with a version the caller authored and can `read`.
+ * - `archived`: archived custom agents, all of them for a workspace admin, else those the caller
+ *   can `write`.
+ * - `admin_internal`/`manage_unrestricted`/`analytics`: every active custom agent the caller can
+ *   fetch; `manage_unrestricted` adds every global agent, the others the active ones.
+ * - `global`: every global agent.
+ * `admin_internal` MUST fail unless the caller is a superuser or an admin, `manage_unrestricted`
+ * unless an admin, and `list`/`manage`/`favorites` without a user.
+ */
 /**
  * @cc [owner:philipperolet,label:backend] default-agent-query-order
  * Active-agent queries MUST default to name order when no sort is requested.
  */
-async function fetchWorkspaceAgentConfigurationsWithoutActions(
+export async function listAgentsForView(
   auth: Authenticator,
   {
-    agentPrefix,
     agentsGetView,
-    editorFilter,
-    limit,
-    owner,
+    agentPrefix,
     sort,
-    omitHeavyAttributes,
   }: {
+    agentsGetView: AgentsGetViewType;
     agentPrefix?: string;
-    agentsGetView: Exclude<AgentsGetViewType, "global">;
-    editorFilter: EditorFilter;
-    limit?: number;
-    owner: WorkspaceType;
     sort?: SortStrategyType;
-    omitHeavyAttributes?: boolean;
   }
-): Promise<AgentConfigurationModel[]> {
-  // Active names are unique per workspace; their (workspaceId, name) index can supply this
-  // default order without a separate sort or an ID tie-breaker.
-  const sortStrategy = sortStrategies[sort ?? "alphabetical"];
+): Promise<AgentResource[]> {
+  assertViewAllowed(auth, agentsGetView);
 
-  const baseWhereConditions = {
-    workspaceId: owner.id,
-    status: "active",
-    ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
-  };
+  const [globalAgents, viewAgents] = await Promise.all([
+    listGlobalAgentsForView(auth, agentsGetView),
+    agentsGetView === "global" ? [] : listViewAgents(auth, agentsGetView),
+  ]);
 
-  const attributesToExclude = omitHeavyAttributes
-    ? HEAVY_AGENT_CONFIGURATION_ATTRIBUTES
-    : [];
-  const excludeAttributesFromSelect =
-    attributesToExclude.length > 0
-      ? { attributes: { exclude: [...new Set(attributesToExclude)] } }
-      : {};
+  const [favoriteGlobalAgents, customAgents] = [
+    viewAgents.filter((agent) => agent.scope === "global"),
+    viewAgents.filter((agent) => agent.scope !== "global"),
+  ];
+  const sortedCustomAgents =
+    sort === "updatedAt"
+      ? customAgents.toSorted(
+          (a, b) => b.versionUpdatedAt.getTime() - a.versionUpdatedAt.getTime()
+        )
+      : customAgents.toSorted((a, b) => a.name.localeCompare(b.name));
 
-  const baseAgentsSequelizeQuery = {
-    // The current-user and analytics views are filtered by permission after the query, so apply
-    // their limit only after that filtering to avoid dropping permitted agents from the result.
-    limit:
-      agentsGetView === "current_user" || agentsGetView === "analytics"
-        ? undefined
-        : limit,
-    order: sortStrategy.dbOrder,
-    ...excludeAttributesFromSelect,
-  };
-
-  const baseConditionsAndScopesIn = (scopes: string[]) => ({
-    ...baseWhereConditions,
-    scope: { [Op.in]: scopes },
-  });
-
-  switch (agentsGetView) {
-    case "admin_internal":
-    // The manage agents page lets admins list every agent of the workspace, including the ones
-    // they neither edit nor can read the spaces of. Space filtering is skipped below.
-    case "manage_unrestricted":
-      return AgentConfigurationModel.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: baseWhereConditions,
-      });
-
-    case "analytics": {
-      const agentModels = await AgentConfigurationModel.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: baseWhereConditions,
-      });
-      const resources = await AgentResource.dangerouslyFromConfigurationModels(
-        auth,
-        agentModels
-      );
-      const fetchableModelIds = new Set(
-        resources
-          .filter((resource) => resource.canFetch(auth))
-          .map((resource) => resource.agentConfigurationModelId)
-      );
-      return agentModels.filter((agent) => fetchableModelIds.has(agent.id));
-    }
-
-    case "current_user":
-      const authorId = auth.getNonNullableUser().id;
-      const r = await AgentConfigurationModel.findAll({
-        attributes: ["sId"],
-        group: "sId",
-        where: {
-          workspaceId: owner.id,
-          authorId,
-        },
-      });
-
-      return AgentConfigurationModel.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: {
-          ...baseWhereConditions,
-          sId: { [Op.in]: [...new Set(r.map((r) => r.sId))] },
-        },
-      });
-    case "archived":
-      // Get the latest version of all archived agents.
-      // For each sId, we want to fetch the one with the highest version, only if its status is "archived".
-      return AgentConfigurationModel.findAll({
-        attributes: [[Sequelize.fn("MAX", Sequelize.col("id")), "maxId"]],
-        group: "sId",
-        raw: true,
-        where: {
-          workspaceId: owner.id,
-        },
-      }).then(async (result) => {
-        const maxIds = result.map(
-          (entry) => (entry as unknown as { maxId: number }).maxId
-        );
-        return AgentConfigurationModel.findAll({
-          ...excludeAttributesFromSelect,
-          where: {
-            workspaceId: owner.id,
-            [Op.and]: [editorWhere(editorFilter), { id: { [Op.in]: maxIds } }],
-            status: "archived",
-            ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
-          },
-        });
-      });
-
-    case "all":
-      return AgentConfigurationModel.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: baseConditionsAndScopesIn(["workspace", "published", "visible"]),
-      });
-
-    case "published":
-      return AgentConfigurationModel.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: baseConditionsAndScopesIn(["published", "visible"]),
-      });
-
-    case "list":
-    case "manage":
-      const user = auth.user();
-      return AgentConfigurationModel.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: {
-          ...baseWhereConditions,
-          [Op.or]: [
-            { scope: { [Op.in]: ["workspace", "published", "visible"] } },
-            ...(user
-              ? [
-                  { authorId: user.id, scope: "private" },
-                  { ...editorWhere(editorFilter), scope: "hidden" },
-                ]
-              : []),
-          ],
-        },
-      });
-    case "favorites":
-      const userId = auth.user()?.id;
-      if (!userId) {
-        return [];
-      }
-      const relations = await AgentUserRelationModel.findAll({
-        where: {
-          workspaceId: owner.id,
-          userId,
-          favorite: true,
-        },
-      });
-
-      const sIds = relations.map((r) => r.agentConfiguration);
-      if (sIds.length === 0) {
-        return [];
-      }
-
-      return AgentConfigurationModel.findAll({
-        ...baseAgentsSequelizeQuery,
-        where: {
-          ...baseWhereConditions,
-          sId: { [Op.in]: sIds },
-        },
-      });
-    default:
-      assertNever(agentsGetView);
-  }
+  const lowerCasePrefix = agentPrefix?.toLowerCase();
+  return [
+    ...globalAgents,
+    ...favoriteGlobalAgents,
+    ...sortedCustomAgents,
+  ].filter(
+    (agent) =>
+      !lowerCasePrefix || agent.name.toLowerCase().startsWith(lowerCasePrefix)
+  );
 }
 
-async function fetchWorkspaceAgentConfigurationsForView(
-  auth: Authenticator,
-  owner: WorkspaceType,
-  {
-    agentPrefix,
-    agentsGetView,
-    limit,
-    sort,
-    variant,
-    dangerouslySkipPermissionFiltering,
-    omitHeavyAttributes,
-  }: {
-    agentPrefix?: string;
-    agentsGetView: Exclude<AgentsGetViewType, "global">;
-    limit?: number;
-    sort?: SortStrategyType;
-    variant: AgentFetchVariant;
-    dangerouslySkipPermissionFiltering?: boolean;
-    omitHeavyAttributes?: boolean;
-  }
-) {
-  const grantResources = auth.getResourceIdsWithVerb("agent", "write");
-  const editorFilter: EditorFilter =
-    (auth.isAdmin() && agentsGetView === "archived") ||
-    grantResources.kind === "all"
-      ? { kind: "all" }
-      : { kind: "agent", modelIds: grantResources.resourceIds };
-
-  const agentModels = await fetchWorkspaceAgentConfigurationsWithoutActions(
-    auth,
-    {
-      agentPrefix,
-      agentsGetView,
-      editorFilter,
-      limit,
-      owner,
-      sort,
-      omitHeavyAttributes,
-    }
-  );
-
-  // The analytics view is already filtered by `AgentResource`. The unrestricted manage view lists
-  // every agent for admins, and is gated on the role by its caller.
-  // Archived is unrestricted for admins too, matching its documented admin/superuser-only contract.
-  const skipPermissionFiltering =
-    dangerouslySkipPermissionFiltering ||
-    agentsGetView === "analytics" ||
-    agentsGetView === "manage_unrestricted" ||
-    (agentsGetView === "archived" && auth.isAdmin());
-
-  const allowedAgentModels = skipPermissionFiltering
-    ? agentModels
-    : await filterAgentsByRequestedSpaces(auth, agentModels);
-
-  const agentConfigurations = await enrichAgentConfigurations(
-    auth,
-    allowedAgentModels,
-    {
-      variant,
-    }
-  );
-
-  // Authorship selects candidates for this legacy view, but does not itself grant access.
-  return agentsGetView === "current_user"
-    ? agentConfigurations.filter((agent) => agent.canRead)
-    : agentConfigurations;
-}
-
-type AgentConfigurationsForViewBaseArgs = {
-  auth: Authenticator;
-  agentsGetView: AgentsGetViewType;
-  agentPrefix?: string;
-  limit?: number;
-  sort?: SortStrategyType;
-  dangerouslySkipPermissionFiltering?: boolean;
+const inMemorySorts: Partial<
+  Record<
+    SortStrategyType,
+    (a: LightAgentConfigurationType, b: LightAgentConfigurationType) => number
+  >
+> = {
+  alphabetical: (a, b) => a.name.localeCompare(b.name),
+  priority: compareAgentsForSort,
 };
 
-type FullAgentConfigurationsForViewArgs = AgentConfigurationsForViewBaseArgs & {
-  variant: "full";
-  omitHeavyAttributes?: never;
-};
-
-type LightAgentConfigurationsForViewArgs =
-  AgentConfigurationsForViewBaseArgs & {
-    variant: Exclude<AgentFetchVariant, "full">;
-    omitHeavyAttributes?: boolean;
-  };
-
-export function getAgentConfigurationsForView(
-  args: FullAgentConfigurationsForViewArgs
-): Promise<AgentConfigurationType[]>;
-export function getAgentConfigurationsForView(
-  args: LightAgentConfigurationsForViewArgs
-): Promise<LightAgentConfigurationType[]>;
+/**
+ * Renders a view (see `listAgentsForView`) as light configurations, sorted and limited after the
+ * permission filtering so a limit never drops a readable agent.
+ */
 export async function getAgentConfigurationsForView({
   auth,
   agentsGetView,
@@ -433,75 +179,31 @@ export async function getAgentConfigurationsForView({
   variant,
   limit,
   sort,
-  dangerouslySkipPermissionFiltering,
   omitHeavyAttributes,
-}: FullAgentConfigurationsForViewArgs | LightAgentConfigurationsForViewArgs) {
-  const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-  const plan = auth.plan();
-  if (!plan) {
-    throw new Error("Unexpected `auth` without `plan`.");
-  }
+}: {
+  auth: Authenticator;
+  agentsGetView: AgentsGetViewType;
+  agentPrefix?: string;
+  variant: Exclude<AgentFetchVariant, "full">;
+  limit?: number;
+  sort?: SortStrategyType;
+  omitHeavyAttributes?: boolean;
+}): Promise<LightAgentConfigurationType[]> {
+  const agents = await listAgentsForView(auth, {
+    agentsGetView,
+    agentPrefix,
+    sort,
+  });
 
-  const user = auth.user();
+  const isExtraLight = variant === "extra_light";
+  const configurations = await toLightAgentConfigurations(auth, agents, {
+    withInstructions: !omitHeavyAttributes,
+    withFavorites: !isExtraLight,
+    withTags: !isExtraLight,
+  });
 
-  if (
-    agentsGetView === "admin_internal" &&
-    !auth.isDustSuperUser() &&
-    !auth.isAdmin()
-  ) {
-    throw new Error(
-      "Superuser view is for dust superusers or internal admin auths only."
-    );
-  }
+  const compare = sort ? inMemorySorts[sort] : undefined;
+  const sorted = compare ? configurations.sort(compare) : configurations;
 
-  if (agentsGetView === "manage_unrestricted" && !auth.isAdmin()) {
-    throw new Error("The unrestricted manage view is for admins only.");
-  }
-
-  if (
-    !user &&
-    (agentsGetView === "list" ||
-      agentsGetView === "manage" ||
-      agentsGetView === "favorites")
-  ) {
-    throw new Error(`'${agentsGetView}' view is specific to a user.`);
-  }
-
-  const applySortAndLimit = makeApplySortAndLimit(sort, limit);
-
-  if (agentsGetView === "global") {
-    const allGlobalAgents = await fetchGlobalAgentConfigurationForView(auth, {
-      agentPrefix,
-      agentsGetView,
-      variant,
-      omitHeavyAttributes,
-    });
-
-    return applySortAndLimit(allGlobalAgents);
-  }
-
-  // Only workspace agents are filtered by requested spaces (unless dangerouslySkipPermissionFiltering is true)
-  // Global agents are not linked to any space.
-  const allAgentConfigurations = await Promise.all([
-    fetchGlobalAgentConfigurationForView(auth, {
-      agentPrefix,
-      agentsGetView,
-      variant,
-      omitHeavyAttributes,
-    }),
-    fetchWorkspaceAgentConfigurationsForView(auth, owner, {
-      agentPrefix,
-      agentsGetView,
-      limit,
-      sort,
-      variant,
-      dangerouslySkipPermissionFiltering,
-      omitHeavyAttributes,
-    }),
-  ]);
-
-  return applySortAndLimit(allAgentConfigurations.flat());
+  return limit ? sorted.slice(0, limit) : sorted;
 }
