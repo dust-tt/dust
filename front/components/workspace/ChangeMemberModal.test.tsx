@@ -41,7 +41,6 @@ const editableGroup: GroupWithAllowedActions = {
   workspaceId: workspace.id,
   memberCount: 2,
   poolCapAwuCredits: null,
-  groupLimitAwuCredits: null,
   grantedRole: null,
   grantedSeatType: null,
   allowedActions: {
