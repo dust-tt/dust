@@ -7,8 +7,13 @@ Rust 2024 workspace. Architecture: [DESIGN.md](DESIGN.md). Implementation invari
 
 `dfs-server` provides an Axum/Tokio HTTP server, Clap configuration, JSON tracing to stderr, and
 graceful shutdown on SIGINT/SIGTERM. Only `GET /health` is implemented; it returns `{"status":"ok"}`
-for process liveness. Sessions, storage, search, and the FUSE client follow in separate increments.
-The scaffold needs no GCP credentials or external services and runs natively on macOS and Linux.
+for process liveness. The server library defines typed IDs, object URIs, relative paths, metadata,
+directory entries, and revision tokens with focused unit tests. Sessions, storage, search, and the
+FUSE client follow in separate increments. The scaffold needs no GCP credentials or external services
+and runs natively on macOS and Linux.
+
+Start with synchronous GCS/SlateDB operations through a single server, then add local server caching
+and asynchronous persistence after the end-to-end filesystem works. See [PLAN.md](PLAN.md).
 
 ## Develop
 

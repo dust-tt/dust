@@ -17,8 +17,13 @@ See [README.md](README.md) for the current implementation scope and local develo
 Product and FUSE clients use the same authenticated server API. A tenant is a Dust workspace; each
 sandbox belongs to exactly one workspace, and several sandboxes can access that workspace.
 
-Each workspace belongs to a shard with one fenced writer. Shared servers handle many workspaces and
-concurrent clients. Competing writers to the same file serialize; unrelated files proceed independently.
+The PoC runs one server process serving one shard across many workspaces and concurrent clients.
+Competing writers to the same file serialize; unrelated files proceed independently.
+
+Implement a synchronous end-to-end baseline first: read from SlateDB/GCS and finish required GCS
+uploads followed by durable SlateDB batches before acknowledging mutations. Metadata-only operations
+need no blob upload. Add the server caching and asynchronous write architecture below once that
+baseline works through FUSE and survives restart.
 
 - **Server RAM/SSD:** Staged file contents and a metadata overlay for pending mutations. The owner
   serves the latest state by combining this overlay with SlateDB and cached or persisted blobs.
@@ -76,6 +81,9 @@ Paths are for session navigation and display. A URI identifies the object, not a
 deleting the object makes the reference unavailable. Resolving a URI always enforces the session's
 workspace and grants.
 
+Canonical formatting emits the bare URI. When including a decorative name, percent-encode it;
+parsing validates its syntax and discards it. Paths, query strings, and fragments are not accepted.
+
 ## Sessions and virtual folders
 
 `POST /sessions` creates an ephemeral session with fixed grants and optional virtual mounts:
@@ -122,6 +130,9 @@ These entries are aliases, not copied directories. Listing `/shared/C` reads C's
 entries; grant changes update the rendered view through session notifications and cache invalidation.
 
 ## Writes, fsync, and recovery
+
+The initial synchronous implementation waits for any content upload and a durable metadata batch.
+The following visibility-only behavior is introduced with server caching after that baseline works.
 
 The foreground path uses only the shard owner's local state:
 
@@ -179,6 +190,20 @@ rebuildable from persisted filesystem state; seconds-to-minutes freshness is acc
 Validate filtered BM25 latency with 512 session grants, large matching sets, inherited-grant
 updates, and cold workspace tables before committing to this engine.
 
-## PoC Limitation
+## PoC Limitation and Future Work
 
-Assume only one shard running (no routing to solve).
+The PoC assumes exactly one server process serving one shard. It has no routing, ownership transfer,
+or overlapping server instances. After a server restart, clients recreate sessions, discard cached
+namespace state, and reestablish subscriptions. Compare metadata/content revisions within the
+current session; revision counters alone do not establish continuity across restarts.
+
+Future multi-server work includes:
+
+- **Owner epochs:** A fresh UUID for each server ownership tenure. Include it in revision checks and
+  subscription cursors so a value such as revision 42 from an old server cannot be mistaken for
+  revision 42 after a restart or ownership transfer. This detects stale state; it does not fence a
+  writer or prove durability.
+- **Writer fencing:** Prevent an old server from acknowledging mutations or persisting updates once
+  another server takes ownership. Fence both foreground serving and background persistence.
+- **Routing and failover:** Assign workspaces to shards, move shards between servers, and coordinate
+  ownership transfer and recovery.

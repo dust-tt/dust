@@ -16,8 +16,9 @@ a URI, virtual alias, cached content, or search result. Server caches MUST NOT b
 
 @cc [owner:spolu,label:backend] atomic-grant-indexes
 Explicit grant attachments MUST be indexed both by object and by grant within the workspace.
-Update both directions atomically with the mutation, first in the owner overlay and later in
-SlateDB. Do not materialize inherited grants in these indexes.
+Update both directions atomically with the mutation: directly in SlateDB for the initial synchronous
+path, and first in the server overlay then in SlateDB for the later cached path. Do not materialize
+inherited grants in these indexes.
 
 @cc [owner:spolu,label:product] stable-object-identity
 Files and directories MUST have server-generated UUIDv4 IDs, MIME types, and xattrs. Moves and
@@ -25,9 +26,9 @@ renames MUST preserve object IDs; new content versions MUST receive separate, fr
 Store UUIDs as 16 bytes internally. Never deliberately reuse object or version IDs after recovery.
 
 @cc [owner:spolu,label:product] path-independent-uris
-Accept dfs://<uuid> and dfs://<name>--<uuid>, with UUIDs encoded as 32 lowercase hexadecimal characters.
-Only the UUID identifies the object; the optional name MUST be ignored during resolution. URI
-resolution MUST enforce the same workspace and grant checks as path access.
+Accept dfs://<uuid> and dfs://<name>--<uuid>, with UUIDs encoded as 32 lowercase hexadecimal
+characters. Only the UUID identifies the object; the optional name MUST be ignored during
+resolution. URI resolution MUST enforce the same workspace and grant checks as path access.
 
 @cc [owner:spolu,label:security] virtual-alias-boundaries
 Virtual mounts and /shared entries MUST reference existing objects without granting additional
@@ -35,25 +36,29 @@ access. Synthetic parents and mount entries cannot be mutated by filesystem oper
 .. MUST follow virtual parents without exposing the target's otherwise inaccessible ancestors.
 
 @cc [owner:spolu,label:product] shared-root-discovery
-Discover shared roots through the session's grant-to-object index prefixes, merging overlay and
-SlateDB state. Deduplicate and paginate results; 512 limits grant fan-out, not object count. Omit
-objects already reachable through an authorized ancestor or workspace-root entry. Disambiguate
+Discover shared roots through the session's grant-to-object index prefixes, reading SlateDB and
+merging overlay state when caching is implemented. Deduplicate and paginate results; 512 limits
+grant fan-out, not object count. Omit objects already reachable through an authorized ancestor or
+workspace-root entry. Disambiguate
 basename collisions using stable object IDs; reserve /shared in the session namespace.
 
 @cc [owner:spolu,label:concurrency] single-shard-owner
-Each shard MUST have only one fenced writer. Concurrent writes to the same file MUST serialize;
-writes to unrelated files MUST NOT wait for that file's writer.
+The PoC assumes exactly one server process serving one shard; overlapping server instances are
+outside its supported scope. Concurrent writes to the same file MUST serialize; writes to unrelated
+files MUST NOT wait for that file's writer. Multi-server ownership and fencing are future work.
 
 @cc [owner:spolu,label:performance] fsync-means-visibility
-Before acknowledging fsync, the owner MUST publish metadata and related indexes atomically and
+Before acknowledging fsync, the server MUST publish metadata and related indexes atomically and
 make the referenced content readable by other clients through the server, modulo client caches.
-The foreground path MUST stage content in server RAM/local disk and MUST NOT wait for GCS uploads,
-SlateDB durability, or local-disk fsync.
+The initial synchronous path MUST finish required GCS uploads and durable SlateDB batches before
+acknowledging mutations. Once local staging is implemented, its foreground path MUST stage content
+in server RAM/local disk and MUST NOT wait for GCS uploads, SlateDB durability, or local-disk fsync.
 
 @cc [owner:spolu,label:architecture] content-outside-slatedb
-All file contents, including small files, MUST be stored outside SlateDB: stage them in server
-RAM/local disk and asynchronously persist immutable versions in GCS. SlateDB stores metadata and
-indexes, never file bytes. Never evict unuploaded content; apply backpressure when staging is full.
+All file contents, including small files, MUST be stored outside SlateDB as immutable versions in
+GCS. Upload synchronously in the initial path; stage in server RAM/local disk and upload
+asynchronously in the later cached path. SlateDB stores metadata and indexes, never file bytes.
+Never evict unuploaded staged content; apply backpressure when staging is full.
 
 @cc [owner:spolu,label:backend] consistent-durable-prefix
 Pending references MUST remain outside SlateDB until their blobs exist in GCS. Persist ordered,
@@ -65,7 +70,8 @@ reclamation MUST preserve contents referenced by live or recoverable state.
 @cc [owner:spolu,label:security] cache-scope
 Content cache keys MUST include workspace, object ID, and content version. Directory views MUST be
 scoped to the session, including grants and virtual mounts. Revalidate current metadata and grants
-before the server serves cached content. Recreating a session MUST discard its cached namespace views.
+before the server serves cached content. Recreating a session MUST discard its cached namespace
+views.
 
 @cc [owner:spolu,label:product] bidirectional-change-notifications
 Product and filesystem clients MUST use the same mutation API and receive change notifications for

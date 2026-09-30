@@ -8,10 +8,14 @@ publish.workspace = true
 anyhow = "1"
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 clap = { version = "4", features = ["derive", "env"] }
+mime = "0.3"
+percent-encoding = "2"
 serde = { version = "1", features = ["derive"] }
+thiserror = "2"
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+uuid = { version = "1", features = ["v4"] }
 
 [lints]
 workspace = true
