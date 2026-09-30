@@ -1,3 +1,22 @@
+/**
+ * Check if a host is under a domain.
+ * - Exact match: host === domain
+ * - Subdomain match: host ends with '.' + domain
+ *
+ * This is intentionally stricter than a bare `endsWith(domain)` check, which
+ * would allow an attacker-controlled domain such as `evilexample.com` to
+ * pass an allowlist entry of `example.com`.
+ */
+export function isHostUnderDomain(host: string, domain: string): boolean {
+  const normalizedHost = host.toLowerCase().replace(/\.$/, "");
+  const normalizedDomain = domain.toLowerCase().replace(/\.$/, "");
+
+  return (
+    normalizedHost === normalizedDomain ||
+    normalizedHost.endsWith("." + normalizedDomain)
+  );
+}
+
 export const validateUrl = (
   urlString: string
 ):

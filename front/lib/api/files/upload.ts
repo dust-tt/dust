@@ -1,5 +1,6 @@
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { validateExternalUrl } from "@app/lib/api/url_safety";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -40,8 +41,17 @@ export async function processAndStoreFromUrl(
     });
   }
 
+  const urlSafetyError = await validateExternalUrl(validUrl.standardized);
+  if (urlSafetyError) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: urlSafetyError,
+    });
+  }
+
   try {
-    const response = await untrustedFetch(url);
+    const response = await untrustedFetch(validUrl.standardized);
     if (!response.ok) {
       return new Err({
         name: "dust_error",
@@ -79,7 +89,10 @@ export async function processAndStoreFromUrl(
       userId: auth.user()?.id ?? null,
       contentType: finalContentType,
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      fileName: fileName || new URL(url).pathname.split("/").pop() || "file",
+      fileName:
+        fileName ||
+        new URL(validUrl.standardized).pathname.split("/").pop() ||
+        "file",
       fileSize: contentLength ? parseInt(contentLength) : 1024 * 1024 * 10, // Default 10MB if no content-length
       useCase,
       useCaseMetadata,

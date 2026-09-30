@@ -4,6 +4,7 @@ import {
 } from "@connectors/connectors/microsoft/lib/files";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
+import { isHostUnderDomain } from "@connectors/types";
 import type {
   DustAPI,
   PublicPostContentFragmentRequestBody,
@@ -35,7 +36,11 @@ export async function downloadTeamsAttachment(
     "api.spaces.skype.com",
   ];
 
-  if (!allowedHosts.some((host) => url.hostname.endsWith(host))) {
+  // @cc [owner:frankaloia,label:security] teams-attachment-host-allowlist
+  // The allowlist check MUST use isHostUnderDomain rather than bare endsWith.
+  // endsWith("example.com") passes "evilexample.com"; isHostUnderDomain
+  // requires an exact match or a proper subdomain boundary (".example.com").
+  if (!allowedHosts.some((host) => isHostUnderDomain(url.hostname, host))) {
     return new Err(
       new Error(`Untrusted attachment URL hostname: ${url.hostname}`)
     );
