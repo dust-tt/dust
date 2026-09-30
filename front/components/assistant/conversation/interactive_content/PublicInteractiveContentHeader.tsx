@@ -51,7 +51,7 @@ export function PublicInteractiveContentHeader({
             />
           ) : (
             <LinkWrapper
-              href={`${staticWebsiteUrl}/home${user ? "" : `?${UTM_PARAM}`}`}
+              href={user ? "/" : `${staticWebsiteUrl}/home?${UTM_PARAM}`}
             >
               <DustLogo className="h-[20px] w-[80px]" />
             </LinkWrapper>
