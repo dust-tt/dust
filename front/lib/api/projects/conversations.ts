@@ -14,6 +14,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
   ConversationGoneError,
@@ -38,7 +39,6 @@ import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
 import type { WhereOptions } from "sequelize";
 import { Op } from "sequelize";
-import { getAgentConfigurations } from "../assistant/configuration/agent";
 
 // Maps a scope-transition failure to the move's error union: the caller's
 // own validation errors pass through, the under-lock re-fetch miss becomes
@@ -493,19 +493,21 @@ export async function toPodConversationListItem(
         )
       )
     ),
-    getAgentConfigurations(auth, {
-      agentIds: uniq(
+    AgentResource.fetchByIds(
+      auth,
+      uniq(
         removeNulls(
           latestMessages.map(
             (message) => message.agentMessage?.agentConfigurationId
           )
         )
       ),
-      variant: "extra_light",
-      // We already checked the permissions for the space conversations.
-      // We need to skip the permission filtering as we don't want to filter agents that might be using restricted spaces now.
-      dangerouslySkipPermissionFiltering: true,
-    }),
+      {
+        // We already checked the permissions for the space conversations.
+        // We need to skip the permission filtering as we don't want to filter agents that might be using restricted spaces now.
+        dangerouslySkipFetchCheck: true,
+      }
+    ),
   ]);
 
   return removeNulls(

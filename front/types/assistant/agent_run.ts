@@ -1,6 +1,7 @@
 /**
  * Run agent arguments
  */
+import { getPinnedAgentConfigurationForRun } from "@app/lib/api/assistant/configuration/run_configuration";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
@@ -12,8 +13,6 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
-import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type {
@@ -433,36 +432,6 @@ export async function buildAgentLoopDataFromConversation(
   });
 }
 
-// The full configuration of the version the agent message pinned, for a caller who can view its
-// content (the loop runs on its instructions and tools); null otherwise.
-async function getAgentConfigurationForLoop(
-  auth: Authenticator,
-  {
-    agentId,
-    agentVersion,
-    globalAgentContext,
-  }: {
-    agentId: string;
-    agentVersion: number;
-    globalAgentContext: GlobalAgentContext;
-  }
-): Promise<AgentConfigurationType | null> {
-  const [agent] = await AgentResource.fetchByIdsAndVersions(
-    auth,
-    [{ agentId, agentVersion }],
-    { globalAgentContext, withGlobalActions: true }
-  );
-  if (!agent?.canViewContent) {
-    return null;
-  }
-
-  const [agentConfiguration] = await toAgentConfigurations(auth, [agent], {
-    withFavorites: false,
-    withTags: false,
-  });
-  return agentConfiguration ?? null;
-}
-
 async function buildAgentLoopRuntimeData(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs,
@@ -492,9 +461,9 @@ async function buildAgentLoopRuntimeData(
   // The key will be different for a new message or a new version of the same message (retries).
   const agentConfiguration = await cacheWithRedis<
     AgentConfigurationType | null,
-    Parameters<typeof getAgentConfigurationForLoop>
+    Parameters<typeof getPinnedAgentConfigurationForRun>
   >(
-    getAgentConfigurationForLoop,
+    getPinnedAgentConfigurationForRun,
     () =>
       `agentMessageId:${agentMessageId}-agentConfigurationId:${agentId}-agentMessageVersion:${agentMessageVersion}`,
     {
