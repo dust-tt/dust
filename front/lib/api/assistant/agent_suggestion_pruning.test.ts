@@ -4,7 +4,6 @@ import {
 } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import type { FullAgentResource } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -22,9 +21,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 async function fetchFullAgent(
   auth: Authenticator,
   agentId: string
-): Promise<FullAgentResource> {
+): Promise<AgentResource> {
   const agent = await AgentResource.fetchById(auth, agentId);
-  assert(agent?.isFull(), `Readable agent not found for agentId: ${agentId}`);
+  assert(
+    agent?.canViewContent,
+    `Readable agent not found for agentId: ${agentId}`
+  );
   return agent;
 }
 

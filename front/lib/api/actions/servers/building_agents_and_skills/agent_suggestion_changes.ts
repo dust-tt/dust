@@ -372,7 +372,7 @@ export async function validateAgentInstructionsChange(
     );
   }
 
-  if (!agent.isFull()) {
+  if (!agent.canViewContent) {
     return new Err(
       new MCPError(
         "The instructions of this agent are not readable, so instruction edits cannot be " +
@@ -381,7 +381,7 @@ export async function validateAgentInstructionsChange(
     );
   }
 
-  const { instructionsHtml } = agent.content;
+  const { instructionsHtml } = await agent.fetchInstructions();
   if (!instructionsHtml) {
     return new Err(
       new MCPError(

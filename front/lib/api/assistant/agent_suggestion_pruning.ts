@@ -4,7 +4,7 @@ import {
   buildDescendantMap,
   instructionBlockSetsConflict,
 } from "@app/lib/editor/instructions_block_conflict";
-import type { FullAgentResource } from "@app/lib/resources/agent_resource";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -326,7 +326,7 @@ function getInstructionSuggestionsWithoutExistingBlockId(
  */
 export async function pruneConflictingInstructionSuggestions(
   auth: Authenticator,
-  agent: FullAgentResource,
+  agent: AgentResource,
   newSuggestions: Array<{ sId: string; targetBlockId: string }>
 ): Promise<void> {
   if (newSuggestions.length === 0) {
@@ -354,7 +354,7 @@ export async function pruneConflictingInstructionSuggestions(
     ...newTargetBlockIds,
     ...existingPending.map((s) => s.suggestion.targetBlockId),
   ]);
-  const { instructionsHtml } = agent.content;
+  const { instructionsHtml } = await agent.fetchInstructions();
   const descendantMap = instructionsHtml
     ? buildDescendantMap(instructionsHtml, allBlockIds)
     : new Map<string, Set<string>>();

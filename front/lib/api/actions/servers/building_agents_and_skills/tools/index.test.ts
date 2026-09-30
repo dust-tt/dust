@@ -119,7 +119,7 @@ function expectMcpError(
 }
 
 // An agent built on a restricted space its owner belongs to: a workspace admin outside that space
-// holds `admin` on it but not `read`, so they only get its light resource (no instructions).
+// holds `admin` on it but not `read`, so they fetch it without its content (no instructions).
 async function createAgentOnUnreadableSpace(workspace: WorkspaceType) {
   const owner = await addMember(workspace);
   const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(

@@ -1,6 +1,6 @@
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import type { Authenticator } from "@app/lib/auth";
-import type { FullAgentResource } from "@app/lib/resources/agent_resource";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -108,7 +108,7 @@ export async function createAgentInstructionSuggestions(
     conversation,
     batch = null,
   }: {
-    agent: FullAgentResource;
+    agent: AgentResource;
     edits: InstructionSuggestionEditInput[];
     source: AgentSuggestionSource;
     conversation: ConversationResource | ConversationWithoutContentType | null;
