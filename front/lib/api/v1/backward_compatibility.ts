@@ -174,8 +174,17 @@ function getRawContents(msg: AgentMessageType): Array<{
 export function addBackwardCompatibleAgentMessageFields(
   agentMessage: AgentMessageType
 ): AgentMessagePublicType {
+  // The legacy agent configuration loader always emitted these two keys on a message's
+  // configuration; they are kept on the public API so its response only ever grows.
+  const configuration = {
+    ...agentMessage.configuration,
+    actions: [],
+    instructionsHtml: null,
+  };
+
   return {
     ...agentMessage,
+    configuration,
     // Map "gracefully_stopped" to "succeeded" and "interrupted" to "cancelled" for the public API.
     status:
       agentMessage.status === "gracefully_stopped"
