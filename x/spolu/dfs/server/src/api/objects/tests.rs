@@ -1,10 +1,12 @@
 mod authorization;
 mod concurrency;
 mod entries;
+mod files;
 mod grants;
 mod mutations;
 mod projection;
 mod uploads;
+pub(crate) use files::exercise_files;
 
 use std::sync::Arc;
 
@@ -26,6 +28,7 @@ use crate::{
 struct Fixture {
     storage: Arc<Storage>,
     app: Router,
+    state: ApiState,
     workspace: WorkspaceId,
     key: String,
     workspace_key: String,
@@ -40,10 +43,13 @@ impl Fixture {
     async fn new() -> Result<Self> {
         let storage =
             Arc::new(Storage::open(Arc::new(InMemory::new()), &"objects".parse()?).await?);
-        let app = router(ApiState::new(
-            Some(storage.clone()),
-            Access::new(Some(SERVER_KEY))?,
-        ));
+        Self::from_storage(storage, crate::files::FileConfig::default()).await
+    }
+
+    async fn from_storage(storage: Arc<Storage>, config: crate::files::FileConfig) -> Result<Self> {
+        let state = ApiState::new(Some(storage.clone()), Access::new(Some(SERVER_KEY))?)
+            .with_file_config(config)?;
+        let app = router(state.clone());
         let workspace = WorkspaceId::new("w")?;
         let (_, created) = call(
             &app,
@@ -115,6 +121,7 @@ impl Fixture {
         Ok(Self {
             storage,
             app,
+            state,
             workspace,
             key,
             workspace_key,
@@ -144,6 +151,7 @@ impl Fixture {
     }
 
     async fn close(self) -> Result<()> {
+        self.state.drain_file_jobs().await;
         drop(self.app);
         self.storage.close().await
     }

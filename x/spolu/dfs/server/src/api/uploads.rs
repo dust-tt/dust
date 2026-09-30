@@ -39,6 +39,7 @@ struct UploadReceipt {
     object_id: String,
     content_version: String,
     complete: bool,
+    published: bool,
     size_bytes: Option<u64>,
     expires_in_seconds: u64,
 }
@@ -50,6 +51,7 @@ impl From<Upload> for UploadReceipt {
             object_id: upload.object_id.to_string(),
             content_version: upload.version.to_string(),
             complete: upload.completed.is_some(),
+            published: false,
             size_bytes: upload.completed.map(|blob| blob.content().size_bytes),
             expires_in_seconds: upload
                 .deadline
@@ -110,7 +112,41 @@ pub(super) async fn status(
     request: Request,
 ) -> Result<Response, ApiError> {
     let body: UploadStatusRequest = json_body(request, &state).await?;
-    let id = body.upload_id.parse().map_err(|_| ApiError::InvalidInput)?;
+    let id: ContentVersionId = body.upload_id.parse().map_err(|_| ApiError::InvalidInput)?;
+    let scoped = state
+        .storage()?
+        .workspace(&session.workspace)
+        .map_err(|_| ApiError::Unavailable)?;
+    let request_id = crate::model::RequestId::from_bytes(*id.as_bytes());
+    if let Some(record) = scoped
+        .read_view()
+        .await
+        .map_err(|_| ApiError::Unavailable)?
+        .operation(request_id)
+        .await
+        .map_err(|_| ApiError::Unavailable)?
+    {
+        if record.content_version != *id.as_bytes() {
+            return Err(ApiError::NotFound);
+        }
+        crate::namespace::NamespaceRead::new(state.storage()?, &session.workspace, &session.grants)
+            .await?
+            .stat(crate::model::ObjectId::from_bytes(record.object_id))
+            .await?;
+        scoped
+            .await_durable()
+            .await
+            .map_err(|_| ApiError::Unavailable)?;
+        return Ok(no_store(Json(UploadReceipt {
+            upload_id: id.to_string(),
+            object_id: crate::model::ObjectId::from_bytes(record.object_id).to_string(),
+            content_version: id.to_string(),
+            complete: true,
+            published: true,
+            size_bytes: Some(record.size_bytes),
+            expires_in_seconds: 0,
+        })));
+    }
     let upload = state.uploads.get(&session.id, &session.workspace, id)?;
     uploads::authorize(
         state.storage()?,
@@ -191,4 +227,99 @@ pub(super) async fn content(
     )
     .await?;
     Ok(no_store(Json(UploadReceipt::from(lease.finish(blob)?))))
+}
+
+/// @swaggerschema CommitUploadRequest in server/openapi.yaml.
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct CommitUploadRequest {
+    upload_id: String,
+    mime_type: Option<String>,
+    #[serde(default)]
+    xattrs: std::collections::BTreeMap<String, String>,
+    mode: Option<u16>,
+}
+
+/// @swagger See POST /uploads/commit in server/openapi.yaml.
+pub(super) async fn commit(
+    State(state): State<ApiState>,
+    AuthenticatedSession(session): AuthenticatedSession,
+    request: Request,
+) -> Result<Response, ApiError> {
+    use crate::{
+        files,
+        model::RequestId,
+        namespace::{self, NewFileAttributes},
+    };
+    use base64::{Engine, engine::general_purpose::STANDARD};
+    let body: CommitUploadRequest = json_body(request, &state).await?;
+    let id: ContentVersionId = body.upload_id.parse().map_err(|_| ApiError::InvalidInput)?;
+    let request_id = RequestId::from_bytes(*id.as_bytes());
+    let hash = files::fingerprint(("upload", &body))?;
+    let files = state.files.clone();
+    files
+        .run(async move {
+            let storage = state.storage()?;
+            let scoped = storage
+                .workspace(&session.workspace)
+                .map_err(|_| ApiError::Unavailable)?;
+            let _request = scoped
+                .lock_request(request_id)
+                .await
+                .map_err(|_| ApiError::Unavailable)?;
+            if let Some(record) = files::replay(storage, &session, request_id, hash).await? {
+                state.uploads.release_published(&session.workspace, id)?;
+                return Ok(no_store(Json(super::files::MutationReceipt::new(
+                    request_id, record,
+                ))));
+            }
+            let upload = state.uploads.get(&session.id, &session.workspace, id)?;
+            let blob = upload.completed.as_ref().ok_or(ApiError::Conflict)?;
+            let attributes = match &upload.target {
+                UploadTarget::Create { .. } => Some(NewFileAttributes {
+                    mime_type: body
+                        .mime_type
+                        .as_deref()
+                        .unwrap_or("application/octet-stream")
+                        .parse()
+                        .map_err(|_| ApiError::InvalidInput)?,
+                    xattrs: body
+                        .xattrs
+                        .into_iter()
+                        .map(|(key, value)| {
+                            Ok((
+                                key,
+                                STANDARD.decode(value).map_err(|_| ApiError::InvalidInput)?,
+                            ))
+                        })
+                        .collect::<Result<_, ApiError>>()?,
+                    mode: body.mode.unwrap_or(0o644),
+                }),
+                UploadTarget::Replace { .. } => {
+                    if body.mime_type.is_some() || !body.xattrs.is_empty() || body.mode.is_some() {
+                        return Err(ApiError::InvalidInput);
+                    }
+                    None
+                }
+            };
+            let _writer = scoped
+                .lock_content(upload.object_id)
+                .await
+                .map_err(|_| ApiError::Unavailable)?;
+            let record = namespace::publish_content(
+                storage,
+                &session,
+                &upload.target,
+                blob,
+                request_id,
+                hash,
+                attributes.as_ref(),
+            )
+            .await?;
+            state.uploads.release_published(&session.workspace, id)?;
+            Ok(no_store(Json(super::files::MutationReceipt::new(
+                request_id, record,
+            ))))
+        })
+        .await
 }

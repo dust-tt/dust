@@ -10,7 +10,7 @@ use tower::ServiceExt;
 
 use super::*;
 
-async fn send_content(
+pub(super) async fn send_content(
     app: &Router,
     key: &str,
     id: &str,
@@ -36,7 +36,7 @@ async fn send_content(
     ))
 }
 
-async fn start_create(f: &Fixture, name: &str) -> Result<Value> {
+pub(super) async fn start_create(f: &Fixture, name: &str) -> Result<Value> {
     let (status, receipt) = f
         .request(
             "/uploads/start",

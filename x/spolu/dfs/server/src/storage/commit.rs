@@ -8,9 +8,10 @@ use slatedb::{
 };
 use tokio::sync::MutexGuard;
 
-use super::{ReadView, UploadedBlob, WorkspaceStorage, codec};
+use super::{OperationRecord, ReadView, UploadedBlob, WorkspaceStorage, codec};
 use crate::model::{
-    ContentVersionId, DirectoryEntry, EntryName, ObjectId, ObjectKind, ObjectMetadata, WorkspaceId,
+    ContentVersionId, DirectoryEntry, EntryName, ObjectId, ObjectKind, ObjectMetadata, RequestId,
+    WorkspaceId,
 };
 
 /// Internal storage mutations; namespace validation and authorization belong to their callers.
@@ -18,6 +19,10 @@ use crate::model::{
 pub enum MetadataMutation {
     PutObject(Box<ObjectMetadata>),
     DeleteObject(ObjectId),
+    RecordOperation {
+        request_id: RequestId,
+        record: OperationRecord,
+    },
     PutChild(DirectoryEntry),
     DeleteChild {
         parent_id: ObjectId,
@@ -55,6 +60,22 @@ impl WorkspaceStorage<'_> {
         view: &ReadView,
         mutations: Vec<MetadataMutation>,
     ) -> Result<PreparedMetadata> {
+        self.prepare_content(view, mutations, &[]).await
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend] proven-content-references
+     * New content references MUST match completed descriptors from this storage instance and
+     * workspace, including object ID, version, and measured size. Every other reference MUST equal
+     * the existing file content in the supplied snapshot. Reject unused descriptors. Perform no
+     * blob I/O while preparing a batch; upload completion must precede namespace publication.
+     */
+    pub(crate) async fn prepare_content(
+        &self,
+        view: &ReadView,
+        mutations: Vec<MetadataMutation>,
+        uploads: &[UploadedBlob],
+    ) -> Result<PreparedMetadata> {
         ensure!(
             view.keys.workspace == self.keys.workspace,
             "cross-workspace snapshot"
@@ -64,7 +85,17 @@ impl WorkspaceStorage<'_> {
             None
         } else {
             let batch = self.prepare(mutations)?;
+            for upload in uploads {
+                let reference = batch
+                    .references
+                    .get(&upload.object_id())
+                    .context("unused upload")?;
+                ensure!(upload.matches(self, reference), "invalid upload descriptor");
+            }
             for (id, content) in &batch.references {
+                if uploads.iter().any(|upload| upload.object_id() == *id) {
+                    continue;
+                }
                 let object = view.object(*id).await?.context("missing existing file")?;
                 ensure!(
                     object.kind == ObjectKind::File(content.clone()),
@@ -145,6 +176,14 @@ impl WorkspaceStorage<'_> {
         let mut references = HashMap::new();
         for mutation in mutations {
             match mutation {
+                MetadataMutation::RecordOperation { request_id, record } => {
+                    changed.insert(record.object_id);
+                    insert(
+                        &mut rows,
+                        self.keys.operation(request_id),
+                        Some(codec::encode(&record)?),
+                    )?;
+                }
                 MetadataMutation::PutObject(object) => {
                     ensure!(
                         object.workspace_id == self.keys.workspace,

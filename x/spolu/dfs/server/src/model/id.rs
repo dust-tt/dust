@@ -87,6 +87,8 @@ macro_rules! uuid_id {
 
 uuid_id!(ObjectId);
 uuid_id!(ContentVersionId);
+uuid_id!(RequestId);
+uuid_id!(HandleId);
 
 #[cfg(test)]
 mod tests {

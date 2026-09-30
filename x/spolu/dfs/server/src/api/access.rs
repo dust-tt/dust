@@ -1,6 +1,9 @@
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -28,6 +31,16 @@ pub(crate) struct Session {
     pub grants: BTreeSet<String>,
     pub expires_at: u64,
     deadline: Instant,
+    closed: AtomicBool,
+}
+
+impl Session {
+    pub(crate) fn check_active(&self) -> Result<(), ApiError> {
+        if self.closed.load(Ordering::Acquire) || Instant::now() >= self.deadline {
+            return Err(ApiError::Unauthenticated);
+        }
+        Ok(())
+    }
 }
 
 #[derive(Default)]
@@ -104,6 +117,7 @@ impl Access {
             grants,
             expires_at,
             deadline: now + Duration::from_secs(SESSION_TTL_SECONDS),
+            closed: AtomicBool::new(false),
         });
         sessions.by_expiry.insert((session.deadline, hash), ());
         sessions.by_key.insert(hash, session.clone());
@@ -133,6 +147,7 @@ impl Access {
         if session.id != id {
             return Err(ApiError::NotFound);
         }
+        session.closed.store(true, Ordering::Release);
         let expiry = (session.deadline, hash);
         sessions.by_expiry.remove(&expiry);
         sessions.by_key.remove(&hash);
@@ -144,7 +159,8 @@ impl SessionStore {
     /**
      * @cc [owner:spolu,label:security] ephemeral-session-lifetime
      * Expired or closed sessions MUST never authenticate. Sessions MUST remain process-local and
-     * immutable after creation. Cleanup MUST remove expired entries from both registry indexes.
+     * fixed in workspace and grants after creation. Cleanup MUST remove expired entries from both
+     * registry indexes and invalidate liveness checks held by file jobs.
      */
     fn remove_expired(&mut self, now: Instant) {
         while let Some(entry) = self.by_expiry.first_entry() {
@@ -153,7 +169,9 @@ impl SessionStore {
                 break;
             }
             entry.remove();
-            self.by_key.remove(&hash);
+            if let Some(session) = self.by_key.remove(&hash) {
+                session.closed.store(true, Ordering::Release);
+            }
         }
     }
 }

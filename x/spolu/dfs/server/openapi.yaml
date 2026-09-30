@@ -17,8 +17,10 @@ info:
     submitting. On change, release locks and retry with fresh metadata, authorization, and lock targets;
     after 16 stale attempts return conflict (409) without publication. Errors and no-ops validate too.
     Queued mutations observe intervening revocations and moves. Authorization failures publish nothing
-    and return not_found before name collisions or revision conflicts. All locks release before WAL
-    durability waits. Unrelated writes in the same workspace may trigger retries.
+    and return not_found before name collisions or revision conflicts. Namespace locks release before
+    WAL durability waits; file content/request gates span the whole mutation. Unrelated writes in the
+    same workspace may trigger retries. File mutation request receipts persist atomically with their
+    metadata and survive restart; status/replay always checks current object authorization.
 paths:
   /health:
     get:
@@ -158,8 +160,9 @@ paths:
         Creation rejects an existing name; replacement checks expected_content_version after
         authorization. Returns fresh server-generated content/upload IDs and, for creation, an object
         ID. Does not reserve the name, lock the file, publish metadata, or acknowledge fsync.
-        Reservations and receipts share a server-wide cap of 1024 and expire after 15 minutes;
+        Unpublished reservations share a server-wide cap of 1024 and expire after 15 minutes;
         expiry is not extended by status or transfer. Session closure/expiry/restart invalidates access.
+        Successful durable publication immediately releases the reservation slot.
       security:
         - SessionKey: []
       requestBody:
@@ -170,7 +173,7 @@ paths:
               $ref: '#/components/schemas/StartUploadRequest'
       responses:
         "201":
-          description: Reserved upload; complete is false and size_bytes is null.
+          description: Reserved upload; complete/published are false and size_bytes is null.
           content:
             application/json:
               schema:
@@ -185,13 +188,14 @@ paths:
         Raw binary body, including empty files; Content-Length is optional. Only the session that
         reserved the upload may send it. Content-Encoding is rejected. Rechecks target access and
         replacement version at start and completion, plus session validity at completion.
-        One-shot: an active or completed upload returns conflict (409); use status after a lost
+        One-shot: a retained active or completed upload returns conflict (409); use status after a lost
         response. Failure discards its reservation. Partial or completed bytes never publish a file,
-        update its size, emit events, or acknowledge a filesystem write/fsync. Namespace publication
-        remains a separate, not-yet-exposed operation and must reauthorize and check preconditions.
+        update its size, emit events, or acknowledge a filesystem write/fsync. POST /uploads/commit
+        publishes separately after reauthorizing and checking preconditions.
         Streams bounded 8 MiB parts with no full-body collection; server input frames must be at most
         1 MiB (HTTP wire chunks may be split by the transport). Defaults allow four active transfers
-        within a shared 64 MiB upload-buffer budget, plus 16 waiters; excess returns capacity_exhausted
+        within a shared 64 MiB transfer-buffer budget (also used by reads and write bodies), plus 16
+        waiters; excess returns capacity_exhausted
         (507). No waiting body is polled. One version is limited to 10,000 parts (about 78 GiB).
         Interrupted/invalid bodies and 30-second input idle timeouts return invalid_input (400).
         Reservation expiry also bounds total transfer time; expiry/backend failure returns unavailable
@@ -224,13 +228,15 @@ paths:
   /uploads/status:
     post:
       operationId: uploadStatus
-      summary: Recover a reserved or completed upload receipt in its original session.
+      summary: Recover upload completion or durable publication state.
       description: |
-        Takes a fresh authorization snapshot and checks the original target/preconditions. Missing,
-        expired, failed, restarted, or other-session reservations return not_found (404). A pending or
-        in-flight upload has complete false and null size. A completed receipt does not imply namespace
-        publication. Status does not renew its lifetime; a missing receipt does not prove no orphan blob
-        was uploaded. No endpoint yet consumes these receipts to publish filesystem metadata.
+        For an unpublished reservation, checks the original session, target, and preconditions. Missing,
+        expired, failed, restarted, or other-session reservations return not_found (404). Pending uploads
+        have complete false and null size; completed unpublished uploads have published false.
+        Published receipts survive restart and return complete/published true with expires_in_seconds
+        zero, after a durability barrier. Any currently authorized session in the workspace may recover
+        them. Deletion/revocation hides the receipt. Status does not renew reservations; a missing
+        receipt does not prove no orphan was uploaded or that a concurrent commit cannot still finish.
       security:
         - SessionKey: []
       requestBody:
@@ -246,6 +252,288 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UploadReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /uploads/commit:
+    post:
+      operationId: commitUpload
+      summary: Publish a completed upload atomically and durably.
+      description: |
+        Reauthorizes the live session and target, then checks name vacancy for creation or the expected
+        content version for replacement. Creation accepts initial MIME/xattrs/mode. Replacement rejects
+        supplied MIME/mode or nonempty xattrs and preserves current metadata. Metadata, indexes, event,
+        and request receipt commit atomically after blob completion; success waits for WAL durability.
+        The upload ID is the request ID. Identical commit arguments replay the original result, including
+        after session recreation/server restart; changed arguments conflict (409). Replay reauthorizes
+        the current object and does not require the old upload reservation. Unpublished uploads still
+        require their original live session and reservation. Request disconnect does not cancel an
+        admitted publication. Global file-job exhaustion returns capacity_exhausted (507).
+        Successful publication/replay immediately releases the reservation slot; status/retries use the
+        durable receipt. Failed commits retain the completed upload until reservation expiry.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommitUploadRequest'
+      responses:
+        "200":
+          description: Durable mutation receipt, including on an identical replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/open:
+    post:
+      operationId: openFile
+      summary: Open a session-local file handle.
+      description: |
+        Rechecks current grants and requires a regular file. At least one of read/write must be true;
+        append requires write. Opening does not reserve a writer or scratch file. Truncate requires
+        write and a fresh client request_id, publishes an empty version durably, and starts sequence at
+        one. Otherwise request_id must be omitted/null and sequence starts at zero. Truncating-open
+        retries reuse the original request ID but return a new handle and current attributes.
+        Handles cap at 4096/server and 256/session, returning capacity_exhausted (507). Close, session
+        expiry/closure, or restart invalidates them. Rename preserves the handle; unlink/replacement
+        invalidates handles to the deleted object. Access modes never bypass current grants.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenFileRequest'
+      responses:
+        "200":
+          description: Handle, current attributes, and initial write sequence; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenFileResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/read:
+    post:
+      operationId: readFile
+      summary: Stream an authorized immutable content range through a readable handle.
+      description: |
+        Selects current content after checking the session, handle mode, and live grants. If supplied,
+        content_version must equal the current version or conflict (409); arbitrary historical or
+        unpublished versions cannot be read. The response pins that version for the entire stream,
+        even during concurrent writes. Range length is clamped to EOF; zero length or offset at/beyond
+        EOF returns an empty 200 response. Reads do not update atime. Backend failure after headers
+        terminates the stream. Shared transfer admission/backpressure bounds server buffers; dropping
+        or draining the response releases its slot. An already-authorized read may finish after revocation.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadFileRequest'
+      responses:
+        "200":
+          description: Binary range, including an empty range at EOF.
+          headers:
+            Content-Length:
+              description: Actual range length after clamping to EOF.
+              schema:
+                type: integer
+                format: uint64
+                minimum: 0
+            Dfs-Content-Version:
+              schema:
+                type: string
+                pattern: '^[0-9a-f]{32}$'
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/write:
+    put:
+      operationId: writeFile
+      summary: Publish an offset write or atomic append through a writable handle.
+      description: |
+        Raw binary body with exactly Dfs-Write-Length bytes; Content-Length is optional and
+        Content-Encoding is rejected. Required headers must each occur once. Serialize writes on each
+        handle with sequences starting at one. Retry the same last request/sequence after a lost
+        response; only successful completion allows advancing. Append chooses current EOF under the
+        per-file writer gate and ignores the supplied offset. Other writes preserve existing bytes
+        outside the range; growth fills gaps with zero bytes. A zero-byte write never extends the file.
+        Random edits assemble a full immutable version in quota-reserved anonymous disk, stream it
+        to GCS, then reauthorize and publish metadata/event/receipt atomically and durably. Other files
+        may proceed concurrently. Default shared scratch quota is 1 GiB, with 16 admitted file jobs.
+        Input frames are at most 1 MiB; input idle timeout is 30 seconds and preparation is limited to
+        15 minutes. Interrupted/short/long bodies return invalid_input; quota/disk/job exhaustion returns
+        capacity_exhausted. Failed writes leave no partial publication and fsync reports their failure.
+        Use a fresh client UUID per operation. Identical request IDs/arguments/bytes replay the durable
+        original result; mismatches conflict. After restart, recreate a session/handle and retry the same
+        request ID with the new handle's next sequence. A disconnect or unavailable response can have
+        committed: use status or retry, never assume it failed. Publication outlives HTTP cancellation.
+      security:
+        - SessionKey: []
+      parameters:
+        - in: header
+          name: Dfs-Handle-Id
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{32}$'
+        - in: header
+          name: Dfs-Request-Id
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{32}$'
+        - in: header
+          name: Dfs-Write-Sequence
+          required: true
+          schema:
+            type: integer
+            format: uint64
+            minimum: 1
+        - in: header
+          name: Dfs-Write-Offset
+          required: true
+          schema:
+            type: integer
+            format: uint64
+            minimum: 0
+        - in: header
+          name: Dfs-Write-Length
+          required: true
+          schema:
+            type: integer
+            format: uint64
+            minimum: 0
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Durable mutation receipt; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/truncate:
+    post:
+      operationId: truncateFile
+      summary: Change file length through a writable handle.
+      description: |
+        Uses the same per-file serialization, handle sequence, scratch quota, durable receipt, and
+        retry rules as write. Shrink removes trailing bytes; extension supplies zeros. Always publishes
+        a fresh content version, including for zero or unchanged length. Append mode does not affect
+        truncate. Publication preserves unrelated metadata and rechecks current access/base version.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TruncateFileRequest'
+      responses:
+        "200":
+          description: Durable mutation receipt; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/fsync:
+    post:
+      operationId: fsyncFile
+      summary: Wait for preceding handle writes and confirm server visibility/durability.
+      description: |
+        Waits behind admitted handle writes, checks current session/grants, rejects through_sequence
+        beyond the last accepted sequence (conflict), and reports an unresolved write failure. A failed
+        handle must retry its last request/sequence or close/reopen; new sequences cannot hide failures.
+        Success waits for the current SlateDB WAL prefix. All successful writes are already durable in
+        this synchronous baseline. Unpublished uploads and client-only buffers cannot satisfy fsync.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FsyncFileRequest'
+      responses:
+        "204":
+          description: Barrier completed; no body; Cache-Control is no-store.
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/close:
+    post:
+      operationId: closeFile
+      summary: Release a session's file handle.
+      description: |
+        Waits behind admitted handle mutations and releases the handle. Does not substitute for fsync
+        or report prior write failures. May release a handle after its object was deleted or access was
+        revoked. Missing, already-closed, and other-session handles return not_found.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloseFileRequest'
+      responses:
+        "204":
+          description: Handle released; no body; Cache-Control is no-store.
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/status:
+    post:
+      operationId: fileMutationStatus
+      summary: Recover a file mutation receipt after an ambiguous response or restart.
+      description: |
+        Requires current access to the object in the session's workspace, including after session
+        recreation. Returns the original durable result, which may differ from current attributes.
+        Null means no receipt was visible in the snapshot, not proof of failure; a mutation may still
+        be in flight. Safely retry with the same request ID. Missing/inaccessible objects or a receipt
+        belonging to another object return not_found. Receipt retention is currently indefinite.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationStatusRequest'
+      responses:
+        "200":
+          description: Durable original receipt, or JSON null; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/MutationReceipt'
+                  - type: object
+                    nullable: true
+                    enum: [null]
         default:
           $ref: '#/components/responses/ApiError'
   /objects/stat:
@@ -594,6 +882,169 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    CommitUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [upload_id]
+      properties:
+        upload_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        mime_type:
+          type: string
+          nullable: true
+          default: application/octet-stream
+          description: Creation only; omitted/null uses the default.
+        mode:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 511
+          default: 420
+          description: Creation only, low nine bits (0644 default); caller applies umask.
+        xattrs:
+          type: object
+          default: {}
+          additionalProperties:
+            type: string
+            format: byte
+          description: Creation only, nonempty UTF-8 keys without NUL and padded base64 values; 32 KiB total decoded keys/values.
+    MutationReceipt:
+      type: object
+      additionalProperties: false
+      required: [request_id, object_id, content_version, size_bytes, metadata_revision]
+      description: Original durable mutation result; later edits may have changed current attributes.
+      properties:
+        request_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+          description: Workspace-scoped edit UUID, or the upload ID for upload publication.
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        content_version:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        size_bytes:
+          type: integer
+          format: uint64
+          minimum: 0
+        metadata_revision:
+          type: integer
+          format: uint64
+          minimum: 0
+    OpenFileRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        read:
+          type: boolean
+          default: true
+        write:
+          type: boolean
+          default: false
+        append:
+          type: boolean
+          default: false
+          description: Requires write; writes choose EOF atomically and ignore their offsets.
+        truncate:
+          type: boolean
+          default: false
+          description: Requires write and request_id; publishes an empty version during open.
+        request_id:
+          type: string
+          nullable: true
+          pattern: '^[0-9a-f]{32}$'
+          description: Required exactly when truncate is true; preserve across ambiguous retries.
+    OpenFileResponse:
+      type: object
+      additionalProperties: false
+      required: [handle_id, sequence, attributes]
+      properties:
+        handle_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        sequence:
+          type: integer
+          format: uint64
+          minimum: 0
+          maximum: 1
+          description: Zero for ordinary open, one after truncating open; next edit increments this.
+        attributes:
+          $ref: '#/components/schemas/ObjectAttributes'
+    ReadFileRequest:
+      type: object
+      additionalProperties: false
+      required: [handle_id, offset, length]
+      properties:
+        handle_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        content_version:
+          type: string
+          nullable: true
+          pattern: '^[0-9a-f]{32}$'
+          description: Omit/null to select the current version; mismatches return conflict.
+        offset:
+          type: integer
+          format: uint64
+          minimum: 0
+        length:
+          type: integer
+          format: uint64
+          minimum: 0
+    TruncateFileRequest:
+      type: object
+      additionalProperties: false
+      required: [handle_id, request_id, sequence, size_bytes]
+      properties:
+        handle_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        request_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        sequence:
+          type: integer
+          format: uint64
+          minimum: 1
+        size_bytes:
+          type: integer
+          format: uint64
+          minimum: 0
+    FsyncFileRequest:
+      type: object
+      additionalProperties: false
+      required: [handle_id, through_sequence]
+      properties:
+        handle_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        through_sequence:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Last handle mutation the barrier must cover; unseen numbers conflict.
+    CloseFileRequest:
+      type: object
+      additionalProperties: false
+      required: [handle_id]
+      properties:
+        handle_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+    MutationStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id, request_id]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        request_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
     StartUploadRequest:
       oneOf:
         - type: object
@@ -630,20 +1081,23 @@ components:
     UploadReceipt:
       type: object
       additionalProperties: false
-      required: [upload_id, object_id, content_version, complete, size_bytes, expires_in_seconds]
+      required: [upload_id, object_id, content_version, complete, published, size_bytes, expires_in_seconds]
       properties:
         upload_id:
           type: string
           pattern: '^[0-9a-f]{32}$'
-          description: Session-scoped reservation ID; currently equal to content_version.
+          description: Reservation and commit request ID; currently equal to content_version.
         object_id:
           $ref: '#/components/schemas/ObjectId'
         content_version:
           type: string
           pattern: '^[0-9a-f]{32}$'
-          description: Fresh server-generated immutable content version, not yet published.
+          description: Fresh server-generated immutable content version.
         complete:
           type: boolean
+        published:
+          type: boolean
+          description: True only when status confirms a durable namespace publication.
         size_bytes:
           type: integer
           format: uint64
@@ -654,7 +1108,7 @@ components:
           type: integer
           format: uint64
           minimum: 0
-          description: Remaining lifetime rounded down; status does not renew it.
+          description: Remaining reservation lifetime rounded down; zero for durable published receipts.
     ObjectId:
       type: string
       pattern: '^[0-9a-f]{32}$'

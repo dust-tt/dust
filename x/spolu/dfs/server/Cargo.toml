@@ -19,15 +19,16 @@ serde = { version = "1", features = ["derive"] }
 sha2 = "0.10"
 slatedb = { version = "0.17", default-features = false, features = ["gcp"] }
 subtle = "2"
+tempfile = "3"
 thiserror = "2"
-tokio = { version = "1", features = ["io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+tokio-util = { version = "0.7", features = ["io", "rt"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]
 serde_json = "1"
-tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }
 tower = { version = "0.5", features = ["util"] }
 

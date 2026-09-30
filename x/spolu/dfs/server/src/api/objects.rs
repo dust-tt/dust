@@ -54,7 +54,7 @@ pub(super) fn default_limit() -> usize {
  */
 /// @swaggerschema ObjectAttributes in server/openapi.yaml.
 #[derive(Serialize)]
-struct ObjectAttributes {
+pub(super) struct ObjectAttributes {
     object_id: String,
     #[serde(flatten)]
     kind: KindAttributes,
@@ -383,4 +383,4 @@ pub(super) fn object_id(value: &str) -> Result<ObjectId, ApiError> {
 }
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;

@@ -12,9 +12,11 @@ use tokio::sync::Mutex;
 
 use crate::model::WorkspaceId;
 pub use commit::{MetadataBatch, MetadataMutation};
+pub use content::BlobRead;
 use keys::Keyspace;
+pub use operations::OperationRecord;
 pub use read::{ChangeEvent, ReadView};
-pub use upload::{UploadConfig, UploadError, UploadedBlob};
+pub use upload::{MAX_FILE_BYTES, UploadConfig, UploadError, UploadedBlob};
 
 /**
  * @cc [owner:spolu,label:backend] explicit-storage-configuration
@@ -120,6 +122,8 @@ pub struct Storage {
     publish: Mutex<()>,
     object_locks: locks::ObjectLockTable,
     transfers: upload::TransferBudget,
+    content_locks: locks::ObjectLockTable,
+    request_locks: locks::ObjectLockTable,
 }
 
 /// A trusted internal handle. Session authorization is required before constructing or using it.
@@ -138,6 +142,10 @@ impl WorkspaceStorage<'_> {
 }
 
 impl Storage {
+    pub(crate) async fn reserve_transfer(&self) -> Result<upload::TransferLease, UploadError> {
+        self.transfers.acquire().await
+    }
+
     pub fn workspace(&self, workspace: &WorkspaceId) -> Result<WorkspaceStorage<'_>> {
         Ok(WorkspaceStorage {
             storage: self,
@@ -195,6 +203,8 @@ impl Storage {
             publish: Mutex::new(()),
             object_locks: locks::ObjectLockTable::default(),
             transfers: UploadConfig::default().budget()?,
+            content_locks: locks::ObjectLockTable::default(),
+            request_locks: locks::ObjectLockTable::default(),
         })
     }
 
@@ -213,8 +223,10 @@ impl Storage {
 
 mod codec;
 mod commit;
+mod content;
 mod keys;
 mod locks;
+mod operations;
 mod read;
 #[cfg(test)]
 mod tests;

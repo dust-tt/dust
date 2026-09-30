@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::model::{EntryName, ObjectId, WorkspaceId};
+use crate::model::{EntryName, ObjectId, RequestId, WorkspaceId};
 
 /**
  * @cc [owner:spolu,label:security] scoped-key-encoding
@@ -85,6 +85,12 @@ impl Keyspace {
 
     pub fn workspace_record(&self) -> Vec<u8> {
         self.family(7)
+    }
+
+    pub fn operation(&self, id: RequestId) -> Vec<u8> {
+        let mut key = self.family(8);
+        key.extend_from_slice(id.as_bytes());
+        key
     }
 
     pub fn prefix(&self) -> &[u8] {

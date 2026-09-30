@@ -105,17 +105,27 @@ Rust code MUST propagate or explicitly handle fallible operations instead of cal
 expect().
 
 @cc [owner:spolu,label:product] file-handle-semantics
-When file handles are exposed, bind them to one session, stable object ID, and access mode. Opening
+Bind file handles to one session, stable object ID, and access mode. Opening
 MUST NOT hold a writer lock. Serialize content mutations per file; append MUST choose EOF within
 that serialization, and truncate/extension MUST publish a fresh version with zero-filled growth.
 O_TRUNC MUST execute as a write during open; read-only handles MUST NOT mutate content.
-Every operation MUST recheck current access. Rename preserves handles; the initial PoC rejects
+Every content operation MUST recheck current access; release may discard an inaccessible handle.
+Rename preserves handles; the initial PoC rejects
 further operations after unlink/replacement deletes their object. Release, session closure/expiry,
-and restart invalidate handles. Fsync MUST wait for preceding handle writes and report failures.
+and restart invalidate handles. Fsync MUST wait for preceding handle writes and report failures,
+rejecting sequence numbers the server has not accepted.
 
 @cc [owner:spolu,label:backend] upload-is-not-publication
-Completed uploads MUST contain no namespace side effects and MUST NOT acknowledge write/fsync.
+Content transfer completion MUST contain no namespace side effects and MUST NOT acknowledge
+write/fsync. Explicit upload publication is a separate mutation.
 Metadata commits MUST accept internal completed-upload descriptors instead of file bytes, validate
 workspace/object/version/size and storage origin, then publish atomically and await durability.
 Clients MUST NOT be able to construct trusted descriptors. Publication MUST reauthorize and check
 current namespace/content preconditions even when the upload previously passed authorization.
+
+@cc [owner:spolu,label:backend] recoverable-file-mutations
+File mutations MUST atomically persist a workspace-scoped request fingerprint and result with their
+metadata/index/event batch. Identical retries MUST return the durable original result without
+repeating the mutation; changed arguments or bytes MUST conflict. Recovery/status MUST authorize
+the current object. A missing receipt or disconnected caller MUST NOT be treated as proof of failure.
+Never reclaim receipts until a retry-expiry protocol makes reuse safe.

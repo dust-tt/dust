@@ -181,7 +181,7 @@ pub(crate) async fn update(
     .await
 }
 
-fn validate_mode(mode: u16) -> Result<(), ApiError> {
+pub(super) fn validate_mode(mode: u16) -> Result<(), ApiError> {
     if mode > 0o777 {
         return Err(ApiError::Unsupported);
     }
@@ -193,7 +193,7 @@ fn validate_mode(mode: u16) -> Result<(), ApiError> {
  * Metadata APIs MUST bound the resulting object's total UTF-8 key bytes plus decoded value bytes
  * to 32 KiB, including unchanged keys. Reject invalid keys or excess size before publication.
  */
-fn validate_xattrs(xattrs: &Xattrs) -> Result<(), ApiError> {
+pub(super) fn validate_xattrs(xattrs: &Xattrs) -> Result<(), ApiError> {
     if xattrs
         .keys()
         .any(|key| key.is_empty() || key.contains('\0'))

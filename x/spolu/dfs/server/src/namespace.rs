@@ -214,3 +214,6 @@ fn checked_child(
     }
     Ok(())
 }
+
+mod content;
+pub(crate) use content::{NewFileAttributes, operation_status, publish_content};

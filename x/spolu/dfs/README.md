@@ -13,11 +13,12 @@ API provides workspace-scoped snapshots, immutable blobs, and synchronous metada
 batches. Workspace creation issues a workspace key; that key issues sessions with fixed grants and
 authorizes explicit grant listing/updates.
 Session-authenticated reads, mkdir, metadata updates, moves/removal, and root/shared projections
-are available. Session-scoped sequential uploads stream to GCS with bounded buffers and completion
-receipts; file publication, streamed reads, and handle operations follow next. Virtual mounts, search,
-and FUSE remain later increments.
+are available. File APIs provide streamed uploads/publication, range reads, session handles, random
+writes, append, truncate, fsync, and durable retry receipts. Virtual mounts, search, and FUSE remain
+later increments.
 Optional GCS configuration opens SlateDB before serving HTTP and
-closes it after requests drain. Without it, the HTTP scaffold still runs without external services.
+closes it after requests and admitted file jobs drain. Without it, the HTTP scaffold still runs without
+external services.
 The server runs natively on macOS and Linux.
 
 Start with synchronous GCS/SlateDB operations through a single server, then add local server caching
@@ -184,7 +185,7 @@ All locks release before the WAL wait. Canceled requests release acquired locks,
 entries are reclaimed. Unrelated changes in the same workspace can trigger retries; after 16 stale
 attempts, return `conflict` without publication. Changes in other workspaces do not trigger retries.
 A failed/disconnected request can have committed: inspect the name or attributes before retrying.
-A broader retry protocol with request IDs arrives with file I/O.
+File content mutations use the request-ID protocol below.
 
 ## Rename and removal
 
@@ -206,7 +207,46 @@ Wrong kinds return `is_directory`/`not_directory`; nonempty removal/replacement 
 
 Each change atomically updates child entries, object/parent revisions and times, and events, deleting
 both grant indexes for removed/replaced objects, then awaits durability. Their blobs remain for
-snapshots/recovery; open-handle semantics arrive with file I/O. Repeated removal returns `not_found`.
+snapshots/recovery; handles to deleted objects return `not_found`. Repeated removal returns `not_found`.
+
+## File I/O
+
+All endpoints use the session key. JSON control bodies stay under 64 KiB; binary content streams
+separately. See [OpenAPI](server/openapi.yaml) for exact fields and headers.
+
+| Request | Purpose |
+| --- | --- |
+| `POST /uploads/start` | Reserve a create (`parent_id`, `name`) or replace (`object_id`, `expected_content_version`). |
+| `PUT /uploads/content` | Stream binary bytes with `Dfs-Upload-Id`; size may initially be unknown. |
+| `POST /uploads/commit` | Publish `upload_id`; creation accepts optional MIME, base64 xattrs, and mode. |
+| `POST /uploads/status` | Recover completion/publication state for `upload_id`. |
+| `POST /files/open` | Open `object_id` with read/write/append flags; return handle, sequence, and attributes. |
+| `POST /files/read` | Stream `{handle_id, offset, length}`; optional `content_version` rejects stale versions. |
+| `PUT /files/write` | Stream bytes with `Dfs-Handle-Id`, `Dfs-Request-Id`, `Dfs-Write-Sequence`, `Dfs-Write-Offset`, `Dfs-Write-Length`. |
+| `POST /files/truncate` | Set `{handle_id, request_id, sequence, size_bytes}`; growth supplies zeros. |
+| `POST /files/fsync` | Wait for `{handle_id, through_sequence}`; report unresolved failures. |
+| `POST /files/close` | Release `{handle_id}`. |
+| `POST /files/status` | Recover the durable receipt for `{object_id, request_id}`; null may mean still in flight. |
+
+Use `application/octet-stream` for binary bodies. Upload completion alone does not publish a file.
+Successful publication/edits finish GCS first, then one durable metadata/index/event/receipt batch.
+Reads pin the selected version for the response and clamp ranges to EOF. Rename preserves handles;
+unlink/replacement invalidates handles to the deleted object. Every content operation checks grants.
+
+Generate a fresh UUID (32 lowercase hex characters) for each edit; retry identical arguments/bytes
+with the same ID after an ambiguous response. Upload commits use their upload ID as request ID.
+Receipts survive restart; recreate sessions and handles before recovery. Handle sequences start at
+zero; send edits in order starting at one. `truncate: true` during open requires write access and a
+request ID, and consumes sequence one. A failed handle must retry its last request/sequence or be
+closed/reopened. Fsync cannot acknowledge writes the server has not received; close is not fsync.
+
+Random edits assemble a full version on anonymous disk, then upload it. Defaults: 1 GiB total scratch
+logical size (`DFS_SCRATCH_BYTES`), system temporary directory (`DFS_SCRATCH_DIR`), and 16 admitted
+file jobs (`DFS_FILE_MUTATIONS`). Handles cap at 4096/server and 256/session. Transfers share a 64 MiB
+buffer budget (`DFS_UPLOAD_MEMORY_MIB`), four active slots (`DFS_UPLOAD_CONCURRENCY`), and 16 waiters;
+each active transfer reserves 12 MiB. These bounds exclude SlateDB, transport, and allocator overhead.
+Resource exhaustion returns `capacity_exhausted`. Scratch files are not recovery state; acknowledged
+changes recover entirely from GCS. This synchronous baseline rewrites the whole blob on each edit.
 
 ## Grant administration
 
@@ -239,8 +279,9 @@ create immutable blobs, commit scoped metadata/index/event batches, and verify r
 Local tests also withhold WAL flushing and inject upload failures. A subprocess test kills the
 writer after acknowledgement and verifies the full batch from a fresh process, locally and on GCS.
 The same cloud fixture exercises workspace/session HTTP handlers against GCS, including restart:
-workspace keys remain valid, old session keys fail, and directories, attributes, and both grant
-indexes recover.
+workspace keys remain valid, old session keys fail, and directories, attributes, grant indexes,
+file contents, and mutation receipts recover. Local tests cover concurrent appends, 80 MiB files,
+scratch exhaustion, fsync ordering, revoked access, and disconnected publication with withheld WAL.
 The cloud fixture creates a fresh `<test-prefix>/tests/<uuid>/` for every run and deletes only that
 run's objects after success; failures leave the isolated prefix for inspection. The ignored `worker`
 test is an internal subprocess helper, not a standalone test command.

@@ -2,8 +2,8 @@
 
 [DESIGN.md](DESIGN.md) describes the architecture; [CONTRACTS](CONTRACTS) defines the invariants.
 The server scaffold, object model, synchronous storage, workspace/session APIs, namespace reads,
-directory creation, metadata updates, grant administration, moves/removal, and root/shared views
-are implemented today.
+directory creation, metadata updates, grant administration, moves/removal, root/shared views, and
+synchronous file I/O are implemented today.
 
 Work in small increments: each checkbox should produce a reviewable change with a focused test or
 demo. Split a checkbox further when needed. Keep the server runnable, update API documentation and
@@ -74,8 +74,7 @@ Validated on 2026-09-30 against `dust-dev-dfs-poc-spolu-20260930` in `dust-dev`,
 writer and recover metadata, indexes, events, and blobs in a fresh process. Upload failures and
 withheld/failed WAL persistence are covered locally; the broader failure matrix remains in group 8.
 See [server/STORAGE.md](server/STORAGE.md) for formats and commit guarantees.
-Uploads now stream with bounded buffers (6.1–4); the legacy internal read helper still buffers files
-until streamed range reads in 6.5, before FUSE integration.
+Uploads and reads now stream with bounded buffers (group 6); whole-file read helpers are test-only.
 
 ## 3. Workspace creation and sessions
 
@@ -115,8 +114,9 @@ cursors and fresh authorization per page; concurrent edits can require restartin
 Namespace and grant mutations prepare from a snapshot, acquire workspace/object locks in ID order,
 then validate the workspace change sequence under the shared publication lock before submitting.
 Stale attempts release locks and redo authorization and lock discovery; 16 stale attempts return
-`conflict`. Errors/no-ops validate too, idle locks are reclaimed, and all locks release before the WAL
-wait. Workspace-wide validation can retry after unrelated writes; narrower checks are deferred.
+`conflict`. Errors/no-ops validate too, idle locks are reclaimed, and namespace locks release before
+the WAL wait. Content/request gates introduced in group 6 span each file mutation through durability.
+Workspace-wide validation can retry after unrelated writes; narrower checks are deferred.
 Metadata and grant updates require the expected revision. Authorization tests cover grant unions,
 subtree moves without descendant rewrites, and queued mutations observing revocations before
 publication; denied operations leave no changes or events. Future endpoints must reuse these
@@ -163,25 +163,30 @@ aliases survive target renames and cannot reveal hidden ancestors.
   and determine the actual size before publication.
 - [x] Bound chunk sizes, queued bytes, and upload concurrency with backpressure and a shared server
   memory budget. Apply limits across concurrent transfers, not just individually.
-- [ ] Stream reads from GCS through HTTP and support offset/length ranges against a fixed content
+- [x] Stream reads from GCS through HTTP and support offset/length ranges against a fixed content
   version. Avoid collecting full files in memory on either the server or client.
-- [ ] Implement random writes, append, and truncation using temporary disk files to assemble fresh
+- [x] Implement random writes, append, and truncation using temporary disk files to assemble fresh
   immutable versions; stream existing bytes into scratch storage when needed. Bound disk usage,
   handle exhaustion, and clean up abandoned transfers. A version initially remains one whole blob.
-- [ ] Finish each content upload, then recheck authorization and expected revisions before atomically
+- [x] Finish each content upload, then recheck authorization and expected revisions before atomically
   publishing metadata, indexes, and events. Wait for SlateDB durability before acknowledging the
   mutation; upload completion alone does not publish the file. Metadata-only mutations need no upload.
-- [ ] Implement fsync as a barrier for preceding writes. Another session must then see the persisted
+- [x] Implement fsync as a barrier for preceding writes. Another session must then see the persisted
   metadata and bytes through the server.
-- [ ] Add request IDs/revision checks where retries could duplicate or overwrite mutations. Resolve
+- [x] Add request IDs/revision checks where retries could duplicate or overwrite mutations. Resolve
   ambiguous commit outcomes without assuming that a timed-out request failed to commit.
-- [ ] Test files larger than the memory budget, concurrent transfers, range reads, slow consumers,
+- [x] Test files larger than the memory budget, concurrent transfers, range reads, slow consumers,
   interrupted uploads, and disk exhaustion. Verify bounded memory and no partial publication.
 
-The first four tasks define the handle contract and implement session-scoped upload preparation,
-streaming, and completion receipts. Uploads do not publish files; the authorized namespace commit
-endpoint remains in 6.7. Handle endpoints arrive with the remaining I/O tasks. The initial PoC
-invalidates handles after unlink; POSIX retention is deferred. Streamed range reads remain in 6.5.
+Implemented upload publication, bounded versioned reads, session handles, serialized edits/append,
+truncate, fsync sequences, and durable request receipts. Random edits rewrite one whole immutable
+blob using quota-reserved anonymous disk. HTTP disconnect cannot cancel admitted publication;
+shutdown drains jobs. The initial PoC invalidates handles after unlink; POSIX retention is deferred.
+
+Local tests cover 80 MiB files, shared read/write backpressure, scratch quota/ENOSPC handling,
+interrupted bodies, concurrent appends, stale versions, revocations, fsync ordering, and recovery.
+Withheld WAL tests discard an unacknowledged batch or recover one atomic mutation/receipt despite a
+lost response. The GCS fixture also exercises file API creation, edits, reads, and retries after restart.
 
 **Done when:** one session writes and fsyncs a file, another reads it from persisted state, and a
 server restart preserves acknowledged changes. A competing writer waits without blocking others.
@@ -217,6 +222,8 @@ the gate before adding dfs server caching; slow synchronous performance is expec
   state.
 - [ ] Add conservative orphan cleanup that preserves live, open-handle, in-flight, and recoverable
   references. Validate deletion races before enabling automatic reclamation.
+- [ ] Define request receipt retention and retry expiry before reclaiming durable receipts; never
+  let an expired receipt silently turn an old retry into a second append or overwrite.
 - [ ] Exercise read/write failures and retries with two clients while preserving tenant isolation.
 
 **Done when:** the synchronous baseline recovers consistently from crashes and failures without

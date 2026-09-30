@@ -13,6 +13,7 @@ use crate::model::{
     ParentLink, WorkspaceId, Xattrs,
 };
 
+mod files;
 mod recovery;
 
 #[test]
@@ -148,11 +149,12 @@ async fn gcs_storage_round_trip() -> Result<()> {
         .parse()?;
     let prefix: StoragePrefix = format!("{}/tests/{}", base.0, ObjectId::generate()).parse()?;
     let store = gcs_store(&bucket)?;
-    tokio::time::timeout(Duration::from_secs(120), async {
+    tokio::time::timeout(Duration::from_secs(240), async {
         exercise_storage(store.clone(), &prefix).await?;
         recovery::exercise_recovery("gcs", &bucket, &format!("{}/recovery", prefix.0)).await?;
         crate::api::exercise_sessions(store.clone(), &format!("{}/sessions", prefix.0).parse()?)
             .await?;
+        crate::api::exercise_files(store.clone(), &format!("{}/files", prefix.0).parse()?).await?;
         cleanup_fixture(store, &prefix).await
     })
     .await

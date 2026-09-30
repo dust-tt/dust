@@ -1,10 +1,23 @@
 use crate::{
     api::ApiError,
     model::WorkspaceId,
-    storage::{MetadataMutation, ReadView, Storage},
+    storage::{MetadataMutation, ReadView, Storage, UploadedBlob},
 };
 
 const MAX_ATTEMPTS: usize = 16;
+
+pub(super) async fn mutate<T, F, Fut>(
+    storage: &Storage,
+    workspace: &WorkspaceId,
+    prepare: F,
+) -> Result<T, ApiError>
+where
+    F: Fn(ReadView) -> Fut + Send + Sync,
+    Fut: Future<Output = Result<(T, Vec<MetadataMutation>), ApiError>> + Send,
+    T: Send,
+{
+    mutate_content(storage, workspace, &[], || Ok(()), prepare).await
+}
 
 /**
  * @cc [owner:spolu,label:security;concurrency] optimistic-namespace-mutation
@@ -16,9 +29,11 @@ const MAX_ATTEMPTS: usize = 16;
  * retries to 16 attempts, then return Conflict without publication. Release object/publication locks
  * before durability waits. Never retry an error after submission, whose outcome may be ambiguous.
  */
-pub(super) async fn mutate<T, F, Fut>(
+pub(super) async fn mutate_content<T, F, Fut>(
     storage: &Storage,
     workspace: &WorkspaceId,
+    uploads: &[UploadedBlob],
+    check_session: impl Fn() -> Result<(), ApiError> + Send + Sync,
     prepare: F,
 ) -> Result<T, ApiError>
 where
@@ -30,6 +45,7 @@ where
         .workspace(workspace)
         .map_err(|_| ApiError::Unavailable)?;
     for _ in 0..MAX_ATTEMPTS {
+        check_session()?;
         let view = scoped
             .read_view()
             .await
@@ -38,6 +54,7 @@ where
             Ok(prepared) => prepared,
             Err(error) => {
                 let writer = scoped.begin_metadata_write().await;
+                check_session()?;
                 if writer
                     .is_current(&view)
                     .await
@@ -48,15 +65,18 @@ where
                 continue;
             }
         };
-        let prepared = scoped
-            .prepare_metadata(&view, mutations)
-            .await
-            .map_err(|_| ApiError::Unavailable)?;
+        let prepared = if uploads.is_empty() {
+            scoped.prepare_metadata(&view, mutations).await
+        } else {
+            scoped.prepare_content(&view, mutations, uploads).await
+        }
+        .map_err(|_| ApiError::Unavailable)?;
         let locks = scoped
             .lock_objects(&prepared.object_ids())
             .await
             .map_err(|_| ApiError::Unavailable)?;
         let writer = scoped.begin_metadata_write().await;
+        check_session()?;
         let published = writer
             .try_publish(prepared)
             .await

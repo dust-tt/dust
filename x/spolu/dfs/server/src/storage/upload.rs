@@ -16,7 +16,7 @@ use crate::model::{ContentVersionId, FileContent, ObjectId, WorkspaceId};
 
 pub const UPLOAD_PART_BYTES: usize = 8 * 1024 * 1024;
 pub const MAX_INPUT_CHUNK_BYTES: usize = 1024 * 1024;
-const MAX_PARTS: u64 = 10_000;
+pub const MAX_FILE_BYTES: u64 = 10_000 * UPLOAD_PART_BYTES as u64;
 // One part, one incoming frame, and headroom for bounded multipart bookkeeping.
 const TRANSFER_MEMORY_MIB: usize = 12;
 const MAX_WAITING_TRANSFERS: usize = 16;
@@ -24,7 +24,7 @@ const INPUT_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Args, Clone, Debug)]
 pub struct UploadConfig {
-    /// Shared upload buffer budget (MiB); excludes HTTP/TLS buffers and SlateDB.
+    /// Shared upload/read/write-body buffer budget (MiB); excludes HTTP/TLS buffers and SlateDB.
     #[arg(long, env = "DFS_UPLOAD_MEMORY_MIB", default_value_t = 64)]
     pub upload_memory_mib: usize,
 
@@ -61,6 +61,31 @@ impl UploadConfig {
 pub(super) struct TransferBudget {
     active: Arc<Semaphore>,
     admitted: Arc<Semaphore>,
+}
+
+pub(crate) struct TransferLease {
+    _admitted: OwnedSemaphorePermit,
+    _active: OwnedSemaphorePermit,
+}
+
+impl TransferBudget {
+    pub(super) async fn acquire(&self) -> Result<TransferLease, UploadError> {
+        let admitted = self
+            .admitted
+            .clone()
+            .try_acquire_owned()
+            .map_err(|_| UploadError::Capacity)?;
+        let active = self
+            .active
+            .clone()
+            .acquire_owned()
+            .await
+            .map_err(|_| UploadError::Capacity)?;
+        Ok(TransferLease {
+            _admitted: admitted,
+            _active: active,
+        })
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -124,18 +149,7 @@ impl WorkspaceStorage<'_> {
     where
         S: Stream<Item = Result<Bytes>> + Send,
     {
-        let budget = &self.storage.transfers;
-        let _admitted = budget
-            .admitted
-            .clone()
-            .try_acquire_owned()
-            .map_err(|_| UploadError::Capacity)?;
-        let _active: OwnedSemaphorePermit = budget
-            .active
-            .clone()
-            .acquire_owned()
-            .await
-            .map_err(|_| UploadError::Capacity)?;
+        let _lease = self.storage.transfers.acquire().await?;
         let final_path = self.blob_path(object_id, version);
         let temporary = Path::from(format!(
             "staging/{}/{}",
@@ -194,7 +208,7 @@ impl WorkspaceStorage<'_> {
             size = size
                 .checked_add(chunk.len() as u64)
                 .ok_or(UploadError::Capacity)?;
-            if size > MAX_PARTS * UPLOAD_PART_BYTES as u64 {
+            if size > MAX_FILE_BYTES {
                 return Err(UploadError::Capacity);
             }
             let mut remaining = chunk.as_ref();

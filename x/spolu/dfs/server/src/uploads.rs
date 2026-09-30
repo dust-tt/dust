@@ -149,6 +149,27 @@ impl Uploads {
             finished: false,
         })
     }
+
+    /**
+     * @cc [owner:spolu,label:backend;performance] release-published-upload
+     * Call only after confirming durable publication or its authorized replay for this workspace/ID.
+     * Release the reservation immediately without deleting the blob or persistent retry receipt.
+     * Missing reservations are a no-op; never remove a reservation from another workspace.
+     */
+    pub fn release_published(
+        &self,
+        workspace: &WorkspaceId,
+        id: ContentVersionId,
+    ) -> Result<(), ApiError> {
+        let mut uploads = self.0.lock().map_err(|_| ApiError::Unavailable)?;
+        if uploads
+            .get(&id)
+            .is_some_and(|upload| upload.workspace == *workspace)
+        {
+            uploads.remove(&id);
+        }
+        Ok(())
+    }
 }
 
 pub(crate) struct UploadLease<'a> {

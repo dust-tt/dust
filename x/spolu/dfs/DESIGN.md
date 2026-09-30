@@ -118,7 +118,7 @@ These are the baseline semantics; metadata fields and wire types arrive with the
   on both files and directories, defaulting to `application/octet-stream` and `inode/directory`.
 - **Unsupported:** Symlinks, hard links, special files, ownership changes, setuid/setgid/sticky bits,
   POSIX ACLs, and advisory locks return explicit unsupported errors; never silently succeed.
-  The file-handle contract below applies when those endpoints arrive.
+  The file-handle contract below applies to the implemented file endpoints.
 
 ## API errors
 
@@ -172,8 +172,9 @@ Mutations prepare against one snapshot outside publication, then lock touched ob
 workspace and ascending object ID. Under a short shared publication lock, compare the snapshot's
 workspace change sequence with current memory-visible state and submit atomically if unchanged.
 Otherwise release locks, reread, reauthorize, and recompute the entire lock set; after 16 stale attempts
-return `conflict` without publication. Validate errors and no-ops too. All locks release before WAL
-durability waits; cancellation cleans up held locks and idle lock entries. The workspace check also
+return `conflict` without publication. Validate errors and no-ops too. Namespace locks release before
+WAL durability waits; per-file content and request gates span the complete mutation. Idle lock entries
+are reclaimed. The workspace check also
 catches ancestor grants/moves but may retry after unrelated writes in that workspace. Narrower
 validation is a future optimization; no dfs metadata or authorization cache is introduced.
 
@@ -275,31 +276,63 @@ includes canonical parents; client-side virtual parent navigation remains deferr
   fsync. Fsync waits for preceding writes on that handle and reports their failures; release does not
   substitute for it. Later server caching changes durability, not the visibility barrier.
 
-### Upload protocol (implemented)
+### Uploads and publication
 
 `POST /uploads/start` takes `operation: "create"`, `parent_id`, and `name`, or `operation: "replace"`,
 `object_id`, and `expected_content_version`. It authorizes the target and reserves fresh IDs for that
 session. `PUT /uploads/content` sends `application/octet-stream` with `Dfs-Upload-Id` and the session
-bearer key; Content-Length is optional. `POST /uploads/status` takes `upload_id` to recover a receipt.
-Completion reports the actual size and retains an internal workspace/object/version/size descriptor.
-It does **not** publish a file or acknowledge fsync; the publication endpoint arrives in 6.7.
+bearer key; Content-Length is optional. Completion reports the actual size and retains an internal
+workspace/object/version/size descriptor. `POST /uploads/commit` takes `upload_id` and optional initial
+MIME/xattrs/mode for creation. It reauthorizes, checks name vacancy or the expected content version,
+then publishes metadata, indexes, an event, and a request receipt atomically and durably. Replacement
+preserves unrelated metadata. Upload completion alone never publishes a file or acknowledges fsync.
 
-Reservations/receipts expire after 15 minutes, cap at 1024 server-wide, and disappear on restart.
+Unpublished reservations expire after 15 minutes, cap at 1024 server-wide, and disappear on restart.
+Durable publication releases its reservation immediately; retries use the persisted receipt.
 A transfer is one-shot; duplicate submission conflicts. Failed transfers discard their reservations;
-status distinguishes a retained completion from a lost receipt. Recheck session and current grants
-at completion, and recheck again when publication is implemented. Expiry leaves unreachable blobs
-for future reclamation; it never deletes immutable versions that might have been referenced.
+`POST /uploads/status` distinguishes pending, completed, and published uploads. Publication receipts
+survive restart; currently authorized sessions can recover them and safely repeat the same commit.
+The upload ID is its commit request ID. Expiry leaves unreachable blobs for future reclamation;
+it never deletes immutable versions that might have been referenced.
 
-Stream one 8 MiB part at a time, with at most one 1 MiB input frame. Reserve 12 MiB per active upload
-from a shared 64 MiB budget, with at most four active transfers and 16 queued transfers; excess requests
+Stream one 8 MiB part at a time, with at most one 1 MiB input frame. Uploads, range reads, and incoming
+write bodies share a 64 MiB budget, reserving 12 MiB per active transfer. Allow at most four active
+transfers and 16 queued transfers; excess requests
 fail with `capacity_exhausted` without polling their body. Limits are configurable via
-`DFS_UPLOAD_MEMORY_MIB` and `DFS_UPLOAD_CONCURRENCY`; this budgets upload buffers, not total process RSS
+`DFS_UPLOAD_MEMORY_MIB` and `DFS_UPLOAD_CONCURRENCY`; this budgets transfer buffers, not total process RSS
 (HTTP/TLS, SlateDB, and allocator overhead are separate). Input idle timeout is 30 seconds; the reservation
 expiry also bounds total transfer time. A version is capped at 10,000 parts (about 78 GiB).
 Small/empty files use a single create-only PUT. Multipart uploads use temporary blobs followed by a
 create-only GCS copy; no full-file buffering or local disk is needed. Clean temporary blobs on normal
 completion/failure; cancellation or process death can leave temporary objects/incomplete multipart
 uploads for later cleanup. No orphan is ever published automatically.
+
+### Handles, edits, and retries
+
+`POST /files/open` returns a session-local handle and attributes. `/files/read` streams an offset/length
+range, clamped to EOF, from the current immutable version; an optional version must still be current.
+The response pins that version even if another writer publishes during the read. `PUT /files/write`
+sends raw bytes with handle, request ID, sequence, offset, and length headers. `/files/truncate` changes
+length. Edits assemble a complete new version on anonymous temporary disk, then stream it to GCS;
+no full-file RAM buffer or local recovery data is needed. Sparse growth reads as zeros.
+
+Each handle starts at sequence zero. Send writes/truncates in order starting at one; truncating open
+consumes sequence one. `/files/fsync` names the last sequence it must cover, waits behind admitted
+writes, and rejects unseen sequences or unresolved failures. After a failure, retry the same request
+and sequence or close/reopen the handle. `/files/close` releases it without substituting for fsync.
+
+Use a fresh client UUID per edit. Persist its request fingerprint and result with the mutation;
+identical retries return the original receipt, while changed arguments/bytes conflict. Receipts are
+workspace-scoped and always reauthorize the current object. `/files/status` recovers a durable receipt
+after a lost response; null can mean the operation is still in flight. After restart, recreate the
+session/handle and retry with the original request ID. Admitted publication continues after HTTP
+disconnect; graceful shutdown drains those jobs before closing SlateDB. Receipt reclamation is deferred.
+
+Limits: 4096 handles/server, 256/session, 16 admitted file jobs, and 1 GiB shared scratch logical size.
+Configure `DFS_FILE_MUTATIONS`, `DFS_SCRATCH_BYTES`, and `DFS_SCRATCH_DIR`. Reserve the resulting file's
+size before assembly; exhaustion returns `capacity_exhausted`. Anonymous files and quota reservations
+release on completion/failure; process death leaves no named scratch files. Preparation has a 15-minute
+timeout; metadata publication is never cancelled by that timeout.
 
 ## Writes, fsync, and recovery
 

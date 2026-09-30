@@ -7,7 +7,7 @@ use anyhow::{Result, anyhow};
 use tokio::sync::{Mutex, OwnedMutexGuard};
 
 use super::WorkspaceStorage;
-use crate::model::{ObjectId, WorkspaceId};
+use crate::model::{ObjectId, RequestId, WorkspaceId};
 
 type LockKey = (WorkspaceId, [u8; 16]);
 type Registry = RegistryMutex<HashMap<LockKey, Weak<LockEntry>>>;
@@ -87,6 +87,23 @@ impl ObjectLockTable {
 }
 
 impl WorkspaceStorage<'_> {
+    pub(crate) async fn lock_content(&self, id: ObjectId) -> Result<ObjectLocks> {
+        self.storage
+            .content_locks
+            .acquire(&self.keys.workspace, &[id])
+            .await
+    }
+
+    pub(crate) async fn lock_request(&self, id: RequestId) -> Result<ObjectLocks> {
+        self.storage
+            .request_locks
+            .acquire(
+                &self.keys.workspace,
+                &[ObjectId::from_bytes(*id.as_bytes())],
+            )
+            .await
+    }
+
     pub(crate) async fn lock_objects(&self, ids: &[ObjectId]) -> Result<ObjectLocks> {
         self.storage
             .object_locks

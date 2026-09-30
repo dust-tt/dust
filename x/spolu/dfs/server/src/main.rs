@@ -17,6 +17,9 @@ struct Config {
 
     #[command(flatten)]
     storage: StorageConfig,
+
+    #[command(flatten)]
+    files: dfs_server::files::FileConfig,
 }
 
 /**
@@ -39,8 +42,8 @@ async fn main() -> Result<()> {
 
     info!(address = %listener.local_addr()?, "dfs server listening");
 
-    let state = api::ApiState::new(storage.clone(), access);
-    let serve_result = axum::serve(listener, api::router(state))
+    let state = api::ApiState::new(storage.clone(), access).with_file_config(config.files)?;
+    let serve_result = axum::serve(listener, api::router(state.clone()))
         .with_graceful_shutdown(async move {
             tokio::select! {
                 _ = interrupt.recv() => {}
@@ -51,6 +54,7 @@ async fn main() -> Result<()> {
         .await
         .context("serve HTTP requests");
 
+    state.drain_file_jobs().await;
     let close_result = match storage {
         Some(storage) => storage.close().await,
         None => Ok(()),

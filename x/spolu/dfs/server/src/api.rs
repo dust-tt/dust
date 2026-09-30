@@ -1,5 +1,6 @@
 mod access;
 mod error;
+mod files;
 mod grants;
 mod objects;
 mod sessions;
@@ -18,15 +19,19 @@ use serde::{Serialize, de::DeserializeOwned};
 
 use crate::storage::Storage;
 pub use access::Access;
+pub(crate) use access::Session;
 pub use error::ApiError;
 #[cfg(test)]
-pub(crate) use sessions::tests::exercise_sessions;
+pub(crate) use objects::tests::exercise_files;
+#[cfg(test)]
+pub(crate) use sessions::tests::{call as test_call, exercise_sessions, text as test_text};
 
 #[derive(Clone)]
 pub struct ApiState {
     storage: Option<Arc<Storage>>,
     access: Arc<Access>,
     uploads: Arc<crate::uploads::Uploads>,
+    files: Arc<crate::files::Files>,
 }
 
 impl ApiState {
@@ -35,7 +40,17 @@ impl ApiState {
             storage,
             access: Arc::new(access),
             uploads: Arc::new(crate::uploads::Uploads::default()),
+            files: Arc::new(crate::files::Files::default()),
         }
+    }
+
+    pub fn with_file_config(mut self, config: crate::files::FileConfig) -> anyhow::Result<Self> {
+        self.files = Arc::new(crate::files::Files::new(config)?);
+        Ok(self)
+    }
+
+    pub async fn drain_file_jobs(&self) {
+        self.files.drain().await;
     }
 
     fn storage(&self) -> Result<&Storage, ApiError> {
@@ -50,6 +65,14 @@ pub fn router(state: ApiState) -> Router {
         .route("/sessions", post(sessions::create_session))
         .route("/sessions/current", get(sessions::current_session))
         .route("/sessions/{session_id}", delete(sessions::close_session))
+        .route("/files/open", post(files::open))
+        .route("/files/read", post(files::read))
+        .route("/files/write", put(files::write))
+        .route("/files/truncate", post(files::truncate))
+        .route("/files/fsync", post(files::fsync))
+        .route("/files/close", post(files::close))
+        .route("/files/status", post(files::status))
+        .route("/uploads/commit", post(uploads::commit))
         .route("/uploads/start", post(uploads::start))
         .route("/uploads/status", post(uploads::status))
         .route("/uploads/content", put(uploads::content))
