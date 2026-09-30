@@ -89,6 +89,7 @@ export function useInputBarSlashCommandCapabilities({
   } = useSearchSkills({
     owner,
     searchTerm: query,
+    prioritizeFavorites: true,
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
     disabled: !useSkillSearch,
   });
@@ -158,6 +159,7 @@ export function useSkillBuilderSlashCommandCapabilities({
   } = useSearchSkills({
     owner,
     searchTerm: query,
+    prioritizeFavorites: true,
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
     disabled: !useSkillSearch,
   });

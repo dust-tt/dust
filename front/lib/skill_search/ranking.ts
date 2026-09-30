@@ -11,7 +11,7 @@ export function buildSkillDefaultSort({
 }: {
   sortBy?: SkillSearchSort;
   sortOrder?: SkillSearchSortOrder;
-} = {}): estypes.Sort {
+} = {}): estypes.SortCombinations[] {
   switch (sortBy) {
     case "relevance":
       return [

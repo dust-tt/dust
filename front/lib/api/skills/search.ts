@@ -85,6 +85,12 @@ function buildFacetAggregation(
  * requirements. Pagination reads the live index; concurrent index changes may cause skips or
  * duplicates.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] empty-query-favorite-skills
+ * When prioritizeFavorites is true and the query is blank, the caller's favorites MUST precede
+ * other authorized hits before pagination. Nonblank queries and requests without this option
+ * MUST retain their existing ranking. Favorite state MUST belong to the current caller.
+ */
 export async function searchSkills(
   auth: Authenticator,
   {
@@ -93,6 +99,7 @@ export async function searchSkills(
     sortBy,
     sortOrder,
     facets = [],
+    prioritizeFavorites = false,
     ...options
   }: {
     searchTerm: string;
@@ -103,6 +110,7 @@ export async function searchSkills(
     offset?: number;
     sortBy?: SkillSearchSort;
     sortOrder?: SkillSearchSortOrder;
+    prioritizeFavorites?: boolean;
   }
 ) {
   if (offset + limit > MAX_SKILL_SEARCH_WINDOW) {
@@ -111,10 +119,33 @@ export async function searchSkills(
 
   const codeDefinedSkillIds =
     await SkillResource.listAvailableCodeDefinedIds(auth);
-  const query = buildSkillSearchQuery(auth, {
+  const prioritizeEmptyQueryFavorites =
+    prioritizeFavorites && !options.searchTerm.trim();
+  let favoriteSkillIds: string[] = [];
+  if (prioritizeEmptyQueryFavorites) {
+    favoriteSkillIds = await SkillResource.listFavoriteIdsForCurrentUser(auth);
+  }
+  const favoriteIds = new Set(favoriteSkillIds);
+  const authorizedQuery = buildSkillSearchQuery(auth, {
     ...options,
     codeDefinedSkillIds,
   });
+  const query =
+    favoriteIds.size > 0
+      ? {
+          bool: {
+            must: [authorizedQuery],
+            should: [
+              {
+                constant_score: {
+                  filter: { terms: { skill_id: [...favoriteIds] } },
+                },
+              },
+            ],
+          },
+        }
+      : authorizedQuery;
+  const sort = buildSkillDefaultSort({ sortBy, sortOrder });
 
   const result = await withEs((client) =>
     client.search<SkillSearchDocument, SkillSearchAggregations>({
@@ -124,7 +155,8 @@ export async function searchSkills(
       from: offset,
       size: limit,
       track_total_hits: true,
-      sort: buildSkillDefaultSort({ sortBy, sortOrder }),
+      sort:
+        favoriteIds.size > 0 ? [{ _score: { order: "desc" } }, ...sort] : sort,
       ...(facets.length > 0
         ? {
             aggs: Object.fromEntries(
@@ -157,9 +189,12 @@ export async function searchSkills(
   }
 
   return new Ok({
-    skills: removeNulls(hits.map((hit) => hit._source)).map((document) =>
-      toSkillListItem(auth, document)
-    ),
+    skills: removeNulls(hits.map((hit) => hit._source)).map((document) => ({
+      ...toSkillListItem(auth, document),
+      ...(prioritizeEmptyQueryFavorites
+        ? { isFavorite: favoriteIds.has(document.skill_id) }
+        : {}),
+    })),
     total: totalCount,
     hasMore: offset + hits.length < totalCount,
     facets: facetValues,

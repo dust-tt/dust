@@ -381,6 +381,29 @@ describe("getToolSlashCommandItem", () => {
 });
 
 describe("buildCapabilitySlashCommandItems", () => {
+  it.each([
+    "",
+    "   ",
+  ])("puts favorites first for a blank ES search query %j before limiting", (query) => {
+    const result = buildCapabilitySlashCommandItems({
+      query,
+      useSearchRanking: true,
+      skills: [
+        ...Array.from({ length: MAX_RENDERED_CAPABILITY_ITEMS }, (_, index) =>
+          skillSuggestion({ name: `Alpha ${index}`, sId: `skill-${index}` })
+        ),
+        {
+          ...skillSuggestion({ name: "Zulu", sId: "favorite" }),
+          isFavorite: true,
+        },
+      ],
+      tools: [toolSuggestion({ label: "A tool", sId: "tool" })],
+    });
+
+    expect(result[0].id).toBe("favorite");
+    expect(result).toHaveLength(MAX_RENDERED_CAPABILITY_ITEMS);
+  });
+
   it("reranks search results by autocomplete relevance", () => {
     const result = buildCapabilitySlashCommandItems({
       query: "guide",

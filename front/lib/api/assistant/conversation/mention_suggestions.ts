@@ -171,6 +171,11 @@ export function parseMentionSelectParam(
   };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product;security] empty-query-favorite-mentions
+ * With agents selected, agent search enabled and a blank query, active favorites readable by the caller MUST
+ * precede other suggestions, including participants, without duplicates and within the display limit.
+ */
 export const suggestionsOfMentions = async (
   auth: Authenticator,
   {
@@ -201,6 +206,7 @@ export const suggestionsOfMentions = async (
   let lastMentionedId: string | null = null;
 
   const agentSuggestions: RichAgentMentionInConversation[] = [];
+  let favoriteSuggestions: RichAgentMentionInConversation[] = [];
   const userSuggestions: RichUserMentionInConversation[] = [];
   let participantUsers: RichUserMentionInConversation[] = [];
   let participantAgents: RichAgentMentionInConversation[] = [];
@@ -283,6 +289,22 @@ export const suggestionsOfMentions = async (
     const useAgentSearch = await auth.hasFeatureFlag("new_manage_agents_page");
     let activeAgents: RichAgentMentionInConversation[] | null = null;
     if (useAgentSearch) {
+      if (!query.trim()) {
+        const favorites = await AgentResource.listFavoritesForCurrentUser(auth);
+        favoriteSuggestions = favorites
+          .filter(
+            (agent) => agent.status === "active" && auth.can("read", agent)
+          )
+          .toSorted((a, b) => a.name.localeCompare(b.name))
+          .map((agent) => ({
+            type: "agent",
+            id: agent.sId,
+            label: agent.name,
+            pictureUrl: agent.pictureUrl,
+            description: agent.description,
+            userFavorite: true,
+          }));
+      }
       const result = await searchAgents(auth, {
         searchTerm: query,
         limit: SUGGESTION_DISPLAY_LIMIT,
@@ -411,31 +433,39 @@ export const suggestionsOfMentions = async (
   }
 
   const selectedAgents = agentSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
+  const favoriteIds = new Set(favoriteSuggestions.map((agent) => agent.id));
+  const withFavorites = (suggestions: RichMention[]): RichMention[] =>
+    [
+      ...favoriteSuggestions,
+      ...suggestions.filter((suggestion) => !favoriteIds.has(suggestion.id)),
+    ].slice(0, SUGGESTION_DISPLAY_LIMIT);
 
   // If only one type is requested, keep the simple ordering.
   if (!select.agents && select.users) {
     return userSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
   }
   if (select.agents && !select.users) {
-    return selectedAgents;
+    return withFavorites(selectedAgents);
   }
 
   // Both agents and users are requested.
   // If we have no users, fall back to agents.
   if (userSuggestions.length === 0) {
-    return selectedAgents;
+    return withFavorites(selectedAgents);
   }
 
   // No agent suggestions available, fallback to users.
   if (selectedAgents.length === 0) {
-    return userSuggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
+    return withFavorites(userSuggestions);
   }
 
-  return interleaveMentionsPreservingAgentOrder(
-    selectedAgents,
-    userSuggestions,
-    normalizedQuery,
-    lastMentionedId,
-    conversationId
+  return withFavorites(
+    interleaveMentionsPreservingAgentOrder(
+      selectedAgents,
+      userSuggestions,
+      normalizedQuery,
+      lastMentionedId,
+      conversationId
+    )
   );
 };

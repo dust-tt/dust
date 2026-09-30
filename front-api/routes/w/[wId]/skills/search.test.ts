@@ -39,6 +39,26 @@ describe("POST /api/w/:wId/skills/search", () => {
     searchSkills.mockReset();
   });
 
+  it("forwards the optional favorite preference to search", async () => {
+    const { workspace } = await setup();
+    searchSkills.mockResolvedValue(
+      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+    );
+
+    const response = await searchRequest(workspace.sId, {
+      prioritizeFavorites: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect(searchSkills).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        searchTerm: "",
+        prioritizeFavorites: true,
+      })
+    );
+  });
+
   it.each([
     "user",
     "admin",
@@ -94,6 +114,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
+      prioritizeFavorites: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,

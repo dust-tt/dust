@@ -1642,6 +1642,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     context?: SkillFetchContext
   ): Promise<SkillResource[]> {
+    const skillIds = await this.listFavoriteIdsForCurrentUser(auth);
+    return this.fetchByIds(auth, skillIds, {
+      ...context,
+      onlyActive: true,
+    });
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:security] favorite-skill-ids
+   * Return only favorite IDs stored for the current user in the authenticated workspace, or
+   * none without a user. IDs may reference unreadable or inactive skills; callers MUST authorize
+   * and filter them before exposing skill metadata.
+   */
+  static async listFavoriteIdsForCurrentUser(
+    auth: Authenticator
+  ): Promise<string[]> {
     const user = auth.user();
     if (!user) {
       return [];
@@ -1656,14 +1672,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    if (!favorites || favorites.skillIds.length === 0) {
-      return [];
-    }
-
-    return this.fetchByIds(auth, favorites.skillIds, {
-      ...context,
-      onlyActive: true,
-    });
+    return favorites?.skillIds ?? [];
   }
 
   async isFavoriteForCurrentUser(auth: Authenticator): Promise<boolean> {

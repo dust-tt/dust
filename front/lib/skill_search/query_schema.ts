@@ -39,4 +39,6 @@ export const SearchSkillsQuerySchema = z.object({
     .optional(),
   sortBy: z.enum(SKILL_SEARCH_SORTS).optional(),
   sortOrder: z.enum(SKILL_SEARCH_SORT_ORDERS).optional(),
+  // Applies only to blank queries; otherwise search ranking is unchanged.
+  prioritizeFavorites: z.boolean().optional(),
 });

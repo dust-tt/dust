@@ -39,6 +39,60 @@ describe("searchSkills pagination", () => {
     mockSearch.mockReset();
   });
 
+  it.each([
+    "",
+    "   ",
+    "Zulu",
+  ])("prioritizes caller favorites only for blank queries: %j", async (searchTerm) => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const skill = await SkillFactory.create(auth, { name: "Zulu" });
+    const favoriteResult = await skill.setFavorite(auth, true);
+    expect(favoriteResult.isOk()).toBe(true);
+    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
+    mockSearch.mockResolvedValue({
+      hits: {
+        hits: [{ _source: document }],
+        total: { value: 1, relation: "eq" },
+      },
+    });
+
+    const result = await searchSkills(auth, {
+      searchTerm,
+      prioritizeFavorites: true,
+      sortBy: "name",
+      limit: 1,
+    });
+    assert(result.isOk());
+    const request = mockSearch.mock.lastCall![0];
+    const codeDefinedSkillIds =
+      await SkillResource.listAvailableCodeDefinedIds(auth);
+    const authorizedQuery = buildSkillSearchQuery(auth, {
+      searchTerm,
+      codeDefinedSkillIds,
+    });
+    if (!searchTerm.trim()) {
+      expect(result.value.skills[0].isFavorite).toBe(true);
+      expect(request.query).toEqual({
+        bool: {
+          must: [authorizedQuery],
+          should: [
+            {
+              constant_score: { filter: { terms: { skill_id: [skill.sId] } } },
+            },
+          ],
+        },
+      });
+      expect(request.sort[0]).toEqual({ _score: { order: "desc" } });
+    } else {
+      expect(result.value.skills[0]).not.toHaveProperty("isFavorite");
+      expect(request.query).toEqual(authorizedQuery);
+      expect(request.sort[0]).toEqual({
+        "name.keyword": { order: "asc", missing: "_last" },
+      });
+    }
+    expect(request.size).toBe(1);
+  });
+
   it("defaults to the first page of maximum size and returns an empty total for empty results", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue({
