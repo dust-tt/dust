@@ -1459,7 +1459,7 @@ describe("FileResource", () => {
       expect(result.error).toEqual({
         tracked: false,
         message:
-          "Frame file access requires a user. Use a personal API key instead of a workspace API key.",
+          "Frame file access requires a user signed in to Dust. Create or update this Frame in the Dust app.",
       });
     });
 

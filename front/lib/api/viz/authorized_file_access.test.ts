@@ -206,7 +206,7 @@ describe("computeAuthorizedFileAccess", () => {
     assert(result.isErr());
     expect(result.error.code).toBe("invalid_request_error");
     expect(result.error.message).toBe(
-      "Frame file access requires a user. Use a personal API key instead of a workspace API key."
+      "Frame file access requires a user signed in to Dust. Create or update this Frame in the Dust app."
     );
   });
 
@@ -906,7 +906,9 @@ describe("ensureAuthorizedFileAccessForShare", () => {
 
     assert(result.isErr());
     expect(result.error.code).toBe("invalid_request_error");
-    expect(result.error.message).toContain("Use a personal API key");
+    expect(result.error.message).toContain(
+      "Create or update this Frame in the Dust app."
+    );
     const active = await frameFile.getActiveAuthorizedFileAccessAllowlist();
     expect(active).toEqual(previous);
   });

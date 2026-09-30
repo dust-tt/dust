@@ -2583,7 +2583,7 @@ export class FileResource extends BaseResource<FileModel> {
       return new Err(
         new DustError(
           "invalid_request_error",
-          "Frame file access requires a user. Use a personal API key instead of a workspace API key."
+          "Frame file access requires a user signed in to Dust. Create or update this Frame in the Dust app."
         )
       );
     }
@@ -2596,7 +2596,7 @@ export class FileResource extends BaseResource<FileModel> {
       return new Err(
         new DustError(
           "invalid_request_error",
-          "The user associated with this API key no longer exists. Use a personal API key associated with an existing user."
+          "The user associated with this request no longer exists. Create or update this Frame in the Dust app."
         )
       );
     }
