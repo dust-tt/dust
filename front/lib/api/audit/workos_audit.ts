@@ -162,6 +162,11 @@ export const AUDIT_ACTIONS = [
   "agent.restored",
   "agent.scope_changed",
   "agent.editors_updated",
+  // Skill lifecycle.
+  "skill.archived",
+  "skill.created",
+  "skill.restored",
+  "skill.updated",
   // Spaces.
   "space.accessed",
   "space.created",
@@ -443,6 +448,7 @@ type AuditTargetType =
   | "credential"
   | "mcp_connection"
   | "sandbox_env_var"
+  | "skill"
   | "frame"
   | "webhook_source";
 

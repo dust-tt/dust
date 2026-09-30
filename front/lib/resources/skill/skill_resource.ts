@@ -5,6 +5,12 @@ import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import type { AuditAction } from "@app/lib/api/audit/workos_audit";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import {
   filterUsersWithSharedMembership,
@@ -241,6 +247,9 @@ export interface SkillAttachedKnowledge {
   dataSourceView: DataSourceViewResource;
   nodeId: string;
 }
+
+// Extra metadata added to the audit events of a write, e.g. the suggestion batch it applies.
+export type SkillAuditOptions = { auditMetadata?: Record<string, string> };
 
 export type UpdateSkillParams = {
   agentFacingDescription: string;
@@ -636,12 +645,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       addCurrentUserAsEditor = true,
       attachedKnowledge = [],
       fileAttachments = [],
+      auditMetadata,
     }: {
       mcpServerViews: MCPServerViewResource[];
       addCurrentUserAsEditor?: boolean;
       attachedKnowledge?: SkillAttachedKnowledge[];
       fileAttachments?: FileResource[];
-    }
+    } & SkillAuditOptions
   ): Promise<SkillResource> {
     SkillNameSchema.parse(blob.name);
     const owner = auth.getNonNullableWorkspace();
@@ -728,6 +738,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await auth.refresh();
     if (skillResource.status !== "pending") {
       await this.launchSearchIndexation(auth, [skillResource.sId]);
+    }
+
+    if (skillResource.status === "active") {
+      skillResource.emitAuditLog(auth, "skill.created", auditMetadata);
     }
 
     return skillResource;
@@ -2970,7 +2984,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   async upsertEditors(
     auth: Authenticator,
-    users: UserResource[]
+    users: UserResource[],
+    { auditMetadata }: SkillAuditOptions = {}
   ): Promise<Result<void, Error>> {
     if (users.length === 0) {
       return new Ok(undefined);
@@ -2990,7 +3005,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new Ok(undefined);
     }
 
-    const addResult = await this.addEditors(auth, usersToAdd);
+    const addResult = await this.addEditors(auth, usersToAdd, {
+      auditMetadata,
+    });
     if (addResult.isErr()) {
       return new Err(new Error(addResult.error.message));
     }
@@ -3005,7 +3022,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   async addEditors(
     auth: Authenticator,
-    users: UserResource[]
+    users: UserResource[],
+    { auditMetadata }: SkillAuditOptions = {}
   ): Promise<Result<undefined, DustError<"unauthorized" | "user_not_found">>> {
     if (users.length === 0) {
       return new Ok(undefined);
@@ -3023,6 +3041,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const result = await this.writeEditorUserGrants(auth, users, "grant");
     // Earlier editor updates may have succeeded even if a later one failed.
     await SkillResource.launchSearchIndexation(auth, [this.sId]);
+    if (result.isOk()) {
+      this.emitEditorsUpdatedAuditLog(auth, {
+        added: users,
+        removed: [],
+        auditMetadata,
+      });
+    }
     return result;
   }
 
@@ -3032,7 +3057,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   async removeEditors(
     auth: Authenticator,
-    users: UserResource[]
+    users: UserResource[],
+    { auditMetadata }: SkillAuditOptions = {}
   ): Promise<Result<undefined, DustError<"unauthorized" | "user_not_found">>> {
     if (users.length === 0) {
       return new Ok(undefined);
@@ -3050,6 +3076,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const result = await this.writeEditorUserGrants(auth, users, "revoke");
     // Earlier editor updates may have succeeded even if a later one failed.
     await SkillResource.launchSearchIndexation(auth, [this.sId]);
+    if (result.isOk()) {
+      this.emitEditorsUpdatedAuditLog(auth, {
+        removed: users,
+        added: [],
+        auditMetadata,
+      });
+    }
     return result;
   }
 
@@ -3081,13 +3114,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(undefined);
   }
 
-  private async upsertCurrentUserAsEditor(auth: Authenticator): Promise<void> {
+  private async upsertCurrentUserAsEditor(
+    auth: Authenticator,
+    { auditMetadata }: SkillAuditOptions
+  ): Promise<void> {
     const user = auth.user();
     if (!user) {
       return;
     }
 
-    await this.upsertEditors(auth, [user]);
+    await this.upsertEditors(auth, [user], { auditMetadata });
   }
 
   async fetchEditedByUser(auth: Authenticator): Promise<UserResource | null> {
@@ -3411,13 +3447,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return result;
   }
 
-  async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
+  async archive(
+    auth: Authenticator,
+    { auditMetadata }: SkillAuditOptions = {}
+  ): Promise<{ affectedCount: number }> {
     assert(
       auth.can("admin", this),
       "User is not authorized to archive this skill"
     );
 
     const workspace = auth.getNonNullableWorkspace();
+    const previousStatus = this.status;
 
     const { affectedCount, referencingSkillIds, renamedSkillId } =
       await withTransaction(async (transaction) => {
@@ -3503,12 +3543,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         ...referencingSkillIds,
         ...(renamedSkillId ? [renamedSkillId] : []),
       ]);
+
+      // Rejecting a `suggested` skill or discarding a `pending` one is not the deletion of a
+      // skill anyone could use.
+      if (previousStatus === "active") {
+        this.emitAuditLog(auth, "skill.archived", auditMetadata);
+      }
     }
 
     return { affectedCount };
   }
 
-  async restore(auth: Authenticator): Promise<{ affectedCount: number }> {
+  async restore(
+    auth: Authenticator,
+    { auditMetadata }: SkillAuditOptions = {}
+  ): Promise<{ affectedCount: number }> {
     assert(
       auth.can("admin", this),
       "User is not authorized to restore this skill"
@@ -3559,6 +3608,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         this.sId,
         ...referencingSkillIds,
       ]);
+
+      this.emitAuditLog(auth, "skill.restored", auditMetadata);
     }
 
     return { affectedCount };
@@ -3583,7 +3634,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       sourceMetadata,
       status,
       userFacingDescription,
-    }: UpdateSkillParams
+    }: UpdateSkillParams,
+    { auditMetadata }: SkillAuditOptions = {}
   ): Promise<void> {
     assert(
       auth.can("write", this),
@@ -3620,6 +3672,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const previousName = this.name;
     const previousIcon = this.icon;
     const previousStatus = this.status;
+    const previousAvailability = this.availability;
 
     const referencingSkillIds = await withTransaction(async (transaction) => {
       // Save the current version before updating.
@@ -3708,11 +3761,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await this.setFileAttachments(auth, fileAttachments);
     }
 
-    await this.upsertCurrentUserAsEditor(auth);
+    await this.upsertCurrentUserAsEditor(auth, { auditMetadata });
     await SkillResource.launchSearchIndexation(auth, [
       this.sId,
       ...referencingSkillIds,
     ]);
+
+    if (this.status === "active") {
+      // Activating a `pending` or `suggested` skill is when it comes into existence for its users.
+      this.emitAuditLog(
+        auth,
+        previousStatus === "active" ? "skill.updated" : "skill.created",
+        auditMetadata
+      );
+      if (previousStatus === "active" && availabilityChanged) {
+        this.emitAvailabilityUpdatedAuditLog(auth, {
+          previousAvailability,
+          newAvailability: this.availability,
+          auditMetadata,
+        });
+      }
+    }
   }
 
   /**
@@ -3726,7 +3795,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async updateAvailabilities(
     auth: Authenticator,
     skills: SkillResource[],
-    availability: SkillAvailability
+    availability: SkillAvailability,
+    { auditMetadata }: SkillAuditOptions = {}
   ): Promise<void> {
     assert(
       auth.hasWorkspacePermission("publish", "skill"),
@@ -3749,12 +3819,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    const changedSkills = skills.filter(
-      (skill) => skill.availability !== availability
-    );
-    if (changedSkills.length === 0) {
+    const changes = skills
+      .filter((skill) => skill.availability !== availability)
+      .map((skill) => ({ skill, previousAvailability: skill.availability }));
+    if (changes.length === 0) {
       return;
     }
+    const changedSkills = changes.map(({ skill }) => skill);
 
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.user();
@@ -3782,6 +3853,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       auth,
       changedSkills.map((skill) => skill.sId)
     );
+
+    for (const { skill, previousAvailability } of changes) {
+      skill.emitAvailabilityUpdatedAuditLog(auth, {
+        previousAvailability,
+        newAvailability: availability,
+        auditMetadata,
+      });
+    }
   }
 
   /**
@@ -4855,6 +4934,61 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * without workspace-specific relationships, usage or dates.
    * Custom child skill IDs must come from persisted references, without visibility filtering.
    */
+  private emitAuditLog(
+    auth: Authenticator,
+    action: AuditAction,
+    metadata: Record<string, string> = {}
+  ): void {
+    void emitAuditLogEvent({
+      auth,
+      action,
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("skill", this),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: { skill_name: this.name, ...metadata },
+    });
+  }
+
+  private emitAvailabilityUpdatedAuditLog(
+    auth: Authenticator,
+    {
+      previousAvailability,
+      newAvailability,
+      auditMetadata,
+    }: {
+      previousAvailability: SkillAvailability;
+      newAvailability: SkillAvailability;
+    } & SkillAuditOptions
+  ): void {
+    this.emitAuditLog(auth, "skill.availability_updated", {
+      previous_availability: previousAvailability,
+      new_availability: newAvailability,
+      ...auditMetadata,
+    });
+  }
+
+  // `actor_added_self` flags a user granting themselves access to the skill's content.
+  private emitEditorsUpdatedAuditLog(
+    auth: Authenticator,
+    {
+      added,
+      removed,
+      auditMetadata,
+    }: {
+      added: UserResource[];
+      removed: UserResource[];
+    } & SkillAuditOptions
+  ): void {
+    this.emitAuditLog(auth, "skill.editors_updated", {
+      added_editor_ids: added.map((u) => u.sId).join(","),
+      removed_editor_ids: removed.map((u) => u.sId).join(","),
+      actor_added_self: String(added.some((u) => u.sId === auth.user()?.sId)),
+      ...auditMetadata,
+    });
+  }
+
   toSearchDocument(
     auth: Authenticator,
     {

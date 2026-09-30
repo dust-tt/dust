@@ -1,13 +1,11 @@
 {
-  "action": "skill.availability_updated",
+  "action": "skill.created",
   "targets": [
     { "type": "workspace" },
     { "type": "skill" }
   ],
   "metadata": {
     "skill_name": "string",
-    "previous_availability": "string",
-    "new_availability": "string",
     "suggestion_batch_id": "string",
     "conversation_id": "string",
     "actor_type": "string"

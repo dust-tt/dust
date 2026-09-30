@@ -13,6 +13,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -28,7 +29,17 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+  return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
+});
 
 beforeAll(() => {
   setupSkillInstructionsMarkdownPipeline();
@@ -49,6 +60,7 @@ describe("applyBatchSuggestions", () => {
     } = await createResourceTest({
       role: "user",
     }));
+    mockEmitAuditLogEvent.mockClear();
   });
 
   async function fetchAgentToolIds(agentId: string) {
@@ -108,8 +120,14 @@ describe("applyBatchSuggestions", () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const skill = await SkillFactory.create(auth);
     await auth.refresh();
-    const { id: batchModelId, sId } =
-      await BatchSuggestionFactory.createEmpty(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    const { id: batchModelId, sId } = await BatchSuggestionFactory.createEmpty(
+      auth,
+      { sourceConversation: conversation }
+    );
     await AgentSuggestionFactory.createName(auth, agent, {
       suggestion: { name: "RenamedAgent" },
       batchModelId,
@@ -125,6 +143,20 @@ describe("applyBatchSuggestions", () => {
     expect(res.isOk()).toBe(true);
     expect(await fetchAgentName(agent.sId)).toBe("RenamedAgent");
     expect(await fetchSkillName(skill.sId)).toBe("RenamedSkill");
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "skill.updated",
+        targets: [
+          expect.objectContaining({ type: "workspace" }),
+          expect.objectContaining({ type: "skill", id: skill.sId }),
+        ],
+        metadata: {
+          skill_name: "RenamedSkill",
+          suggestion_batch_id: sId,
+          conversation_id: conversation.sId,
+        },
+      })
+    );
   });
 
   it("writes nothing when the batch holds several actions on the same agent", async () => {
@@ -459,6 +491,12 @@ describe("applyBatchSuggestions", () => {
     expect(created?.status).toBe("active");
     expect(created?.name).toBe("Meeting Notes");
     expect(created?.availability).toBe("editors");
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "skill.created",
+        metadata: { skill_name: "Meeting Notes", suggestion_batch_id: sId },
+      })
+    );
   });
 
   it("writes nothing when a create suggestion targets a skill that already exists", async () => {
