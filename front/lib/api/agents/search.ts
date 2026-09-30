@@ -14,7 +14,6 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import logger from "@app/logger/logger";
 import type {
   AgentSearchDocument,
   AgentSearchFacet,
@@ -200,10 +199,10 @@ export async function searchAgents(
 /**
  * @cc [owner:tdraier,label:product;security] agent-name-resolution
  * Resolves a user- or model-supplied agent name to the sId of an active agent the caller can
- * `read`, or null when none matches, the name is blank, or the search fails. "dust" and
- * "dust agent" (trimmed, case-insensitive) resolve to the Dust global agent. Otherwise an active
- * custom agent named exactly the trimmed input wins, read from the database so a just-saved agent
- * resolves; failing that, the top `searchAgents` hit in strict permission filtering is returned.
+ * `read`, or null when none matches or the name is blank. "dust" and "dust agent" (trimmed,
+ * case-insensitive) resolve to the Dust global agent; any other name MUST match an agent's name
+ * exactly, ignoring case (see `agent-fetch-by-name`): a partial or approximate name resolves to
+ * nothing, never to a guess.
  */
 export async function resolveAgentIdByName(
   auth: Authenticator,
@@ -213,38 +212,14 @@ export async function resolveAgentIdByName(
   if (trimmedName.length === 0) {
     return null;
   }
-  const isResolvable = (agent: AgentResource | null): agent is AgentResource =>
-    agent !== null && agent.status === "active" && auth.can("read", agent);
 
   const normalizedName = trimmedName.toLowerCase();
-  if (normalizedName === "dust" || normalizedName === "dust agent") {
-    const dust = await AgentResource.fetchById(auth, GLOBAL_AGENTS_SID.DUST);
-    return isResolvable(dust) ? dust.sId : null;
-  }
+  const agent =
+    normalizedName === "dust" || normalizedName === "dust agent"
+      ? await AgentResource.fetchById(auth, GLOBAL_AGENTS_SID.DUST)
+      : await AgentResource.fetchByName(auth, trimmedName);
 
-  const exactMatch = await AgentResource.fetchByName(auth, trimmedName);
-  if (isResolvable(exactMatch)) {
-    return exactMatch.sId;
-  }
-
-  const result = await searchAgents(auth, {
-    searchTerm: trimmedName,
-    limit: 1,
-  });
-  if (result.isErr()) {
-    logger.warn(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        error: result.error,
-      },
-      "Agent name resolution search failed"
-    );
-    return null;
-  }
-
-  // The index can lag behind the database (e.g. an agent archived since), so the hit is re-checked
-  // against the current resource.
-  const [hit] = result.value.agents;
-  const hitAgent = hit ? await AgentResource.fetchById(auth, hit.sId) : null;
-  return isResolvable(hitAgent) ? hitAgent.sId : null;
+  return agent && agent.status === "active" && auth.can("read", agent)
+    ? agent.sId
+    : null;
 }

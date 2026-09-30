@@ -441,29 +441,11 @@ describe("searchAgents", () => {
 });
 
 describe("resolveAgentIdByName", () => {
-  function mockHitFor(workspaceId: string, agentId: string, name: string) {
-    mockSearch.mockResolvedValue({
-      hits: {
-        total: { value: 1, relation: "eq" },
-        hits: [
-          {
-            _source: makeDocument({
-              workspace_id: workspaceId,
-              agent_id: agentId,
-              name,
-            }),
-          },
-        ],
-      },
-    });
-  }
-
   beforeEach(() => {
     mockSearch.mockReset();
-    mockHits([]);
   });
 
-  it("resolves the Dust aliases and rejects blank names without searching", async () => {
+  it("resolves the Dust aliases and rejects blank names", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
 
     expect(await resolveAgentIdByName(auth, " Dust Agent ")).toBe(
@@ -473,17 +455,6 @@ describe("resolveAgentIdByName", () => {
       GLOBAL_AGENTS_SID.DUST
     );
     expect(await resolveAgentIdByName(auth, "   ")).toBeNull();
-    expect(mockSearch).not.toHaveBeenCalled();
-  });
-
-  it("resolves an exact custom agent name from the database, without searching", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "user" });
-    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Sales Helper",
-    });
-
-    expect(await resolveAgentIdByName(auth, " Sales Helper ")).toBe(agent.sId);
-    expect(mockSearch).not.toHaveBeenCalled();
   });
 
   it("does not resolve the Dust aliases when an admin disabled Dust", async () => {
@@ -496,35 +467,37 @@ describe("resolveAgentIdByName", () => {
     expect(await resolveAgentIdByName(auth, "dust")).toBeNull();
   });
 
-  it("falls back to the top search hit", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({
-      role: "user",
-    });
+  it("resolves a custom agent by its exact name, ignoring case, without searching", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
     const agent = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Marketing Sales",
+      name: "Sales Helper",
     });
-    mockHitFor(workspace.sId, agent.sId, "Marketing Sales");
 
-    expect(await resolveAgentIdByName(auth, " sales ")).toBe(agent.sId);
-    expect(mockSearch.mock.calls[0][0]).toMatchObject({ size: 1 });
-    expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([
-      buildAgentNameAutocompleteQuery("sales"),
-    ]);
+    expect(await resolveAgentIdByName(auth, " sales helper ")).toBe(agent.sId);
+    expect(mockSearch).not.toHaveBeenCalled();
   });
 
-  it("does not resolve a search hit whose agent was archived since it was indexed", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({
-      role: "user",
-    });
-    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+  it("resolves a global agent by its name", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const helper = await AgentResource.fetchById(
+      auth,
+      GLOBAL_AGENTS_SID.HELPER
+    );
+    assert(helper);
+
+    expect(await resolveAgentIdByName(auth, helper.name.toUpperCase())).toBe(
+      GLOBAL_AGENTS_SID.HELPER
+    );
+  });
+
+  it("does not guess from a partial name", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Marketing Sales",
     });
-    const resource = await AgentResource.fetchById(auth, agent.sId);
-    assert(resource);
-    await resource.archive(auth);
-    mockHitFor(workspace.sId, agent.sId, "Marketing Sales");
 
-    expect(await resolveAgentIdByName(auth, " sales ")).toBeNull();
+    expect(await resolveAgentIdByName(auth, "sales")).toBeNull();
+    expect(mockSearch).not.toHaveBeenCalled();
   });
 
   it("does not resolve an exact name the caller cannot read", async () => {
@@ -538,6 +511,5 @@ describe("resolveAgentIdByName", () => {
     });
 
     expect(await resolveAgentIdByName(adminAuth, "Private Helper")).toBeNull();
-    expect(mockSearch).toHaveBeenCalledTimes(1);
   });
 });

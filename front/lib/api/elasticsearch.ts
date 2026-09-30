@@ -109,8 +109,8 @@ function toElasticsearchError(err: unknown): ElasticsearchError {
 export async function withEs<T>(
   fn: (client: Client) => Promise<T>
 ): Promise<Result<T, ElasticsearchError>> {
+  const client = await getClient();
   try {
-    const client = await getClient();
     const res = await fn(client);
     return new Ok(res);
   } catch (err) {
