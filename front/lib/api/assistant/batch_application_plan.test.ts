@@ -64,7 +64,12 @@ describe("planBatchApplication", () => {
     await AgentSuggestionFactory.createCreate(auth, agent, { batchModelId });
     await SkillSuggestionFactory.create(auth, skill, {
       kind: "create",
-      suggestion: { name: skill.name },
+      suggestion: {
+        name: skill.name,
+        userFacingDescription: "Created skill",
+        agentFacingDescription: "Use it when created",
+        instructions: "<p>Created instructions</p>",
+      },
       batchModelId,
     });
 

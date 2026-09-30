@@ -261,9 +261,12 @@ export async function applyBatchSuggestions(
       auth,
       steps.filter((step) => step.type === "agent").map((step) => step.agentId)
     ),
+    // Admins get the skills they cannot read too (redacted), as when listing the batch: they can
+    // still apply the kinds that only need `admin`, e.g. availability.
     SkillResource.fetchByIds(
       auth,
-      steps.filter((step) => step.type === "skill").map((step) => step.skillId)
+      steps.filter((step) => step.type === "skill").map((step) => step.skillId),
+      { permissionFiltering: auth.isAdmin() ? "redact_unreadable" : "strict" }
     ),
   ]);
   const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
