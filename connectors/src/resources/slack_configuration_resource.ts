@@ -25,6 +25,7 @@ import { redisClient } from "@connectors/types/shared/redis_client";
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 const AUTO_GROUP_IDS_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -208,7 +209,41 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new this(this.model, blob.get());
   }
 
-  async isBotWhitelistedToSummon(botName: string | string[]): Promise<boolean> {
+  /**
+   * @cc [owner:frankaloia,label:security] slack-bot-whitelist-by-id
+   * The Slack workflow bot-summoning whitelist MUST match bots by stable
+   * Slack bot/app ID (`slackBotId`) when a non-null `slackBotId` is supplied.
+   * Display-name (`botName`) matching is permitted only as a fallback for legacy
+   * whitelist entries that pre-date ID-based storage (i.e. where `slackBotId IS NULL`).
+   * Display names are user-controlled and can be spoofed to match a whitelisted entry.
+   */
+  async isBotWhitelistedToSummon(
+    botName: string | string[],
+    slackBotId?: string
+  ): Promise<boolean> {
+    if (slackBotId) {
+      // Prefer ID-based matching: look up the entry by slackBotId first.
+      const byId = await SlackBotWhitelistModel.findOne({
+        where: {
+          connectorId: this.connectorId,
+          slackBotId,
+          whitelistType: "summon_agent",
+        },
+      });
+      if (byId) {
+        return true;
+      }
+      // Fall back to name-based matching only for legacy entries (slackBotId IS NULL),
+      // so that entries created before ID support was added continue to work.
+      return !!(await SlackBotWhitelistModel.findOne({
+        where: {
+          connectorId: this.connectorId,
+          botName: botName,
+          slackBotId: { [Op.is]: null },
+          whitelistType: "summon_agent",
+        },
+      }));
+    }
     return !!(await SlackBotWhitelistModel.findOne({
       where: {
         connectorId: this.connectorId,
@@ -304,15 +339,31 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     {
       workspaceId,
       workspaceAPIKey,
-    }: { workspaceId: string; workspaceAPIKey: string }
+    }: { workspaceId: string; workspaceAPIKey: string },
+    slackBotId?: string
   ): Promise<Result<string[], Error>> {
-    const bot = await SlackBotWhitelistModel.findOne({
-      where: {
-        connectorId: this.connectorId,
-        slackConfigurationId: this.id,
-        botName,
-      },
-    });
+    // Prefer ID-based lookup to avoid spoofing via display name.
+    let bot = slackBotId
+      ? await SlackBotWhitelistModel.findOne({
+          where: {
+            connectorId: this.connectorId,
+            slackConfigurationId: this.id,
+            slackBotId,
+          },
+        })
+      : null;
+
+    if (!bot) {
+      // Fall back to name-based lookup for legacy entries (slackBotId IS NULL).
+      bot = await SlackBotWhitelistModel.findOne({
+        where: {
+          connectorId: this.connectorId,
+          slackConfigurationId: this.id,
+          botName,
+          ...(slackBotId ? { slackBotId: { [Op.is]: null } } : {}),
+        },
+      });
+    }
 
     if (!bot) {
       return new Err(new Error(`Workflow "${botName}" is not whitelisted.`));

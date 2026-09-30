@@ -171,7 +171,11 @@ export const SLACK_BOT_NOT_IDENTIFIED_MESSAGE =
 
 export async function isBotAllowed(
   connector: ConnectorResource,
-  slackUserInfo: SlackUserInfo
+  slackUserInfo: SlackUserInfo,
+  // The stable Slack-assigned bot ID from the event (e.g. "B012AB3CD").
+  // When supplied, the whitelist lookup prefers ID-based matching over the
+  // display name, which is user-controlled and can be spoofed.
+  slackBotId?: string
 ): Promise<Result<undefined, Error>> {
   const realName = slackUserInfo.real_name;
 
@@ -188,7 +192,10 @@ export async function isBotAllowed(
     connector.id
   );
   const botName = realName.trim();
-  const whitelist = await slackConfig?.isBotWhitelistedToSummon(botName);
+  const whitelist = await slackConfig?.isBotWhitelistedToSummon(
+    botName,
+    slackBotId
+  );
 
   if (!whitelist) {
     logger.info(

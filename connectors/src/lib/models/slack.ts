@@ -299,6 +299,10 @@ export class SlackBotWhitelistModel extends ConnectorBaseModel<SlackBotWhitelist
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare botName: string;
+  // Stable Slack-assigned bot ID (e.g. "B012AB3CD"). When set, whitelist matching
+  // uses this field instead of the spoofable display name. Null for legacy entries
+  // whitelisted before ID-based matching was introduced.
+  declare slackBotId: string | null;
   declare spaceIds: string[] | null;
   declare whitelistType: SlackbotWhitelistType;
   declare slackConfigurationId: ForeignKey<SlackConfigurationModel["id"]>;
@@ -319,6 +323,10 @@ SlackBotWhitelistModel.init(
     botName: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    slackBotId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     whitelistType: {
       type: DataTypes.STRING,

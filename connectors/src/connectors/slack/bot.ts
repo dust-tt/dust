@@ -784,6 +784,14 @@ async function processErrorResult(
  * name can be resolved, the function MUST return a `SlackExternalUserError` so the failure is
  * posted in the thread, never `Ok(undefined)`.
  */
+/**
+ * @cc [owner:frankaloia,label:security] slack-bot-whitelist-by-id
+ * The Slack workflow bot-summoning whitelist MUST match bots by stable
+ * Slack bot/app ID, NOT by display name. Display names are user-controlled
+ * and can be spoofed to match a whitelisted entry. The `slackBotId` from
+ * the event MUST be forwarded to `isBotAllowed` so the whitelist lookup can
+ * prefer ID-based matching (`slackBotId` column) over the spoofable `botName`.
+ */
 async function answerMessage(
   message: string,
   mentionOverride: string | undefined,
@@ -872,7 +880,13 @@ async function answerMessage(
   let skipToolsValidation = false;
 
   if (slackUserInfo.is_bot) {
-    const isBotAllowedRes = await isBotAllowed(connector, slackUserInfo);
+    // Pass slackBotId so the whitelist lookup can match by stable Slack bot ID
+    // instead of the spoofable display name when the entry stores slackBotId.
+    const isBotAllowedRes = await isBotAllowed(
+      connector,
+      slackUserInfo,
+      slackBotId || undefined
+    );
     if (isBotAllowedRes.isErr()) {
       if (slackUserInfo.real_name === "Dust Data Sync") {
         // The Dust Data Sync bot mentions Dust to let ther user know which bot to use so we should
@@ -941,10 +955,14 @@ async function answerMessage(
     if (!botName) {
       throw new Error("Failed to get bot name. Should never happen.");
     }
-    const groupIdsRes = await slackConfig.getBotWhitelistedGroupIds(botName, {
-      workspaceId: connector.workspaceId,
-      workspaceAPIKey: connector.workspaceAPIKey,
-    });
+    const groupIdsRes = await slackConfig.getBotWhitelistedGroupIds(
+      botName,
+      {
+        workspaceId: connector.workspaceId,
+        workspaceAPIKey: connector.workspaceAPIKey,
+      },
+      slackBotId || undefined
+    );
     if (groupIdsRes.isErr()) {
       return groupIdsRes;
     }

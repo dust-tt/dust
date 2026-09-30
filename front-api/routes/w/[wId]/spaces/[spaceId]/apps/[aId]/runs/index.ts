@@ -65,6 +65,23 @@ async function loadApp(
     });
   }
 
+  /**
+   * @cc [owner:frankaloia,label:security] dust-app-run-capability
+   * All routes that run, edit, or read legacy Dust apps MUST check
+   * auth.hasWorkspacePermission("admin", "dust_app"). Space write access alone
+   * is not sufficient.
+   */
+  if (!auth.hasWorkspacePermission("admin", "dust_app")) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Running a Dust app requires the dust_app workspace capability.",
+      },
+    });
+  }
+
   return { appResource };
 }
 
