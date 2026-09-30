@@ -10,6 +10,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration_constants";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -21,7 +22,10 @@ import type {
   SkillSuggestionType,
   SkillSuggestionUpdatedBy,
 } from "@app/types/suggestions/skill_suggestion";
-import { parseSkillSuggestionData } from "@app/types/suggestions/skill_suggestion";
+import {
+  parseSkillSuggestionData,
+  SkillSuggestionDataSchema,
+} from "@app/types/suggestions/skill_suggestion";
 import type {
   Attributes,
   CreationAttributes,
@@ -45,8 +49,8 @@ export interface SkillSuggestionResource
 /**
  * Resource for managing skill suggestions.
  *
- * IMPORTANT: Access to suggestions requires edit permissions on the associated skill.
- * Users can only create, read, update, or delete suggestions for skills they can edit.
+ * IMPORTANT: Creating, reading, updating and deleting a suggestion requires what its kind needs on
+ * the associated skill, see `isAuthorizedForSkillSuggestion`.
  */
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> {
@@ -147,7 +151,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     return resources;
   }
 
-  // Also returns the matching rows dropped because the caller cannot administrate their skill.
+  // Also returns the matching rows dropped because the caller is not authorized for their kind.
   private static async baseFetchWithAccess(
     auth: Authenticator,
     options?: ResourceFindOptions<SkillSuggestionModel> & {
@@ -174,8 +178,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
           model: SkillConfigurationModel,
           as: "skillConfiguration",
           required: true,
-          // Only used for the required inner join's existence check: canAdministrateCustomSkillId
-          // and modelIdToSId resolve permissions and sId from the id alone, no column needed here.
+          // Only used for the required inner join's existence check: the skill is fetched below.
           attributes: [],
         },
         {
@@ -198,20 +201,16 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       return { resources: [], inaccessible: [] };
     }
 
-    // Filter suggestions to only include those for skills the user can administrate. Resolved
-    // without fetching the skill row: `canAdministrateCustomSkillId` only needs the id and
-    // workspace id, and `sId` is a pure derivation from the same pair. This also means a
-    // suggestion whose skill was archived since (e.g. a `delete` suggestion archives its own
-    // target on accept) stays visible: the permission check never depends on skill status.
+    const skillsById = await this.getSkillsByModelId(
+      auth,
+      suggestions.map((s) => s.skillConfigurationId)
+    );
+
     const resources: SkillSuggestionResource[] = [];
     const inaccessible: SkillSuggestionModel[] = [];
     for (const suggestion of suggestions) {
-      if (
-        !SkillResource.canAdministrateCustomSkillId(auth, {
-          id: suggestion.skillConfigurationId,
-          workspaceId: owner.id,
-        })
-      ) {
+      const skill = skillsById.get(suggestion.skillConfigurationId);
+      if (!skill || !this.isAuthorizedForKind(auth, skill, suggestion)) {
         inaccessible.push(suggestion);
         continue;
       }
@@ -227,10 +226,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
         new this(
           SkillSuggestionModel,
           suggestion.get(),
-          SkillResource.modelIdToSId({
-            id: suggestion.skillConfigurationId,
-            workspaceId: owner.id,
-          }),
+          skill.sId,
           updatedBy,
           suggestion.notificationConversation?.sId ?? null
         )
@@ -272,6 +268,38 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     }
 
     return { resources, inaccessible };
+  }
+
+  // Admins get the skills they cannot read too (redacted): they can still apply the kinds
+  // that only need `admin`, e.g. availability.
+  private static async getSkillsByModelId(
+    auth: Authenticator,
+    skillModelIds: ModelId[]
+  ): Promise<Map<ModelId, SkillResource>> {
+    const skills = await SkillResource.fetchByModelIds(
+      auth,
+      [...new Set(skillModelIds)],
+      {
+        status: [...SKILL_STATUSES],
+        withTools: false,
+        permissionFiltering: auth.isAdmin() ? "redact_unreadable" : "strict",
+      }
+    );
+    return new Map(skills.map((skill) => [skill.id, skill]));
+  }
+
+  private static isAuthorizedForKind(
+    auth: Authenticator,
+    skill: SkillResource,
+    suggestion: SkillSuggestionModel
+  ): boolean {
+    const parsed = SkillSuggestionDataSchema.safeParse({
+      kind: suggestion.kind,
+      suggestion: suggestion.suggestion,
+    });
+    return (
+      parsed.success && isAuthorizedForSkillSuggestion(auth, skill, parsed.data)
+    );
   }
 
   static async fetchByIds(
@@ -354,7 +382,8 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
 
   /**
    * Lists the suggestions belonging to the given batches (by batch model id), whatever their
-   * source, along with the batches holding a suggestion whose skill the caller cannot administrate.
+   * source, along with the batches holding a suggestion the caller cannot access: its skill cannot
+   * be fetched, or the caller lacks what the suggestion's kind requires on it.
    */
   static async listByBatchModelIds(
     auth: Authenticator,

@@ -242,6 +242,42 @@ describe("applyBatchSuggestions", () => {
     expect(await BatchSuggestionResource.fetchById(adminAuth, sId)).toBeNull();
   });
 
+  it("lets an admin change the availability of a skill requiring a space they cannot read", async () => {
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+    // The skill is built on a restricted space only its editor (`user`) is a member of.
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(adminAuth, { userIds: [user.sId] });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "publish",
+      resourceType: "skill",
+    });
+    const skill = await SkillFactory.create(auth, {
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "availability",
+      suggestion: { availability: "workspace_users" },
+      batchModelId,
+    });
+    expect(await SkillResource.fetchById(adminAuth, skill.sId)).toBeNull();
+
+    const batch = await BatchSuggestionResource.fetchById(adminAuth, sId);
+    assert(batch);
+    const res = await applyBatchSuggestions(adminAuth, batch);
+
+    expect(res.isOk()).toBe(true);
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.availability).toBe("workspace_users");
+  });
+
   it("writes nothing when the caller cannot publish an agent of the batch", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const publishedAgent = await AgentConfigurationFactory.createTestAgent(
@@ -278,7 +314,7 @@ describe("applyBatchSuggestions", () => {
     expect(await fetchAgentName(agent.sId)).toBe(agent.name);
   });
 
-  it("writes nothing when the caller cannot apply a skill step", async () => {
+  it("hides a batch holding a skill step the caller cannot apply", async () => {
     const admin = await UserFactory.basic();
     await MembershipFactory.associate(workspace, admin, { role: "admin" });
     const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -301,14 +337,8 @@ describe("applyBatchSuggestions", () => {
     });
     // Only an editor can suggest an edit of the skill.
     await SkillSuggestionFactory.create(auth, skill, { batchModelId });
-    const batch = await BatchSuggestionResource.fetchById(adminAuth, sId);
-    assert(batch);
 
-    const res = await applyBatchSuggestions(adminAuth, batch);
-
-    assert(res.isErr());
-    expect(res.error.code).toBe("unauthorized");
-    expect(await fetchAgentName(adminAgent.sId)).toBe(adminAgent.name);
+    expect(await BatchSuggestionResource.fetchById(adminAuth, sId)).toBeNull();
   });
 
   it("writes nothing when a later step fails validation", async () => {

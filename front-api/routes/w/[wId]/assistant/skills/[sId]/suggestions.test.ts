@@ -50,7 +50,9 @@ async function setup(
   return { workspace, auth, globalSpace, skill };
 }
 
-async function setupAdminWithOtherBuilderSkill() {
+async function setupAdminWithOtherBuilderSkill(
+  suggestionOverrides: Parameters<typeof SkillSuggestionFactory.create>[2] = {}
+) {
   const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
 
   const skillOwner = await UserFactory.basic();
@@ -67,6 +69,7 @@ async function setupAdminWithOtherBuilderSkill() {
   await ownerAuth.refresh();
   const suggestion = await SkillSuggestionFactory.create(ownerAuth, skill, {
     state: "pending",
+    ...suggestionOverrides,
   });
 
   return { workspace, skill, suggestion };
@@ -336,9 +339,13 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     expect((await response.json()).suggestions[0].state).toBe("approved");
   });
 
-  it("admin can update suggestions for a skill they do not edit", async () => {
+  it("admin can update admin suggestions for a skill they do not edit", async () => {
+    // Changing the editors only needs `admin`, which admins hold on every skill.
     const { workspace, skill, suggestion } =
-      await setupAdminWithOtherBuilderSkill();
+      await setupAdminWithOtherBuilderSkill({
+        kind: "editors",
+        suggestion: { addUserIds: ["usr_a"], removeUserIds: [] },
+      });
 
     const response = await patch(workspace, skill.sId, {
       suggestionIds: [suggestion.sId],
@@ -540,9 +547,13 @@ describe("GET /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     expect(body.suggestions[0].sId).toBe(suggestion.sId);
   });
 
-  it("returns suggestions to an admin for a skill they do not edit", async () => {
+  it("returns admin suggestions to an admin for a skill they do not edit", async () => {
+    // Changing the editors only needs `admin`, which admins hold on every skill.
     const { workspace, skill, suggestion } =
-      await setupAdminWithOtherBuilderSkill();
+      await setupAdminWithOtherBuilderSkill({
+        kind: "editors",
+        suggestion: { addUserIds: ["usr_a"], removeUserIds: [] },
+      });
 
     const response = await get(workspace, skill.sId);
 

@@ -1046,7 +1046,7 @@ describe("approving skill suggestions (availability)", () => {
     expect((await skill.listVersions(auth)).length).toBe(versionsBefore);
   });
 
-  it("returns 403 when the approving editor lacks the publish capability", async () => {
+  it("returns 404 when the approving editor lacks the publish capability", async () => {
     const { workspace, auth, skill, batch } = await setupSkill({
       role: "user",
     });
@@ -1058,13 +1058,19 @@ describe("approving skill suggestions (availability)", () => {
       "workspace_users"
     );
 
+    // A suggestion is only readable with the permissions its kind needs to be applied, and a batch
+    // holding one the caller cannot read is not readable either.
     const response = await approve(workspace, batch.sId);
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.type).toBe(
+      "batch_suggestion_not_found"
+    );
 
-    const reloaded = await SkillSuggestionResource.fetchById(
-      auth,
-      suggestion.sId
+    const [reloaded] = await SkillSuggestionResource.listBySkillConfigurationId(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      skill.sId,
+      { sources: [suggestion.source] }
     );
     expect(reloaded?.state).toBe("pending");
     const updated = await SkillResource.fetchById(auth, skill.sId);
