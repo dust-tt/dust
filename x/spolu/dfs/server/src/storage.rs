@@ -111,6 +111,7 @@ pub struct Storage {
     metadata: Db,
     blobs: Arc<dyn ObjectStore>,
     publish: Mutex<()>,
+    object_locks: locks::ObjectLockTable,
 }
 
 /// A trusted internal handle. Session authorization is required before constructing or using it.
@@ -184,6 +185,7 @@ impl Storage {
             metadata,
             blobs,
             publish: Mutex::new(()),
+            object_locks: locks::ObjectLockTable::default(),
         })
     }
 
@@ -203,6 +205,7 @@ impl Storage {
 mod codec;
 mod commit;
 mod keys;
+mod locks;
 mod read;
 #[cfg(test)]
 mod tests;

@@ -22,12 +22,23 @@ pub struct ChangeEvent {
  * Scans MUST be bounded and cursors MUST be relative to their typed prefix; callers cannot supply
  * arbitrary database keys. Corrupt records MUST return errors, never masquerade as absent data.
  */
+#[derive(Clone)]
 pub struct ReadView {
     pub(super) keys: Keyspace,
     pub(super) snapshot: Arc<DbSnapshot>,
 }
 
 impl ReadView {
+    /// Memory-visible mutation sequence from the same snapshot as metadata and authorization.
+    pub(crate) async fn sequence(&self) -> Result<u64> {
+        self.snapshot
+            .get(self.keys.change_sequence())
+            .await?
+            .map(|bytes| codec::decode(&bytes))
+            .transpose()
+            .map(|value| value.unwrap_or(0))
+    }
+
     /// SlateDB has point reads; keep page fetches bounded and preserve the requested order.
     pub async fn objects(&self, ids: &[ObjectId]) -> Result<Vec<Option<ObjectMetadata>>> {
         ensure!(ids.len() <= 1000, "object batch exceeds 1000 entries");

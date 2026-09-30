@@ -406,9 +406,10 @@ async fn invalid_batches_missing_blobs_and_failed_uploads_leave_metadata_unchang
     });
     ensure!(
         scoped
-            .begin_metadata_write()
-            .await
-            .commit(vec![MetadataMutation::PutObject(changed_content.into())])
+            .prepare_metadata(
+                &scoped.read_view().await?,
+                vec![MetadataMutation::PutObject(changed_content.into())],
+            )
             .await
             .is_err()
     );

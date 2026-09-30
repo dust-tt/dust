@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, HashSet};
 
-use super::{NamespaceRead, checked_child};
+use super::{NamespaceRead, checked_child, mutate};
 use crate::{
     api::ApiError,
     model::{EntryName, ObjectId, ObjectKind, ObjectMetadata, ParentLink, Timestamp, WorkspaceId},
@@ -27,8 +27,8 @@ pub(crate) enum RemovalKind {
 
 /**
  * @cc [owner:spolu,label:security;backend] atomic-authorized-rename
- * Acquire the publication guard before the snapshot. Authorize the source, its current parent, and
- * destination directory before revision/collision checks. Reject roots and directory cycles.
+ * Authorize the source, its current parent, and destination before revision/collision checks in
+ * one snapshot validated at publication. Reject roots and directory cycles.
  * Preserve the source ID, content, and explicit grants; atomically update its parent/name, revision,
  * ctime, both child entries, parent revisions/mtime/ctime, and event. Do not rewrite descendants.
  * Replacement MUST be opt-in, file-for-file or directory-for-empty-directory only, removing the
@@ -41,98 +41,88 @@ pub(crate) async fn rename(
     grants: &BTreeSet<String>,
     request: RenameObject,
 ) -> Result<ObjectMetadata, ApiError> {
-    let scoped = storage
-        .workspace(workspace)
-        .map_err(|_| ApiError::Unavailable)?;
-    let writer = scoped.begin_metadata_write().await;
-    let read = NamespaceRead {
-        view: writer
-            .read_view()
-            .await
-            .map_err(|_| ApiError::Unavailable)?,
-        grants,
-    };
-    let (object, source_parent, link) = source(&read, request.object_id).await?;
-    let destination = read.directory(request.parent_id).await?;
-    if object.metadata_revision.get() != request.expected_metadata_revision {
-        return Err(ApiError::Conflict);
-    }
-    if link.parent_id == destination.id && link.name == request.name {
-        return Ok(object);
-    }
-    if object.kind == ObjectKind::Directory {
-        check_move_ancestry(&read.view, object.id, &destination).await?;
-    }
-    let mut mutations = Vec::new();
-    if let Some(id) = read
-        .view
-        .child(destination.id, &request.name)
-        .await
-        .map_err(|_| ApiError::Unavailable)?
-    {
-        if !request.replace {
-            return Err(ApiError::AlreadyExists);
+    let request = &request;
+    mutate(storage, workspace, |view| async move {
+        let read = NamespaceRead { view, grants };
+        let (object, source_parent, link) = source(&read, request.object_id).await?;
+        let destination = read.directory(request.parent_id).await?;
+        if object.metadata_revision.get() != request.expected_metadata_revision {
+            return Err(ApiError::Conflict);
         }
-        let replaced = read
+        if link.parent_id == destination.id && link.name == request.name {
+            return Ok((object, Vec::new()));
+        }
+        if object.kind == ObjectKind::Directory {
+            check_move_ancestry(&read.view, object.id, &destination).await?;
+        }
+        let mut mutations = Vec::new();
+        if let Some(id) = read
             .view
-            .object(id)
+            .child(destination.id, &request.name)
             .await
             .map_err(|_| ApiError::Unavailable)?
-            .ok_or(ApiError::Unavailable)?;
-        checked_child(destination.id, &request.name, &replaced)?;
-        if replaced.id == object.id {
-            return Err(ApiError::Unavailable);
-        }
-        match (&object.kind, &replaced.kind) {
-            (ObjectKind::File(_), ObjectKind::Directory) => return Err(ApiError::IsDirectory),
-            (ObjectKind::Directory, ObjectKind::File(_)) => return Err(ApiError::NotDirectory),
-            (ObjectKind::Directory, ObjectKind::Directory) => {
-                require_empty(&read.view, replaced.id).await?;
+        {
+            if !request.replace {
+                return Err(ApiError::AlreadyExists);
             }
-            (ObjectKind::File(_), ObjectKind::File(_)) => {}
+            let replaced = read
+                .view
+                .object(id)
+                .await
+                .map_err(|_| ApiError::Unavailable)?
+                .ok_or(ApiError::Unavailable)?;
+            checked_child(destination.id, &request.name, &replaced)?;
+            if replaced.id == object.id {
+                return Err(ApiError::Unavailable);
+            }
+            match (&object.kind, &replaced.kind) {
+                (ObjectKind::File(_), ObjectKind::Directory) => return Err(ApiError::IsDirectory),
+                (ObjectKind::Directory, ObjectKind::File(_)) => return Err(ApiError::NotDirectory),
+                (ObjectKind::Directory, ObjectKind::Directory) => {
+                    require_empty(&read.view, replaced.id).await?;
+                }
+                (ObjectKind::File(_), ObjectKind::File(_)) => {}
+            }
+            mutations.extend(deletion_mutations(&read.view, replaced.id).await?);
         }
-        mutations.extend(deletion_mutations(&read.view, replaced.id).await?);
-    }
-    let now = Timestamp::now().map_err(|_| ApiError::Unavailable)?;
-    let moved = ObjectMetadata {
-        parent: Some(ParentLink {
-            parent_id: destination.id,
-            name: request.name,
-        }),
-        metadata_revision: object
-            .metadata_revision
-            .next()
-            .map_err(|_| ApiError::CapacityExhausted)?,
-        posix: crate::model::PosixAttributes {
-            ctime: now,
-            ..object.posix
-        },
-        ..object
-    };
-    mutations.extend([
-        MetadataMutation::DeleteChild {
-            parent_id: link.parent_id,
-            name: link.name,
-        },
-        MetadataMutation::PutChild(moved.directory_entry().ok_or(ApiError::Internal)?),
-        MetadataMutation::PutObject(moved.clone().into()),
-        MetadataMutation::PutObject(changed_parent(source_parent, now)?.into()),
-    ]);
-    if destination.id != link.parent_id {
-        mutations.push(MetadataMutation::PutObject(
-            changed_parent(destination, now)?.into(),
-        ));
-    }
-    writer
-        .commit(mutations)
-        .await
-        .map_err(|_| ApiError::Unavailable)?;
-    Ok(moved)
+        let now = Timestamp::now().map_err(|_| ApiError::Unavailable)?;
+        let moved = ObjectMetadata {
+            parent: Some(ParentLink {
+                parent_id: destination.id,
+                name: request.name.clone(),
+            }),
+            metadata_revision: object
+                .metadata_revision
+                .next()
+                .map_err(|_| ApiError::CapacityExhausted)?,
+            posix: crate::model::PosixAttributes {
+                ctime: now,
+                ..object.posix
+            },
+            ..object
+        };
+        mutations.extend([
+            MetadataMutation::DeleteChild {
+                parent_id: link.parent_id,
+                name: link.name,
+            },
+            MetadataMutation::PutChild(moved.directory_entry().ok_or(ApiError::Internal)?),
+            MetadataMutation::PutObject(moved.clone().into()),
+            MetadataMutation::PutObject(changed_parent(source_parent, now)?.into()),
+        ]);
+        if destination.id != link.parent_id {
+            mutations.push(MetadataMutation::PutObject(
+                changed_parent(destination, now)?.into(),
+            ));
+        }
+        Ok((moved, mutations))
+    })
+    .await
 }
 
 /**
  * @cc [owner:spolu,label:security;backend] atomic-authorized-removal
- * Authorize the object and current parent in a snapshot acquired under the publication guard,
+ * Authorize the object and current parent in one snapshot validated at publication,
  * before revision/type/emptiness checks. Reject roots, directory unlink, file rmdir, and nonempty
  * rmdir. Delete the object, child entry, and all explicit grants in both indexes atomically with
  * the parent revision/mtime/ctime and event. Failure before submission MUST publish nothing.
@@ -145,43 +135,34 @@ pub(crate) async fn remove(
     request: RemoveObject,
     kind: RemovalKind,
 ) -> Result<(), ApiError> {
-    let scoped = storage
-        .workspace(workspace)
-        .map_err(|_| ApiError::Unavailable)?;
-    let writer = scoped.begin_metadata_write().await;
-    let read = NamespaceRead {
-        view: writer
-            .read_view()
-            .await
-            .map_err(|_| ApiError::Unavailable)?,
-        grants,
-    };
-    let (object, parent, link) = source(&read, request.object_id).await?;
-    if object.metadata_revision.get() != request.expected_metadata_revision {
-        return Err(ApiError::Conflict);
-    }
-    match (kind, &object.kind) {
-        (RemovalKind::File, ObjectKind::Directory) => return Err(ApiError::IsDirectory),
-        (RemovalKind::Directory, ObjectKind::File(_)) => return Err(ApiError::NotDirectory),
-        (RemovalKind::Directory, ObjectKind::Directory) => {
-            require_empty(&read.view, object.id).await?
+    let request = &request;
+    let kind = &kind;
+    mutate(storage, workspace, |view| async move {
+        let read = NamespaceRead { view, grants };
+        let (object, parent, link) = source(&read, request.object_id).await?;
+        if object.metadata_revision.get() != request.expected_metadata_revision {
+            return Err(ApiError::Conflict);
         }
-        (RemovalKind::File, ObjectKind::File(_)) => {}
-    }
-    let mut mutations = deletion_mutations(&read.view, object.id).await?;
-    let now = Timestamp::now().map_err(|_| ApiError::Unavailable)?;
-    mutations.extend([
-        MetadataMutation::DeleteChild {
-            parent_id: link.parent_id,
-            name: link.name,
-        },
-        MetadataMutation::PutObject(changed_parent(parent, now)?.into()),
-    ]);
-    writer
-        .commit(mutations)
-        .await
-        .map_err(|_| ApiError::Unavailable)?;
-    Ok(())
+        match (kind, &object.kind) {
+            (RemovalKind::File, ObjectKind::Directory) => return Err(ApiError::IsDirectory),
+            (RemovalKind::Directory, ObjectKind::File(_)) => return Err(ApiError::NotDirectory),
+            (RemovalKind::Directory, ObjectKind::Directory) => {
+                require_empty(&read.view, object.id).await?
+            }
+            (RemovalKind::File, ObjectKind::File(_)) => {}
+        }
+        let mut mutations = deletion_mutations(&read.view, object.id).await?;
+        let now = Timestamp::now().map_err(|_| ApiError::Unavailable)?;
+        mutations.extend([
+            MetadataMutation::DeleteChild {
+                parent_id: link.parent_id,
+                name: link.name,
+            },
+            MetadataMutation::PutObject(changed_parent(parent, now)?.into()),
+        ]);
+        Ok(((), mutations))
+    })
+    .await
 }
 
 // A direct object grant does not authorize mutations of its private parent's entries.
@@ -206,7 +187,7 @@ async fn source(
 
 /**
  * @cc [owner:spolu,label:backend] acyclic-directory-move
- * Walk the entire destination ancestry in the guarded snapshot, even beyond a matching grant.
+ * Walk the entire destination ancestry in the mutation snapshot, even beyond a matching grant.
  * Reject a destination inside the source subtree as InvalidInput. Encountered cycles, missing
  * records, non-directory ancestors, or inconsistent links MUST fail closed as Unavailable.
  */

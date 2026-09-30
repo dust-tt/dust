@@ -7,6 +7,9 @@ pub(crate) use write::{CreateDirectory, MetadataUpdate, mkdir, update};
 mod entries;
 pub(crate) use entries::{RemovalKind, RemoveObject, RenameObject, remove, rename};
 
+mod mutation;
+use mutation::mutate;
+
 use std::collections::{BTreeSet, HashSet};
 
 use crate::{

@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use super::mutate;
+
 use crate::{
     api::ApiError,
     model::{MetadataRevision, ObjectId, Timestamp, WorkspaceId},
@@ -63,8 +65,8 @@ pub(crate) async fn list_grants(
 
 /**
  * @cc [owner:spolu,label:security;backend] atomic-grant-administration
- * Callers MUST authenticate the workspace key. Under the publication guard, require an existing
- * object in that workspace and an exact expected revision. Apply 1..=512 explicit attachment
+ * Callers MUST authenticate the workspace key. In one snapshot validated at publication, require
+ * an existing object and an exact expected revision. Apply 1..=512 explicit attachment
  * changes, both index directions, the object's next revision/server ctime, and an event as one
  * durable batch. Unspecified explicit attachments and ancestors' attachments MUST remain unchanged.
  * Do not materialize inherited grants or scan all attachments. Session grants MUST NOT confer this
@@ -80,40 +82,32 @@ pub(crate) async fn update_grants(
     if !(1..=512).contains(&grants.len()) {
         return Err(ApiError::InvalidInput);
     }
-    let scoped = storage
-        .workspace(workspace)
-        .map_err(|_| ApiError::Unavailable)?;
-    let writer = scoped.begin_metadata_write().await;
-    let view = writer
-        .read_view()
-        .await
-        .map_err(|_| ApiError::Unavailable)?;
-    let mut object = view
-        .object(object_id)
-        .await
-        .map_err(|_| ApiError::Unavailable)?
-        .ok_or(ApiError::NotFound)?;
-    if object.metadata_revision.get() != expected_metadata_revision {
-        return Err(ApiError::Conflict);
-    }
-    object.metadata_revision = object
-        .metadata_revision
-        .next()
-        .map_err(|_| ApiError::CapacityExhausted)?;
-    object.posix.ctime = Timestamp::now().map_err(|_| ApiError::Unavailable)?;
-    let revision = object.metadata_revision;
-    let mut mutations: Vec<_> = grants
-        .into_iter()
-        .map(|(grant, attached)| MetadataMutation::SetGrant {
-            object_id,
-            grant,
-            attached,
-        })
-        .collect();
-    mutations.push(MetadataMutation::PutObject(object.into()));
-    writer
-        .commit(mutations)
-        .await
-        .map_err(|_| ApiError::Unavailable)?;
-    Ok(revision)
+    let grants = &grants;
+    mutate(storage, workspace, |view| async move {
+        let mut object = view
+            .object(object_id)
+            .await
+            .map_err(|_| ApiError::Unavailable)?
+            .ok_or(ApiError::NotFound)?;
+        if object.metadata_revision.get() != expected_metadata_revision {
+            return Err(ApiError::Conflict);
+        }
+        object.metadata_revision = object
+            .metadata_revision
+            .next()
+            .map_err(|_| ApiError::CapacityExhausted)?;
+        object.posix.ctime = Timestamp::now().map_err(|_| ApiError::Unavailable)?;
+        let revision = object.metadata_revision;
+        let mut mutations: Vec<_> = grants
+            .iter()
+            .map(|(grant, attached)| MetadataMutation::SetGrant {
+                object_id,
+                grant: grant.clone(),
+                attached: *attached,
+            })
+            .collect();
+        mutations.push(MetadataMutation::PutObject(object.into()));
+        Ok((revision, mutations))
+    })
+    .await
 }

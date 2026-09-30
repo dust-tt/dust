@@ -232,12 +232,27 @@ async fn queued_mutations_authorize_after_revocation_and_leave_no_effects() -> R
                 "object_id":empty["object_id"],"expected_metadata_revision":0,
             }),
         ));
+        let mut stale = Box::pin(f.request(
+            "/objects/update",
+            json!({
+                "object_id":f.files[0].id.to_string(),"expected_metadata_revision":999,"mode":0,
+            }),
+        ));
+        let mut unchanged = Box::pin(f.request(
+            "/objects/rename",
+            json!({
+                "object_id":f.files[0].id.to_string(),"expected_metadata_revision":0,
+                "parent_id":f.shared.id.to_string(),"name":"A.txt",
+            }),
+        ));
         // Start the HTTP requests while publication is locked; none may finish yet.
         ensure!(futures::poll!(mkdir.as_mut()).is_pending());
         ensure!(futures::poll!(update.as_mut()).is_pending());
         ensure!(futures::poll!(rename.as_mut()).is_pending());
         ensure!(futures::poll!(unlink.as_mut()).is_pending());
         ensure!(futures::poll!(rmdir.as_mut()).is_pending());
+        ensure!(futures::poll!(stale.as_mut()).is_pending());
+        ensure!(futures::poll!(unchanged.as_mut()).is_pending());
         let sequence = writer
             .commit(vec![
                 MetadataMutation::PutObject(revoked.clone().into()),
@@ -248,11 +263,13 @@ async fn queued_mutations_authorize_after_revocation_and_leave_no_effects() -> R
                 },
             ])
             .await?;
-        ensure!(mkdir.await?.0 == StatusCode::NOT_FOUND);
-        ensure!(update.await?.0 == StatusCode::NOT_FOUND);
-        ensure!(rename.await?.0 == StatusCode::NOT_FOUND);
-        ensure!(unlink.await?.0 == StatusCode::NOT_FOUND);
-        ensure!(rmdir.await?.0 == StatusCode::NOT_FOUND);
+        // Retries rejoin the publication queue, so keep all queued requests polled concurrently.
+        let results = tokio::join!(mkdir, update, rename, unlink, rmdir, stale, unchanged);
+        for result in [
+            results.0, results.1, results.2, results.3, results.4, results.5, results.6,
+        ] {
+            ensure!(result?.0 == StatusCode::NOT_FOUND);
+        }
         Ok::<_, anyhow::Error>(sequence)
     })
     .await??;

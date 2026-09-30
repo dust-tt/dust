@@ -141,7 +141,7 @@ Error responses carry `Cache-Control: no-store`; authentication failures also ca
 | `is_directory` | 400 | `EISDIR` |
 | `not_empty` | 409 | `ENOTEMPTY` |
 | `method_not_allowed` | 405 | `EOPNOTSUPP` |
-| `conflict` | 409 | `EAGAIN` for stale revisions. |
+| `conflict` | 409 | `EAGAIN` for stale revisions or exhausted contention retries. |
 | `already_exists` | 409 | `EEXIST` |
 | `capacity_exhausted` | 507 | `ENOSPC` |
 | `unavailable` | 503 | `EAGAIN` |
@@ -164,11 +164,18 @@ The synchronous baseline caches neither dfs metadata nor authorization decisions
 `POST /objects/mkdir` creates an authorized child and updates its parent atomically.
 `POST /objects/update` patches MIME, xattrs, mode, and atime/mtime with a required expected metadata
 revision; stale revisions conflict. Both set server ctime, publish indexing events, and await durability.
-Xattr patches use base64 values, null deletions, and a 32 KiB total key/value limit. Authorization and
-publication share a lock until per-object concurrency is implemented; WAL waits release that lock.
-Take mutation snapshots after acquiring the lock: queued operations must observe intervening moves
-and revocations. Authorize before checking collisions/revisions; denied mutations publish nothing.
+Xattr patches use base64 values, null deletions, and a 32 KiB total key/value limit. Authorize before
+checking collisions/revisions; denied mutations publish nothing.
 Early development uses one metadata format; incompatible layout changes require a fresh store.
+
+Mutations prepare against one snapshot outside publication, then lock touched objects/parents by
+workspace and ascending object ID. Under a short shared publication lock, compare the snapshot's
+workspace change sequence with current memory-visible state and submit atomically if unchanged.
+Otherwise release locks, reread, reauthorize, and recompute the entire lock set; after 16 stale attempts
+return `conflict` without publication. Validate errors and no-ops too. All locks release before WAL
+durability waits; cancellation cleans up held locks and idle lock entries. The workspace check also
+catches ancestor grants/moves but may retry after unrelated writes in that workspace. Narrower
+validation is a future optimization; no dfs metadata or authorization cache is introduced.
 
 `POST /objects/rename` takes the source ID/revision and destination `parent_id`/`name`. Require access
 to the source and both containing directories; direct sharing never grants authority over a hidden
@@ -179,9 +186,9 @@ and descendants; update source ctime/revision and each changed parent's mtime/ct
 
 `POST /objects/unlink` and `/objects/rmdir` take object ID/revision and require current parent access.
 Unlink accepts files; rmdir accepts empty directories; neither removes roots. Namespace changes,
-deleted/replaced objects, both grant-index removals, and events persist atomically under the same
-authorization/publication guard. Retain blobs until safe reclamation exists. Inherited access follows
-the new ancestry immediately; ambiguous failures require rereading state before retrying.
+deleted/replaced objects, both grant-index removals, and events persist atomically through the same
+snapshot validation and publication path. Retain blobs until safe reclamation exists. Inherited access
+follows the new ancestry immediately; ambiguous failures require rereading state before retrying.
 
 ## Workspace creation, sessions, and virtual folders
 

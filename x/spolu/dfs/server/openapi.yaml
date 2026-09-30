@@ -10,11 +10,15 @@ info:
     oversized bodies return invalid_input (400). All authenticated responses disable caching.
     Missing and inaccessible objects
     produce the same not_found response; messages never contain resource or storage details.
-    Session object operations use current ancestor grants in one snapshot per request, with no
+    Session object reads use current ancestor grants in one snapshot per request, with no
     dfs metadata or authorization cache. An in-flight read may finish against its original snapshot.
-    Mutations acquire the publication lock before taking that snapshot, so queued mutations observe
-    intervening revocations and moves. Authorization failures publish nothing and return not_found
-    before checking name collisions or revision conflicts.
+    Mutations prepare from a snapshot and acquire workspace/object locks for all touched objects
+    and parents in ID order. Publication validates the workspace change sequence before atomically
+    submitting. On change, release locks and retry with fresh metadata, authorization, and lock targets;
+    after 16 stale attempts return conflict (409) without publication. Errors and no-ops validate too.
+    Queued mutations observe intervening revocations and moves. Authorization failures publish nothing
+    and return not_found before name collisions or revision conflicts. All locks release before WAL
+    durability waits. Unrelated writes in the same workspace may trigger retries.
 paths:
   /health:
     get:
@@ -262,7 +266,7 @@ paths:
       summary: Update an authorized file or directory's metadata.
       description: |
         Requires current grants and expected_metadata_revision. Authorization, revision comparison,
-        and publication are serialized; stale revisions return conflict (409) without a mutation.
+        and publication use the snapshot validation protocol; stale revisions return conflict (409).
         Only supplied fields change. Omitted/null scalar fields are unchanged; xattr null values
         remove keys and empty base64 strings store empty bytes. Require at least one supplied scalar
         or xattr entry. Every accepted update increments the revision and sets server ctime,
@@ -292,8 +296,8 @@ paths:
       summary: Rename or move a file or directory, preserving its ID.
       description: |
         Requires session access to the object, its current parent, and the destination directory.
-        A direct object grant does not authorize changing a hidden parent's entries. Authorize
-        under the publication lock before comparing the required source metadata revision.
+        A direct object grant does not authorize changing a hidden parent's entries. Check grants
+        before the required source revision, in one snapshot validated at publication.
         parent_id/name identify the destination. By default, an occupied name returns already_exists
         (409). With replace true, replace the current destination only file-for-file or
         directory-for-empty-directory. File over directory returns is_directory (400); directory
@@ -331,8 +335,8 @@ paths:
       summary: Remove a file and its explicit grants.
       description: |
         Requires current session access to the object and its containing directory; a direct file
-        grant alone cannot change a hidden parent's entries. Authorize under the publication lock
-        before checking expected_metadata_revision. Stale revisions return conflict (409);
+        grant alone cannot change a hidden parent's entries. Check grants before the required revision,
+        in one snapshot validated at publication. Stale revisions return conflict (409);
         directories return is_directory (400), while roots return forbidden (403).
         Delete metadata, the child entry, and both directions of every explicit grant attachment
         atomically with the parent revision/mtime/ctime and event. Retain blobs for snapshots/recovery.
@@ -356,8 +360,8 @@ paths:
       operationId: removeDirectory
       summary: Remove an empty directory and its explicit grants.
       description: |
-        Requires current session access to the object and its containing directory. Authorize
-        under the publication lock before checking revision, type, and emptiness. Stale revisions
+        Requires current session access to the object and its containing directory. Check grants before
+        revision, type, and emptiness in one snapshot validated at publication. Stale revisions
         return conflict (409); files return not_directory (400), nonempty directories return
         not_empty (409), and roots return forbidden (403). Never remove recursively.
         Delete metadata, the child entry, and both explicit grant indexes atomically with parent

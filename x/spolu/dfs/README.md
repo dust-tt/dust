@@ -142,12 +142,17 @@ A stale expected revision returns `conflict` (409); an empty patch is invalid. E
 advances the revision and sets server ctime. Content, parent, ID, and grants remain unchanged.
 Modes retain only permission bits and do not authorize server access; additional bits are unsupported.
 
-Authorization and validation remain serialized with publication; durability waits release the lock.
-Mkdir checks the parent; metadata updates check the target. Both take their authorization snapshot
-after acquiring the lock, so queued writes observe intervening revocations and moves. Denial publishes
-nothing and returns `not_found` before checking name collisions or revision conflicts.
+Mkdir checks the parent; metadata updates check the target. Mutations prepare against one snapshot,
+then acquire workspace/object locks in ID order for every touched object and parent. The shared
+publication lock only validates the workspace's memory-visible change sequence and submits the batch.
+If that sequence changed, release the locks and retry with fresh metadata, grants, and lock targets.
+Errors and no-ops also validate their snapshot, so queued requests observe revocations and moves.
+Denial publishes nothing and returns `not_found` before name collisions or revision conflicts.
+All locks release before the WAL wait. Canceled requests release acquired locks, and unused lock
+entries are reclaimed. Unrelated changes in the same workspace can trigger retries; after 16 stale
+attempts, return `conflict` without publication. Changes in other workspaces do not trigger retries.
 A failed/disconnected request can have committed: inspect the name or attributes before retrying.
-Per-object concurrency and a broader retry protocol arrive in later increments.
+A broader retry protocol with request IDs arrives with file I/O.
 
 ## Rename and removal
 

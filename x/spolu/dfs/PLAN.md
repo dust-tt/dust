@@ -106,17 +106,20 @@ restart while old session keys fail.
   consistent view. Do not cache dfs metadata or authorization decisions yet.
 - [x] Implement rename/move, unlink, and directory removal, including collision checks, cycle
   prevention, and nonempty-directory errors. Specify replacement behavior explicitly.
-- [ ] Add per-object concurrency control without holding a file's write lock across unrelated files.
+- [x] Add per-object concurrency control without holding a file's write lock across unrelated files.
 
 Reads enforce current inherited grants within one snapshot per request. Listing uses exclusive name
 cursors and fresh authorization per page; concurrent edits can require restarting the listing.
-Namespace mutations authorize under the shared publication lock; grant administration verifies
-workspace authority and checks object/revision under that lock. All release it before the WAL wait.
+Namespace and grant mutations prepare from a snapshot, acquire workspace/object locks in ID order,
+then validate the workspace change sequence under the shared publication lock before submitting.
+Stale attempts release locks and redo authorization and lock discovery; 16 stale attempts return
+`conflict`. Errors/no-ops validate too, idle locks are reclaimed, and all locks release before the WAL
+wait. Workspace-wide validation can retry after unrelated writes; narrower checks are deferred.
 Metadata and grant updates require the expected revision. Authorization tests cover grant unions,
 subtree moves without descendant rewrites, and queued mutations observing revocations before
 publication; denied operations leave no changes or events. Future endpoints must reuse these
-boundaries; per-object concurrency remains above. Rename requires both parents; replacement is opt-in
-for files or empty directories. Unlink/rmdir remove both grant indexes; blobs remain for recovery.
+boundaries. Rename requires both parents; replacement is opt-in for files or empty directories.
+Unlink/rmdir remove both grant indexes; blobs remain for recovery.
 Local interruption tests verify atomic recovery; the GCS fixture verifies mkdir, metadata updates,
 renames, removals, and both grant indexes after reopening. Grant patches update explicit attachments
 only; revocation cannot override inherited access.
