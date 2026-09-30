@@ -104,8 +104,11 @@ export async function withRetry<T>(
 // database stalls. A timer can hide a stalled operation from Temporal.
 /**
  * @cc [owner:philipperolet,label:performance] external-calls-only
- * Callers MUST use `withPeriodicHeartbeat` only for third-party calls outside our
- * control that may exceed the activity heartbeat timeout.
+ * Production callers MUST use `withPeriodicHeartbeat` only for third-party calls
+ * outside our control that may exceed the activity heartbeat timeout. The existing
+ * calls in `front/temporal/agent_loop/activities/run_tool.ts`,
+ * `front/temporal/agent_loop/activities/run_model_and_create_actions_wrapper.ts`,
+ * and `front/lib/api/mcp/run_tool.ts` are exceptions until those callers are updated.
  */
 export async function withPeriodicHeartbeat<T>(
   fn: () => Promise<T>,
