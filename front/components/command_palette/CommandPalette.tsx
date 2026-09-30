@@ -8,12 +8,16 @@ import { useCommandPalette } from "@app/components/command_palette/CommandPalett
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import {
+  useSearchPodConversations,
+  useSearchPrivateConversations,
+} from "@app/hooks/conversations";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
+import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
-import { useSpaces } from "@app/lib/swr/spaces";
 import { filterAndSortAgents, subFilter } from "@app/lib/utils";
 import {
   getAgentBuilderRoute,
@@ -22,7 +26,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
-import { isProjectType } from "@app/types/space";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Dialog, DialogContent } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -33,6 +37,8 @@ interface CommandPaletteProps {
 }
 
 const MAX_DISPLAYED_AGENTS = 5;
+const MAX_DISPLAYED_CONVERSATIONS = 5;
+const MAX_DISPLAYED_PODS = 5;
 const MAX_DISPLAYED_SKILLS = 5;
 
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
@@ -98,15 +104,39 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     ? isSearchSkillsLoading
     : isListedSkillsLoading;
 
-  const { spaces, isSpacesLoading } = useSpaces({
+  // Same readable-pods search as the sidebar (member + open pods).
+  const {
+    pods: searchablePods,
+    isSearching: isSearchingPods,
+    hasMore: hasMoreSearchPods,
+  } = useSearchPods({
     workspaceId: owner.sId,
-    kinds: ["project"],
-    disabled: !isOpen,
+    query: trimmedQuery,
+    enabled: isOpen,
+    limit: MAX_DISPLAYED_PODS,
   });
-  const memberPods = useMemo(
-    () => spaces.filter(isProjectType).filter((p) => p.archivedAt === null),
-    [spaces]
-  );
+
+  // Same conversation search as the sidebar (private title + pod semantic).
+  const isConversationSearchEnabled = isOpen && trimmedQuery.length > 0;
+  const {
+    conversations: privateConversationResults,
+    isSearching: isSearchingPrivateConversations,
+    hasMore: hasMorePrivateConversations,
+  } = useSearchPrivateConversations({
+    workspaceId: owner.sId,
+    query: trimmedQuery,
+    enabled: isConversationSearchEnabled,
+    limit: MAX_DISPLAYED_CONVERSATIONS,
+  });
+  const {
+    conversations: podConversationResults,
+    isSearching: isSearchingPodConversations,
+  } = useSearchPodConversations({
+    workspaceId: owner.sId,
+    query: trimmedQuery,
+    enabled: isConversationSearchEnabled,
+    limit: MAX_DISPLAYED_CONVERSATIONS,
+  });
 
   // Debounce the search query to avoid expensive fuzzy filtering on every keystroke.
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -128,11 +158,6 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const isDebouncing = trimmedQuery !== debouncedQuery;
 
-  // Cap the number of rendered items to avoid slow DOM rendering on large workspaces.
-  // This is a temporary measure until the command palette moves to Sparkle with
-  // proper list virtualization (@tanstack/react-virtual).
-  const MAX_DISPLAYED_PODS = 5;
-
   const allFilteredAgents = useMemo(
     () =>
       debouncedQuery
@@ -140,16 +165,6 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         : [...agentConfigurations].sort(compareAgentsForSort),
     [agentConfigurations, debouncedQuery]
   );
-
-  const allFilteredPods = useMemo(() => {
-    if (!debouncedQuery) {
-      return memberPods;
-    }
-    const lowerQuery = debouncedQuery.toLowerCase();
-    return memberPods.filter((p) =>
-      subFilter(lowerQuery, p.name.toLowerCase())
-    );
-  }, [memberPods, debouncedQuery]);
 
   const allFilteredSkills = useMemo(() => {
     if (!debouncedQuery) {
@@ -159,11 +174,36 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     return skills.filter((s) => subFilter(lowerQuery, s.name.toLowerCase()));
   }, [skills, debouncedQuery]);
 
+  const allConversations = useMemo(() => {
+    const seen = new Set<string>();
+    const merged: Array<
+      ConversationWithoutContentType & { spaceName: string | null }
+    > = [];
+
+    for (const conversation of privateConversationResults) {
+      if (!seen.has(conversation.sId)) {
+        seen.add(conversation.sId);
+        merged.push({ ...conversation, spaceName: null });
+      }
+    }
+
+    for (const conversation of podConversationResults) {
+      if (!seen.has(conversation.sId)) {
+        seen.add(conversation.sId);
+        merged.push(conversation);
+      }
+    }
+
+    return merged;
+  }, [privateConversationResults, podConversationResults]);
+
   const {
     filteredAgents,
+    filteredConversations,
     filteredPods,
     filteredSkills,
     hasMoreAgents,
+    hasMoreConversations,
     hasMorePods,
     hasMoreSkills,
   } = useMemo(
@@ -171,33 +211,48 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
       filteredAgents: isAgentsSearchEnabled
         ? searchAgents
         : allFilteredAgents.slice(0, MAX_DISPLAYED_AGENTS),
-      filteredPods: allFilteredPods.slice(0, MAX_DISPLAYED_PODS),
+      filteredConversations: allConversations.slice(
+        0,
+        MAX_DISPLAYED_CONVERSATIONS
+      ),
+      filteredPods: searchablePods,
       filteredSkills: isSkillsSearchEnabled
         ? searchSkills
         : allFilteredSkills.slice(0, MAX_DISPLAYED_SKILLS),
       hasMoreAgents: isAgentsSearchEnabled
         ? hasMoreSearchAgents
         : allFilteredAgents.length > MAX_DISPLAYED_AGENTS,
-      hasMorePods: allFilteredPods.length > MAX_DISPLAYED_PODS,
+      hasMoreConversations:
+        hasMorePrivateConversations ||
+        allConversations.length > MAX_DISPLAYED_CONVERSATIONS,
+      hasMorePods: hasMoreSearchPods,
       hasMoreSkills: isSkillsSearchEnabled
         ? hasMoreSearchSkills
         : allFilteredSkills.length > MAX_DISPLAYED_SKILLS,
     }),
     [
+      allConversations,
       allFilteredAgents,
-      allFilteredPods,
       allFilteredSkills,
-      isAgentsSearchEnabled,
-      searchAgents,
+      hasMorePrivateConversations,
       hasMoreSearchAgents,
-      isSkillsSearchEnabled,
-      searchSkills,
+      hasMoreSearchPods,
       hasMoreSearchSkills,
+      isAgentsSearchEnabled,
+      isSkillsSearchEnabled,
+      searchAgents,
+      searchablePods,
+      searchSkills,
     ]
   );
 
   const isLoading =
-    isAgentsLoading || isSkillsLoading || isSpacesLoading || isDebouncing;
+    isAgentsLoading ||
+    isSkillsLoading ||
+    isSearchingPods ||
+    isSearchingPrivateConversations ||
+    isSearchingPodConversations ||
+    isDebouncing;
 
   // Reset state when dialog opens/closes.
   useEffect(() => {
@@ -248,6 +303,13 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         void router.push(getPodRoute(owner.sId, item.pod.sId));
         return;
       }
+      if (item.kind === "conversation") {
+        close();
+        void router.push(
+          getConversationRoute(owner.sId, item.conversation.sId)
+        );
+        return;
+      }
       // Skills without administration access have only one action (view details).
       if (item.kind === "skill" && !item.skill.canAdministrate) {
         executeAction(item, "view_details");
@@ -291,9 +353,11 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
               agents={filteredAgents}
+              conversations={filteredConversations}
               pods={filteredPods}
               skills={filteredSkills}
               hasMoreAgents={hasMoreAgents}
+              hasMoreConversations={hasMoreConversations}
               hasMorePods={hasMorePods}
               hasMoreSkills={hasMoreSkills}
               isLoading={isLoading}

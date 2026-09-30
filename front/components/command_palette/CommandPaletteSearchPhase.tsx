@@ -8,12 +8,21 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { AgentSearchListItemType } from "@app/types/agent_search/agent_search";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type {
   SkillListItemType,
   SkillWithoutInstructionsAndToolsType,
 } from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
-import { Avatar, cn, Icon, LoadingBlock, SearchInput } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  cn,
+  Icon,
+  LoadingBlock,
+  MessageCircle01,
+  SearchInput,
+} from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 type CommandPaletteSkill =
@@ -24,18 +33,27 @@ type CommandPaletteAgent =
   | LightAgentConfigurationType
   | AgentSearchListItemType;
 
+type CommandPalettePod = PodType & { isMember: boolean };
+
+type CommandPaletteConversation = ConversationWithoutContentType & {
+  spaceName: string | null;
+};
+
 export type CommandPaletteItem =
   | { kind: "agent"; agent: CommandPaletteAgent }
-  | { kind: "pod"; pod: PodType }
+  | { kind: "conversation"; conversation: CommandPaletteConversation }
+  | { kind: "pod"; pod: CommandPalettePod }
   | { kind: "skill"; skill: CommandPaletteSkill };
 
 interface CommandPaletteSearchPhaseProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   agents: CommandPaletteAgent[];
-  pods: PodType[];
+  conversations: CommandPaletteConversation[];
+  pods: CommandPalettePod[];
   skills: CommandPaletteSkill[];
   hasMoreAgents: boolean;
+  hasMoreConversations: boolean;
   hasMorePods: boolean;
   hasMoreSkills: boolean;
   isLoading: boolean;
@@ -47,11 +65,18 @@ interface CommandPaletteSearchPhaseProps {
 
 function getFlatItems(
   agents: CommandPaletteAgent[],
-  pods: PodType[],
+  conversations: CommandPaletteConversation[],
+  pods: CommandPalettePod[],
   skills: CommandPaletteSkill[]
 ): CommandPaletteItem[] {
   return [
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
+    ...conversations.map(
+      (conversation): CommandPaletteItem => ({
+        kind: "conversation",
+        conversation,
+      })
+    ),
     ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
   ];
@@ -61,9 +86,11 @@ export function CommandPaletteSearchPhase({
   searchQuery,
   onSearchQueryChange,
   agents,
+  conversations,
   pods,
   skills,
   hasMoreAgents,
+  hasMoreConversations,
   hasMorePods,
   hasMoreSkills,
   isLoading,
@@ -73,8 +100,8 @@ export function CommandPaletteSearchPhase({
   onClose,
 }: CommandPaletteSearchPhaseProps) {
   const flatItems = useMemo(
-    () => getFlatItems(agents, pods, skills),
-    [agents, pods, skills]
+    () => getFlatItems(agents, conversations, pods, skills),
+    [agents, conversations, pods, skills]
   );
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -97,11 +124,17 @@ export function CommandPaletteSearchPhase({
   }, [selectedIndex, flatItems.length]);
 
   // Reset selection and trim stale refs when the number of results changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: agents.length, pods.length and skills.length are intentional triggers
+  // biome-ignore lint/correctness/useExhaustiveDependencies: section lengths are intentional triggers
   useEffect(() => {
     itemRefs.current.length = flatItems.length;
     onSelectedIndexChange(0);
-  }, [agents.length, pods.length, skills.length, onSelectedIndexChange]);
+  }, [
+    agents.length,
+    conversations.length,
+    pods.length,
+    skills.length,
+    onSelectedIndexChange,
+  ]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     const totalItems = flatItems.length;
@@ -146,7 +179,7 @@ export function CommandPaletteSearchPhase({
             "[&_input]:focus-visible:ring-0"
           )}
           name="command-palette-search"
-          placeholder="Search agents, pods and skills…"
+          placeholder="Search agents, conversations, pods and skills…"
           value={searchQuery}
           onChange={onSearchQueryChange}
           onKeyDown={handleKeyDown}
@@ -172,7 +205,7 @@ export function CommandPaletteSearchPhase({
         )}
         {!isLoading && flatItems.length === 0 && searchQuery.length === 0 && (
           <ItemEmptyState>
-            Type to search agents, pods and skills.
+            Type to search agents, conversations, pods and skills.
           </ItemEmptyState>
         )}
 
@@ -207,11 +240,56 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
+        {conversations.length > 0 && (
+          <div>
+            <ItemTitle>Conversations</ItemTitle>
+            {conversations.map((conversation, i) => {
+              const globalIndex = agents.length + i;
+              const title = getConversationDisplayTitle(conversation);
+              return (
+                <ItemRow
+                  key={conversation.sId}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() =>
+                    onItemSelect({ kind: "conversation", conversation })
+                  }
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <Icon visual={MessageCircle01} size="xs" />
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="min-w-0 truncate font-medium">
+                      {title}
+                    </span>
+                    {conversation.spaceName && (
+                      <>
+                        <span className="shrink-0 text-muted-foreground">
+                          -
+                        </span>
+                        <span className="min-w-0 truncate text-muted-foreground">
+                          {conversation.spaceName}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </ItemRow>
+              );
+            })}
+            {hasMoreConversations && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">
+                More conversations available. Type to filter.
+              </div>
+            )}
+          </div>
+        )}
+
         {pods.length > 0 && (
           <div>
             <ItemTitle>Pods</ItemTitle>
             {pods.map((pod, i) => {
-              const globalIndex = agents.length + i;
+              const globalIndex = agents.length + conversations.length + i;
               return (
                 <ItemRow
                   key={pod.sId}
@@ -224,7 +302,14 @@ export function CommandPaletteSearchPhase({
                 >
                   <Icon visual={getSpaceIcon(pod)} size="xs" />
                   <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="shrink-0 font-medium">{pod.name}</span>
+                    <span
+                      className={cn(
+                        "shrink-0 font-medium",
+                        !pod.isMember && "italic"
+                      )}
+                    >
+                      {pod.name}
+                    </span>
                     {pod.description && (
                       <>
                         <span className="shrink-0 text-muted-foreground">
@@ -251,7 +336,8 @@ export function CommandPaletteSearchPhase({
           <div>
             <ItemTitle>Skills</ItemTitle>
             {skills.map((skill, i) => {
-              const globalIndex = agents.length + pods.length + i;
+              const globalIndex =
+                agents.length + conversations.length + pods.length + i;
               const SkillAvatar = getSkillAvatarIcon(skill);
               return (
                 <ItemRow
