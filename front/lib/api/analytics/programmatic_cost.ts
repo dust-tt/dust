@@ -2,7 +2,6 @@ import {
   getTimestampsForWindow,
   ONE_DAY_MS,
 } from "@app/lib/api/analytics/time_utils";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { MetricsBucket } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   buildMetricAggregates,
@@ -17,6 +16,7 @@ import {
 import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/plans/billing_cycle";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -448,10 +448,7 @@ export async function getProgrammaticCost(
     const agentNames: Record<string, string> = {};
     if (groupBy === "agent") {
       const agentIds = availableGroupBuckets.map((b) => b.key);
-      const agents = await getAgentConfigurations(auth, {
-        agentIds,
-        variant: "extra_light",
-      });
+      const agents = await AgentResource.fetchByIds(auth, agentIds);
       agents.forEach((agent) => {
         agentNames[agent.sId] = agent.name;
       });

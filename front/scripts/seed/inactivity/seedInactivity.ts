@@ -1,5 +1,5 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { ONE_DAY_MS } from "@app/lib/api/assistant/inactivity/policy";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import type {
   AgentAsset,
@@ -86,10 +86,7 @@ async function editSeededAgent(
 ): Promise<void> {
   const { auth, user, execute, logger } = ctx;
 
-  const existing = await getAgentConfiguration(auth, {
-    agentId: agent.sId,
-    variant: "light",
-  });
+  const existing = await AgentResource.fetchById(auth, agent.sId);
   if (existing && existing.version > 0) {
     logger.info({ agentId: agent.sId }, "Agent already edited, skipping");
     return;

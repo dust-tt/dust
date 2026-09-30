@@ -1,10 +1,11 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toParticipantJSON } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -40,16 +41,11 @@ async function fetchAllAgentsById(
   auth: Authenticator,
   agentConfigurationIds: string[]
 ): Promise<AgentParticipantType[]> {
-  const agents = await getAgentConfigurations(auth, {
-    agentIds: agentConfigurationIds,
-    variant: "extra_light",
-  });
+  const agents = (
+    await AgentResource.fetchByIds(auth, agentConfigurationIds)
+  ).filter((agent) => auth.can("read", agent));
 
-  return agents.map((a) => ({
-    configurationId: a.sId,
-    name: a.name,
-    pictureUrl: a.pictureUrl,
-  }));
+  return agents.map(toParticipantJSON);
 }
 
 export async function fetchConversationParticipants(

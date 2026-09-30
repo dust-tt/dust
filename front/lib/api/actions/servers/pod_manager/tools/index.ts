@@ -41,7 +41,6 @@ import {
 import { partitionMembersToAdd } from "@app/lib/api/actions/servers/pod_manager/types";
 import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
 import { resolveAgentIdByName } from "@app/lib/api/agents/search";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postUserMessage,
@@ -66,6 +65,7 @@ import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -530,10 +530,7 @@ export function createProjectManagerTools(
               })
             );
           }
-          const agent = await getAgentConfiguration(auth, {
-            agentId: resolvedAgentId,
-            variant: "extra_light",
-          });
+          const agent = await AgentResource.fetchById(auth, resolvedAgentId);
           if (!agent) {
             return new Err(
               new MCPError(`No agent found matching "${agentName}".`, {
@@ -764,10 +761,10 @@ export function createProjectManagerTools(
 
         let defaultAgent: { id: string; name: string | null } | null = null;
         if (metadata?.defaultAgentId) {
-          const agent = await getAgentConfiguration(auth, {
-            agentId: metadata.defaultAgentId,
-            variant: "extra_light",
-          });
+          const agent = await AgentResource.fetchById(
+            auth,
+            metadata.defaultAgentId
+          );
           defaultAgent = {
             id: metadata.defaultAgentId,
             name: agent?.name ?? null,

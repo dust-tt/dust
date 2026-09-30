@@ -1,4 +1,4 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { GetUserTriggersResponseBody } from "@app/types/api/assistant/configuration/triggers";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -24,12 +24,8 @@ app.get("/", async (ctx): HandlerResult<GetUserTriggersResponseBody> => {
     new Set(editorTriggers.map((t) => t.agentConfigurationId))
   );
 
-  const agentConfigurations = await getAgentConfigurations(auth, {
-    agentIds: uniqueAgentIds,
-    variant: "light",
-  });
-
-  const agentById = new Map(agentConfigurations.map((a) => [a.sId, a]));
+  const agents = await AgentResource.fetchByIds(auth, uniqueAgentIds);
+  const agentById = new Map(agents.map((a) => [a.sId, a]));
 
   const triggers = removeNulls(
     editorTriggers.map((trigger) => {
