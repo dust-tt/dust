@@ -24,6 +24,8 @@
 import type { GetShareFrameMetadataResponseBody } from "@dust-tt/front/lib/api/files/share";
 import { z } from "zod";
 
+import { applySecurityHeaders } from "./security_headers";
+
 interface Env {
   ASSETS: Fetcher;
   DUST_API_URL: string;
@@ -98,7 +100,10 @@ export default {
     const path = url.pathname;
 
     if (path.startsWith("/assets/")) {
-      return new Response("Not Found", { status: 404 });
+      return applySecurityHeaders(
+        new Response("Not Found", { status: 404 }),
+        path
+      );
     }
 
     let fallback: string;
@@ -121,15 +126,18 @@ export default {
     const frameMatch = SHARE_FRAME_RE.exec(path);
     if (frameMatch) {
       const token = frameMatch[1];
-      return injectFrameOgTags(
-        await htmlResponse,
-        token,
-        url.href,
-        env.DUST_API_URL
+      return applySecurityHeaders(
+        await injectFrameOgTags(
+          await htmlResponse,
+          token,
+          url.href,
+          env.DUST_API_URL
+        ),
+        path
       );
     }
 
-    return htmlResponse;
+    return applySecurityHeaders(await htmlResponse, path);
   },
 };
 

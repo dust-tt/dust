@@ -13,6 +13,8 @@
  * 2. Fall back to index.html for all other paths (SPA routing).
  */
 
+import { applySecurityHeaders } from "./security_headers";
+
 interface Env {
   ASSETS: Fetcher;
 }
@@ -23,9 +25,15 @@ export default {
     const path = url.pathname;
 
     if (path.startsWith("/assets/")) {
-      return new Response("Not Found", { status: 404 });
+      return applySecurityHeaders(
+        new Response("Not Found", { status: 404 }),
+        path
+      );
     }
 
-    return env.ASSETS.fetch(new URL("/index.html", url.origin));
+    return applySecurityHeaders(
+      await env.ASSETS.fetch(new URL("/index.html", url.origin)),
+      path
+    );
   },
 };
