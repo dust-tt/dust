@@ -7,9 +7,15 @@ import {
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import { assertNever } from "@dust-tt/client";
 import type { Request, Response } from "express";
+
+// @cc [owner:frankaloia,label:security] firecrawl-crawl-id-binding
+// Firecrawl webhook handlers MUST verify that the incoming crawlId (body field `id`)
+// matches the crawlId stored for the connector at crawl initiation time.
+// A mismatch MUST be silently ignored (return 200) to prevent Firecrawl retries.
 
 const logger = mainLogger.child(
   {
@@ -88,6 +94,27 @@ const _webhookFirecrawlAPIHandler = async (
   if (!connector) {
     logger.error({ connectorId: metadata.connectorId }, "Connector not found");
     // We ignore the webhook.
+    return res.status(200).end();
+  }
+
+  // Enforce @cc firecrawl-crawl-id-binding: verify the incoming crawlId matches
+  // the server-side stored crawlId to prevent forged payloads from affecting other
+  // connectors. A mismatch is silently ignored (200) to avoid Firecrawl retries.
+  const webcrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
+  if (
+    !webcrawlerConfig ||
+    !webcrawlerConfig.crawlId ||
+    webcrawlerConfig.crawlId !== id
+  ) {
+    logger.warn(
+      {
+        connectorId: connector.id,
+        incomingCrawlId: id,
+        storedCrawlId: webcrawlerConfig?.crawlId ?? null,
+      },
+      "crawlId mismatch or missing — ignoring webhook"
+    );
     return res.status(200).end();
   }
 

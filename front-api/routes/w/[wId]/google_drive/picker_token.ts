@@ -33,6 +33,21 @@ app.post(
     const connectionType =
       views[0]?.oAuthUseCase === "platform_actions" ? "workspace" : "personal";
 
+    // @cc [owner:frankaloia,label:security] picker-token-workspace-role-guard
+    // When connectionType is "workspace" (platform_actions OAuth), the caller MUST
+    // be a manager or admin. Workspace-level OAuth tokens MUST NOT be returned to
+    // regular workspace members.
+    if (connectionType === "workspace" && !auth.isManager()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "Only managers and admins can access workspace-level OAuth tokens.",
+        },
+      });
+    }
+
     const connectionResult = await MCPServerConnectionResource.findByMCPServer(
       auth,
       {
