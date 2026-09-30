@@ -19,7 +19,7 @@ be written translated. After changing strings, follow [Workflow](#workflow) and 
 |---|---|---|
 | JSX children | `<Trans>Save changes</Trans>` | `import { Trans } from "@lingui/react/macro"` |
 | String props, toasts, `aria-label`, `placeholder`, zod messages built in a component | ``const { t } = useLingui();`` then ``t`Search agents` `` | `import { useLingui } from "@lingui/react/macro"` |
-| Module-level constants (labels maps, option lists) | ``msg`Admin` `` at module level, ``i18n._(LABELS[role])`` at render (`const { i18n } = useLingui()`) | `import { msg } from "@lingui/core/macro"` |
+| Module-level constants (labels maps, option lists) | ``msg`Admin` `` at module level, ``t(LABELS[role])`` at render | `import { msg } from "@lingui/core/macro"` |
 | Counts | ``t`${count} ${plural(count, { one: "agent", other: "agents" })}` `` or `<Plural>` | `@lingui/core/macro` / `@lingui/react/macro` |
 | Short ambiguous words | ``t({ message: "Open", context: "verb, button label" })`` | |
 
@@ -33,6 +33,8 @@ Rules:
   meaningful name: hoist expressions into a `const` first.
 - No `pluralize()`, `(s)` suffixes or ternaries between English words: use `plural`/`select`.
 - `t` from `useLingui()` only works inside components and hooks. Module-level code uses `msg`.
+- Translate descriptors with `t(descriptor)`, not `i18n._(descriptor)`: `i18n` keeps the same
+  reference when the locale changes, so memos depending on it would not recompute.
 - Write English in sentence case. Do not apply CSS `uppercase`/`capitalize` to translated text.
 - Format dates and numbers with the active locale (`i18n.locale`), never a hardcoded `"en-US"`.
 
