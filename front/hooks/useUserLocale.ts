@@ -5,6 +5,7 @@ import { useAuthContext } from "@app/lib/swr/workspaces";
 import type { SupportedLocale } from "@app/types/locale";
 import { USER_LOCALE_METADATA_KEY } from "@app/types/locale";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UseUserLocaleProps {
@@ -12,6 +13,7 @@ interface UseUserLocaleProps {
 }
 
 export function useUserLocale({ owner }: UseUserLocaleProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
   const { locale: authLocale } = useAuth();
@@ -39,8 +41,8 @@ export function useUserLocale({ owner }: UseUserLocaleProps) {
       if (!response?.ok) {
         sendNotification({
           type: "error",
-          title: "Could not save the language",
-          description: "Your language could not be saved to your account.",
+          title: t`Could not save the language`,
+          description: t`Your language could not be saved to your account.`,
         });
         return false;
       }
