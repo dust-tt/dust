@@ -2894,6 +2894,76 @@ export class AgentResource
    * no workflows. Every eligible launch MUST be attempted even if an earlier one fails; the first
    * error is returned only after all have been attempted.
    */
+  // Hard-deletes every agent of the workspace with its tools, favorites, tags and memories, for
+  // workspace deletion only: no permission check, no archive, no search-index work per agent.
+  static async dangerouslyDeleteAllForWorkspace(
+    auth: Authenticator
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const agents = await AgentConfigurationModel.findAll({
+      where: { workspaceId },
+    });
+
+    for (const agent of agents) {
+      const mcpServerConfigurations =
+        await AgentMCPServerConfigurationModel.findAll({
+          where: { agentConfigurationId: agent.id, workspaceId },
+        });
+      const mcpServerConfigurationIds = mcpServerConfigurations.map(
+        (r) => r.id
+      );
+      await AgentDataSourceConfigurationModel.destroy({
+        where: {
+          mcpServerConfigurationId: { [Op.in]: mcpServerConfigurationIds },
+          workspaceId,
+        },
+      });
+      await AgentTablesQueryConfigurationTableModel.destroy({
+        where: {
+          mcpServerConfigurationId: { [Op.in]: mcpServerConfigurationIds },
+          workspaceId,
+        },
+      });
+      await AgentChildAgentConfigurationModel.destroy({
+        where: {
+          mcpServerConfigurationId: {
+            [Op.in]: mcpServerConfigurationIds.map((id) => `${id}`),
+          },
+          workspaceId,
+        },
+      });
+      await AgentMCPServerConfigurationModel.destroy({
+        where: { agentConfigurationId: agent.id, workspaceId },
+      });
+      await AgentUserRelationModel.destroy({
+        where: { agentConfiguration: agent.sId, workspaceId },
+      });
+      await TagAgentModel.destroy({
+        where: { agentConfigurationId: agent.id, workspaceId },
+      });
+      await AgentMemoryModel.destroy({
+        where: { agentConfigurationId: agent.sId, workspaceId },
+      });
+
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentId: agent.sId,
+        },
+        "Deleting agent"
+      );
+      await agent.destroy();
+    }
+
+    await AgentModel.destroy({ where: { workspaceId } });
+
+    // Cache entries have no TTL, so workspace deletion must drop every agent's cached snapshot.
+    await invalidateAgentResourceCaches(
+      workspaceId,
+      agents.map((agent) => agent.sId)
+    );
+  }
+
   static async batchDelete(
     auth: Authenticator,
     agents: AgentResource[]
