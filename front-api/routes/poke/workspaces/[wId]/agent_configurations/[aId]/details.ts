@@ -1,5 +1,5 @@
-import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
+import { listAgentConfigurationVersionsForPoke } from "@app/lib/api/poke/agent_configurations";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { PokeGetAgentDetails } from "@app/types/api/poke/agent_configurations";
@@ -26,10 +26,10 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agentConfigurations = await listsAgentConfigurationVersions(auth, {
-      agentId: aId,
-      variant: "full",
-    });
+    const agentConfigurations = await listAgentConfigurationVersionsForPoke(
+      auth,
+      aId
+    );
 
     if (agentConfigurations.length === 0) {
       return apiError(ctx, {
