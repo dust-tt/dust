@@ -16,7 +16,8 @@ describe("ensurePrivateNoStoreCache", () => {
   it("does not overwrite an intentional Cache-Control", () => {
     const response = new Response("bytes");
     response.headers.set("Cache-Control", "private, max-age=3600");
-    ensurePrivateNoStoreCache(response);
-    expect(response.headers.get("Cache-Control")).toBe("private, max-age=3600");
+    const result = ensurePrivateNoStoreCache(response);
+    expect(result.headers.get("Cache-Control")).toBe("private, max-age=3600");
+    expect(result).toBe(response);
   });
 });
