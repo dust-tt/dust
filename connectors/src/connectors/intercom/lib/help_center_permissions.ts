@@ -142,6 +142,7 @@ export async function revokeSyncHelpCenter({
     { permission: "none" },
     {
       where: {
+        connectorId,
         helpCenterId: helpCenterId,
       },
     }
@@ -150,6 +151,7 @@ export async function revokeSyncHelpCenter({
   // Revoke permission for all articles
   const level1Collections = await IntercomCollectionModel.findAll({
     where: {
+      connectorId,
       helpCenterId: helpCenterId,
       parentId: null,
     },
@@ -160,6 +162,7 @@ export async function revokeSyncHelpCenter({
         { permission: "none" },
         {
           where: {
+            connectorId,
             parents: {
               [Op.contains]: [c1.collectionId],
             },
@@ -282,6 +285,7 @@ export async function revokeSyncCollection({
   // Revoke permission for all children collections (level 2 and level 3)
   const level2Collections = await IntercomCollectionModel.findAll({
     where: {
+      connectorId,
       parentId: collectionId,
     },
   });
@@ -291,6 +295,7 @@ export async function revokeSyncCollection({
         { permission: "none" },
         {
           where: {
+            connectorId,
             parentId: c.collectionId, // this updates the level 3 collections
           },
         }
@@ -305,6 +310,7 @@ export async function revokeSyncCollection({
     { permission: "none" },
     {
       where: {
+        connectorId,
         parents: {
           [Op.contains]: [collectionId],
         },
@@ -315,6 +321,7 @@ export async function revokeSyncCollection({
   // Revoke permission for Help Center if no more collections are allowed
   const level1Collections = await IntercomCollectionModel.findAll({
     where: {
+      connectorId,
       helpCenterId: collection.helpCenterId,
       parentId: null,
       permission: "read",
