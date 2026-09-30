@@ -9,6 +9,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { APIErrorResponse } from "@app/types/error";
+import { getFileFormat, normalizeMimeType } from "@app/types/files";
 import {
   getPodFilesBasePath,
   isResolveMountFilePathError,
@@ -128,6 +129,15 @@ app.get(
     }
 
     const contentType = contentTypeResult.value ?? "application/octet-stream";
+    if (!getFileFormat(normalizeMimeType(contentType))?.isSafeToDisplay) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Unsafe content type for inline serving.",
+        },
+      });
+    }
     const readStream = bucket.file(normalizedGcsPath).createReadStream();
     readStream.on("error", (err) =>
       logger.error(

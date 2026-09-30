@@ -3,6 +3,7 @@ import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import { getFileFormat, normalizeMimeType } from "@app/types/files";
 import {
   getConversationFilesBasePath,
   isResolveMountFilePathError,
@@ -94,6 +95,15 @@ app.get("/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const contentType = contentTypeResult.value ?? "application/octet-stream";
+  if (!getFileFormat(normalizeMimeType(contentType))?.isSafeToDisplay) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Unsafe content type for inline serving.",
+      },
+    });
+  }
   const readStream = bucket.file(normalizedGcsPath).createReadStream();
   readStream.on("error", (err) =>
     logger.error(
