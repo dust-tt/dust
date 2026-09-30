@@ -1,5 +1,6 @@
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
+import { AdminSettingsSearchNav } from "@app/components/navigation/AdminSettingsSearchNav";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
   getAdminSectionHref,
@@ -100,6 +101,8 @@ export const NavigationSidebar = React.forwardRef<
   const { setSidebarOpen } = useContext(SidebarContext);
   const { setIsNavigationBarOpen } = useDesktopNavigation();
 
+  const isAdminTab = currentTab?.id === "settings";
+
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col pt-2">
       <div className={cn("flex flex-col gap-3")}>
@@ -139,33 +142,43 @@ export const NavigationSidebar = React.forwardRef<
               // and margins set on it do nothing — the side spacing has to go
               // on the list itself, as the other tabs' menus already do.
               <NavTabPillContent key={tab.id} value={tab.id}>
-                <NavigationList className="mx-sidebar-side-spacing">
+                <div className="mx-sidebar-side-spacing">
                   {subNavigation &&
                     tab.isCurrent(activePath) &&
-                    subNavigation.map((nav) => (
-                      <React.Fragment key={`nav-${nav.label}`}>
-                        {nav.label && (
-                          <NavigationListCompactLabel label={nav.label} />
-                        )}
-                        {nav.menus
-                          .filter(
-                            (menu) =>
-                              !menu.featureFlag || hasFeature(menu.featureFlag)
-                          )
-                          .map((menu) => (
-                            <NavigationListItem
-                              key={menu.id}
-                              selected={menu.current}
-                              disabled={menu.disabled}
-                              label={menu.label}
-                              icon={menu.icon}
-                              href={menu.href}
-                              target={menu.target}
-                            />
-                          ))}
-                      </React.Fragment>
+                    (isAdminTab ? (
+                      <AdminSettingsSearchNav
+                        subNavigation={subNavigation}
+                        hasFeature={hasFeature}
+                      />
+                    ) : (
+                      <NavigationList>
+                        {subNavigation.map((nav) => (
+                          <React.Fragment key={`nav-${nav.label}`}>
+                            {nav.label && (
+                              <NavigationListCompactLabel label={nav.label} />
+                            )}
+                            {nav.menus
+                              .filter(
+                                (menu) =>
+                                  !menu.featureFlag ||
+                                  hasFeature(menu.featureFlag)
+                              )
+                              .map((menu) => (
+                                <NavigationListItem
+                                  key={menu.id}
+                                  selected={menu.current}
+                                  disabled={menu.disabled}
+                                  label={menu.label}
+                                  icon={menu.icon}
+                                  href={menu.href}
+                                  target={menu.target}
+                                />
+                              ))}
+                          </React.Fragment>
+                        ))}
+                      </NavigationList>
                     ))}
-                </NavigationList>
+                </div>
               </NavTabPillContent>
             ))}
           </NavTabPill>
