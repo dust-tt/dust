@@ -2,7 +2,6 @@ import { AGENT_DELEGATION_SERVER_NAME } from "@app/lib/api/actions/servers/agent
 import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { fetchCheckpointAgentMessageContentHydration } from "@app/lib/api/assistant/conversation_rendering/checkpoint_message_hydration";
 import {
   resolvedModelFromAgentMessageRow,
@@ -15,6 +14,8 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -287,16 +288,19 @@ async function batchRenderUserMessages(
     userIds.length > 0 ? await UserResource.fetchByModelIds(userIds) : [];
   const agentConfigurations =
     agentConfigurationIds.length > 0
-      ? await getAgentConfigurations(auth, {
-          agentIds: agentConfigurationIds,
-          variant: "extra_light",
+      ? await toLightAgentConfigurations(
+          auth,
           // Skip permission filtering: we are rendering the mentions of a
           // conversation the user already has access to. We want to keep
           // displaying the agents that were mentioned historically even if the
           // user has since lost access to the space that hosts them, otherwise
           // those past messages would render without their agent metadata.
-          dangerouslySkipPermissionFiltering: true,
-        })
+          await AgentResource.dangerouslyFetchByIds(
+            auth,
+            agentConfigurationIds
+          ),
+          { withFavorites: false, withTags: false }
+        )
       : [];
   const reactionsByMessageId = await getMessagesReactions(auth, {
     messageIds: userMessages.map((m) => m.id),
@@ -544,17 +548,19 @@ async function batchRenderAgentMessagesWithContentHydration<
       userIds.length > 0 ? UserResource.fetchByModelIds(userIds) : [],
     async () =>
       agentConfigurationIds.length > 0
-        ? getAgentConfigurations(auth, {
-            agentIds: [...agentConfigurationIds],
-            variant: "extra_light",
+        ? toLightAgentConfigurations(
+            auth,
             // Skip permission filtering: we are rendering the agents that
             // produced (or were mentioned in) messages of a conversation the
             // user already has access to. We want to keep displaying these
             // agents even if the user has since lost access to the space that
             // hosts them, otherwise those past messages would render without
             // their agent metadata.
-            dangerouslySkipPermissionFiltering: true,
-          })
+            await AgentResource.dangerouslyFetchByIds(auth, [
+              ...agentConfigurationIds,
+            ]),
+            { withFavorites: false, withTags: false }
+          )
         : [],
   ];
 
