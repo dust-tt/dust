@@ -108,11 +108,9 @@ const openSidePanelSchema = z
 
 const getPanelStateSchema = z.object({
   action: z.literal("getPanelState"),
-  workspaceId: z.string().regex(/^[a-zA-Z0-9_-]{10,}$/),
 });
 
 async function getPanelState(
-  workspaceId: string,
   sender: chrome.runtime.MessageSender,
   sendResponse: (response?: unknown) => void
 ): Promise<void> {
@@ -133,17 +131,6 @@ async function getPanelState(
     const windowId = sender.tab?.windowId;
     if (windowId === undefined) {
       respond({ status: "unknown" });
-      return;
-    }
-
-    const { selectedWorkspace } = await chrome.storage.local.get([
-      "selectedWorkspace",
-    ]);
-    if (workspaceId !== selectedWorkspace) {
-      respond({
-        status: "workspace_mismatch",
-        workspaceId: selectedWorkspace ?? null,
-      });
       return;
     }
 
@@ -175,8 +162,9 @@ async function getPanelState(
  *     Opens an existing conversation directly.
  *   - { action: "openSidePanel", workspaceId, agentId }
  *     Opens a new conversation with the given agent pre-selected in the input bar.
- *   - { action: "getPanelState", workspaceId }
- *     Returns the active conversation and Pod IDs from the open side panel.
+ *   - { action: "getPanelState" }
+ *     Returns the general state of the open side panel (active workspace,
+ *     conversation, and Pod IDs), regardless of which workspace is requesting it.
  *
  * We return true to keep the message channel open for async response.
  */
@@ -184,7 +172,7 @@ chrome.runtime.onMessageExternal.addListener(
   (request, sender, sendResponse) => {
     const stateParsed = getPanelStateSchema.safeParse(request);
     if (stateParsed.success) {
-      void getPanelState(stateParsed.data.workspaceId, sender, sendResponse);
+      void getPanelState(sender, sendResponse);
       return true;
     }
 

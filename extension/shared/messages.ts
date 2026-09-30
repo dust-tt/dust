@@ -105,7 +105,6 @@ export type PanelStateResponse =
       conversationId: string | null;
       podId: string | null;
     }
-  | { status: "workspace_mismatch"; workspaceId: string | null }
   | { status: "unknown" };
 
 export type ExtensionAppMessage =
