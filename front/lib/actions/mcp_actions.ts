@@ -102,6 +102,7 @@ import {
   roundMs,
 } from "@app/lib/api/sandbox_functions/sandbox_function_mcp_action_server_timings";
 import type { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -674,7 +675,14 @@ export async function* tryCallMCPTool(
       throw toolError;
     }
 
-    return postProcessMCPToolResult(toolCallResult, toolConfiguration);
+    const conversationId = isAgentLoopRunContext(toolContext.runContext)
+      ? toolContext.runContext.conversation.sId
+      : undefined;
+    return postProcessMCPToolResult(
+      toolCallResult,
+      toolConfiguration,
+      conversationId ? { auth, conversationId } : undefined
+    );
   } catch (error) {
     const isWorkerShutdownInterruptionError = isToolInterruptionError(error);
     const isMCPTimeoutError = isMcpTimeoutError(error);
@@ -863,10 +871,11 @@ async function connectServerSideMCP(
  * metadata. Shared between the Temporal agent-loop path and the sandbox REST
  * endpoint.
  */
-export function postProcessMCPToolResult(
+export async function postProcessMCPToolResult(
   toolCallResult: Awaited<ReturnType<Client["callTool"]>>,
-  toolConfiguration: MCPToolConfigurationType
-): CallToolResult {
+  toolConfiguration: MCPToolConfigurationType,
+  opts?: { auth: Authenticator; conversationId: string }
+): Promise<CallToolResult> {
   // Type inference is not working here because of them using passthrough in the zod schema.
   let content: CallToolResult["content"] = (toolCallResult.content ??
     []) as CallToolResult["content"];
@@ -935,15 +944,47 @@ export function postProcessMCPToolResult(
     // The MCP SDK is now stripping extra properties from the tool result (both client and server).
     // To keep the same behavior as before, we moved the extra properties on the _meta field of each resource item.
     // We now need to move them back to the resource items root level.
-    content.forEach((item) => {
+    for (const item of content) {
       if (item.type === "resource" && item.resource._meta) {
+        const meta = item.resource._meta;
         item.resource = {
           ...item.resource,
-          ...item.resource._meta,
+          ...meta,
         };
         delete item.resource._meta;
+
+        // @cc [owner:frankaloia,label:security] mcp-meta-fileid-access-check
+        // Client-side MCP tool results that supply _meta.fileId to attach a file citation
+        // MUST verify the caller has read access to that file before attaching it.
+        // Workspace-scoped fetchById alone is not sufficient authorization.
+        if (
+          serverType === "client" &&
+          opts &&
+          typeof (meta as Record<string, unknown>).fileId === "string"
+        ) {
+          const fileId = (meta as Record<string, unknown>).fileId as string;
+          const file = await FileResource.fetchById(opts.auth, fileId);
+          const belongsResult = file?.belongsToConversation(
+            opts.conversationId
+          );
+          const hasAccess =
+            belongsResult && !belongsResult.isErr()
+              ? belongsResult.value
+              : false;
+          if (!hasAccess) {
+            logger.warn(
+              {
+                fileId,
+                conversationId: opts.conversationId,
+                workspaceId: opts.auth.getNonNullableWorkspace().sId,
+              },
+              "Client-side MCP tool result references a file the caller cannot access; skipping attachment"
+            );
+            delete (item.resource as Record<string, unknown>).fileId;
+          }
+        }
       }
-    });
+    }
   }
 
   return {

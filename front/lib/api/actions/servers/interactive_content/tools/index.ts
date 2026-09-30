@@ -380,11 +380,31 @@ export async function createInteractiveContentTools(
         ? toolContext?.runContext
         : {};
 
+      // @cc [owner:frankaloia,label:security] interactive-content-publish-ownership
+      // publish_interactive_content_file MUST verify the target frame belongs to the
+      // current conversation or pod before overwriting it. Workspace-scoped file
+      // lookup alone is not sufficient.
+      const conversation = isAgentLoopRunContext(toolContext?.runContext)
+        ? toolContext.runContext.conversation
+        : toolContext?.listToolsContext?.conversation;
+
       const file = await FileResource.fetchById(auth, file_id);
       if (!file) {
         return new Err(
           new MCPError(`Frame not found: ${file_id}`, { tracked: false })
         );
+      }
+
+      if (conversation) {
+        const belongsResult = file.belongsToConversation(conversation.sId);
+        if (belongsResult.isErr() || !belongsResult.value) {
+          return new Err(
+            new MCPError(
+              `Frame '${file_id}' does not belong to the current conversation.`,
+              { tracked: false }
+            )
+          );
+        }
       }
 
       if (!file.isInteractiveContent) {

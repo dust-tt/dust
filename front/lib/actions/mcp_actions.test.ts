@@ -915,8 +915,8 @@ describe("postProcessMCPToolResult - structuredContent", () => {
 
   type ToolCallResult = Awaited<ReturnType<Client["callTool"]>>;
 
-  it("appends structuredContent as a text item when content is empty", () => {
-    const result = postProcessMCPToolResult(
+  it("appends structuredContent as a text item when content is empty", async () => {
+    const result = await postProcessMCPToolResult(
       {
         content: [],
         structuredContent: { tables: [{ id: "tbl1", name: "Bugs" }] },
@@ -931,8 +931,8 @@ describe("postProcessMCPToolResult - structuredContent", () => {
     });
   });
 
-  it("does not append structuredContent when content is non-empty", () => {
-    const result = postProcessMCPToolResult(
+  it("does not append structuredContent when content is non-empty", async () => {
+    const result = await postProcessMCPToolResult(
       {
         content: [{ type: "text", text: "existing result" }],
         structuredContent: { tables: [] },
@@ -947,8 +947,8 @@ describe("postProcessMCPToolResult - structuredContent", () => {
     });
   });
 
-  it("leaves content empty when structuredContent is absent", () => {
-    const result = postProcessMCPToolResult(
+  it("leaves content empty when structuredContent is absent", async () => {
+    const result = await postProcessMCPToolResult(
       { content: [] } as ToolCallResult,
       clientConfig
     );
@@ -957,8 +957,8 @@ describe("postProcessMCPToolResult - structuredContent", () => {
     expect(result.structuredContent).toBeUndefined();
   });
 
-  it("preserves structuredContent alongside non-empty content for client servers", () => {
-    const result = postProcessMCPToolResult(
+  it("preserves structuredContent alongside non-empty content for client servers", async () => {
+    const result = await postProcessMCPToolResult(
       {
         content: [{ type: "text", text: "existing result" }],
         structuredContent: { tables: [{ id: "tbl1" }] },
@@ -970,8 +970,8 @@ describe("postProcessMCPToolResult - structuredContent", () => {
     expect(result.structuredContent).toEqual({ tables: [{ id: "tbl1" }] });
   });
 
-  it("preserves structuredContent when falling back to it for empty content", () => {
-    const result = postProcessMCPToolResult(
+  it("preserves structuredContent when falling back to it for empty content", async () => {
+    const result = await postProcessMCPToolResult(
       {
         content: [],
         structuredContent: { tables: [] },
@@ -1028,8 +1028,8 @@ describe("postProcessMCPToolResult - structuredContent", () => {
     };
   }
 
-  it("preserves structuredContent for internal servers alongside the _meta restore", () => {
-    const result = postProcessMCPToolResult(
+  it("preserves structuredContent for internal servers alongside the _meta restore", async () => {
+    const result = await postProcessMCPToolResult(
       {
         content: [
           {
@@ -1065,8 +1065,8 @@ describe("postProcessMCPToolResult - structuredContent", () => {
     expect(restoredResource._meta).toBeUndefined();
   });
 
-  it("preserves structuredContent for remote servers within the size limit", () => {
-    const result = postProcessMCPToolResult(
+  it("preserves structuredContent for remote servers within the size limit", async () => {
+    const result = await postProcessMCPToolResult(
       {
         content: [{ type: "text", text: "remote result" }],
         structuredContent: { items: [1, 2, 3], nextCursor: "abc" },
@@ -1081,8 +1081,8 @@ describe("postProcessMCPToolResult - structuredContent", () => {
     });
   });
 
-  it("drops oversized structuredContent from remote servers without failing the call", () => {
-    const result = postProcessMCPToolResult(
+  it("drops oversized structuredContent from remote servers without failing the call", async () => {
+    const result = await postProcessMCPToolResult(
       {
         content: [{ type: "text", text: "remote result" }],
         structuredContent: {
@@ -1097,8 +1097,8 @@ describe("postProcessMCPToolResult - structuredContent", () => {
     expect(result.structuredContent).toBeUndefined();
   });
 
-  it("keeps oversized structuredContent for internal servers", () => {
-    const result = postProcessMCPToolResult(
+  it("keeps oversized structuredContent for internal servers", async () => {
+    const result = await postProcessMCPToolResult(
       {
         content: [{ type: "text", text: "internal result" }],
         structuredContent: {
