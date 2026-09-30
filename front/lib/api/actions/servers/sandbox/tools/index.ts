@@ -346,11 +346,6 @@ export async function buildDescribeToolsetOutput(
   return new Ok([{ type: "text" as const, text: output }]);
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:error-handling;mcp] untracked-command-timeouts
- * When returning a sandbox execution error as an MCPError, command timeouts
- * MUST have tracked: false; other execution errors MUST remain tracked.
- */
 export async function runSandboxBashTool(
   {
     command,
