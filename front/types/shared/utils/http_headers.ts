@@ -54,5 +54,5 @@ export const REDACTED_HEADER_VALUES_ERROR_MESSAGE =
  * MUST be rejected rather than stored, since the stored plaintext would be replaced by the mask.
  */
 export function hasRedactedHeaderValue(rows: HeaderRow[]): boolean {
-  return rows.some(({ value }) => isRedactedSecret(value));
+  return rows.some(({ value }) => isRedactedSecret(sanitizeHeaderPart(value)));
 }
