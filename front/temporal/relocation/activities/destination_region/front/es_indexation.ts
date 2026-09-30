@@ -1,7 +1,6 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { indexAgentDocument } from "@app/lib/agent_search";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -195,37 +194,14 @@ export async function recreateAgentSearchIndex({
     "[Agent Search] Recreating agent search index for workspace."
   );
 
-  // The admin internal view only reports active agents, so archived ones are listed separately.
-  const [activeConfigurations, archivedConfigurations] = await Promise.all([
-    getAgentConfigurationsForView({
-      auth,
-      agentsGetView: "admin_internal",
-      variant: "light",
-      dangerouslySkipPermissionFiltering: true,
-    }),
-    getAgentConfigurationsForView({
-      auth,
-      agentsGetView: "archived",
-      variant: "light",
-    }),
-  ]);
   // Same projection as `indexAgentSearchActivity`: global agents are code-defined, and draft and
   // pending agents only exist inside the builder.
-  const agentIds = uniq(
-    [...activeConfigurations, ...archivedConfigurations]
-      .filter(
-        (agent) =>
-          agent.scope !== "global" &&
-          agent.status !== "draft" &&
-          agent.status !== "pending"
-      )
-      .map((agent) => agent.sId)
-  );
-  const agents = await AgentResource.fetchByIds(auth, agentIds);
+  const agents = await AgentResource.listByWorkspace(auth, {
+    status: ["active", "archived"],
+  });
   const configurationModelIds = agents.map(
     (agent) => agent.agentConfigurationModelId
   );
-  const configurationModelIdSet = new Set(configurationModelIds);
 
   const [
     editorsByAgent,
@@ -242,15 +218,16 @@ export async function recreateAgentSearchIndex({
       configurationModelIds,
       variant: "full",
     }),
-    AgentMessageFeedbackResource.getFeedbackCountForAssistants(auth, agentIds),
+    AgentMessageFeedbackResource.getFeedbackCountForAssistants(
+      auth,
+      agents.map((agent) => agent.sId)
+    ),
     UserResource.fetchByModelIds(
       uniq(removeNulls(agents.map((agent) => agent.versionAuthorId)))
     ),
     SkillResource.listByAgentConfigurations(
       auth,
-      [...activeConfigurations, ...archivedConfigurations].filter(
-        (configuration) => configurationModelIdSet.has(configuration.id)
-      ),
+      agents.map((agent) => agent.toJSON()),
       { permissionFiltering: "redact_unreadable" }
     ),
     AgentResource.batchCountFavorites(auth, agents),

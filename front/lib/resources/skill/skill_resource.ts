@@ -1801,7 +1801,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * model id and hold no `AgentSkillModel` row. Their skills are code-defined, so resolve them
    * with `fetchByIds` on the ids their configuration declares.
    */
-  static async listByAgentConfigurations<T extends LightAgentConfigurationType>(
+  static async listByAgentConfigurations<
+    T extends Pick<LightAgentConfigurationType, "id" | "sId">,
+  >(
     auth: Authenticator,
     agentConfigurations: T[],
     fetchOptions?: SkillHydrationOptions & {
