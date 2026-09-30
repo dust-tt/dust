@@ -339,6 +339,26 @@ describe("PATCH /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     expect(data.agentConfiguration.version).toBe(agentConfig.version + 1);
   });
 
+  it("redacts the patched configuration from a caller who cannot view the content", async () => {
+    const { workspace, key, auth } = await setupTest("admin");
+    const hidden = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Hidden agent",
+      scope: "hidden",
+      instructions: "Private instructions",
+    });
+
+    const response = await patchAgentConfiguration(workspace, key, hidden.sId, {
+      instructions: "Updated through the API",
+    });
+    const data = await response.json();
+
+    expect(response.status, JSON.stringify(data)).toBe(200);
+    expect(data.agentConfiguration.canRead).toBe(false);
+    expect(data.agentConfiguration.instructions).toBeNull();
+    expect(data.agentConfiguration.instructionsHtml).toBeNull();
+    expect(data.agentConfiguration.actions).toEqual([]);
+  });
+
   it("returns 404 when the agent configuration does not exist", async () => {
     const { workspace, key } = await setupTest();
 

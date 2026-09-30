@@ -1,6 +1,7 @@
 import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import {
   toAgentConfigurations,
@@ -28,6 +29,24 @@ const AgentConfigurationParamSchema = z.object({
 const VariantQuerySchema = z.object({
   variant: z.enum(["light", "full"]).optional(),
 });
+
+// The resource redacts the private fields unless the caller can view the content (see
+// `light-instructions-require-read`).
+async function serializeAgent(
+  auth: Authenticator,
+  agent: AgentResource,
+  variant: "light" | "full"
+) {
+  const [configuration] =
+    variant === "full"
+      ? await toAgentConfigurations(auth, [agent])
+      : await toLightAgentConfigurations(auth, [agent]);
+  const [serialized] = await toAgentConfigurationsWithSkills(auth, [
+    { ...configuration, codeDefinedSkillIds: agent.codeDefinedSkillIds },
+  ]);
+
+  return serialized;
+}
 
 /**
  * @swagger
@@ -326,17 +345,9 @@ app.get(
       });
     }
 
-    // The resource redacts the private fields unless the caller can view the content (see
-    // `light-instructions-require-read`).
-    const [configuration] =
-      configVariant === "full"
-        ? await toAgentConfigurations(auth, [agent])
-        : await toLightAgentConfigurations(auth, [agent]);
-    const [serialized] = await toAgentConfigurationsWithSkills(auth, [
-      { ...configuration, codeDefinedSkillIds: agent.codeDefinedSkillIds },
-    ]);
-
-    return ctx.json({ agentConfiguration: serialized });
+    return ctx.json({
+      agentConfiguration: await serializeAgent(auth, agent, configVariant),
+    });
   }
 );
 
@@ -389,22 +400,28 @@ app.patch(
         return apiError(ctx, patchResult.error);
       }
 
-      const [patched] = await toAgentConfigurationsWithSkills(auth, [
-        patchResult.value.agentConfiguration,
-      ]);
+      // `patchResult` carries the saved configuration unredacted: serialize the new version from a
+      // resource built for the caller instead.
+      const patched = await AgentResource.fetchById(auth, sId);
+      if (!patched) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "agent_configuration_not_found",
+            message: "The agent configuration you requested was not found.",
+          },
+        });
+      }
 
       return ctx.json({
-        agentConfiguration: patched,
+        agentConfiguration: await serializeAgent(auth, patched, "full"),
         skippedActions: patchResult.value.skippedActions,
       });
     }
 
-    const [configuration] = await toLightAgentConfigurations(auth, [agent]);
-    const [serialized] = await toAgentConfigurationsWithSkills(auth, [
-      { ...configuration, codeDefinedSkillIds: agent.codeDefinedSkillIds },
-    ]);
-
-    return ctx.json({ agentConfiguration: serialized });
+    return ctx.json({
+      agentConfiguration: await serializeAgent(auth, agent, "light"),
+    });
   }
 );
 
