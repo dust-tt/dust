@@ -42,6 +42,7 @@ import {
   isCompactionMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import {
   toMentionType,
   toRichAgentMentionType,
@@ -138,19 +139,18 @@ export function getRichMentionsWithStatusForMessage(
   messageId: ModelId,
   mentionRows: MentionResource[],
   usersById: Map<ModelId, UserType>,
-  agentConfigurationsById: Map<string, LightAgentConfigurationType>
+  agentsById: Map<string, RichAgentMentionCandidate>
 ): RichMentionWithStatus[] {
   return removeNulls(
     mentionRows
       .filter((m) => m.messageId === messageId)
       .map((m) => {
         if (m.agentConfigurationId) {
-          const agentConfiguration = agentConfigurationsById.get(
-            m.agentConfigurationId
-          );
-          if (agentConfiguration) {
+          const agent = agentsById.get(m.agentConfigurationId);
+          if (agent) {
             return {
-              ...toRichAgentMentionType(agentConfiguration),
+              ...toRichAgentMentionType(agent),
+              userFavorite: false,
               status: m.status,
               dismissed: m.dismissed ?? false,
             };
@@ -286,29 +286,21 @@ async function batchRenderUserMessages(
 
   const users =
     userIds.length > 0 ? await UserResource.fetchByModelIds(userIds) : [];
-  const agentConfigurations =
+  // Skip permission filtering: we are rendering the mentions of a conversation the user already has
+  // access to. We want to keep displaying the agents that were mentioned historically even if the
+  // user has since lost access to the space that hosts them, otherwise those past messages would
+  // render without their agent metadata.
+  const mentionedAgents =
     agentConfigurationIds.length > 0
-      ? await toLightAgentConfigurations(
-          auth,
-          // Skip permission filtering: we are rendering the mentions of a
-          // conversation the user already has access to. We want to keep
-          // displaying the agents that were mentioned historically even if the
-          // user has since lost access to the space that hosts them, otherwise
-          // those past messages would render without their agent metadata.
-          await AgentResource.dangerouslyFetchByIds(
-            auth,
-            agentConfigurationIds
-          ),
-          { withFavorites: false, withTags: false }
-        )
+      ? await AgentResource.dangerouslyFetchByIds(auth, agentConfigurationIds)
       : [];
   const reactionsByMessageId = await getMessagesReactions(auth, {
     messageIds: userMessages.map((m) => m.id),
   });
 
   const usersById = new Map(users.map((u) => [u.id, u.toJSON()]));
-  const agentConfigurationsById = new Map(
-    agentConfigurations.map((a) => [a.sId, a])
+  const mentionedAgentsById = new Map(
+    mentionedAgents.map((agent) => [agent.sId, agent])
   );
 
   return userMessages.map((message) => {
@@ -323,7 +315,7 @@ async function batchRenderUserMessages(
       message.id,
       mentionRows,
       usersById,
-      agentConfigurationsById
+      mentionedAgentsById
     );
 
     return {
@@ -541,38 +533,43 @@ async function batchRenderAgentMessagesWithContentHydration<
     }, new Set<string>()),
   ];
 
-  const userAndAgentConfigurationTasks: Array<
-    () => Promise<UserResource[] | LightAgentConfigurationType[]>
+  const userAndAgentTasks: Array<
+    () => Promise<UserResource[] | AgentResource[]>
   > = [
     async () =>
       userIds.length > 0 ? UserResource.fetchByModelIds(userIds) : [],
     async () =>
       agentConfigurationIds.length > 0
-        ? toLightAgentConfigurations(
-            auth,
-            // Skip permission filtering: we are rendering the agents that
-            // produced (or were mentioned in) messages of a conversation the
-            // user already has access to. We want to keep displaying these
-            // agents even if the user has since lost access to the space that
-            // hosts them, otherwise those past messages would render without
-            // their agent metadata.
-            await AgentResource.dangerouslyFetchByIds(auth, [
-              ...agentConfigurationIds,
-            ]),
-            { withFavorites: false, withTags: false }
-          )
+        ? // Skip permission filtering: we are rendering the agents that produced (or were mentioned
+          // in) messages of a conversation the user already has access to. We want to keep
+          // displaying these agents even if the user has since lost access to the space that hosts
+          // them, otherwise those past messages would render without their agent metadata.
+          AgentResource.dangerouslyFetchByIds(auth, agentConfigurationIds)
         : [],
   ];
 
-  const [users, agentConfigurations] = (await concurrentExecutor(
-    userAndAgentConfigurationTasks,
-    (task): Promise<UserResource[] | LightAgentConfigurationType[]> => task(),
+  const [users, agents] = (await concurrentExecutor(
+    userAndAgentTasks,
+    (task): Promise<UserResource[] | AgentResource[]> => task(),
     { concurrency: 2 }
-  )) as [UserResource[], LightAgentConfigurationType[]];
+  )) as [UserResource[], AgentResource[]];
 
   const usersById = new Map(users.map((u) => [u.id, u.toJSON()]));
+  const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
+
+  // Only the agents that produced a message carry their configuration on it: the mentioned ones
+  // only need their mention fields, read from the resource.
+  const producingAgentIds = new Set(
+    removeNulls(agentMessages.map((m) => m.agentMessage?.agentConfigurationId))
+  );
   const agentConfigurationsById = new Map(
-    agentConfigurations.map((a) => [a.sId, a])
+    (
+      await toLightAgentConfigurations(
+        auth,
+        agents.filter((agent) => producingAgentIds.has(agent.sId)),
+        { withFavorites: false, withTags: false }
+      )
+    ).map((configuration) => [configuration.sId, configuration])
   );
 
   const contentHydrationAndReactionTasks: Array<
@@ -596,12 +593,6 @@ async function batchRenderAgentMessagesWithContentHydration<
     > => task(),
     { concurrency: 2 }
   )) as [AgentMessageContentHydration, Record<ModelId, MessageReactionType[]>];
-
-  if (!agentConfigurations) {
-    return new Err(
-      new ConversationError("conversation_with_unavailable_agent")
-    );
-  }
 
   const {
     actionsWithOutputContent,
@@ -756,8 +747,8 @@ async function batchRenderAgentMessagesWithContentHydration<
     renderedMessages.push(
       await renderSingleAgentMessage(message, {
         actionsByAgentMessageId,
-        agentConfigurations,
         agentConfigurationsById,
+        agentsById,
         allMessagesById,
         auth,
         handoverOriginMessagesById,
@@ -787,8 +778,8 @@ async function batchRenderAgentMessagesWithContentHydration<
 
 type RenderSingleAgentMessageContext = {
   actionsByAgentMessageId: Record<number, AgentMCPActionWithOutputType[]>;
-  agentConfigurations: LightAgentConfigurationType[];
   agentConfigurationsById: Map<string, LightAgentConfigurationType>;
+  agentsById: Map<string, AgentResource>;
   allMessagesById: Map<ModelId, MessageModel>;
   auth: Authenticator;
   handoverOriginMessagesById: Map<string, Pick<MessageModel, "sId">>;
@@ -804,8 +795,8 @@ async function renderSingleAgentMessage(
   message: MessageModel,
   {
     actionsByAgentMessageId,
-    agentConfigurations,
     agentConfigurationsById,
+    agentsById,
     allMessagesById,
     auth,
     handoverOriginMessagesById,
@@ -838,7 +829,7 @@ async function renderSingleAgentMessage(
         messageId: message.sId,
         agentMessageId: agentMessage.id,
         agentConfigurationId: agentMessage.agentConfigurationId,
-        agentConfigurations,
+        agentConfigurationIds: [...agentConfigurationsById.keys()],
       },
       "Conversation with unavailable agents"
     );
@@ -915,7 +906,7 @@ async function renderSingleAgentMessage(
     message.id,
     mentionsByMessageId.get(message.id) ?? [],
     usersById,
-    agentConfigurationsById
+    agentsById
   );
 
   const created = message.createdAt.getTime();
