@@ -1,0 +1,38 @@
+# fr-FR style guide
+
+## Voice
+
+- Address the user with *vous*, never *tu*.
+- Buttons and menu items use the infinitive: "Enregistrer", "Annuler", "Rejoindre".
+- Toasts and errors are full sentences: "Impossible d'enregistrer la langue."
+
+## Typography
+
+- Non-breaking space (U+00A0) before `:` and narrow non-breaking space (U+202F) before `?`, `!`
+  and `;`. No space before `.` or `,`.
+- Quotation marks: « texte » with non-breaking spaces inside.
+- Apostrophe: typographic `’` (U+2019).
+- Sentence case: only the first word and proper nouns take a capital. No title case.
+- Accents on capitals: "État", "À propos".
+
+## Glossary
+
+| English | fr-FR | Note |
+|---|---|---|
+| Dust | Dust | Never translated |
+| agent | agent | |
+| workspace | espace de travail | |
+| space | espace | |
+| Pod | Pod | Product name, capitalised |
+| skill | compétence | |
+| Frame | Frame | Product name |
+| memory (user memory) | mémoire | |
+| conversation | conversation | |
+| mention | mention | |
+| admin | administrateur | |
+| member | membre | |
+| inbox | boîte de réception | |
+| Slack | Slack | Brand |
+| email | e-mail | |
+| settings | paramètres | |
+| sign in | se connecter | |

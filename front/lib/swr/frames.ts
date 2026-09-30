@@ -150,7 +150,9 @@ export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
   const { fetcher } = useFetcher();
   const frameMetadataFetcher: Fetcher<PublicFrameResponseBodyType> = fetcher;
 
-  const swrKey = shareToken ? `/api/v1/public/frames/${shareToken}` : null;
+  const swrKey = shareToken
+    ? `/api/v1/public/frames/${encodeURIComponent(shareToken)}`
+    : null;
 
   const { data, error, mutate } = useSWRWithDefaults(
     swrKey,

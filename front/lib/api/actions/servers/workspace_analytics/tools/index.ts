@@ -38,7 +38,6 @@ import {
   resolveConsumptionGroupLabels,
 } from "@app/lib/api/analytics/consumption/top";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentResource } from "@app/lib/resources/agent_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import { formatDateFromMillis } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -174,63 +173,6 @@ function formatCreditLine(
 }
 
 const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
-  get_agent_details: async ({ agentId }, { auth }) => {
-    const deniedError = workspaceManagerGuard(auth);
-    if (deniedError) {
-      return new Err(deniedError);
-    }
-
-    const agent = await AgentResource.fetchById(auth, agentId);
-
-    if (!agent) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text:
-            `No agent found with id ${agentId} (it may be archived or not ` +
-            "accessible).",
-        },
-      ]);
-    }
-
-    if (!agent.isFull()) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text:
-            `Agent ${agent.name} [${agent.sId}]\n` +
-            `- Description: (private agent - not available)\n` +
-            `- Scope: ${agent.scope}\n` +
-            `- Model: ${agent.modelConfiguration.providerId}/${agent.modelConfiguration.modelId}\n\n` +
-            "Instructions, skills, and tools are not available for private " +
-            "agents you do not have access to.",
-        },
-      ]);
-    }
-
-    const [actions, skills] = await Promise.all([
-      agent.listActions(auth),
-      agent.listSkills(auth),
-    ]);
-    const toolNames = actions.map((action) => action.name).join(", ");
-    const skillNames = skills.map((skill) => skill.name).join(", ");
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text:
-          `Agent ${agent.name} [${agent.sId}]\n` +
-          `- Description: ${agent.description}\n` +
-          `- Scope: ${agent.scope}\n` +
-          `- Model: ${agent.modelConfiguration.providerId}/${agent.modelConfiguration.modelId}\n` +
-          `- Skills: ${skillNames || "none"}\n` +
-          `- Tools: ${toolNames || "none"}\n\n` +
-          "Instructions (full system prompt):\n" +
-          `${agent.content.instructions ?? "(no instructions)"}`,
-      },
-    ]);
-  },
-
   get_consumption_overview: async (input, { auth }) => {
     const deniedError = workspaceManagerGuard(auth);
     if (deniedError) {

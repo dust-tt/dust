@@ -14,10 +14,7 @@ import type {
   GlobalAgentContext,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
-import {
-  GLOBAL_AGENTS_SID,
-  isGlobalAgentId,
-} from "@app/types/assistant/assistant";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -306,40 +303,6 @@ export async function searchAgentConfigurationsByName(
   });
 
   return removeNulls(agents);
-}
-
-/**
- * Resolve an agent configuration sId from a name. Searches workspace agents and
- * global agents (case-insensitive substring), preferring an exact match. Returns
- * null when no agent matches.
- */
-export async function resolveAgentConfigurationIdByName(
-  auth: Authenticator,
-  agentName: string
-): Promise<string | null> {
-  const normalizedAgentName = agentName.trim().toLowerCase();
-  if (normalizedAgentName === "dust" || normalizedAgentName === "dust agent") {
-    return GLOBAL_AGENTS_SID.DUST;
-  }
-
-  const workspaceMatches = await searchAgentConfigurationsByName(
-    auth,
-    agentName
-  );
-  const globalAgents = await getGlobalAgents(auth, undefined, "light");
-  const globalMatches = globalAgents.filter((a) =>
-    a.name.toLowerCase().includes(normalizedAgentName)
-  );
-  const matches = [...workspaceMatches, ...globalMatches];
-  if (matches.length === 0) {
-    return null;
-  }
-
-  // Prefer exact case-insensitive match, otherwise fallback to first result.
-  const exactMatch = matches.find(
-    (a) => a.name.trim().toLowerCase() === normalizedAgentName
-  );
-  return exactMatch?.sId ?? matches[0].sId;
 }
 
 export async function updateAgentConfigurationsScope(

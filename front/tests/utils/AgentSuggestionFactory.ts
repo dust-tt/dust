@@ -15,6 +15,7 @@ import type {
   NameSuggestionType,
   ScopeSuggestionType,
   SkillsSuggestionType,
+  StructuredOutputSuggestionType,
   SubAgentSuggestionType,
   TagsSuggestionType,
   ToolsSuggestionType,
@@ -377,6 +378,31 @@ export class AgentSuggestionFactory {
         kind: "scope",
         suggestion: overrides.suggestion ?? { scope: "visible" },
         analysis: overrides.analysis ?? "This agent is ready to be published",
+        state: overrides.state ?? "pending",
+        conversationId: null,
+        source: overrides.source ?? "conversational",
+        batchId: overrides.batchModelId ?? null,
+      }
+    );
+  }
+
+  static async createStructuredOutput(
+    auth: Authenticator,
+    agentConfiguration: { sId: string },
+    overrides: { suggestion: StructuredOutputSuggestionType } & Partial<{
+      analysis: string | null;
+      state: AgentSuggestionState;
+      source: AgentSuggestionSource;
+      batchModelId: number | null;
+    }>
+  ): Promise<AgentSuggestionResource> {
+    return AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      await fetchAgent(auth, agentConfiguration.sId),
+      {
+        kind: "structured_output",
+        suggestion: overrides.suggestion,
+        analysis: overrides.analysis ?? "Answers are consumed as JSON",
         state: overrides.state ?? "pending",
         conversationId: null,
         source: overrides.source ?? "conversational",

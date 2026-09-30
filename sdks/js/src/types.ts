@@ -933,6 +933,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "remote_db_query_identity_labels"
   | "discovery_homepage"
   | "localisation"
+  | "co_edition"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

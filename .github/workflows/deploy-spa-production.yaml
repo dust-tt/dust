@@ -39,10 +39,13 @@ jobs:
 
       - name: Resolve version ID
         id: version
+        env:
+          VERSION_ID_PAYLOAD: ${{ github.event.client_payload[format('spa_{0}_version_id', matrix.app)] }}
+          VERSION_ID_INPUT: ${{ inputs.version_id }}
         run: |
           # repository_dispatch: per-app version IDs in payload
           # workflow_dispatch: single version_id input
-          VERSION_ID="${{ github.event.client_payload[format('spa_{0}_version_id', matrix.app)] || inputs.version_id }}"
+          VERSION_ID="${VERSION_ID_PAYLOAD:-$VERSION_ID_INPUT}"
           if [ -z "$VERSION_ID" ]; then
             echo "::error::No version ID provided for ${{ matrix.app }}. Cannot promote without an explicit version ID."
             exit 1

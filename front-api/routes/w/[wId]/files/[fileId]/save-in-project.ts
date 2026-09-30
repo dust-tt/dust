@@ -1,4 +1,7 @@
-import { addFileToProject } from "@app/lib/api/projects/context";
+import {
+  addFileToProject,
+  addFrameV2ToProject,
+} from "@app/lib/api/projects/context";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -43,7 +46,7 @@ app.post(
     }
 
     // Only allow moving frame files.
-    if (!file.isInteractiveContent) {
+    if (!file.isInteractiveContent && !file.isFrameV2) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -108,6 +111,24 @@ app.post(
           message: "You do not have write access to this project.",
         },
       });
+    }
+
+    if (file.isFrameV2) {
+      const frameResult = await addFrameV2ToProject(auth, {
+        frame: file,
+        space,
+      });
+      if (frameResult.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: frameResult.error.message,
+          },
+        });
+      }
+
+      return ctx.json({ file: frameResult.value.toJSONWithMetadata(auth) });
     }
 
     const result = await addFileToProject(auth, {

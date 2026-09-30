@@ -10,6 +10,7 @@ import {
 } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { SuggestionPreviewHeader } from "@app/components/assistant/details/SuggestionPreviewHeader";
 import { isAgentActionCardSuggestion } from "@app/components/markdown/suggestion/suggestion_directives";
+import { trackSuggestionPreviewToggle } from "@app/components/markdown/suggestion/suggestionTracking";
 import { useSuggestionBatch } from "@app/hooks/useSuggestionBatches";
 import { useUser } from "@app/lib/swr/user";
 import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";
@@ -61,14 +62,23 @@ export function ConversationAgentPanel({ owner }: ConversationAgentPanelProps) {
         "flex h-panel flex-col bg-panel-background",
         hasPreview &&
           isApplied &&
-          "rounded-r-xl outline-4 -outline-offset-4 outline-highlight-100"
+          "rounded-r-xl outline-[3.5px] -outline-offset-[3.5px] outline-highlight-100"
       )}
     >
       {hasPreview ? (
         <SuggestionPreviewHeader
           isApplied={isApplied}
           hasCreation={previewSuggestions.some(isCreateAgentSuggestion)}
-          onToggle={() => setHiddenPreviewData(isApplied ? data : undefined)}
+          onToggle={() => {
+            if (batchId) {
+              trackSuggestionPreviewToggle({
+                batchId,
+                targetKind: "agent",
+                showing: isApplied ? "current" : "suggested",
+              });
+            }
+            setHiddenPreviewData(isApplied ? data : undefined);
+          }}
           onClose={closePanel}
         />
       ) : (

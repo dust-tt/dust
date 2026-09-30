@@ -25,6 +25,7 @@ import {
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   FREE_SEAT_LIFETIME_AWU_CREDITS,
 } from "@app/lib/metronome/constants";
+import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import type { BillingCycle } from "@app/lib/plans/billing_cycle";
 import {
   getMemberVerbAuthority,
@@ -59,6 +60,7 @@ type UserSpendLimitErrorType =
   | "user_not_found"
   | "unauthorized"
   | "workspace_not_metronome_billed"
+  | "billing_period_unavailable"
   | "metronome_error";
 
 export class UserSpendLimitError extends Error {
@@ -127,10 +129,12 @@ export async function setUserSpendLimit(
   {
     userId,
     limit,
+    resetAtNextBillingCycle = false,
     auditContext,
   }: {
     userId: string;
     limit: UserSpendLimit;
+    resetAtNextBillingCycle?: boolean;
     auditContext: AuditLogContext;
   }
 ): Promise<Result<SetUserSpendLimitResponse, UserSpendLimitError>> {
@@ -155,6 +159,7 @@ export async function setUserSpendLimit(
       userId,
       kind: limit.kind,
       awuCredits: limit.kind === "limited" ? limit.awuCredits : null,
+      resetAtNextBillingCycle,
     },
     "[Metronome PerUserCap] set: starting per-user spend limit update"
   );
@@ -211,12 +216,39 @@ export async function setUserSpendLimit(
     );
   }
 
+  const previousAwuCredits = membership.poolCapOverrideAwuCredits;
+  const newAwuCredits = limit.kind === "limited" ? limit.awuCredits : null;
+
+  let poolCapOverrideExpiresAt: Date | null = null;
+  let poolCapOverridePreviousAwuCredits: number | null = null;
+
+  if (limit.kind === "limited" && resetAtNextBillingCycle) {
+    const periodResult = await getCachedMetronomeCurrentBillingPeriod(
+      workspace.sId
+    );
+    if (periodResult.isErr() || !periodResult.value) {
+      return new Err(
+        new UserSpendLimitError(
+          "billing_period_unavailable",
+          "Could not resolve the current billing cycle to schedule the reset."
+        )
+      );
+    }
+    poolCapOverrideExpiresAt = periodResult.value.cycleEnd;
+    // Keep the original baseline if a temporary raise is already in flight;
+    // otherwise snapshot the current override (which may be null).
+    poolCapOverridePreviousAwuCredits =
+      membership.poolCapOverrideExpiresAt !== null
+        ? membership.poolCapOverridePreviousAwuCredits
+        : membership.poolCapOverrideAwuCredits;
+  }
+
   // The membership is the source of truth for the per-user cap; the Redis
   // rate-limiter reads this override at enforcement time. Persist it directly.
-  const previousAwuCredits = membership.poolCapOverrideAwuCredits;
   await membership.updatePoolCapOverride({
-    poolCapOverrideAwuCredits:
-      limit.kind === "limited" ? limit.awuCredits : null,
+    poolCapOverrideAwuCredits: newAwuCredits,
+    poolCapOverrideExpiresAt,
+    poolCapOverridePreviousAwuCredits,
   });
 
   // Reconcile the user's credit state from live usage — same path as the
@@ -257,6 +289,12 @@ export async function setUserSpendLimit(
         previousAwuCredits === null ? "unlimited" : String(previousAwuCredits),
       authorizing_group_id:
         authority.kind === "group" ? authority.group.sId : "workspace_role",
+      reset_at_next_billing_cycle: String(resetAtNextBillingCycle),
+      expires_at: poolCapOverrideExpiresAt?.toISOString() ?? "",
+      reset_to_awu_credits:
+        poolCapOverridePreviousAwuCredits === null
+          ? "unlimited"
+          : String(poolCapOverridePreviousAwuCredits),
     },
   });
 
@@ -264,8 +302,9 @@ export async function setUserSpendLimit(
 }
 
 /**
- * Revert an expired pool cap override back to the seat-type default. A no-op
- * if the override was already cleared or never expires.
+ * Revert an expired pool cap override to the value stored in
+ * `poolCapOverridePreviousAwuCredits` (null = seat-type default). A no-op if
+ * the override was already cleared or never expires.
  */
 export async function expireUserSpendLimitOverride(
   auth: Authenticator,
@@ -293,15 +332,20 @@ export async function expireUserSpendLimitOverride(
     );
   }
 
-  if (membership.poolCapOverrideAwuCredits === null) {
+  if (
+    membership.poolCapOverrideAwuCredits === null ||
+    membership.poolCapOverrideExpiresAt === null
+  ) {
     return new Ok({ reverted: false, previousAwuCredits: null });
   }
 
-  const previousAwuCredits = membership.poolCapOverrideAwuCredits;
+  const temporaryAwuCredits = membership.poolCapOverrideAwuCredits;
+  const restoredAwuCredits = membership.poolCapOverridePreviousAwuCredits;
 
   await membership.updatePoolCapOverride({
-    poolCapOverrideAwuCredits: null,
+    poolCapOverrideAwuCredits: restoredAwuCredits,
     poolCapOverrideExpiresAt: null,
+    poolCapOverridePreviousAwuCredits: null,
   });
 
   const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
@@ -328,12 +372,16 @@ export async function expireUserSpendLimitOverride(
     ],
     context: { location: "internal" },
     metadata: {
-      previous_awu_credits: String(previousAwuCredits),
-      new_awu_credits: "unlimited",
+      previous_awu_credits: String(temporaryAwuCredits),
+      new_awu_credits:
+        restoredAwuCredits === null ? "unlimited" : String(restoredAwuCredits),
     },
   });
 
-  return new Ok({ reverted: true, previousAwuCredits });
+  return new Ok({
+    reverted: true,
+    previousAwuCredits: temporaryAwuCredits,
+  });
 }
 
 /**

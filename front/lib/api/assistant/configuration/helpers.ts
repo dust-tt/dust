@@ -98,9 +98,9 @@ export async function getAgentIdFromName(
 /**
  * @cc [owner:sfriquet,label:security] light-instructions-require-read
  * For the `light` and `extra_light` variants, `instructions` MUST be `null` when `canRead` is
- * false (see `unreadable-agent-is-light`). The `full` variant carries them regardless, so a caller
- * exposing a `full` configuration with `canRead === false` MUST redact it first, by serializing
- * the agent from its `light` `AgentResource` (see `agent-json-redaction`).
+ * false (see `unreadable-agent-content-hidden`). The `full` variant carries them regardless, so a
+ * caller exposing a `full` configuration with `canRead === false` MUST redact it first, by
+ * serializing the agent from an `AgentResource` built for that caller (see `agent-json-redaction`).
  */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,

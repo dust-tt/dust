@@ -2,6 +2,7 @@ import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import { UpgradeRequests } from "@app/components/workspace/UpgradeRequests";
 import { UsageMembersSection } from "@app/components/workspace/UsageMembersSection";
 import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
@@ -9,6 +10,7 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { useGroups } from "@app/lib/swr/groups";
 import { useMembersUsage } from "@app/lib/swr/memberships";
+import { useUpgradeRequests } from "@app/lib/swr/upgrade_requests";
 import { isCreditPricedPlan } from "@app/types/plan";
 import {
   Page,
@@ -27,6 +29,9 @@ export function GroupManagerUsagePage() {
   const owner = useWorkspace();
   const { subscription, groupManagement } = useAuth();
   const [tab, setTab] = useState<"members" | "groups">("members");
+  const [membersTab, setMembersTab] = useState<"members" | "requests">(
+    "members"
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [groupId, setGroupId] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
@@ -100,9 +105,17 @@ export function GroupManagerUsagePage() {
         : "name",
     orderDirection: sort?.desc ? "desc" : "asc",
     groupId: groupId ?? undefined,
-    disabled: tab !== "members",
+    disabled: tab !== "members" || membersTab !== "members",
   });
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
+  const canHandleRequests = isCreditPriced && editableGroupIds.size > 0;
+  const { upgradeRequests, isUpgradeRequestsLoading, isUpgradeRequestsError } =
+    useUpgradeRequests({
+      workspaceId: owner.sId,
+      groupId: groupId ?? undefined,
+      searchTerm,
+      disabled: !canHandleRequests,
+    });
   // The effective limit already includes the seat allowance. Show the
   // inherited workspace default when it is the active source, without calling
   // the workspace-only default-limit endpoint.
@@ -137,7 +150,11 @@ export function GroupManagerUsagePage() {
             <TabsTrigger value="members" label="Members" />
             <TabsTrigger value="groups" label="Groups" />
           </TabsList>
-          <TabsContent value="members" className="block min-h-panel">
+          <TabsContent
+            value="members"
+            forceMount
+            className={tab === "members" ? "block min-h-panel" : "hidden"}
+          >
             <UsageMembersSection
               searchTerm={searchTerm}
               onSearchChange={(value) => {
@@ -151,6 +168,25 @@ export function GroupManagerUsagePage() {
                 setPagination((current) => ({ ...current, pageIndex: 0 }));
               }}
               allGroupsLabel="All managed groups"
+              requests={
+                canHandleRequests
+                  ? {
+                      count: upgradeRequests.length,
+                      activeTab: membersTab,
+                      onTabChange: setMembersTab,
+                      table: (
+                        <UpgradeRequests
+                          owner={owner}
+                          requests={upgradeRequests}
+                          isLoading={isUpgradeRequestsLoading}
+                          isError={isUpgradeRequestsError}
+                          groups={groups}
+                          editableGroupIds={editableGroupIds}
+                        />
+                      ),
+                    }
+                  : undefined
+              }
               membersTable={
                 <MembersUsageTable
                   members={membersUsage}

@@ -573,7 +573,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(data.agentConfiguration.sId).toBe(agent.sId);
     expect(data.agentConfiguration.name).toBe(agent.name);
     expect(data.agentConfiguration.canRead).toBe(false);
-    expect(data.agentConfiguration.isRedacted).toBe(true);
+    expect(data.agentConfiguration.canViewContent).toBe(false);
     expect(data.agentConfiguration.instructions).toBeNull();
     expect(data.agentConfiguration.instructionsHtml).toBeNull();
     expect(data.agentConfiguration.actions).toEqual([]);
@@ -605,7 +605,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(data.agentConfiguration.sId).toBe(agent.sId);
     expect(data.agentConfiguration.name).toBe(agent.name);
     expect(data.agentConfiguration.canRead).toBe(false);
-    expect(data.agentConfiguration.isRedacted).toBe(true);
+    expect(data.agentConfiguration.canViewContent).toBe(false);
     expect(data.agentConfiguration.instructions).toBeNull();
     expect(data.agentConfiguration.instructionsHtml).toBeNull();
     expect(data.agentConfiguration.actions).toEqual([]);
@@ -692,7 +692,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(data.agentConfiguration.sId).toBe(agent.sId);
     // The flag shows the content without granting `read`.
     expect(data.agentConfiguration.canRead).toBe(false);
-    expect(data.agentConfiguration.isRedacted).toBe(false);
+    expect(data.agentConfiguration.canViewContent).toBe(true);
     expect(data.agentConfiguration.instructions).toBe(agent.instructions);
   });
 

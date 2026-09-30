@@ -111,6 +111,52 @@ const closeSidePanelSchema = z.object({
   workspaceId: z.string().regex(/^[a-zA-Z0-9_-]{10,}$/),
 });
 
+const getPanelStateSchema = z.object({
+  action: z.literal("getPanelState"),
+});
+
+async function getPanelState(
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response?: unknown) => void
+): Promise<void> {
+  let responseSent = false;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const respond = (response: unknown) => {
+    if (responseSent) {
+      return;
+    }
+    responseSent = true;
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    sendResponse(response);
+  };
+
+  try {
+    const windowId = sender.tab?.windowId;
+    if (windowId === undefined) {
+      respond({ status: "unknown" });
+      return;
+    }
+
+    timeout = setTimeout(() => respond({ status: "unknown" }), 1000);
+
+    chrome.runtime.sendMessage(
+      { type: "EXT_GET_PANEL_STATE", windowId },
+      (panelState: unknown) => {
+        if (chrome.runtime.lastError || !panelState) {
+          respond({ status: "unknown" });
+          return;
+        }
+        respond(panelState);
+      }
+    );
+  } catch (error) {
+    log("[onMessageExternal] Error getting side panel state:", error);
+    respond({ status: "unknown" });
+  }
+}
+
 /**
  * Listener for messages sent from external websites that are whitelisted on the manifest.
  * It allows to open the side panel and either navigate to an existing conversation
@@ -123,6 +169,9 @@ const closeSidePanelSchema = z.object({
  *     Opens a new conversation with the given agent pre-selected in the input bar.
  *   - { action: "closeSidePanel", workspaceId }
  *     Closes the side panel in the window that sent the message.
+ *   - { action: "getPanelState" }
+ *     Returns the general state of the open side panel (active workspace,
+ *     conversation, and Pod IDs), regardless of which workspace is requesting it.
  *
  * We return true to keep the message channel open for async response.
  */
@@ -135,6 +184,12 @@ chrome.runtime.onMessageExternal.addListener(
       } else {
         log("[onMessageExternal] closeSidePanel sent without a tab:", request);
       }
+      return true;
+    }
+
+    const stateParsed = getPanelStateSchema.safeParse(request);
+    if (stateParsed.success) {
+      void getPanelState(sender, sendResponse);
       return true;
     }
 

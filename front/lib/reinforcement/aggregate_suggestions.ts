@@ -83,7 +83,7 @@ You are provided all of the attributes associated with a conversation suggestion
 The exceptions are:
 - The "analysis", "title", and "sourceSuggestionIds" attributes; these MUST be newly authored for each final suggestion.
 
-For "analysis": Provide a user-facing explanation of why the suggestion is impactful and how many conversations support it. The end user does NOT care about the technical considerations behind your thought process.
+For "analysis": Provide a user-facing explanation of why the suggestion is impactful and how many conversations support it, in at most 255 characters. The end user does NOT care about the technical considerations behind your thought process.
 
 For "title": You MUST provide a short, action-oriented, user-facing title that summarizes what the suggestion changes. The title MUST be at most 25 characters. Examples: "Clarify response tone", "Add Slack search tool", "Remove GitHub tool". Each suggestion MUST have a distinct title.
 

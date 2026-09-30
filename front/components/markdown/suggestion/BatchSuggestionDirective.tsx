@@ -24,8 +24,10 @@ import {
 } from "@app/components/markdown/suggestion/suggestion_order";
 import { makeDirective } from "@app/components/markdown/suggestion/suggestionDirective";
 import {
+  trackSuggestionCardDecision,
   trackSuggestionDetailsOpen,
   trackSuggestionTargetPreviewOpen,
+  useTrackSuggestionCardViews,
 } from "@app/components/markdown/suggestion/suggestionTracking";
 import { getIcon } from "@app/components/resources/resources_icons";
 import {
@@ -453,8 +455,14 @@ function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
   const { closePanel, data } = useConversationSidePanelContext();
   const [pendingState, setPendingState] =
     useState<SuggestionBatchReviewState | null>(null);
+  useTrackSuggestionCardViews(batch ? [batch] : [], { inPile: false });
 
   const review = async (state: SuggestionBatchReviewState) => {
+    trackSuggestionCardDecision({
+      decision: state === "approved" ? "allow" : "decline",
+      batchId,
+      inPile: false,
+    });
     setPendingState(state);
     try {
       await reviewBatches([batchId], state);

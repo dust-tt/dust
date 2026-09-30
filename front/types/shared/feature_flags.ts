@@ -2,7 +2,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   group_management: {
     description:
       "Delegate group membership and usage management to group managers",
-    stage: "dust_only",
+    stage: "ask_owner",
     owner: "philipperolet",
   },
   skills_search: {
@@ -499,6 +499,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Workspace and user language settings for the product UI",
     stage: "dust_only",
     owner: "sfriquet",
+  },
+  co_edition: {
+    description: "Collaborative editing features",
+    stage: "dust_only",
+    owner: "PopDaph",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

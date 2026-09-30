@@ -120,6 +120,13 @@ export type FinalToolCallAssertion =
       type: "suggestAgentModelChange";
       agentKey: string;
       modelId: ModelIdType;
+    }
+  | {
+      type: "suggestAgentStructuredOutput";
+      agentKey: string;
+      // Each pattern must match the name of a required top-level property of the schema, so the
+      // scenario does not depend on the exact names the model picks (e.g. `zip_code`, `zipcode`).
+      requiredProperties: RegExp[];
     };
 
 interface BaseTestCase {

@@ -6,6 +6,7 @@ import {
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
+import { resolveDisplayedEditors } from "@app/components/members/resolveDisplayedEditors";
 import { mergeAgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/agent_editors";
 import { useMemberDetails } from "@app/lib/swr/assistants";
@@ -72,27 +73,11 @@ export function AgentEditorsTab({
     name: "editors",
   });
   const selectedEditors = editorsField.value;
-  // The preview shows the editors once the suggested changes are applied.
-  const displayedEditors = suggestedEditors
-    ? [
-        ...editors.filter(
-          (editor) => !suggestedEditors.removeUserIds.includes(editor.sId)
-        ),
-        ...suggestedEditors.addUserIds
-          .filter((userId) => !editors.some((e) => e.sId === userId))
-          .map((userId) => {
-            const member = membersById[userId];
-            return {
-              sId: userId,
-              firstName: member?.firstName ?? userId,
-              lastName: member?.lastName ?? null,
-              fullName: member?.fullName ?? userId,
-              image: member?.image ?? null,
-              email: member?.email ?? "",
-            };
-          }),
-      ]
-    : selectedEditors;
+  const displayedEditors = resolveDisplayedEditors({
+    editors: suggestedEditors ? editors : selectedEditors,
+    suggestedEditors,
+    membersById,
+  });
   const persistedEditorIds = new Set(editors.map((editor) => editor.sId));
   const hasChanges =
     editors.length !== selectedEditors.length ||

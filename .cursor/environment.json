@@ -18,6 +18,7 @@
     { "name": "front-poke", "port": 3010 },
     { "name": "front-spa", "port": 3011 },
     { "name": "viz", "port": 3007 },
+    { "name": "database", "port": 5432 },
     { "name": "temporal-ui", "port": 8233 }
   ]
 }

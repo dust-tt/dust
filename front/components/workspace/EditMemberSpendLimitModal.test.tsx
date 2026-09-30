@@ -390,4 +390,35 @@ describe("EditMemberSpendLimitModal", () => {
     expect(onSaved).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it("passes resetAtNextBillingCycle when the temporary checkbox is checked", async () => {
+    doUpdateSpendLimit.mockResolvedValueOnce({ ok: true });
+    const member = makeMember("override");
+
+    render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={vi.fn()}
+        member={member}
+        owner={owner}
+        groups={groups}
+        readOnly={false}
+        defaultUserSpendLimit={{ status: "unavailable" }}
+      />
+    );
+    fireEvent.change(getPersonalLimitInput(), { target: { value: "2500" } });
+    fireEvent.click(
+      screen.getByLabelText(/Reset to .* at the next billing cycle/)
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Validate" }));
+
+    await waitFor(() => expect(doUpdateSpendLimit).toHaveBeenCalledOnce());
+    expect(doUpdateSpendLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memberId: member.sId,
+        limit: { kind: "limited", awuCredits: 2500 },
+        resetAtNextBillingCycle: true,
+      })
+    );
+  });
 });

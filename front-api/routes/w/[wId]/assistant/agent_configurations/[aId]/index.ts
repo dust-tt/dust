@@ -63,7 +63,7 @@ app.get(
     // full in a workspace with the `admin_can_see_private_entities` feature flag (see
     // `agent-content-visibility`).
     const agent = await AgentResource.fetchById(auth, aId);
-    if (!agent || (!agent.canViewContent(auth) && !auth.isAdmin())) {
+    if (!agent || (!agent.canViewContent && !auth.isAdmin())) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

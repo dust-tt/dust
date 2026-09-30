@@ -8,7 +8,10 @@ import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
-import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  getGlobalAgents,
+  listDefaultGlobalAgentIds,
+} from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
   buildAuditLogTarget,
@@ -83,17 +86,13 @@ import type {
 } from "@app/types/agent_search/agent_search";
 import type { DiscoveryAgentType } from "@app/types/api/discovery";
 import type {
-  AgentActionsEnrichment,
   AgentConfigurationBaseType,
   AgentConfigurationScope,
   AgentConfigurationStatus,
   AgentConfigurationType,
-  AgentFavoriteEnrichment,
   AgentModelConfigurationType,
   AgentReinforcementMode,
   AgentStatus,
-  AgentTagsEnrichment,
-  LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { isAgentStatus } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -120,13 +119,21 @@ import assert from "assert";
 import isEqual from "lodash/isEqual";
 import partition from "lodash/partition";
 import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
 import type {
   Attributes,
   Includeable,
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op, UniqueConstraintError, ValidationError } from "sequelize";
+import {
+  col,
+  fn,
+  Op,
+  where as sequelizeWhere,
+  UniqueConstraintError,
+  ValidationError,
+} from "sequelize";
 
 // A draft belongs to its current author until it is published. This is ownership, not an editor
 // grant: once the agent leaves draft status, only explicit grants confer editorship.
@@ -171,11 +178,26 @@ const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
   { role: "none", permissions: ["read", "list"] },
 ];
 
-// Full-only payload: the private `AgentConfigurationModel` columns. Present only on `full`
-// resources (see `AgentResource` variants).
-export type AgentResourceContent = {
+// The private `AgentConfigurationModel` columns, for callers who `canViewContent`. Never loaded with
+// the resource: read on demand through `fetchInstructions`/`batchFetchInstructions` (see
+// `agent-instructions-on-demand`).
+export type AgentResourceInstructions = {
   instructions: string | null;
   instructionsHtml: string | null;
+};
+
+export type AgentActionsFetchOptions = {
+  permissionFiltering?: "default" | "dangerously_skip";
+};
+
+const AGENT_INSTRUCTIONS_ATTRIBUTES = [
+  "instructions",
+  "instructionsHtml",
+] as const;
+
+export type AgentVersionReference = {
+  agentId: string;
+  agentVersion: number;
 };
 
 // The outcome of a `bulkUpdate`: the agents whose save succeeded (`updatedAgentIds`, a change
@@ -215,6 +237,8 @@ export type SaveAgentConfigurationParams = {
   // Defaults to none.
   skills?: SkillResource[];
 };
+
+export type AgentAuditOptions = { auditMetadata?: Record<string, string> };
 
 // A partial update applied by `updateConfiguration`/`bulkUpdate`: any subset of an agent's
 // configuration. Only provided properties are considered. `model` may itself be partial — the
@@ -277,10 +301,6 @@ const AGENT_CONFIGURATION_KEYS = [
   "skills",
 ] as const satisfies readonly (keyof SaveAgentConfigurationParams)[];
 
-export interface FullAgentResource extends AgentResource {
-  readonly variant: "full";
-}
-
 // JSON-serializable model configuration: the optional `reasoningEffort`/`responseFormat` become
 // `null` (JSON drops `undefined`), everything else is JSON-native.
 type SerializedModelConfiguration = {
@@ -291,9 +311,8 @@ type SerializedModelConfiguration = {
   responseFormat: string | null;
 };
 
-// Cached shape of a `full` custom `AgentResource`. Hand-written (the resource spans two tables and
-// reshapes columns), so `AGENT_RESOURCE_CACHE_VERSION` MUST be bumped on any change; a test asserts
-// its `content` stays in sync with `AgentResourceContent`.
+// Cached shape of a caller-independent custom `AgentResource`. Hand-written (the resource spans two
+// tables and reshapes columns), so `AGENT_RESOURCE_CACHE_VERSION` MUST be bumped on any change.
 export type AgentResourceSnapshot = {
   agentModelId: ModelId;
   agentConfigurationModelId: ModelId;
@@ -318,7 +337,6 @@ export type AgentResourceSnapshot = {
   creditSpendCheckpointThresholdAwuCredits: number | null;
   versionCreatedAt: number;
   versionUpdatedAt: number;
-  content: AgentResourceContent;
 };
 
 // Rollout mode for the agent read cache. Progression: "dryRun" (wired end to end but touching no
@@ -330,7 +348,7 @@ export type AgentResourceSnapshot = {
  * `AGENT_RESOURCE_CACHE_VERSION` in the same change, so re-enabling never reads entries written
  * before the switch.
  */
-const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "dryRun";
+const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "live";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentResource
@@ -360,9 +378,10 @@ export interface AgentResource
  * The authoritative resolvers `fetchByModelIdWithAuth`/`fetchByModelIds`/`fetchById(s)` MUST resolve
  * a custom agent to its current configuration version — the row its `currentVersion` pointer
  * designates (see `fetch-current-version`) — so two fetched resources sharing an `id`
- * (= `agentModelId`) are consistent at a given time. `fetchVersion`/`listVersions` are the only
- * resolvers that deliberately resolve other versions (see `agent-versions`); such a resource is told
- * apart by `isCurrentVersion` and is read-only. The `from*` factories are an unchecked fast
+ * (= `agentModelId`) are consistent at a given time. `fetchVersion`/`listVersions` and
+ * `(dangerously)fetchByIdsAndVersions` are the only resolvers that deliberately resolve other
+ * versions (see `agent-versions`, `fetch-pinned-versions`); such a resource is told apart by
+ * `isCurrentVersion` and is read-only. The `from*` factories are an unchecked fast
  * path: they build a resource from whatever configuration the caller supplies, and do NOT yet
  * guarantee it is the current version — a caller deciding about the agent's current state must pass
  * that version, or use `fetch*`. (`from*` are intended to become private and enforce this.) Global
@@ -370,17 +389,17 @@ export interface AgentResource
  * `sId`, and all share the `id: -1` sentinel.
  */
 /**
- * @cc [owner:sfriquet,label:security] unreadable-agent-is-light
- * A resource built for a caller who cannot view the agent's content (per `canViewContent`: no
- * `read`, outside the `admin_can_see_private_entities` admin override) MUST be `light`: its
- * `content`, which carries the agent's instructions (`instructions`, `instructionsHtml`), is never
- * materialized for that caller, whatever their role, key type, or superuser status. The
- * instructions are the only private fields: the head fields (`name`, `status`, `scope`,
+ * @cc [owner:sfriquet,label:security] unreadable-agent-content-hidden
+ * A resource built for a caller who cannot view the agent's content (`canViewContent` false: no
+ * `read`, outside the `admin_can_see_private_entities` admin override) MUST NOT expose the agent's
+ * instructions (`instructions`, `instructionsHtml`) to that caller: `fetchInstructions`/
+ * `batchFetchInstructions` never return them for it, whatever their role, key type, or superuser
+ * status. The instructions are the only private fields: the head fields (`name`, `status`, `scope`,
  * `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and carried by every
  * resource. This holds for every `fetch*` resolver, for `listVersions`, for `fromModels` and for
  * global agents, so a caller allowed to enumerate agents they cannot read (an admin or manager
- * listing hidden agents, a superuser) sees identity and core fields only. Callers MUST NOT re-attach
- * the instructions to a `light` resource from another read path.
+ * listing hidden agents, a superuser) sees identity and core fields only. Callers MUST NOT attach
+ * the instructions to such a resource from another read path.
  */
 /**
  * @cc [owner:philipperolet,label:security;product] agent-verbs
@@ -401,11 +420,11 @@ export interface AgentResource
  *   management, archiving/restoring is gated on `admin` and is not additionally space-gated, so a
  *   workspace admin may archive/restore an agent it cannot read (e.g. hidden agents surfaced by
  *   "Show hidden agents").
- * - `list`: seeing the agent's light core fields, including its version author, but not its
+ * - `list`: seeing the agent's core fields, including its version author, but not its
  *   editors. `read` implies `list`. The `admin` and `manager` roles MUST hold it on every custom
  *   agent, regardless of scope, status, or `requestedSpaceIds`.
- * Holding any verb makes the agent fetchable, but without `read` only its light core fields may be
- * exposed (see `unreadable-agent-is-light`). The explicit `admin_can_see_private_entities` admin
+ * Holding any verb makes the agent fetchable, but without `read` only its core fields may be
+ * exposed (see `unreadable-agent-content-hidden`). The explicit `admin_can_see_private_entities` admin
  * override is the only exception and may expose the full configuration.
  * Global (code-defined) agents are `read`-only, for the roles in their audience.
  */
@@ -448,9 +467,10 @@ export interface AgentResource
 /**
  * @cc [owner:tdraier,label:backend] batch-results-by-resource
  * Every `batch*` read (`batchListEditors`, `batchListActions`, `batchListTags`,
- * `batchCountFavorites`) MUST accept custom and global agents alike and return a `Map` keyed by the
- * input resource, with an entry for every input: a resource is one configuration version, whereas
- * `sId` spans every version of an agent and global agents share one sentinel configuration id.
+ * `batchCountFavorites`, `batchFetchInstructions`) MUST accept custom and global agents alike and return
+ * a `Map` keyed by the input resource, with an entry for every input: a resource is one
+ * configuration version, whereas `sId` spans every version of an agent and global agents share one
+ * sentinel configuration id.
  */
 export class AgentResource
   extends BaseResource<AgentModel>
@@ -458,7 +478,10 @@ export class AgentResource
 {
   private readonly requestedSpaceIds: ModelId[];
   private _codeDefinedSkillIds: string[] = [];
-  private _content: AgentResourceContent | null;
+  // A resource not yet materialized for a caller (e.g. re-saved by `bulkUpdate`) may view its
+  // content; `materialize` sets it for the caller.
+  private _canViewContent = true;
+  private _globalContent: AgentResourceInstructions | null = null;
 
   private _verbs: Set<GrantVerb> = new Set();
   private _isRegularApiKey = false;
@@ -515,27 +538,81 @@ export class AgentResource
       | "versionUpdatedAt"
     >);
     this.requestedSpaceIds = agentConfiguration.requestedSpaceIds;
-    this._content = {
-      instructions: agentConfiguration.instructions,
-      instructionsHtml: agentConfiguration.instructionsHtml,
-    };
   }
 
-  get variant(): "light" | "full" {
-    return this._content === null ? "light" : "full";
+  // Whether the caller the resource was materialized for may view its content (see
+  // `agent-content-visibility`).
+  get canViewContent(): boolean {
+    return this._canViewContent;
   }
 
-  isFull(): this is FullAgentResource {
-    return this._content !== null;
-  }
-
-  get content(): AgentResourceContent {
+  /**
+   * @cc [owner:tdraier,label:backend;performance] agent-instructions-on-demand
+   * The resolvers MUST NOT load a custom agent's instructions (`instructions`, `instructionsHtml`)
+   * and the cache snapshot MUST NOT carry them: they are read on demand through `fetchInstructions`/
+   * `batchFetchInstructions`, for the resource's own configuration version, and only for a caller
+   * who `canViewContent` (see `unreadable-agent-content-hidden`). A global agent's instructions are
+   * code-defined, built with the resource and served from memory.
+   */
+  async fetchInstructions(): Promise<AgentResourceInstructions> {
     assert(
-      this._content !== null,
-      "Unexpected: `content` accessed on a light AgentResource"
+      this.canViewContent,
+      `Unexpected: fetching instructions the caller cannot view for agent ${this.sId}`
+    );
+    const contents = await AgentResource.batchFetchInstructions([this]);
+    const content = contents.get(this);
+    assert(content, `Unexpected: missing content for agent ${this.sId}`);
+
+    return content;
+  }
+
+  static async batchFetchInstructions(
+    resources: AgentResource[]
+  ): Promise<Map<AgentResource, AgentResourceInstructions | null>> {
+    const customResources = resources.filter(
+      (resource) => resource.canViewContent && resource.scope !== "global"
+    );
+    const configurations =
+      customResources.length > 0
+        ? await AgentConfigurationModel.findAll({
+            attributes: ["id", ...AGENT_INSTRUCTIONS_ATTRIBUTES],
+            where: {
+              id: uniq(
+                customResources.map(
+                  (resource) => resource.agentConfigurationModelId
+                )
+              ),
+              workspaceId: uniq(
+                customResources.map((resource) => resource.workspaceId)
+              ),
+            },
+          })
+        : [];
+    const contentByConfigurationId = new Map(
+      configurations.map((configuration) => [
+        configuration.id,
+        {
+          instructions: configuration.instructions,
+          instructionsHtml: configuration.instructionsHtml,
+        },
+      ])
     );
 
-    return this._content;
+    return new Map(
+      resources.map((resource) => {
+        if (!resource.canViewContent) {
+          return [resource, null];
+        }
+        if (resource.scope === "global") {
+          return [resource, resource._globalContent];
+        }
+        return [
+          resource,
+          contentByConfigurationId.get(resource.agentConfigurationModelId) ??
+            null,
+        ];
+      })
+    );
   }
 
   static fromGlobalAgent(
@@ -598,6 +675,10 @@ export class AgentResource
       versionAuthorId: null,
     } satisfies Pick<AgentResource, "scope" | "status" | "versionAuthorId">);
     resource._codeDefinedSkillIds = configuration.codeDefinedSkillIds ?? [];
+    resource._globalContent = {
+      instructions: configuration.instructions,
+      instructionsHtml: configuration.instructionsHtml,
+    };
 
     return resource.materialize(auth);
   }
@@ -614,9 +695,7 @@ export class AgentResource
     this._isRegularApiKey = auth.isKey() && !auth.isSystemKey();
     this._adminCanSeePrivateEntities = adminCanSeePrivateEntities;
 
-    if (!this.canViewContent(auth)) {
-      this._content = null;
-    }
+    this._canViewContent = this.resolveCanViewContent(auth);
 
     return this;
   }
@@ -646,7 +725,7 @@ export class AgentResource
    * cannot mention or run it, and the definition edits their `admin` verb allows (model, tags) are
    * unchanged.
    */
-  canViewContent(auth: Authenticator): boolean {
+  private resolveCanViewContent(auth: Authenticator): boolean {
     return (
       auth.can("read", this) ||
       (this._adminCanSeePrivateEntities && auth.isAdmin())
@@ -702,19 +781,19 @@ export class AgentResource
     );
   }
 
-  // -- Resolvers: current version, full when readable, light otherwise --
+  // -- Resolvers: current version, materialized for the caller --
 
   /**
    * @cc [owner:tdraier,label:backend] fetch-current-version
    * Resolves each requested custom agent to its current configuration version — the row whose
    * `version` equals the agent's `currentVersion` pointer (see `agent-current-version-pointer`) —
-   * scoped to the authed workspace. Each is returned as a `full` resource when the caller can view
-   * its content (see `agent-content-visibility`), otherwise a `light` resource; a resource the caller
-   * cannot fetch at all (holds no verb on,
-   * per `canFetch`) is dropped. An agent with no configuration yields no resource, and at most one
-   * resource is returned per `agentModelId`. `fetchById(s)` additionally resolve global agents by
-   * `sId` (they have no configuration rows) via `getGlobalAgents`, gated by the same `canFetch`
-   * check; `fetchByModelId(s)` cannot, since global agents have no `agentModelId`.
+   * scoped to the authed workspace. Each is materialized for the caller, whose `canViewContent`
+   * follows `agent-content-visibility`; a resource the caller cannot fetch at all (holds no verb on,
+   * per `canFetch`) is dropped, except by `dangerouslyFetchByIds` (see `agent-dangerous-fetch`).
+   * An agent with no configuration yields no resource, and at most one resource is returned per
+   * `agentModelId`. `fetchById(s)` additionally resolve global agents by `sId` (they have no
+   * configuration rows) via `getGlobalAgents`, gated by the same `canFetch` check;
+   * `fetchByModelId(s)` cannot, since global agents have no `agentModelId`.
    */
   static async fetchByModelIds(
     auth: Authenticator,
@@ -758,6 +837,40 @@ export class AgentResource
     auth: Authenticator,
     agentIds: string[]
   ): Promise<AgentResource[]> {
+    return this.resolveByIds(auth, agentIds, {
+      dangerouslySkipFetchCheck: false,
+    });
+  }
+
+  // Skips the `canFetch` drop, for callers displaying agents reached through another
+  // access-controlled object (e.g. the historical agents of a conversation the caller can read) or
+  // running as internal/system jobs: they must keep the agent's identity even once the caller holds
+  // no verb on it.
+  /**
+   * @cc [owner:tdraier,label:security] agent-dangerous-fetch
+   * The `dangerouslyFetchByIds`/`dangerouslyFetchByIdsAndVersions` resolvers MUST behave as
+   * `fetchByIds`/`fetchByIdsAndVersions` except that they skip the `canFetch` drop: resources are
+   * still materialized for the caller, so one the caller holds no verb on carries no verb
+   * (`auth.can` is false for all of them) and `canViewContent` false, and exposes core fields only
+   * (see `unreadable-agent-content-hidden`). Workspace scoping and missing-agent omission are
+   * unchanged.
+   */
+  static async dangerouslyFetchByIds(
+    auth: Authenticator,
+    agentIds: string[]
+  ): Promise<AgentResource[]> {
+    return this.resolveByIds(auth, agentIds, {
+      dangerouslySkipFetchCheck: true,
+    });
+  }
+
+  // `dangerouslySkipFetchCheck` skips the `canFetch` drop, for `dangerouslyFetchByIds` only (see
+  // `agent-dangerous-fetch`).
+  private static async resolveByIds(
+    auth: Authenticator,
+    agentIds: string[],
+    { dangerouslySkipFetchCheck }: { dangerouslySkipFetchCheck: boolean }
+  ): Promise<AgentResource[]> {
     if (agentIds.length === 0) {
       return [];
     }
@@ -768,7 +881,9 @@ export class AgentResource
 
     const [customResources, globalResources] = await Promise.all([
       this.fetchManyFromStore(auth, customAgentIds),
-      this.fetchGlobalAgents(auth, globalAgentIds),
+      this.fetchGlobalAgents(auth, globalAgentIds, {
+        dangerouslySkipFetchCheck,
+      }),
     ]);
 
     const adminCanSeePrivateEntities =
@@ -776,23 +891,30 @@ export class AgentResource
 
     const resourcesById = new Map(
       [
-        ...customResources.map((resource) =>
-          resource.materialize(auth, { adminCanSeePrivateEntities })
-        ),
+        ...customResources
+          .map((resource) =>
+            resource.materialize(auth, { adminCanSeePrivateEntities })
+          )
+          .filter(
+            (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
+          ),
         ...globalResources,
-      ]
-        .filter((resource) => resource.canFetch(auth))
-        .map((resource) => [resource.sId, resource])
+      ].map((resource) => [resource.sId, resource])
     );
     return removeNulls(uniqueAgentIds.map((id) => resourcesById.get(id)));
   }
 
   // Global agents are code-defined and have no `agent`/configuration rows, so they cannot be
   // resolved by the version query; they are built from `getGlobalAgents` (which enforces workspace
-  // plan/availability) and gated by the same `canFetch` check as custom agents.
+  // plan/availability) and gated by the same `canFetch` check as custom agents, which
+  // `dangerouslySkipFetchCheck` skips for the `dangerously*` resolvers (see
+  // `agent-dangerous-fetch`).
   private static async fetchGlobalAgents(
     auth: Authenticator,
-    globalAgentIds: string[]
+    globalAgentIds: string[],
+    {
+      dangerouslySkipFetchCheck = false,
+    }: { dangerouslySkipFetchCheck?: boolean } = {}
   ): Promise<AgentResource[]> {
     if (globalAgentIds.length === 0) {
       return [];
@@ -801,7 +923,89 @@ export class AgentResource
     const configurations = await getGlobalAgents(auth, globalAgentIds, "light");
     return configurations
       .map((configuration) => this.fromGlobalAgent(auth, configuration))
-      .filter((resource) => resource.canFetch(auth));
+      .filter(
+        (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
+      );
+  }
+
+  /**
+   * @cc [owner:tdraier,label:backend;security] fetch-pinned-versions
+   * Resolves each requested `(agentId, agentVersion)` pair to that exact configuration version,
+   * scoped to the authed workspace, whether or not it is the agent's current one. Each resource is
+   * materialized for the caller as `agent-versions` requires (verbs from that version's own row,
+   * `isCurrentVersion` from the pointer read together with it) and dropped when the caller cannot
+   * fetch it. Results MUST follow first-occurrence input order, with at most one resource per pair,
+   * omitting pairs matching no configuration. A global agent is not versioned: every pair naming it
+   * resolves to its single code-defined version, returned once, whatever `agentVersion` the pair
+   * asks for.
+   */
+  static async fetchByIdsAndVersions(
+    auth: Authenticator,
+    agentVersions: AgentVersionReference[]
+  ): Promise<AgentResource[]> {
+    return this.resolveByIdsAndVersions(auth, agentVersions, {
+      dangerouslySkipFetchCheck: false,
+    });
+  }
+
+  // Skips the `canFetch` drop (see `agent-dangerous-fetch`), for callers rendering the pinned
+  // versions of messages in a conversation the caller can read: historical agents keep their
+  // identity even once the caller holds no verb on them.
+  static async dangerouslyFetchByIdsAndVersions(
+    auth: Authenticator,
+    agentVersions: AgentVersionReference[]
+  ): Promise<AgentResource[]> {
+    return this.resolveByIdsAndVersions(auth, agentVersions, {
+      dangerouslySkipFetchCheck: true,
+    });
+  }
+
+  private static async resolveByIdsAndVersions(
+    auth: Authenticator,
+    agentVersions: AgentVersionReference[],
+    { dangerouslySkipFetchCheck }: { dangerouslySkipFetchCheck: boolean }
+  ): Promise<AgentResource[]> {
+    const referenceKey = ({ agentId, agentVersion }: AgentVersionReference) =>
+      isGlobalAgentId(agentId) ? agentId : `${agentId}:${agentVersion}`;
+    const uniqueAgentVersions = uniqBy(agentVersions, referenceKey);
+    const [globalAgentVersions, customAgentVersions] = partition(
+      uniqueAgentVersions,
+      ({ agentId }) => isGlobalAgentId(agentId)
+    );
+
+    const [customResources, globalResources] = await Promise.all([
+      customAgentVersions.length > 0
+        ? this.loadConfigurationVersions(auth, {
+            where: {
+              [Op.or]: customAgentVersions.map(({ agentId, agentVersion }) => ({
+                sId: agentId,
+                version: agentVersion,
+              })),
+            },
+            dangerouslySkipFetchCheck,
+          })
+        : [],
+      this.fetchGlobalAgents(
+        auth,
+        globalAgentVersions.map(({ agentId }) => agentId),
+        { dangerouslySkipFetchCheck }
+      ),
+    ]);
+
+    const resourcesByKey = new Map(
+      [...customResources, ...globalResources].map((resource) => [
+        referenceKey({
+          agentId: resource.sId,
+          agentVersion: resource.version,
+        }),
+        resource,
+      ])
+    );
+    return removeNulls(
+      uniqueAgentVersions.map((reference) =>
+        resourcesByKey.get(referenceKey(reference))
+      )
+    );
   }
 
   static async fetchById(
@@ -821,8 +1025,8 @@ export class AgentResource
    * version metadata, tools, tags and skills, and MUST be materialized for the supplied `auth`, like
    * every resolved resource, whatever authenticator `this` was resolved for: the caller's verbs are
    * those its own row grants (its stored scope, status and requested spaces, see `agent-verbs`), a
-   * version the caller holds no verb on is dropped, and it is `light` unless the caller can view its
-   * content (see `agent-content-visibility`). Their `isCurrentVersion` MUST compare against the
+   * version the caller holds no verb on is dropped, and its `canViewContent` follows
+   * `agent-content-visibility`. Their `isCurrentVersion` MUST compare against the
    * agent's current-version pointer read together with them, not the one `this` was loaded with. A
    * global agent is not versioned: it is its only version, resolved for `auth` as `fetchById` does.
    * A previous version is read-only: see `isCurrentVersion`.
@@ -853,12 +1057,37 @@ export class AgentResource
       return AgentResource.fetchGlobalAgents(auth, [this.sId]);
     }
 
-    // One statement, so the `currentVersion` pointer and the version rows are read consistently.
-    const configurations = await AgentConfigurationModel.findAll({
+    return AgentResource.loadConfigurationVersions(auth, {
       where: {
-        workspaceId: this.workspaceId,
         agentId: this.id,
         ...(version !== undefined ? { version } : {}),
+      },
+      limit,
+      dangerouslySkipFetchCheck: false,
+    });
+  }
+
+  // The configuration versions matching `where` in the authed workspace, newest first, materialized
+  // for the caller. One statement, so each row's agent `currentVersion` pointer is read
+  // consistently with it. `dangerouslySkipFetchCheck` skips the `canFetch` drop, for
+  // `dangerouslyFetchByIdsAndVersions` only (see `agent-dangerous-fetch`).
+  private static async loadConfigurationVersions(
+    auth: Authenticator,
+    {
+      where,
+      limit,
+      dangerouslySkipFetchCheck,
+    }: {
+      where: WhereOptions<AgentConfigurationModel>;
+      limit?: number;
+      dangerouslySkipFetchCheck: boolean;
+    }
+  ): Promise<AgentResource[]> {
+    const configurations = await AgentConfigurationModel.findAll({
+      attributes: { exclude: [...AGENT_INSTRUCTIONS_ATTRIBUTES] },
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       include: [{ model: AgentModel, required: true }],
       order: [["version", "DESC"]],
@@ -873,22 +1102,24 @@ export class AgentResource
       return new AgentResource(agent.get(), configurationAttributes);
     });
     const adminCanSeePrivateEntities =
-      await AgentResource.resolveAdminCanSeePrivateEntities(auth, versions);
+      await this.resolveAdminCanSeePrivateEntities(auth, versions);
 
     return versions
       .map((resource) =>
         resource.materialize(auth, { adminCanSeePrivateEntities })
       )
-      .filter((resource) => resource.canFetch(auth));
+      .filter(
+        (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
+      );
   }
 
   /**
    * @cc [owner:tdraier,label:backend] previous-version-read-only
    * A resource built on a configuration version other than the agent's current one (from
-   * `fetchVersion`/`listVersions` or `dangerouslyFromConfigurationModels`) is read-only: the
-   * definition and lifecycle mutations that act on the current version (`buildResaveParams`,
-   * `updateConfiguration`, `updateScopeInPlace`, `archive`, `restore`) MUST refuse it, since they
-   * would rebuild or gate on a stale version.
+   * `fetchVersion`/`listVersions`, `(dangerously)fetchByIdsAndVersions` or
+   * `dangerouslyFromConfigurationModels`) is read-only: the definition and lifecycle mutations that
+   * act on the current version (`buildResaveParams`, `updateConfiguration`, `updateScopeInPlace`,
+   * `archive`, `restore`) MUST refuse it, since they would rebuild or gate on a stale version.
    */
   get isCurrentVersion(): boolean {
     return this.version === this.currentVersion;
@@ -958,17 +1189,49 @@ export class AgentResource
     return [...new Set(agents.map((agent) => agent.sId))];
   }
 
-  // The single active agent whose current version bears this exact name (active names are unique per
-  // workspace), or null when none matches or the caller cannot fetch it.
+  /**
+   * @cc [owner:tdraier,label:product] agent-fetch-by-name
+   * Resolves the active agent the caller can fetch whose name equals `name`, ignoring case, or null.
+   * A custom agent wins over a global one of the same name. When several custom agents match (active
+   * names are unique only case-sensitively), the one named exactly `name` wins; otherwise the name
+   * is ambiguous and nothing is returned.
+   */
   static async fetchByName(
     auth: Authenticator,
     name: string
   ): Promise<AgentResource | null> {
+    const lowerName = name.toLowerCase();
     const agentIds = await this.listCurrentVersionAgentIds(auth, {
-      agentWhere: { name, status: "active" },
+      agentWhere: {
+        status: "active",
+        [Op.and]: [sequelizeWhere(fn("lower", col("agent.name")), lowerName)],
+      },
     });
-    const [resource] = await this.fetchByIds(auth, agentIds);
-    return resource ?? null;
+    const customMatches = await this.fetchByIds(auth, agentIds);
+    if (customMatches.length > 0) {
+      const exactMatch = customMatches.find(
+        (resource) => resource.name === name
+      );
+      return (
+        exactMatch ?? (customMatches.length === 1 ? customMatches[0] : null)
+      );
+    }
+
+    const globalAgents = await this.listGlobalAgents(auth);
+    return (
+      globalAgents.find(
+        (resource) =>
+          resource.status === "active" &&
+          resource.name.toLowerCase() === lowerName
+      ) ?? null
+    );
+  }
+
+  // Every global agent the workspace offers, disabled ones included (each carries its status), as
+  // `getGlobalAgents` resolves them for the workspace's plan, flags and settings, filtered to what
+  // the caller can fetch.
+  static async listGlobalAgents(auth: Authenticator): Promise<AgentResource[]> {
+    return this.fetchByIds(auth, listDefaultGlobalAgentIds());
   }
 
   // Every agent of the authed workspace whose current status is in `status` (active by default),
@@ -1111,7 +1374,7 @@ export class AgentResource
     return this.fetchByIds(auth, agentIds);
   }
 
-  // Caller-independent query: the current `full` resource of each identified agent — the row whose
+  // Caller-independent query: the current resource of each identified agent — the row whose
   // `version` equals the agent's `currentVersion` pointer, joined via the unique `(agentId, version)`
   // index — one per agent, scoped to the workspace. No read-access decision is folded in; that is the
   // caller's job (see `fetchByIds`). Takes a bare `workspaceId` so both the
@@ -1119,7 +1382,7 @@ export class AgentResource
   private static async loadResource(
     workspaceId: ModelId,
     identityWhere: { id: ModelId[] } | { sId: string[] }
-  ): Promise<FullAgentResource[]> {
+  ): Promise<AgentResource[]> {
     // Driven from `agents` (its unique `sId` / PK index) with the current configuration inner-joined
     // on `agent_configuration.version = agent.currentVersion`, so the single current row is resolved
     // through the unique `(agentId, version)` index instead of scanning every version.
@@ -1132,6 +1395,7 @@ export class AgentResource
         {
           model: AgentConfigurationModel,
           required: true,
+          attributes: { exclude: [...AGENT_INSTRUCTIONS_ATTRIBUTES] },
           where: { version: { [Op.col]: "agent.currentVersion" } },
         },
       ],
@@ -1144,10 +1408,7 @@ export class AgentResource
         };
       return configurations.map(
         (configuration) =>
-          new AgentResource(
-            agentAttributes,
-            configuration.get()
-          ) as FullAgentResource
+          new AgentResource(agentAttributes, configuration.get())
       );
     });
   }
@@ -1159,7 +1420,7 @@ export class AgentResource
    */
   private static async loadManyFromDatabase(
     inputs: readonly AgentResourceCacheKey[]
-  ): Promise<(FullAgentResource | null)[]> {
+  ): Promise<(AgentResource | null)[]> {
     assert(inputs.length > 0, "Agent cache batches must not be empty");
     const { workspaceModelId } = inputs[0];
     assert(
@@ -1177,9 +1438,10 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:backend;performance] agent-resource-cache
-   * The cache holds the caller-independent full resource; the caller-dependent `canFetch` and
-   * `materialize` gates MUST run on every read and MUST NOT be cached. Entries have no TTL, so
-   * every write that changes or deletes an agent's cached version MUST invalidate its entry — via
+   * The cache holds the caller-independent resource; the caller-dependent gates MUST NOT be cached:
+   * `materialize` MUST run on every read, and the `canFetch` drop on every read except through the
+   * `dangerously*` resolvers (see `agent-dangerous-fetch`). Entries have no TTL, so every write
+   * that changes or deletes an agent's cached version MUST invalidate its entry — via
    * `AgentResource.invalidateCache` here, or the leaf `invalidateAgentResourceCache`/
    * `invalidateAgentResourceCaches` helpers that lower-level write and deletion paths can import
    * without forming a cycle back to this resource.
@@ -1187,7 +1449,7 @@ export class AgentResource
   private static readonly store = defineCachedResourceValue<
     AgentResourceCacheKey,
     AgentResourceSnapshot,
-    FullAgentResource
+    AgentResource
   >({
     id: AGENT_RESOURCE_CACHE_ID,
     version: AGENT_RESOURCE_CACHE_VERSION,
@@ -1206,7 +1468,7 @@ export class AgentResource
   private static fetchManyFromStore(
     auth: Authenticator,
     agentIds: readonly string[]
-  ): Promise<FullAgentResource[]> {
+  ): Promise<AgentResource[]> {
     const workspaceModelId = auth.getNonNullableWorkspace().id;
     return this.store.fetchMany(
       agentIds.map((id) => ({ workspaceModelId, id }))
@@ -1229,7 +1491,7 @@ export class AgentResource
       this.scope !== "global",
       "Unexpected: attempted to cache a global AgentResource"
     );
-    const { content, modelConfiguration } = this;
+    const { modelConfiguration } = this;
 
     return {
       agentModelId: this.id,
@@ -1261,12 +1523,11 @@ export class AgentResource
         this.creditSpendCheckpointThresholdAwuCredits,
       versionCreatedAt: this.versionCreatedAt.getTime(),
       versionUpdatedAt: this.versionUpdatedAt.getTime(),
-      content: { ...content },
     };
   }
 
-  static fromSnapshot(snapshot: AgentResourceSnapshot): FullAgentResource {
-    const { content, modelConfiguration } = snapshot;
+  static fromSnapshot(snapshot: AgentResourceSnapshot): AgentResource {
+    const { modelConfiguration } = snapshot;
     assert(
       snapshot.versionAuthorId !== null,
       "Unexpected: cached custom agent is missing its author"
@@ -1313,8 +1574,8 @@ export class AgentResource
         scope: snapshot.scope,
         name: snapshot.name,
         description: snapshot.description,
-        instructions: content.instructions,
-        instructionsHtml: content.instructionsHtml,
+        instructions: null,
+        instructionsHtml: null,
         providerId: modelConfiguration.providerId,
         modelId: modelConfiguration.modelId,
         temperature: modelConfiguration.temperature,
@@ -1330,7 +1591,7 @@ export class AgentResource
         lastReinforcementAnalysisAt,
         requestedSpaceIds: snapshot.requestedSpaceIds,
       }
-    ) as FullAgentResource;
+    );
   }
 
   async listEditors(
@@ -1440,9 +1701,14 @@ export class AgentResource
   // Global agents' tools are code-defined and depend on workspace data (data sources, tool views),
   // so they are only built, through the full global agent build, when asked for.
   async listActions(
-    auth: Authenticator
+    auth: Authenticator,
+    options: AgentActionsFetchOptions = {}
   ): Promise<MCPServerConfigurationType[]> {
-    const actionsByAgent = await AgentResource.batchListActions(auth, [this]);
+    const actionsByAgent = await AgentResource.batchListActions(
+      auth,
+      [this],
+      options
+    );
     const actions = actionsByAgent.get(this);
     assert(actions !== undefined);
 
@@ -1453,7 +1719,9 @@ export class AgentResource
    * @cc [owner:tdraier,label:security] actions-require-read
    * Tools belong to a configuration version (see `batch-results-by-resource`). An agent whose
    * content the caller cannot view (see `agent-content-visibility`) MUST get `[]`: its tools carry
-   * its knowledge (data sources, tables), as private as its instructions.
+   * its knowledge (data sources, tables), as private as its instructions. The only exception is
+   * `permissionFiltering: "dangerously_skip"`, reserved for carrying a version's tools over
+   * unchanged when re-saving it (`buildResaveParams`); its result MUST NOT be exposed to the caller.
    */
   /**
    * @cc [owner:tdraier,label:performance] actions-batched-per-kind
@@ -1463,9 +1731,13 @@ export class AgentResource
    */
   static async batchListActions(
     auth: Authenticator,
-    agents: AgentResource[]
+    agents: AgentResource[],
+    { permissionFiltering = "default" }: AgentActionsFetchOptions = {}
   ): Promise<Map<AgentResource, MCPServerConfigurationType[]>> {
-    const viewableAgents = agents.filter((agent) => agent.canViewContent(auth));
+    const isListable = (agent: AgentResource) =>
+      permissionFiltering === "dangerously_skip" ||
+      agent.resolveCanViewContent(auth);
+    const viewableAgents = agents.filter(isListable);
     const [globalAgents, customAgents] = partition(
       viewableAgents,
       (agent) => agent.scope === "global"
@@ -1498,7 +1770,7 @@ export class AgentResource
 
     return new Map(
       agents.map((agent) => {
-        if (!agent.canViewContent(auth)) {
+        if (!isListable(agent)) {
           return [agent, []];
         }
         const actions =
@@ -1906,13 +2178,17 @@ export class AgentResource
 
   // Builds the save params that recreate this agent's current version as-is — its full configuration,
   // including tags, editors, tools and skills. Override a field on the result to save a new version
-  // that changes only that (e.g. the model in a bulk model update). `this` must be `full`.
+  // that changes only that (e.g. the model in a bulk model update). Requires `canViewContent`.
   async buildResaveParams(
     auth: Authenticator
   ): Promise<SaveAgentConfigurationParams> {
     // Loaded custom agents are never global, and their stored status is always an `AgentStatus`
     // (the `disabled_*` values are global-only); narrow both from the resource's wider types.
     assert(this.scope !== "global");
+    assert(
+      this.canViewContent,
+      "Unexpected: re-saving an agent whose content the caller cannot view"
+    );
     this.assertCurrentVersion();
     if (!isAgentStatus(this.status)) {
       throw new Error(
@@ -1920,26 +2196,22 @@ export class AgentResource
       );
     }
 
-    const [tags, editors, skills] = await Promise.all([
+    const [content, tags, editors, skills, allActions] = await Promise.all([
+      this.fetchInstructions(),
       this.listTags(auth),
       this.listEditors(auth),
       // No space filtering: tools and skills are carried over as-is, so re-saving an agent behind a
       // space the caller cannot read keeps them rather than dropping them.
       this.listSkills(auth, { permissionFiltering: "dangerously_skip" }),
+      this.listActions(auth, { permissionFiltering: "dangerously_skip" }),
     ]);
-    const actionsByConfigId = await fetchMCPServerActionConfigurations(auth, {
-      configurationModelIds: [this.agentConfigurationModelId],
-      variant: "full",
-    });
-    const actions = (
-      actionsByConfigId.get(this.agentConfigurationModelId) ?? []
-    ).filter(isServerSideMCPServerConfiguration);
+    const actions = allActions.filter(isServerSideMCPServerConfiguration);
 
     return {
       name: this.name,
       description: this.description,
-      instructions: this.content.instructions,
-      instructionsHtml: this.content.instructionsHtml,
+      instructions: content.instructions,
+      instructionsHtml: content.instructionsHtml,
       pictureUrl: this.pictureUrl,
       status: this.status,
       scope: this.scope,
@@ -2188,7 +2460,10 @@ export class AgentResource
    * never left `archived` while a trigger keeps firing. Disabling is idempotent, so a retry after a
    * transient failure converges.
    */
-  async archive(auth: Authenticator): Promise<Result<boolean, Error>> {
+  async archive(
+    auth: Authenticator,
+    { auditMetadata }: AgentAuditOptions = {}
+  ): Promise<Result<boolean, Error>> {
     assert(this.scope !== "global", "Global agents cannot be archived.");
     this.assertCurrentVersion();
     if (!auth.can("admin", this)) {
@@ -2245,6 +2520,7 @@ export class AgentResource
         context: getAuditLogContext(auth),
         metadata: {
           agent_name: this.name,
+          ...auditMetadata,
         },
       });
 
@@ -2737,8 +3013,8 @@ export class AgentResource
    * @cc [owner:tdraier,label:security;product] agent-read-requires-space-read
    * `read` on a custom agent requires read access to every space in `requestedSpaceIds` (the spaces
    * backing its tools/skills/data): a caller who cannot read one of them does not get `read`.
-   * `requestedSpaceIds` is a core field carried by every variant, so the gate applies regardless of
-   * `light`/`full`. Global agents have no requested spaces and are unaffected.
+   * `requestedSpaceIds` is a core field carried by every resource, so the gate applies whether or
+   * not the caller can view the content. Global agents have no requested spaces and are unaffected.
    */
   /**
    * @cc [owner:philipperolet,label:security;product] draft-agent-owner
@@ -2921,13 +3197,11 @@ export class AgentResource
   }
 
   /**
-   * @cc [owner:tdraier,label:security;backend] agent-json-redaction
-   * `toJSON`, `toLightConfigurationJSON` and `toConfigurationJSON` serialize every resource, custom
-   * or global, `full` or `light`. A `light` resource MUST serialize with `instructions: null` and
-   * `isRedacted: true` (a `full` one with `isRedacted: false`), and `toConfigurationJSON` MUST also
-   * give it no `instructionsHtml`, no `actions` and no `codeDefinedSkillIds`, whatever enrichment it
-   * is handed: the head fields and the version metadata are not private and are always carried.
-   * These methods are the only place that shapes an agent's configuration JSON.
+   * @cc [owner:tdraier,label:security;backend] agent-json-without-instructions
+   * `toJSON` serializes every resource, custom or global, with its head fields,
+   * version metadata and the caller's permission snapshot, and MUST NOT carry the instructions: the
+   * configuration builders add them (see `agent-json-redaction`). It MUST carry the resource's
+   * `canViewContent`.
    */
   toJSON(): AgentConfigurationBaseType {
     const isGlobal = this.scope === "global";
@@ -2939,7 +3213,6 @@ export class AgentResource
       sId: this.sId,
       version: this.version,
       versionAuthorId: this.versionAuthorId,
-      instructions: this._content?.instructions ?? null,
       model: this.modelConfiguration,
       status: this.status,
       scope: this.scope,
@@ -2971,50 +3244,21 @@ export class AgentResource
       canEdit:
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
-      isRedacted: this._content === null,
+      canViewContent: this.canViewContent,
     };
   }
 
-  toLightConfigurationJSON({
-    userFavorite,
-    tags,
-  }: AgentFavoriteEnrichment &
-    AgentTagsEnrichment): LightAgentConfigurationType {
-    return { ...this.toJSON(), userFavorite, tags };
-  }
-
-  toConfigurationJSON({
-    userFavorite,
-    tags,
-    actions,
-  }: AgentFavoriteEnrichment &
-    AgentTagsEnrichment &
-    AgentActionsEnrichment): AgentConfigurationType {
-    const light = this.toLightConfigurationJSON({ userFavorite, tags });
-    if (!this.isFull()) {
-      return {
-        ...light,
-        instructionsHtml: null,
-        actions: [],
-        codeDefinedSkillIds: [],
-      };
-    }
-
-    return {
-      ...light,
-      instructionsHtml: this.content.instructionsHtml,
-      actions,
-      ...(this.scope === "global"
-        ? { codeDefinedSkillIds: this.codeDefinedSkillIds }
-        : {}),
-    };
-  }
-
-  // What the sidekick's `inspect_available_agent` tool exposes; the instructions make it full-only.
-  toInspectionJSON(
-    this: FullAgentResource,
-    { toolIds, skillIds }: { toolIds: string[]; skillIds: string[] }
-  ): {
+  // What the sidekick's `inspect_available_agent` tool exposes; the instructions require
+  // `canViewContent`.
+  toInspectionJSON({
+    instructions,
+    toolIds,
+    skillIds,
+  }: {
+    instructions: string | null;
+    toolIds: string[];
+    skillIds: string[];
+  }): {
     sId: string;
     name: string;
     description: string;
@@ -3026,25 +3270,24 @@ export class AgentResource
       sId: this.sId,
       name: this.name,
       description: this.description,
-      instructions: this.content.instructions,
+      instructions,
       toolIds,
       skillIds,
     };
   }
 
-  // What the sidekick's `get_agent_info` tool exposes; the instructions make it full-only.
-  toSidekickAgentInfoJSON(
-    this: FullAgentResource,
-    {
-      tags,
-      actions,
-      skills,
-    }: {
-      tags: TagResource[];
-      actions: MCPServerConfigurationType[];
-      skills: SkillResource[];
-    }
-  ): {
+  // What the sidekick's `get_agent_info` tool exposes; the instructions require `canViewContent`.
+  toSidekickAgentInfoJSON({
+    instructions,
+    tags,
+    actions,
+    skills,
+  }: {
+    instructions: string | null;
+    tags: TagResource[];
+    actions: MCPServerConfigurationType[];
+    skills: SkillResource[];
+  }): {
     sId: string;
     version: number;
     name: string;
@@ -3068,7 +3311,7 @@ export class AgentResource
       version: this.version,
       name: this.name,
       description: this.description,
-      instructions: this.content.instructions,
+      instructions,
       model: { providerId, modelId, temperature, reasoningEffort },
       scope: this.scope,
       status: this.status,
@@ -3101,26 +3344,29 @@ export class AgentResource
   // here (see the `agent-create-capability` contract).
   static async makeNew(
     auth: Authenticator,
-    params: SaveAgentConfigurationParams
+    params: SaveAgentConfigurationParams,
+    { auditMetadata }: AgentAuditOptions = {}
   ): Promise<Result<AgentResource, Error>> {
     if (!auth.hasWorkspacePermission("create", "agent")) {
       return new Err(new Error("Creating agents is restricted."));
     }
 
-    return AgentResource._saveConfiguration(auth, {
-      ...params,
-      agentConfigurationId: undefined,
-    });
+    return AgentResource._saveConfiguration(
+      auth,
+      { ...params, agentConfigurationId: undefined },
+      { auditMetadata }
+    );
   }
 
   static async createPending(
-    auth: Authenticator
+    auth: Authenticator,
+    name?: string
   ): Promise<Result<AgentResource, Error>> {
     const user = auth.getNonNullableUser();
     const { defaultModel } = await getModelsForAuth(auth);
 
     return AgentResource.makeNew(auth, {
-      name: PENDING_AGENT_PLACEHOLDER_NAME,
+      name: name ?? PENDING_AGENT_PLACEHOLDER_NAME,
       description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
       instructions: null,
       instructionsHtml: null,
@@ -3164,11 +3410,11 @@ export class AgentResource
    * in place (preserving version 0 and its FK relationships, see `writeAgentConfigurationRow`) rather
    * than archiving it and creating a new version. All required permissions MUST be checked before any
    * change is applied so a save never partially succeeds. A caller that cannot view the agent's
-   * content (a `light` resource, see `agent-content-visibility`) cannot create a version, so provided
-   * definition fields are ignored; it may still change scope/editors it is authorized for. A caller
-   * that views the content without `read` (the `admin_can_see_private_entities` admin override) is
-   * handed a `full` resource, so its definition fields are NOT ignored but gated as above: only the
-   * model and tags may produce a version, through their `admin` paths.
+   * content (`canViewContent` false, see `agent-content-visibility`) cannot create a version, so
+   * provided definition fields are ignored; it may still change scope/editors it is authorized for. A
+   * caller that views the content without `read` (the `admin_can_see_private_entities` admin
+   * override) can view the content, so its definition fields are NOT ignored but gated as above: only
+   * the model and tags may produce a version, through their `admin` paths.
    */
   /**
    * @cc [owner:tdraier,label:backend] save-skips-noop-version
@@ -3201,7 +3447,8 @@ export class AgentResource
    */
   async updateConfiguration(
     auth: Authenticator,
-    update: AgentConfigurationUpdate
+    update: AgentConfigurationUpdate,
+    { auditMetadata }: AgentAuditOptions = {}
   ): Promise<Result<{ resource: AgentResource; changed: boolean }, Error>> {
     if (this.scope === "global") {
       return new Err(new Error("Global agents cannot be updated."));
@@ -3229,7 +3476,7 @@ export class AgentResource
 
     // A new version is needed only when a definition field actually changes. The current
     // configuration is read (to diff and to fill the new version's unchanged columns) ONLY when a
-    // definition field is provided AND the agent is readable — an unreadable (`light`) caller cannot
+    // definition field is provided AND the caller can view the content — a caller who cannot
     // create a version, so its definition fields are ignored (it may still change scope/editors).
     const hasTagDelta =
       (update.addTags?.length ?? 0) > 0 || (update.removeTags?.length ?? 0) > 0;
@@ -3244,7 +3491,10 @@ export class AgentResource
     // A protected-tag add/removal additionally requires the `publish` capability; captured here so
     // it can be enforced up front (see `agent-edit-in-place`), before any editor/version write.
     let protectedTagsChanged = false;
-    if ((providedDefinitionKeys.length > 0 || hasTagDelta) && this.isFull()) {
+    if (
+      (providedDefinitionKeys.length > 0 || hasTagDelta) &&
+      this.canViewContent
+    ) {
       const currentParams = await this.buildResaveParams(auth);
       const mergedParams: SaveAgentConfigurationParams = { ...currentParams };
       for (const key of providedDefinitionKeys) {
@@ -3352,6 +3602,7 @@ export class AgentResource
       const editorsRes = await syncAgentEditors(auth, {
         agentResource: this,
         editors: editorsChange,
+        auditMetadata,
       });
       if (editorsRes.isErr()) {
         return editorsRes;
@@ -3363,10 +3614,11 @@ export class AgentResource
     // target (the old row is now archived).
     let target: AgentResource = this;
     if (versionParams) {
-      const versionRes = await AgentResource._saveConfiguration(auth, {
-        ...versionParams,
-        agentConfigurationId: this.sId,
-      });
+      const versionRes = await AgentResource._saveConfiguration(
+        auth,
+        { ...versionParams, agentConfigurationId: this.sId },
+        { auditMetadata }
+      );
       if (versionRes.isErr()) {
         return versionRes;
       }
@@ -3375,7 +3627,9 @@ export class AgentResource
     // Scope is applied last, to the current version, so its trigger reconciliation (disabling the
     // triggers of users who are no longer editors of a now-hidden agent) sees the final editor set.
     if (scopeChange) {
-      const scopeRes = await target.updateScopeInPlace(auth, scopeChange);
+      const scopeRes = await target.updateScopeInPlace(auth, scopeChange, {
+        auditMetadata,
+      });
       if (scopeRes.isErr()) {
         return scopeRes;
       }
@@ -3422,7 +3676,8 @@ export class AgentResource
    */
   async updateScopeInPlace(
     auth: Authenticator,
-    scope: Exclude<AgentConfigurationScope, "global">
+    scope: Exclude<AgentConfigurationScope, "global">,
+    { auditMetadata }: AgentAuditOptions = {}
   ): Promise<Result<undefined, Error>> {
     this.assertCurrentVersion();
     if (this.scope === scope) {
@@ -3453,6 +3708,7 @@ export class AgentResource
         agent_name: this.name,
         previous_scope: previousScope,
         new_scope: scope,
+        ...auditMetadata,
       },
     });
 
@@ -3525,7 +3781,8 @@ export class AgentResource
       ignoreCreditSpendThresholdAlert?: boolean;
       actions?: ServerSideMCPServerConfigurationType[];
       skills?: SkillResource[];
-    }
+    },
+    { auditMetadata }: AgentAuditOptions = {}
   ): Promise<Result<AgentResource, Error>> {
     const owner = auth.workspace();
     if (!owner) {
@@ -3708,7 +3965,7 @@ export class AgentResource
       await AgentResource.invalidateCache(owner.id, agent.sId);
 
       // Resolve the saved agent through the access-controlled resolver. In every real path the caller
-      // is the author (or otherwise holds read), so this is the `full` agent they just wrote.
+      // is the author (or otherwise holds read), so they can view the content they just wrote.
       const resource = await AgentResource.fetchById(auth, agent.sId);
       if (resource === null) {
         return new Err(
@@ -3716,8 +3973,8 @@ export class AgentResource
         );
       }
 
-      // Recording the recent author reads the current version, so it needs the full resource.
-      if (resource.isFull()) {
+      // Recording the recent author reads the current version, so it needs `canViewContent`.
+      if (resource.canViewContent) {
         await agentConfigurationWasUpdatedBy({ agent: resource, auth });
       }
 
@@ -3735,6 +3992,7 @@ export class AgentResource
             agent_name: resource.name,
             scope: persistedScope,
             model: `${model.providerId}/${model.modelId}`,
+            ...auditMetadata,
           },
         });
       }
@@ -3768,7 +4026,7 @@ export class AgentResource
     return {
       agentModelId: this.id,
       sId: this.sId,
-      variant: this.variant,
+      canViewContent: String(this.canViewContent),
     };
   }
 }

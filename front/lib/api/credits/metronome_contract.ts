@@ -6,13 +6,11 @@ import {
   reactivateWorkspaceContract,
 } from "@app/lib/metronome/contract_lifecycle";
 import {
-  getProductSeatTypes,
-  getSeatSubscriptionsFromContract,
-} from "@app/lib/metronome/seat_types";
-import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
+  contractHasPersonalCreditSeats,
+  hasContractSeatSubscription,
+} from "@app/lib/metronome/seats";
 import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import type { MetronomeContractSummary } from "@app/types/api/credits/metronome_contract";
-import { isSeatBased } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -59,19 +57,10 @@ export async function getMetronomeContractSummary(
     ? new Date(contract.ending_before).getTime()
     : null;
 
-  // `hasContractSeatSubscription` short-circuits on MAU/seat-less contracts
-  // before touching the product map; only resolve seat types (and the cached
-  // product map) when the contract actually sells seats.
-  const hasSeatSubscription = await hasContractSeatSubscription(contract);
-  let hasPersonalCreditSeats = false;
-  if (hasSeatSubscription) {
-    const productSeatTypes = await getProductSeatTypes();
-    const soldSeatTypes = getSeatSubscriptionsFromContract(
-      contract,
-      productSeatTypes
-    );
-    hasPersonalCreditSeats = [...soldSeatTypes.keys()].some(isSeatBased);
-  }
+  const [hasSeatSubscription, hasPersonalCreditSeats] = await Promise.all([
+    hasContractSeatSubscription(contract),
+    contractHasPersonalCreditSeats(contract),
+  ]);
 
   return new Ok({
     planFamily,

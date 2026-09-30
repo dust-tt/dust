@@ -13,6 +13,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -25,10 +26,21 @@ import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_i
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+  return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
+});
 
 beforeAll(() => {
   setupSkillInstructionsMarkdownPipeline();
@@ -49,6 +61,7 @@ describe("applyBatchSuggestions", () => {
     } = await createResourceTest({
       role: "user",
     }));
+    mockEmitAuditLogEvent.mockClear();
   });
 
   async function fetchAgentToolIds(agentId: string) {
@@ -108,8 +121,14 @@ describe("applyBatchSuggestions", () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const skill = await SkillFactory.create(auth);
     await auth.refresh();
-    const { id: batchModelId, sId } =
-      await BatchSuggestionFactory.createEmpty(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    const { id: batchModelId, sId } = await BatchSuggestionFactory.createEmpty(
+      auth,
+      { sourceConversation: conversation }
+    );
     await AgentSuggestionFactory.createName(auth, agent, {
       suggestion: { name: "RenamedAgent" },
       batchModelId,
@@ -125,6 +144,56 @@ describe("applyBatchSuggestions", () => {
     expect(res.isOk()).toBe(true);
     expect(await fetchAgentName(agent.sId)).toBe("RenamedAgent");
     expect(await fetchSkillName(skill.sId)).toBe("RenamedSkill");
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "skill.updated",
+        targets: [
+          expect.objectContaining({ type: "workspace" }),
+          expect.objectContaining({ type: "skill", id: skill.sId }),
+        ],
+        metadata: {
+          skill_name: "RenamedSkill",
+          suggestion_batch_id: sId,
+          conversation_id: conversation.sId,
+        },
+      })
+    );
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent.updated",
+        targets: [
+          expect.objectContaining({ type: "workspace" }),
+          expect.objectContaining({ type: "agent", id: agent.sId }),
+        ],
+        metadata: expect.objectContaining({
+          agent_name: "RenamedAgent",
+          suggestion_batch_id: sId,
+          conversation_id: conversation.sId,
+        }),
+      })
+    );
+  });
+
+  it("archives the agent from its delete suggestion", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createDelete(auth, agent, { batchModelId });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const archived = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(archived?.status).toBe("archived");
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent.archived",
+        metadata: { agent_name: agent.name, suggestion_batch_id: sId },
+      })
+    );
   });
 
   it("writes nothing when the batch holds several actions on the same agent", async () => {
@@ -459,6 +528,12 @@ describe("applyBatchSuggestions", () => {
     expect(created?.status).toBe("active");
     expect(created?.name).toBe("Meeting Notes");
     expect(created?.availability).toBe("editors");
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "skill.created",
+        metadata: { skill_name: "Meeting Notes", suggestion_batch_id: sId },
+      })
+    );
   });
 
   it("writes nothing when a create suggestion targets a skill that already exists", async () => {
@@ -804,6 +879,15 @@ describe("applyBatchSuggestions", () => {
       variant: "full",
     });
     expect(created).toMatchObject({ status: "active", name: "IncidentHelper" });
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent.created",
+        metadata: expect.objectContaining({
+          agent_name: "IncidentHelper",
+          suggestion_batch_id: sId,
+        }),
+      })
+    );
     expect(
       created?.actions.filter(isServerSideMCPServerConfiguration)
     ).toMatchObject([{ mcpServerViewId: view.sId, name: "ticket_tracker" }]);
@@ -979,6 +1063,17 @@ describe("applyBatchSuggestions", () => {
     });
     expect(updated?.scope).toBe("hidden");
     expect(updated?.version).toBe(agent.version);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent.scope_changed",
+        metadata: {
+          agent_name: agent.name,
+          previous_scope: "visible",
+          new_scope: "hidden",
+          suggestion_batch_id: sId,
+        },
+      })
+    );
   });
 
   it("lets a workspace admin change the scope of an agent they cannot read", async () => {
@@ -1035,6 +1130,16 @@ describe("applyBatchSuggestions", () => {
 
     expect(res.isOk()).toBe(true);
     expect(await fetchAgentEditorIds(agent.sId)).toEqual([newEditor.sId]);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent.editors_updated",
+        metadata: expect.objectContaining({
+          added_editor_ids: newEditor.sId,
+          removed_editor_ids: user.sId,
+          suggestion_batch_id: sId,
+        }),
+      })
+    );
     const updated = await getAgentConfiguration(auth, {
       agentId: agent.sId,
       variant: "light",
@@ -1215,6 +1320,88 @@ describe("applyBatchSuggestions", () => {
     expect(await fetchAgentName(agent.sId)).toBe(agent.name);
   });
 
+  const CITY_RESPONSE_FORMAT = JSON.stringify({
+    type: "json_schema",
+    json_schema: {
+      name: "city",
+      schema: {
+        type: "object",
+        properties: { city: { type: "string" }, country: { type: "string" } },
+        required: ["city", "country"],
+        additionalProperties: false,
+      },
+    },
+  });
+
+  async function fetchAgentModel(agentId: string) {
+    const agent = await getAgentConfiguration(auth, {
+      agentId,
+      variant: "light",
+    });
+    assert(agent);
+    return agent.model;
+  }
+
+  it("sets the structured output of an agent, keeping its model", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createStructuredOutput(auth, agent, {
+      suggestion: { responseFormat: CITY_RESPONSE_FORMAT },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const model = await fetchAgentModel(agent.sId);
+    expect(model.responseFormat).toBe(CITY_RESPONSE_FORMAT);
+    expect(model.modelId).toBe(agent.model.modelId);
+  });
+
+  it("removes the structured output of an agent", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      model: {
+        providerId: "openai",
+        modelId: "gpt-5-mini",
+        responseFormat: CITY_RESPONSE_FORMAT,
+      },
+    });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createStructuredOutput(auth, agent, {
+      suggestion: { responseFormat: null },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    expect((await fetchAgentModel(agent.sId)).responseFormat).toBeUndefined();
+  });
+
+  it("writes nothing when the agent's model does not support structured output", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      model: { providerId: "mistral", modelId: MISTRAL_LARGE_MODEL_ID },
+    });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createStructuredOutput(auth, agent, {
+      suggestion: { responseFormat: CITY_RESPONSE_FORMAT },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    expect(await fetchAgentName(agent.sId)).toBe(agent.name);
+    expect((await fetchAgentModel(agent.sId)).responseFormat).toBeUndefined();
+  });
+
   it("leaves the batch pending once applied", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const newSkill = await SkillFactory.create(auth, { name: "New Skill" });
@@ -1356,5 +1543,99 @@ describe("applyBatchSuggestions", () => {
     });
     expect(updated?.requestedSpaceIds).toEqual([restrictedSpace.sId]);
     expect(await fetchAgentSubAgentActions(agent.sId)).toEqual([]);
+  });
+
+  it("adds a sub-agent created in the same batch", async () => {
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "agent",
+    });
+    await auth.refresh();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const pending = await AgentResource.createPending(auth, "PricingHelper");
+    if (pending.isErr()) {
+      throw pending.error;
+    }
+    const subAgent = pending.value;
+    const runAgentTool = await fetchRunAgentTool(auth);
+    assert(runAgentTool);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createCreate(auth, subAgent, {
+      suggestion: {
+        name: "PricingHelper",
+        description: "Answers pricing questions.",
+        instructions: "<p>Answer pricing questions.</p>",
+      },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createSubAgent(auth, agent, {
+      suggestion: {
+        action: "add",
+        childAgentId: subAgent.sId,
+        toolId: runAgentTool.sId,
+      },
+      source: "conversational",
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    if (res.isErr()) {
+      throw res.error;
+    }
+    const created = await AgentResource.fetchById(auth, subAgent.sId);
+    expect(created?.status).toBe("active");
+    expect(await fetchAgentSubAgentActions(agent.sId)).toMatchObject([
+      { childAgentId: subAgent.sId, name: "run_pricinghelper" },
+    ]);
+  });
+
+  it("writes nothing when an added sub-agent is pending but not created by the batch", async () => {
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "agent",
+    });
+    await auth.refresh();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const pending = await AgentResource.createPending(auth, "PricingHelper");
+    if (pending.isErr()) {
+      throw pending.error;
+    }
+
+    const res = await applySubAgentChange(agent, {
+      action: "add",
+      childAgentId: pending.value.sId,
+    });
+
+    assert(res.isErr());
+    expect(res.error.code).toBe("invalid_request_error");
+    expect(await fetchAgentSubAgentActions(agent.sId)).toEqual([]);
+  });
+
+  it("adds a skill created in the same batch", async () => {
+    await grantSkillCreation();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const pendingRes = await SkillResource.createPending(auth);
+    assert(pendingRes.isOk());
+    const pending = pendingRes.value;
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await SkillSuggestionFactory.create(auth, pending, {
+      kind: "create",
+      suggestion: SKILL_CREATION,
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createSkills(auth, agent, {
+      suggestion: { action: "add", skillId: pending.sId },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    if (res.isErr()) {
+      throw res.error;
+    }
+    expect(await fetchAgentSkillIds(agent.sId)).toEqual([pending.sId]);
   });
 });

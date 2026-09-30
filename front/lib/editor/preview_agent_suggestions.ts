@@ -185,6 +185,7 @@ export function previewAgentSuggestions({
     tools = [],
     subAgents,
     tags,
+    structuredOutput,
   } = edits.value;
 
   // Sub-agent changes are not previewed yet: showing the agent without them would misrepresent the
@@ -217,7 +218,12 @@ export function previewAgentSuggestions({
       name: name ?? agent.name,
       description: description ?? agent.description,
       scope: scope ?? agent.scope,
-      model: modelRes.value,
+      model: structuredOutput
+        ? {
+            ...modelRes.value,
+            responseFormat: structuredOutput.responseFormat ?? undefined,
+          }
+        : modelRes.value,
       tags: previewTags(agent.tags, tags),
       ...instructionsRes.value,
     },

@@ -51,7 +51,7 @@ describe("moveFrameV2Source edge cases", () => {
     const lookup = vi.spyOn(FileResource, "fetchByMountFilePaths");
 
     const moved = await moveFrameSourceForTest(c, {
-      destinationDirectoryPath: "pod-pod_123/Status",
+      destinationDirectoryPath: "conversation-conv_other/Status",
       sourceDirectoryPath: c.sourceDirectoryPath,
     });
 

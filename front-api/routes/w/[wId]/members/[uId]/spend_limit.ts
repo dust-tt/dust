@@ -27,6 +27,7 @@ const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
       .int()
       .min(MIN_USER_SPEND_LIMIT_AWU_CREDITS)
       .max(MAX_USER_SPEND_LIMIT_AWU_CREDITS),
+    resetAtNextBillingCycle: z.boolean().optional(),
   }),
 ]);
 
@@ -59,6 +60,14 @@ function spendLimitErrorToApiError(
         status_code: 403,
         api_error: {
           type: "plan_limit_error",
+          message: error.message,
+        },
+      };
+    case "billing_period_unavailable":
+      return {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
           message: error.message,
         },
       };
@@ -133,9 +142,17 @@ app.put(
     const { uId } = ctx.req.valid("param");
 
     const auditContext = getAuditLogContext(auth);
+    const body = ctx.req.valid("json");
     const result = await setUserSpendLimit(auth, {
       userId: uId,
-      limit: ctx.req.valid("json"),
+      limit:
+        body.kind === "unlimited"
+          ? { kind: "unlimited" }
+          : { kind: "limited", awuCredits: body.awuCredits },
+      resetAtNextBillingCycle:
+        body.kind === "limited"
+          ? (body.resetAtNextBillingCycle ?? false)
+          : false,
       auditContext,
     });
     if (result.isErr()) {

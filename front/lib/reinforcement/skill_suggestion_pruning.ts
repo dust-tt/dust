@@ -10,27 +10,18 @@ import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_res
 import { removeNulls } from "@app/types/shared/utils/general";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
-  SkillAvailabilitySuggestionData,
   SkillEditorsSuggestionData,
   SkillEditSuggestionData,
   SkillEditSuggestionType,
   SkillInstructionEditItemType,
-  SkillNameSuggestionData,
+  SkillSuggestionKind,
   SkillSuggestionSource,
-  SkillUserFacingDescriptionSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
 import {
-  isAvailabilitySkillSuggestion,
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
-  isNameSkillSuggestion,
-  isUserFacingDescriptionSkillSuggestion,
   REVIEWABLE_SKILL_SUGGESTION_SOURCES,
 } from "@app/types/suggestions/skill_suggestion";
-
-// `delete` suggestions are only ever recorded with source `conversational` (reinforcement never
-// produces this kind), so pruning only needs to look there.
-const DELETE_SUGGESTION_SOURCES: SkillSuggestionSource[] = ["conversational"];
 
 // Reviewable suggestions: pruning applies to every source a user may accept or reject, whether
 // it is surfaced in the builder (`reinforcement`) or inline in a conversation (`conversational`).
@@ -216,106 +207,41 @@ export async function pruneConflictingSkillEditorsSuggestions(
   await outdateSkillSuggestions(auth, toMarkOutdated);
 }
 
+/** Kinds whose field holds a single value, so two pending suggestions of the kind always conflict. */
+const SINGLETON_SKILL_SUGGESTION_KINDS: SkillSuggestionKind[] = [
+  "name",
+  "user_facing_description",
+  "availability",
+  "delete",
+];
+
 /**
- * @cc [owner:achilleburah,label:product] single-value-suggestion-conflict-pruning
- * Recording or applying a `user_facing_description` suggestion outdates every other pending
- * `user_facing_description` suggestion for the same skill: the field holds one value, so two
- * pending replacements always conflict.
+ * @cc [owner:achilleburah;avervaet,label:product] single-pending-per-singleton-kind
+ * For each singleton kind (`name`, `user_facing_description`, `availability`, `delete`) among the
+ * `recorded` suggestions, every other pending suggestion of that kind on the same skill MUST be
+ * marked `outdated`, and never the recorded ones. Pruning selects only those kinds; suggestions of
+ * other kinds are outdated solely when they share a batch with a superseded one.
  */
-export async function pruneConflictingSkillUserFacingDescriptionSuggestions(
+export async function pruneSupersededSingletonSkillSuggestions(
   auth: Authenticator,
   skill: SkillResource,
-  newSuggestions: (SkillSuggestionResource &
-    SkillUserFacingDescriptionSuggestionData)[]
+  recorded: SkillSuggestionResource[]
 ): Promise<void> {
-  if (newSuggestions.length === 0) {
+  const kinds = SINGLETON_SKILL_SUGGESTION_KINDS.filter((kind) =>
+    recorded.some((s) => s.kind === kind)
+  );
+  if (kinds.length === 0) {
     return;
   }
 
-  const excluded = new Set(newSuggestions.map((s) => s.sId));
+  const recordedIds = new Set(recorded.map((s) => s.sId));
   const toMarkOutdated = (
     await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
       states: ["pending"],
-      kinds: ["user_facing_description"],
+      kinds,
       sources: PRUNED_SOURCES,
     })
-  )
-    .filter(isUserFacingDescriptionSkillSuggestion)
-    .filter((s) => !excluded.has(s.sId));
-
-  await outdateSkillSuggestions(auth, toMarkOutdated);
-}
-
-export async function pruneConflictingSkillNameSuggestions(
-  auth: Authenticator,
-  skill: SkillResource,
-  newSuggestions: (SkillSuggestionResource & SkillNameSuggestionData)[]
-): Promise<void> {
-  if (newSuggestions.length === 0) {
-    return;
-  }
-
-  const excluded = new Set(newSuggestions.map((s) => s.sId));
-  const toMarkOutdated = (
-    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
-      states: ["pending"],
-      kinds: ["name"],
-      sources: PRUNED_SOURCES,
-    })
-  )
-    .filter(isNameSkillSuggestion)
-    .filter((s) => !excluded.has(s.sId));
-
-  await outdateSkillSuggestions(auth, toMarkOutdated);
-}
-
-/**
- * @cc [owner:avervaet,label:product] prune-conflicting-delete-suggestions
- * Recording a new pending `delete` suggestion MUST mark every other pending `delete` suggestion
- * for the same skill `outdated`, so only one deletion proposal is ever open for review at a time.
- */
-export async function pruneConflictingSkillDeletionSuggestions(
-  auth: Authenticator,
-  skill: SkillResource,
-  newSuggestion: SkillSuggestionResource
-): Promise<void> {
-  const conflicting = (
-    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
-      states: ["pending"],
-      kinds: ["delete"],
-      sources: DELETE_SUGGESTION_SOURCES,
-    })
-  ).filter((s) => s.sId !== newSuggestion.sId);
-
-  await outdateSkillSuggestions(auth, conflicting);
-}
-
-/**
- * @cc [owner:achilleburah,label:product] prune-conflicting-availability-suggestions
- * Recording a new `availability` suggestion, or accepting one, MUST mark every other pending
- * `availability` suggestion for the same skill `outdated`: the field holds a single value, so two
- * pending changes always conflict. This holds even when the accepted suggestion's value already
- * matches the skill's current availability and no write occurs.
- */
-export async function pruneConflictingSkillAvailabilitySuggestions(
-  auth: Authenticator,
-  skill: SkillResource,
-  newSuggestions: (SkillSuggestionResource & SkillAvailabilitySuggestionData)[]
-): Promise<void> {
-  if (newSuggestions.length === 0) {
-    return;
-  }
-
-  const excluded = new Set(newSuggestions.map((s) => s.sId));
-  const toMarkOutdated = (
-    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
-      states: ["pending"],
-      kinds: ["availability"],
-      sources: PRUNED_SOURCES,
-    })
-  )
-    .filter(isAvailabilitySkillSuggestion)
-    .filter((s) => !excluded.has(s.sId));
+  ).filter((s) => !recordedIds.has(s.sId));
 
   await outdateSkillSuggestions(auth, toMarkOutdated);
 }

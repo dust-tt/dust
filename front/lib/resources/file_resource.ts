@@ -2574,7 +2574,33 @@ export class FileResource extends BaseResource<FileModel> {
   async computeAuthorizedFileAccess(
     auth: Authenticator,
     { frameContent }: { frameContent: string }
-  ): Promise<ComputedAuthorizedFileAccess> {
+  ): Promise<
+    Result<ComputedAuthorizedFileAccess, DustError<"invalid_request_error">>
+  > {
+    const generatedByUserId =
+      auth.user()?.id ?? auth.key()?.userModelId ?? null;
+    if (!generatedByUserId) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          "Frame file access requires a user signed in to Dust. Create or update this Frame in the Dust app."
+        )
+      );
+    }
+
+    let generatedByUser = auth.user();
+    if (!generatedByUser) {
+      generatedByUser = await UserResource.fetchByModelId(generatedByUserId);
+    }
+    if (!generatedByUser) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          "The user associated with this request no longer exists. Create or update this Frame in the Dust app."
+        )
+      );
+    }
+
     const frameContext = await this.resolveFrameScopedPathContext(auth);
     const packageRoot = this.getFrameV2SourceDirectoryPath(auth);
     const { refs, unverifiableRefs } =
@@ -2585,39 +2611,12 @@ export class FileResource extends BaseResource<FileModel> {
         visited: new Set(),
       });
 
-    const generatedByUserId =
-      auth.user()?.id ?? auth.key()?.userModelId ?? null;
-    if (!generatedByUserId) {
-      logger.error(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          hasApiKey: auth.key() != null,
-        },
-        "Cannot compute authorized file access without a userId"
-      );
-
-      throw new Error("Cannot compute authorized file access without a userId");
-    }
-
-    const generatedByUser =
-      auth.user() ?? (await UserResource.fetchByModelId(generatedByUserId));
-    if (!generatedByUser) {
-      logger.error(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          hasApiKey: auth.key() != null,
-        },
-        "Cannot compute authorized file access without a user"
-      );
-      throw new Error("Cannot compute authorized file access without a user");
-    }
-
-    return {
+    return new Ok({
       generatedByUserId,
       frameContentHash: computeFrameContentHash(frameContent),
       refs,
       ...(unverifiableRefs.length > 0 ? { unverifiableRefs } : {}),
-    };
+    });
   }
 
   private static modelToAuthorizedFileRef(
@@ -2794,18 +2793,29 @@ export class FileResource extends BaseResource<FileModel> {
 
   async refreshAuthorizedFileAccess(
     auth: Authenticator
-  ): Promise<ComputedAuthorizedFileAccess> {
+  ): Promise<
+    Result<
+      ComputedAuthorizedFileAccess,
+      DustError<"invalid_request_error" | "internal_error">
+    >
+  > {
     const frameContent = await this.readOriginalContent(auth);
     if (frameContent === null) {
-      throw new Error(
-        `Failed to read frame content for authorized file access refresh (file: ${this.sId})`
+      return new Err(
+        new DustError(
+          "internal_error",
+          `Failed to read frame content for authorized file access refresh (file: ${this.sId})`
+        )
       );
     }
 
     const authorized = await this.computeAuthorizedFileAccess(auth, {
       frameContent,
     });
-    await this.persistAuthorizedFileAccess(authorized);
+    if (authorized.isErr()) {
+      return authorized;
+    }
+    await this.persistAuthorizedFileAccess(authorized.value);
 
     return authorized;
   }

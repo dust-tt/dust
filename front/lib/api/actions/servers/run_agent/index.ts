@@ -73,6 +73,7 @@ import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+import escapeRegExp from "lodash/escapeRegExp";
 import maxBy from "lodash/maxBy";
 import type z from "zod";
 
@@ -506,11 +507,12 @@ export const runAgent = async (
 
     const newRefs: Record<string, CitationType> = {};
     Object.keys(refsFromAgent).forEach((refKeyFromAgent, index) => {
+      const escapedKey = escapeRegExp(refKeyFromAgent);
       const newRef = refs[index];
       if (newRef) {
         // Replace citation references only within :cite[...] blocks
         const citationRegex = new RegExp(
-          `(:cite\\[[^\\]]*\\b)${refKeyFromAgent}\\b([^\\]]*\\])`,
+          `(:cite\\[[^\\]]*\\b)${escapedKey}\\b([^\\]]*\\])`,
           "g"
         );
         text = text.replace(citationRegex, `$1${newRef}$2`);
@@ -518,7 +520,7 @@ export const runAgent = async (
       } else {
         // Remove trailing or extra commas as we ran out of refs capacity.
         const citationRegex = new RegExp(
-          `(:cite\\[[^\\]]*\\b)${refKeyFromAgent}\\b(?:,([^\\]]*\\])|([^\\]]*\\]))`,
+          `(:cite\\[[^\\]]*\\b)${escapedKey}\\b(?:,([^\\]]*\\])|([^\\]]*\\]))`,
           "g"
         );
         text = text.replace(citationRegex, "$1$2$3");

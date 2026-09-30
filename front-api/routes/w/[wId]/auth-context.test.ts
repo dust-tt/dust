@@ -1,8 +1,10 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { USER_LOCALE_METADATA_KEY } from "@app/types/locale";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -52,5 +54,33 @@ describe("GET /api/w/:wId/auth-context group management", () => {
     expect(new Set(groupManagement.set_usage_limits.groupIds)).toEqual(
       new Set([manual.sId, adminGroup.sId])
     );
+  });
+});
+
+describe("GET /api/w/:wId/auth-context user locale", () => {
+  async function fetchLocale(workspaceId: string) {
+    const response = await honoApp.request(
+      `/api/w/${workspaceId}/auth-context`
+    );
+    expect(response.status).toBe(200);
+    return (await response.json()).locale;
+  }
+
+  it("falls back to the workspace locale", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest();
+    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+    await workspaceResource?.updateWorkspaceSettings({ locale: "fr-FR" });
+
+    expect(await fetchLocale(workspace.sId)).toBe("fr-FR");
+
+    await user.setMetadata(USER_LOCALE_METADATA_KEY, "de-DE");
+    expect(await fetchLocale(workspace.sId)).toBe("fr-FR");
+  });
+
+  it("returns the locale stored in the user metadata", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest();
+    await user.setMetadata(USER_LOCALE_METADATA_KEY, "fr-FR");
+
+    expect(await fetchLocale(workspace.sId)).toBe("fr-FR");
   });
 });

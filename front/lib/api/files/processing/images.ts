@@ -7,7 +7,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import imageSize from "image-size";
-import sharp from "sharp";
 import { pipeline } from "stream/promises";
 
 // Exported so generators can stay within it and skip the resize path entirely.
@@ -30,29 +29,35 @@ function getMaxSizePixels(file: FileResource): number {
   return CONVERSATION_IMG_MAX_SIZE_PIXELS;
 }
 
+/**
+ * @cc [owner:id13,label:security] out-of-process-svg-decoding
+ * SVG rasterization MUST run in imgproxy, never in a native decoder in the
+ * application process: declared SVG uploads can contain other binary formats.
+ */
 async function rasterizeSvg(
   auth: Authenticator,
   file: FileResource,
   maxSizePixels: number
 ): Promise<Result<undefined, Error>> {
+  const converter = new ImageConverter();
+  const resizeResult = await converter.resizeImage(
+    await file.getSignedUrlForInlineView(auth),
+    { format: "png", maxSizePixels }
+  );
+  if (resizeResult.isErr()) {
+    return new Err(
+      new Error(`Failed rasterizing SVG: ${resizeResult.error.message}`)
+    );
+  }
+
   try {
-    const readStream = file.getReadStream({ auth, version: "original" });
     const writeStream = file.getWriteStream({
       auth,
       version: "processed",
       overrideContentType: "image/png",
     });
 
-    await pipeline(
-      readStream,
-      sharp()
-        .resize(maxSizePixels, maxSizePixels, {
-          fit: "inside",
-          withoutEnlargement: true,
-        })
-        .png(),
-      writeStream
-    );
+    await pipeline(resizeResult.value, writeStream);
 
     return new Ok(undefined);
   } catch (err) {

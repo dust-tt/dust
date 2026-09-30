@@ -1,4 +1,5 @@
 import type { WorkspacePermissions } from "@app/types/group_permissions";
+import type { SupportedLocale } from "@app/types/locale";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -37,4 +38,5 @@ export type GetWorkspaceAuthContextResponseType = {
   providersHealth: ProvidersHealth | null;
   workspacePermissions: WorkspacePermissions;
   groupManagement?: GroupManagementAccess;
+  locale?: SupportedLocale;
 };

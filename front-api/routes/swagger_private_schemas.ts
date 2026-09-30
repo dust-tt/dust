@@ -139,7 +139,7 @@
  *           description: When true, only models whose regionalAvailability includes the workspace's region are usable.
  *         locale:
  *           type: string
- *           enum: [en-US, fr-FR]
+ *           enum: [en-US, en-GB, fr-FR]
  *           description: Default language of the product UI for the workspace members
  *         metadata:
  *           type: object
@@ -972,9 +972,9 @@
  *           type: boolean
  *         canEdit:
  *           type: boolean
- *         isRedacted:
+ *         canViewContent:
  *           type: boolean
- *           description: Whether the private fields (instructions, skills, tools) were redacted because the caller cannot view the agent's content
+ *           description: Whether the caller can view the agent's private fields (instructions, skills, tools); they are redacted when false
  *         lastAuthors:
  *           type: array
  *           description: Optional, returned when withAuthors query param is set

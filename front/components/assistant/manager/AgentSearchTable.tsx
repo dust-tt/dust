@@ -156,6 +156,7 @@ function AgentSearchTagSelector({
 /**
  * @cc [owner:aubin-tchoi,label:react] matching-table-density
  * The loaded table and its loading skeleton MUST use the same density.
+ * Skeleton cells MUST match the loaded cells' alignment, visual sizes and spacing.
  */
 export function AgentSearchTable({
   owner,
@@ -429,16 +430,22 @@ export function AgentSearchTable({
   );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
+  // Mirror BasicCellContent's inner h-12 so the divider contributes equally to row height.
   if (isLoading && agents.length === 0) {
     return (
       <div role="status" aria-label="Loading agents">
         <DataTableSkeleton
           columns={columns}
+          rowCount={12}
           density="default"
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
               case "select":
-                return <LoadingBlock className="h-4 w-4 rounded-sm" />;
+                return (
+                  <div className="flex size-full items-center justify-center">
+                    <LoadingBlock className="h-4 w-4 rounded-sm" />
+                  </div>
+                );
               case "name":
                 return (
                   <AvatarCellSkeleton>
@@ -448,27 +455,38 @@ export function AgentSearchTable({
                   </AvatarCellSkeleton>
                 );
               case "model":
-                return <TextCellSkeleton className="w-24" />;
+                return (
+                  <div className="flex items-center gap-2">
+                    <LoadingBlock className="h-5 w-5 shrink-0 rounded-sm" />
+                    <ChipCellSkeleton className="w-16" />
+                  </div>
+                );
               case "access":
                 return <ChipCellSkeleton />;
               case "tags":
                 return <TextCellSkeleton className="w-16" />;
               case "feedback":
-                return <TextCellSkeleton className="w-8" />;
-              case "usage":
-                return <TextCellSkeleton className="w-8" />;
-              case "editors":
                 return (
-                  <div className="flex -space-x-2">
-                    <LoadingBlock className="h-7 w-7 rounded-full" />
-                    <LoadingBlock className="h-7 w-7 rounded-full" />
-                    <LoadingBlock className="h-7 w-7 rounded-full" />
+                  <div className="flex h-12 items-center justify-end">
+                    <TextCellSkeleton className="w-8" />
                   </div>
                 );
+              case "usage":
+                return (
+                  <div className="flex h-12 items-center justify-end">
+                    <TextCellSkeleton className="w-8" />
+                  </div>
+                );
+              case "editors":
+                return <LoadingBlock className="h-6 w-6 rounded-full" />;
               case "updatedAt":
-                return <TextCellSkeleton className="w-20" />;
+                return (
+                  <div className="flex h-12 items-center">
+                    <TextCellSkeleton className="w-20" />
+                  </div>
+                );
               case "actions":
-                return <LoadingBlock className="h-6 w-6 rounded-md" />;
+                return <LoadingBlock className="h-8 w-8 rounded-xl" />;
               default:
                 assertNeverAndIgnore(columnId);
                 return null;

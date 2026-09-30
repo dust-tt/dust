@@ -11,6 +11,7 @@ import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { getPodRoute } from "@app/lib/utils/router";
 import { Attachment01, Button, DotsHorizontal } from "@dust-tt/sparkle";
+import { usePanelStateListener } from "@extension/shared/hooks/usePanelStateListener";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
 import { useMemo } from "react";
@@ -30,6 +31,13 @@ export const MainPage = () => {
       conversationId: conversationId,
       workspaceId: workspace.sId,
     });
+
+  usePanelStateListener({
+    workspaceId: workspace.sId,
+    conversationId,
+    podId: conversation?.spaceId ?? null,
+    isLoading: !!conversationId && isConversationLoading,
+  });
 
   const {
     isMenuOpen,

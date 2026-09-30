@@ -1,0 +1,13 @@
+{
+  "action": "skill.updated",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "skill" }
+  ],
+  "metadata": {
+    "skill_name": "string",
+    "suggestion_batch_id": "string",
+    "conversation_id": "string",
+    "actor_type": "string"
+  }
+}
