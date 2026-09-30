@@ -11,6 +11,7 @@ import { ResponseFormatSchema } from "@app/types/assistant/models/types";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
+import { BUILD_ENTITY_REGEX } from "@app/types/shared/utils/markdown";
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 import { SkillInstructionEditItemSchema } from "@app/types/suggestions/skill_suggestion";
 
@@ -402,58 +403,77 @@ export function validateFinalToolCall(
   }
 }
 
-// `:build_skill[Name]{sId=xxx}` / `:build_agent[Name]{sId=xxx}`, the directives that render the
-// entity as a clickable chip. Only the id matters here: the label is what the model wrote.
-const BUILD_SKILL_REGEX = /:build_skill\[[^\]]*\]\{[^}]*sId=([^}\s]+)/g;
-const BUILD_AGENT_REGEX = /:build_agent\[[^\]]*\]\{[^}]*sId=([^}\s]+)/g;
+interface BuildEntityMention {
+  kind: "skill" | "agent";
+  sId: string;
+}
 
-function mentionedIds(responseText: string, regex: RegExp): string[] {
-  return [...responseText.matchAll(regex)].map((m) => m[1]);
+const SID_ATTRIBUTE_REGEX = /(?:^|\s)sId=([^\s}]+)/;
+
+// The `:build_skill` / `:build_agent` directives of the response, the ones that render the entity
+// as a clickable chip. Only the id matters here: the label is what the model wrote.
+function extractBuildEntityMentions(text: string): BuildEntityMention[] {
+  return [...text.matchAll(BUILD_ENTITY_REGEX)].flatMap(
+    ([, kind, , attributes]) => {
+      const sId = SID_ATTRIBUTE_REGEX.exec(attributes)?.[1];
+      if (!sId) {
+        return [];
+      }
+      return [{ kind: kind === "skill" ? "skill" : "agent", sId }];
+    }
+  );
+}
+
+type MentionedEntity = { kind: BuildEntityMention["kind"]; key: string };
+
+// The entities the response must mention, or none for a creation.
+function getEntitiesToMention(
+  assertion: FinalToolCallAssertion
+): MentionedEntity[] {
+  switch (assertion.type) {
+    // A created agent has no id the model could know: it is named in plain text.
+    case "suggestAgentCreation":
+      return [];
+    case "suggestAgentInstructionsChange":
+    case "suggestAgentModelChange":
+    case "suggestAgentStructuredOutput":
+      return [{ kind: "agent", key: assertion.agentKey }];
+    case "suggestSkillUpdate":
+    case "suggestSkillEditors":
+    case "suggestSkillDeletion":
+    case "suggestSkillName":
+    case "suggestSkillAvailability":
+    case "suggestSkillUserFacingDescription":
+      return [{ kind: "skill", key: assertion.skillKey }];
+    default:
+      assertNever(assertion);
+  }
 }
 
 /**
- * The response must mention the entity it acted on with its mention directive, so the user can
+ * The response must mention every entity it acted on with its mention directive, so the user can
  * click it open next to the suggestion cards. A created agent has no id the model could know, so it
- * is not checked; an edited agent is
- * checked against its seeded id, like a skill.
+ * is not checked; an edited agent is checked against its seeded id, like a skill.
  */
 export function validateEntityMention(
   assertion: FinalToolCallAssertion,
   responseText: string,
   scenario: SeededScenario
 ): AssertionResult {
-  // A created agent has no id the model could know: it is named in plain text.
-  if (assertion.type === "suggestAgentCreation") {
-    return { success: true };
-  }
-
-  if (
-    assertion.type === "suggestAgentInstructionsChange" ||
-    assertion.type === "suggestAgentModelChange" ||
-    assertion.type === "suggestAgentStructuredOutput"
-  ) {
-    const expectedAgentId = resolveAgentId(scenario, assertion.agentKey);
-    const mentioned = mentionedIds(responseText, BUILD_AGENT_REGEX);
-    if (!mentioned.includes(expectedAgentId)) {
+  const mentions = extractBuildEntityMentions(responseText);
+  for (const { kind, key } of getEntitiesToMention(assertion)) {
+    const expectedId =
+      kind === "skill"
+        ? resolveSkillId(scenario, key)
+        : resolveAgentId(scenario, key);
+    if (!mentions.some((m) => m.kind === kind && m.sId === expectedId)) {
       return {
         success: false,
         error:
-          `Expected the response to mention agent "${assertion.agentKey}" as ` +
-          `:build_agent[...]{sId=${expectedAgentId}}; mentioned ids: ${JSON.stringify(mentioned)}`,
+          `Expected the response to mention ${kind} "${key}" as ` +
+          `:build_${kind}[...]{sId=${expectedId}}; mentions: ${JSON.stringify(mentions)}`,
       };
     }
-    return { success: true };
-  }
-
-  const expectedSkillId = resolveSkillId(scenario, assertion.skillKey);
-  const mentioned = mentionedIds(responseText, BUILD_SKILL_REGEX);
-  if (!mentioned.includes(expectedSkillId)) {
-    return {
-      success: false,
-      error:
-        `Expected the response to mention skill "${assertion.skillKey}" as ` +
-        `:build_skill[...]{sId=${expectedSkillId}}; mentioned ids: ${JSON.stringify(mentioned)}`,
-    };
   }
   return { success: true };
 }
