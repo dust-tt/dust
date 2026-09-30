@@ -1022,9 +1022,10 @@ export class AgentResource
 
   static async fetchById(
     auth: Authenticator,
-    agentId: string
+    agentId: string,
+    options: AgentFetchOptions = {}
   ): Promise<AgentResource | null> {
-    const [resource] = await this.fetchByIds(auth, [agentId]);
+    const [resource] = await this.fetchByIds(auth, [agentId], options);
     return resource ?? null;
   }
 
