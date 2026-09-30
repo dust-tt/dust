@@ -3,6 +3,7 @@ import {
   TOOL,
 } from "@app/tests/conversational-building-evals/lib/tool-runner";
 import type {
+  ExecutedToolCall,
   ExecutionResult,
   JudgeResult,
   SeededScenario,
@@ -144,6 +145,17 @@ async function renderWorkspaceAgents(
   return rendered.length > 0 ? rendered.join("\n\n") : "(none)";
 }
 
+// One line per call, with its round: calls of the same round were issued in parallel.
+function renderToolCalls(toolCallRounds: ExecutedToolCall[][]): string {
+  const lines = toolCallRounds.flatMap((round, i) =>
+    round.map((tc) => {
+      const rejected = tc.isError ? " -> rejected by the tool, no effect" : "";
+      return `- round ${i + 1}: ${tc.name}(${JSON.stringify(tc.arguments)})${rejected}`;
+    })
+  );
+  return lines.length > 0 ? lines.join("\n") : "(none)";
+}
+
 export async function evaluateWithJudge(
   scenario: SeededScenario,
   testCase: TestCase,
@@ -166,20 +178,7 @@ export async function evaluateWithJudge(
         ? `${finalToolCall.name}(${JSON.stringify(finalToolCall.arguments, null, 2)})`
         : "(none)"
     )
-    .replace(
-      "{{TOOL_CALLS}}",
-      toolCallRounds.length > 0
-        ? toolCallRounds
-            .flatMap((round, i) =>
-              round.map(
-                (tc) =>
-                  `- round ${i + 1}: ${tc.name}(${JSON.stringify(tc.arguments)})` +
-                  (tc.isError ? " -> rejected by the tool, no effect" : "")
-              )
-            )
-            .join("\n")
-        : "(none)"
-    )
+    .replace("{{TOOL_CALLS}}", renderToolCalls(toolCallRounds))
     .replace("{{AGENT_RESPONSE}}", responseText || "(empty)")
     .replace("{{JUDGE_CRITERIA}}", testCase.judgeCriteria);
 
