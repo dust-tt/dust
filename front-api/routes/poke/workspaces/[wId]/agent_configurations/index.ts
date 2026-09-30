@@ -33,7 +33,6 @@ app.get(
       agentsGetView: view,
       variant: "light",
       sort: view === "archived" ? "updatedAt" : undefined,
-      dangerouslySkipPermissionFiltering: true,
     });
 
     const authors = await getAuthors(agentConfigurations);
