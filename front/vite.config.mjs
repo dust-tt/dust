@@ -11,7 +11,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
-    setupFiles: "./vite.setup.ts",
+    setupFiles: ["./vite.i18nSetup.ts", "./vite.setup.ts"],
     globalSetup: "./vite.globalSetup.ts",
     passWithNoTests: true,
     exclude: ["**/node_modules/**", "**/dist/**"],

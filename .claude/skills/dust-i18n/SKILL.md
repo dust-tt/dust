@@ -54,13 +54,17 @@ Lingui components need an `I18nProvider`. The SPA mounts one at its root (`front
 The browser extension (`extension/`, built with `ts-loader`, no Babel) and the `share`/`oauth`
 entries have none yet: do not use Lingui in components they import.
 
-Component tests that render translated components must wrap them:
+In front tests, `render` and `renderHook` from `@testing-library/react` already wrap the tree in an
+`I18nProvider` (see `front/vite.i18nSetup.ts`), around any `wrapper` the test passes, and the locale is
+reset to `en-US` after each test. Do not add an `I18nProvider` in tests. To assert a translation,
+activate the locale inside `act`:
 
 ```tsx
-import { i18n } from "@app/lib/i18n/i18n";
-import { I18nProvider } from "@lingui/react";
+import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
 
-render(<I18nProvider i18n={i18n}><MyComponent /></I18nProvider>);
+const messages = await loadCatalog("fr-FR");
+act(() => i18n.loadAndActivate({ locale: "fr-FR", messages }));
+render(<MyComponent />);
 ```
 
 ## Workflow

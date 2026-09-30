@@ -1,22 +1,13 @@
 import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTable";
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
-import { I18nProvider } from "@lingui/react";
 import { act, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 function renderEmptyTable() {
-  return render(
-    <I18nProvider i18n={i18n}>
-      <PendingInvitationsTable invitations={[]} />
-    </I18nProvider>
-  );
+  return render(<PendingInvitationsTable invitations={[]} />);
 }
 
 describe("PendingInvitationsTable", () => {
-  afterEach(() => {
-    act(() => i18n.activate("en-US"));
-  });
-
   it("renders in English by default", () => {
     renderEmptyTable();
 
