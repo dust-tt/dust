@@ -39,19 +39,53 @@ type CommandPaletteConversation = ConversationWithoutContentType & {
   spaceName: string | null;
 };
 
-export function useCommandPaletteSearch({
+function useDebouncedSearchQuery(trimmedQuery: string) {
+  const [debouncedQuery, setDebouncedQuery] = useState(trimmedQuery);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Clear immediately when the query is emptied (dialog reset) so results
+    // don't briefly stay filtered on the previous term.
+    if (trimmedQuery === "") {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      setDebouncedQuery("");
+      return;
+    }
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedQuery(trimmedQuery);
+    }, 150);
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [trimmedQuery]);
+
+  return {
+    debouncedQuery,
+    isDebouncing: trimmedQuery !== debouncedQuery,
+  };
+}
+
+function useCommandPaletteAgents({
   owner,
   isOpen,
-  searchQuery,
+  trimmedQuery,
+  debouncedQuery,
 }: {
   owner: LightWorkspaceType;
   isOpen: boolean;
-  searchQuery: string;
+  trimmedQuery: string;
+  debouncedQuery: string;
 }) {
   const { hasFeature } = useFeatureFlags();
   const isAgentsSearchEnabled = hasFeature("new_manage_agents_page");
-  const isSkillsSearchEnabled = hasFeature("skills_search");
-  const trimmedQuery = searchQuery.trim();
 
   const {
     agentConfigurations,
@@ -72,9 +106,44 @@ export function useCommandPaletteSearch({
     sortBy: trimmedQuery ? "relevance" : "name",
     disabled: !isOpen || !isAgentsSearchEnabled,
   });
-  const isAgentsLoading = isAgentsSearchEnabled
-    ? isSearchAgentsLoading
-    : isListedAgentsLoading;
+
+  const allFilteredAgents = useMemo(
+    () =>
+      debouncedQuery
+        ? filterAndSortAgents(agentConfigurations, debouncedQuery)
+        : [...agentConfigurations].sort(compareAgentsForSort),
+    [agentConfigurations, debouncedQuery]
+  );
+
+  return {
+    agents: (isAgentsSearchEnabled
+      ? searchAgents
+      : allFilteredAgents.slice(
+          0,
+          MAX_DISPLAYED_AGENTS
+        )) as CommandPaletteAgent[],
+    hasMoreAgents: isAgentsSearchEnabled
+      ? hasMoreSearchAgents
+      : allFilteredAgents.length > MAX_DISPLAYED_AGENTS,
+    isLoading: isAgentsSearchEnabled
+      ? isSearchAgentsLoading
+      : isListedAgentsLoading,
+  };
+}
+
+function useCommandPaletteSkills({
+  owner,
+  isOpen,
+  trimmedQuery,
+  debouncedQuery,
+}: {
+  owner: LightWorkspaceType;
+  isOpen: boolean;
+  trimmedQuery: string;
+  debouncedQuery: string;
+}) {
+  const { hasFeature } = useFeatureFlags();
+  const isSkillsSearchEnabled = hasFeature("skills_search");
 
   const { skills, isSkillsLoading: isListedSkillsLoading } = useSkills({
     owner,
@@ -91,10 +160,40 @@ export function useCommandPaletteSearch({
     limit: MAX_DISPLAYED_SKILLS,
     disabled: !isOpen || !isSkillsSearchEnabled,
   });
-  const isSkillsLoading = isSkillsSearchEnabled
-    ? isSearchSkillsLoading
-    : isListedSkillsLoading;
 
+  const allFilteredSkills = useMemo(() => {
+    if (!debouncedQuery) {
+      return skills;
+    }
+    const lowerQuery = debouncedQuery.toLowerCase();
+    return skills.filter((s) => subFilter(lowerQuery, s.name.toLowerCase()));
+  }, [skills, debouncedQuery]);
+
+  return {
+    skills: (isSkillsSearchEnabled
+      ? searchSkills
+      : allFilteredSkills.slice(
+          0,
+          MAX_DISPLAYED_SKILLS
+        )) as CommandPaletteSkill[],
+    hasMoreSkills: isSkillsSearchEnabled
+      ? hasMoreSearchSkills
+      : allFilteredSkills.length > MAX_DISPLAYED_SKILLS,
+    isLoading: isSkillsSearchEnabled
+      ? isSearchSkillsLoading
+      : isListedSkillsLoading,
+  };
+}
+
+function useCommandPalettePods({
+  owner,
+  isOpen,
+  trimmedQuery,
+}: {
+  owner: LightWorkspaceType;
+  isOpen: boolean;
+  trimmedQuery: string;
+}) {
   // Same readable-pods search as the sidebar (member + open pods).
   const {
     pods: searchablePods,
@@ -107,6 +206,22 @@ export function useCommandPaletteSearch({
     limit: MAX_DISPLAYED_PODS,
   });
 
+  return {
+    pods: searchablePods as CommandPalettePod[],
+    hasMorePods: hasMoreSearchPods,
+    isLoading: isSearchingPods,
+  };
+}
+
+function useCommandPaletteConversations({
+  owner,
+  isOpen,
+  trimmedQuery,
+}: {
+  owner: LightWorkspaceType;
+  isOpen: boolean;
+  trimmedQuery: string;
+}) {
   // Same conversation search as the sidebar (private title + pod semantic).
   const isConversationSearchEnabled = isOpen && trimmedQuery.length > 0;
   const {
@@ -129,48 +244,6 @@ export function useCommandPaletteSearch({
     limit: MAX_DISPLAYED_CONVERSATIONS,
   });
 
-  // Debounce the search query to avoid expensive fuzzy filtering on every keystroke.
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    debounceTimerRef.current = setTimeout(() => {
-      setDebouncedQuery(trimmedQuery);
-    }, 150);
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [trimmedQuery]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setDebouncedQuery("");
-    }
-  }, [isOpen]);
-
-  const isDebouncing = trimmedQuery !== debouncedQuery;
-
-  const allFilteredAgents = useMemo(
-    () =>
-      debouncedQuery
-        ? filterAndSortAgents(agentConfigurations, debouncedQuery)
-        : [...agentConfigurations].sort(compareAgentsForSort),
-    [agentConfigurations, debouncedQuery]
-  );
-
-  const allFilteredSkills = useMemo(() => {
-    if (!debouncedQuery) {
-      return skills;
-    }
-    const lowerQuery = debouncedQuery.toLowerCase();
-    return skills.filter((s) => subFilter(lowerQuery, s.name.toLowerCase()));
-  }, [skills, debouncedQuery]);
-
   const allConversations = useMemo(() => {
     const seen = new Set<string>();
     const merged: CommandPaletteConversation[] = [];
@@ -192,36 +265,61 @@ export function useCommandPaletteSearch({
     return merged;
   }, [privateConversationResults, podConversationResults]);
 
-  const agents: CommandPaletteAgent[] = isAgentsSearchEnabled
-    ? searchAgents
-    : allFilteredAgents.slice(0, MAX_DISPLAYED_AGENTS);
-  const conversations = allConversations.slice(0, MAX_DISPLAYED_CONVERSATIONS);
-  const pods: CommandPalettePod[] = searchablePods;
-  const filteredSkills: CommandPaletteSkill[] = isSkillsSearchEnabled
-    ? searchSkills
-    : allFilteredSkills.slice(0, MAX_DISPLAYED_SKILLS);
-
   return {
-    agents,
-    conversations,
-    pods,
-    skills: filteredSkills,
-    hasMoreAgents: isAgentsSearchEnabled
-      ? hasMoreSearchAgents
-      : allFilteredAgents.length > MAX_DISPLAYED_AGENTS,
+    conversations: allConversations.slice(0, MAX_DISPLAYED_CONVERSATIONS),
     hasMoreConversations:
       hasMorePrivateConversations ||
       allConversations.length > MAX_DISPLAYED_CONVERSATIONS,
-    hasMorePods: hasMoreSearchPods,
-    hasMoreSkills: isSkillsSearchEnabled
-      ? hasMoreSearchSkills
-      : allFilteredSkills.length > MAX_DISPLAYED_SKILLS,
+    isLoading: isSearchingPrivateConversations || isSearchingPodConversations,
+  };
+}
+
+export function useCommandPaletteSearch({
+  owner,
+  isOpen,
+  searchQuery,
+}: {
+  owner: LightWorkspaceType;
+  isOpen: boolean;
+  searchQuery: string;
+}) {
+  const trimmedQuery = searchQuery.trim();
+  const { debouncedQuery, isDebouncing } =
+    useDebouncedSearchQuery(trimmedQuery);
+
+  const agents = useCommandPaletteAgents({
+    owner,
+    isOpen,
+    trimmedQuery,
+    debouncedQuery,
+  });
+  const skills = useCommandPaletteSkills({
+    owner,
+    isOpen,
+    trimmedQuery,
+    debouncedQuery,
+  });
+  const pods = useCommandPalettePods({ owner, isOpen, trimmedQuery });
+  const conversations = useCommandPaletteConversations({
+    owner,
+    isOpen,
+    trimmedQuery,
+  });
+
+  return {
+    agents: agents.agents,
+    conversations: conversations.conversations,
+    pods: pods.pods,
+    skills: skills.skills,
+    hasMoreAgents: agents.hasMoreAgents,
+    hasMoreConversations: conversations.hasMoreConversations,
+    hasMorePods: pods.hasMorePods,
+    hasMoreSkills: skills.hasMoreSkills,
     isLoading:
-      isAgentsLoading ||
-      isSkillsLoading ||
-      isSearchingPods ||
-      isSearchingPrivateConversations ||
-      isSearchingPodConversations ||
+      agents.isLoading ||
+      skills.isLoading ||
+      pods.isLoading ||
+      conversations.isLoading ||
       isDebouncing,
   };
 }
