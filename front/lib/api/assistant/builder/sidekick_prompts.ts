@@ -1,10 +1,10 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { TemplateResource } from "@app/lib/resources/template_resource";
@@ -120,16 +120,12 @@ async function fetchFeedbackMarkdown(
   auth: Authenticator,
   agentConfigurationId: string
 ): Promise<string | null> {
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "light",
-  });
-
-  if (!agentConfiguration) {
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
+  if (!agent || !auth.can("read", agent)) {
     return null;
   }
 
-  const currentVersion = agentConfiguration.version;
+  const currentVersion = agent.version;
 
   const feedbacksRes = await getAgentFeedbacks({
     auth,

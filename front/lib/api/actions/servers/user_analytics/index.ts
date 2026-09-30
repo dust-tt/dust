@@ -18,11 +18,11 @@ import {
   fetchConsumptionTopGroups,
   resolveConsumptionGroupLabels,
 } from "@app/lib/api/analytics/consumption/top";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { MIN_USERS_FOR_ANONYMITY } from "@app/lib/api/assistant/observability/anonymity";
 import { fetchJobTypeCohort } from "@app/lib/api/assistant/observability/job_type_cohorts";
 import { resolveToolDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { JOB_TYPE_LABELS } from "@app/types/job_type";
 import { Err, Ok } from "@app/types/shared/result";
@@ -105,11 +105,13 @@ async function buildDetailedUsageSections(
   );
   let topAgents = candidateAgents;
   if (candidateAgents.length > 0) {
-    const accessible = await getAgentConfigurations(auth, {
-      agentIds: candidateAgents.map((a) => a.key),
-      variant: "extra_light",
-    });
-    const accessibleIds = new Set(accessible.map((a) => a.sId));
+    const accessible = await AgentResource.fetchByIds(
+      auth,
+      candidateAgents.map((a) => a.key)
+    );
+    const accessibleIds = new Set(
+      accessible.filter((a) => auth.can("read", a)).map((a) => a.sId)
+    );
     topAgents = candidateAgents.filter((a) => accessibleIds.has(a.key));
   }
   if (topAgents.length > 0) {
@@ -307,11 +309,13 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
     if (candidateAgents.length > 0) {
       // Filter to agents the user can actually access — consumption label
       // resolution has a workspace-scoped fallback that includes private agents.
-      const accessible = await getAgentConfigurations(auth, {
-        agentIds: candidateAgents.map((a) => a.key),
-        variant: "extra_light",
-      });
-      const accessibleIds = new Set(accessible.map((a) => a.sId));
+      const accessible = await AgentResource.fetchByIds(
+        auth,
+        candidateAgents.map((a) => a.key)
+      );
+      const accessibleIds = new Set(
+        accessible.filter((a) => auth.can("read", a)).map((a) => a.sId)
+      );
       topAgents = candidateAgents.filter((a) => accessibleIds.has(a.key));
     }
     if (topAgents.length > 0) {
