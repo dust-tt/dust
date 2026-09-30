@@ -29,7 +29,7 @@ import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
-import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
+import { isModelWhitelistedForAuth } from "@app/lib/api/assistant/models";
 import { enforcePremiumModelLimit } from "@app/lib/api/assistant/premium_model_limit";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
@@ -751,9 +751,9 @@ export async function postUserMessage(
       });
     }
 
-    const isProviderEnabled = isProviderWhitelistedForAuth(
+    const isProviderEnabled = isModelWhitelistedForAuth(
       auth,
-      agent.modelConfiguration.providerId
+      agent.modelConfiguration
     );
     if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
@@ -1234,9 +1234,9 @@ export async function editUserMessage(
       });
     }
 
-    const isProviderEnabled = isProviderWhitelistedForAuth(
+    const isProviderEnabled = isModelWhitelistedForAuth(
       auth,
-      agent.modelConfiguration.providerId
+      agent.modelConfiguration
     );
     if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
