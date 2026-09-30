@@ -63,6 +63,9 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).toContain("dsbx frame publish");
+    expect(instructions).toContain(
+      "`dsbx frame publish` and `validate` reject them"
+    );
     expect(instructions).toContain('mkdir -p "$FRAME"');
     expect(instructions).toContain(
       "write the real source\nand publish a new Frame in one Computer command"
@@ -165,6 +168,9 @@ describe("framesSkill.fetchInstructions", () => {
 
     expect(instructions).toContain("dsbx frame publish");
     expect(instructions).toContain("Frames in this workspace are client-only");
+    expect(instructions).toContain(
+      "`dsbx frame publish` and `validate` reject them"
+    );
     expect(instructions).toContain("this workspace rejects them at publish");
     expect(instructions).toContain("does not\nallow downloads");
     expect(instructions).not.toContain("## Authoring a function");
@@ -188,6 +194,7 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).toContain(COMPUTER_FIRST_MARKER);
+    expect(instructions).not.toContain("dsbx frame publish");
     expect(instructions).toContain("### Slideshows");
     expect(instructions).toContain("Keep the built-in width and height");
     expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
@@ -207,6 +214,7 @@ describe("framesSkill.fetchInstructions", () => {
 
     expect(instructions).not.toContain(COMPUTER_FIRST_MARKER);
     expect(instructions).toContain(FILES_FIRST_MARKER);
+    expect(instructions).not.toContain("dsbx frame publish");
     expect(instructions).toContain(FILES_EDIT_TOOL);
     expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
@@ -223,6 +231,7 @@ describe("framesSkill.fetchInstructions", () => {
       agentLoopData: agentLoopDataWithUseFileSystem(false),
     });
 
+    expect(instructions).not.toContain("dsbx frame publish");
     expect(instructions).not.toContain(COMPUTER_FIRST_MARKER);
     expect(instructions).not.toContain(FILES_FIRST_MARKER);
     expect(instructions).toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
