@@ -7,8 +7,8 @@ import {
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
+import { resolveDisplayedEditors } from "@app/components/members/resolveDisplayedEditors";
 import { mergeSkillSuggestionEdits } from "@app/lib/editor/merge_skill_suggestion_edits";
-import type { MemberDisplayInfo } from "@app/lib/swr/assistants";
 import { useMemberDetails } from "@app/lib/swr/assistants";
 import {
   useSkillEditors,
@@ -16,7 +16,8 @@ import {
 } from "@app/lib/swr/skill_editors";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import { editorUserSchema } from "@app/types/editors";
-import type { LightUserType, UserType, WorkspaceType } from "@app/types/user";
+import { isEditorsSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
+import type { UserType, WorkspaceType } from "@app/types/user";
 import { Button, Plus } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo } from "react";
@@ -28,39 +29,6 @@ const editorsFormSchema = z.object({
 });
 
 type EditorsFormData = z.infer<typeof editorsFormSchema>;
-
-interface ResolveDisplayedEditorsInput {
-  editors: LightUserType[];
-  removedUserIds: string[];
-  addedMembersById: Record<string, MemberDisplayInfo>;
-}
-
-// Every skill details view renders this tab. In a suggestion preview it lists the editors the skill
-// will have once the suggestions are accepted, so the suggested changes are applied to the list.
-function resolveDisplayedEditors({
-  editors,
-  removedUserIds,
-  addedMembersById,
-}: ResolveDisplayedEditorsInput): LightUserType[] {
-  const removedEditorIds = new Set(removedUserIds);
-  const editorIds = new Set(editors.map((editor) => editor.sId));
-
-  const addedEditors = Object.entries(addedMembersById)
-    .filter(([userId]) => !editorIds.has(userId))
-    .map(([userId, member]) => ({
-      sId: userId,
-      fullName: member.fullName,
-      firstName: member.fullName,
-      lastName: null,
-      image: member.image,
-      email: member.email ?? "",
-    }));
-
-  return [
-    ...editors.filter((editor) => !removedEditorIds.has(editor.sId)),
-    ...addedEditors,
-  ];
-}
 
 type AgentEditorsTabProps = {
   owner: WorkspaceType;
@@ -81,13 +49,15 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
   const isPreview = useIsSkillSuggestionPreview();
   const editedSections = useEditedSkillSections();
   const previewSuggestions = useSkillSuggestionPreview();
-  const editorsEdit = useMemo(() => {
-    const edits = mergeSkillSuggestionEdits(previewSuggestions);
-    return edits.isOk() ? edits.value.editors : undefined;
+  const suggestedEditors = useMemo(() => {
+    const edits = mergeSkillSuggestionEdits(
+      previewSuggestions.filter(isEditorsSkillSuggestion)
+    );
+    return edits.isOk() ? (edits.value.editors ?? null) : null;
   }, [previewSuggestions]);
-  const { membersById } = useMemberDetails({
+  const { membersById, isMembersLoading } = useMemberDetails({
     workspaceId: owner.sId,
-    userIds: editorsEdit?.addUserIds ?? [],
+    userIds: suggestedEditors?.addUserIds ?? [],
   });
 
   const canManageEditors = skill.canAdministrate && !isPreview;
@@ -109,9 +79,9 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
     selectedEditors.some((editor) => !persistedEditorIds.has(editor.sId));
 
   const displayedEditors = resolveDisplayedEditors({
-    editors: selectedEditors,
-    removedUserIds: editorsEdit?.removeUserIds ?? [],
-    addedMembersById: membersById,
+    editors: suggestedEditors ? editors : selectedEditors,
+    suggestedEditors,
+    membersById,
   });
 
   const onRemoveMember = (user: SearchMemberWithWorkspaceType) => {
@@ -189,7 +159,7 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
             ...user,
             workspace: owner,
           })),
-          isLoading: isEditorsLoading,
+          isLoading: isEditorsLoading || isMembersLoading,
           totalMembersCount: displayedEditors.length,
           mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
         }}
