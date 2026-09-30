@@ -794,7 +794,7 @@ export async function recordAgentCreationSuggestion(
     batch: BatchSuggestionResource | null;
   }
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
-  const pendingResult = await AgentResource.createPending(auth);
+  const pendingResult = await AgentResource.createPending(auth, create.name);
   if (pendingResult.isErr()) {
     return new Err(new MCPError(pendingResult.error.message));
   }
