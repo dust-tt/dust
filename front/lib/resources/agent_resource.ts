@@ -3122,13 +3122,14 @@ export class AgentResource
   }
 
   static async createPending(
-    auth: Authenticator
+    auth: Authenticator,
+    name?: string
   ): Promise<Result<AgentResource, Error>> {
     const user = auth.getNonNullableUser();
     const { defaultModel } = await getModelsForAuth(auth);
 
     return AgentResource.makeNew(auth, {
-      name: PENDING_AGENT_PLACEHOLDER_NAME,
+      name: name ?? PENDING_AGENT_PLACEHOLDER_NAME,
       description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
       instructions: null,
       instructionsHtml: null,

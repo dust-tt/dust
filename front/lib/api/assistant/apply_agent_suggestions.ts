@@ -33,8 +33,8 @@ import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import type { AgentAuditOptions } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
@@ -91,6 +91,11 @@ export type ResolvedAgentChange =
     }
   | { type: "delete"; agentId: string };
 
+export type BatchCreations = {
+  skillIds: Set<string>;
+  agentsById: Map<string, AgentResource>;
+};
+
 function pickDefaultAvatar(): string {
   return DROID_AVATAR_URLS[
     Math.floor(Math.random() * DROID_AVATAR_URLS.length)
@@ -102,10 +107,9 @@ function pickDefaultAvatar(): string {
  * A `create` suggestion MUST only be applied to the `pending` placeholder agent it targets: it
  * turns that placeholder into an `active`, `hidden` agent (same `sId`, editors unchanged) carrying
  * the suggested name, description, instructions, tools and skills. Tools and skills are checked
- * again against live state, as when added to an existing agent, and a skill may also be a `pending`
- * skill that the same batch creates. Applying it to an agent that is not
- * `pending`, or with a tool or skill that no longer qualifies, fails with `invalid_request_error`
- * and changes nothing.
+ * again against live state, as when added to an existing agent, except a skill that a creation of
+ * the same batch makes active. Applying it to an agent that is not `pending`, or with a tool or
+ * skill that no longer qualifies, fails with `invalid_request_error` and changes nothing.
  */
 async function resolveCreateSuggestion(
   auth: Authenticator,
@@ -116,7 +120,8 @@ async function resolveCreateSuggestion(
     instructions,
     toolIds = [],
     skillIds = [],
-  }: CreateSuggestionType
+  }: CreateSuggestionType,
+  createdSkillIds: Set<string>
 ): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
   if (agent.status !== "pending") {
     return new Err(
@@ -158,7 +163,8 @@ async function resolveCreateSuggestion(
   const resolvedSkills = await resolveSkillsEdits(
     auth,
     [],
-    skillIds.map((skillId) => ({ action: "add", skillId }))
+    skillIds.map((skillId) => ({ action: "add", skillId })),
+    createdSkillIds
   );
   if (resolvedSkills.isErr()) {
     return resolvedSkills;
@@ -335,15 +341,18 @@ async function resolveToolsEdits(
 /**
  * Carries the agent's actions over, with the suggested sub-agents added or removed. Added
  * sub-agents are checked again against live state (see `suggestable-sub-agents-match-builder`),
- * except a `pending` agent, named after its create suggestion, and run through the
- * `run_agent` tool with the builder's defaults. A sub-agent already added, or
- * already removed, since the suggestion was recorded is skipped.
+ * except an agent that a creation of the same batch makes active, and run through the `run_agent`
+ * tool with the builder's defaults. A sub-agent already added, or already removed, since the
+ * suggestion was recorded is skipped.
  */
 async function resolveSubAgentsEdits(
   auth: Authenticator,
   currentActions: AgentActionPayload[],
   subAgents: SubAgentSuggestionType[],
-  { agentId }: { agentId: string }
+  {
+    agentId,
+    createdAgentsById,
+  }: { agentId: string; createdAgentsById: Map<string, AgentResource> }
 ): Promise<
   Result<
     { actions: AgentActionPayload[]; hasRemovedSubAgents: boolean },
@@ -388,22 +397,14 @@ async function resolveSubAgentsEdits(
     const suggestable = await fetchSuggestableSubAgents(auth, [
       ...addedSubAgentIds,
     ]);
-
-    const pendingAgentNameById = await fetchPendingAgentNames(
-      auth,
-      [...addedSubAgentIds].filter((subAgentId) => !suggestable.has(subAgentId))
-    );
-
     for (const subAgentId of addedSubAgentIds) {
-      const pendingAgentName = pendingAgentNameById.get(subAgentId);
-
-      const addition = pendingAgentName
-        ? new Ok({ sId: subAgentId, name: pendingAgentName })
+      const createdAgent = createdAgentsById.get(subAgentId);
+      const addition = createdAgent
+        ? new Ok(createdAgent)
         : checkSubAgentAddition(subAgentId, suggestable, { agentId });
       if (addition.isErr()) {
         return new Err(new DustError("invalid_request_error", addition.error));
       }
-
       actions.push(
         getDefaultMCPActionPayload(runAgentTool, {
           takenNames: new Set(actions.map((action) => action.name)),
@@ -419,61 +420,16 @@ async function resolveSubAgentsEdits(
   });
 }
 
-/** The `pending` agents among `agentIds`, each named after the agent its create suggestion proposes. */
-async function fetchPendingAgentNames(
-  auth: Authenticator,
-  agentIds: string[]
-): Promise<Map<string, string>> {
-  const agents = await AgentResource.fetchByIds(auth, agentIds);
-  const pendingAgentIds = agents
-    .filter((agent) => agent.status === "pending")
-    .map((agent) => agent.sId);
-
-  const creations = await AgentSuggestionResource.listByAgentConfigurationIds(
-    auth,
-    pendingAgentIds,
-    { states: ["pending"], kind: "create" }
-  );
-
-  const nameById = new Map<string, string>();
-  for (const creation of creations) {
-    const parsed = AgentSuggestionDataSchema.safeParse({
-      kind: creation.kind,
-      suggestion: creation.suggestion,
-    });
-    if (parsed.success && parsed.data.kind === "create") {
-      nameById.set(creation._agentConfigurationId, parsed.data.suggestion.name);
-    }
-  }
-
-  return nameById;
-}
-
-/** The `pending` skills among `skillIds`. */
-async function fetchPendingSkillIds(
-  auth: Authenticator,
-  skillIds: string[]
-): Promise<Set<string>> {
-  const skills = await SkillResource.fetchByIds(auth, skillIds, {
-    withInstructions: false,
-    withTools: false,
-    withFileAttachments: false,
-  });
-  const pendingSkills = skills.filter((skill) => skill.status === "pending");
-
-  return new Set(pendingSkills.map((skill) => skill.sId));
-}
-
 /**
  * Carries the agent's current skills over, with the suggested skills added or removed. Added skills
- * are checked again against live state, except a `pending` skill (see
- * `suggestable-skills-match-builder`). A skill already added, or already removed,
- * since the suggestion was recorded is skipped.
+ * are checked again against live state, except a skill that a creation of the same batch makes
+ * active. A skill already added, or already removed, since the suggestion was recorded is skipped.
  */
 async function resolveSkillsEdits(
   auth: Authenticator,
   currentSkills: SkillResource[],
-  skills: SkillsSuggestionType[]
+  skills: SkillsSuggestionType[],
+  createdSkillIds: Set<string>
 ): Promise<
   Result<
     { skillIds: string[]; hasRemovedSkills: boolean },
@@ -494,14 +450,8 @@ async function resolveSkillsEdits(
   );
 
   const suggestable = await fetchSuggestableSkills(auth, [...addedSkillIds]);
-
-  const pendingSkillIds = await fetchPendingSkillIds(
-    auth,
-    [...addedSkillIds].filter((skillId) => !suggestable.has(skillId))
-  );
-
   for (const skillId of addedSkillIds) {
-    if (pendingSkillIds.has(skillId)) {
+    if (createdSkillIds.has(skillId)) {
       continue;
     }
     const addition = checkSkillAddition(skillId, suggestable);
@@ -571,7 +521,8 @@ async function resolveAgentFieldEdits(
     skills,
     tools,
     subAgents,
-  }: AgentEdits
+  }: AgentEdits,
+  creations: BatchCreations
 ): Promise<
   Result<AgentConfigurationAssistantPayload, ApplyAgentSuggestionsError>
 > {
@@ -601,7 +552,8 @@ async function resolveAgentFieldEdits(
   const resolvedSkills = await resolveSkillsEdits(
     auth,
     currentSkills,
-    skills ?? []
+    skills ?? [],
+    creations.skillIds
   );
   if (resolvedSkills.isErr()) {
     return resolvedSkills;
@@ -619,7 +571,7 @@ async function resolveAgentFieldEdits(
     auth,
     resolvedActions.value.actions,
     subAgents ?? [],
-    { agentId: agent.sId }
+    { agentId: agent.sId, createdAgentsById: creations.agentsById }
   );
   if (resolvedToolsWithSubAgents.isErr()) {
     return resolvedToolsWithSubAgents;
@@ -734,7 +686,8 @@ function hasAgentFieldEdits({
 async function resolveAgentEdits(
   auth: Authenticator,
   agent: AgentResource,
-  edits: AgentEdits
+  edits: AgentEdits,
+  creations: BatchCreations
 ): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
   if (agent.scope === "global" || agent.status !== "active") {
     return new Err(
@@ -760,7 +713,12 @@ async function resolveAgentEdits(
   // must not.
   let assistant: AgentConfigurationAssistantPayload | null = null;
   if (hasAgentFieldEdits(edits)) {
-    const assistantRes = await resolveAgentFieldEdits(auth, agent, edits);
+    const assistantRes = await resolveAgentFieldEdits(
+      auth,
+      agent,
+      edits,
+      creations
+    );
     if (assistantRes.isErr()) {
       return assistantRes;
     }
@@ -799,9 +757,11 @@ export async function resolveAgentSuggestions(
   {
     agent,
     suggestions,
+    creations,
   }: {
     agent: AgentResource;
     suggestions: AgentSuggestionResource[];
+    creations: BatchCreations;
   }
 ): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
   const actions = new Set(
@@ -836,14 +796,19 @@ export async function resolveAgentSuggestions(
           )
         );
       }
-      return resolveCreateSuggestion(auth, agent, parsed.data.suggestion);
+      return resolveCreateSuggestion(
+        auth,
+        agent,
+        parsed.data.suggestion,
+        creations.skillIds
+      );
     }
     case "edit": {
       const edits = mergeAgentEdits(suggestions);
       if (edits.isErr()) {
         return edits;
       }
-      return resolveAgentEdits(auth, agent, edits.value);
+      return resolveAgentEdits(auth, agent, edits.value, creations);
     }
     case "delete":
       return resolveDeleteSuggestion(agent);

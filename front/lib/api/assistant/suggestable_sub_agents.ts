@@ -29,8 +29,8 @@ export async function fetchRunAgentTool(
  * An agent that a suggestion adds as a sub-agent MUST be one the agent builder offers the caller:
  * an active agent the caller can read, other than the agent it is added to. A global agent must
  * also be one the builder lists (`listDefaultGlobalAgentIds`): not a retired, model-only, sidekick
- * or reinforcement agent. A `pending` agent is the only exception: `suggest` only stores
- * one when an agent creation of the same batch makes it active.
+ * or reinforcement agent. The only exception is an agent that a creation of the same batch makes
+ * active, which `applyBatchSuggestions` checks against the batch instead.
  */
 export async function fetchSuggestableSubAgents(
   auth: Authenticator,

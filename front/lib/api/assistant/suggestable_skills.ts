@@ -8,8 +8,8 @@ import { Err, Ok } from "@app/types/shared/result";
  * @cc [owner:fabiencelier,label:security;product] suggestable-skills-match-builder
  * A skill that a suggestion adds to an agent MUST be one the agent builder offers the caller: an
  * active skill (custom or global) the caller can read, and, when it is unpublished (`editors`
- * availability), that the caller can edit. A `pending` skill is the only exception:
- * `suggest` only stores one when a skill creation of the same batch makes it active.
+ * availability), that the caller can edit. The only exception is a skill that a creation of the
+ * same batch makes active, which `applyBatchSuggestions` checks against the batch instead.
  */
 export async function fetchSuggestableSkills(
   auth: Authenticator,
