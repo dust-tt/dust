@@ -100,7 +100,7 @@ async function getMCPServerEgressAgent(
   auth: Authenticator,
   serverUrl: string
 ): Promise<Dispatcher | undefined> {
-  if (await shouldUseStaticIpProxy(auth, serverUrl)) {
+  if (await shouldUseStaticIpProxy(auth, { url: serverUrl })) {
     const staticIPAgent = getStaticIPProxyAgent();
     if (staticIPAgent) {
       return staticIPAgent;

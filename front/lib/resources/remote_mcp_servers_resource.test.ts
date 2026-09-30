@@ -251,6 +251,11 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata egress routing", () => {
       expectedAgent: egressMocks.staticIPAgent,
     },
     {
+      label: "the static IP proxy for a hardcoded official remote MCP URL",
+      serverUrl: () => "https://bigquery.googleapis.com/mcp",
+      expectedAgent: egressMocks.staticIPAgent,
+    },
+    {
       label: "the untrusted egress proxy for a server outside verified domains",
       serverUrl: () => "https://mcp.unverified.example.com/mcp",
       expectedAgent: egressMocks.untrustedAgent,
