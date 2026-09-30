@@ -263,6 +263,17 @@ export async function getToolAccessToken({
     return new Err(new Error("MCP server view not found."));
   }
 
+  // Enforce space-level read authorization. fetchById scopes only to the
+  // workspace; without this check any workspace member can supply an arbitrary
+  // serverViewId and receive the view's workspace-level OAuth access token even
+  // if the view lives in a restricted space they cannot read.
+  if (
+    !auth.can("read", serverView.space) &&
+    !auth.can("admin", serverView.space)
+  ) {
+    return new Err(new Error("MCP server view not found."));
+  }
+
   const result = await _getToolAndAccessTokenForView(auth, serverView);
   if (!result) {
     return new Err(new Error("Failed to get tool access token."));

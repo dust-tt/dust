@@ -18,6 +18,7 @@ import type {
   MCPServerViewNameConflict,
   MCPToolType,
 } from "@app/lib/api/mcp";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -129,9 +130,12 @@ export async function createRemoteMCPServer(
   let bearerToken = sharedSecret ?? null;
   let authorization: AuthorizationInfo | null = null;
 
-  // If a connectionId is provided, we use it to fetch the access token that must
-  // have been created by the admin.
+  // If a connectionId is provided, verify ownership then fetch the access token.
   if (connectionId) {
+    const ownershipRes = await checkConnectionOwnership(auth, connectionId);
+    if (ownershipRes.isErr()) {
+      return new Err(new Error("Error fetching OAuth connection access token"));
+    }
     const token = await getMCPConnectionAccessToken(auth, {
       connectionId,
     });
