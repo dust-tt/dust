@@ -9,6 +9,7 @@ import {
 } from "@app/tests/conversational-building-evals/lib/tool-runner";
 import type {
   BuildingAgentConfig,
+  ExecutedToolCall,
   ExecutionResult,
   SeededScenario,
   TestCase,
@@ -88,7 +89,7 @@ export async function executeBuildingAgent(
 
   const messages = buildInitialMessages(config, testCase);
 
-  const allToolCalls: ToolCall[] = [];
+  const toolCallRounds: ExecutedToolCall[][] = [];
   let responseText = "";
   let totalModelTimeMs = 0;
 
@@ -156,8 +157,6 @@ export async function executeBuildingAgent(
       break;
     }
 
-    allToolCalls.push(...currentRoundToolCalls.map((tc) => tc.toolCall));
-
     const functionCalls = currentRoundToolCalls.map((tc) => ({
       id: tc.id,
       name: tc.toolCall.name,
@@ -179,6 +178,7 @@ export async function executeBuildingAgent(
       ],
     });
 
+    const executedToolCalls: ExecutedToolCall[] = [];
     for (const tc of currentRoundToolCalls) {
       const output = await runTool(
         scenario,
@@ -187,16 +187,18 @@ export async function executeBuildingAgent(
       );
       if (VERBOSE) {
         console.log(
-          `[${testCase.scenarioId}] ${tc.toolCall.name}(${JSON.stringify(tc.toolCall.arguments)}) -> ${output}`
+          `[${testCase.scenarioId}] ${tc.toolCall.name}(${JSON.stringify(tc.toolCall.arguments)}) -> ${output.text}`
         );
       }
+      executedToolCalls.push({ ...tc.toolCall, isError: output.isError });
       messages.push({
         role: "function" as const,
         name: tc.toolCall.name,
         function_call_id: tc.id,
-        content: output,
+        content: output.text,
       });
     }
+    toolCallRounds.push(executedToolCalls);
 
     streamStart = Date.now();
     events = llm.stream({
@@ -205,6 +207,8 @@ export async function executeBuildingAgent(
       specifications: config.tools,
     });
   }
+
+  const allToolCalls = toolCallRounds.flat();
 
   // Without this the run looks like a normal answer that happens to be empty, and the judge
   // scores a response the agent never got to write.
@@ -222,6 +226,7 @@ export async function executeBuildingAgent(
   return {
     responseText,
     toolCalls: allToolCalls,
+    toolCallRounds,
     finalToolCall,
     modelTimeMs: totalModelTimeMs,
   };

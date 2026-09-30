@@ -161,7 +161,7 @@ describe
 
               const finalToolCallResult = validateFinalToolCall(
                 testCase.expectedFinalToolCall,
-                finalToolCall,
+                execution,
                 scenario
               );
 

@@ -2,6 +2,9 @@ import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
 import { extractToolTags } from "@app/lib/tools/format";
 import { TOOL } from "@app/tests/conversational-building-evals/lib/tool-runner";
 import type {
+  ExecutedToolCall,
+  ExecutionResult,
+  ExpectedSuggestion,
   FinalToolCallAssertion,
   SeededScenario,
   SkillUpdateEditKind,
@@ -14,6 +17,7 @@ import { isString } from "@app/types/shared/utils/general";
 import { BUILD_ENTITY_REGEX } from "@app/types/shared/utils/markdown";
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 import { SkillInstructionEditItemSchema } from "@app/types/suggestions/skill_suggestion";
+import isEqual from "lodash/isEqual";
 
 type AssertionResult = { success: true } | { success: false; error: string };
 
@@ -48,6 +52,12 @@ function hasEdit(item: SuggestionItem, kind: SkillUpdateEditKind): boolean {
   }
 }
 
+function getSuggestions(suggestCall: ToolCall): SuggestionItem[] {
+  return Array.isArray(suggestCall.arguments.suggestions)
+    ? suggestCall.arguments.suggestions.filter(isSuggestionItem)
+    : [];
+}
+
 type FindSuggestionResult =
   | { success: true; item: SuggestionItem }
   | { success: false; error: string };
@@ -67,9 +77,7 @@ function findSuggestion(
       error: `Expected final tool call ${TOOL.suggest}, got ${finalToolCall.name}`,
     };
   }
-  const suggestions = Array.isArray(finalToolCall.arguments.suggestions)
-    ? finalToolCall.arguments.suggestions.filter(isSuggestionItem)
-    : [];
+  const suggestions = getSuggestions(finalToolCall);
   const item = suggestions.find(
     (s) => s.kind === kind && (!target || s[target.field] === target.id)
   );
@@ -197,6 +205,92 @@ function requireField(
   return { success: true };
 }
 
+function describeExpectedSuggestion(expected: ExpectedSuggestion): string {
+  switch (expected.kind) {
+    case "edit_skill":
+      return `edit_skill on skill "${expected.skillKey}"`;
+    case "edit_agent":
+      return `edit_agent on agent "${expected.agentKey}"`;
+    default:
+      assertNever(expected);
+  }
+}
+
+function matchesExpectedSuggestion(
+  item: SuggestionItem,
+  expected: ExpectedSuggestion,
+  scenario: SeededScenario
+): boolean {
+  switch (expected.kind) {
+    case "edit_skill":
+      return (
+        item.kind === "edit_skill" &&
+        item.skillId === resolveSkillId(scenario, expected.skillKey)
+      );
+    case "edit_agent":
+      return (
+        item.kind === "edit_agent" &&
+        item.agentId === resolveAgentId(scenario, expected.agentKey)
+      );
+    default:
+      assertNever(expected);
+  }
+}
+
+// Independent changes must be recorded as separate suggestions: every `suggest` call that went
+// through carries a single suggestion, and together they record exactly the expected ones, in any
+// round. Rejected calls recorded nothing, so a retry after one is fine.
+function validateSeparateSuggestions(
+  expectedSuggestions: ExpectedSuggestion[],
+  toolCalls: ExecutedToolCall[],
+  scenario: SeededScenario
+): AssertionResult {
+  const recordedCalls = toolCalls.filter(
+    (tc) => tc.name === TOOL.suggest && !tc.isError
+  );
+
+  const unmatched = [...expectedSuggestions];
+  for (const suggestCall of recordedCalls) {
+    const suggestions = getSuggestions(suggestCall);
+    if (suggestions.length !== 1) {
+      return {
+        success: false,
+        error: `Each ${TOOL.suggest} call must carry a single suggestion; got ${JSON.stringify(suggestions)}`,
+      };
+    }
+    const [item] = suggestions;
+    const index = unmatched.findIndex((expected) =>
+      matchesExpectedSuggestion(item, expected, scenario)
+    );
+    if (index === -1) {
+      return {
+        success: false,
+        error: `Unexpected or duplicate suggestion: ${JSON.stringify(item)}`,
+      };
+    }
+    const [expected] = unmatched.splice(index, 1);
+    const wrongFields = Object.entries(expected.fields).filter(
+      ([field, value]) => !isEqual(item[field], value)
+    );
+    if (wrongFields.length > 0) {
+      return {
+        success: false,
+        error:
+          `The ${describeExpectedSuggestion(expected)} suggestion must carry ` +
+          `${JSON.stringify(Object.fromEntries(wrongFields))}; got ${JSON.stringify(item)}`,
+      };
+    }
+  }
+
+  if (unmatched.length > 0) {
+    return {
+      success: false,
+      error: `Missing suggestion(s): ${unmatched.map(describeExpectedSuggestion).join(", ")}`,
+    };
+  }
+  return { success: true };
+}
+
 /**
  * Validates the run's final (last non-exploratory) tool call against the scenario expectation: it
  * must be a `suggest` call carrying the expected change on the expected entity. Skill, agent and
@@ -204,7 +298,10 @@ function requireField(
  */
 export function validateFinalToolCall(
   assertion: FinalToolCallAssertion,
-  finalToolCall: ToolCall | null,
+  {
+    finalToolCall,
+    toolCalls,
+  }: Pick<ExecutionResult, "finalToolCall" | "toolCalls">,
   scenario: SeededScenario
 ): AssertionResult {
   if (!finalToolCall) {
@@ -283,6 +380,13 @@ export function validateFinalToolCall(
       return requireField(
         findSkillEdit(finalToolCall, scenario, assertion.skillKey),
         "name"
+      );
+
+    case "separateSuggestions":
+      return validateSeparateSuggestions(
+        assertion.suggestions,
+        toolCalls,
+        scenario
       );
 
     case "suggestSkillAvailability": {
@@ -438,6 +542,17 @@ function getEntitiesToMention(
     case "suggestAgentModelChange":
     case "suggestAgentStructuredOutput":
       return [{ kind: "agent", key: assertion.agentKey }];
+    case "separateSuggestions":
+      return assertion.suggestions.map((expected) => {
+        switch (expected.kind) {
+          case "edit_skill":
+            return { kind: "skill", key: expected.skillKey };
+          case "edit_agent":
+            return { kind: "agent", key: expected.agentKey };
+          default:
+            assertNever(expected);
+        }
+      });
     case "suggestSkillUpdate":
     case "suggestSkillEditors":
     case "suggestSkillDeletion":

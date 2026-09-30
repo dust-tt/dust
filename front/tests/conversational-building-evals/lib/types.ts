@@ -1,5 +1,8 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { EditSkillSuggestion } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import type {
+  EditAgentSuggestion,
+  EditSkillSuggestion,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
@@ -80,9 +83,26 @@ export type SkillUpdateEditKind = keyof Pick<
 >;
 
 /**
+ * A suggestion the run must record: its target, and the fields it must carry with these exact
+ * values. Fields not listed are not checked.
+ */
+export type ExpectedSuggestion =
+  | {
+      kind: "edit_skill";
+      skillKey: string;
+      fields: Partial<Omit<EditSkillSuggestion, "kind" | "skillId">>;
+    }
+  | {
+      kind: "edit_agent";
+      agentKey: string;
+      fields: Partial<Omit<EditAgentSuggestion, "kind" | "agentId">>;
+    };
+
+/**
  * The change the run must end with. The "final" tool call is the last non-exploratory call of the
  * run, which must be a `suggest` call carrying this change: exploratory calls (listing / describing
- * entities) never count.
+ * entities) never count. `separateSuggestions` checks every `suggest` call of the run instead,
+ * since the change spans several calls.
  */
 export type FinalToolCallAssertion =
   | {
@@ -102,6 +122,10 @@ export type FinalToolCallAssertion =
     }
   | { type: "suggestSkillDeletion"; skillKey: string }
   | { type: "suggestSkillName"; skillKey: string }
+  | {
+      type: "separateSuggestions";
+      suggestions: ExpectedSuggestion[];
+    }
   | {
       type: "suggestSkillAvailability";
       skillKey: string;
@@ -212,6 +236,11 @@ export interface BuildingAgentConfig {
   tools: AgentActionSpecification[];
 }
 
+/** A tool call of the run, with whether the tool rejected it (in which case it had no effect). */
+export interface ExecutedToolCall extends ToolCall {
+  isError: boolean;
+}
+
 export interface JudgeResult {
   finalScore: number;
   scores: number[];
@@ -220,7 +249,9 @@ export interface JudgeResult {
 
 export interface ExecutionResult {
   responseText: string;
-  toolCalls: ToolCall[];
+  toolCalls: ExecutedToolCall[];
+  // The same calls grouped by model round: calls of one round were issued in parallel.
+  toolCallRounds: ExecutedToolCall[][];
   finalToolCall: ToolCall | null;
   modelTimeMs: number;
 }

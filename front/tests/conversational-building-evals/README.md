@@ -92,7 +92,8 @@ RUN_CONVERSATIONAL_BUILDING_EVAL=true VERBOSE=true \
 
 ## Adding tests
 
-1. Create or edit a suite in `test-suites/` and export it from `test-suites/index.ts`.
+1. Create or edit a suite in `test-suites/` and export it from `test-suites/index.ts`. Reusable
+   assets (skills descriptions and instructions...) live in `test-suites/assets/`.
 2. To assert on another kind of change, add a `FinalToolCallAssertion` variant
    in `lib/types.ts` + `lib/assertions.ts`.
    Tools added to either server are picked up automatically by the tool runner.
