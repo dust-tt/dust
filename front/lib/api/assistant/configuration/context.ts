@@ -1,6 +1,7 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -46,13 +47,16 @@ export async function getActiveWorkspaceAgentConfiguration(
 ): Promise<
   Result<ActiveWorkspaceAgentConfiguration, APIErrorWithContentfulStatusCode>
 > {
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "full",
-    dangerouslySkipPermissionFiltering,
+  const agent = await AgentResource.fetchById(auth, agentId, {
+    dangerouslySkipFetchCheck: dangerouslySkipPermissionFiltering,
   });
+  // The full definition is exported or written back as-is, so it needs the content: a redacted
+  // configuration would export (or re-save) empty instructions and tools.
+  const [agentConfiguration] = agent?.canViewContent
+    ? await toAgentConfigurations(auth, [agent])
+    : [];
 
-  if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
+  if (!agentConfiguration) {
     return new Err({
       status_code: 404,
       api_error: {
