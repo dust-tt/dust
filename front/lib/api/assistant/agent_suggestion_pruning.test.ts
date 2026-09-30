@@ -8,12 +8,14 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import assert from "assert";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -133,6 +135,97 @@ describe("pruneSuggestionsForAgent", () => {
       );
       // Model matches but reasoning effort differs -> still pending
       expect(fetched?.state).toBe("pending");
+    });
+  });
+
+  describe("structured_output suggestions", () => {
+    const RESPONSE_FORMAT = JSON.stringify({
+      type: "json_schema",
+      json_schema: {
+        name: "answer",
+        schema: {
+          type: "object",
+          properties: { answer: { type: "string" } },
+          required: ["answer"],
+          additionalProperties: false,
+        },
+      },
+    });
+
+    async function pruneAndFetchState(
+      agent: LightAgentConfigurationType,
+      suggestionId: string
+    ) {
+      await pruneSuggestionsForAgent(
+        authenticator,
+        await getFullAgentConfiguration(authenticator, agent.sId)
+      );
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      return fetched?.state;
+    }
+
+    it("should mark structured output suggestion as outdated when the agent already has it", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          name: "Structured Agent",
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            responseFormat: RESPONSE_FORMAT,
+          },
+        }
+      );
+      const suggestion = await AgentSuggestionFactory.createStructuredOutput(
+        authenticator,
+        agent,
+        { suggestion: { responseFormat: RESPONSE_FORMAT } }
+      );
+
+      expect(await pruneAndFetchState(agent, suggestion.sId)).toBe("outdated");
+    });
+
+    it("should mark structured output suggestion as outdated when the model does not support it", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          name: "Mistral Agent",
+          model: { providerId: "mistral", modelId: MISTRAL_LARGE_MODEL_ID },
+        }
+      );
+      const suggestion = await AgentSuggestionFactory.createStructuredOutput(
+        authenticator,
+        agent,
+        { suggestion: { responseFormat: RESPONSE_FORMAT } }
+      );
+
+      expect(await pruneAndFetchState(agent, suggestion.sId)).toBe("outdated");
+    });
+
+    it("should not mark structured output suggestion as outdated when its batch also changes the model", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          name: "Mistral Agent",
+          model: { providerId: "mistral", modelId: MISTRAL_LARGE_MODEL_ID },
+        }
+      );
+      const { id: batchModelId } =
+        await BatchSuggestionFactory.createEmpty(authenticator);
+      await AgentSuggestionFactory.createModel(authenticator, agent, {
+        suggestion: { modelId: "gpt-5-mini" },
+        batchModelId,
+      });
+      const suggestion = await AgentSuggestionFactory.createStructuredOutput(
+        authenticator,
+        agent,
+        { suggestion: { responseFormat: RESPONSE_FORMAT }, batchModelId }
+      );
+
+      expect(await pruneAndFetchState(agent, suggestion.sId)).toBe("pending");
     });
   });
 

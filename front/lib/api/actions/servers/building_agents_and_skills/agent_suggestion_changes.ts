@@ -16,7 +16,10 @@ import {
 } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { validateAgentTagsChange } from "@app/lib/api/assistant/agent_tags_change";
 import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
-import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
+import {
+  resolveAgentModelChange,
+  validateStructuredOutputChange,
+} from "@app/lib/api/assistant/configuration/model_update";
 import {
   checkSkillAddition,
   fetchSuggestableSkills,
@@ -57,6 +60,7 @@ import type {
   NameSuggestionType,
   ScopeSuggestionType,
   SkillsSuggestionType,
+  StructuredOutputSuggestionType,
   SubAgentSuggestionType,
   TagsSuggestionType,
   ToolsSuggestionType,
@@ -288,6 +292,56 @@ export async function validateAgentTagsSuggestion(
     addTags: validation.value.addTags,
     removeTags: validation.value.removeTags,
   });
+}
+
+/**
+ * Applies the validation the suggestion is applied with (`validateStructuredOutputChange`), against
+ * `modelId`: the model the agent will run once the suggestions of the same edit are applied.
+ */
+export function validateAgentStructuredOutputChange(
+  auth: Authenticator,
+  agent: AgentResource,
+  {
+    modelId,
+    responseFormat,
+  }: { modelId: ModelIdType; responseFormat: string | null }
+): Result<StructuredOutputSuggestionType, MCPError> {
+  if (!isAuthorizedForAgentSuggestionKind(auth, agent, "structured_output")) {
+    return new Err(
+      new MCPError(
+        "Only editors can suggest changing a workspace agent's structured output."
+      )
+    );
+  }
+
+  if (agent.status !== "active") {
+    return new Err(
+      new MCPError(
+        "Only active agents can have their structured output changed."
+      )
+    );
+  }
+
+  const currentResponseFormat = agent.modelConfiguration.responseFormat ?? null;
+  if (responseFormat === currentResponseFormat) {
+    return new Err(
+      new MCPError(
+        responseFormat === null
+          ? "The agent has no structured output to remove."
+          : "The agent already has this structured output."
+      )
+    );
+  }
+
+  const validation = validateStructuredOutputChange({
+    modelId,
+    responseFormat,
+  });
+  if (validation.isErr()) {
+    return new Err(new MCPError(validation.error.message));
+  }
+
+  return new Ok({ responseFormat });
 }
 
 /**
@@ -714,6 +768,7 @@ export type SingletonAgentSuggestionData = Extract<
       | "description"
       | "scope"
       | "model"
+      | "structured_output"
       | "editors"
       | "tags"
       | "delete";

@@ -17,8 +17,9 @@ import type { PreviewedAgentCapabilities } from "@app/lib/editor/preview_agent_s
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { formatResponseFormat } from "@app/types/assistant/models/utils";
 import type { WorkspaceType } from "@app/types/user";
-import { Avatar, Chip, cn, Markdown, Page } from "@dust-tt/sparkle";
+import { Avatar, Chip, CodeBlock, cn, Markdown, Page } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -50,6 +51,11 @@ export function AgentInfoTab({
   // The API redacts the private fields (instructions, skills, knowledge) of the agents an admin
   // cannot read, and flags it with `isRedacted`. Only admins ever get such a response.
   const isRedactedForAdmin = !!agentConfiguration.isRedacted;
+
+  const { responseFormat } = agentConfiguration.model;
+  const displayStructuredOutput =
+    !isRedactedForAdmin &&
+    (!!responseFormat || editedSections.has("structured_output"));
 
   const model = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
@@ -143,6 +149,22 @@ export function AgentInfoTab({
               {model.description}
             </div>
           </div>
+        </div>
+      )}
+
+      {displayStructuredOutput && (
+        <div className="relative flex flex-col gap-3">
+          {editedSections.has("structured_output") && <EditedSectionBar />}
+          <div className="heading-lg text-foreground">Structured output</div>
+          {responseFormat ? (
+            <CodeBlock className="language-json" wrapLongLines>
+              {formatResponseFormat(responseFormat)}
+            </CodeBlock>
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              No structured output
+            </span>
+          )}
         </div>
       )}
     </div>

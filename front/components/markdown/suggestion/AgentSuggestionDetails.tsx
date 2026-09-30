@@ -1,5 +1,8 @@
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
-import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import {
+  InstructionSuggestionExtension,
+  SUGGESTION_DIFF_CLASSES,
+} from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { formatModelEffortLabel } from "@app/components/model_picker/modelPickerUtils";
 import { getModelProviderLogo } from "@app/components/providers/types";
@@ -27,9 +30,11 @@ import type {
 } from "@app/types/assistant/agent";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { formatResponseFormat } from "@app/types/assistant/models/utils";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Avatar, Eye, EyeOff, Tag01 } from "@dust-tt/sparkle";
+import { Avatar, DiffBlock, Eye, EyeOff, Tag01 } from "@dust-tt/sparkle";
+import { diffLines } from "diff";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
@@ -217,6 +222,54 @@ function SuggestedTags({ owner, addTags, removeTags }: SuggestedTagsProps) {
   );
 }
 
+interface SuggestedStructuredOutputProps {
+  currentResponseFormat: string | undefined;
+  responseFormat: string | null;
+}
+
+function SuggestedStructuredOutput({
+  currentResponseFormat,
+  responseFormat,
+}: SuggestedStructuredOutputProps) {
+  const parts = useMemo(
+    () =>
+      // Indented, so the diff is line by line.
+      diffLines(
+        currentResponseFormat
+          ? formatResponseFormat(currentResponseFormat)
+          : "",
+        responseFormat ? formatResponseFormat(responseFormat) : ""
+      ),
+    [currentResponseFormat, responseFormat]
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm text-muted-foreground">
+        Structured output (JSON schema)
+      </span>
+      <DiffBlock variant="plain">
+        <pre className="whitespace-pre-wrap text-foreground">
+          {parts.map((part, index) => (
+            <span
+              key={index}
+              className={
+                part.added
+                  ? SUGGESTION_DIFF_CLASSES.add
+                  : part.removed
+                    ? SUGGESTION_DIFF_CLASSES.remove
+                    : undefined
+              }
+            >
+              {part.value}
+            </span>
+          ))}
+        </pre>
+      </DiffBlock>
+    </div>
+  );
+}
+
 interface SuggestedChangesSectionProps {
   label: string;
   children: ReactNode;
@@ -371,6 +424,14 @@ export function AgentSuggestionDetails({
         </SuggestedChangesSection>
       );
     }
+
+    case "structured_output":
+      return (
+        <SuggestedStructuredOutput
+          currentResponseFormat={agentConfiguration?.model.responseFormat}
+          responseFormat={suggestion.suggestion.responseFormat}
+        />
+      );
 
     case "name":
       return (

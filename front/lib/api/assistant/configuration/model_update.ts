@@ -3,7 +3,11 @@ import { getSelectableModelsForAuth } from "@app/lib/model_tiers/enabled_models"
 import type { BulkAgentUpdateResult } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
-import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
+import type {
+  ModelIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import type { Result } from "@app/types/shared/result";
@@ -55,6 +59,39 @@ export async function resolveAgentModelChange(
     modelId: model.modelId,
     reasoningEffort: effort,
   });
+}
+
+/**
+ * Validates a structured output change for an agent running `modelId`: a set response format must
+ * be a valid JSON schema, on a model that supports structured output. Removing it is always valid.
+ */
+export function validateStructuredOutputChange({
+  modelId,
+  responseFormat,
+}: {
+  modelId: ModelIdType;
+  responseFormat: string | null;
+}): Result<void, Error> {
+  if (responseFormat === null) {
+    return new Ok(undefined);
+  }
+
+  if (!isSupportingResponseFormat(modelId)) {
+    return new Err(
+      new Error(
+        `Model "${modelId}" does not support structured output: pick a model that supports it.`
+      )
+    );
+  }
+
+  const formatValidation = validateResponseFormat(responseFormat);
+  if (!formatValidation.isValid) {
+    return new Err(
+      new Error(`Invalid response format: ${formatValidation.errorMessage}`)
+    );
+  }
+
+  return new Ok(undefined);
 }
 
 /**

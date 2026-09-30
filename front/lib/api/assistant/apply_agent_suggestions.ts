@@ -4,7 +4,10 @@ import { validateAgentEditorsChange } from "@app/lib/api/assistant/agent_editors
 import type { AgentTagsChange } from "@app/lib/api/assistant/agent_tags_change";
 import { validateAgentTagsChange } from "@app/lib/api/assistant/agent_tags_change";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
-import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
+import {
+  resolveAgentModelChange,
+  validateStructuredOutputChange,
+} from "@app/lib/api/assistant/configuration/model_update";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import {
   checkSkillAddition,
@@ -53,6 +56,7 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  StructuredOutputSuggestionType,
   SubAgentSuggestionType,
   TagsSuggestionType,
   ToolsSuggestionType,
@@ -276,6 +280,34 @@ async function resolveModelEdit(
   }
 
   return new Ok({ ...currentModel, ...modelRes.value });
+}
+
+/**
+ * @cc [owner:fabiencelier,label:product] structured-output-validated-against-saved-model
+ * A suggested structured output MUST be validated (`validateStructuredOutputChange`) against
+ * `model`, the model the new version is saved with once any model suggestion of the same batch is
+ * applied, not against the agent's current model. When validation fails, nothing is written.
+ */
+function resolveStructuredOutputEdit(
+  model: LightAgentConfigurationType["model"],
+  structuredOutput: StructuredOutputSuggestionType | undefined
+): Result<LightAgentConfigurationType["model"], ApplyAgentSuggestionsError> {
+  if (!structuredOutput) {
+    return new Ok(model);
+  }
+
+  const { responseFormat } = structuredOutput;
+  const validation = validateStructuredOutputChange({
+    modelId: model.modelId,
+    responseFormat,
+  });
+  if (validation.isErr()) {
+    return new Err(
+      new DustError("invalid_request_error", validation.error.message)
+    );
+  }
+
+  return new Ok({ ...model, responseFormat: responseFormat ?? undefined });
 }
 
 type AgentActionPayload = AgentConfigurationAssistantPayload["actions"][number];
@@ -515,6 +547,7 @@ async function resolveAgentFieldEdits(
   {
     name,
     model,
+    structuredOutput,
     description,
     scope,
     instructions,
@@ -546,7 +579,14 @@ async function resolveAgentFieldEdits(
   if (resolvedModel.isErr()) {
     return resolvedModel;
   }
-  const nextModel = resolvedModel.value;
+  const resolvedStructuredOutput = resolveStructuredOutputEdit(
+    resolvedModel.value,
+    structuredOutput
+  );
+  if (resolvedStructuredOutput.isErr()) {
+    return resolvedStructuredOutput;
+  }
+  const nextModel = resolvedStructuredOutput.value;
 
   const currentSkills = current.skills ?? [];
   const resolvedSkills = await resolveSkillsEdits(
@@ -666,6 +706,7 @@ async function resolveTagsEdit(
 function hasAgentFieldEdits({
   name,
   model,
+  structuredOutput,
   description,
   instructions,
   skills,
@@ -675,6 +716,7 @@ function hasAgentFieldEdits({
   return (
     name !== undefined ||
     model !== undefined ||
+    structuredOutput !== undefined ||
     description !== undefined ||
     (instructions?.length ?? 0) > 0 ||
     (skills?.length ?? 0) > 0 ||
