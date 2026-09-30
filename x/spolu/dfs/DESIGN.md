@@ -3,6 +3,9 @@
 Rust filesystem optimized for small files, directory traversal, and concurrent agent workloads.
 Prioritize responsiveness over retaining recent writes after a server crash.
 
+Implementation invariants are recorded as top-level code contracts in [CONTRACTS](CONTRACTS).
+See [README.md](README.md) for the current implementation scope and local development commands.
+
 ## Hypotheses
 
 - Reads and metadata lookups dominate writes.

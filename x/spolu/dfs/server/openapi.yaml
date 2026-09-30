@@ -1,0 +1,23 @@
+openapi: 3.0.3
+info:
+  title: dfs server
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      operationId: health
+      summary: Check that the HTTP server is running.
+      description: Liveness only; does not check storage or filesystem readiness.
+      security: []
+      responses:
+        "200":
+          description: The HTTP server is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
