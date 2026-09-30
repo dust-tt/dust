@@ -49,8 +49,8 @@ export function AgentInfoTab({
     !isGlobalAgent && (instructionsHtml !== null || instructions.length > 0);
 
   // The API redacts the private fields (instructions, skills, knowledge) of the agents an admin
-  // cannot read, and flags it with `isRedacted`. Only admins ever get such a response.
-  const isRedactedForAdmin = !!agentConfiguration.isRedacted;
+  // cannot read, and flags it with `canViewContent: false`. Only admins ever get such a response.
+  const isRedactedForAdmin = agentConfiguration.canViewContent === false;
 
   const { responseFormat } = agentConfiguration.model;
   const displayStructuredOutput =

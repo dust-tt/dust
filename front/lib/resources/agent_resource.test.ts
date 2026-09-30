@@ -1498,7 +1498,7 @@ describe("AgentResource", () => {
         "visible instructions"
       );
       expect(instructionsByAgent.get(helper)?.instructions).toContain("@help");
-      expect(hiddenResource.toJSON()).toMatchObject({ isRedacted: true });
+      expect(hiddenResource.toJSON()).toMatchObject({ canViewContent: false });
       expect(visibleResource.toJSON()).not.toHaveProperty("instructions");
     });
   });

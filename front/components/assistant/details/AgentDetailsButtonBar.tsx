@@ -65,9 +65,9 @@ export function AgentDetailsButtonBar({
   }
 
   // The API redacts the private fields of the agents an admin cannot read, and flags it with
-  // `isRedacted`.
+  // `canViewContent: false`.
   // When that's the case they cannnot edit/duplcate/export the agent.
-  const isRedactedForAdmin = !!agentConfiguration.isRedacted;
+  const isRedactedForAdmin = agentConfiguration.canViewContent === false;
   const canEditAgent =
     (agentConfiguration.canEdit || isAdmin(owner)) && !isRedactedForAdmin;
 
@@ -171,7 +171,7 @@ export function AgentDetailsDropdownMenu({
     return false;
   }
 
-  const isRedactedForAdmin = !!agentConfiguration.isRedacted;
+  const isRedactedForAdmin = agentConfiguration.canViewContent === false;
   const allowDeletion = agentConfiguration.canEdit || isAdmin(owner);
   const canEditAgent =
     (agentConfiguration.canEdit || isAdmin(owner)) && !isRedactedForAdmin;
