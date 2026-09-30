@@ -186,7 +186,7 @@ const AGENT_INSTRUCTIONS_ATTRIBUTES = [
 
 export type AgentVersionReference = {
   agentId: string;
-  version: number;
+  agentVersion: number;
 };
 
 // The outcome of a `bulkUpdate`: the agents whose save succeeded (`updatedAgentIds`, a change
@@ -826,7 +826,9 @@ export class AgentResource
     auth: Authenticator,
     agentIds: string[]
   ): Promise<AgentResource[]> {
-    return this.resolveByIds(auth, agentIds, { skipFetchCheck: false });
+    return this.resolveByIds(auth, agentIds, {
+      dangerouslySkipFetchCheck: false,
+    });
   }
 
   // Skips the `canFetch` drop, for callers displaying agents reached through another
@@ -846,13 +848,17 @@ export class AgentResource
     auth: Authenticator,
     agentIds: string[]
   ): Promise<AgentResource[]> {
-    return this.resolveByIds(auth, agentIds, { skipFetchCheck: true });
+    return this.resolveByIds(auth, agentIds, {
+      dangerouslySkipFetchCheck: true,
+    });
   }
 
+  // `dangerouslySkipFetchCheck` skips the `canFetch` drop, for `dangerouslyFetchByIds` only (see
+  // `agent-dangerous-fetch`).
   private static async resolveByIds(
     auth: Authenticator,
     agentIds: string[],
-    { skipFetchCheck }: { skipFetchCheck: boolean }
+    { dangerouslySkipFetchCheck }: { dangerouslySkipFetchCheck: boolean }
   ): Promise<AgentResource[]> {
     if (agentIds.length === 0) {
       return [];
@@ -864,7 +870,9 @@ export class AgentResource
 
     const [customResources, globalResources] = await Promise.all([
       this.fetchManyFromStore(auth, customAgentIds),
-      this.fetchGlobalAgents(auth, globalAgentIds, { skipFetchCheck }),
+      this.fetchGlobalAgents(auth, globalAgentIds, {
+        dangerouslySkipFetchCheck,
+      }),
     ]);
 
     const adminCanSeePrivateEntities =
@@ -876,7 +884,9 @@ export class AgentResource
           .map((resource) =>
             resource.materialize(auth, { adminCanSeePrivateEntities })
           )
-          .filter((resource) => skipFetchCheck || resource.canFetch(auth)),
+          .filter(
+            (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
+          ),
         ...globalResources,
       ].map((resource) => [resource.sId, resource])
     );
@@ -885,11 +895,15 @@ export class AgentResource
 
   // Global agents are code-defined and have no `agent`/configuration rows, so they cannot be
   // resolved by the version query; they are built from `getGlobalAgents` (which enforces workspace
-  // plan/availability) and gated by the same `canFetch` check as custom agents.
+  // plan/availability) and gated by the same `canFetch` check as custom agents, which
+  // `dangerouslySkipFetchCheck` skips for the `dangerously*` resolvers (see
+  // `agent-dangerous-fetch`).
   private static async fetchGlobalAgents(
     auth: Authenticator,
     globalAgentIds: string[],
-    { skipFetchCheck = false }: { skipFetchCheck?: boolean } = {}
+    {
+      dangerouslySkipFetchCheck = false,
+    }: { dangerouslySkipFetchCheck?: boolean } = {}
   ): Promise<AgentResource[]> {
     if (globalAgentIds.length === 0) {
       return [];
@@ -898,25 +912,28 @@ export class AgentResource
     const configurations = await getGlobalAgents(auth, globalAgentIds, "light");
     return configurations
       .map((configuration) => this.fromGlobalAgent(auth, configuration))
-      .filter((resource) => skipFetchCheck || resource.canFetch(auth));
+      .filter(
+        (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
+      );
   }
 
   /**
    * @cc [owner:tdraier,label:backend;security] fetch-pinned-versions
-   * Resolves each requested `(agentId, version)` pair to that exact configuration version, scoped to
-   * the authed workspace, whether or not it is the agent's current one. Each resource is
+   * Resolves each requested `(agentId, agentVersion)` pair to that exact configuration version,
+   * scoped to the authed workspace, whether or not it is the agent's current one. Each resource is
    * materialized for the caller as `agent-versions` requires (verbs from that version's own row,
    * `isCurrentVersion` from the pointer read together with it) and dropped when the caller cannot
    * fetch it. Results MUST follow first-occurrence input order, with at most one resource per pair,
    * omitting pairs matching no configuration. A global agent is not versioned: every pair naming it
-   * resolves to its single code-defined version, returned once, whatever `version` the pair asks for.
+   * resolves to its single code-defined version, returned once, whatever `agentVersion` the pair
+   * asks for.
    */
   static async fetchByIdsAndVersions(
     auth: Authenticator,
     agentVersions: AgentVersionReference[]
   ): Promise<AgentResource[]> {
     return this.resolveByIdsAndVersions(auth, agentVersions, {
-      skipFetchCheck: false,
+      dangerouslySkipFetchCheck: false,
     });
   }
 
@@ -928,17 +945,17 @@ export class AgentResource
     agentVersions: AgentVersionReference[]
   ): Promise<AgentResource[]> {
     return this.resolveByIdsAndVersions(auth, agentVersions, {
-      skipFetchCheck: true,
+      dangerouslySkipFetchCheck: true,
     });
   }
 
   private static async resolveByIdsAndVersions(
     auth: Authenticator,
     agentVersions: AgentVersionReference[],
-    { skipFetchCheck }: { skipFetchCheck: boolean }
+    { dangerouslySkipFetchCheck }: { dangerouslySkipFetchCheck: boolean }
   ): Promise<AgentResource[]> {
-    const referenceKey = ({ agentId, version }: AgentVersionReference) =>
-      isGlobalAgentId(agentId) ? agentId : `${agentId}:${version}`;
+    const referenceKey = ({ agentId, agentVersion }: AgentVersionReference) =>
+      isGlobalAgentId(agentId) ? agentId : `${agentId}:${agentVersion}`;
     const uniqueAgentVersions = uniqBy(agentVersions, referenceKey);
     const [globalAgentVersions, customAgentVersions] = partition(
       uniqueAgentVersions,
@@ -949,28 +966,27 @@ export class AgentResource
       customAgentVersions.length > 0
         ? this.loadConfigurationVersions(auth, {
             where: {
-              [Op.or]: customAgentVersions.map(({ agentId, version }) => ({
+              [Op.or]: customAgentVersions.map(({ agentId, agentVersion }) => ({
                 sId: agentId,
-                version,
+                version: agentVersion,
               })),
             },
+            dangerouslySkipFetchCheck,
           })
         : [],
       this.fetchGlobalAgents(
         auth,
         globalAgentVersions.map(({ agentId }) => agentId),
-        { skipFetchCheck }
+        { dangerouslySkipFetchCheck }
       ),
     ]);
 
     const resourcesByKey = new Map(
-      [
-        ...customResources.filter(
-          (resource) => skipFetchCheck || resource.canFetch(auth)
-        ),
-        ...globalResources,
-      ].map((resource) => [
-        referenceKey({ agentId: resource.sId, version: resource.version }),
+      [...customResources, ...globalResources].map((resource) => [
+        referenceKey({
+          agentId: resource.sId,
+          agentVersion: resource.version,
+        }),
         resource,
       ])
     );
@@ -1030,25 +1046,31 @@ export class AgentResource
       return AgentResource.fetchGlobalAgents(auth, [this.sId]);
     }
 
-    const versions = await AgentResource.loadConfigurationVersions(auth, {
+    return AgentResource.loadConfigurationVersions(auth, {
       where: {
         agentId: this.id,
         ...(version !== undefined ? { version } : {}),
       },
       limit,
+      dangerouslySkipFetchCheck: false,
     });
-    return versions.filter((resource) => resource.canFetch(auth));
   }
 
   // The configuration versions matching `where` in the authed workspace, newest first, materialized
-  // for the caller but not `canFetch`-filtered. One statement, so each row's agent `currentVersion`
-  // pointer is read consistently with it.
+  // for the caller. One statement, so each row's agent `currentVersion` pointer is read
+  // consistently with it. `dangerouslySkipFetchCheck` skips the `canFetch` drop, for
+  // `dangerouslyFetchByIdsAndVersions` only (see `agent-dangerous-fetch`).
   private static async loadConfigurationVersions(
     auth: Authenticator,
     {
       where,
       limit,
-    }: { where: WhereOptions<AgentConfigurationModel>; limit?: number }
+      dangerouslySkipFetchCheck,
+    }: {
+      where: WhereOptions<AgentConfigurationModel>;
+      limit?: number;
+      dangerouslySkipFetchCheck: boolean;
+    }
   ): Promise<AgentResource[]> {
     const configurations = await AgentConfigurationModel.findAll({
       attributes: { exclude: [...AGENT_INSTRUCTIONS_ATTRIBUTES] },
@@ -1071,9 +1093,13 @@ export class AgentResource
     const adminCanSeePrivateEntities =
       await this.resolveAdminCanSeePrivateEntities(auth, versions);
 
-    return versions.map((resource) =>
-      resource.materialize(auth, { adminCanSeePrivateEntities })
-    );
+    return versions
+      .map((resource) =>
+        resource.materialize(auth, { adminCanSeePrivateEntities })
+      )
+      .filter(
+        (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
+      );
   }
 
   /**
@@ -1376,9 +1402,10 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:backend;performance] agent-resource-cache
-   * The cache holds the caller-independent resource; the caller-dependent `canFetch` and
-   * `materialize` gates MUST run on every read and MUST NOT be cached. Entries have no TTL, so
-   * every write that changes or deletes an agent's cached version MUST invalidate its entry — via
+   * The cache holds the caller-independent resource; the caller-dependent gates MUST NOT be cached:
+   * `materialize` MUST run on every read, and the `canFetch` drop on every read except through the
+   * `dangerously*` resolvers (see `agent-dangerous-fetch`). Entries have no TTL, so every write
+   * that changes or deletes an agent's cached version MUST invalidate its entry — via
    * `AgentResource.invalidateCache` here, or the leaf `invalidateAgentResourceCache`/
    * `invalidateAgentResourceCaches` helpers that lower-level write and deletion paths can import
    * without forming a cycle back to this resource.

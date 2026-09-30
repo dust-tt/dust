@@ -2661,7 +2661,7 @@ describe("AgentResource", () => {
   });
 
   describe("pinned versions", () => {
-    it("resolves each (agentId, version) pair in first-occurrence order, once", async () => {
+    it("resolves each (agentId, agentVersion) pair in first-occurrence order, once", async () => {
       const { authenticator } = testContext;
       const first = await AgentConfigurationFactory.createTestAgent(
         authenticator,
@@ -2682,12 +2682,12 @@ describe("AgentResource", () => {
       const resources = await AgentResource.fetchByIdsAndVersions(
         authenticator,
         [
-          { agentId: first.sId, version: first.version + 1 },
-          { agentId: second.sId, version: second.version },
-          { agentId: first.sId, version: first.version },
-          { agentId: first.sId, version: first.version + 1 },
-          { agentId: first.sId, version: first.version + 2 },
-          { agentId: "missing-agent", version: 0 },
+          { agentId: first.sId, agentVersion: first.version + 1 },
+          { agentId: second.sId, agentVersion: second.version },
+          { agentId: first.sId, agentVersion: first.version },
+          { agentId: first.sId, agentVersion: first.version + 1 },
+          { agentId: first.sId, agentVersion: first.version + 2 },
+          { agentId: "missing-agent", agentVersion: 0 },
         ]
       );
 
@@ -2708,8 +2708,8 @@ describe("AgentResource", () => {
       const resources = await AgentResource.fetchByIdsAndVersions(
         testContext.authenticator,
         [
-          { agentId: GLOBAL_AGENTS_SID.HELPER, version: 0 },
-          { agentId: GLOBAL_AGENTS_SID.HELPER, version: 42 },
+          { agentId: GLOBAL_AGENTS_SID.HELPER, agentVersion: 0 },
+          { agentId: GLOBAL_AGENTS_SID.HELPER, agentVersion: 42 },
         ]
       );
 
@@ -2727,7 +2727,7 @@ describe("AgentResource", () => {
 
       expect(
         await AgentResource.fetchByIdsAndVersions(testContext.authenticator, [
-          { agentId: agent.sId, version: agent.version },
+          { agentId: agent.sId, agentVersion: agent.version },
         ])
       ).toEqual([]);
     });
@@ -2744,7 +2744,7 @@ describe("AgentResource", () => {
         workspace,
         "user"
       );
-      const reference = { agentId: agent.sId, version: agent.version };
+      const reference = { agentId: agent.sId, agentVersion: agent.version };
 
       expect(await AgentResource.fetchByIds(memberAuth, [agent.sId])).toEqual(
         []
@@ -2787,7 +2787,7 @@ describe("AgentResource", () => {
       expect(
         await AgentResource.dangerouslyFetchByIdsAndVersions(
           testContext.authenticator,
-          [{ agentId: agent.sId, version: agent.version }]
+          [{ agentId: agent.sId, agentVersion: agent.version }]
         )
       ).toEqual([]);
     });
