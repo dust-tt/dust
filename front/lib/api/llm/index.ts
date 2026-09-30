@@ -17,7 +17,6 @@ import type {
   Where,
 } from "@app/lib/llms/types/filter";
 import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/providers/fireworks/constants";
-import type { Host } from "@app/lib/model_constructors/types/hosts";
 import {
   AGENT_PLATFORM_HOST,
   GOOGLE_AI_STUDIO_HOST,
@@ -116,36 +115,18 @@ const MAKER_ID_TO_LAB: Record<WhitelistableModelMakerIdType, Lab | null> = {
   thinking_machines: "thinking_machines",
 };
 
-const MAKER_ID_TO_HOST: Record<WhitelistableModelMakerIdType, Host | null> = {
-  openai: null,
-  anthropic: null,
-  mistral: "mistral",
-  google_ai_studio: null,
-  deepseek: null,
-  xai: null,
-  noop: null,
-  auto: null,
-  auto_fast: null,
-  auto_complex: null,
-  zai: null,
-  moonshot: null,
-  minimax: null,
-  thinking_machines: null,
-};
-
-// Whitelisting "mistral" also matches on host, so every endpoint Mistral serves
-// surfaces; every other maker id maps to a lab only.
-function getLabAndHostFilter(
+/**
+ * @cc [owner:pmilliotte,label:security;product] endpoints-gated-on-lab-only
+ * The whitelist MUST select endpoints by `lab` alone: an endpoint's `host` MUST
+ * NOT grant or deny it. GLM-5.3 is gated on Z.ai both on Fireworks and on
+ * Mistral in the EU.
+ */
+function getLabFilter(
   makerIds: WhitelistableModelMakerIdType[]
 ): Where<EndpointConfig> {
-  const labFilter: Where<EndpointConfig> = {
+  return {
     lab: { in: compact(makerIds.map((id) => MAKER_ID_TO_LAB[id])) },
   };
-  const hostFilter: Where<EndpointConfig> = {
-    host: { in: compact(makerIds.map((id) => MAKER_ID_TO_HOST[id])) },
-  };
-
-  return { or: [labFilter, hostFilter] };
 }
 
 // Temporary helper while we have both systems
@@ -181,7 +162,7 @@ export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   const makerIds = getWhitelistedMakerIds(auth);
 
   return {
-    ...getLabAndHostFilter(makerIds),
+    ...getLabFilter(makerIds),
     region: getRegionFilter(auth),
     // Conversely we route all non-byok gemini requests to agent platform.
     ...(byok

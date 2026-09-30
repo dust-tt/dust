@@ -21,6 +21,7 @@ import {
 import { ProviderCredentialFactory } from "@app/tests/utils/ProviderCredentialFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
 import compact from "lodash/compact";
 import { describe, expect, it } from "vitest";
@@ -217,6 +218,22 @@ describe("getWorkspaceFilter", () => {
       `eu/${MISTRAL_HOST}`,
       `global/${FIREWORKS_HOST}`,
     ]);
+  });
+
+  it("gates GLM-5.3 on Z.ai on every host, whether Mistral is whitelisted or not", async () => {
+    const glmEndpointsFor = async (
+      whiteListedProviders: WhitelistableModelMakerIdType[]
+    ) => {
+      const workspace = await WorkspaceFactory.basic({ whiteListedProviders });
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      return getStreamEndpoints(await getWorkspaceConfig(auth), {
+        ...getWorkspaceFilter(auth),
+        model: { eq: GLM_5P3 },
+      });
+    };
+
+    expect(await glmEndpointsFor(["zai"])).toHaveLength(2);
+    expect(await glmEndpointsFor(["mistral"])).toEqual([]);
   });
 });
 
