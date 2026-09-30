@@ -286,6 +286,96 @@ paths:
                 $ref: '#/components/schemas/ObjectAttributes'
         default:
           $ref: '#/components/responses/ApiError'
+  /objects/rename:
+    post:
+      operationId: renameObject
+      summary: Rename or move a file or directory, preserving its ID.
+      description: |
+        Requires session access to the object, its current parent, and the destination directory.
+        A direct object grant does not authorize changing a hidden parent's entries. Authorize
+        under the publication lock before comparing the required source metadata revision.
+        parent_id/name identify the destination. By default, an occupied name returns already_exists
+        (409). With replace true, replace the current destination only file-for-file or
+        directory-for-empty-directory. File over directory returns is_directory (400); directory
+        over file returns not_directory (400); nonempty directory replacement returns not_empty (409).
+        Roots cannot move (forbidden, 403). Moving a directory into itself or a descendant returns
+        invalid_input (400). Same parent/name succeeds without changes or an event after checking
+        the expected revision; stale revisions always return conflict (409).
+        Preserve source ID, content, explicit grants, and descendant records. Update source
+        parent/name/revision/ctime and both parents' revision/mtime/ctime atomically with child
+        entries, replaced-object deletion, both grant-index removals, and the event. One parent is
+        updated once for same-directory renames. Inherited access changes through current ancestry.
+        Blobs are retained. Await durability before acknowledging a mutation; failed/disconnected
+        requests may have committed. Re-read state before retrying; replacement has no destination
+        revision precondition and applies to the entry current at publication.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenameRequest'
+      responses:
+        "200":
+          description: Source attributes after rename or a validated no-op; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectAttributes'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/unlink:
+    post:
+      operationId: unlinkFile
+      summary: Remove a file and its explicit grants.
+      description: |
+        Requires current session access to the object and its containing directory; a direct file
+        grant alone cannot change a hidden parent's entries. Authorize under the publication lock
+        before checking expected_metadata_revision. Stale revisions return conflict (409);
+        directories return is_directory (400), while roots return forbidden (403).
+        Delete metadata, the child entry, and both directions of every explicit grant attachment
+        atomically with the parent revision/mtime/ctime and event. Retain blobs for snapshots/recovery.
+        Acknowledge only after durability. Repeating after deletion returns not_found (404).
+        Open-handle behavior is deferred to file I/O; there are no file handles yet.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveRequest'
+      responses:
+        "204":
+          description: File removal persisted; no body, Cache-Control is no-store.
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/rmdir:
+    post:
+      operationId: removeDirectory
+      summary: Remove an empty directory and its explicit grants.
+      description: |
+        Requires current session access to the object and its containing directory. Authorize
+        under the publication lock before checking revision, type, and emptiness. Stale revisions
+        return conflict (409); files return not_directory (400), nonempty directories return
+        not_empty (409), and roots return forbidden (403). Never remove recursively.
+        Delete metadata, the child entry, and both explicit grant indexes atomically with parent
+        revision/mtime/ctime and the event. Acknowledge after durability; repeating returns not_found.
+        A failed/disconnected mutation may have committed; inspect state before retrying.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveRequest'
+      responses:
+        "204":
+          description: Directory removal persisted; no body, Cache-Control is no-store.
+        default:
+          $ref: '#/components/responses/ApiError'
   /objects/grants/list:
     post:
       operationId: listObjectGrants
@@ -366,8 +456,9 @@ components:
   responses:
     ApiError:
       description: |
-        Shared error envelope. Requests may fail with invalid_input/name_too_long/not_directory (400), unauthenticated (401),
-        not_found (404), conflict/already_exists (409), internal (500), unsupported (501), unavailable (503), or
+        Shared error envelope. Requests may fail with invalid_input/name_too_long/not_directory/is_directory (400),
+        unauthenticated (401), forbidden (403), not_found (404), conflict/already_exists/not_empty (409),
+        internal (500), unsupported (501), unavailable (503), or
         capacity_exhausted (507). Credentials and resource/storage details are never included.
       headers:
         Cache-Control:
@@ -583,6 +674,36 @@ components:
             Patch with nonempty UTF-8 keys without NUL. Standard padded base64 replaces a value,
             null removes a key (absent keys are harmless), and omitted keys are unchanged.
             Resulting total of key bytes plus decoded value bytes must fit 32 KiB (507 otherwise).
+    RenameRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id, expected_metadata_revision, parent_id, name]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        expected_metadata_revision:
+          type: integer
+          minimum: 0
+          description: Required unsigned 64-bit source object revision, including for a no-op.
+        parent_id:
+          $ref: '#/components/schemas/ObjectId'
+        name:
+          $ref: '#/components/schemas/EntryName'
+        replace:
+          type: boolean
+          default: false
+          description: Replace the current destination only for matching kinds and an empty target directory.
+    RemoveRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id, expected_metadata_revision]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        expected_metadata_revision:
+          type: integer
+          minimum: 0
+          description: Required unsigned 64-bit object revision; the current containing directory must be authorized.
     ObjectAttributes:
       type: object
       additionalProperties: false
@@ -738,8 +859,8 @@ components:
             code:
               type: string
               description: |
-                invalid_input, name_too_long, and not_directory (400), unauthenticated (401), forbidden (403),
-                not_found (404), method_not_allowed (405), conflict/already_exists (409), internal (500),
+                invalid_input, name_too_long, not_directory, is_directory (400), unauthenticated (401), forbidden (403),
+                not_found (404), method_not_allowed (405), conflict/already_exists/not_empty (409), internal (500),
                 unsupported (501), unavailable (503), capacity_exhausted (507).
                 Unauthenticated responses include WWW-Authenticate: Bearer.
                 Clients branch on codes, not messages, and must handle unknown codes.
@@ -750,6 +871,8 @@ components:
                 - forbidden
                 - not_found
                 - not_directory
+                - is_directory
+                - not_empty
                 - method_not_allowed
                 - conflict
                 - already_exists

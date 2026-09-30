@@ -150,6 +150,48 @@ pub(crate) async fn exercise_sessions(
         .await?;
         ensure!(status == StatusCode::OK && updated["metadata_revision"] == revision + 1);
     }
+    let (status, renamed) = call(
+        &app,
+        "POST",
+        "/objects/rename",
+        Some(writer_key),
+        json!({"object_id":directory["object_id"],"expected_metadata_revision":3,
+            "parent_id":root_id.to_string(),"name":"renamed directory"}),
+    )
+    .await?;
+    ensure!(status == StatusCode::OK && renamed["metadata_revision"] == 4);
+    let (status, temporary) = call(
+        &app,
+        "POST",
+        "/objects/mkdir",
+        Some(writer_key),
+        json!({"parent_id":root_id.to_string(),"name":"removed directory"}),
+    )
+    .await?;
+    ensure!(status == StatusCode::CREATED);
+    ensure!(
+        call(
+            &app,
+            "POST",
+            "/objects/grants/update",
+            Some(workspace_key),
+            json!({"workspace_id":workspace.as_str(),"object_id":temporary["object_id"],
+            "expected_metadata_revision":0,"grants":{"deleted":true}}),
+        )
+        .await?
+        .0 == StatusCode::OK
+    );
+    ensure!(
+        call(
+            &app,
+            "POST",
+            "/objects/rmdir",
+            Some(writer_key),
+            json!({"object_id":temporary["object_id"],"expected_metadata_revision":1}),
+        )
+        .await?
+        .0 == StatusCode::NO_CONTENT
+    );
     let (_, persisted) = call(
         &app,
         "POST",
@@ -256,7 +298,7 @@ pub(crate) async fn exercise_sessions(
     ensure!(
         status == StatusCode::OK
             && listing["entries"]
-                == json!([{ "name":"persisted directory", "attributes":persisted }])
+                == json!([{ "name":"renamed directory", "attributes":persisted }])
             && listing["next_after"].is_null()
     );
     let (status, recovered) = call(
@@ -279,9 +321,31 @@ pub(crate) async fn exercise_sessions(
     ensure!(
         status == StatusCode::OK && grants["grants"] == json!(["arbitrary/\u{0000}é", "u:alice"])
     );
-    ensure!(grants["metadata_revision"] == 3 && grants["next_after"].is_null());
+    ensure!(grants["metadata_revision"] == 4 && grants["next_after"].is_null());
     let recovered_view = storage.workspace(&workspace)?.read_view().await?;
     let id = text(&persisted, "object_id")?.parse()?;
+    let removed_id = text(&temporary, "object_id")?.parse()?;
+    ensure!(recovered_view.object(removed_id).await?.is_none());
+    ensure!(
+        recovered_view
+            .grants(removed_id, None, 10)
+            .await?
+            .is_empty()
+    );
+    ensure!(
+        recovered_view
+            .granted_objects("deleted", None, 10)
+            .await?
+            .is_empty()
+    );
+    for name in ["persisted directory", "removed directory"] {
+        ensure!(
+            recovered_view
+                .child(root_id, &name.parse()?)
+                .await?
+                .is_none()
+        );
+    }
     ensure!(recovered_view.granted_objects("u:alice", None, 10).await? == [id]);
     ensure!(
         recovered_view

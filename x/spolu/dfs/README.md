@@ -149,6 +149,28 @@ nothing and returns `not_found` before checking name collisions or revision conf
 A failed/disconnected request can have committed: inspect the name or attributes before retrying.
 Per-object concurrency and a broader retry protocol arrive in later increments.
 
+## Rename and removal
+
+These session endpoints require access to the object and its current containing directory. Rename
+also requires access to the destination directory. A directly shared child cannot mutate its hidden
+parent's entries. All require the source's `expected_metadata_revision`; stale values return `conflict`.
+
+| Request | JSON body | Result |
+| --- | --- | --- |
+| `POST /objects/rename` | `{ "object_id": "<uuid>", "expected_metadata_revision": 0, "parent_id": "<destination uuid>", "name": "new name", "replace": false }` | Source attributes; 200 |
+| `POST /objects/unlink` | `{ "object_id": "<uuid>", "expected_metadata_revision": 0 }` | Remove file; 204 |
+| `POST /objects/rmdir` | `{ "object_id": "<uuid>", "expected_metadata_revision": 0 }` | Remove empty directory; 204 |
+
+Rename preserves IDs, content, explicit grants, and descendants. Existing destinations return
+`already_exists` unless `replace: true`: files may replace files, directories may replace empty
+directories. Replacement targets the entry current at publication. Same parent/name is a no-op after
+revision validation. Roots return `forbidden`; moves into the source subtree return `invalid_input`.
+Wrong kinds return `is_directory`/`not_directory`; nonempty removal/replacement returns `not_empty`.
+
+Each change atomically updates child entries, object/parent revisions and times, and events, deleting
+both grant indexes for removed/replaced objects, then awaits durability. Their blobs remain for
+snapshots/recovery; open-handle semantics arrive with file I/O. Repeated removal returns `not_found`.
+
 ## Grant administration
 
 Use the **workspace key**, with `workspace_id` and `object_id` in the JSON body. Session keys cannot

@@ -1,4 +1,5 @@
 mod authorization;
+mod entries;
 mod grants;
 mod mutations;
 
@@ -119,6 +120,19 @@ impl Fixture {
 
     async fn request(&self, path: &str, body: Value) -> Result<(StatusCode, Value)> {
         call(&self.app, "POST", path, Some(&self.key), body).await
+    }
+
+    async fn session_key(&self, grants: &[&str]) -> Result<String> {
+        let (status, session) = call(
+            &self.app,
+            "POST",
+            "/sessions",
+            Some(&self.workspace_key),
+            json!({"workspace_id":self.workspace.as_str(),"grants":grants}),
+        )
+        .await?;
+        ensure!(status == StatusCode::CREATED);
+        Ok(text(&session, "session_key")?.to_owned())
     }
 
     async fn close(self) -> Result<()> {

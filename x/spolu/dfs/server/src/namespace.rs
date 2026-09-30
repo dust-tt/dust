@@ -4,6 +4,9 @@ pub(crate) use grants::{list_grants, update_grants};
 mod write;
 pub(crate) use write::{CreateDirectory, MetadataUpdate, mkdir, update};
 
+mod entries;
+pub(crate) use entries::{RemovalKind, RemoveObject, RenameObject, remove, rename};
+
 use std::collections::{BTreeSet, HashSet};
 
 use crate::{

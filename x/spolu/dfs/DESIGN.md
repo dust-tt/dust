@@ -138,6 +138,8 @@ Error responses carry `Cache-Control: no-store`; authentication failures also ca
 | `forbidden` | 403 | `EACCES` |
 | `not_found` | 404 | `ENOENT` |
 | `not_directory` | 400 | `ENOTDIR` |
+| `is_directory` | 400 | `EISDIR` |
+| `not_empty` | 409 | `ENOTEMPTY` |
 | `method_not_allowed` | 405 | `EOPNOTSUPP` |
 | `conflict` | 409 | `EAGAIN` for stale revisions. |
 | `already_exists` | 409 | `EEXIST` |
@@ -146,10 +148,10 @@ Error responses carry `Cache-Control: no-store`; authentication failures also ca
 | `unsupported` | 501 | `EOPNOTSUPP` |
 | `internal` | 500 | `EIO` |
 
-Add distinct codes for filesystem conditions such as nonempty directories with
-their endpoints; clients must not infer errno from message text or HTTP status alone. Unknown codes
-map to `EIO`. A failure or disconnect does not prove a mutation was uncommitted: do not blindly
-replay writes; define safe retries with the mutation protocol.
+Add distinct codes for filesystem conditions with their endpoints; clients must not infer errno
+from message text or HTTP status alone. Unknown codes map to `EIO`. A failure or disconnect does not
+prove a mutation was uncommitted: do not blindly replay writes; define safe retries with the mutation
+protocol.
 
 Object reads use session-authenticated `POST /objects/stat`, `/objects/lookup`, and `/objects/list`;
 JSON bodies keep names/cursors out of URLs. Each request uses one SlateDB snapshot for inherited
@@ -167,6 +169,19 @@ publication share a lock until per-object concurrency is implemented; WAL waits 
 Take mutation snapshots after acquiring the lock: queued operations must observe intervening moves
 and revocations. Authorize before checking collisions/revisions; denied mutations publish nothing.
 Early development uses one metadata format; incompatible layout changes require a fresh store.
+
+`POST /objects/rename` takes the source ID/revision and destination `parent_id`/`name`. Require access
+to the source and both containing directories; direct sharing never grants authority over a hidden
+parent. Reject roots and moves into the source subtree. Default to no replacement; `replace: true`
+allows file-for-file or directory-for-empty-directory replacement of the current destination.
+Same parent/name is a no-op after revision validation. Preserve source ID, content, explicit grants,
+and descendants; update source ctime/revision and each changed parent's mtime/ctime/revision once.
+
+`POST /objects/unlink` and `/objects/rmdir` take object ID/revision and require current parent access.
+Unlink accepts files; rmdir accepts empty directories; neither removes roots. Namespace changes,
+deleted/replaced objects, both grant-index removals, and events persist atomically under the same
+authorization/publication guard. Retain blobs until safe reclamation exists. Inherited access follows
+the new ancestry immediately; ambiguous failures require rereading state before retrying.
 
 ## Workspace creation, sessions, and virtual folders
 

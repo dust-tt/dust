@@ -30,6 +30,10 @@ pub enum ApiError {
     AlreadyExists,
     #[error("Not a directory.")]
     NotDirectory,
+    #[error("Is a directory.")]
+    IsDirectory,
+    #[error("Directory not empty.")]
+    NotEmpty,
     #[error("HTTP method not allowed.")]
     MethodNotAllowed,
     #[error("Conflicting state.")]
@@ -53,9 +57,9 @@ impl ApiError {
             Self::Unauthenticated => StatusCode::UNAUTHORIZED,
             Self::Forbidden => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
-            Self::NotDirectory => StatusCode::BAD_REQUEST,
+            Self::NotDirectory | Self::IsDirectory => StatusCode::BAD_REQUEST,
             Self::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
-            Self::Conflict | Self::AlreadyExists => StatusCode::CONFLICT,
+            Self::Conflict | Self::AlreadyExists | Self::NotEmpty => StatusCode::CONFLICT,
             Self::CapacityExhausted => StatusCode::INSUFFICIENT_STORAGE,
             Self::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::Unsupported => StatusCode::NOT_IMPLEMENTED,
@@ -124,6 +128,8 @@ mod tests {
             (ApiError::Forbidden, 403, "forbidden"),
             (ApiError::NotFound, 404, "not_found"),
             (ApiError::NotDirectory, 400, "not_directory"),
+            (ApiError::IsDirectory, 400, "is_directory"),
+            (ApiError::NotEmpty, 409, "not_empty"),
             (ApiError::MethodNotAllowed, 405, "method_not_allowed"),
             (ApiError::Conflict, 409, "conflict"),
             (ApiError::AlreadyExists, 409, "already_exists"),

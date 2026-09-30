@@ -104,21 +104,22 @@ restart while old session keys fail.
   workspace-key-authenticated listing and attachment/revocation APIs.
 - [x] Resolve effective grants through current ancestors and authorize every operation against a
   consistent view. Do not cache dfs metadata or authorization decisions yet.
-- [ ] Implement rename/move, unlink, and directory removal, including collision checks, cycle
+- [x] Implement rename/move, unlink, and directory removal, including collision checks, cycle
   prevention, and nonempty-directory errors. Specify replacement behavior explicitly.
 - [ ] Add per-object concurrency control without holding a file's write lock across unrelated files.
 
 Reads enforce current inherited grants within one snapshot per request. Listing uses exclusive name
 cursors and fresh authorization per page; concurrent edits can require restarting the listing.
-Mkdir/metadata updates authorize under the shared publication lock; grant administration verifies
+Namespace mutations authorize under the shared publication lock; grant administration verifies
 workspace authority and checks object/revision under that lock. All release it before the WAL wait.
 Metadata and grant updates require the expected revision. Authorization tests cover grant unions,
 subtree moves without descendant rewrites, and queued mutations observing revocations before
 publication; denied operations leave no changes or events. Future endpoints must reuse these
-boundaries; moves/removal APIs and per-object concurrency remain above. Local interruption tests
-verify atomic recovery; the GCS fixture verifies mkdir, metadata updates, and both grant indexes
-after reopening. Grant patches update explicit attachments only; revocation cannot override
-inherited access.
+boundaries; per-object concurrency remains above. Rename requires both parents; replacement is opt-in
+for files or empty directories. Unlink/rmdir remove both grant indexes; blobs remain for recovery.
+Local interruption tests verify atomic recovery; the GCS fixture verifies mkdir, metadata updates,
+renames, removals, and both grant indexes after reopening. Grant patches update explicit attachments
+only; revocation cannot override inherited access.
 
 **Done when:** sessions can traverse authorized persisted trees; moves and grant changes immediately
 affect access, and failed mutations leave namespace and indexes unchanged.

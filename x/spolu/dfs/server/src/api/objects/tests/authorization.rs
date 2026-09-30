@@ -111,38 +111,26 @@ async fn moving_an_ancestor_reauthorizes_all_operations_without_rewriting_descen
         .await?;
     ensure!(status == StatusCode::OK && page["next_after"] == "A.txt");
 
-    // Publish a valid move through storage until the move endpoint is implemented in 4.5.
+    let owner_key = f.session_key(&["owner"]).await?;
+    let (status, moved) = call(
+        &f.app,
+        "POST",
+        "/objects/rename",
+        Some(&owner_key),
+        json!({"object_id":f.shared.id.to_string(),"expected_metadata_revision":1,
+            "parent_id":f.root.to_string(),"name":"shared-subtree"}),
+    )
+    .await?;
+    ensure!(status == StatusCode::OK && moved["metadata_revision"] == 2);
     let scoped = f.storage.workspace(&f.workspace)?;
-    let writer = scoped.begin_metadata_write().await;
-    let view = writer.read_view().await?;
-    let mut moved = view
-        .object(f.shared.id)
+    let sequence = scoped
+        .read_view()
         .await?
-        .context("shared directory")?;
-    let old_link = moved.parent.clone().context("parent link")?;
-    moved.parent = Some(ParentLink {
-        parent_id: f.root,
-        name: old_link.name.clone(),
-    });
-    moved.metadata_revision = moved.metadata_revision.next()?;
-    let now = Timestamp::now()?;
-    moved.posix.ctime = now;
-    let mut mutations = vec![
-        MetadataMutation::DeleteChild {
-            parent_id: old_link.parent_id,
-            name: old_link.name,
-        },
-        MetadataMutation::PutChild(moved.directory_entry().context("moved link")?),
-        MetadataMutation::PutObject(moved.into()),
-    ];
-    for id in [f.private.id, f.root] {
-        let mut parent = view.object(id).await?.context("parent directory")?;
-        parent.metadata_revision = parent.metadata_revision.next()?;
-        parent.posix.mtime = now;
-        parent.posix.ctime = now;
-        mutations.push(MetadataMutation::PutObject(parent.into()));
-    }
-    let sequence = writer.commit(mutations).await?;
+        .changes(0, 100)
+        .await?
+        .last()
+        .context("event")?
+        .sequence;
     for (route, body) in [
         (
             "/objects/stat",
@@ -164,6 +152,19 @@ async fn moving_an_ancestor_reauthorizes_all_operations_without_rewriting_descen
             "/objects/update",
             json!({"object_id":f.files[0].id.to_string(),"expected_metadata_revision":999,"mode":0}),
         ),
+        (
+            "/objects/rename",
+            json!({"object_id":f.files[0].id.to_string(),"expected_metadata_revision":0,
+                "parent_id":f.shared.id.to_string(),"name":"changed"}),
+        ),
+        (
+            "/objects/unlink",
+            json!({"object_id":f.files[0].id.to_string(),"expected_metadata_revision":0}),
+        ),
+        (
+            "/objects/rmdir",
+            json!({"object_id":f.shared.id.to_string(),"expected_metadata_revision":2}),
+        ),
     ] {
         // Authorization precedes state-dependent errors, including conflicts and collisions.
         ensure!(
@@ -179,7 +180,6 @@ async fn moving_an_ancestor_reauthorizes_all_operations_without_rewriting_descen
     }
     ensure!(current.changes(sequence, 10).await?.is_empty());
     drop(current);
-    drop(view);
     drop(in_flight);
     f.close().await
 }
@@ -187,6 +187,13 @@ async fn moving_an_ancestor_reauthorizes_all_operations_without_rewriting_descen
 #[tokio::test]
 async fn queued_mutations_authorize_after_revocation_and_leave_no_effects() -> Result<()> {
     let f = Fixture::new().await?;
+    let (status, empty) = f
+        .request(
+            "/objects/mkdir",
+            json!({"parent_id":f.shared.id.to_string(),"name":"empty"}),
+        )
+        .await?;
+    ensure!(status == StatusCode::CREATED);
     let scoped = f.storage.workspace(&f.workspace)?;
     let writer = scoped.begin_metadata_write().await;
     let view = writer.read_view().await?;
@@ -206,9 +213,31 @@ async fn queued_mutations_authorize_after_revocation_and_leave_no_effects() -> R
             "/objects/update",
             json!({"object_id":f.files[0].id.to_string(),"expected_metadata_revision":0,"mode":0}),
         ));
-        // Start both HTTP requests while publication is locked; neither may finish yet.
+        let mut rename = Box::pin(f.request(
+            "/objects/rename",
+            json!({
+                "object_id":f.files[0].id.to_string(),"expected_metadata_revision":0,
+                "parent_id":f.shared.id.to_string(),"name":"renamed",
+            }),
+        ));
+        let mut unlink = Box::pin(f.request(
+            "/objects/unlink",
+            json!({
+                "object_id":f.files[1].id.to_string(),"expected_metadata_revision":0,
+            }),
+        ));
+        let mut rmdir = Box::pin(f.request(
+            "/objects/rmdir",
+            json!({
+                "object_id":empty["object_id"],"expected_metadata_revision":0,
+            }),
+        ));
+        // Start the HTTP requests while publication is locked; none may finish yet.
         ensure!(futures::poll!(mkdir.as_mut()).is_pending());
         ensure!(futures::poll!(update.as_mut()).is_pending());
+        ensure!(futures::poll!(rename.as_mut()).is_pending());
+        ensure!(futures::poll!(unlink.as_mut()).is_pending());
+        ensure!(futures::poll!(rmdir.as_mut()).is_pending());
         let sequence = writer
             .commit(vec![
                 MetadataMutation::PutObject(revoked.clone().into()),
@@ -221,6 +250,9 @@ async fn queued_mutations_authorize_after_revocation_and_leave_no_effects() -> R
             .await?;
         ensure!(mkdir.await?.0 == StatusCode::NOT_FOUND);
         ensure!(update.await?.0 == StatusCode::NOT_FOUND);
+        ensure!(rename.await?.0 == StatusCode::NOT_FOUND);
+        ensure!(unlink.await?.0 == StatusCode::NOT_FOUND);
+        ensure!(rmdir.await?.0 == StatusCode::NOT_FOUND);
         Ok::<_, anyhow::Error>(sequence)
     })
     .await??;
@@ -234,6 +266,13 @@ async fn queued_mutations_authorize_after_revocation_and_leave_no_effects() -> R
     );
     ensure!(current.object(f.shared.id).await? == Some(revoked));
     ensure!(current.object(f.files[0].id).await? == Some(f.files[0].clone()));
+    ensure!(current.object(f.files[1].id).await? == Some(f.files[1].clone()));
+    ensure!(
+        current
+            .object(text(&empty, "object_id")?.parse()?)
+            .await?
+            .is_some()
+    );
     ensure!(current.grants(f.shared.id, None, 10).await?.is_empty());
     ensure!(
         current

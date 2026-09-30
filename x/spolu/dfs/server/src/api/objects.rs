@@ -268,6 +268,88 @@ pub(super) async fn update(
     Ok(no_store(Json(ObjectAttributes::from(object))))
 }
 
+/// @swaggerschema RenameRequest in server/openapi.yaml.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RenameRequest {
+    object_id: String,
+    expected_metadata_revision: u64,
+    parent_id: String,
+    name: String,
+    #[serde(default)]
+    replace: bool,
+}
+
+/// @swaggerschema RemoveRequest in server/openapi.yaml.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RemoveRequest {
+    object_id: String,
+    expected_metadata_revision: u64,
+}
+
+/// @swagger See POST /objects/rename in server/openapi.yaml.
+pub(super) async fn rename(
+    State(state): State<ApiState>,
+    AuthenticatedSession(session): AuthenticatedSession,
+    request: Request,
+) -> Result<Response, ApiError> {
+    let body: RenameRequest = json_body(request, &state).await?;
+    let object = namespace::rename(
+        state.storage()?,
+        &session.workspace,
+        &session.grants,
+        namespace::RenameObject {
+            object_id: object_id(&body.object_id)?,
+            expected_metadata_revision: body.expected_metadata_revision,
+            parent_id: object_id(&body.parent_id)?,
+            name: EntryName::new(body.name)?,
+            replace: body.replace,
+        },
+    )
+    .await?;
+    Ok(no_store(Json(ObjectAttributes::from(object))))
+}
+
+/// @swagger See POST /objects/unlink in server/openapi.yaml.
+pub(super) async fn unlink(
+    State(state): State<ApiState>,
+    session: AuthenticatedSession,
+    request: Request,
+) -> Result<Response, ApiError> {
+    remove(&state, session, request, namespace::RemovalKind::File).await
+}
+
+/// @swagger See POST /objects/rmdir in server/openapi.yaml.
+pub(super) async fn rmdir(
+    State(state): State<ApiState>,
+    session: AuthenticatedSession,
+    request: Request,
+) -> Result<Response, ApiError> {
+    remove(&state, session, request, namespace::RemovalKind::Directory).await
+}
+
+async fn remove(
+    state: &ApiState,
+    AuthenticatedSession(session): AuthenticatedSession,
+    request: Request,
+    kind: namespace::RemovalKind,
+) -> Result<Response, ApiError> {
+    let body: RemoveRequest = json_body(request, state).await?;
+    namespace::remove(
+        state.storage()?,
+        &session.workspace,
+        &session.grants,
+        namespace::RemoveObject {
+            object_id: object_id(&body.object_id)?,
+            expected_metadata_revision: body.expected_metadata_revision,
+        },
+        kind,
+    )
+    .await?;
+    Ok(no_store(StatusCode::NO_CONTENT))
+}
+
 pub(super) fn object_id(value: &str) -> Result<ObjectId, ApiError> {
     value.parse().map_err(|_| ApiError::InvalidInput)
 }
