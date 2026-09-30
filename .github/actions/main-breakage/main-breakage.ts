@@ -7,6 +7,7 @@ type WorkflowRun = {
   run_number: number;
   run_attempt: number;
   workflow_id: number;
+  created_at: string;
   name: string | null;
   conclusion: string | null;
   head_sha: string;
@@ -30,6 +31,7 @@ type BreakageOptions = {
           params: Repository & {
             workflow_id: number;
             branch: string;
+            created: string;
             per_page: number;
           }
         ): Promise<{
@@ -37,6 +39,7 @@ type BreakageOptions = {
             workflow_runs: Array<{
               id: number;
               run_number: number;
+              created_at: string;
               conclusion: string | null;
             }>;
           };
@@ -128,8 +131,9 @@ function isSignal(conclusion: string | null, jobs: Job[]): boolean {
   }
 }
 
-// How far back the run history search can see; the run-ordering contract depends on this value.
+// How far back the run history search can see; the run-ordering contract depends on these values.
 const RUN_LOOKBACK = 100;
+const RUN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 // One page holds every job of a run for the workflows we watch.
 const JOBS_PER_PAGE = 100;
 
@@ -189,8 +193,9 @@ type PreviousState =
  * @cc [label:product] main-breakage-run-ordering
  * Runs complete out of order: a completed signal run newer than the current one MUST silence it.
  * Otherwise, unless a previous attempt of the current run supplies the comparison state, it is
- * the newest older signal run within the 100 most recent runs. A signal past that
- * window is invisible by design; its transition MUST be dropped silently, never guessed.
+ * the newest older signal run within the 100 most recent runs, created at most 7 days before
+ * the current one. A signal past that window is invisible by design; its transition MUST be
+ * dropped silently, never guessed.
  */
 /**
  * @cc [label:product] main-breakage-reruns
@@ -203,17 +208,23 @@ async function getPreviousState({
   context,
 }: Pick<BreakageOptions, "github" | "context">): Promise<PreviousState> {
   const run = context.payload.workflow_run;
+  const oldestAllowed = Date.parse(run.created_at) - RUN_MAX_AGE_MS;
   const { data } = await github.rest.actions.listWorkflowRuns({
     ...context.repo,
     workflow_id: run.workflow_id,
     branch: "main",
     // No status filter: GitHub serves inconsistent, sometimes weeks-old pages with it, while
-    // in-progress runs are dropped below by their missing conclusion anyway.
+    // in-progress runs are dropped below by their missing conclusion anyway. A creation-date
+    // filter is reported to avoid those stale pages.
+    created: `>=${new Date(oldestAllowed).toISOString()}`,
     per_page: RUN_LOOKBACK,
   });
+  // The server-side date filter is not trusted alone: an old failure served anyway must not pass
+  // for the previous state.
   const completed = data.workflow_runs.filter(
     (candidate) =>
       candidate.run_number !== run.run_number &&
+      Date.parse(candidate.created_at) >= oldestAllowed &&
       (candidate.conclusion === "success" || candidate.conclusion === "failure")
   );
 

@@ -29,6 +29,7 @@ const run = {
   run_number: 7,
   run_attempt: 1,
   workflow_id: 3,
+  created_at: "2026-09-30T12:00:00Z",
   name: "Lint & Build & Test (front)",
   conclusion: "failure",
   head_sha: "abcdef1234567890",
@@ -94,7 +95,11 @@ function fakeGithub({
   pulls = [],
   mergedBy = null,
 }: {
-  otherRuns: Array<{ run_number: number; conclusion: string | null }>;
+  otherRuns: Array<{
+    run_number: number;
+    conclusion: string | null;
+    created_at?: string;
+  }>;
   jobs?: Array<{ name: string; conclusion: string | null }>;
   jobsByRunNumber?: Record<
     number,
@@ -111,12 +116,15 @@ function fakeGithub({
   return {
     rest: {
       actions: {
-        listWorkflowRuns: async () => ({
+        listWorkflowRuns: async (params: { created: string }) => ({
           data: {
-            workflow_runs: otherRuns.map((candidate) => ({
-              id: 1000 + candidate.run_number,
-              ...candidate,
-            })),
+            workflow_runs: otherRuns
+              .filter(() => params.created === ">=2026-09-23T12:00:00.000Z")
+              .map((candidate) => ({
+                id: 1000 + candidate.run_number,
+                created_at: run.created_at,
+                ...candidate,
+              })),
           },
         }),
         listJobsForWorkflowRun: async ({ run_id }: { run_id: number }) => {
@@ -177,6 +185,29 @@ describe("buildBreakageNotification", () => {
         ],
       }),
       context: { repo, payload: { workflow_run: run } },
+      core,
+      authors: "",
+      slackToken: "token",
+    });
+    assert.equal(text, null);
+  });
+
+  it("ignores runs created more than 7 days earlier", async () => {
+    const text = await buildBreakageNotification({
+      github: fakeGithub({
+        otherRuns: [
+          {
+            run_number: 6,
+            conclusion: "failure",
+            created_at: "2026-09-07T12:00:00Z",
+          },
+        ],
+        jobs: [{ name: "test", conclusion: "success" }],
+      }),
+      context: {
+        repo,
+        payload: { workflow_run: { ...run, conclusion: "success" } },
+      },
       core,
       authors: "",
       slackToken: "token",
