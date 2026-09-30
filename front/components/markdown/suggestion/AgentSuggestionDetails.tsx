@@ -93,16 +93,24 @@ interface SuggestedSkillRowProps {
   owner: LightWorkspaceType;
   action: SuggestedChangeAction;
   skillId: string;
+  pendingSkillName: string | undefined;
 }
 
-function SuggestedSkillRow({ owner, action, skillId }: SuggestedSkillRowProps) {
+function SuggestedSkillRow({
+  owner,
+  action,
+  skillId,
+  pendingSkillName,
+}: SuggestedSkillRowProps) {
   const { skill, isSkillLoading } = useSkill({
     workspaceId: owner.sId,
     skillId,
+    disabled: pendingSkillName !== undefined,
   });
   const SkillAvatar = useMemo(() => getSkillAvatarIcon(skill ?? null), [skill]);
 
-  const displayName = skill?.name ?? (isSkillLoading ? "Loading…" : skillId);
+  const displayName =
+    pendingSkillName ?? skill?.name ?? (isSkillLoading ? "Loading…" : skillId);
 
   return (
     <SuggestedChangeRow
@@ -291,12 +299,14 @@ interface AgentSuggestionDetailsProps {
   owner: LightWorkspaceType;
   suggestion: AgentActionCardSuggestionType;
   agentConfiguration: AgentConfigurationType | null;
+  pendingSkillNameById: Map<string, string>;
 }
 
 export function AgentSuggestionDetails({
   owner,
   suggestion,
   agentConfiguration,
+  pendingSkillNameById,
 }: AgentSuggestionDetailsProps) {
   switch (suggestion.kind) {
     case "create": {
@@ -334,6 +344,7 @@ export function AgentSuggestionDetails({
                   owner={owner}
                   action="add"
                   skillId={skillId}
+                  pendingSkillName={pendingSkillNameById.get(skillId)}
                 />
               ))}
             </SuggestedChangesSection>
@@ -462,6 +473,9 @@ export function AgentSuggestionDetails({
           owner={owner}
           action={suggestion.suggestion.action}
           skillId={suggestion.suggestion.skillId}
+          pendingSkillName={pendingSkillNameById.get(
+            suggestion.suggestion.skillId
+          )}
         />
       );
 

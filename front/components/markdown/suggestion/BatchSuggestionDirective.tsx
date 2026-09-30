@@ -165,6 +165,7 @@ interface AgentSuggestionGroupProps {
   label: string;
   suggestions: AgentActionCardSuggestionType[];
   agentConfiguration: AgentConfigurationType | null;
+  pendingSkillNameById: Map<string, string>;
 }
 
 /** Suggestions of one kind, each a row, listed under a single heading. */
@@ -173,6 +174,7 @@ function AgentSuggestionGroup({
   label,
   suggestions,
   agentConfiguration,
+  pendingSkillNameById,
 }: AgentSuggestionGroupProps) {
   if (suggestions.length === 0) {
     return null;
@@ -188,6 +190,7 @@ function AgentSuggestionGroup({
             owner={owner}
             suggestion={suggestion}
             agentConfiguration={agentConfiguration}
+            pendingSkillNameById={pendingSkillNameById}
           />
         ))}
       </div>
@@ -206,6 +209,7 @@ interface AgentSuggestionsDiffProps {
   batchId: string;
   agentId: string;
   suggestions: AgentSuggestionType[];
+  pendingSkillNameById: Map<string, string>;
 }
 
 function AgentSuggestionsDiff({
@@ -213,6 +217,7 @@ function AgentSuggestionsDiff({
   batchId,
   agentId,
   suggestions,
+  pendingSkillNameById,
 }: AgentSuggestionsDiffProps) {
   const { openPanel } = useConversationSidePanelContext();
   const displayable = sortAgentSuggestionsByBuilderOrder(
@@ -276,6 +281,7 @@ function AgentSuggestionsDiff({
             label={groupLabel}
             suggestions={kindSuggestions}
             agentConfiguration={agentConfiguration}
+            pendingSkillNameById={pendingSkillNameById}
           />
         ) : (
           kindSuggestions.map((suggestion) => (
@@ -284,6 +290,7 @@ function AgentSuggestionsDiff({
               owner={owner}
               suggestion={suggestion}
               agentConfiguration={agentConfiguration}
+              pendingSkillNameById={pendingSkillNameById}
             />
           ))
         );
@@ -398,6 +405,12 @@ export function PendingBatchSuggestionCard({
     (s) => s.skillConfigurationId
   );
 
+  const pendingSkillNameById = new Map(
+    batch.skillSuggestions
+      .filter(isCreateSkillSuggestion)
+      .map((s) => [s.skillConfigurationId, s.suggestion.name])
+  );
+
   return (
     <ConversationalSuggestionCard
       title={getBatchSuggestionTitle(batch)}
@@ -413,6 +426,7 @@ export function PendingBatchSuggestionCard({
                 batchId={batch.id}
                 agentId={agentId}
                 suggestions={suggestions}
+                pendingSkillNameById={pendingSkillNameById}
               />
             )
           )}

@@ -80,7 +80,11 @@ import assert from "assert";
  * skill suggestion kinds, all attached to the same batch.
  */
 type PlannedChange =
-  | { type: "agent_creation"; create: CreateSuggestionType }
+  | {
+      type: "agent_creation";
+      create: CreateSuggestionType;
+      skillRefs: string[];
+    }
   | {
       type: "agent";
       agent: AgentResource;
@@ -90,6 +94,7 @@ type PlannedChange =
         edits: InstructionSuggestionEditInput[];
       } | null;
       keyed: KeyedAgentSuggestionData[];
+      skillRefs: string[];
     }
   | {
       type: "skill_creation";
@@ -127,6 +132,7 @@ async function planAgentCreation(
     instructions,
     toolIds = [],
     skillIds = [],
+    skillRefs = [],
   }: CreateAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const validation = await validateAgentCreation(auth, { name });
@@ -151,6 +157,7 @@ async function planAgentCreation(
       toolIds,
       skillIds,
     },
+    skillRefs,
   });
 }
 
@@ -307,8 +314,14 @@ async function planAgentEdit(
 
   const keyed: KeyedAgentSuggestionData[] = [];
   const addSkillIds = skillChanges?.addSkillIds ?? [];
+  const addSkillRefs = skillChanges?.addSkillRefs ?? [];
   const removeSkillIds = skillChanges?.removeSkillIds ?? [];
-  if (addSkillIds.length > 0 || removeSkillIds.length > 0) {
+
+  if (
+    addSkillIds.length > 0 ||
+    removeSkillIds.length > 0 ||
+    addSkillRefs.length > 0
+  ) {
     const validation = await validateAgentSkillChanges(auth, agent, {
       addSkillIds,
       removeSkillIds,
@@ -360,7 +373,12 @@ async function planAgentEdit(
     );
   }
 
-  if (singletons.length === 0 && instructions === null && keyed.length === 0) {
+  if (
+    singletons.length === 0 &&
+    instructions === null &&
+    keyed.length === 0 &&
+    addSkillRefs.length === 0
+  ) {
     return new Err(
       new MCPError(
         `The edit of agent "${agentId}" does not change anything: provide at least one field.`
@@ -374,6 +392,7 @@ async function planAgentEdit(
     singletons,
     instructions,
     keyed,
+    skillRefs: addSkillRefs,
   });
 }
 
@@ -398,6 +417,7 @@ async function planAgentDeletion(
     singletons: [{ kind: "delete", suggestion: validation.value }],
     instructions: null,
     keyed: [],
+    skillRefs: [],
   });
 }
 
@@ -591,7 +611,6 @@ function skillInstructionsOf(suggestions: Suggestion[]): string[] {
         return (suggestion.instructionEdits ?? []).map((edit) => edit.content);
       case "create_agent":
       case "edit_agent":
-        // TODO(conversational-building): collect the refs agents use once they can add skills.
         return [];
       case "delete_agent":
       case "delete_skill":
@@ -602,9 +621,29 @@ function skillInstructionsOf(suggestions: Suggestion[]): string[] {
   });
 }
 
+/** The refs of skills created in the call that the suggestions give to agents. */
+function agentSkillRefsOf(suggestions: Suggestion[]): string[] {
+  return suggestions.flatMap((suggestion) => {
+    switch (suggestion.kind) {
+      case "create_agent":
+        return suggestion.skillRefs ?? [];
+      case "edit_agent":
+        return suggestion.skills?.addSkillRefs ?? [];
+      case "delete_agent":
+      case "create_skill":
+      case "edit_skill":
+      case "delete_skill":
+        return [];
+      default:
+        assertNever(suggestion);
+    }
+  });
+}
+
 /**
  * Checks that each ref is declared only once, by a skill creation. Every skill tag citing a ref in
- * the call's instructions must point at one of those declared refs.
+ * the call's instructions, and every skill ref given to an agent, must point at one of those
+ * declared refs.
  */
 function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
   const pendingSkillRefs = new Set<string>();
@@ -613,6 +652,17 @@ function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
       return new Err(new MCPError(`The ref "${ref}" is declared twice.`));
     }
     pendingSkillRefs.add(ref);
+  }
+
+  const unknownAgentSkillRef = agentSkillRefsOf(suggestions).find(
+    (ref) => !pendingSkillRefs.has(ref)
+  );
+  if (unknownAgentSkillRef) {
+    return new Err(
+      new MCPError(
+        `The ref "${unknownAgentSkillRef}" is not declared by any skill creation of this call.`
+      )
+    );
   }
 
   for (const content of skillInstructionsOf(suggestions)) {
@@ -773,6 +823,16 @@ async function createPendingSkills(
   return new Ok({ pendingSkillByChange, skillReferenceByRef });
 }
 
+function resolvePendingSkillId(
+  ref: string,
+  skillReferenceByRef: Map<string, SkillReference>
+): string {
+  const reference = skillReferenceByRef.get(ref);
+  assert(reference, "Refs are validated before any row is recorded.");
+
+  return reference.id;
+}
+
 function resolveSkillRow(
   row: SkillSuggestionData,
   skillReferenceByRef: Map<string, SkillReference>
@@ -819,7 +879,15 @@ async function recordPlannedChange(
   switch (change.type) {
     case "agent_creation": {
       const res = await recordAgentCreationSuggestion(auth, {
-        create: change.create,
+        create: {
+          ...change.create,
+          skillIds: [
+            ...(change.create.skillIds ?? []),
+            ...change.skillRefs.map((ref) =>
+              resolvePendingSkillId(ref, skillReferenceByRef)
+            ),
+          ],
+        },
         analysis: null,
         conversation,
         batch,
@@ -849,7 +917,16 @@ async function recordPlannedChange(
       }
 
       await recordKeyedAgentSuggestions(auth, change.agent, {
-        data: change.keyed,
+        data: [
+          ...change.keyed,
+          ...change.skillRefs.map((ref) => ({
+            kind: "skills" as const,
+            suggestion: {
+              action: "add" as const,
+              skillId: resolvePendingSkillId(ref, skillReferenceByRef),
+            },
+          })),
+        ],
         conversation,
         batch,
       });

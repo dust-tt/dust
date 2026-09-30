@@ -1,5 +1,6 @@
 import { pruneSupersededSkillSuggestions } from "@app/lib/api/actions/servers/building_agents_and_skills/skill_suggestion_changes";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -20,12 +21,14 @@ import type {
   UserAsset,
 } from "@app/scripts/seed/factories";
 import {
+  seedAgent,
   seedConversations,
   seedDataSources,
   seedRemoteMCPTool,
   seedSkill,
   seedUsers,
 } from "@app/scripts/seed/factories";
+import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import * as fs from "fs";
@@ -36,6 +39,7 @@ export const STANDUP_DIGEST_SKILL_NAME = "StandupDigest";
 export const LUKE_USER_SID = "SeedUserLuke";
 export const CONVERSATION_SID = "ConvBuildingConv01";
 export const BATCH_CONVERSATION_SID = "ConvBuildingConv02";
+export const SKILL_REFERENCES_CONVERSATION_SID = "ConvBuildingConv03";
 export const ACTION_ITEM_TRACKER_SKILL_PLACEHOLDER =
   "__ACTION_ITEM_TRACKER_SKILL_SID__";
 export const TEAM_CALENDAR_TOOL_PLACEHOLDER = "__TEAM_CALENDAR_TOOL_ID__";
@@ -172,6 +176,9 @@ export async function seedConversationalBuilding(
     createdBatches
   );
 
+  logger.info("Seeding the skill references batch...");
+  const skillReferences = await seedSkillReferencesBatch(ctx);
+
   // 6. The Dust conversations embedding the suggestions as `:skill_suggestion[]` and
   // `:batch_edit[]` directives.
   logger.info("Seeding conversations...");
@@ -227,6 +234,9 @@ export async function seedConversationalBuilding(
           createdBatches.get("renameToTeamDigest")?.sId ?? "",
         __MEMBERS_ONLY_BATCH_SID__:
           createdBatches.get("membersOnly")?.sId ?? "",
+        __TEAM_ASSISTANT_AGENT_SID__: skillReferences?.teamAssistant.sId ?? "",
+        __DECISION_LOG_SKILL_SID__: skillReferences?.decisionLog.sId ?? "",
+        __SKILL_REFERENCES_BATCH_SID__: skillReferences?.batch.sId ?? "",
       },
       additionalUsers: createdUsers,
     }
@@ -240,6 +250,11 @@ export async function seedConversationalBuilding(
     ctx,
     conversationSIds.get(BATCH_CONVERSATION_SID),
     createdBatchSkillSuggestions
+  );
+  await linkSuggestionsToConversation(
+    ctx,
+    conversationSIds.get(SKILL_REFERENCES_CONVERSATION_SID),
+    skillReferences?.skillSuggestions ?? new Map()
   );
   logger.info(
     { conversationSIds: [...conversationSIds.values()] },
@@ -329,6 +344,90 @@ async function linkSuggestionsToConversation(
       },
     }
   );
+}
+
+// A batch whose agent changes use the skill it creates, as `suggest` records skill refs: the new
+// DecisionLog skill is added to TeamAssistant, and the new MeetingPrep agent is created with it.
+async function seedSkillReferencesBatch(ctx: SeedContext): Promise<{
+  batch: BatchSuggestionResource;
+  teamAssistant: CreatedAgent;
+  decisionLog: SkillResource;
+  skillSuggestions: Map<string, SkillSuggestionResource>;
+} | null> {
+  const teamAssistant = await seedAgent(ctx, {
+    name: "TeamAssistant",
+    description: "Answers the team's day-to-day questions.",
+    instructions: "Help the team with their day-to-day questions.",
+    pictureUrl: "https://dust.tt/static/droidavatar/Droid_Indigo_1.jpg",
+  });
+  if (!ctx.execute || !teamAssistant) {
+    return null;
+  }
+
+  const batch = await BatchSuggestionResource.makeNew(ctx.auth, {
+    title: "Log meeting decisions",
+    analysis:
+      "Decisions get lost after meetings. A DecisionLog skill records them, TeamAssistant and a new MeetingPrep agent both use it.",
+    sourceConversation: null,
+  });
+
+  const decisionLog = await SkillResource.createPending(ctx.auth);
+  if (decisionLog.isErr()) {
+    throw decisionLog.error;
+  }
+
+  const decisionLogCreation = await SkillSuggestionFactory.create(
+    ctx.auth,
+    decisionLog.value,
+    {
+      kind: "create",
+      suggestion: {
+        name: "DecisionLog",
+        userFacingDescription:
+          "Keep a log of the decisions made in your meetings, with who decided and why.",
+        agentFacingDescription:
+          "Records decisions from meeting notes or messages: what was decided, by whom and why.",
+        instructions:
+          '<div data-type="instructions-root" data-block-id="instructions-root"><p data-block-id="dl01intr">For each decision, record what was decided, who decided it and the reason, in one line.</p></div>',
+      },
+      analysis: null,
+      title: "Create DecisionLog",
+      state: "pending",
+      source: "conversational",
+      batchModelId: batch.id,
+    }
+  );
+
+  await AgentSuggestionFactory.createSkills(ctx.auth, teamAssistant, {
+    suggestion: { action: "add", skillId: decisionLog.value.sId },
+    analysis: null,
+    source: "conversational",
+    batchModelId: batch.id,
+  });
+
+  const meetingPrep = await AgentResource.createPending(ctx.auth);
+  if (meetingPrep.isErr()) {
+    throw meetingPrep.error;
+  }
+
+  await AgentSuggestionFactory.createCreate(ctx.auth, meetingPrep.value, {
+    suggestion: {
+      name: "MeetingPrep",
+      description: "Prepares meetings from the decisions already logged.",
+      instructions:
+        "<p>Before a meeting, list the open questions and the related decisions already logged.</p>",
+      skillIds: [decisionLog.value.sId],
+    },
+    analysis: null,
+    batchModelId: batch.id,
+  });
+
+  return {
+    batch,
+    teamAssistant,
+    decisionLog: decisionLog.value,
+    skillSuggestions: new Map([["createDecisionLog", decisionLogCreation]]),
+  };
 }
 
 async function seedPendingSkills(

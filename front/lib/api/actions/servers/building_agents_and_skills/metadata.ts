@@ -1,4 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { SKILL_REF_REGEX } from "@app/lib/skills/format";
 import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
   USER_FACING_DESCRIPTION_MAX_LENGTH,
@@ -57,6 +58,12 @@ export const CreateAgentSuggestionSchema = z.object({
     .array(z.string())
     .optional()
     .describe("Ids of the active skills to give the agent."),
+  skillRefs: z
+    .array(z.string().regex(SKILL_REF_REGEX))
+    .optional()
+    .describe(
+      "Temporary names of skills created in this call, to give the agent."
+    ),
 });
 
 export type CreateAgentSuggestion = z.infer<typeof CreateAgentSuggestionSchema>;
@@ -65,12 +72,11 @@ export const CreateSkillSuggestionSchema = z.object({
   kind: z.literal("create_skill"),
   ref: z
     .string()
-    // Letters, digits, underscores and hyphens only, e.g. "meeting-notes".
-    .regex(/^[\w-]+$/)
+    .regex(SKILL_REF_REGEX)
     .optional()
     .describe(
-      "A local name for the new skill, unique in this call. Other skills of the same call cite " +
-        'it as <skill ref="name"/>, in place of an existing skill id.'
+      "A temporary name for the new skill, unique in this call. Use it anywhere in the same " +
+        "call, in place of the id of this skill, which does not exist yet."
     ),
   name: z
     .string()
@@ -100,7 +106,10 @@ export const CreateSkillSuggestionSchema = z.object({
     .string()
     .trim()
     .min(1)
-    .describe("The skill's instructions, as HTML."),
+    .describe(
+      "The skill's instructions, as HTML. Cite a skill created in the same call as " +
+        '<skill ref="name"/>.'
+    ),
 });
 
 export type CreateSkillSuggestion = z.infer<typeof CreateSkillSuggestionSchema>;
@@ -155,6 +164,12 @@ export const EditAgentSuggestionSchema = z.object({
         .array(z.string())
         .optional()
         .describe("Ids of the active skills to add to the agent."),
+      addSkillRefs: z
+        .array(z.string().regex(SKILL_REF_REGEX))
+        .optional()
+        .describe(
+          "Temporary names of skills created in this call, to add to the agent."
+        ),
       removeSkillIds: z
         .array(z.string())
         .optional()
@@ -266,7 +281,8 @@ export const EditSkillSuggestionSchema = z.object({
     .describe(
       "Block-targeted edits to the skill instructions. Each item targets one block by its " +
         `data-block-id (at most ${MAX_INSTRUCTION_EDITS} edits). Use ` +
-        `"${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" as targetBlockId for a full rewrite.`
+        `"${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" as targetBlockId for a full rewrite. ` +
+        'Cite a skill created in the same call as <skill ref="name"/>.'
     ),
   availability: z
     .enum(SKILL_AVAILABILITIES)
