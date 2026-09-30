@@ -2,7 +2,7 @@ FROM node:24.16.0 AS viz
 
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
 
-RUN npm install -g npm@11.11.0
+RUN npm install -g npm@11.19.0
 
 WORKDIR /app
 COPY package.json package-lock.json ./
