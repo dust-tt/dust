@@ -328,7 +328,7 @@ export type AgentResourceSnapshot = {
  * `AGENT_RESOURCE_CACHE_VERSION` in the same change, so re-enabling never reads entries written
  * before the switch.
  */
-const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "dryRun";
+const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "live";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentResource

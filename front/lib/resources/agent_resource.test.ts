@@ -620,7 +620,7 @@ describe("AgentResource", () => {
       testContext.authenticator
     );
 
-    // Both forms round-trip the same snapshot while caching ships in dry-run.
+    // The first read warms the cache; the single and batch reads then share its entry.
     await AgentResource.fetchById(testContext.authenticator, agent.sId);
     const cached = await AgentResource.fetchById(
       testContext.authenticator,
@@ -701,32 +701,6 @@ describe("AgentResource", () => {
     );
     assert(archived?.canViewContent);
     expect(archived.status).toBe("archived");
-  });
-
-  it("resolves from the database on every read while the cache ships in dry-run", async () => {
-    const agent = await AgentConfigurationFactory.createTestAgent(
-      testContext.authenticator,
-      { description: "before" }
-    );
-
-    const first = await AgentResource.fetchById(
-      testContext.authenticator,
-      agent.sId
-    );
-    expect(first?.description).toBe("before");
-
-    // Mutate the row directly, without calling `invalidateCache`. A live cache would keep serving
-    // the stale value; dry-run reads the database on every call.
-    await AgentConfigurationModel.update(
-      { description: "after" },
-      { where: { sId: agent.sId, workspaceId: testContext.workspace.id } }
-    );
-
-    const second = await AgentResource.fetchById(
-      testContext.authenticator,
-      agent.sId
-    );
-    expect(second?.description).toBe("after");
   });
 
   it("resolves a global agent by id through the uncached global path", async () => {
