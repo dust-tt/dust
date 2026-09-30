@@ -49,6 +49,7 @@ import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
 import { ensureConversationSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { resolvePodForRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
+import { isSandboxExecTimeoutError } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -345,6 +346,11 @@ export async function buildDescribeToolsetOutput(
   return new Ok([{ type: "text" as const, text: output }]);
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:error-handling;mcp] untracked-command-timeouts
+ * When returning a sandbox execution error as an MCPError, command timeouts
+ * MUST have tracked: false; other execution errors MUST remain tracked.
+ */
 export async function runSandboxBashTool(
   {
     command,
@@ -517,7 +523,11 @@ export async function runSandboxBashTool(
   );
 
   if (execResult.isErr()) {
-    return new Err(new MCPError(execResult.error.message));
+    return new Err(
+      new MCPError(execResult.error.message, {
+        tracked: !isSandboxExecTimeoutError(execResult.error),
+      })
+    );
   }
 
   let denyLogEntries: string[] | undefined;
