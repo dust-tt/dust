@@ -1,3 +1,7 @@
+import { replaceGroupManagers } from "@app/lib/api/groups/manager_assignments";
+import { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -288,5 +292,106 @@ describe("DELETE /api/w/:wId/members/:uId/groups/:groupId", () => {
     const response = await deleteMemberGroup(workspace, user.sId, group.sId);
 
     expect(response.status).toBe(403);
+  });
+});
+
+describe("delegated membership writes", () => {
+  it("allows scoped membership edits but rejects disabled, unrelated, and restricted edits", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const manual = await GroupFactory.regularManual(workspace, "Managed");
+    const other = await GroupFactory.regularManual(workspace, "Other");
+    const provisioned = await GroupFactory.provisioned(workspace, "Directory");
+    const admins = await GroupResource.makeNew({
+      name: "Admins",
+      kind: "regular_manual",
+      workspaceId: workspace.id,
+      grantedRole: "admin",
+    });
+    await GroupFactory.withMembers(adminAuth, manual, [member]);
+    for (const group of [manual, provisioned, admins]) {
+      await replaceGroupManagers(adminAuth, group, [user.sId]);
+    }
+    const addSelf = (groupId: string) =>
+      postMemberGroup(workspace, user.sId, { groupId });
+    const patch = (groupId: string, body: Record<string, unknown>) =>
+      honoApp.request(`/api/w/${workspace.sId}/groups/${groupId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    expect((await addSelf(manual.sId)).status).toBe(403);
+    await FeatureFlagFactory.basic(adminAuth, "group_management");
+    expect((await addSelf(other.sId)).status).toBe(403);
+    expect((await addSelf(provisioned.sId)).status).toBe(404);
+    expect((await addSelf(admins.sId)).status).toBe(403);
+    expect((await patch(admins.sId, { memberIds: [user.sId] })).status).toBe(
+      403
+    );
+    expect(await admins.getActiveMembers(adminAuth)).toHaveLength(0);
+    expect(
+      (await patch(manual.sId, { name: "Renamed", memberIds: [user.sId] }))
+        .status
+    ).toBe(403);
+    expect(
+      (await manual.getActiveMembers(adminAuth)).map((m) => m.sId)
+    ).toEqual([member.sId]);
+    expect((await patch(manual.sId, { managerIds: [member.sId] })).status).toBe(
+      403
+    );
+
+    expect((await addSelf(manual.sId)).status).toBe(200);
+    const saved = await patch(manual.sId, {
+      memberIds: [user.sId, member.sId],
+    });
+    expect(saved.status).toBe(200);
+    const detail = await saved.json();
+    for (const person of [...detail.members, ...detail.managers]) {
+      expect(person).not.toHaveProperty("id");
+      expect(person).not.toHaveProperty("lastLoginAt");
+      expect(person).not.toHaveProperty("provider");
+    }
+    expect(
+      (await deleteMemberGroup(workspace, member.sId, manual.sId)).status
+    ).toBe(200);
+    expect(
+      (await deleteMemberGroup(workspace, user.sId, manual.sId)).status
+    ).toBe(400);
+    await replaceGroupManagers(adminAuth, manual, []);
+    expect((await patch(manual.sId, { memberIds: [member.sId] })).status).toBe(
+      403
+    );
+  });
+
+  it("preserves role synchronization when a delegate adds themselves", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const group = await GroupResource.makeNew({
+      name: "Managers",
+      kind: "regular_manual",
+      workspaceId: workspace.id,
+      grantedRole: "manager",
+    });
+    await replaceGroupManagers(adminAuth, group, [user.sId]);
+    await FeatureFlagFactory.basic(adminAuth, "group_management");
+    expect(
+      (await postMemberGroup(workspace, user.sId, { groupId: group.sId }))
+        .status
+    ).toBe(200);
+    const refreshed = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    expect(refreshed.isManager()).toBe(true);
   });
 });

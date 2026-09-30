@@ -135,7 +135,10 @@ app.get(
 /** @ignoreswagger */
 app.patch(
   "/",
-  ensureIsManager(),
+  ensureHasAnyGroupPermission(
+    "write",
+    "Group membership management access required."
+  ),
   validate("param", ParamsSchema),
   validate("json", PatchGroupBodySchema),
   async (ctx): HandlerResult<PatchGroupResponseBody> => {
