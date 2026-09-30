@@ -44,29 +44,31 @@ export const framesSkill = {
   // on) keep the retrieve and file-id edit flow. Without a conversation at hand, assume the
   // file system is on since every new conversation has it.
   //
-  // In a Pod, Frames are Pod apps: they live in the Pod's shared file system. This only makes
-  // sense with a conversation to check, so a Pod-less agent loop keeps the conversation-scoped
-  // guidance.
+  // In a Pod, legacy Frames are Pod apps: they live in the Pod's shared file system. Frames v2
+  // start in the conversation and only go to the Pod when they belong there. Both only make sense
+  // with a conversation to check, so a Pod-less agent loop keeps the conversation-scoped guidance.
   fetchInstructions: async (
     auth: Authenticator,
     params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
     const flags = await getFeatureFlags(auth);
+    const conversation = params.agentLoopData?.conversation;
+    const isPod = conversation ? isPodConversation(conversation) : false;
     if (flags.includes("frames_v2")) {
       return buildFramesV2Instructions({
         hasDocuments: flags.includes("frame_documents"),
         hasFunctions: isFramesV2FunctionsEnabled(flags),
+        isPod,
       });
     }
 
-    const conversation = params.agentLoopData?.conversation;
     if (conversation && conversation.metadata?.useFileSystem !== true) {
       return INTERACTIVE_CONTENT_INSTRUCTIONS;
     }
 
     return buildInteractiveContentInstructions({
       hasComputer: isComputerFeatureEnabled(flags),
-      isPod: conversation ? isPodConversation(conversation) : false,
+      isPod,
     });
   },
   mcpServers: [

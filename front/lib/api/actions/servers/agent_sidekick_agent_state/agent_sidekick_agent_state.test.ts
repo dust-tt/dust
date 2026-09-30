@@ -223,5 +223,47 @@ describe("agent_sidekick_agent_state tools", () => {
         }
       }
     });
+
+    it("does not expose another user's hidden agent to a member", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceFactory.defaults(adminAuth);
+      const owner = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, owner, { role: "user" });
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+
+      const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        owner.sId,
+        workspace.sId
+      );
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        member.sId,
+        workspace.sId
+      );
+
+      const agent = await AgentConfigurationFactory.createTestAgent(ownerAuth, {
+        scope: "hidden",
+        instructions: "Secret instructions",
+      });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_sidekick_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agent.sId
+      );
+
+      const tool = getToolByName("get_agent_info");
+      const result = await tool.handler({}, createTestExtra(memberAuth));
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Agent configuration not found");
+        expect(result.error.message).not.toContain("Secret instructions");
+      }
+    });
   });
 });

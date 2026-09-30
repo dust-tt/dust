@@ -67,6 +67,58 @@ function getDefaultLimitInput(): HTMLElement {
 }
 
 describe("EditMemberSpendLimitModal", () => {
+  it("keeps other groups' limits visible but read-only", () => {
+    const memberGroups: GroupType[] = [
+      {
+        id: 1,
+        sId: "support",
+        name: "Support",
+        kind: "regular_manual",
+        workspaceId: owner.id,
+        memberCount: 2,
+        poolCapAwuCredits: 500,
+        groupLimitAwuCredits: null,
+        grantedRole: null,
+        grantedSeatType: null,
+      },
+      {
+        id: 2,
+        sId: "sales",
+        name: "Sales",
+        kind: "regular_manual",
+        workspaceId: owner.id,
+        memberCount: 3,
+        poolCapAwuCredits: 700,
+        groupLimitAwuCredits: null,
+        grantedRole: null,
+        grantedSeatType: null,
+      },
+    ];
+    render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={vi.fn()}
+        member={makeMemberUsage({ groups: ["Support", "Sales"] })}
+        owner={owner}
+        groups={memberGroups}
+        editableGroupIds={new Set(["support"])}
+        defaultUserSpendLimit={{ status: "unavailable" }}
+      />
+    );
+
+    expect(
+      screen.getByText("Support").closest("tr")?.querySelector("input")
+    ).not.toBeDisabled();
+    expect(
+      screen.getByText("Sales").closest("tr")?.querySelector("input")
+    ).toBeDisabled();
+    expect(
+      screen.getByText(
+        "A personal limit applies to this member across the workspace."
+      )
+    ).toBeInTheDocument();
+  });
+
   it("lets admins edit the workspace default limit when it's the member's applicable source", () => {
     render(
       <EditMemberSpendLimitModal
@@ -337,5 +389,36 @@ describe("EditMemberSpendLimitModal", () => {
 
     expect(onSaved).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("passes resetAtNextBillingCycle when the temporary checkbox is checked", async () => {
+    doUpdateSpendLimit.mockResolvedValueOnce({ ok: true });
+    const member = makeMember("override");
+
+    render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={vi.fn()}
+        member={member}
+        owner={owner}
+        groups={groups}
+        readOnly={false}
+        defaultUserSpendLimit={{ status: "unavailable" }}
+      />
+    );
+    fireEvent.change(getPersonalLimitInput(), { target: { value: "2500" } });
+    fireEvent.click(
+      screen.getByLabelText(/Reset to .* at the next billing cycle/)
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Validate" }));
+
+    await waitFor(() => expect(doUpdateSpendLimit).toHaveBeenCalledOnce());
+    expect(doUpdateSpendLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memberId: member.sId,
+        limit: { kind: "limited", awuCredits: 2500 },
+        resetAtNextBillingCycle: true,
+      })
+    );
   });
 });

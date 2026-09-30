@@ -17,6 +17,7 @@ type ExtensionAuthContextType = {
   redirectToSSOLogin: (workspace: WorkspaceType) => void;
   user: UserTypeWithWorkspaces | null;
   workspace: WorkspaceType | undefined;
+  subscription: SubscriptionType | null;
   isUserSetup: boolean;
   isLoading: boolean;
   handleLogin: (args?: { organizationId?: string }) => void;
@@ -36,61 +37,6 @@ export const useExtensionAuth = () => {
     );
   }
   return context;
-};
-
-// Stub subscription for shared front components — none of them use subscription
-// in the extension context.
-const EXTENSION_SUBSCRIPTION: SubscriptionType = {
-  sId: null,
-  status: "active",
-  stripeSubscriptionId: null,
-  metronomeContractId: null,
-  startDate: null,
-  endDate: null,
-  paymentFailingSince: null,
-  plan: {
-    code: "EXTENSION",
-    name: "Extension",
-    limits: {
-      assistant: {
-        isSlackBotAllowed: false,
-        maxMessages: -1,
-        maxMessagesTimeframe: "lifetime",
-        maxAwuCredits: -1,
-        maxAwuCreditsTimeframe: "lifetime",
-        isDeepDiveAllowed: false,
-      },
-      connections: {
-        count: -1,
-        isConfluenceAllowed: false,
-        isSlackAllowed: false,
-        isNotionAllowed: false,
-        isGoogleDriveAllowed: false,
-        isGithubAllowed: false,
-        isIntercomAllowed: false,
-        isWebCrawlerAllowed: false,
-        isSalesforceAllowed: false,
-      },
-      dataSources: {
-        count: -1,
-        documents: { count: -1, sizeMb: -1 },
-      },
-      users: {
-        maxUsers: -1,
-        maxFreeUsers: -1,
-        maxLifetimeFreeUsers: -1,
-        isSSOAllowed: false,
-        isSCIMAllowed: false,
-      },
-      vaults: { maxVaults: -1 },
-      capabilities: { images: { maxImagesPerWeek: -1 } },
-      canUseProduct: true,
-    },
-    isByok: false,
-    isAuditLogsAllowed: false,
-    hasAdvancedModelAccess: false,
-  },
-  requestCancelAt: null,
 };
 
 interface ExtensionAuthProviderProps {
@@ -124,6 +70,7 @@ export function ExtensionAuthProvider({
     handleLogout,
     handleSelectOrganization,
     featureFlags,
+    subscription,
   } = useAuthHook();
 
   const extensionAuthValue = useMemo(
@@ -135,6 +82,7 @@ export function ExtensionAuthProvider({
       redirectToSSOLogin,
       user,
       workspace,
+      subscription,
       isUserSetup,
       isLoading,
       handleLogin,
@@ -149,6 +97,7 @@ export function ExtensionAuthProvider({
       redirectToSSOLogin,
       user,
       workspace,
+      subscription,
       isUserSetup,
       isLoading,
       handleLogin,
@@ -157,14 +106,17 @@ export function ExtensionAuthProvider({
     ]
   );
 
+  // Hold off on AuthContext until subscription is loaded — the model picker
+  // gates premium models on plan access (`hasAdvancedModelAccess` /
+  // credit-priced) and a stub would incorrectly lock them.
   const frontAuthValue: AuthContextValue | null = useMemo(() => {
-    if (!user || !workspace) {
+    if (!user || !workspace || !subscription) {
       return null;
     }
     return {
       user,
       workspace,
-      subscription: EXTENSION_SUBSCRIPTION,
+      subscription,
       isAdmin: isAdmin(workspace),
       isManager: isManager(workspace),
       featureFlags,
@@ -172,7 +124,7 @@ export function ExtensionAuthProvider({
       providersHealth: null,
       workspacePermissions: emptyWorkspacePermissions(),
     };
-  }, [user, workspace, featureFlags]);
+  }, [user, workspace, subscription, featureFlags]);
 
   return (
     <ExtensionAuthContext.Provider value={extensionAuthValue}>

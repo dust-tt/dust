@@ -13,6 +13,8 @@ import { Err, normalizeError, Ok, removeNulls } from "@dust-tt/client";
 import { BigQuery } from "@google-cloud/bigquery";
 import { ProjectsClient } from "@google-cloud/resource-manager";
 
+import { withBigQueryStaticIpProxy } from "./bigquery_proxy";
+
 const MAX_TABLES_PER_SCHEMA = 1500;
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
 
@@ -62,16 +64,20 @@ export function connectToBigQuery(
   credentials: BigQueryCredentialsWithLocation,
   projectId: string
 ): BigQuery {
-  return new BigQuery({
-    credentials,
-    scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
-    location: credentials.location,
-    retryOptions: {
-      autoRetry: true,
-      maxRetries: 3,
-    },
-    projectId,
-  });
+  // Use the static IP proxy when configured so BigQuery traffic shares the same
+  // allowlisted egress IP as Snowflake (customers IP-restrict warehouse access).
+  return new BigQuery(
+    withBigQueryStaticIpProxy({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
+      location: credentials.location,
+      retryOptions: {
+        autoRetry: true,
+        maxRetries: 3,
+      },
+      projectId,
+    })
+  );
 }
 
 async function listAccessibleProjects(
@@ -251,61 +257,55 @@ export const fetchTables = async ({
         "[BigQuery] dataset.getTables (paginated)"
       );
 
-      const pageTables = await concurrentExecutor(
-        tables,
-        async (table) => {
-          if (!table.id) {
-            return null;
-          }
+      for (const table of tables) {
+        if (!table.id) {
+          continue;
+        }
 
-          if (fetchTablesDescription) {
-            try {
-              const metadata = await table.getMetadata();
-              logger?.info(
+        if (fetchTablesDescription) {
+          try {
+            const metadata = await table.getMetadata();
+            logger?.info(
+              {
+                dataset,
+                table: table.id,
+              },
+              "[BigQuery] table.getMetadata"
+            );
+            remoteDBTables.push({
+              name: table.id,
+              database_name: dataset.database_name,
+              schema_name: dataset.name,
+              description: metadata[0].description,
+            });
+          } catch (error) {
+            if (isBigqueryPermissionsError(error)) {
+              logger?.warn(
                 {
+                  projectId: dataset.database_name,
                   dataset,
                   table: table.id,
+                  error: normalizeError(error).message,
                 },
-                "[BigQuery] table.getMetadata"
+                "[BigQuery] Permission denied accessing table metadata, skipping table"
               );
-              return {
-                name: table.id!,
-                database_name: dataset.database_name,
-                schema_name: dataset.name,
-                description: metadata[0].description,
-              };
-            } catch (error) {
-              if (isBigqueryPermissionsError(error)) {
-                logger?.warn(
-                  {
-                    projectId: dataset.database_name,
-                    dataset,
-                    table: table.id,
-                    error: normalizeError(error).message,
-                  },
-                  "[BigQuery] Permission denied accessing table metadata, skipping table"
-                );
-                return null;
-              }
-              throw error;
+              continue;
             }
+            throw error;
           }
-
-          return {
-            name: table.id!,
+        } else {
+          remoteDBTables.push({
+            name: table.id,
             database_name: dataset.database_name,
             schema_name: dataset.name,
-          };
-        },
-        { concurrency: 4 }
-      );
-
-      remoteDBTables.push(...removeNulls(pageTables));
+          });
+        }
+      }
 
       nextQuery = q as typeof nextQuery;
     }
 
-    return new Ok(removeNulls(remoteDBTables));
+    return new Ok(remoteDBTables);
   } catch (error) {
     return new Err(normalizeError(error));
   }

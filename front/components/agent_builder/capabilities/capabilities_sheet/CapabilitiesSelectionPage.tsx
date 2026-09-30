@@ -8,8 +8,7 @@ import type { CapabilityFilterType } from "@app/components/shared/tools_picker/t
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { SearchInput, Spinner } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 type CapabilitiesSelectionPageProps = {
   onStateChange: (state: SheetState) => void;

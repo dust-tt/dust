@@ -2,7 +2,6 @@ import {
   BookOpen01,
   CoinsStacked01,
   ConfluenceLogo,
-  CubeOutline,
   DriveLogo,
   Eye,
   GithubLogo,
@@ -14,7 +13,6 @@ import {
   ShapesPlus,
   ShieldTick,
   SlackLogo,
-  SyncCloud02,
   UsersPlus,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
@@ -26,7 +24,6 @@ import type {
   RequestOutcome,
   RequestRole,
   RequestType,
-  RequestVariant,
   SeatType,
   User,
 } from "./types";
@@ -60,34 +57,18 @@ const REQUEST_TYPE_ICONS: Record<
   publication: Eye,
 };
 
-const REQUEST_VARIANT_ICONS: Record<
-  RequestVariant,
-  ComponentType<{ className?: string }>
-> = {
-  dataSource: BookOpen01,
-  connector: SyncCloud02,
-  toolCreate: ShapesPlus,
-  toolAddToSpace: ShapesPlus,
-  podAccess: CubeOutline,
-  spaceAccess: Lock01,
-  agent: Eye,
-  skill: Eye,
-};
-
-/** The icon that stands for a whole type, used by the type filter. */
+/**
+ * @cc [owner:Duncid,label:product] request-icon-by-type
+ * A request is pictured by its type and by nothing else — not by the variant
+ * it falls under, nor by what it targets. Every surface naming a request's
+ * kind — the badge in the Requests list, the chip on the detail view, the type
+ * filter — MUST take the icon from here, so an access request is a lock in all
+ * of them.
+ */
 export function getRequestTypeIcon(
   type: RequestType
 ): ComponentType<{ className?: string }> {
   return REQUEST_TYPE_ICONS[type];
-}
-
-/** The row icon: the variant's when the type hosts several cases. */
-export function getRequestIcon(
-  request: AdminRequest
-): ComponentType<{ className?: string }> {
-  return request.variant
-    ? REQUEST_VARIANT_ICONS[request.variant]
-    : REQUEST_TYPE_ICONS[request.type];
 }
 
 export const REQUEST_OUTCOME_LABELS: Record<RequestOutcome, string> = {

@@ -1,10 +1,11 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { frameV2ContentType } from "@app/types/files";
@@ -13,13 +14,29 @@ import assert from "assert";
 
 export const frameManifest = JSON.stringify({ version: 1, name: "Status" });
 
-export async function setupFrameSourceStorageTest() {
-  const { authenticator: auth, workspace } = await createResourceTest({
+/**
+ * With `inPod`, the conversation belongs to a Pod the user can edit, so the Frame can be saved
+ * there.
+ */
+export async function setupFrameSourceStorageTest(
+  { inPod }: { inPod: boolean } = { inPod: false }
+) {
+  const {
+    authenticator: workspaceAuth,
+    user,
+    workspace,
+  } = await createResourceTest({
     role: "admin",
   });
+  const pod = inPod ? await SpaceFactory.project(workspace, user.id) : null;
+  // Pod editor rights are resolved when the authenticator is built, so rebuild it after the Pod.
+  const auth = pod
+    ? await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId)
+    : workspaceAuth;
   const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId: "test-agent",
     messagesCreatedAt: [],
+    ...(pod ? { spaceId: pod.id } : {}),
   });
   const sourceDirectoryPath = `conversation-${conversation.sId}/Status`;
   const sourceMountDirectory = `${getConversationFilesBasePath({
@@ -72,6 +89,7 @@ export async function setupFrameSourceStorageTest() {
     frame,
     listedObjects,
     objectSizes,
+    pod,
     sourceDirectoryPath,
     sourceMountDirectory,
     sourceObjects,
@@ -82,8 +100,9 @@ export async function setupFrameSourceStorageTest() {
 /**
  * Build the conversation-scoped filesystem a move needs. Production callers resolve their own:
  * the Pod rename builds one from the Frame's scoped path, and an agent-loop caller would build
- * one here. Scoping to the source is enough — a move stays within one mount, and
- * `moveFrameV2Source` rejects a cross-mount destination before it touches the filesystem.
+ * one here. Scoping to the source is enough: it also mounts the conversation's Pod, the only other
+ * mount a Frame can move to, and `moveFrameV2Source` rejects any other cross-mount destination
+ * before it touches the filesystem.
  */
 export async function moveFrameSourceForTest(
   {

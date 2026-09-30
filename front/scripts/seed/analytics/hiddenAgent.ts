@@ -1,6 +1,6 @@
 import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
-import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -74,11 +74,10 @@ export async function seedHiddenAgent(
     workspace.sId
   );
 
-  const existingAgents = await searchAgentConfigurationsByName(
+  const existingAgent = await AgentResource.fetchByName(
     internalAuth,
     AGENT_NAME
   );
-  const existingAgent = existingAgents.find((a) => a.name === AGENT_NAME);
   if (existingAgent) {
     logger.info(
       { sId: existingAgent.sId, name: AGENT_NAME },

@@ -1,5 +1,8 @@
 import { isAuthorizedToApplyAgentSuggestions } from "@app/lib/api/assistant/agent_suggestion_authorization";
-import type { ResolvedAgentChange } from "@app/lib/api/assistant/apply_agent_suggestions";
+import type {
+  BatchCreations,
+  ResolvedAgentChange,
+} from "@app/lib/api/assistant/apply_agent_suggestions";
 import {
   resolveAgentSuggestions,
   writeAgentChange,
@@ -162,7 +165,8 @@ async function resolveSkillStep(
 async function resolveAgentStep(
   auth: Authenticator,
   step: AgentStep,
-  agentsById: Map<string, AgentResource>
+  agentsById: Map<string, AgentResource>,
+  creations: BatchCreations
 ): Promise<Result<ResolvedAgentStep, ApplyBatchSuggestionsError>> {
   const agent = agentsById.get(step.agentId);
   assert(agent, "The agent this suggestion targets disappeared.");
@@ -170,6 +174,7 @@ async function resolveAgentStep(
   const change = await resolveAgentSuggestions(auth, {
     agent,
     suggestions: step.suggestions,
+    creations,
   });
   if (change.isErr()) {
     return change;
@@ -184,16 +189,18 @@ async function resolveStep(
   {
     agentsById,
     skillsById,
+    creations,
   }: {
     agentsById: Map<string, AgentResource>;
     skillsById: Map<string, SkillResource>;
+    creations: BatchCreations;
   }
 ): Promise<Result<ResolvedStep, ApplyBatchSuggestionsError>> {
   switch (step.type) {
     case "skill":
       return resolveSkillStep(auth, step, skillsById);
     case "agent":
-      return resolveAgentStep(auth, step, agentsById);
+      return resolveAgentStep(auth, step, agentsById, creations);
     default:
       return assertNever(step);
   }
@@ -202,16 +209,27 @@ async function resolveStep(
 async function applyStep(
   auth: Authenticator,
   step: ResolvedStep,
-  skillsById: Map<string, SkillResource>
+  {
+    agentsById,
+    auditMetadata,
+    skillsById,
+  }: {
+    agentsById: Map<string, AgentResource>;
+    auditMetadata: Record<string, string>;
+    skillsById: Map<string, SkillResource>;
+  }
 ): Promise<Result<undefined, ApplyBatchSuggestionsError>> {
   switch (step.type) {
     case "skill": {
       const skill = skillsById.get(step.skillId);
       assert(skill, "The skill this suggestion targets disappeared.");
-      return writeSkillChange(auth, skill, step.change);
+      return writeSkillChange(auth, skill, step.change, { auditMetadata });
     }
-    case "agent":
-      return writeAgentChange(auth, step.change);
+    case "agent": {
+      const agent = agentsById.get(step.agentId);
+      assert(agent, "The agent this suggestion targets disappeared.");
+      return writeAgentChange(auth, agent, step.change, { auditMetadata });
+    }
     default:
       return assertNever(step);
   }
@@ -251,6 +269,25 @@ export async function applyBatchSuggestions(
   const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
   const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
 
+  const creationSteps = steps.filter((step) => step.action === "create");
+  const createdAgentIds = new Set(
+    creationSteps
+      .filter((step) => step.type === "agent")
+      .map((step) => step.agentId)
+  );
+  const creations: BatchCreations = {
+    skillIds: new Set(
+      creationSteps
+        .filter((step) => step.type === "skill")
+        .map((step) => step.skillId)
+    ),
+    agentsById: new Map(
+      agents
+        .filter((agent) => createdAgentIds.has(agent.sId))
+        .map((agent) => [agent.sId, agent])
+    ),
+  };
+
   for (const step of steps) {
     const res = await checkPermissions(auth, step, { agentsById, skillsById });
     if (res.isErr()) {
@@ -260,15 +297,30 @@ export async function applyBatchSuggestions(
 
   const resolvedSteps: ResolvedStep[] = [];
   for (const step of steps) {
-    const res = await resolveStep(auth, step, { agentsById, skillsById });
+    const res = await resolveStep(auth, step, {
+      agentsById,
+      skillsById,
+      creations,
+    });
     if (res.isErr()) {
       return res;
     }
     resolvedSteps.push(res.value);
   }
 
+  // Ties the audit event of every write to the batch and to the conversation it was made in.
+  const auditMetadata = {
+    suggestion_batch_id: batch.sId,
+    ...(batch.sourceConversationId
+      ? { conversation_id: batch.sourceConversationId }
+      : {}),
+  };
   for (const step of resolvedSteps) {
-    const res = await applyStep(auth, step, skillsById);
+    const res = await applyStep(auth, step, {
+      agentsById,
+      auditMetadata,
+      skillsById,
+    });
     if (res.isErr()) {
       return res;
     }

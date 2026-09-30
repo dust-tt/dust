@@ -1,7 +1,5 @@
 import type { LightWorkspaceType } from "@app/types/user";
 import { render, screen } from "@testing-library/react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { agentMentionDirective, getAgentMentionPlugin } from "./plugin";

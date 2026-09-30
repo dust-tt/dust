@@ -94,7 +94,7 @@ export const POD_TASKS_TOOLS_METADATA = [
         .min(3)
         .optional()
         .describe(
-          "Optional agent name. If provided, the tool searches matching agent configurations and uses the best match. Defaults to Dust."
+          "Optional agent name, matched exactly (case-insensitive). Defaults to Dust."
         ),
       customMessage: z
         .string()

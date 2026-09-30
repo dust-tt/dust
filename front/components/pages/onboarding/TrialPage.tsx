@@ -1,8 +1,6 @@
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { Button, Check, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 
 export function TrialPage() {
   const { workspace } = useAuth();

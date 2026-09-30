@@ -8,8 +8,7 @@ import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { createContext, useContext, useEffect, useMemo } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 
 interface DataSourceViewsContextType {
   supportedDataSourceViews: DataSourceViewType[];

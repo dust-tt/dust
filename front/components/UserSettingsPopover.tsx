@@ -21,6 +21,7 @@ import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibilit
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useUserLocale } from "@app/hooks/useUserLocale";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import {
@@ -39,6 +40,8 @@ import {
   MAX_USER_MEMORY_CHARS,
   MAX_USER_MEMORY_CONTENT_LENGTH,
 } from "@app/types/api/me/memory";
+import type { SupportedLocale } from "@app/types/locale";
+import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@app/types/locale";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -59,6 +62,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   Edit04,
@@ -83,6 +88,9 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
@@ -138,15 +146,25 @@ function SectionContent({
 
 // ─── Personal Information ─────────────────────────────────────────────────────
 
-const PersonalInfoSchema = z.object({
-  firstName: z.string().min(1, "First name is required."),
-  lastName: z.string().min(1, "Last name is required."),
-  profilePictureUrl: z.string().nullable(),
-});
+function usePersonalInfoSchema() {
+  const { t } = useLingui();
 
-type PersonalInfoType = z.infer<typeof PersonalInfoSchema>;
+  return useMemo(
+    () =>
+      z.object({
+        firstName: z.string().min(1, t`First name is required.`),
+        lastName: z.string().min(1, t`Last name is required.`),
+        profilePictureUrl: z.string().nullable(),
+      }),
+    [t]
+  );
+}
+
+type PersonalInfoType = z.infer<ReturnType<typeof usePersonalInfoSchema>>;
 
 function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
+  const { t } = useLingui();
+  const personalInfoSchema = usePersonalInfoSchema();
   const { user, isUserLoading } = useUser();
   const { patchUser } = usePatchUser();
   const isProvisioned = user?.origin === "provisioned";
@@ -160,7 +178,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
   });
 
   const form = useForm<PersonalInfoType>({
-    resolver: zodResolver(PersonalInfoSchema),
+    resolver: zodResolver(personalInfoSchema),
     defaultValues: {
       firstName: user?.firstName ?? "",
       lastName: user?.lastName ?? "",
@@ -209,7 +227,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
   if (isUserLoading) {
     return (
-      <SectionContent title="Personal Information">
+      <SectionContent title={t`Personal Information`}>
         <div className="flex justify-center p-6">
           <Spinner />
         </div>
@@ -219,11 +237,11 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
   return (
     <SectionContent
-      title="Personal Information"
-      description="How you appear to other members of the workspace"
+      title={t`Personal Information`}
+      description={t`How you appear to other members of the workspace`}
       footer={
         <Button
-          label="Save"
+          label={t`Save`}
           variant="primary"
           type="button"
           onClick={form.handleSubmit(handleSave)}
@@ -243,11 +261,11 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
         <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
           <SettingsList.Row
-            title="Profile picture"
+            title={t`Profile picture`}
             description={
               isProvisioned
-                ? "Managed by your identity provider"
-                : "Shown next to your messages"
+                ? t`Managed by your identity provider`
+                : t`Shown next to your messages`
             }
             action={
               <div className="group relative w-fit">
@@ -270,15 +288,15 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           />
 
           <SettingsList.Row
-            title="First name"
+            title={t`First name`}
             description={
-              isProvisioned ? "Managed by your identity provider" : undefined
+              isProvisioned ? t`Managed by your identity provider` : undefined
             }
             action={
               <div className="w-64">
                 <Input
                   {...form.register("firstName")}
-                  placeholder="First name"
+                  placeholder={t`First name`}
                   disabled={isProvisioned}
                   isError={!!form.formState.errors.firstName}
                   message={form.formState.errors.firstName?.message}
@@ -291,15 +309,15 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           />
 
           <SettingsList.Row
-            title="Last name"
+            title={t`Last name`}
             description={
-              isProvisioned ? "Managed by your identity provider" : undefined
+              isProvisioned ? t`Managed by your identity provider` : undefined
             }
             action={
               <div className="w-64">
                 <Input
                   {...form.register("lastName")}
-                  placeholder="Last name"
+                  placeholder={t`Last name`}
                   disabled={isProvisioned}
                   isError={!!form.formState.errors.lastName}
                   message={form.formState.errors.lastName?.message}
@@ -312,8 +330,8 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           />
 
           <SettingsList.Row
-            title="Email"
-            description="Used to sign in and receive notifications"
+            title={t`Email`}
+            description={t`Used to sign in and receive notifications`}
             action={
               <span className="copy-sm text-muted-foreground">
                 {user?.email}
@@ -330,10 +348,26 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
 type ThemeChoice = "light" | "dark" | "system";
 
-const THEME_OPTIONS: OptionTile<ThemeChoice>[] = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon01 },
-  { value: "system", label: "Auto", icon: Monitor01 },
+type TranslatableOptionTile<T extends string> = Omit<OptionTile<T>, "label"> & {
+  label: MessageDescriptor;
+};
+
+const THEME_OPTIONS: TranslatableOptionTile<ThemeChoice>[] = [
+  {
+    value: "light",
+    label: msg({ message: "Light", context: "theme" }),
+    icon: Sun,
+  },
+  {
+    value: "dark",
+    label: msg({ message: "Dark", context: "theme" }),
+    icon: Moon01,
+  },
+  {
+    value: "system",
+    label: msg({ message: "Auto", context: "theme" }),
+    icon: Monitor01,
+  },
 ];
 
 // Each tile previews its option as a type specimen in that face.
@@ -343,7 +377,7 @@ const CONVERSATION_FONT_SPECIMEN_CLASSES: Record<ConversationFont, string> = {
   dyslexic: "font-dyslexic",
 };
 
-const CONVERSATION_FONT_OPTIONS: OptionTile<ConversationFont>[] =
+const CONVERSATION_FONT_OPTIONS: TranslatableOptionTile<ConversationFont>[] =
   CONVERSATION_FONTS.map((font) => ({
     value: font,
     label: CONVERSATION_FONT_LABELS[font],
@@ -359,7 +393,12 @@ const CONVERSATION_FONT_OPTIONS: OptionTile<ConversationFont>[] =
     ),
   }));
 
-function CustomizationSection() {
+interface CustomizationSectionProps {
+  owner: WorkspaceType;
+}
+
+function CustomizationSection({ owner }: CustomizationSectionProps) {
+  const { t } = useLingui();
   const { theme: currentTheme, setTheme } = useTheme();
   // Null outside ConversationFontProvider: this
   // popover also renders on pages without conversations (e.g. /no-workspace,
@@ -374,15 +413,17 @@ function CustomizationSection() {
   const [localAgentsSectionVisible, setLocalAgentsSectionVisible] = useState(
     isAgentsSectionVisible
   );
+  const { hasFeature } = useFeatureFlags();
+  const hasLocalisation = hasFeature("localisation");
+  const {
+    userLocale,
+    isSaving: isSavingLocale,
+    doUpdateUserLocale,
+  } = useUserLocale({ owner });
+  const [localLocale, setLocalLocale] = useState<SupportedLocale | null>(null);
 
-  const modEnterLabel = useMemo(
-    () => (isMac ? "Cmd + Enter (⌘ + ↵)" : "Ctrl + Enter"),
-    [isMac]
-  );
-  const modEnterMenuLabel = useMemo(
-    () => (isMac ? "Cmd + Enter" : "Ctrl + Enter"),
-    [isMac]
-  );
+  const modEnterLabel = isMac ? t`Cmd + Enter (⌘ + ↵)` : t`Ctrl + Enter`;
+  const modEnterMenuLabel = isMac ? t`Cmd + Enter` : t`Ctrl + Enter`;
   const modEnterShortcut = useMemo(
     () => (isMac ? "⌘ + ↵" : "Ctrl + ↵"),
     [isMac]
@@ -410,7 +451,8 @@ function CustomizationSection() {
       (typeof window !== "undefined"
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
         : "enter") ||
-    localAgentsSectionVisible !== isAgentsSectionVisible;
+    localAgentsSectionVisible !== isAgentsSectionVisible ||
+    (localLocale !== null && localLocale !== userLocale);
 
   const handleSave = () => {
     if (localTheme !== currentTheme) {
@@ -442,37 +484,79 @@ function CustomizationSection() {
           if (!saved) {
             sendNotification({
               type: "error",
-              title: "Could not save the conversation font",
-              description:
-                "It applies on this device, but could not be saved to your account.",
+              title: t`Could not save the conversation font`,
+              description: t`It applies on this device, but could not be saved to your account.`,
             });
           }
         });
+    }
+    if (localLocale !== null && localLocale !== userLocale) {
+      void doUpdateUserLocale(localLocale).then((saved) => {
+        if (saved) {
+          setLocalLocale(null);
+        }
+      });
     }
   };
 
   return (
     <SectionContent
-      title="Customization"
-      description="Adjust how Dust looks and behaves for you."
+      title={t`Customization`}
+      description={t`Adjust how Dust looks and behaves for you.`}
       footer={
         <Button
-          label="Save"
+          label={t`Save`}
           variant="primary"
           type="button"
           onClick={handleSave}
-          disabled={!isDirty}
+          disabled={!isDirty || isSavingLocale}
+          isLoading={isSavingLocale}
         />
       }
     >
       <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
+        {hasLocalisation && (
+          <SettingsList.Row
+            title={t`Language`}
+            description={t`Language used by Dust for you, across all your workspaces`}
+            action={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    label={LOCALE_LABELS[localLocale ?? userLocale]}
+                    isSelect
+                    disabled={isSavingLocale}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent mountPortalContainer={portalContainer}>
+                  <DropdownMenuRadioGroup value={localLocale ?? userLocale}>
+                    {SUPPORTED_LOCALES.map((locale) => (
+                      <DropdownMenuRadioItem
+                        key={locale}
+                        value={locale}
+                        label={LOCALE_LABELS[locale]}
+                        onClick={() => setLocalLocale(locale)}
+                      />
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            }
+          />
+        )}
+
         <SettingsList.Row
-          title="Theme"
-          description="Choose how Dust looks on this device"
+          title={t`Theme`}
+          description={t`Choose how Dust looks on this device`}
           action={
             <OptionTileGroup
-              ariaLabel="Theme"
-              options={THEME_OPTIONS}
+              ariaLabel={t`Theme`}
+              options={THEME_OPTIONS.map((option) => ({
+                ...option,
+                label: t(option.label),
+              }))}
               value={localTheme}
               onValueChange={setLocalTheme}
             />
@@ -481,12 +565,15 @@ function CustomizationSection() {
 
         {fontContext !== null && (
           <SettingsList.Row
-            title="Conversation font"
-            description="Font used for agent answers in conversations"
+            title={t`Conversation font`}
+            description={t`Font used for agent answers in conversations`}
             action={
               <OptionTileGroup
-                ariaLabel="Conversation font"
-                options={CONVERSATION_FONT_OPTIONS}
+                ariaLabel={t`Conversation font`}
+                options={CONVERSATION_FONT_OPTIONS.map((option) => ({
+                  ...option,
+                  label: t(option.label),
+                }))}
                 value={localConversationFont}
                 onValueChange={setLocalConversationFont}
               />
@@ -495,21 +582,21 @@ function CustomizationSection() {
         )}
 
         <SettingsList.Row
-          title="Send message"
-          description="Keyboard shortcut to send a message"
+          title={t`Send message`}
+          description={t`Keyboard shortcut to send a message`}
           action={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  label={submitKey === "enter" ? "Enter (↵)" : modEnterLabel}
+                  label={submitKey === "enter" ? t`Enter (↵)` : modEnterLabel}
                   isSelect
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent mountPortalContainer={portalContainer}>
                 <DropdownMenuItem onClick={() => setSubmitKey("enter")}>
-                  Enter
+                  <Trans context="keyboard key">Enter</Trans>
                   <DropdownMenuShortcut>↵</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSubmitKey("cmd+enter")}>
@@ -524,8 +611,8 @@ function CustomizationSection() {
         />
 
         <SettingsList.Row
-          title="Show your agents on the home page"
-          description="Access your favorite and most-used agents, or search for one from the home page."
+          title={t`Show your agents on the home page`}
+          description={t`Access your favorite and most-used agents, or search for one from the home page.`}
           action={
             <SliderToggle
               selected={localAgentsSectionVisible}
@@ -543,6 +630,7 @@ function CustomizationSection() {
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 function NotificationsSection({ owner }: { owner: WorkspaceType }) {
+  const { t } = useLingui();
   const { user } = useUser();
   const sendNotification = useSendNotification();
   const sound = useSoundNotificationPreferencesForm();
@@ -568,7 +656,7 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
       if (soundSaved && notifSaved) {
         sendNotification({
           type: "success",
-          title: "Notification preferences saved",
+          title: t`Notification preferences saved`,
         });
       }
     } finally {
@@ -578,11 +666,11 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
 
   return (
     <SectionContent
-      title="Notifications"
-      description="Control how and when Dust notifies you"
+      title={t`Notifications`}
+      description={t`Control how and when Dust notifies you`}
       footer={
         <Button
-          label="Save"
+          label={t`Save`}
           variant="primary"
           type="button"
           onClick={handleSave}
@@ -598,8 +686,8 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
         <>
           <div className="flex flex-col gap-4">
             <Page.SectionHeader
-              title="Inbox notifications"
-              description="Sound alerts for items that need your attention"
+              title={t`Inbox notifications`}
+              description={t`Sound alerts for items that need your attention`}
             />
             <SoundNotificationPreferences
               control={sound.control}
@@ -608,15 +696,17 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
           </div>
           {showNotificationPreferences && notif.status === "error" && (
             <ContentMessageInline variant="warning" icon={InfoCircle}>
-              We couldn't load your notification settings. Please try again
-              later.
+              <Trans>
+                We couldn't load your notification settings. Please try again
+                later.
+              </Trans>
             </ContentMessageInline>
           )}
           {showNotificationPreferences && notif.status !== "error" && (
             <div className="flex flex-col gap-4">
               <Page.SectionHeader
-                title="Other channels"
-                description="Choose where else to receive notifications"
+                title={t`Other channels`}
+                description={t`Choose where else to receive notifications`}
               />
               <NotificationPreferences
                 control={notif.control}
@@ -645,10 +735,11 @@ function InvitationsSection({
   invitations,
   isLoading,
 }: InvitationsSectionProps) {
+  const { t } = useLingui();
   return (
     <SectionContent
-      title="Invitations"
-      description="Workspaces you've been invited to join"
+      title={t`Invitations`}
+      description={t`Workspaces you've been invited to join`}
     >
       {isLoading ? (
         <div className="flex justify-center py-6">
@@ -664,6 +755,7 @@ function InvitationsSection({
 // ─── Memory ───────────────────────────────────────────────────────────────────
 
 function MemorySection({ owner }: { owner: WorkspaceType }) {
+  const { t } = useLingui();
   const { content, isMemoryEnabled, isMemoryLoading, setMemory } =
     useUserMemory({ owner });
 
@@ -709,10 +801,10 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
 
   return (
     <SectionContent
-      title="Memory"
+      title={t`Memory`}
       footer={
         <Button
-          label="Save"
+          label={t`Save`}
           variant="primary"
           type="button"
           onClick={handleSave}
@@ -729,11 +821,13 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
           <div className="flex items-start justify-between gap-4 rounded-2xl border border-border dark:border-border-dark p-4">
             <div className="flex flex-col gap-1">
               <span className="heading-base text-foreground">
-                Enable Memory
+                <Trans>Enable Memory</Trans>
               </span>
               <span className="copy-sm text-muted-foreground">
-                Dust builds a personal memory from your conversations and uses
-                it to tailor future responses.
+                <Trans>
+                  Dust builds a personal memory from your conversations and uses
+                  it to tailor future responses.
+                </Trans>
               </span>
             </div>
             <SliderToggle selected={enabledValue} onClick={handleToggle} />
@@ -745,14 +839,18 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
               icon={InfoCircle}
               className="rounded-2xl p-4"
             >
-              The content of your saved memory may appear in responses sent to
-              Slack and other external integrations.
+              <Trans>
+                The content of your saved memory may appear in responses sent to
+                Slack and other external integrations.
+              </Trans>
             </ContentMessageInline>
           )}
 
           {enabledValue && (
             <div className="flex flex-col gap-2">
-              <span className="heading-base text-foreground">About you</span>
+              <span className="heading-base text-foreground">
+                <Trans>About you</Trans>
+              </span>
               <MarkdownEditor
                 value={value}
                 onChange={(markdown) => setDraft(markdown)}
@@ -777,13 +875,13 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
 const NAV_ITEMS: Array<{
   section: SettingsSection;
   icon: React.ComponentType;
-  label: string;
+  label: MessageDescriptor;
 }> = [
-  { section: "personal", icon: User01, label: "Personal Information" },
-  { section: "customization", icon: Settings01, label: "Customization" },
-  { section: "memory", icon: Brain, label: "Memory" },
-  { section: "notifications", icon: Bell01, label: "Notifications" },
-  { section: "invitations", icon: Mail01, label: "Invitations" },
+  { section: "personal", icon: User01, label: msg`Personal Information` },
+  { section: "customization", icon: Settings01, label: msg`Customization` },
+  { section: "memory", icon: Brain, label: msg`Memory` },
+  { section: "notifications", icon: Bell01, label: msg`Notifications` },
+  { section: "invitations", icon: Mail01, label: msg`Invitations` },
 ];
 
 export function UserSettingsPopover({
@@ -791,6 +889,7 @@ export function UserSettingsPopover({
   onOpenChange,
   owner,
 }: UserSettingsPopoverProps) {
+  const { t } = useLingui();
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("personal");
 
@@ -860,7 +959,7 @@ export function UserSettingsPopover({
                     key={section}
                     value={section}
                     icon={icon}
-                    label={label}
+                    label={t(label)}
                   />
                 ))}
               </TabsList>
@@ -879,7 +978,7 @@ export function UserSettingsPopover({
                 <NavigationListItem
                   key={section}
                   icon={icon}
-                  label={label}
+                  label={t(label)}
                   selected={activeSection === section}
                   onClick={() => setActiveSection(section)}
                 />
@@ -891,7 +990,9 @@ export function UserSettingsPopover({
             {activeSection === "personal" && (
               <PersonalInfoSection owner={owner} />
             )}
-            {activeSection === "customization" && <CustomizationSection />}
+            {activeSection === "customization" && (
+              <CustomizationSection owner={owner} />
+            )}
             {activeSection === "notifications" && (
               <NotificationsSection owner={owner} />
             )}

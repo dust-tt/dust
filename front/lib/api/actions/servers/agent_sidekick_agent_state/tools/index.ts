@@ -6,8 +6,7 @@ import {
   getAgentConfigurationIdFromContext,
   getAgentConfigurationVersionFromContext,
 } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
@@ -30,14 +29,13 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
         runContext,
       });
 
-      // Fetch the agent configuration with full details to get the actions.
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: agentConfigurationId,
-        agentVersion: agentVersion ?? undefined,
-        variant: "full",
-      });
+      const agent = await AgentResource.fetchById(auth, agentConfigurationId);
+      const agentVersionResource =
+        agent && agentVersion !== null
+          ? await agent.fetchVersion(auth, agentVersion)
+          : agent;
 
-      if (!agentConfiguration) {
+      if (!agentVersionResource || !auth.can("read", agentVersionResource)) {
         return new Err(
           new MCPError(
             `Agent configuration not found: ${agentConfigurationId}`,
@@ -48,41 +46,18 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
         );
       }
 
-      // Get skills associated with this agent.
-      const agentSkills = await SkillResource.listByAgentConfiguration(
-        auth,
-        agentConfiguration
-      );
-
-      const agentInfo = {
-        sId: agentConfiguration.sId,
-        version: agentConfiguration.version,
-        name: agentConfiguration.name,
-        description: agentConfiguration.description,
-        instructions: agentConfiguration.instructions,
-        model: {
-          providerId: agentConfiguration.model.providerId,
-          modelId: agentConfiguration.model.modelId,
-          temperature: agentConfiguration.model.temperature,
-          reasoningEffort: agentConfiguration.model.reasoningEffort,
-        },
-        scope: agentConfiguration.scope,
-        status: agentConfiguration.status,
-        tags: agentConfiguration.tags.map((tag) => ({
-          sId: tag.sId,
-          name: tag.name,
-        })),
-        tools: agentConfiguration.actions.map((action) => ({
-          sId: action.sId,
-          name: action.name,
-          description: action.description,
-        })),
-        skills: agentSkills.map((skill) => ({
-          sId: skill.sId,
-          name: skill.name,
-          userFacingDescription: skill.userFacingDescription,
-        })),
-      };
+      const [{ instructions }, tags, actions, skills] = await Promise.all([
+        agentVersionResource.fetchInstructions(),
+        agentVersionResource.listTags(auth),
+        agentVersionResource.listActions(auth),
+        agentVersionResource.listSkills(auth),
+      ]);
+      const agentInfo = agentVersionResource.toSidekickAgentInfoJSON({
+        instructions,
+        tags,
+        actions,
+        skills,
+      });
 
       return new Ok([
         {

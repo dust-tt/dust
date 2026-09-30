@@ -13,6 +13,7 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   getMessageDate,
+  hasMentionRequiringValidation,
   isAgentMessageWithStreaming,
   isCompactionMessage,
   isConversationForkNotice,
@@ -23,8 +24,10 @@ import { UserMessage } from "@app/components/assistant/conversation/UserMessage"
 import { WakeUpMessage } from "@app/components/assistant/conversation/WakeUpMessage";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
+import { isMentionRequiringValidation } from "@app/types/assistant/conversation";
 import { isContentNodeContentFragment } from "@app/types/content_fragment";
 import { isSupportedImageContentType } from "@app/types/files";
 import type { UserType } from "@app/types/user";
@@ -298,9 +301,20 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       );
     }
 
-    if (isHiddenMessage(data)) {
-      // This is hacky but in case of handover we generate a user message from the agent and we want
-      // to hide it in the conversation because it has no value to display.
+    // This is hacky but in case of handover we generate a user message from the agent and we want
+    // to hide it in the conversation because it has no value to display.
+    const isHidden = isHiddenMessage(data);
+    // But if it requires validation we still need to show the message and hide only user message.
+    if (
+      isHidden &&
+      !(
+        hasMentionRequiringValidation(data) &&
+        canCurrentUserRespondToParentUserMessage({
+          parentUserId: triggeringUser?.sId,
+          currentUserId: context.user.sId,
+        })
+      )
+    ) {
       return null;
     }
 
@@ -348,7 +362,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     return (
       <>
-        {!areSameDate && <MessageDateIndicator message={data} />}
+        {!areSameDate && !isHidden && <MessageDateIndicator message={data} />}
         <div
           key={`message-id-${sId}`}
           ref={ref}
@@ -358,7 +372,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             !nextData && "mb-10"
           )}
         >
-          {isUserMessage(data) && (
+          {isUserMessage(data) && !isHidden && (
             <UserMessage
               citations={citations}
               conversationId={context.conversation.sId}
@@ -426,11 +440,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
                 // :warning: make sure to use the index in the key, as the mention.id is the userId
 
-                if (
-                  mention.status === "pending_conversation_access" ||
-                  mention.status === "pending_project_membership" ||
-                  mention.status === "agent_restricted_by_space_usage"
-                ) {
+                if (isMentionRequiringValidation(mention)) {
                   return (
                     <MentionValidationRequired
                       key={index}

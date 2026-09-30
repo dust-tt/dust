@@ -1,6 +1,6 @@
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   DropdownMenu,
@@ -15,7 +15,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 
 interface AddEditorDropdownProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   editors: Array<{ sId: string }>;
   onAddEditor: (editor: SearchMemberWithWorkspaceType) => void;
   trigger: ReactElement;

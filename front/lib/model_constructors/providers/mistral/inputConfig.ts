@@ -1,4 +1,4 @@
-import { MISTRAL_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/mistral/reasoning_efforts";
+import { MISTRAL_HOST_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/mistral/reasoning_efforts";
 import { mistralTemperatureSchema } from "@app/lib/model_constructors/providers/mistral/temperature";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 import { z } from "zod";
@@ -12,11 +12,12 @@ import { z } from "zod";
 // supported for this model, supported values: [high, none]" for anything else).
 // `temperature` is a real knob on every model, in 0..1.5.
 
-// Widest Mistral reasoning contract (off/on), for the models that have it.
+// Widest Mistral reasoning contract, for the models that have it. Per-model
+// schemas narrow it.
 export const mistralConfigSchema = inputConfigSchema.extend({
   reasoning: z
     .object({
-      effort: z.enum([...MISTRAL_SUPPORTED_REASONING_EFFORTS]),
+      effort: z.enum(MISTRAL_HOST_REASONING_EFFORTS),
     })
     .optional(),
   temperature: mistralTemperatureSchema.optional(),

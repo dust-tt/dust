@@ -11,7 +11,10 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 // Type-only import (erased at runtime, so no import cycle with `agent_resource`): these helpers may
 // operate on an already-resolved `AgentResource` instance but never construct or statically call it.
-import type { AgentResource } from "@app/lib/resources/agent_resource";
+import type {
+  AgentAuditOptions,
+  AgentResource,
+} from "@app/lib/resources/agent_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -431,7 +434,8 @@ export async function syncAgentEditors(
   {
     agentResource,
     editors,
-  }: { agentResource: AgentResource; editors: UserType[] }
+    auditMetadata,
+  }: { agentResource: AgentResource; editors: UserType[] } & AgentAuditOptions
 ): Promise<Result<undefined, Error>> {
   const currentEditors = (await agentResource.listEditors(auth)) ?? [];
   const currentIds = new Set(currentEditors.map((e) => e.id));
@@ -505,6 +509,7 @@ export async function syncAgentEditors(
         actorUserId !== undefined &&
           addedEditors.some((u) => u.sId === actorUserId)
       ),
+      ...auditMetadata,
     },
   });
 

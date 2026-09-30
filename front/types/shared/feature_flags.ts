@@ -2,7 +2,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   group_management: {
     description:
       "Delegate group membership and usage management to group managers",
-    stage: "dust_only",
+    stage: "ask_owner",
     owner: "philipperolet",
   },
   skills_search: {
@@ -38,6 +38,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Map workspace groups to seat types so group membership drives members' seats",
     stage: "ask_owner",
     owner: "tdraier",
+  },
+  group_limits: {
+    description: "Enable shared group limits on the Usage page",
+    stage: "ask_owner",
+    owner: "rfrenoy",
   },
   dust_filesystem: {
     description:
@@ -228,6 +233,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to the simulated failure model",
     stage: "dust_only",
     owner: "frankaloia",
+  },
+  standard_stream_gpt_6_luna_medium: {
+    description:
+      "Route the Standard model tier to GPT 6 Luna at medium reasoning first, to test it as the Standard baseline",
+    stage: "dust_only",
+    owner: "Nils-Fedrigo",
   },
   automatic_model_health_routing: {
     description:
@@ -479,16 +490,20 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "id13",
   },
-  knowledge_browser: {
-    description:
-      "Browse spaces and folders from the knowledge pickers of the composer and skill builder instead of searching only",
-    stage: "dust_only",
-    owner: "smb2268",
-  },
   discovery_homepage: {
     description: "New homepage optimized for skill and agents discovery",
     stage: "dust_only",
     owner: "adrsimon",
+  },
+  localisation: {
+    description: "Workspace and user language settings for the product UI",
+    stage: "dust_only",
+    owner: "sfriquet",
+  },
+  co_edition: {
+    description: "Collaborative editing features",
+    stage: "dust_only",
+    owner: "PopDaph",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

@@ -2,8 +2,6 @@ import config from "@app/lib/api/config";
 import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { render } from "@react-email/render";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import * as React from "react";
 import { z } from "zod";
 
 const AgentMessageFeedbackDigestEmailTemplatePropsSchema = z.object({
@@ -15,8 +13,13 @@ const AgentMessageFeedbackDigestEmailTemplatePropsSchema = z.object({
   feedbacks: z.array(
     z.object({
       agentName: z.string(),
-      conversationId: z.string(),
-      conversationTitle: z.string(),
+      // Only set when the user who gave the feedback shared the conversation.
+      conversation: z
+        .object({
+          id: z.string(),
+          title: z.string(),
+        })
+        .optional(),
       userWhoGaveFeedbackFullName: z.string(),
       thumbDirection: z.union([z.literal("up"), z.literal("down")]),
       feedbackContent: z.string().optional(),
@@ -67,16 +70,25 @@ const AgentMessageFeedbackDigestEmailTemplate = ({
               </strong>
             </div>
             <div style={{ color: "#666", fontSize: "14px", marginTop: "5px" }}>
-              by {feedback.userWhoGaveFeedbackFullName} in{" "}
-              <a
-                href={
-                  config.getAppUrl() +
-                  getConversationRoute(workspace.id, feedback.conversationId)
-                }
-                target="_blank"
-              >
-                {feedback.conversationTitle}
-              </a>
+              by {feedback.userWhoGaveFeedbackFullName}
+              {feedback.conversation && (
+                <>
+                  {" "}
+                  in{" "}
+                  <a
+                    href={
+                      config.getAppUrl() +
+                      getConversationRoute(
+                        workspace.id,
+                        feedback.conversation.id
+                      )
+                    }
+                    target="_blank"
+                  >
+                    {feedback.conversation.title}
+                  </a>
+                </>
+              )}
             </div>
             {feedback.feedbackContent && (
               <div

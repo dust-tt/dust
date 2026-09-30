@@ -10,12 +10,17 @@ import type {
   AgentCreateSuggestionType,
   AgentDeleteSuggestionType,
   AgentDescriptionSuggestionType,
+  AgentEditorsSuggestionType,
   AgentInstructionsSuggestionType,
   AgentModelSuggestionType,
   AgentNameSuggestionType,
   AgentScopeSuggestionType,
   AgentSkillsSuggestionType,
+  AgentStructuredOutputSuggestionType,
+  AgentSubAgentSuggestionType,
   AgentSuggestionState,
+  AgentTagsSuggestionType,
+  AgentToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import type { ActionCardState } from "@dust-tt/sparkle";
 import { ActionCardBlock, Avatar } from "@dust-tt/sparkle";
@@ -42,11 +47,16 @@ export type AgentActionCardSuggestionType =
   | AgentCreateSuggestionType
   | AgentDeleteSuggestionType
   | AgentDescriptionSuggestionType
+  | AgentEditorsSuggestionType
   | AgentInstructionsSuggestionType
   | AgentModelSuggestionType
   | AgentNameSuggestionType
   | AgentScopeSuggestionType
-  | AgentSkillsSuggestionType;
+  | AgentSkillsSuggestionType
+  | AgentStructuredOutputSuggestionType
+  | AgentSubAgentSuggestionType
+  | AgentTagsSuggestionType
+  | AgentToolsSuggestionType;
 
 interface AgentSuggestionActionCardProps {
   agentSuggestion: AgentActionCardSuggestionType;
@@ -57,7 +67,7 @@ interface AgentSuggestionActionCardProps {
   pictureUrl?: string;
 }
 
-export function getAgentSuggestionLabels(
+function getAgentSuggestionLabels(
   agentSuggestion: AgentActionCardSuggestionType
 ): {
   title: string;
@@ -130,6 +140,41 @@ export function getAgentSuggestionLabels(
       };
     }
 
+    case "editors": {
+      return {
+        title: "Update agent editors",
+        acceptedTitle: "Editors update accepted",
+        rejectedTitle: "Editors update rejected",
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "tags": {
+      return {
+        title: "Update agent tags",
+        acceptedTitle: "Tags update accepted",
+        rejectedTitle: "Tags update rejected",
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "structured_output": {
+      if (agentSuggestion.suggestion.responseFormat === null) {
+        return {
+          title: "Remove structured output",
+          acceptedTitle: "Structured output removal accepted",
+          rejectedTitle: "Structured output removal rejected",
+          description: analysis ?? undefined,
+        };
+      }
+      return {
+        title: "Update structured output",
+        acceptedTitle: "Structured output update accepted",
+        rejectedTitle: "Structured output update rejected",
+        description: analysis ?? undefined,
+      };
+    }
+
     case "instructions": {
       return {
         title: "Update agent instructions",
@@ -147,6 +192,30 @@ export function getAgentSuggestionLabels(
         rejectedTitle: isAddition
           ? "Skill addition rejected"
           : "Skill removal rejected",
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "sub_agent": {
+      const isAddition = agentSuggestion.suggestion.action === "add";
+      return {
+        title: isAddition ? "Add a sub-agent" : "Remove a sub-agent",
+        acceptedTitle: isAddition ? "Sub-agent added" : "Sub-agent removed",
+        rejectedTitle: isAddition
+          ? "Sub-agent addition rejected"
+          : "Sub-agent removal rejected",
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "tools": {
+      const isAddition = agentSuggestion.suggestion.action === "add";
+      return {
+        title: isAddition ? "Add a tool" : "Remove a tool",
+        acceptedTitle: isAddition ? "Tool added" : "Tool removed",
+        rejectedTitle: isAddition
+          ? "Tool addition rejected"
+          : "Tool removal rejected",
         description: analysis ?? undefined,
       };
     }

@@ -101,10 +101,19 @@ export async function setGroupSpendLimit(
       )
     );
   }
+  if (!auth.can("set_usage_limits", group)) {
+    return new Err(
+      new GroupSpendLimitError(
+        "unauthorized",
+        "You cannot change this group's spend limit."
+      )
+    );
+  }
 
   const poolCapAwuCredits = limit.kind === "limited" ? limit.awuCredits : null;
+  const previousAwuCredits = group.poolCapAwuCredits;
 
-  // Persist the admin's intent on the group column, the source of truth the
+  // Persist the caller's intent on the group column, the source of truth the
   // Redis rate-limiter reads at enforcement time.
   const updateResult = await group.updatePoolCap(poolCapAwuCredits);
   if (updateResult.isErr()) {
@@ -146,6 +155,9 @@ export async function setGroupSpendLimit(
       kind: limit.kind,
       awu_credits:
         limit.kind === "limited" ? String(limit.awuCredits) : "unlimited",
+      previous_kind: previousAwuCredits === null ? "unlimited" : "limited",
+      previous_awu_credits:
+        previousAwuCredits === null ? "unlimited" : String(previousAwuCredits),
     },
   });
 

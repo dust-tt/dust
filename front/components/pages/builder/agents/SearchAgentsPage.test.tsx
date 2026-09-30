@@ -7,7 +7,14 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
 import type { MembershipRoleType } from "@app/types/memberships";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import assert from "assert";
 import { SWRConfig } from "swr";
@@ -83,14 +90,17 @@ vi.mock("@app/components/assistant/CreateAgentDropdown", () => ({
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.history.replaceState({}, "", "/");
 });
 
 async function setup({
   role = "admin",
   pageEnabled = true,
+  tagsLoaded,
 }: {
   role?: MembershipRoleType;
   pageEnabled?: boolean;
+  tagsLoaded?: Promise<void>;
 } = {}) {
   const { authenticator, user } = await createResourceTest({ role });
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
@@ -157,6 +167,10 @@ async function setup({
       body.limit === 0 ? facetsResponse : search()
   );
   const fetcher = vi.fn(async (url: string) => {
+    if (url.endsWith("/tags")) {
+      await tagsLoaded;
+      return { tags: [] };
+    }
     if (url.endsWith(`/agent_configurations/${agent.sId}`)) {
       return { agentConfiguration };
     }
@@ -241,20 +255,21 @@ describe("search-backed Manage Agents", () => {
       },
       { timeout: CI_RENDER_TIMEOUT_MS }
     );
-    for (const header of [
+    expect(
+      screen
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent?.trim())
+        .filter(Boolean)
+    ).toEqual([
       "Name",
-      "Model",
       "Access",
-      "Editors",
-      "Tags",
+      "Model",
       "Usage",
       "Feedback",
+      "Editors",
+      "Tags",
       "Last edited",
-    ]) {
-      expect(
-        screen.getByRole("columnheader", { name: header })
-      ).toBeInTheDocument();
-    }
+    ]);
     expect(fetchedUrls(fetcher)).not.toContainEqual(
       expect.stringContaining(`/agent_configurations/${agent.sId}`)
     );
@@ -264,16 +279,11 @@ describe("search-backed Manage Agents", () => {
     const { fetcherWithBody, mount } = await setup();
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
+    expect(
+      screen.queryByRole("tab", { name: "Editable" })
+    ).not.toBeInTheDocument();
 
     for (const { tab, filters } of [
-      {
-        tab: "Editable",
-        filters: {
-          status: ["active"],
-          editedByMe: true,
-          permissionFiltering: "strict",
-        },
-      },
       {
         tab: "Default",
         filters: {
@@ -299,15 +309,46 @@ describe("search-backed Manage Agents", () => {
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "Show hidden agents" })
+      screen.getByRole("checkbox", { name: "Hidden agents" })
     );
+    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+      permissionFiltering: "strict",
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         scope: ["visible", "hidden"],
         permissionFiltering: "unrestricted",
       })
     );
+
+    expect(screen.getByText("Hidden agents")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Filters" })
+    ).not.toHaveTextContent(/\d/);
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Hidden agents" })
+    ).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await waitFor(() =>
+      expect(screen.queryByText("Hidden agents")).not.toBeInTheDocument()
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Hidden agents" })
+    ).not.toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Default" }));
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.queryByRole("checkbox", { name: "Hidden agents" })
+    ).not.toBeInTheDocument();
   });
 
   it("never requests unrestricted search for non-admins", async () => {
@@ -315,9 +356,11 @@ describe("search-backed Manage Agents", () => {
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(
-      screen.queryByRole("checkbox", { name: "Show hidden agents" })
+      screen.queryByRole("checkbox", { name: "Hidden agents" })
     ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
@@ -402,6 +445,29 @@ describe("search-backed Manage Agents", () => {
     );
   });
 
+  it("keeps a row checkbox click when tags finish loading mid-click", async () => {
+    let releaseTags = () => {};
+    const { mount } = await setup({
+      tagsLoaded: new Promise((resolve) => {
+        releaseTags = resolve;
+      }),
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Select Weekly report",
+    });
+
+    fireEvent.pointerDown(checkbox);
+    await act(async () => releaseTags());
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Loading")).not.toBeInTheDocument()
+    );
+    fireEvent.click(checkbox);
+
+    expect(await screen.findByText("1 selected")).toBeInTheDocument();
+  });
+
   it("keeps the selection across pages and offers batch actions", async () => {
     const { agent, search, fetcherWithBody, mount } = await setup();
     search.mockResolvedValueOnce({
@@ -416,7 +482,7 @@ describe("search-backed Manage Agents", () => {
     await userEvent.click(
       screen.getByRole("checkbox", { name: "Select Weekly report" })
     );
-    expect(screen.getByText("1 selected.")).toBeInTheDocument();
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
     for (const action of ["Change tag", "Set model", "Unpublish", "Archive"]) {
       expect(screen.getByRole("button", { name: action })).toBeInTheDocument();
     }
@@ -434,11 +500,11 @@ describe("search-backed Manage Agents", () => {
     await userEvent.click(
       screen.getByRole("checkbox", { name: "Select Second page" })
     );
-    expect(screen.getByText("2 selected.")).toBeInTheDocument();
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText("Search agents"), "report");
     await waitFor(() =>
-      expect(screen.queryByText(/selected\./)).not.toBeInTheDocument()
+      expect(screen.queryByText(/^\d+ selected$/)).not.toBeInTheDocument()
     );
   });
 
@@ -488,9 +554,9 @@ describe("search-backed Manage Agents", () => {
     );
     await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
     const meCheckbox = await screen.findByRole("checkbox", { name: "Me" });
-    const editorCheckboxes = within(screen.getByRole("dialog")).getAllByRole(
-      "checkbox"
-    );
+    const editorCheckboxes = within(screen.getByRole("dialog"))
+      .getAllByRole("checkbox")
+      .filter((checkbox) => checkbox.id.startsWith("agent-filter-option-"));
     expect(editorCheckboxes).toHaveLength(2);
     expect(editorCheckboxes[0]).toBe(meCheckbox);
     expect(

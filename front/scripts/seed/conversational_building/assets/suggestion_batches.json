@@ -1,0 +1,22 @@
+[
+  {
+    "id": "actionItemTracker",
+    "title": "Track action items in their own skill",
+    "analysis": "Action items from standups need follow-up after the digest is written. A dedicated skill can track them, and StandupDigest hands them over instead of only listing them."
+  },
+  {
+    "id": "groupByOwner",
+    "title": "Group action items by owner",
+    "analysis": "People look for their own tasks first. Grouping the standup action items by owner saves them from scanning the whole list."
+  },
+  {
+    "id": "renameToTeamDigest",
+    "title": "Rename to TeamDigest",
+    "analysis": "The skill now handles weekly syncs and Slack threads, not only standups. Its name and the description members read should say so."
+  },
+  {
+    "id": "membersOnly",
+    "title": "Keep it for members only",
+    "analysis": "Agents pick the skill up for messages that are not standup updates. Making it available to members only stops that without hiding it from people."
+  }
+]

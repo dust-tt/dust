@@ -98,6 +98,11 @@
  *           nullable: true
  *           description: Default provider for embeddings in the workspace
  *           example: "openai"
+ *         locale:
+ *           type: string
+ *           enum: [en-US, fr-FR]
+ *           description: Default language of the product UI for the workspace members
+ *           example: "en-US"
  *     Context:
  *       type: object
  *       required:
@@ -255,6 +260,10 @@
  *         ignoreCreditSpendThresholdAlert:
  *           type: boolean
  *           description: Whether the agent keeps running past the workspace credit spend threshold alert
+ *           example: false
+ *         canViewContent:
+ *           type: boolean
+ *           description: Whether the caller can view the agent's private fields (instructions, skills, tools); they are redacted when false
  *           example: false
  *     AgentSkill:
  *       type: object

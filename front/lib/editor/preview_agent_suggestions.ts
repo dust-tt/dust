@@ -1,4 +1,4 @@
-import { mergeAgentFieldEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import { mergeAgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
 import type { MarkdownPipeline } from "@app/lib/editor/skill_instructions_html";
 import { applyInstructionEditsToHtml } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
@@ -10,9 +10,13 @@ import type {
   AgentSuggestionType,
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
+  SkillsSuggestionType,
+  TagsSuggestionType,
+  ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
+import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";
 
-type PreviewedAgentFields = Pick<
+export type PreviewedAgentFields = Pick<
   AgentConfigurationType,
   | "name"
   | "description"
@@ -20,7 +24,20 @@ type PreviewedAgentFields = Pick<
   | "instructions"
   | "instructionsHtml"
   | "model"
+  | "tags"
 >;
+
+export interface PreviewedAgentCapabilities {
+  addedToolIds: string[];
+  removedToolIds: string[];
+  addedSkillIds: string[];
+  removedSkillIds: string[];
+}
+
+export interface AgentSuggestionsPreview {
+  fields: PreviewedAgentFields;
+  capabilities: PreviewedAgentCapabilities;
+}
 
 interface PreviewAgentSuggestionsInput {
   agent: PreviewedAgentFields;
@@ -87,28 +104,97 @@ function previewModel(
   });
 }
 
+// Tags are suggested by name: an added tag that is not on the agent is previewed with a placeholder
+// id, since it may not exist yet.
+function previewTags(
+  currentTags: PreviewedAgentFields["tags"],
+  tags: TagsSuggestionType | undefined
+): PreviewedAgentFields["tags"] {
+  if (!tags) {
+    return currentTags;
+  }
+
+  const removedNames = new Set(
+    tags.removeTags.map((name) => name.toLowerCase())
+  );
+  const kept = currentTags.filter(
+    (tag) => !removedNames.has(tag.name.toLowerCase())
+  );
+  const keptNames = new Set(kept.map((tag) => tag.name.toLowerCase()));
+
+  return [
+    ...kept,
+    ...tags.addTags
+      .filter((name) => !keptNames.has(name.toLowerCase()))
+      .map((name) => ({
+        sId: `suggested-tag-${name}`,
+        name,
+        kind: "standard" as const,
+      })),
+  ];
+}
+
 export function previewAgentSuggestions({
   agent,
   suggestions,
   pipeline,
 }: PreviewAgentSuggestionsInput): Result<
-  PreviewedAgentFields,
+  AgentSuggestionsPreview,
   DustError<"invalid_request_error">
 > {
-  const edits = mergeAgentFieldEdits(suggestions);
+  const creation = suggestions.find(isCreateAgentSuggestion);
+  if (creation) {
+    const {
+      name,
+      description,
+      instructions,
+      toolIds = [],
+      skillIds = [],
+    } = creation.suggestion;
+    return new Ok({
+      fields: {
+        name,
+        description,
+        scope: agent.scope,
+        model: agent.model,
+        tags: agent.tags,
+        instructions: agent.instructions,
+        instructionsHtml: instructions,
+      },
+      capabilities: {
+        addedToolIds: toolIds,
+        removedToolIds: [],
+        addedSkillIds: skillIds,
+        removedSkillIds: [],
+      },
+    });
+  }
+
+  const edits = mergeAgentEdits(suggestions);
   if (edits.isErr()) {
     return edits;
   }
 
-  const { name, description, scope, instructions, model, skills } = edits.value;
+  const {
+    name,
+    description,
+    scope,
+    instructions,
+    model,
+    skills = [],
+    tools = [],
+    subAgents,
+    tags,
+    structuredOutput,
+  } = edits.value;
 
-  // The preview only covers the fields above: showing the agent without its skill changes would
-  // misrepresent the suggestions.
-  if (skills) {
+  // Sub-agent changes are not previewed yet: showing the agent without them would misrepresent the
+  // suggestions.
+  if (subAgents) {
     return new Err(
       new DustError(
         "invalid_request_error",
-        "Suggestions changing the agent's skills cannot be previewed."
+        "Suggestions changing the agent's sub-agents cannot be previewed."
       )
     );
   }
@@ -128,10 +214,37 @@ export function previewAgentSuggestions({
   }
 
   return new Ok({
-    name: name ?? agent.name,
-    description: description ?? agent.description,
-    scope: scope ?? agent.scope,
-    model: modelRes.value,
-    ...instructionsRes.value,
+    fields: {
+      name: name ?? agent.name,
+      description: description ?? agent.description,
+      scope: scope ?? agent.scope,
+      model: structuredOutput
+        ? {
+            ...modelRes.value,
+            responseFormat: structuredOutput.responseFormat ?? undefined,
+          }
+        : modelRes.value,
+      tags: previewTags(agent.tags, tags),
+      ...instructionsRes.value,
+    },
+    capabilities: previewCapabilities(tools, skills),
   });
+}
+
+function previewCapabilities(
+  tools: ToolsSuggestionType[],
+  skills: SkillsSuggestionType[]
+): PreviewedAgentCapabilities {
+  return {
+    addedToolIds: tools.filter((t) => t.action === "add").map((t) => t.toolId),
+    removedToolIds: tools
+      .filter((t) => t.action === "remove")
+      .map((t) => t.toolId),
+    addedSkillIds: skills
+      .filter((s) => s.action === "add")
+      .map((s) => s.skillId),
+    removedSkillIds: skills
+      .filter((s) => s.action === "remove")
+      .map((s) => s.skillId),
+  };
 }

@@ -110,7 +110,8 @@ export async function resolveModel(
     const resolution = resolveStreamModel(
       models,
       streamId,
-      getDegradedModelIds()
+      getDegradedModelIds(),
+      featureFlags
     );
     enabled = resolution.model;
 

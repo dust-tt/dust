@@ -4,6 +4,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useUpdateEditors } from "@app/lib/swr/agent_editors";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import {
+  REQUESTABLE_SPACE_KINDS,
   useAddSpaceMembers,
   useSpaces,
   useSpacesAsAdmin,
@@ -24,11 +25,17 @@ export function RedactedAgentMessage({
   owner: WorkspaceType;
 }) {
   // Spaces the caller is a member of, and every space of the workspace to name the missing ones.
-  const { spaces: memberSpaces } = useSpaces({
-    workspaceId: owner.sId,
-    kinds: "all",
-  });
-  const { spaces: allSpaces } = useSpacesAsAdmin({ workspaceId: owner.sId });
+  const { spaces: memberSpaces, isSpacesLoading: isMemberSpacesLoading } =
+    useSpaces({
+      workspaceId: owner.sId,
+      kinds: "all",
+    });
+  const { spaces: allSpaces, isSpacesLoading: isAllSpacesLoading } =
+    useSpacesAsAdmin({
+      workspaceId: owner.sId,
+      kinds: REQUESTABLE_SPACE_KINDS,
+    });
+  const isSpacesLoading = isMemberSpacesLoading || isAllSpacesLoading;
   const { user } = useAuth();
   const updateEditors = useUpdateEditors({
     owner,
@@ -153,8 +160,8 @@ export function RedactedAgentMessage({
                   ? `Join space ${missingSpaceNames[0]}`
                   : "Join all required spaces"
               }
-              isLoading={isJoiningSpaces}
-              disabled={isJoiningSpaces}
+              isLoading={isSpacesLoading || isJoiningSpaces}
+              disabled={isSpacesLoading || isJoiningSpaces}
               onClick={() => {
                 void handleJoinSpaces();
               }}

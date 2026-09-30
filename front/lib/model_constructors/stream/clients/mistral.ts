@@ -5,7 +5,6 @@ import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/mistralai/con
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { MISTRAL_HOST } from "@app/lib/model_constructors/types/hosts";
-import { MISTRAL_LAB } from "@app/lib/model_constructors/types/labs";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { Mistral } from "@mistralai/mistralai";
 import type {
@@ -20,7 +19,7 @@ export abstract class MistralStream extends WithMistralAIInputConverter(
     MistralInputConfig
   >
 ) {
-  static readonly lab = MISTRAL_LAB;
+  // No `lab`: Mistral also hosts third-party models, so each endpoint sets it.
   static readonly host = MISTRAL_HOST;
 
   static readonly configSchema = mistralConfigSchema;

@@ -1,6 +1,6 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { getPaginationParams } from "@app/lib/api/pagination";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -14,6 +14,12 @@ const ParamsSchema = z.object({
 });
 
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/feedbacks.
+/**
+ * @cc [owner:sfriquet,label:security] feedbacks-require-agent-read
+ * Listing an agent's feedbacks MUST return 404 unless the caller holds `read` on the agent
+ * (`auth.can("read", agent)`) or is a workspace admin (`auth.isAdmin()`). Fetchability of the agent
+ * alone (e.g. a hidden agent the caller does not edit) MUST NOT grant access.
+ */
 const app = workspaceApp();
 
 /** @ignoreswagger */
@@ -21,12 +27,8 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { aId } = ctx.req.valid("param");
 
-  // IMPORTANT: make sure the agent configuration is accessible by the user.
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: aId,
-    variant: "light",
-  });
-  if (!agentConfiguration) {
+  const agent = await AgentResource.fetchById(auth, aId);
+  if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {

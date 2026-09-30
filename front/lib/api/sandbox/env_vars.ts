@@ -137,6 +137,30 @@ export function areAllowedDomainsEqual(
   return true;
 }
 
+// dsbx rejects the whole secrets table when an exact domain has a single
+// label (`localhost`), which kills the forwarder before it binds. The proxy
+// allowlist normalizer accepts those, so HTTPS secrets add the rule here.
+export function normalizeHttpsSecretAllowedDomains(
+  values: string[]
+): Result<string[], Error> {
+  const normalized = normalizeEgressPolicyDomains(values);
+  if (normalized.isErr()) {
+    return normalized;
+  }
+
+  for (const domain of normalized.value) {
+    if (!domain.startsWith("*.") && domain.split(".").length < 2) {
+      return new Err(
+        new Error(
+          `${domain}: HTTPS secret domains need at least two DNS labels separated by a dot, such as github.com or api.github.com.`
+        )
+      );
+    }
+  }
+
+  return normalized;
+}
+
 export type NormalizedAllowedDomains = string[] | null | undefined;
 
 // Validates the allowedDomains input against the row kind: config rows must
@@ -180,7 +204,7 @@ export function normalizeAllowedDomainsForKind({
         );
       }
 
-      const normalized = normalizeEgressPolicyDomains(allowedDomains);
+      const normalized = normalizeHttpsSecretAllowedDomains(allowedDomains);
       if (normalized.isErr()) {
         return normalized;
       }

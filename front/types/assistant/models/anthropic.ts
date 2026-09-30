@@ -30,6 +30,7 @@ export const CLAUDE_FABLE_5_MODEL_ID = "claude-fable-5" as const;
 export const CLAUDE_FABLE_5_1_MODEL_ID = "claude-fable-5-1" as const;
 export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
 export const CLAUDE_SONNET_5_MODEL_ID = "claude-sonnet-5" as const;
+export const CLAUDE_SONNET_5_5_MODEL_ID = "claude-sonnet-5-5" as const;
 
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
 export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -308,13 +309,11 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
     featureFlag: "premium_model_access",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
@@ -354,13 +353,11 @@ export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
     featureFlag: "premium_model_access",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
@@ -401,13 +398,11 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
     featureFlag: "premium_model_access",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
@@ -449,13 +444,11 @@ export const CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
     featureFlag: "premium_model_access",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
@@ -499,13 +492,11 @@ export const CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
     featureFlag: "premium_model_access",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
@@ -549,14 +540,9 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     featureFlag: "claude_fable_5_feature",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
-  // Fable 5's safety classifiers can decline a request; retry server-side on
-  // Opus 4.8 so the user still gets an answer in one round trip.
-  fallbackModels: [CLAUDE_OPUS_4_8_MODEL_ID],
   // Served from a separate Anthropic workspace (EAP) whose org has the 30-day
   // data retention Fable 5 requires; the Dust-managed org does not, and returns
   // 400 `model_not_available` for this model.
@@ -607,12 +593,9 @@ export const CLAUDE_FABLE_5_1_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
   availableIfOneOf: {
     featureFlag: "claude_fable_5_feature",
   },
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
-  fallbackModels: [CLAUDE_OPUS_4_8_MODEL_ID],
   // Fable 5.1 carries the same 30-day data retention requirement as Fable 5
   // and is not available under zero data retention, so it is served from the
   // separate Anthropic workspace (EAP) whose org has that retention.
@@ -624,6 +607,47 @@ export const CLAUDE_FABLE_5_1_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   },
 };
 // https://platform.claude.com/docs/en/about-claude/models/overview
+// https://platform.claude.com/docs/en/models/sonnet-5-5/overview (2026-09-28)
+export const CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_SONNET_5_5_MODEL_ID,
+  displayName: "Claude Sonnet 5.5",
+  contextSize: 250_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Anthropic's Claude Sonnet 5.5 model, the latest balanced model for coding and agentic work (250k context).",
+  shortDescription: "Anthropic's latest balanced model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  // Unlike Sonnet 5, Sonnet 5.5 rejects `thinking: {type: "disabled"}` with a
+  // 400, so "none" is unsupported.
+  supportedReasoningEfforts: {
+    none: false,
+    minimal: false,
+    low: true,
+    medium: true,
+    high: true,
+    xhigh: true,
+    maximal: true,
+  },
+  defaultReasoningEffort: "high",
+  // Same tokenizer as Sonnet 5.
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  supportsPromptCaching: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  disablePrefill: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
 export const CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_SONNET_5_MODEL_ID,
@@ -634,9 +658,9 @@ export const CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description:
     "Anthropic's Claude Sonnet 5 model, reaching near-Opus quality on coding and agentic work while balancing power and efficiency (200k context).",
-  shortDescription: "Anthropic's latest balanced model.",
+  shortDescription: "Anthropic's balanced model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportsResponseFormat: true,
@@ -655,8 +679,6 @@ export const CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: false,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
@@ -694,8 +716,6 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
-  customThinkingType: "auto",
-  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,

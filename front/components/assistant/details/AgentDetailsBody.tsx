@@ -168,8 +168,9 @@ export function AgentDetailsBody({
   });
   const agentConfiguration =
     fetchedAgentConfiguration && preview
-      ? { ...fetchedAgentConfiguration, ...preview }
+      ? { ...fetchedAgentConfiguration, ...preview.fields }
       : fetchedAgentConfiguration;
+  const previewedCapabilities = preview?.capabilities ?? null;
 
   // Fetch webhook source views when triggers tab is active so they're ready
   // when the user clicks edit on a webhook trigger.
@@ -225,8 +226,8 @@ export function AgentDetailsBody({
     agentId != null &&
     !isGlobalAgent &&
     agentConfiguration?.status === "active";
-  // The triggers tab only lists the caller's own triggers, which is pointless on an agent whose
-  // private fields were redacted for an admin (flagged by `canRead: false`).
+  // The triggers tab only lists the caller's own triggers, and creating one needs `read` on the
+  // agent.
   const showTriggersTabs =
     agentId != null &&
     agentConfiguration?.status === "active" &&
@@ -398,6 +399,11 @@ export function AgentDetailsBody({
                       value="editors"
                       label="Editors"
                       icon={Users01}
+                      iconRight={
+                        editedSections.has("editors") ? (
+                          <EditedDot />
+                        ) : undefined
+                      }
                       onClick={() => setSelectedTab("editors")}
                     />
                   )}
@@ -415,6 +421,7 @@ export function AgentDetailsBody({
                     <TabsContent value="info">
                       <AgentInfoTab
                         agentConfiguration={agentConfiguration}
+                        previewedCapabilities={previewedCapabilities}
                         owner={owner}
                       />
                     </TabsContent>
@@ -456,6 +463,7 @@ export function AgentDetailsBody({
             ) : agentConfiguration ? (
               <AgentInfoTab
                 agentConfiguration={agentConfiguration}
+                previewedCapabilities={previewedCapabilities}
                 owner={owner}
               />
             ) : (

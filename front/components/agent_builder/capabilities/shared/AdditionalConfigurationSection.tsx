@@ -16,8 +16,7 @@ import {
   SearchInput,
   Tooltip,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
 function formatKeyForDisplay(key: string): string {

@@ -4,13 +4,28 @@ import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agen
 import { ASK_USER_QUESTION_SERVER } from "@app/lib/api/actions/servers/ask_user_question/metadata";
 import { _getSidekickGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/sidekick";
 import type { SidekickContext } from "@app/lib/api/assistant/global_agents/sidekick_context";
+import { formatAvailableModels } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/global_agents/tools";
 import { MCP_SERVERS_FOR_GLOBAL_AGENTS } from "@app/lib/api/assistant/global_agents/tools";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { SidekickConfig } from "@app/tests/sidekick-evals/lib/types";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import {
+  CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
+import {
+  AUTO_COMPLEX_MODEL_CONFIG,
+  AUTO_FAST_MODEL_CONFIG,
+  AUTO_MODEL_CONFIG,
+} from "@app/types/assistant/models/auto";
 import { isModelId } from "@app/types/assistant/models/models";
+import {
+  GPT_5_6_SOL_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
@@ -65,22 +80,25 @@ function getMockSidekickContext(): SidekickContext {
   };
 }
 
+// The workspace models, rendered as production renders them: the tier models plus a few concrete
+// ones, from their real configurations so the mock follows model updates.
+export const MOCK_AVAILABLE_MODELS = formatAvailableModels([
+  AUTO_FAST_MODEL_CONFIG,
+  AUTO_MODEL_CONFIG,
+  AUTO_COMPLEX_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
+  GPT_5_6_SOL_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
+]);
+
 // In production, run_model.ts injects <user_context> and <workspace_context> into
 // the dynamic context block. The evals bypass run_model.ts and call the LLM directly,
 // so we append mock context to the instructions to simulate runtime injection.
 const MOCK_WORKSPACE_CONTEXT = [
   "<workspace_context>",
-  "<available_models>",
-  '<provider id="openai">',
-  "- **GPT 4 Turbo** (modelId: gpt-4-turbo): OpenAI's fast, intelligent flagship model (no vision)",
-  "- **GPT 5 Mini** (modelId: gpt-5-mini): OpenAI's fastest model. Designed for quick, everyday tasks (no vision)",
-  "</provider>",
-  "",
-  '<provider id="anthropic">',
-  "- **Claude Sonnet 4.5** (modelId: claude-sonnet-4-5-20250929): Claude Sonnet 4.5 (no vision)",
-  "- **Claude Opus 4** (modelId: claude-opus-4-20250514): Claude Opus 4 (no vision)",
-  "</provider>",
-  "</available_models>",
+  MOCK_AVAILABLE_MODELS,
   "",
   "<available_skills>",
   '<skill ID="skill_web_search" name="Web Search">',

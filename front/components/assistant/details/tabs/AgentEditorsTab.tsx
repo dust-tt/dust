@@ -1,8 +1,15 @@
-import { useIsAgentSuggestionPreview } from "@app/components/assistant/details/SuggestionPreviewContext";
+import { EditedSectionBar } from "@app/components/assistant/details/DetailsSectionHeading";
+import {
+  useAgentSuggestionPreview,
+  useIsAgentSuggestionPreview,
+} from "@app/components/assistant/details/SuggestionPreviewContext";
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
+import { resolveDisplayedEditors } from "@app/components/members/resolveDisplayedEditors";
+import { mergeAgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/agent_editors";
+import { useMemberDetails } from "@app/lib/swr/assistants";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { editorUserSchema } from "@app/types/editors";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -40,6 +47,17 @@ export function AgentEditorsTab({
   });
 
   const isPreview = useIsAgentSuggestionPreview();
+  const previewSuggestions = useAgentSuggestionPreview();
+  const suggestedEditors = useMemo(() => {
+    const edits = mergeAgentEdits(
+      previewSuggestions.filter((s) => s.kind === "editors")
+    );
+    return edits.isOk() ? (edits.value.editors ?? null) : null;
+  }, [previewSuggestions]);
+  const { membersById, isMembersLoading } = useMemberDetails({
+    workspaceId: owner.sId,
+    userIds: suggestedEditors?.addUserIds ?? [],
+  });
 
   const canManageEditors =
     (agentConfiguration.canEdit || isAdmin(owner)) && !isPreview;
@@ -55,6 +73,11 @@ export function AgentEditorsTab({
     name: "editors",
   });
   const selectedEditors = editorsField.value;
+  const displayedEditors = resolveDisplayedEditors({
+    editors: suggestedEditors ? editors : selectedEditors,
+    suggestedEditors,
+    membersById,
+  });
   const persistedEditorIds = new Set(editors.map((editor) => editor.sId));
   const hasChanges =
     editors.length !== selectedEditors.length ||
@@ -101,7 +124,8 @@ export function AgentEditorsTab({
   });
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="relative flex flex-col gap-4">
+      {suggestedEditors && <EditedSectionBar />}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Editors</h3>
         {canManageEditors && (
@@ -130,12 +154,12 @@ export function AgentEditorsTab({
         allowRemoveSelfAndProvisionedUsers
         currentUser={user}
         membersData={{
-          members: selectedEditors.map((user) => ({
+          members: displayedEditors.map((user) => ({
             ...user,
             workspace: owner,
           })),
-          isLoading: isEditorsLoading,
-          totalMembersCount: selectedEditors.length,
+          isLoading: isEditorsLoading || isMembersLoading,
+          totalMembersCount: displayedEditors.length,
           mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
         }}
         showColumns={canManageEditors ? ["name", "remove"] : ["name"]}

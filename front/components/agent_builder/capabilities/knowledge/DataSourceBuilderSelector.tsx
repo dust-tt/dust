@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { DataSourceNavigationView } from "@app/components/agent_builder/capabilities/knowledge/DataSourceNavigationView";
+import { DataSourceBrowserTable } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable";
 import { DataSourceSearchResults } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSearchResults";
 import { DataSourceSpaceSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
@@ -38,8 +38,7 @@ import {
   SearchInput,
   Separator,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type DataSourceBuilderSelectorProps = {
   viewType: ContentNodesViewType;
@@ -392,7 +391,7 @@ export const DataSourceBuilderSelector = ({
           error={hasError ? new Error("Search failed") : null}
         />
       ) : (
-        <DataSourceNavigationView viewType={viewType} />
+        <DataSourceBrowserTable viewType={viewType} />
       )}
     </div>
   );

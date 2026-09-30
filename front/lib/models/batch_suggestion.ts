@@ -1,6 +1,7 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { BatchSuggestionState } from "@app/types/suggestions/batch_suggestion";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
@@ -15,6 +16,7 @@ export class BatchSuggestionModel extends WorkspaceAwareModel<BatchSuggestionMod
   declare analysis: string | null;
   declare state: CreationOptional<BatchSuggestionState>;
   declare sourceConversationModelId: ForeignKey<ConversationModel["id"]> | null;
+  declare updatedByUserId: ForeignKey<UserModel["id"]> | null;
 
   declare sourceConversation: NonAttribute<ConversationModel | null>;
 }
@@ -51,6 +53,15 @@ BatchSuggestionModel.init(
       allowNull: true,
       comment: "Conversation in which the batch was suggested.",
     },
+    updatedByUserId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: UserModel,
+        key: "id",
+      },
+      comment: "User who approved or rejected the batch.",
+    },
   },
   {
     modelName: "batch_suggestion",
@@ -62,6 +73,12 @@ BatchSuggestionModel.init(
         fields: ["sourceConversationModelId"],
         concurrently: true,
         where: { sourceConversationModelId: { [Op.ne]: null } },
+      },
+      {
+        name: "batch_suggestions_updated_by_user_id",
+        fields: ["updatedByUserId"],
+        concurrently: true,
+        where: { updatedByUserId: { [Op.ne]: null } },
       },
     ],
   }
@@ -75,4 +92,13 @@ BatchSuggestionModel.belongsTo(ConversationModel, {
 ConversationModel.hasMany(BatchSuggestionModel, {
   foreignKey: { name: "sourceConversationModelId", allowNull: true },
   onDelete: "SET NULL",
+});
+
+UserModel.hasMany(BatchSuggestionModel, {
+  foreignKey: { name: "updatedByUserId", allowNull: true },
+  onDelete: "SET NULL",
+});
+BatchSuggestionModel.belongsTo(UserModel, {
+  foreignKey: { name: "updatedByUserId", allowNull: true },
+  as: "updatedByUser",
 });

@@ -1084,45 +1084,24 @@ export function _getDustQuickMediumGlobalAgent(
   });
 }
 
-export function _getDustNextGlobalAgent(
+// Builds a custom-model dust-* agent from its entry in `CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS`.
+export function _getCustomModelDustGlobalAgent(
   auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
+  args: DustLikeGlobalAgentArgs,
+  agentId: GLOBAL_AGENTS_SID
 ): AgentConfigurationType | null {
-  const customModel = CUSTOM_MODEL_CONFIGS[0];
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_NEXT,
-    name: "dust-next",
-    preferredModelConfiguration:
-      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "low",
-  });
-}
+  const config = CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId);
+  if (!config) {
+    return null;
+  }
 
-export function _getDustNextMediumGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  const customModel = CUSTOM_MODEL_CONFIGS[0];
   return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
-    name: "dust-next-medium",
+    agentId,
+    name: config.name,
     preferredModelConfiguration:
-      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "medium",
-  });
-}
-
-export function _getDustNextHighGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs
-): AgentConfigurationType | null {
-  const customModel = CUSTOM_MODEL_CONFIGS[0];
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId: GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
-    name: "dust-next-high",
-    preferredModelConfiguration:
-      customModel ?? CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "high",
+      getCustomModelForDustGlobalAgent(agentId) ??
+      CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: config.preferredReasoningEffort,
   });
 }
 
@@ -1236,7 +1215,8 @@ const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   [
     GLOBAL_AGENTS_SID.DUST_NEXT,
     {
-      name: "dust-next",
+      // The sId stays "dust-next": past conversations reference it.
+      name: "dust-next-low",
       customModelIndex: 0,
       preferredReasoningEffort: "low",
     },
@@ -1257,13 +1237,52 @@ const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       preferredReasoningEffort: "high",
     },
   ],
+  [
+    GLOBAL_AGENTS_SID.DUST_NEXT_NONE,
+    {
+      name: "dust-next-none",
+      customModelIndex: 0,
+      preferredReasoningEffort: "none",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_NEXT_XHIGH,
+    {
+      name: "dust-next-xhigh",
+      customModelIndex: 0,
+      preferredReasoningEffort: "xhigh",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_NEXT_MAX,
+    {
+      name: "dust-next-max",
+      customModelIndex: 0,
+      preferredReasoningEffort: "maximal",
+    },
+  ],
 ]);
 
-export function getCustomModelDustGlobalAgentIndex(
+export function isCustomModelDustGlobalAgent(
   agentId: GLOBAL_AGENTS_SID
-): number | null {
-  return (
-    CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId)?.customModelIndex ??
-    null
-  );
+): boolean {
+  return CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.has(agentId);
+}
+
+// Null when the agent is not bound to a custom model, when its index is missing from the
+// generated custom models, or when that model does not support the agent's effort.
+export function getCustomModelForDustGlobalAgent(
+  agentId: GLOBAL_AGENTS_SID
+): ModelConfigurationType | null {
+  const config = CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId);
+  if (!config) {
+    return null;
+  }
+  const customModel = CUSTOM_MODEL_CONFIGS[config.customModelIndex];
+  if (
+    !customModel?.supportedReasoningEfforts[config.preferredReasoningEffort]
+  ) {
+    return null;
+  }
+  return customModel;
 }

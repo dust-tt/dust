@@ -135,6 +135,18 @@ function isSnowflakeInvalidJwtError(err: unknown): boolean {
   );
 }
 
+function isSnowflakeSessionNoLongerExistsError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    err.name === "OperationFailedError" &&
+    "message" in err &&
+    typeof err.message === "string" &&
+    err.message.includes("Session no longer exists")
+  );
+}
+
 function isSnowflakeListingTrialExpiredError(err: unknown): err is Error {
   return (
     err instanceof Error &&
@@ -147,6 +159,11 @@ function isSnowflakeListingTrialExpiredError(err: unknown): err is Error {
 export class SnowflakeCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
+  /**
+   * @cc [owner:aubin-tchoi,label:error-handling] snowflake-session-requires-relogin
+   * Activity failures named `OperationFailedError` whose message contains
+   * `Session no longer exists` MUST be thrown as `ExternalOAuthTokenError`.
+   */
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
@@ -164,7 +181,8 @@ export class SnowflakeCastKnownErrorsInterceptor
         isSnowflakeSuspendedError(err) ||
         isSnowflakeUserAccessDisabledError(err) ||
         isSnowflakeInsufficientPrivilegesError(err) ||
-        isSnowflakeInvalidJwtError(err)
+        isSnowflakeInvalidJwtError(err) ||
+        isSnowflakeSessionNoLongerExistsError(err)
       ) {
         throw new ExternalOAuthTokenError(normalizeError(err));
       }

@@ -44,32 +44,31 @@ edit Sales or change limits for someone who belongs only to Sales.
 ### Confirm appointments outside the group
 
 When saving a new manager for a manual group whose membership can be delegated, show a confirmation
-if the person is not already an active member of that group. List the group's configured Manager
-role, governance permissions, and seats in familiar language, such as “Workspace manager”, “Access
-billing features”, and “Publish agents”. For example:
+if the person is not already an active member of that group. Follow the short confirmation in the
+[Figma design](https://www.figma.com/design/dhYmzTjBXjtmNOkjSfwumG/?node-id=108-39122):
 
-> **Appoint Alex as a group manager?**
+> **Alex isn't a member of Finance**
 >
-> Alex is not a member of Finance. As a group manager, they can add themselves or others and give
-> them the access this group grants, including:
+> As manager, they can add anyone to the group, including themselves. Anyone they add gains the
+> group's permissions and access to every space and data source shared with it. Continue only if you
+> trust Alex with those permissions.
 >
-> - Access billing features
-> - Publish agents
->
-> Appoint Alex only if you trust them to receive and grant this access. Removing their manager role
-> later will not undo access they have already granted.
->
-> **Cancel** · **Appoint manager**
+> **Cancel** · **Appoint anyway**
 
-Show only permissions actually configured for the group, and also mention access to resources shared
-with it. If no extra roles, governance permissions, or seats are configured, say so and keep the
-membership/access explanation. When several new managers need confirmation, list them in one modal.
+For several non-members, use “3 people you're appointing aren't members of Finance”, “As managers”,
+and “Continue only if you trust them with those permissions” in one modal. Use a blue action button.
+The confirmation needs no extra permissions request.
 Cancel saves nothing; confirmation submits the pending changes.
 
-Existing group members skip this modal. The manager picker still explains that managing membership
-means deciding who receives the group's access. Provisioned and admin-granting groups skip this
+Existing group members skip this modal. In the picker, managers outside the group have a blue
+“Not group member” badge. Its tooltip explains that they can manage the group and grant themselves
+its permissions and data. Pending membership additions keep the badge until saved; pending removals
+show it immediately. The picker description reads “Group managers can add members and set their usage
+and credit limits.” Follow the [picker design](https://www.figma.com/design/dhYmzTjBXjtmNOkjSfwumG/?node-id=104-33329).
+
+Provisioned and admin-granting groups skip this
 membership warning because the assignment does not grant membership editing. Explain their existing
-directory-managed or workspace-admin-only membership rule instead.
+directory-managed or workspace-admin-only membership rule in the picker and badge tooltip instead.
 
 ### Open the People page to group managers
 
@@ -236,10 +235,10 @@ Give the People and Usage routes their own access guards in
 [adminRoutes](../../../front-spa/src/app/routes/adminRoutes.tsx), allowing workspace managers/admins and
 group managers. Keep the other route guards unchanged.
 
-In [UsagePage](../../../front/components/pages/workspace/UsagePage.tsx), render a restricted view for
-group managers, reusing the member/group tables and limit inputs. Do the same in
-[MembersPage](../../../front/components/pages/workspace/MembersPage.tsx) for People. Keep workspace-only
-data hooks and actions in the workspace views so group managers do not fetch hidden sections.
+At the existing Usage route, render a restricted view for group managers, reusing the shared member
+section, group table, and limit inputs. Render a restricted People view in
+[MembersPage](../../../front/components/pages/workspace/MembersPage.tsx). Keep workspace-only data
+hooks and actions in the workspace views so group managers do not fetch hidden sections.
 Use the auth-context scope and group permissions to populate filters, navigation, and edit controls.
 Keep the admin-only read-only state for admin-granting groups, alongside the delegated membership
 authorization for other manual groups.
@@ -248,8 +247,8 @@ roles, and seats.
 
 Before submitting manager additions, compare them with current active group membership and show the
 confirmation described above. Treat someone removed in the same edit as a non-member too; adding them
-in the unsaved form does not make them an existing member. Use the existing group and Governance data
-and permission labels for the summary. The modal is an explanation, not an authorization check:
+in the unsaved form does not make them an existing member. Use the existing group and member data
+for the confirmation. The modal is an explanation, not an authorization check:
 assignment writes remain admin-only and the server validates every submitted field.
 
 Pass explicit edit permissions to the personal-limit modal. Each group field needs its own check:

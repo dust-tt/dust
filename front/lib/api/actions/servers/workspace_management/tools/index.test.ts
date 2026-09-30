@@ -13,6 +13,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -130,6 +131,7 @@ describe("workspace_management tools", () => {
     "get_agent_details",
     "list_skills",
     "get_skill_details",
+    "list_tags",
   ])("%s is available to regular members", async (toolName) => {
     const { authenticator } = await createResourceTest({ role: "user" });
     expect(authenticator.isManager()).toBe(false);
@@ -187,6 +189,20 @@ describe("workspace_management tools", () => {
       expect(text).toContain("Published Agent");
       expect(text).not.toContain("Unpublished Agent");
       expect(text).not.toContain("Restricted Space Agent");
+    });
+
+    it("includes the caller's own unpublished agents with the default view", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      await AgentConfigurationFactory.createTestAgent(authenticator, {
+        name: "My Unpublished Agent",
+        scope: "hidden",
+      });
+
+      const byDefault = await callTool("list_agents", {}, authenticator);
+      expect(byDefault).toContain("My Unpublished Agent");
+
+      const all = await callTool("list_agents", { view: "all" }, authenticator);
+      expect(all).not.toContain("My Unpublished Agent");
     });
 
     it("returns unpublished and restricted space agents with all_unrestricted", async () => {
@@ -718,6 +734,34 @@ describe("workspace_management tools", () => {
       );
       expect(await toolNamesFor(managerAuth)).toContain(
         "list_workspace_members"
+      );
+    });
+  });
+
+  describe("list_tags", () => {
+    it("lists the workspace's tags by name with their id, flagging protected ones", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "user",
+      });
+      const sales = await TagFactory.create(workspace, { name: "Sales" });
+      const official = await TagFactory.create(workspace, {
+        name: "Official",
+        kind: "protected",
+      });
+
+      const lines = await callToolLines("list_tags", {}, authenticator);
+
+      expect(lines).toEqual([
+        `Official [${official.sId}] - protected`,
+        `Sales [${sales.sId}]`,
+      ]);
+    });
+
+    it("reports a workspace without tags", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      expect(await callTool("list_tags", {}, authenticator)).toBe(
+        "No tags found."
       );
     });
   });

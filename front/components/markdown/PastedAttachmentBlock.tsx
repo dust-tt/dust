@@ -1,7 +1,5 @@
 import { AttachmentChip } from "@dust-tt/sparkle";
 import { PaperclipIcon } from "lucide-react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 import { visit } from "unist-util-visit";
 
 export function PastedAttachmentBlock({ title }: { title: string }) {

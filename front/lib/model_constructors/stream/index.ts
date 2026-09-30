@@ -13,6 +13,8 @@ import { AnthropicClaudeOpusFourDotSevenEuropeAgentPlatformStream } from "@app/l
 import { AnthropicClaudeOpusFourDotSevenGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_four_dot_seven_global_anthropic";
 import { AnthropicClaudeOpusFourDotSixEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_four_dot_six_eu_agent_platform";
 import { AnthropicClaudeOpusFourDotSixGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_four_dot_six_global_anthropic";
+import { AnthropicClaudeSonnetFiveDotFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_five_dot_five_eu_agent_platform";
+import { AnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_five_dot_five_global_anthropic";
 import { AnthropicClaudeSonnetFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_five_eu_agent_platform";
 import { AnthropicClaudeSonnetFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_five_global_anthropic";
 import { AnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_four_dot_six_eu_agent_platform";
@@ -70,6 +72,8 @@ import { OpenAIGptFiveNanoEuropeOpenAIResponsesStream } from "@app/lib/model_con
 import { OpenAIGptFiveNanoGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_nano_global_openai_responses";
 import { OpenAIGptSixAstraEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_astra_eu_openai_responses";
 import { OpenAIGptSixAstraGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_astra_global_openai_responses";
+import { OpenAIGptSixDotOneSolEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_dot_one_sol_eu_openai_responses";
+import { OpenAIGptSixDotOneSolGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_dot_one_sol_global_openai_responses";
 import { OpenAIGptSixLunaEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_luna_eu_openai_responses";
 import { OpenAIGptSixLunaGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_luna_global_openai_responses";
 import { OpenAIGptSixSolEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_sol_eu_openai_responses";
@@ -79,6 +83,7 @@ import { ThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/model_con
 import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_five_global_xai";
 import { XaiGrokFourDotSevenGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_seven_global_xai";
 import { XaiGrokFourDotSixGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_six_global_xai";
+import { ZAiGlmFiveDotThreeEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_eu_mistral";
 import { ZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
 import { ZAiGlmFiveDotThreeGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_global_fireworks";
 
@@ -97,6 +102,8 @@ export const STREAM_ENDPOINTS = {
     AnthropicClaudeOpusFourDotSixEuropeAgentPlatformStream,
   [AnthropicClaudeSonnetFiveEuropeAgentPlatformStream.id]:
     AnthropicClaudeSonnetFiveEuropeAgentPlatformStream,
+  [AnthropicClaudeSonnetFiveDotFiveEuropeAgentPlatformStream.id]:
+    AnthropicClaudeSonnetFiveDotFiveEuropeAgentPlatformStream,
   [AnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream.id]:
     AnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream,
   [GoogleGeminiThreeDotFiveFlashGlobalAgentPlatformStream.id]:
@@ -137,12 +144,16 @@ export const STREAM_ENDPOINTS = {
     AnthropicClaudeOpusFourDotSixGlobalAnthropicStream,
   [AnthropicClaudeSonnetFiveGlobalAnthropicStream.id]:
     AnthropicClaudeSonnetFiveGlobalAnthropicStream,
+  [AnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStream.id]:
+    AnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStream,
   [AnthropicClaudeSonnetFourDotSixGlobalAnthropicStream.id]:
     AnthropicClaudeSonnetFourDotSixGlobalAnthropicStream,
   [DeepSeekDeepSeekV4ProGlobalFireworksStream.id]:
     DeepSeekDeepSeekV4ProGlobalFireworksStream,
   [DeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream.id]:
     DeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream,
+  [ZAiGlmFiveDotThreeEuropeMistralStream.id]:
+    ZAiGlmFiveDotThreeEuropeMistralStream,
   [ZAiGlmFiveDotThreeGlobalFireworksStream.id]:
     ZAiGlmFiveDotThreeGlobalFireworksStream,
   [ZAiGlmFiveDotThreeFlashGlobalFireworksStream.id]:
@@ -191,6 +202,8 @@ export const STREAM_ENDPOINTS = {
     OpenAIGptSixAstraEuropeOpenAIResponsesStream,
   [OpenAIGptSixLunaEuropeOpenAIResponsesStream.id]:
     OpenAIGptSixLunaEuropeOpenAIResponsesStream,
+  [OpenAIGptSixDotOneSolEuropeOpenAIResponsesStream.id]:
+    OpenAIGptSixDotOneSolEuropeOpenAIResponsesStream,
   [OpenAIGptSixSolEuropeOpenAIResponsesStream.id]:
     OpenAIGptSixSolEuropeOpenAIResponsesStream,
   [OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream.id]:
@@ -223,6 +236,8 @@ export const STREAM_ENDPOINTS = {
     OpenAIGptSixAstraGlobalOpenAIResponsesStream,
   [OpenAIGptSixLunaGlobalOpenAIResponsesStream.id]:
     OpenAIGptSixLunaGlobalOpenAIResponsesStream,
+  [OpenAIGptSixDotOneSolGlobalOpenAIResponsesStream.id]:
+    OpenAIGptSixDotOneSolGlobalOpenAIResponsesStream,
   [OpenAIGptSixSolGlobalOpenAIResponsesStream.id]:
     OpenAIGptSixSolGlobalOpenAIResponsesStream,
   [OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream.id]:

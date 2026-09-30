@@ -1,9 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import type { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { grantKey } from "@app/types/group_permissions";
 import { isManageableGroupKind } from "@app/types/groups";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 
 const managerGrant = (group: GroupResource) => ({
@@ -23,6 +25,37 @@ export async function getGroupManagers(
   return holder
     ? (await holder.getActiveMembers(auth)).map((user) => user.toJSON())
     : [];
+}
+
+export async function getGroupManagersForGroups(
+  auth: Authenticator,
+  groups: GroupResource[]
+): Promise<Map<string, UserType[]>> {
+  const grants = groups.map(managerGrant);
+  const holders = await GroupPermissionResource.findRegularAutoGroupsForGrants(
+    auth,
+    { grants }
+  );
+  const memberships = await GroupResource.getActiveMembershipsForGroups(auth, [
+    ...holders.values(),
+  ]);
+  const userIds = [...new Set(Object.values(memberships).flat())];
+  const users = await UserResource.fetchByModelIds(userIds);
+  const usersById = new Map(users.map((user) => [user.id, user.toJSON()]));
+
+  return new Map(
+    groups.map((group) => {
+      const holder = holders.get(grantKey(managerGrant(group)));
+      return [
+        group.sId,
+        removeNulls(
+          (holder ? (memberships[holder.id] ?? []) : []).map((id) =>
+            usersById.get(id)
+          )
+        ),
+      ];
+    })
+  );
 }
 
 /**

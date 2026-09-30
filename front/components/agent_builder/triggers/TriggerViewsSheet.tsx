@@ -26,8 +26,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 const TRIGGERS_SHEET_PAGE_IDS = {

@@ -41,6 +41,7 @@ import type {
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import { isInClusterMCPUrlAllowed } from "@app/lib/api/mcp/in_cluster";
+import { isStaticIpForcedRemoteMcpUrl } from "@app/lib/api/mcp/static_ip_forced_urls";
 import { invalidateOAuthConnectionAccessTokenCache } from "@app/lib/api/oauth_access_token";
 import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
@@ -83,12 +84,22 @@ const JsonRpcErrorSchema = z.object({
   }),
 });
 
+// Max length to inspect before giving up — bounds worst-case processing cost.
+const MAX_MCP_ERROR_MESSAGE_LENGTH = 4096;
+
 function extractMCPErrorMessage(errorMessage: string): string {
-  const jsonMatch = errorMessage.match(/\{[\s\S]*"jsonrpc"[\s\S]*\}/);
-  if (!jsonMatch) {
+  // Cap length first to prevent quadratic backtracking on adversarial input.
+  const capped = errorMessage.slice(0, MAX_MCP_ERROR_MESSAGE_LENGTH);
+  const jsonrpcIdx = capped.indexOf('"jsonrpc"');
+  if (jsonrpcIdx === -1) {
     return errorMessage;
   }
-  const parseResult = safeParseJSON(jsonMatch[0]);
+  // Find the '{' that opens the JSON-RPC object (closest '{' before "jsonrpc").
+  const openBrace = capped.lastIndexOf("{", jsonrpcIdx);
+  if (openBrace === -1) {
+    return errorMessage;
+  }
+  const parseResult = safeParseJSON(capped.slice(openBrace));
   if (parseResult.isErr()) {
     return errorMessage;
   }
@@ -190,9 +201,11 @@ async function createMCPProxyConfig(
 
   // Check if workspace should use static IP:
   // 1. Legacy hardcoded check for specific workspaces
-  // 2. Domain-based check: host is under any verified domain for this workspace
+  // 2. Hardcoded official remote MCP URLs (e.g. Google BigQuery MCP)
+  // 3. Domain-based check: host is under any verified domain for this workspace
   const useStaticIP =
     isWorkspaceUsingStaticIP(workspace) ||
+    isStaticIpForcedRemoteMcpUrl(url) ||
     (await isHostUnderVerifiedDomain(auth, host));
 
   if (useStaticIP) {

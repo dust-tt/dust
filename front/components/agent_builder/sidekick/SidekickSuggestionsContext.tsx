@@ -187,7 +187,6 @@ function SidekickSuggestionsProviderContent({
     agentConfigurationId,
     disabled: false,
     state: ["pending"],
-    sources: ["sidekick"],
     workspaceId: owner.sId,
   });
 
@@ -199,7 +198,6 @@ function SidekickSuggestionsProviderContent({
     agentConfigurationId,
     disabled: false,
     state: ["outdated"],
-    sources: ["sidekick"],
     limit: 50,
     workspaceId: owner.sId,
   });
@@ -230,9 +228,12 @@ function SidekickSuggestionsProviderContent({
         case "create":
         case "delete":
         case "description":
+        case "editors":
         case "instructions":
         case "name":
         case "scope":
+        case "structured_output":
+        case "tags":
           return { ...suggestion, relations: null };
 
         case "knowledge": {

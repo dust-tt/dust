@@ -72,15 +72,14 @@ describe("finalizeUriForProvider", () => {
   it("prefers the explicit use case over connection metadata", () => {
     expect(
       finalizeUriForProvider({
-        provider: "notion",
+        provider: "github",
         useCase: "platform_actions",
         connection: {
           ...connection(Date.now()),
-          provider: "notion",
           metadata: { use_case: "connection" },
         },
       })
-    ).toBe("https://app.dust.tt/oauth/notion/finalize");
+    ).toBe("https://app.dust.tt/oauth/github/finalize");
   });
 
   it.each([
@@ -104,9 +103,21 @@ describe("finalizeUriForProvider", () => {
   });
 
   it.each([
+    undefined,
+    "personal_actions",
+    "platform_actions",
+    "connection",
+  ] as const)("uses the legacy base for a new notion client with use case %s", (useCase) => {
+    expect(
+      finalizeUriForProvider({ provider: "notion", connection: null, useCase })
+    ).toBe("https://eu.dust.tt/oauth/notion/finalize");
+  });
+
+  it.each([
     "mcp",
     "mcp_static",
     "gong",
+    "notion",
   ] as const)("preserves an app callback already registered for %s", (provider) => {
     const redirectUri = `https://app.dust.tt/oauth/${provider}/finalize`;
     expect(
@@ -173,7 +184,7 @@ describe("finalizeUriForProvider", () => {
     vi.stubEnv("NODE_ENV", "production");
     config.getDevOAuthRedirectBaseUrl.mockReturnValue("https://dev.example");
     expect(
-      finalizeUriForProvider({ provider: "notion", connection: null })
-    ).toBe("https://app.dust.tt/oauth/notion/finalize");
+      finalizeUriForProvider({ provider: "github", connection: null })
+    ).toBe("https://app.dust.tt/oauth/github/finalize");
   });
 });

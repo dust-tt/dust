@@ -29,6 +29,7 @@ export class AgentConfigurationFactory {
         providerId: ModelProviderIdType;
         modelId: ModelIdType;
         temperature?: number;
+        responseFormat?: string;
       };
       requestedSpaceIds: ModelId[];
       templateId: string | null;
@@ -70,6 +71,7 @@ export class AgentConfigurationFactory {
         providerId,
         modelId,
         temperature,
+        responseFormat: overrides.model?.responseFormat,
       },
       templateId: overrides.templateId ?? null,
       reinforcement: overrides.reinforcement,
@@ -156,8 +158,14 @@ export class AgentConfigurationFactory {
       throw result.error;
     }
 
+    const { resource } = result.value;
+    const { instructions } = resource.canViewContent
+      ? await resource.fetchInstructions()
+      : { instructions: null };
+
     return {
-      ...result.value.resource.toJSON(),
+      ...resource.toJSON(),
+      instructions,
       tags: [],
       userFavorite: false,
       instructionsHtml: overrides.instructionsHtml ?? null,

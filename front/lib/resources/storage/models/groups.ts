@@ -8,6 +8,7 @@ import type {
 } from "@app/types/groups";
 import { isGlobalGroupKind, isSystemGroupKind } from "@app/types/groups";
 import type { CreationOptional, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   declare createdAt: CreationOptional<Date>;
@@ -22,6 +23,12 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // null means the group carries no cap (falls back to the workspace default).
   declare poolCapAwuCredits: CreationOptional<number | null>;
+
+  // Group budget (once reached, members are blocked regardless of their personal limit).
+  declare groupLimitAwuCredits: CreationOptional<number | null>;
+  // If users belong to multiple groups with group limits, they use the pool from the
+  // group with the lowest value for groupLimitPriority.
+  declare groupLimitPriority: CreationOptional<number | null>;
 
   // Workspace role granted to this group's active members ("admin" or
   // "manager"), or null when the group grants no role.
@@ -61,6 +68,14 @@ GroupModel.init(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    groupLimitAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    groupLimitPriority: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     grantedRole: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -77,6 +92,11 @@ GroupModel.init(
       { unique: true, fields: ["workspaceId", "name"] },
       { unique: true, fields: ["workspaceId", "workOSGroupId"] },
       { fields: ["workspaceId", "kind"] },
+      {
+        unique: true,
+        fields: ["workspaceId", "groupLimitPriority"],
+        where: { groupLimitPriority: { [Op.ne]: null } },
+      },
     ],
   }
 );

@@ -208,11 +208,8 @@ export class TmuxAdapter implements MultiplexerAdapter {
     const mainWindowName = envName;
 
     // Build the shell command that runs in the main window
-    const initialInputCommand = initialInput
-      ? `(sleep 3; tmux send-keys -t "$TMUX_PANE" ${shellQuote(initialInput)}; sleep 1; tmux send-keys -t "$TMUX_PANE" Enter) & `
-      : "";
     const shellCommand = initialCommand
-      ? `source ${shellQuote(envShPath)} && ${initialInputCommand}${initialCommand}; exec ${shellQuote(shellPath)}`
+      ? `source ${shellQuote(envShPath)} && ${initialCommand}; exec ${shellQuote(shellPath)}`
       : `source ${shellQuote(envShPath)} && exec ${shellQuote(shellPath)}`;
 
     // Use window names instead of indices to avoid base-index issues
@@ -226,16 +223,37 @@ export class TmuxAdapter implements MultiplexerAdapter {
       `MAIN_WINDOW=${shellQuote(mainWindowName)}`,
       "",
       "# Create the session with the main window",
-      `tmux new-session -d -s "$SESSION_NAME" -n "$MAIN_WINDOW" -c "$WORKTREE_PATH"`,
+      `tmux new-session -d -s "$SESSION_NAME" -n "$MAIN_WINDOW" -c "$WORKTREE_PATH" bash -c ${shellQuote(shellCommand)}`,
       "",
       "# Let foreground apps update the outer terminal tab title through tmux",
       `tmux set-option -t "$SESSION_NAME" set-titles on`,
       `tmux set-option -t "$SESSION_NAME" set-titles-string "#{pane_title}"`,
       "",
-      "# Run the shell command in the main window (use window name, not index)",
-      `tmux send-keys -t "$SESSION_NAME:$MAIN_WINDOW" ${shellQuote(shellCommand)} Enter`,
-      "",
     ];
+
+    if (initialCommand && initialInput) {
+      const paneTarget = `${sessionName}:${mainWindowName}`;
+      const inputScript = [
+        `PANE_TARGET=${shellQuote(paneTarget)}`,
+        "for attempt in {1..300}; do",
+        '  pane_text=$(tmux capture-pane -p -t "$PANE_TARGET") || exit 1',
+        `  if [[ "$pane_text" == *${shellQuote(initialInput.readyPattern)}* ]]; then`,
+        // Explicit paste avoids Codex treating Enter as part of a rapid typing burst.
+        `    tmux send-keys -l -t "$PANE_TARGET" $'\\e[200~'${shellQuote(initialInput.text)}$'\\e[201~' || exit 1`,
+        '    tmux send-keys -t "$PANE_TARGET" Enter',
+        "    exit $?",
+        "  fi",
+        "  sleep 0.1",
+        "done",
+        'printf "%s\\n" "Timed out waiting for the initial command to accept input" >&2',
+        "exit 1",
+      ].join("\n");
+      lines.push(
+        "# Submit initial input as soon as the command is ready",
+        `tmux run-shell -b -t "$SESSION_NAME:$MAIN_WINDOW" ${shellQuote(`bash -c ${shellQuote(inputScript)}`)}`,
+        ""
+      );
+    }
 
     // Generate warm window if requested
     if (warmCommand) {

@@ -81,6 +81,7 @@ function makeWorkspace(
     metadata: null,
     metronomeCustomerId: null,
     sharingPolicy: "all_scopes",
+    locale: "en-US",
     ...overrides,
   };
 }

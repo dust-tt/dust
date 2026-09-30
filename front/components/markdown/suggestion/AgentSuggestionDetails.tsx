@@ -1,61 +1,101 @@
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
-import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import {
+  InstructionSuggestionExtension,
+  SUGGESTION_DIFF_CLASSES,
+} from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { formatModelEffortLabel } from "@app/components/model_picker/modelPickerUtils";
+import { getModelProviderLogo } from "@app/components/providers/types";
+import { getIcon } from "@app/components/resources/resources_icons";
+import type { SuggestedChangeAction } from "@app/components/shared/SuggestedChangeRow";
+import { SuggestedChangeRow } from "@app/components/shared/SuggestedChangeRow";
+import { SuggestedEditors } from "@app/components/shared/SuggestedEditors";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
+import { SuggestionNewInstructionsBlock } from "@app/components/shared/SuggestionNewInstructionsBlock";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { getAgentScopeLabel } from "@app/lib/agent_builder/labels";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { useMCPServerView } from "@app/lib/swr/mcp_servers";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
+import { useTags } from "@app/lib/swr/tags";
+import type {
+  AgentConfigurationScope,
+  AgentConfigurationType,
+} from "@app/types/assistant/agent";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { formatResponseFormat } from "@app/types/assistant/models/utils";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { AgentSkillsSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, DiffBlock } from "@dust-tt/sparkle";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { Avatar, DiffBlock, Eye, EyeOff, Tag01 } from "@dust-tt/sparkle";
+import { diffLines } from "diff";
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 
-function formatModel(modelId: string, reasoningEffort?: ReasoningEffort) {
-  const modelName = getModelDisplayNameFromId(modelId);
-  return reasoningEffort
-    ? formatModelEffortLabel(modelName, reasoningEffort)
-    : modelName;
+interface SuggestedModelRowProps {
+  action: SuggestedChangeAction;
+  modelId: string;
+  reasoningEffort?: ReasoningEffort;
 }
 
-interface NewInstructionsBlockProps {
-  instructionsHtml: string;
-}
-
-function NewInstructionsBlock({ instructionsHtml }: NewInstructionsBlockProps) {
-  const editor = useEditor(
-    {
-      extensions: buildAgentInstructionsReadOnlyExtensions(),
-      editable: false,
-      content: instructionsHtml,
-      immediatelyRender: false,
-    },
-    [instructionsHtml]
-  );
+function SuggestedModelRow({
+  action,
+  modelId,
+  reasoningEffort,
+}: SuggestedModelRowProps) {
+  const { isDark } = useTheme();
+  const model = SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === modelId);
+  const modelName = model?.displayName ?? modelId;
 
   return (
-    <div className="flex flex-col gap-2">
-      <span className="text-sm text-muted-foreground">Instructions</span>
-      <DiffBlock className="[&_.rounded-2xl.border]:border-0">
-        {editor && <EditorContent editor={editor} />}
-      </DiffBlock>
-    </div>
+    <SuggestedChangeRow
+      action={action}
+      visual={
+        <Avatar
+          size="xs"
+          icon={
+            model ? getModelProviderLogo(model.providerId, isDark) : undefined
+          }
+        />
+      }
+      title={
+        reasoningEffort
+          ? formatModelEffortLabel(modelName, reasoningEffort)
+          : modelName
+      }
+      description={model?.description}
+    />
+  );
+}
+
+interface SuggestedScopeRowProps {
+  action: SuggestedChangeAction;
+  scope: AgentConfigurationScope;
+}
+
+function SuggestedScopeRow({ action, scope }: SuggestedScopeRowProps) {
+  return (
+    <SuggestedChangeRow
+      action={action}
+      visual={<Avatar size="xs" icon={scope === "visible" ? Eye : EyeOff} />}
+      title={getAgentScopeLabel(scope)}
+    />
   );
 }
 
 interface SuggestedSkillRowProps {
   owner: LightWorkspaceType;
-  suggestion: AgentSkillsSuggestionType;
+  action: SuggestedChangeAction;
+  skillId: string;
 }
 
-function SuggestedSkillRow({ owner, suggestion }: SuggestedSkillRowProps) {
-  const { action, skillId } = suggestion.suggestion;
+function SuggestedSkillRow({ owner, action, skillId }: SuggestedSkillRowProps) {
   const { skill, isSkillLoading } = useSkill({
     workspaceId: owner.sId,
     skillId,
@@ -65,21 +105,184 @@ function SuggestedSkillRow({ owner, suggestion }: SuggestedSkillRowProps) {
   const displayName = skill?.name ?? (isSkillLoading ? "Loading…" : skillId);
 
   return (
-    <div className="flex items-center gap-3 py-2.5">
-      <SkillAvatar size="xs" />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm text-foreground">{displayName}</div>
-        {skill && (
-          <div className="truncate text-xs text-muted-foreground">
-            {skill.userFacingDescription}
-          </div>
-        )}
-      </div>
-      <Chip
-        size="xs"
-        color={action === "add" ? "highlight" : "warning"}
-        label={action === "add" ? "Add" : "Remove"}
-      />
+    <SuggestedChangeRow
+      action={action}
+      visual={<SkillAvatar size="xs" />}
+      title={displayName}
+      description={skill?.userFacingDescription}
+    />
+  );
+}
+
+interface SuggestedToolRowProps {
+  owner: LightWorkspaceType;
+  action: SuggestedChangeAction;
+  toolId: string;
+}
+
+function SuggestedToolRow({ owner, action, toolId }: SuggestedToolRowProps) {
+  const { serverView, isMCPServerViewLoading } = useMCPServerView({
+    owner,
+    viewId: toolId,
+  });
+
+  const displayName = serverView
+    ? getMcpServerViewDisplayName(serverView)
+    : isMCPServerViewLoading
+      ? "Loading…"
+      : toolId;
+
+  return (
+    <SuggestedChangeRow
+      action={action}
+      visual={
+        <Avatar
+          size="xs"
+          icon={serverView ? getIcon(serverView.server.icon) : undefined}
+        />
+      }
+      title={displayName}
+      description={
+        serverView ? getMcpServerViewDescription(serverView) : undefined
+      }
+    />
+  );
+}
+
+interface SuggestedSubAgentRowProps {
+  owner: LightWorkspaceType;
+  action: SuggestedChangeAction;
+  childAgentId: string;
+}
+
+function SuggestedSubAgentRow({
+  owner,
+  action,
+  childAgentId,
+}: SuggestedSubAgentRowProps) {
+  const { agentConfiguration: subAgent, isAgentConfigurationLoading } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: childAgentId,
+    });
+
+  const displayName = subAgent
+    ? `@${subAgent.name}`
+    : isAgentConfigurationLoading
+      ? "Loading…"
+      : childAgentId;
+
+  return (
+    <SuggestedChangeRow
+      action={action}
+      visual={<Avatar size="xs" visual={subAgent?.pictureUrl} />}
+      title={displayName}
+      description={subAgent?.description}
+    />
+  );
+}
+
+interface SuggestedTagsProps {
+  owner: LightWorkspaceType;
+  addTags: string[];
+  removeTags: string[];
+}
+
+function SuggestedTags({ owner, addTags, removeTags }: SuggestedTagsProps) {
+  const { tags, isTagsLoading } = useTags({ owner });
+  const existingTagNames = useMemo(
+    () => new Set(tags.map((tag) => tag.name.toLowerCase())),
+    [tags]
+  );
+
+  return (
+    <SuggestedChangesSection label="Tags">
+      {addTags.map((name) => (
+        <SuggestedChangeRow
+          key={`add-${name}`}
+          action="add"
+          visual={<Avatar size="xs" icon={Tag01} />}
+          title={name}
+          description={
+            !isTagsLoading && !existingTagNames.has(name.toLowerCase())
+              ? "New tag"
+              : undefined
+          }
+        />
+      ))}
+      {removeTags.map((name) => (
+        <SuggestedChangeRow
+          key={`remove-${name}`}
+          action="remove"
+          visual={<Avatar size="xs" icon={Tag01} />}
+          title={name}
+        />
+      ))}
+    </SuggestedChangesSection>
+  );
+}
+
+interface SuggestedStructuredOutputProps {
+  currentResponseFormat: string | undefined;
+  responseFormat: string | null;
+}
+
+function SuggestedStructuredOutput({
+  currentResponseFormat,
+  responseFormat,
+}: SuggestedStructuredOutputProps) {
+  const parts = useMemo(
+    () =>
+      // Indented, so the diff is line by line.
+      diffLines(
+        currentResponseFormat
+          ? formatResponseFormat(currentResponseFormat)
+          : "",
+        responseFormat ? formatResponseFormat(responseFormat) : ""
+      ),
+    [currentResponseFormat, responseFormat]
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm text-muted-foreground">
+        Structured output (JSON schema)
+      </span>
+      <DiffBlock variant="plain">
+        <pre className="whitespace-pre-wrap text-foreground">
+          {parts.map((part, index) => (
+            <span
+              key={index}
+              className={
+                part.added
+                  ? SUGGESTION_DIFF_CLASSES.add
+                  : part.removed
+                    ? SUGGESTION_DIFF_CLASSES.remove
+                    : undefined
+              }
+            >
+              {part.value}
+            </span>
+          ))}
+        </pre>
+      </DiffBlock>
+    </div>
+  );
+}
+
+interface SuggestedChangesSectionProps {
+  label: string;
+  children: ReactNode;
+}
+
+function SuggestedChangesSection({
+  label,
+  children,
+}: SuggestedChangesSectionProps) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <div className="divide-y divide-border">{children}</div>
     </div>
   );
 }
@@ -97,39 +300,88 @@ export function AgentSuggestionDetails({
 }: AgentSuggestionDetailsProps) {
   switch (suggestion.kind) {
     case "create": {
-      const { name, description, instructions } = suggestion.suggestion;
+      const {
+        name,
+        description,
+        instructions,
+        toolIds = [],
+        skillIds = [],
+      } = suggestion.suggestion;
       return (
         <div className="flex flex-col gap-3">
           <SuggestionFieldEditSection
+            layout="inline"
             label="Name"
             currentValue=""
             newValue={name}
           />
           <SuggestionFieldEditSection
+            layout="inline"
             label="Description"
             currentValue=""
             newValue={description}
           />
-          <NewInstructionsBlock instructionsHtml={instructions} />
+          <SuggestionNewInstructionsBlock
+            layout="inline"
+            instructionsHtml={instructions}
+            extensions={buildAgentInstructionsReadOnlyExtensions()}
+          />
+          {skillIds.length > 0 && (
+            <SuggestedChangesSection label="Skills">
+              {skillIds.map((skillId) => (
+                <SuggestedSkillRow
+                  key={skillId}
+                  owner={owner}
+                  action="add"
+                  skillId={skillId}
+                />
+              ))}
+            </SuggestedChangesSection>
+          )}
+          {toolIds.length > 0 && (
+            <SuggestedChangesSection label="Tools">
+              {toolIds.map((toolId) => (
+                <SuggestedToolRow
+                  key={toolId}
+                  owner={owner}
+                  action="add"
+                  toolId={toolId}
+                />
+              ))}
+            </SuggestedChangesSection>
+          )}
         </div>
       );
     }
 
+    // A deleted agent has nothing to review: its card shows no body.
     case "delete":
-      return (
-        <p className="text-sm text-foreground">
-          Delete the{" "}
-          <span className="font-medium">{suggestion.suggestion.name}</span>{" "}
-          agent.
-        </p>
-      );
+      return null;
 
     case "description":
       return (
         <SuggestionFieldEditSection
+          layout="inline"
           label="Description"
           currentValue={agentConfiguration?.description ?? ""}
           newValue={suggestion.suggestion.description}
+        />
+      );
+
+    case "editors":
+      return (
+        <SuggestedEditors
+          suggestion={suggestion.suggestion}
+          workspaceId={owner.sId}
+        />
+      );
+
+    case "tags":
+      return (
+        <SuggestedTags
+          owner={owner}
+          addTags={suggestion.suggestion.addTags}
+          removeTags={suggestion.suggestion.removeTags}
         />
       );
 
@@ -138,12 +390,14 @@ export function AgentSuggestionDetails({
         <div className="flex flex-col gap-2">
           <span className="text-sm text-muted-foreground">Instructions</span>
           <SuggestionInstructionsDiffBlock
+            layout="inline"
             instructionsHtml={agentConfiguration?.instructionsHtml ?? ""}
             targetBlockId={suggestion.suggestion.targetBlockId}
             content={suggestion.suggestion.content}
             extensions={[
               ...buildAgentInstructionsReadOnlyExtensions(),
               InstructionSuggestionExtension.configure({
+                hideUnchangedBlocks: true,
                 showBlockHighlight: false,
               }),
             ]}
@@ -154,24 +408,35 @@ export function AgentSuggestionDetails({
     case "model": {
       const { modelId, reasoningEffort } = suggestion.suggestion;
       return (
-        <SuggestionFieldEditSection
-          label="Model"
-          currentValue={
-            agentConfiguration
-              ? formatModel(
-                  agentConfiguration.model.modelId,
-                  agentConfiguration.model.reasoningEffort
-                )
-              : ""
-          }
-          newValue={formatModel(modelId, reasoningEffort)}
-        />
+        <SuggestedChangesSection label="Model">
+          {agentConfiguration && (
+            <SuggestedModelRow
+              action="remove"
+              modelId={agentConfiguration.model.modelId}
+              reasoningEffort={agentConfiguration.model.reasoningEffort}
+            />
+          )}
+          <SuggestedModelRow
+            action="add"
+            modelId={modelId}
+            reasoningEffort={reasoningEffort}
+          />
+        </SuggestedChangesSection>
       );
     }
+
+    case "structured_output":
+      return (
+        <SuggestedStructuredOutput
+          currentResponseFormat={agentConfiguration?.model.responseFormat}
+          responseFormat={suggestion.suggestion.responseFormat}
+        />
+      );
 
     case "name":
       return (
         <SuggestionFieldEditSection
+          layout="inline"
           label="Name"
           currentValue={agentConfiguration?.name ?? ""}
           newValue={suggestion.suggestion.name}
@@ -180,19 +445,43 @@ export function AgentSuggestionDetails({
 
     case "scope":
       return (
-        <SuggestionFieldEditSection
-          label="Visibility"
-          currentValue={
-            agentConfiguration
-              ? getAgentScopeLabel(agentConfiguration.scope)
-              : ""
-          }
-          newValue={getAgentScopeLabel(suggestion.suggestion.scope)}
-        />
+        <SuggestedChangesSection label="Visibility">
+          {agentConfiguration && (
+            <SuggestedScopeRow
+              action="remove"
+              scope={agentConfiguration.scope}
+            />
+          )}
+          <SuggestedScopeRow action="add" scope={suggestion.suggestion.scope} />
+        </SuggestedChangesSection>
       );
 
     case "skills":
-      return <SuggestedSkillRow owner={owner} suggestion={suggestion} />;
+      return (
+        <SuggestedSkillRow
+          owner={owner}
+          action={suggestion.suggestion.action}
+          skillId={suggestion.suggestion.skillId}
+        />
+      );
+
+    case "sub_agent":
+      return (
+        <SuggestedSubAgentRow
+          owner={owner}
+          action={suggestion.suggestion.action}
+          childAgentId={suggestion.suggestion.childAgentId}
+        />
+      );
+
+    case "tools":
+      return (
+        <SuggestedToolRow
+          owner={owner}
+          action={suggestion.suggestion.action}
+          toolId={suggestion.suggestion.toolId}
+        />
+      );
 
     default:
       assertNeverAndIgnore(suggestion);

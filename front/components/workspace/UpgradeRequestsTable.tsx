@@ -128,8 +128,8 @@ function buildActionsColumn({
   onEditLimit,
   onDeny,
 }: {
-  seatPlans: SeatPlanResponseBody;
-  onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
+  seatPlans?: SeatPlanResponseBody;
+  onUpgradePlan?: (request: MembershipUpgradeRequestType) => void;
   onEditLimit: (request: MembershipUpgradeRequestType) => void;
   onDeny: (request: MembershipUpgradeRequestType) => void;
 }): ColumnDef<RowData, string> {
@@ -150,7 +150,10 @@ function buildActionsColumn({
       // Hide "Upgrade plan" when there is no higher seat tier to move the
       // requester to: their current seat already grants as many AWU credits as
       // the richest seat the plan offers.
-      const canUpgradePlan = canUpgrade(request.requester.seatType, seatPlans);
+      const canUpgradePlan =
+        seatPlans &&
+        onUpgradePlan &&
+        canUpgrade(request.requester.seatType, seatPlans);
       return (
         <div className="flex w-full items-center justify-end gap-2">
           <Button
@@ -166,7 +169,7 @@ function buildActionsColumn({
               variant="highlight-secondary"
               icon={Check}
               label="Upgrade plan"
-              onClick={() => onUpgradePlan(request)}
+              onClick={() => onUpgradePlan?.(request)}
             />
           )}
           <Button
@@ -187,9 +190,9 @@ function buildActionsColumn({
 interface UpgradeRequestsTableProps {
   requests: MembershipUpgradeRequestType[];
   isLoading: boolean;
-  seatPlans: SeatPlanResponseBody;
+  seatPlans?: SeatPlanResponseBody;
   pendingRequestIds: ReadonlySet<string>;
-  onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
+  onUpgradePlan?: (request: MembershipUpgradeRequestType) => void;
   onEditLimit: (request: MembershipUpgradeRequestType) => void;
   onDeny: (request: MembershipUpgradeRequestType) => void;
 }

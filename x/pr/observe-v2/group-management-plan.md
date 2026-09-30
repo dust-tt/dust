@@ -70,13 +70,23 @@ by itself.
 #### PR 7 — Confirm manager appointments outside the group
 
 Before saving new managers for a manual group whose membership can be delegated, show a confirmation
-for those who are not already active group members. List the configured Manager role, governance
-permissions, and seats, and explain that they can add themselves or others. Use the copy in the
-design. This depends on PRs 4–6.
+for those who are not already active group members. Explain that they can add anyone to the group,
+that everyone they add gains its permissions and access to shared spaces and data sources, and that
+the appointment requires trusting them with those permissions. Use the singular/plural copy and blue
+“Appoint anyway” button from the [design](group-management.md#confirm-appointments-outside-the-group).
+This depends on PRs 4–6. The initial confirmation shipped in [#33267](https://github.com/dust-tt/dust/pull/33267);
+the design follow-up simplifies its copy and removes the Governance request.
 
-- Reuse current group membership, role/seat fields, and Governance data/labels; show no permissions the group does not actually grant.
+- Reuse current group and member data; no permissions summary needs loading.
 - Existing members, provisioned groups, and admin-granting groups skip this modal. For several non-members, confirm them together; cancellation sends no update.
-- Treat members removed in the same edit as non-members; an unsaved addition does not count as existing membership. Wait for the summary to load before allowing confirmation.
+- Treat members removed in the same edit as non-members; an unsaved addition does not count as existing membership.
+
+#### PR 7 follow-up — Identify managers outside the group
+
+Add the blue “Not group member” badge and tooltip to selected managers in the picker, using the
+[updated design](group-management.md#confirm-appointments-outside-the-group). Keep the badge for
+unsaved member additions and show it for pending removals. Shorten the manual-group helper text;
+retain the directory-managed and Admin-only membership explanations for restricted groups.
 
 ## Stream 2: Usage and requests
 
@@ -114,11 +124,17 @@ Keep inherited settings explanatory and read-only where appropriate, and retain 
 personal limit applies across the workspace. Existing workspace-wide views keep their current
 behavior. This depends on PR 5.
 
+#### PR 11a — [Observe v2] Extract shared Usage members section
+
+Move the member search, group filter, table layout, and optional Requests switch into a shared
+section. Keep the workspace Usage behavior unchanged. PR 12 builds on this.
+
 #### PR 12 — Open the restricted Usage page
 
 Allow group managers into the existing Usage route and navigation entry. Render the Members and
-Groups views with an “All groups you manage” filter, using the existing tables and controls.
-This delivers a complete usage-management path and depends on PRs 5 and 8–11.
+Groups views with an “All groups you manage” filter, using the shared member section and existing
+tables and limit editor. This delivers a complete usage-management path and depends on PRs 5, 8–11,
+and 11a.
 
 - Mount workspace-only data hooks in the workspace view, so hidden sections are not fetched.
 - Keep purchases, workspace settings, seat changes, and bulk usage actions under their existing permissions.

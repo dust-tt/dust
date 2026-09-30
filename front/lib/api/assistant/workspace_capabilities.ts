@@ -22,7 +22,6 @@ import type {
   KnowledgeCategory,
 } from "@app/types/api/public/spaces";
 import { KNOWLEDGE_CATEGORIES } from "@app/types/api/public/spaces";
-import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
@@ -81,8 +80,15 @@ export interface AvailableSkill {
 
 /**
  * Get the list of available models for the workspace.
- * This filters USED_MODEL_CONFIGS and CUSTOM_MODEL_CONFIGS based on feature flags,
- * plan, and workspace provider whitelisting.
+ * This filters USED_MODEL_CONFIGS based on feature flags, plan, and workspace provider
+ * whitelisting.
+ */
+/**
+ * @cc [owner:pmilliotte,label:security;product] custom-models-are-never-listed
+ * Custom models must never be part of this list, whatever the workspace's flags: it feeds the
+ * models API, the model picker, analytics facets and the sidekick model tools, all of which send
+ * model ids and display names to the browser. Custom models are only reachable through the
+ * global agents bound to them.
  */
 export async function getAvailableModelsForWorkspace(
   auth: Authenticator
@@ -93,8 +99,7 @@ export async function getAvailableModelsForWorkspace(
   const region = regionConfig.getCurrentRegion();
   const whitelistedProviders = getWhitelistedProviders(auth);
 
-  const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
-  return filterEnabledModels(allUsedModels, {
+  return filterEnabledModels([...USED_MODEL_CONFIGS], {
     featureFlags,
     plan,
     regionalModelsOnly: owner.regionalModelsOnly,

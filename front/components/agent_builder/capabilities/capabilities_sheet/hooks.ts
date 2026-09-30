@@ -2,10 +2,7 @@ import type {
   AgentBuilderSkillsType,
   MCPFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  generateUniqueActionName,
-  nameToStorageFormat,
-} from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/shared/types";
 import type {
@@ -17,6 +14,7 @@ import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";

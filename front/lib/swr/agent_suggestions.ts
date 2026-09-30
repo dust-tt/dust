@@ -24,8 +24,6 @@ export function useAgentSuggestions({
   disabled,
   kind,
   state,
-  sources,
-  conversationId,
   limit,
   workspaceId,
 }: {
@@ -33,8 +31,6 @@ export function useAgentSuggestions({
   disabled?: boolean;
   kind?: GetSuggestionsQuery["kind"];
   state?: GetSuggestionsQuery["states"];
-  sources?: GetSuggestionsQuery["sources"];
-  conversationId?: string;
   limit?: number;
   workspaceId: string;
 }) {
@@ -47,12 +43,6 @@ export function useAgentSuggestions({
   }
   if (kind) {
     urlParams.append("kind", kind);
-  }
-  if (sources) {
-    sources.forEach((s) => urlParams.append("sources", s));
-  }
-  if (conversationId) {
-    urlParams.append("conversationId", conversationId);
   }
   if (limit !== undefined) {
     urlParams.append("limit", limit.toString());
@@ -115,8 +105,7 @@ export function usePatchAgentSuggestions({
   const patchSuggestions = useCallback(
     async (
       suggestionIds: string[],
-      state: PatchSuggestionRequestBody["state"],
-      { apply }: { apply?: boolean } = {}
+      state: PatchSuggestionRequestBody["state"]
     ): Promise<PatchSuggestionResponseBody | null> => {
       if (!agentConfigurationId || suggestionIds.length === 0) {
         return null;
@@ -133,7 +122,6 @@ export function usePatchAgentSuggestions({
             body: JSON.stringify({
               suggestionIds,
               state,
-              applyToAgent: apply,
             } satisfies PatchSuggestionRequestBody),
           }
         );

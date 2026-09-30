@@ -7,7 +7,7 @@ This evaluation system tests Dust agents by running prompts from CSV files and u
 ## Key Features
 
 - **Majority Voting**: Multiple judge runs per evaluation (default 3) for reliable scoring
-- **Configurable Scales**: binary, 0-3, 1-5, or 0-100
+- **Configurable Scales**: binary, 0-2, 0-3, 1-5, or 0-100
 - **Conversation ID Tracking**: Full traceability for debugging
 - **Smart Retries**: Exponential backoff with error classification
 - **Checkpointing**: Resume interrupted evaluations
@@ -60,11 +60,11 @@ bun run typecheck
 | `--judge-runs` | 3 | Judge evaluations per response |
 | `--parallel` | 5 | Concurrent executions |
 | `--timeout` | 2m | Timeout (supports: 30s, 2m, 120000) |
-| `--scale` | 0-3 | Scale: binary, 0-3, 1-5, 0-100 |
+| `--scale` | 0-3 | Scale: binary, 0-2, 0-3, 1-5, 0-100 |
 | `--output` | console | Format: json, csv, console |
 | `--output-file` | - | Save results to file |
-| `--max-retries` | 3 | Max retry attempts |
-| `--retry-backoff` | 1s | Base backoff duration |
+| `--max-retries` | 6 | Max retry attempts |
+| `--retry-backoff` | 5s | Base backoff duration |
 | `--sample` | - | Sample N prompts randomly |
 | `--seed` | - | Random seed for reproducibility |
 | `--prompt-filter` | - | Filter: 1,3,5 or 1-5 or *pattern* |
@@ -117,7 +117,7 @@ src/
 ### Retry Logic (dust-client.ts)
 - Retries: Timeouts, 429, 5xx, network errors
 - No retry: 4xx client errors (400, 401, 403, 404)
-- Backoff: Exponential with 30% jitter
+- Backoff: Exponential with 30% jitter, each wait capped at 60s
 
 ### Error Classification
 ```typescript

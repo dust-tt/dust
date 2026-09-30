@@ -90,9 +90,7 @@ export async function setupOAuthConnection({
       channel.addEventListener("message", (event: MessageEvent) => {
         handleFinalization(event.data);
       });
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (e) {
+    } catch {
       // BroadcastChannel not supported
     }
 

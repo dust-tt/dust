@@ -24,22 +24,53 @@ describe("shouldUseStaticIpProxy", () => {
     });
 
     await expect(
-      shouldUseStaticIpProxy(authenticator, `https://oauth.${domain}/token`)
+      shouldUseStaticIpProxy(authenticator, {
+        url: `https://oauth.${domain}/token`,
+      })
     ).resolves.toBe(true);
 
     await expect(
-      shouldUseStaticIpProxy(authenticator, `http://oauth.${domain}/token`)
+      shouldUseStaticIpProxy(authenticator, {
+        url: `http://oauth.${domain}/token`,
+      })
     ).resolves.toBe(false);
 
     await expect(
-      shouldUseStaticIpProxy(
-        authenticator,
-        "https://unverified.example.com/token"
-      )
+      shouldUseStaticIpProxy(authenticator, {
+        url: "https://unverified.example.com/token",
+      })
     ).resolves.toBe(false);
 
     await expect(
-      shouldUseStaticIpProxy(authenticator, "https://127.0.0.1/token")
+      shouldUseStaticIpProxy(authenticator, {
+        url: "https://127.0.0.1/token",
+      })
+    ).resolves.toBe(false);
+  });
+
+  it("returns true for hardcoded official remote MCP URLs without verified domains", async () => {
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
+
+    await expect(
+      shouldUseStaticIpProxy(authenticator, {
+        url: "https://bigquery.googleapis.com/mcp",
+      })
+    ).resolves.toBe(true);
+
+    await expect(
+      shouldUseStaticIpProxy(authenticator, {
+        url: "https://oauth2.googleapis.com/token",
+        relatedMcpServerUrl: "https://bigquery.googleapis.com/mcp",
+      })
+    ).resolves.toBe(true);
+
+    await expect(
+      shouldUseStaticIpProxy(authenticator, {
+        url: "https://oauth2.googleapis.com/token",
+        relatedMcpServerUrl: "https://mcp.unrelated.example.com/mcp",
+      })
     ).resolves.toBe(false);
   });
 });

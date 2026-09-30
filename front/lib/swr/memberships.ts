@@ -12,12 +12,14 @@ import type {
 import type {
   GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
+  UserSpendLimit,
 } from "@app/types/api/users/spend_limit";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import type { UserVisibleGroupKind } from "@app/types/groups";
 import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
 import { MEMBERSHIP_SEAT_TYPES, PAID_SEAT_TYPES } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type {
   ActiveRoleType,
   LightUserTypeWithWorkspace,
@@ -262,7 +264,7 @@ export function useBulkSetUserSpendLimit({
       limit,
     }: {
       selection: BulkMemberSelectionBody;
-      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
+      limit: UserSpendLimit;
     }): Promise<{ workflowId: string; memberCount: number } | null> => {
       const res = await clientFetch(bulkSpendLimitUrl(workspaceId), {
         method: "POST",
@@ -286,8 +288,8 @@ export function useBulkSetUserSpendLimit({
         title: "Spend limit updated",
         description:
           limit.kind === "limited"
-            ? `Applied a ${limit.awuCredits.toLocaleString("en-US")} credit limit to ${body.memberCount.toLocaleString("en-US")} members.`
-            : `Removed the spend limit for ${body.memberCount.toLocaleString("en-US")} members.`,
+            ? `Applied a ${limit.awuCredits.toLocaleString("en-US")} credit limit to ${body.memberCount.toLocaleString("en-US")} member${pluralize(body.memberCount)}.`
+            : `Removed the personal limit for ${body.memberCount.toLocaleString("en-US")} member${pluralize(body.memberCount)}.`,
       });
 
       await invalidateMembersUsage(workspaceId);
@@ -656,15 +658,26 @@ export function useUpdateUserSpendLimit({
       memberId,
       memberName,
       limit,
+      resetAtNextBillingCycle,
     }: {
       memberId: string;
       memberName: string;
       limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
+      resetAtNextBillingCycle?: boolean;
     }): Promise<PutUserSpendLimitResponseBody | null> => {
       const res = await clientFetch(spendLimitUrl(workspaceId, memberId), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(limit),
+        body: JSON.stringify(
+          limit.kind === "limited"
+            ? {
+                ...limit,
+                ...(resetAtNextBillingCycle
+                  ? { resetAtNextBillingCycle: true }
+                  : {}),
+              }
+            : limit
+        ),
       });
 
       if (!res.ok) {
@@ -684,7 +697,9 @@ export function useUpdateUserSpendLimit({
           description = `${memberName}'s spend limit has been removed.`;
           break;
         case "limited":
-          description = `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits.`;
+          description = resetAtNextBillingCycle
+            ? `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits until the next billing cycle.`
+            : `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits.`;
           break;
         default:
           assertNeverAndIgnore(limit);

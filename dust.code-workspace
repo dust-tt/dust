@@ -35,7 +35,7 @@
       "sandbox": true,
       "scripts": false,
       "temporal": true,
-      "tools": true,
+      "tools": false,
       "x": true
     },
     "search.exclude": {

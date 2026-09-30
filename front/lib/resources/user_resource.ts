@@ -25,6 +25,8 @@ import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import type { SupportedLocale } from "@app/types/locale";
+import { isSupportedLocale, USER_LOCALE_METADATA_KEY } from "@app/types/locale";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -748,6 +750,18 @@ export class UserResource extends BaseResource<UserModel> {
       enabled ? "true" : "false",
       auth.getNonNullableWorkspace().id
     );
+  }
+
+  /**
+   * @cc [owner:sfriquet,label:product;backend] locale-defaults-to-workspace-locale
+   * MUST return the locale stored in the user's global `locale` metadata when it is one of
+   * `SUPPORTED_LOCALES`, and `workspace.locale` when there is no stored value or it is not a
+   * supported locale.
+   */
+  async getLocale(workspace: LightWorkspaceType): Promise<SupportedLocale> {
+    const metadata = await this.getMetadata(USER_LOCALE_METADATA_KEY);
+    const storedLocale = metadata?.value;
+    return isSupportedLocale(storedLocale) ? storedLocale : workspace.locale;
   }
 
   /**

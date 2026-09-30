@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import { getAgentById } from "../data/agents";
+import { ROW_BADGE_VARIANT } from "../data/rowBadges";
 import { AvatarCounter, type AvatarCounterSizeType } from "./AvatarCounter";
 
 interface AgentBadgeAvatarProps {
@@ -35,6 +36,7 @@ export function AgentBadgeAvatar({
       backgroundColor={agent?.backgroundColor}
       badgeIcon={badgeIcon}
       badgeLabel={badgeLabel}
+      variant={ROW_BADGE_VARIANT}
     />
   );
 }

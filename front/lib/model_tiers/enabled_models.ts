@@ -2,6 +2,7 @@ import { getDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { resolveAllowedTierNames } from "@app/lib/model_tiers/allowed_tiers";
 import type {
   EnabledModelConfigurationType,
@@ -28,10 +29,12 @@ import {
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
+  ModelProviderIdType,
   ReasoningEffort,
   ReasoningEffortSupport,
 } from "@app/types/assistant/models/types";
 import { getMaximumReasoningEffort } from "@app/types/assistant/models/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 function isStaticModel(
   modelId: string
@@ -122,6 +125,21 @@ export async function getEnabledModelsForAuth(
   });
 }
 
+/**
+ * @cc [owner:fabiencelier,label:product] agent-model-change-source
+ * Returns exactly the models, each restricted to its reasoning efforts, the caller can set an agent
+ * to: the workspace's available models that are selectable under the caller's model tiers.
+ */
+export async function getSelectableModelsForAuth(
+  auth: Authenticator,
+  { providerId }: { providerId?: ModelProviderIdType } = {}
+): Promise<EnabledModelConfigurationType[]> {
+  const models = await getEnabledModelsForAuth(auth);
+  return models.filter(
+    (m) => m.isSelectable && (!providerId || m.providerId === providerId)
+  );
+}
+
 export async function getDefaultStreamConfigForAuth(
   auth: Authenticator
 ): Promise<ModelConfigurationType> {
@@ -171,16 +189,28 @@ export interface StreamResolutionWithFallbackType extends StreamResolutionType {
 // user's behalf, so routing around an ongoing provider incident is ours to do.
 // A definitive pick -- an agent configured on a concrete model, or a user
 // overriding the model from the picker -- is left alone and runs as usual.
+/**
+ * @cc [owner:Nils-Fedrigo,label:product] stream-candidate-feature-flag
+ * A stream candidate with a `featureFlag` MUST be skipped unless `featureFlags` contains that
+ * flag; candidates without one are unaffected.
+ */
 export function resolveStreamModel(
   models: EnabledModelConfigurationType[],
   streamId: ModelStreamIdType,
-  degradedModelIds: ReadonlySet<string>
+  degradedModelIds: ReadonlySet<string>,
+  featureFlags: readonly WhitelistableFeature[]
 ): StreamResolutionType {
   const candidateModels = models.filter(
     (m) => m.isSelectable && !degradedModelIds.has(m.modelId)
   );
 
   for (const candidate of MODEL_STREAMS[streamId]) {
+    if (
+      candidate.featureFlag &&
+      !featureFlags.includes(candidate.featureFlag)
+    ) {
+      continue;
+    }
     const model = candidateModels.find(
       (m) =>
         m.providerId === candidate.providerId &&
@@ -214,13 +244,20 @@ export function resolveStreamModel(
 export function resolveStreamModelWithFallback(
   models: EnabledModelConfigurationType[],
   streamId: ModelStreamIdType,
-  degradedModelIds: ReadonlySet<string>
+  degradedModelIds: ReadonlySet<string>,
+  featureFlags: readonly WhitelistableFeature[]
 ): StreamResolutionWithFallbackType {
-  const nominalResolution = resolveStreamModel(models, streamId, new Set());
+  const nominalResolution = resolveStreamModel(
+    models,
+    streamId,
+    new Set(),
+    featureFlags
+  );
   const actualResolution = resolveStreamModel(
     models,
     streamId,
-    degradedModelIds
+    degradedModelIds,
+    featureFlags
   );
   const didFallback =
     degradedModelIds.has(nominalResolution.model.modelId) &&
@@ -238,12 +275,14 @@ export function resolveStreamModelWithFallback(
 function toStreamResolution(
   models: EnabledModelConfigurationType[],
   streamId: ModelStreamIdType,
-  degradedModelIds: ReadonlySet<string>
+  degradedModelIds: ReadonlySet<string>,
+  featureFlags: readonly WhitelistableFeature[]
 ): ModelStreamResolutionType {
   const { model, reasoningEffort } = resolveStreamModel(
     models,
     streamId,
-    degradedModelIds
+    degradedModelIds,
+    featureFlags
   );
   return {
     providerId: model.providerId,
@@ -255,49 +294,65 @@ function toStreamResolution(
 
 export function getStreamResolutions(
   models: EnabledModelConfigurationType[],
-  degradedModelIds: ReadonlySet<string>
+  degradedModelIds: ReadonlySet<string>,
+  featureFlags: readonly WhitelistableFeature[]
 ): ModelStreamResolutionsType {
   return {
     [AUTO_MODEL_ID]: toStreamResolution(
       models,
       AUTO_MODEL_ID,
-      degradedModelIds
+      degradedModelIds,
+      featureFlags
     ),
     [AUTO_FAST_MODEL_ID]: toStreamResolution(
       models,
       AUTO_FAST_MODEL_ID,
-      degradedModelIds
+      degradedModelIds,
+      featureFlags
     ),
     [AUTO_COMPLEX_MODEL_ID]: toStreamResolution(
       models,
       AUTO_COMPLEX_MODEL_ID,
-      degradedModelIds
+      degradedModelIds,
+      featureFlags
     ),
   };
 }
 
 export function getFallbackStreamIds(
   models: EnabledModelConfigurationType[],
-  degradedModelIds: ReadonlySet<string>
+  degradedModelIds: ReadonlySet<string>,
+  featureFlags: readonly WhitelistableFeature[]
 ): ModelStreamIdType[] {
   return MODEL_STREAM_IDS.filter(
     (streamId) =>
-      resolveStreamModelWithFallback(models, streamId, degradedModelIds)
-        .didFallback
+      resolveStreamModelWithFallback(
+        models,
+        streamId,
+        degradedModelIds,
+        featureFlags
+      ).didFallback
   );
 }
 
 export async function getModelsForAuth(
   auth: Authenticator
 ): Promise<GetEnabledModelsResponseType> {
-  const models = await getEnabledModelsForAuth(auth);
+  const [models, featureFlags] = await Promise.all([
+    getEnabledModelsForAuth(auth),
+    getFeatureFlags(auth),
+  ]);
   const degradedModelIds = getDegradedModelIds();
 
   return {
     models,
     defaultModel: getDefaultModelFromEnabledModels(models),
-    streams: getStreamResolutions(models, degradedModelIds),
-    fallbackStreamIds: getFallbackStreamIds(models, degradedModelIds),
+    streams: getStreamResolutions(models, degradedModelIds, featureFlags),
+    fallbackStreamIds: getFallbackStreamIds(
+      models,
+      degradedModelIds,
+      featureFlags
+    ),
     degradedModelIds: models
       .filter((m) => degradedModelIds.has(m.modelId))
       .map((m) => m.modelId),

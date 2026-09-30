@@ -40,7 +40,6 @@ import reinforcementDailySpend from "./reinforcement_daily_spend";
 import reinforcementSpend from "./reinforcement_spend";
 import search from "./search";
 import similar from "./similar";
-import usedBy from "./used_by";
 
 const SkillStatusSchema = z
   .enum(["active", "archived", "suggested"])
@@ -121,7 +120,6 @@ app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
 app.route("/search", search);
 app.route("/similar", similar);
-app.route("/used_by", usedBy);
 
 /** @ignoreswagger */
 app.get(

@@ -3,7 +3,7 @@ import {
   isAutoInternalMCPServerName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
@@ -163,12 +163,9 @@ export async function seedAgentSuggestions(
 
     if (execute) {
       // Get the agent configuration
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: agent.sId,
-        variant: "light",
-      });
+      const agentResource = await AgentResource.fetchById(auth, agent.sId);
 
-      if (!agentConfiguration) {
+      if (!agentResource) {
         logger.warn(
           { agentId: agent.sId },
           "Agent configuration not found, skipping suggestion"
@@ -220,7 +217,7 @@ export async function seedAgentSuggestions(
       // Create the suggestion using the resource
       await AgentSuggestionResource.createSuggestionForAgent(
         auth,
-        agentConfiguration,
+        agentResource,
         {
           kind: suggestionAsset.kind,
           suggestion: resolvedSuggestion,

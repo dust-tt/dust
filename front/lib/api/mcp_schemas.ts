@@ -6,6 +6,10 @@ import {
   INTERNAL_ALLOWED_ICONS,
 } from "@app/types/resources_icon_names";
 import { DbModelIdSchema } from "@app/types/shared/model_id";
+import {
+  hasRedactedHeaderValue,
+  REDACTED_HEADER_VALUES_ERROR_MESSAGE,
+} from "@app/types/shared/utils/http_headers";
 import { EditedByUserSchema } from "@app/types/user";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
@@ -107,6 +111,9 @@ export const PatchMCPServerBodySchema = z
           message: "Either sharedSecret or customHeaders must be provided",
         }
       )
+      .refine((data) => !hasRedactedHeaderValue(data.customHeaders ?? []), {
+        message: REDACTED_HEADER_VALUES_ERROR_MESSAGE,
+      })
   )
   .or(
     z.object({

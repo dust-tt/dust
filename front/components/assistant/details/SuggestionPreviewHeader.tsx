@@ -2,12 +2,14 @@ import { Button, ContentMessage, SliderToggle, XClose } from "@dust-tt/sparkle";
 
 interface SuggestionPreviewHeaderProps {
   isApplied: boolean;
+  hasCreation: boolean;
   onToggle: () => void;
   onClose: () => void;
 }
 
 export function SuggestionPreviewHeader({
   isApplied,
+  hasCreation,
   onToggle,
   onClose,
 }: SuggestionPreviewHeaderProps) {
@@ -16,9 +18,13 @@ export function SuggestionPreviewHeader({
       <ContentMessage
         variant={isApplied ? "blue" : "primary"}
         className="h-full justify-center rounded-none rounded-br-xl py-0"
-        action={<SliderToggle selected={isApplied} onClick={onToggle} />}
+        action={
+          !hasCreation && (
+            <SliderToggle selected={isApplied} onClick={onToggle} />
+          )
+        }
       >
-        View edit suggestions
+        Suggestion preview
       </ContentMessage>
       <Button
         variant="ghost"

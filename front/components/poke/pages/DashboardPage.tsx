@@ -34,8 +34,7 @@ import {
 } from "@dust-tt/sparkle";
 import { ChevronLeft, ChevronRight, UsersIcon } from "lucide-react";
 import type { ChangeEvent } from "react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 
 const WORKSPACE_LIMIT = 20;
 const SEARCH_MIN_LENGTH = 3;

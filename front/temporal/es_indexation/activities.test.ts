@@ -94,13 +94,14 @@ describe("skill search indexation", () => {
     );
     expect(updated).toHaveBeenCalledExactlyOnceWith({
       workspaceId: workspace.sId,
-      skills: [
+      skills: expect.arrayContaining([
         expect.objectContaining({ sId: skill.sId }),
         expect.objectContaining({ sId: unused.sId }),
         expect.objectContaining({ sId: archived.sId }),
-      ],
+      ]),
       activeUsers: { [skill.sId]: 3, "go-deep": 4 },
     });
+    expect(updated.mock.calls[0][0].skills).toHaveLength(3);
   });
 
   it("refreshes workspace usage including restricted and unused agents for zero resets", async () => {

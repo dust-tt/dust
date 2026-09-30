@@ -14,7 +14,7 @@ import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/me
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
 import { markDuplicateSuggestionsAsOutdated } from "@app/lib/api/assistant/agent_suggestion_pruning";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
@@ -29,12 +29,12 @@ import {
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import {
   describeMcpServer,
-  getAvailableModelsForWorkspace,
   listAvailableSkills,
   listAvailableTools,
   searchKnowledge,
 } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
+import { getSelectableModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import {
   DESCRIBE_MCP_TOOL_NAME,
@@ -58,8 +58,6 @@ import {
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { isAgentMention } from "@app/types/assistant/mentions";
-import { isModelProviderId } from "@app/types/assistant/models/providers";
-import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
@@ -123,17 +121,14 @@ async function createInstructionSuggestions({
 
   // Fetch the latest version of the agent configuration (full variant needed
   // for instructionsHtml used in conflict pruning).
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "full",
-  });
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-  if (!agentConfiguration) {
+  if (!agent || agent.scope === "global" || !agent.canViewContent) {
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
   return createAgentInstructionSuggestions(auth, {
-    agentConfiguration,
+    agent,
     edits: suggestions,
     source: "sidekick",
     conversation: conversation ?? null,
@@ -251,12 +246,9 @@ async function createToolsSuggestions({
     return new Err(limitCheck.errorMessage);
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "light",
-  });
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-  if (!agentConfiguration) {
+  if (!agent) {
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
@@ -266,7 +258,7 @@ async function createToolsSuggestions({
     const suggestion: ToolsSuggestionType = { action, toolId };
     const created = await AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      agent,
       {
         kind: "tools",
         suggestion,
@@ -360,12 +352,9 @@ async function createSkillsSuggestions({
     return new Err(limitCheck.errorMessage);
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "light",
-  });
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-  if (!agentConfiguration) {
+  if (!agent) {
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
@@ -374,7 +363,7 @@ async function createSkillsSuggestions({
   for (const { action, skillId, analysis } of suggestions) {
     const created = await AgentSuggestionResource.createSuggestionForAgent(
       auth,
-      agentConfiguration,
+      agent,
       {
         kind: "skills",
         suggestion: { action, skillId },
@@ -393,18 +382,7 @@ async function createSkillsSuggestions({
 
 const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   get_available_models: async ({ providerId }, { auth }) => {
-    let models = await getAvailableModelsForWorkspace(auth);
-
-    if (providerId) {
-      if (!isModelProviderId(providerId)) {
-        return new Err(
-          new MCPError(`Invalid provider ID: ${providerId}`, {
-            tracked: false,
-          })
-        );
-      }
-      models = models.filter((m) => m.providerId === providerId);
-    }
+    const models = await getSelectableModelsForAuth(auth, { providerId });
 
     return new Ok([
       {
@@ -498,12 +476,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   inspect_available_agent: async ({ agentId }, { auth }) => {
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId,
-      variant: "full",
-    });
+    const agent = await AgentResource.fetchById(auth, agentId);
 
-    if (!agentConfiguration) {
+    if (!agent || !agent.canViewContent) {
       return new Err(
         new MCPError(`Agent not found or not accessible: ${agentId}`, {
           tracked: false,
@@ -511,27 +486,22 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const toolIds = agentConfiguration.actions
+    const [{ instructions }, actions, skills] = await Promise.all([
+      agent.fetchInstructions(),
+      agent.listActions(auth),
+      agent.listSkills(auth),
+    ]);
+    const toolIds = actions
       .filter(
         (action): action is ServerSideMCPServerConfigurationType =>
           "mcpServerViewId" in action
       )
       .map((action) => action.mcpServerViewId);
-
-    const skills = await SkillResource.listByAgentConfiguration(
-      auth,
-      agentConfiguration
-    );
-    const skillIds = skills.map((skill) => skill.sId);
-
-    const agentDetails = {
-      sId: agentConfiguration.sId,
-      name: agentConfiguration.name,
-      description: agentConfiguration.description,
-      instructions: agentConfiguration.instructions,
+    const agentDetails = agent.toInspectionJSON({
+      instructions,
       toolIds,
-      skillIds,
-    };
+      skillIds: skills.map((skill) => skill.sId),
+    });
 
     return new Ok([
       {
@@ -561,12 +531,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     const latestVersionOnlyWithDefault = latestVersionOnly ?? true;
 
     // Fetch the agent configuration to get the current version.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-    if (!agentConfiguration) {
+    if (!agent) {
       return new Err(
         new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
           tracked: false,
@@ -574,7 +541,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const currentVersion = agentConfiguration.version;
+    const currentVersion = agent.currentVersion;
 
     const feedbacksRes = await getAgentFeedbacks({
       auth,
@@ -661,12 +628,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Verify agent configuration exists and is accessible.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-    if (!agentConfiguration) {
+    if (!agent) {
       return new Err(
         new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
           tracked: false,
@@ -701,7 +665,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
     const insights = {
       agentConfigurationId,
-      agentName: agentConfiguration.name,
+      agentName: agent.name,
       period: {
         days: numberOfDays,
       },
@@ -882,7 +846,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     const limitCheck = canAddPendingSuggestions({
       kind: "sub_agent",
       newPendingCount: 1,
-      currentPendingCount: remainingPending.length,
+      // Conversational sub-agent suggestions have no limit and cannot be resolved from the
+      // sidekick: only the sidekick's own count.
+      currentPendingCount: remainingPending.filter(
+        (s) => s.source === "sidekick"
+      ).length,
       resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
     });
     if (!limitCheck.allowed) {
@@ -890,12 +858,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Fetch the latest version of the agent configuration.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-    if (!agentConfiguration) {
+    if (!agent) {
       return new Err(
         new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
           tracked: false,
@@ -912,17 +877,13 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
     try {
       const createdSuggestion =
-        await AgentSuggestionResource.createSuggestionForAgent(
-          auth,
-          agentConfiguration,
-          {
-            kind: "sub_agent",
-            suggestion,
-            analysis: params.analysis ?? null,
-            state: "pending",
-            source: "sidekick",
-          }
-        );
+        await AgentSuggestionResource.createSuggestionForAgent(auth, agent, {
+          kind: "sub_agent",
+          suggestion,
+          analysis: params.analysis ?? null,
+          state: "pending",
+          source: "sidekick",
+        });
 
       return new Ok([
         {
@@ -986,34 +947,18 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   suggest_model: async (params, { auth, runContext }) => {
-    const availableModels = await getAvailableModelsForWorkspace(auth);
-
     const { modelId, reasoningEffort } = params.suggestion;
-    const modelConfiguration = availableModels.find(
-      (m) => m.modelId === modelId
-    );
-    if (!modelConfiguration) {
+    const resolved = await resolveAgentModelChange(auth, {
+      modelId,
+      reasoningEffort,
+    });
+    if (resolved.isErr()) {
       return new Err(
         new MCPError(
-          `Invalid model ID: ${modelId}. Check <workspace_context> for valid model IDs.`,
+          `${resolved.error.message} Check <workspace_context> for valid model IDs and reasoning efforts.`,
           { tracked: false }
         )
       );
-    }
-
-    if (reasoningEffort) {
-      const supportedReasoningEfforts = getAvailableReasoningEfforts(
-        modelConfiguration.supportedReasoningEfforts
-      );
-      if (!supportedReasoningEfforts.includes(reasoningEffort)) {
-        return new Err(
-          new MCPError(
-            `Invalid reasoning effort "${reasoningEffort}" for model ${modelId}. ` +
-              `Supported reasoning efforts for this model: ${supportedReasoningEfforts.join(", ")}.`,
-            { tracked: false }
-          )
-        );
-      }
     }
 
     const agentConfigurationId = getAgentConfigurationIdFromContext({
@@ -1030,12 +975,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Fetch the latest version of the agent configuration.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-    if (!agentConfiguration) {
+    if (!agent) {
       return new Err(
         new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
           tracked: false,
@@ -1046,7 +988,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     try {
       const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
         auth,
-        agentConfiguration,
+        agent,
         {
           kind: "model",
           suggestion: params.suggestion,
@@ -1159,12 +1101,9 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Fetch the latest version of the agent configuration.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-    if (!agentConfiguration) {
+    if (!agent) {
       return new Err(
         new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
           tracked: false,
@@ -1182,17 +1121,13 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
     try {
       const createdSuggestion =
-        await AgentSuggestionResource.createSuggestionForAgent(
-          auth,
-          agentConfiguration,
-          {
-            kind: "knowledge",
-            suggestion,
-            analysis: params.analysis ?? null,
-            state: "pending",
-            source: "sidekick",
-          }
-        );
+        await AgentSuggestionResource.createSuggestionForAgent(auth, agent, {
+          kind: "knowledge",
+          suggestion,
+          analysis: params.analysis ?? null,
+          state: "pending",
+          source: "sidekick",
+        });
 
       return new Ok([
         {

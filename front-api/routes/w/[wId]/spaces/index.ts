@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
+import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import type {
@@ -18,6 +19,7 @@ import {
   type EnrichedSpaceType,
   type PodType,
   SPACE_KINDS,
+  type SpaceKind,
 } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -39,6 +41,34 @@ export type {
 // Mounted under /api/w/:wId/spaces. workspaceAuth is applied by the parent
 // workspace sub-app, so ctx.get("auth") is always available here.
 const app = workspaceApp();
+
+type ListRequestedSpacesParams = {
+  // Whether the caller asked for the admin view (`role=admin`), which lists spaces they are not in.
+  isAdminRole: boolean;
+  kinds: SpaceKind[] | undefined;
+};
+
+async function listRequestedSpaces(
+  auth: Authenticator,
+  { isAdminRole, kinds }: ListRequestedSpacesParams
+): Promise<SpaceResource[]> {
+  if (!isAdminRole) {
+    return SpaceResource.listWorkspaceSpacesAsMember(auth, { kinds });
+  }
+
+  if (kinds?.length === 1 && kinds[0] === "system") {
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    return systemSpace ? [systemSpace] : [];
+  }
+
+  // `listWorkspaceSpaces` does not filter by permission, so Pods are only listed to admins.
+  const includeProjectSpaces =
+    auth.isAdmin() && (kinds?.includes("project") ?? false);
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeProjectSpaces,
+  });
+  return kinds ? spaces.filter((s) => kinds.includes(s.kind)) : spaces;
+}
 
 const GetSpacesQuerySchema = z.object({
   role: z.string().optional(),
@@ -163,21 +193,11 @@ app.get(
         : [kind]
       : undefined;
 
-    let spaces: SpaceResource[] = [];
-    if (role === "admin") {
-      if (kind === "system") {
-        const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-        spaces = systemSpace ? [systemSpace] : [];
-      } else {
-        spaces = await SpaceResource.listWorkspaceSpaces(auth);
-      }
-    } else {
-      spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth, {
-        kinds,
-      });
-    }
-
-    spaces = spaces.filter((s) => s.kind !== "conversations");
+    const requestedSpaces = await listRequestedSpaces(auth, {
+      isAdminRole: role === "admin",
+      kinds,
+    });
+    const spaces = requestedSpaces.filter((s) => s.kind !== "conversations");
     const nonProjectSpaces = spaces.filter((s) => s.kind !== "project");
     const projectSpaces = spaces.filter((s) => s.kind === "project");
 

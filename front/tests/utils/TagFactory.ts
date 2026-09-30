@@ -2,6 +2,7 @@ import { Authenticator } from "@app/lib/auth";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { TagKind } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
 
 export class TagFactory {
@@ -9,12 +10,13 @@ export class TagFactory {
     workspace: WorkspaceType,
     params: {
       name: string;
+      kind?: TagKind;
     }
   ) {
     const auth = await Authenticator.internalUserForWorkspace(workspace.sId);
     return TagResource.makeNew(auth, {
       name: params.name,
-      kind: "standard",
+      kind: params.kind ?? "standard",
     });
   }
 

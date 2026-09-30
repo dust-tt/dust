@@ -59,6 +59,7 @@ import LangfuseLogo from "./Langfuse";
 import LemlistLogo from "./Lemlist";
 import LinearLogo from "./Linear";
 import LinkedinLogo from "./Linkedin";
+import LokaliseLogo from "./Lokalise";
 import LumaLogo from "./Luma";
 import MetaLogo from "./Meta";
 import MicrosoftLogo from "./Microsoft";
@@ -178,6 +179,7 @@ export const PLATFORM_LOGOS = {
   LemlistLogo,
   LinearLogo,
   LinkedinLogo,
+  LokaliseLogo,
   LumaLogo,
   MetaLogo,
   MicrosoftLogo,

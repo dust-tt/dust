@@ -10,6 +10,7 @@ import { launchMetronomeEventsWorkflow } from "@app/temporal/metronome_events_qu
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import type { Context } from "hono";
 import { z } from "zod";
 
 type ResponseBody = {
@@ -26,7 +27,15 @@ app.get(
   async (ctx): HandlerResult<ResponseBody> => ctx.json({ success: true })
 );
 
-app.post("/", async (ctx): HandlerResult<ResponseBody> => {
+/**
+ * @cc [owner:tdraier,label:product] no-processing-under-maintenance
+ * When the resolved workspace has a `maintenance` metadata value, the event MUST NOT be enqueued.
+ * `relocation-done` is acked with 200 (the workspace now lives in another region, which receives
+ * the same event); any other value returns 503 so Metronome redelivers the event later.
+ */
+async function handleMetronomeWebhook(
+  ctx: Context
+): HandlerResult<ResponseBody> {
   // Read the raw body bytes once. Metronome's SDK signature verification
   // works on the exact string representation of the JSON body.
   const bodyString = await ctx.req.text();
@@ -111,6 +120,32 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
     return ctx.json({ success: true });
   }
 
+  // Both regions receive the events of a relocated workspace, and its row
+  // stays in the source region until purge. Only the destination may act on
+  // them: processing here would e.g. unpause the source connectors.
+  const maintenance = workspace.metadata?.maintenance;
+  if (maintenance === "relocation-done") {
+    logger.info(
+      {
+        eventId: event.id,
+        eventType: event.type,
+        workspaceId: workspace.sId,
+      },
+      "[Metronome Webhook] Workspace has been relocated, skipping event"
+    );
+    return ctx.json({ success: true });
+  }
+  if (maintenance) {
+    // apiError logs the 503.
+    return apiError(ctx, {
+      status_code: 503,
+      api_error: {
+        type: "service_unavailable",
+        message: `Workspace under maintenance. [${maintenance}]`,
+      },
+    });
+  }
+
   // Hand the event off to a Temporal workflow for durable processing.
   // The workflow id is derived from event.id, so Metronome redeliveries
   // (at-least-once delivery, retries on our own 5xx) hit
@@ -132,6 +167,8 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
   }
 
   return ctx.json({ success: true });
-});
+}
+
+app.post("/", handleMetronomeWebhook);
 
 export default app;

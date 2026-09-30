@@ -64,7 +64,8 @@ const NAME_AUTOCOMPLETE_FIELDS = [
  * in any order (`sal mar` matches "Marketing Sales"). Terms are analyzed like the name (case-change
  * and punctuation splits), so only a term's last token is prefix-matched (`ReportB` matches
  * "Report Builder"). The description is not matched. Whole-word, in-order and whole-name
- * (`name.keyword`) prefix matches only add relevance.
+ * (`name.keyword`) prefix matches only add relevance. Exact whole-name matches MUST receive an
+ * additional relevance boost.
  */
 export function buildAgentNameAutocompleteQuery(
   searchTerm: string
@@ -85,8 +86,13 @@ export function buildAgentNameAutocompleteQuery(
       })),
       should: [
         {
+          constant_score: {
+            filter: { term: { "name.keyword": searchTerm } },
+          },
+        },
+        {
           multi_match: {
-            query: terms.join(" "),
+            query: searchTerm,
             type: "bool_prefix",
             operator: "and",
             fields: ["name.keyword", ...NAME_AUTOCOMPLETE_FIELDS],

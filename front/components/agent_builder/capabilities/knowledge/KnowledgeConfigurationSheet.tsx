@@ -9,7 +9,6 @@ import {
 import {
   generateUniqueActionName,
   nameToDisplayFormat,
-  nameToStorageFormat,
 } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
@@ -34,6 +33,7 @@ import {
   useKnowledgePageContext,
 } from "@app/components/data_source_view/context/PageContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
   ADVANCED_SEARCH_SWITCH,

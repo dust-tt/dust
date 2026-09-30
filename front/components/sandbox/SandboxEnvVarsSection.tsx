@@ -3,6 +3,7 @@ import {
   envVarPrefixForKind,
   MAX_HTTPS_SECRET_VALUE_BYTES,
   MAX_VALUE_BYTES,
+  normalizeHttpsSecretAllowedDomains,
   SANDBOX_ENV_VAR_PREFIX,
 } from "@app/lib/api/sandbox/env_vars";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -13,7 +14,6 @@ import {
   useUpsertSandboxEnvVar,
 } from "@app/lib/swr/sandbox";
 import { timeAgoFrom } from "@app/lib/utils";
-import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
 import type {
   SandboxEnvVarKind,
   SandboxEnvVarType,
@@ -147,7 +147,8 @@ const formSchema = z
           return;
         }
 
-        const normalizedDomains = normalizeEgressPolicyDomains(allowedDomains);
+        const normalizedDomains =
+          normalizeHttpsSecretAllowedDomains(allowedDomains);
         if (normalizedDomains.isErr()) {
           ctx.addIssue({
             code: "custom",
@@ -302,7 +303,8 @@ export function SandboxEnvVarsSection({
       return { message: ALLOWED_DOMAINS_HELPER_TEXT, isError: false };
     }
 
-    const normalizedDomains = normalizeEgressPolicyDomains(allowedDomains);
+    const normalizedDomains =
+      normalizeHttpsSecretAllowedDomains(allowedDomains);
     if (normalizedDomains.isErr()) {
       return { message: normalizedDomains.error.message, isError: true };
     }
@@ -324,7 +326,7 @@ export function SandboxEnvVarsSection({
   const domainsDialogParsed = parseAllowedDomainsText(domainsText);
   const domainsDialogNormalized =
     domainsDialogParsed.length > 0
-      ? normalizeEgressPolicyDomains(domainsDialogParsed)
+      ? normalizeHttpsSecretAllowedDomains(domainsDialogParsed)
       : null;
   const domainsDialogMessage =
     domainsDialogNormalized?.isErr() === true
@@ -373,7 +375,7 @@ export function SandboxEnvVarsSection({
     const shouldCreateSecretWithDomains =
       data.kind === "https_secret" && envVarToReplace === null;
     const normalizedDomains = shouldCreateSecretWithDomains
-      ? normalizeEgressPolicyDomains(
+      ? normalizeHttpsSecretAllowedDomains(
           parseAllowedDomainsText(data.allowedDomainsText)
         )
       : null;

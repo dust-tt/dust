@@ -12,8 +12,7 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import groupBy from "lodash/groupBy";
 import type { ReactNode } from "react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo } from "react";
 
 export type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
 // Sort MCP server views based on priority order.

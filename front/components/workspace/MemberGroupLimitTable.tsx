@@ -1,11 +1,15 @@
-import { CreditLimitNumberInput } from "@app/components/workspace/CreditLimitInput";
+import {
+  ActiveLimitDot,
+  CreditLimitNumberInput,
+} from "@app/components/workspace/CreditLimitInput";
 import type { GroupRow } from "@app/components/workspace/member_spend_limit_helpers";
-import { Chip, DataTable } from "@dust-tt/sparkle";
+import { DataTable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 interface MemberGroupLimitTableProps {
   rows: GroupRow[];
   readOnly: boolean;
+  editableGroupIds?: ReadonlySet<string>;
   groupLimitInputs: Record<string, string>;
   groupValidationMessages: Record<string, string | null>;
   onChange: (groupId: string, cleaned: string) => void;
@@ -23,6 +27,17 @@ type GroupLimitRow = GroupRow & {
 // the input on every keystroke and drop focus.
 const groupColumns: ColumnDef<GroupLimitRow, string>[] = [
   {
+    // Kept even when empty so group names stay aligned across rows.
+    id: "isActive",
+    header: "",
+    meta: { className: "w-6" },
+    cell: ({ row }) => (
+      <DataTable.CellContent>
+        {row.original.isActive && <ActiveLimitDot />}
+      </DataTable.CellContent>
+    ),
+  },
+  {
     id: "name",
     header: "Group",
     accessorFn: (row) => row.name,
@@ -32,12 +47,7 @@ const groupColumns: ColumnDef<GroupLimitRow, string>[] = [
           row.original.isActive ? "font-semibold text-highlight-500" : undefined
         }
       >
-        <div className="flex items-center gap-2">
-          {row.original.name}
-          {row.original.isActive && (
-            <Chip size="mini" color="highlight" label="Active" />
-          )}
-        </div>
+        {row.original.name}
       </DataTable.CellContent>
     ),
   },
@@ -73,6 +83,7 @@ const groupColumns: ColumnDef<GroupLimitRow, string>[] = [
 export function MemberGroupLimitTable({
   rows,
   readOnly,
+  editableGroupIds,
   groupLimitInputs,
   groupValidationMessages,
   onChange,
@@ -81,7 +92,7 @@ export function MemberGroupLimitTable({
     ...row,
     draft: groupLimitInputs[row.groupId] ?? "",
     validationMessage: groupValidationMessages[row.groupId] ?? null,
-    readOnly,
+    readOnly: readOnly || editableGroupIds?.has(row.groupId) === false,
     onDraftChange: (cleaned) => onChange(row.groupId, cleaned),
   }));
 

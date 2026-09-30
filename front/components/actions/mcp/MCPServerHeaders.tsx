@@ -1,4 +1,8 @@
 import { WebCrawlerHeaderRedactedValue } from "@app/types/connectors/webcrawler";
+import {
+  hasRedactedHeaderValue,
+  REDACTED_HEADER_VALUES_ERROR_MESSAGE,
+} from "@app/types/shared/utils/http_headers";
 import { Button, Input, XClose } from "@dust-tt/sparkle";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -14,6 +18,9 @@ export function MCPServerHeaders() {
   const { control, register, getValues, watch } =
     useFormContext<FormWithCustomHeaders>();
   const predefinedHeaderKeys = watch("predefinedHeaderKeys");
+  const hasRedactedValues = hasRedactedHeaderValue(
+    watch("customHeaders") ?? []
+  );
   const { fields, append, remove } = useFieldArray<
     FormWithCustomHeaders,
     "customHeaders"
@@ -24,6 +31,11 @@ export function MCPServerHeaders() {
 
   return (
     <div className="flex w-full flex-col">
+      {hasRedactedValues && (
+        <p className="mb-3 text-sm text-muted-foreground">
+          {REDACTED_HEADER_VALUES_ERROR_MESSAGE}
+        </p>
+      )}
       <div className="flex flex-col gap-4">
         {fields.map((field, index) => {
           const isPredefined = predefinedHeaderKeys?.includes(field.key);

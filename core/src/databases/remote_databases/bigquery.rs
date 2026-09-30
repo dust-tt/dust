@@ -1,10 +1,12 @@
 use std::collections::{HashMap, HashSet};
+use std::env;
 use tracing::info;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::future::{join_all, try_join_all};
 use gcp_bigquery_client::{
+    client_builder::ClientBuilder,
     error::{BQError, NestedResponseError, ResponseError},
     model::{
         field_type::FieldType, get_query_results_parameters::GetQueryResultsParameters, job::Job,
@@ -928,6 +930,11 @@ async fn create_bigquery_client(
         .filter(|field| !credentials.contains_key(*field))
         .collect();
 
+    let mut builder = ClientBuilder::new();
+    if let Some(http_client) = build_static_ip_proxied_http_client()? {
+        builder.with_client(http_client);
+    }
+
     if has_service_account_field {
         if !missing_service_account_fields.is_empty() {
             return Err(QueryDatabaseError::GenericError(anyhow!(
@@ -946,7 +953,8 @@ async fn create_bigquery_client(
             ))
         })?;
 
-        return Client::from_service_account_key(sa_key, false)
+        return builder
+            .build_from_service_account_key(sa_key, false)
             .await
             .map_err(|e| {
                 QueryDatabaseError::GenericError(anyhow!(
@@ -956,7 +964,8 @@ async fn create_bigquery_client(
             });
     }
 
-    Client::from_application_default_credentials()
+    builder
+        .build_from_application_default_credentials()
         .await
         .map_err(|e| {
             QueryDatabaseError::GenericError(anyhow!(
@@ -964,4 +973,39 @@ async fn create_bigquery_client(
                 e
             ))
         })
+}
+
+/// When `PROXY_*` is configured, route BigQuery API calls through the static IP proxy
+/// (same allowlisted egress as Snowflake). OAuth token minting still uses yup-oauth2's
+/// own hyper client; API traffic to `bigquery.googleapis.com` goes through this client.
+fn build_static_ip_proxied_http_client() -> Result<Option<reqwest::Client>, QueryDatabaseError> {
+    let (Ok(proxy_host), Ok(proxy_port), Ok(proxy_user_name), Ok(proxy_user_password)) = (
+        env::var("PROXY_HOST"),
+        env::var("PROXY_PORT"),
+        env::var("PROXY_USER_NAME"),
+        env::var("PROXY_USER_PASSWORD"),
+    ) else {
+        return Ok(None);
+    };
+
+    let proxy_url = format!(
+        "http://{}:{}@{}:{}",
+        proxy_user_name, proxy_user_password, proxy_host, proxy_port
+    );
+    let proxy = reqwest::Proxy::all(&proxy_url).map_err(|e| {
+        QueryDatabaseError::GenericError(anyhow!("Error configuring BigQuery proxy: {}", e))
+    })?;
+
+    let client = reqwest::Client::builder()
+        .proxy(proxy)
+        .build()
+        .map_err(|e| {
+            QueryDatabaseError::GenericError(anyhow!(
+                "Error creating proxied BigQuery HTTP client: {}",
+                e
+            ))
+        })?;
+
+    info!("Using static IP proxy for BigQuery remote database client");
+    Ok(Some(client))
 }

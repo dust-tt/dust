@@ -1,5 +1,5 @@
 // Configurable scoring scales
-export type ScaleType = "binary" | "0-3" | "1-5" | "0-100"
+export type ScaleType = "binary" | "0-2" | "0-3" | "1-5" | "0-100"
 
 export interface ScaleConfig {
   type: ScaleType
@@ -16,6 +16,16 @@ export const SCALES: Record<ScaleType, ScaleConfig> = {
     labels: {
       0: "Fail - Does not meet criteria",
       1: "Pass - Meets criteria",
+    },
+  },
+  "0-2": {
+    type: "0-2",
+    min: 0,
+    max: 2,
+    labels: {
+      0: "Fail - Incorrect or missing key results",
+      1: "Partial - Some key results correct, others missing or wrong",
+      2: "Full - All key results correct",
     },
   },
   "0-3": {

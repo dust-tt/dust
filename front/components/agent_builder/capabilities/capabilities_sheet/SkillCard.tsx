@@ -5,8 +5,6 @@ import {
 } from "@app/lib/skill";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { ActionCard } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 
 interface SkillCardProps {
   skill: SkillWithoutInstructionsAndToolsType;

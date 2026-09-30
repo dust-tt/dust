@@ -9,13 +9,11 @@ import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewTypeFactory } from "@app/tests/utils/MCPServerViewTypeFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import type {
-  PostSkillsUsedByResponseBody,
-  SearchSkillsResponseBody,
-} from "@app/types/api/skills";
+import type { SearchSkillsResponseBody } from "@app/types/api/skills";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import type { MembershipRoleType } from "@app/types/memberships";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
@@ -47,8 +45,23 @@ vi.mock("@app/lib/platform", () => ({
   }),
 }));
 
-vi.mock("@app/components/assistant/details/AgentDetailsSheet", () => ({
-  AgentDetailsSheet: () => null,
+interface BatchAvailabilityDialogMockProps {
+  action: { availability: string };
+  onConfirm: () => Promise<void>;
+}
+
+vi.mock("@app/components/skills/SkillsBatchEdit", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@app/components/skills/SkillsBatchEdit")
+  >()),
+  BatchAvailabilityDialog: ({
+    action,
+    onConfirm,
+  }: BatchAvailabilityDialogMockProps) => (
+    <button type="button" onClick={() => void onConfirm()}>
+      Confirm {action.availability}
+    </button>
+  ),
 }));
 
 afterEach(() => {
@@ -60,12 +73,14 @@ async function setup({
   searchEnabled = true,
   pageEnabled = true,
   skillStatus = "active",
+  role = "admin",
 }: {
   searchEnabled?: boolean;
   pageEnabled?: boolean;
   skillStatus?: SkillStatus;
+  role?: MembershipRoleType;
 } = {}) {
-  const { authenticator, user } = await createResourceTest({ role: "admin" });
+  const { authenticator, user } = await createResourceTest({ role });
   const resource = await SkillFactory.create(authenticator, {
     name: "Weekly report",
     availability: "workspace_users",
@@ -94,7 +109,7 @@ async function setup({
     workspace: authenticator.getNonNullableWorkspace(),
     user: user.toJSON(),
     subscription: authenticator.getNonNullableSubscription(),
-    isAdmin: true,
+    isAdmin: role === "admin",
     isManager: false,
     featureFlags: [],
     vizUrl: "http://localhost",
@@ -116,9 +131,6 @@ async function setup({
       facets: {},
     });
   const fetcherWithBody = vi.fn(async (..._args: unknown[]) => search());
-  const usedBy = vi
-    .fn<(body: object) => Promise<PostSkillsUsedByResponseBody>>()
-    .mockResolvedValue({ usedBy: {} });
   const mutation = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
   const serverView = MCPServerViewTypeFactory.build({ name: "Slack" });
   const otherSpaceServerView = MCPServerViewTypeFactory.build({
@@ -156,7 +168,11 @@ async function setup({
         ],
       };
     }
-    if (init?.method === "DELETE" || url.endsWith("/restore")) {
+    if (
+      init?.method === "DELETE" ||
+      url.endsWith("/restore") ||
+      url.endsWith("/skills/availability")
+    ) {
       await mutation();
       return {};
     }
@@ -196,11 +212,9 @@ async function setup({
           <FetcherProvider
             fetcher={fetcher}
             fetcherWithBody={([url, body, method]) =>
-              url.endsWith("/skills/used_by")
-                ? usedBy(body)
-                : "limit" in body && body.limit === 0
-                  ? facetSearch(body)
-                  : fetcherWithBody([url, body, method])
+              "limit" in body && body.limit === 0
+                ? facetSearch(body)
+                : fetcherWithBody([url, body, method])
             }
           >
             <AuthContext.Provider value={context}>
@@ -218,7 +232,6 @@ async function setup({
     fetcher,
     fetcherWithBody,
     facetSearch,
-    usedBy,
     mutation,
     mount,
     mcpServerViewIds: [serverView.sId, otherSpaceServerView.sId],
@@ -226,6 +239,70 @@ async function setup({
 }
 
 describe("search-backed Manage Skills", () => {
+  it("applies hidden skills from the filter popover and clears the active chip", async () => {
+    const { fetcherWithBody, facetSearch, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Hidden skills" })
+    );
+    await waitFor(() =>
+      expect(facetSearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ permissionFiltering: "redact_unreadable" })
+      )
+    );
+    expect(fetcherWithBody).toHaveBeenLastCalledWith([
+      expect.any(String),
+      expect.objectContaining({ permissionFiltering: undefined }),
+      "POST",
+    ]);
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Hidden skills" })
+    ).not.toBeChecked();
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Hidden skills" })
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({ permissionFiltering: "redact_unreadable" }),
+        "POST",
+      ])
+    );
+    expect(screen.getByText("Hidden skills")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await waitFor(() =>
+      expect(screen.queryByText("Hidden skills")).not.toBeInTheDocument()
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Hidden skills" })
+    ).not.toBeChecked();
+  });
+
+  it("does not offer hidden skills to non-admins", async () => {
+    const { fetcherWithBody, mount } = await setup({ role: "user" });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.queryByRole("checkbox", { name: "Hidden skills" })
+    ).not.toBeInTheDocument();
+    expect(fetcherWithBody).toHaveBeenLastCalledWith([
+      expect.any(String),
+      expect.objectContaining({ permissionFiltering: undefined }),
+      "POST",
+    ]);
+  });
+
   it("sorts Name, Usage and Last edited in both directions without reordering the server page", async () => {
     const { skill, search, fetcherWithBody, mount } = await setup();
     search.mockResolvedValue({
@@ -239,6 +316,12 @@ describe("search-backed Manage Skills", () => {
     });
     mount();
     await screen.findByRole("button", { name: /Zebra/ });
+    expect(
+      screen
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent?.trim())
+        .filter(Boolean)
+    ).toEqual(["Name", "Availability", "Usage", "Editors", "Last edited"]);
     expect(screen.getByRole("columnheader", { name: "Usage" })).toHaveAttribute(
       "aria-sort",
       "descending"
@@ -676,26 +759,7 @@ describe("search-backed Manage Skills", () => {
     );
   });
 
-  it("shows who uses the skills of the current page", async () => {
-    const { skill, usedBy, mount } = await setup();
-    usedBy.mockResolvedValue({
-      usedBy: {
-        [skill.sId]: {
-          count: 2,
-          agents: [{ sId: "agent-1", name: "Helper", pictureUrl: "" }],
-          skills: [{ sId: "parent-1", name: "Parent", icon: null }],
-        },
-      },
-    });
-    mount();
-
-    expect(
-      await screen.findByRole("button", { name: "Used by 1 agent and 1 skill" })
-    ).toBeInTheDocument();
-    expect(usedBy).toHaveBeenCalledWith({ skillIds: [skill.sId] });
-  });
-
-  it("requests editable, Dust-provided and archived skills in their own tabs", async () => {
+  it("requests Dust-provided and archived skills in their own tabs", async () => {
     const { search, fetcherWithBody, mount } = await setup();
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
@@ -705,17 +769,9 @@ describe("search-backed Manage Skills", () => {
       hasMore: false,
       facets: {},
     });
-    await userEvent.click(screen.getByRole("tab", { name: "Editable" }));
-    await screen.findByText("No skills to show.");
-    expect(fetcherWithBody).toHaveBeenLastCalledWith([
-      expect.any(String),
-      expect.objectContaining({
-        status: ["active"],
-        editedByMe: true,
-        offset: 0,
-      }),
-      "POST",
-    ]);
+    expect(
+      screen.queryByRole("tab", { name: "Editable" })
+    ).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("tab", { name: "Default" }));
     await screen.findByText("No skills to show.");
     expect(fetcherWithBody).toHaveBeenLastCalledWith([
@@ -872,6 +928,93 @@ describe("search-backed Manage Skills", () => {
       screen.queryByRole("button", { name: /Weekly report/ })
     ).not.toBeInTheDocument();
     expect(mutation).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the selection across pages and updates its availability in batch", async () => {
+    const { skill, search, fetcher, mutation, mount } = await setup();
+    search.mockResolvedValueOnce({
+      skills: [skill],
+      total: 60,
+      hasMore: true,
+      facets: {},
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Select Weekly report" })
+    );
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Set availability" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument();
+    expect(screen.queryByText(/Select all/)).not.toBeInTheDocument();
+
+    search.mockResolvedValue({
+      skills: [{ ...skill, sId: "second", name: "Second page" }],
+      total: 60,
+      hasMore: false,
+      facets: {},
+    });
+    await userEvent.click(screen.getByRole("button", { name: "2" }));
+    await screen.findByRole("button", { name: /Second page/ });
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Select Second page" })
+    );
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Set availability" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Editors only" })
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Confirm editors" })
+    );
+
+    await waitFor(() => expect(mutation).toHaveBeenCalled());
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringMatching(/\/skills\/availability$/),
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({
+          skillIds: [skill.sId, "second"],
+          availability: "editors",
+        }),
+      })
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(/^\d+ selected$/)).not.toBeInTheDocument()
+    );
+  });
+
+  it("offers selection only on the active skills the user administrates", async () => {
+    const { skill, search, mount } = await setup();
+    search.mockResolvedValue({
+      skills: [
+        skill,
+        {
+          ...skill,
+          sId: "not-mine",
+          name: "Not mine",
+          canAdministrate: false,
+        },
+      ],
+      total: 2,
+      hasMore: false,
+      facets: {},
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    expect(
+      screen.getByRole("checkbox", { name: "Select Weekly report" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "Select Not mine" })
+    ).not.toBeInTheDocument();
   });
 
   it("requests page offsets from arrows and page numbers, preserves server order and resets pagination when searching", async () => {

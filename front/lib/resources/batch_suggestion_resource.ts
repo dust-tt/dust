@@ -92,9 +92,9 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
   /**
    * @cc [owner:fabiencelier,label:security] batch-visible-only-with-all-members
    * A batch MUST only be returned when the caller can access every one of its agent and skill
-   * suggestions (the members' own resources decide access): fetching a batch with a member the
-   * caller cannot access MUST throw, so its title and analysis are never returned. A batch without
-   * any member is not returned.
+   * suggestions (the members' own resources decide access): a batch with a member the caller
+   * cannot access MUST NOT be returned, so its title and analysis are never exposed. A batch
+   * without any member is not returned either.
    */
   static async fetchByIds(
     auth: Authenticator,
@@ -125,16 +125,23 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
     ]);
 
     const agentSuggestionsByBatchId = groupBy(
-      agentSuggestions,
+      agentSuggestions.suggestions,
       (s) => s.batchId
     );
     const skillSuggestionsByBatchId = groupBy(
-      skillSuggestions,
+      skillSuggestions.suggestions,
       (s) => s.batchId
     );
 
     return removeNulls(
       batches.map((batch) => {
+        if (
+          agentSuggestions.inaccessibleBatchModelIds.has(batch.id) ||
+          skillSuggestions.inaccessibleBatchModelIds.has(batch.id)
+        ) {
+          return null;
+        }
+
         const batchAgentSuggestions = agentSuggestionsByBatchId[batch.id] ?? [];
         const batchSkillSuggestions = skillSuggestionsByBatchId[batch.id] ?? [];
 
@@ -176,7 +183,7 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
     }
 
     await withTransaction(async (t) => {
-      await this.update({ state }, t, { workspaceId });
+      await this.update(this.stateUpdate(auth, state), t, { workspaceId });
       await AgentSuggestionResource.updateStateOfBatchMembers(
         auth,
         [this.id],
@@ -190,6 +197,19 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
         { transaction: t }
       );
     }, transaction);
+  }
+
+  // Track the user who accepted/rejected. Do not set for "outdated" (batch became obsolete) or
+  // "pending" (reset).
+  private stateUpdate(
+    auth: Authenticator,
+    state: BatchSuggestionState
+  ): { state: BatchSuggestionState; updatedByUserId?: ModelId } {
+    const user = auth.user();
+    if ((state === "approved" || state === "rejected") && user) {
+      return { state, updatedByUserId: user.id };
+    }
+    return { state };
   }
 
   /**

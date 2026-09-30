@@ -30,8 +30,7 @@ import {
   Separator,
   TextArea,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 interface WebhookEditionNameInputProps {

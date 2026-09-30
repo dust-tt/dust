@@ -22,8 +22,12 @@ import {
   MAX_AGENT_SEARCH_WINDOW,
 } from "@app/lib/agent_search/query";
 import { buildAgentNameAutocompleteQuery } from "@app/lib/agent_search/ranking";
-import { searchAgents } from "@app/lib/api/agents/search";
+import { resolveAgentIdByName, searchAgents } from "@app/lib/api/agents/search";
+import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { matchesAgentSearchFilters } from "@app/tests/utils/agent_search";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -135,7 +139,7 @@ describe("searchAgents", () => {
 
     await searchAgents(auth, { searchTerm: "  sal   mar " });
 
-    const nameQuery = buildAgentNameAutocompleteQuery("sal mar");
+    const nameQuery = buildAgentNameAutocompleteQuery("  sal   mar ");
     expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([nameQuery]);
     expect(nameQuery.bool?.must).toEqual(
       ["sal", "mar"].map((term) => ({
@@ -433,5 +437,79 @@ describe("searchAgents", () => {
     expect(
       await searchAgentIds(auth, { filters: { scope: ["visible", "hidden"] } })
     ).toEqual(["visible", "hidden-editor", "readable-spaces"]);
+  });
+});
+
+describe("resolveAgentIdByName", () => {
+  beforeEach(() => {
+    mockSearch.mockReset();
+  });
+
+  it("resolves the Dust aliases and rejects blank names", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+
+    expect(await resolveAgentIdByName(auth, " Dust Agent ")).toBe(
+      GLOBAL_AGENTS_SID.DUST
+    );
+    expect(await resolveAgentIdByName(auth, "dust")).toBe(
+      GLOBAL_AGENTS_SID.DUST
+    );
+    expect(await resolveAgentIdByName(auth, "   ")).toBeNull();
+  });
+
+  it("does not resolve the Dust aliases when an admin disabled Dust", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    await upsertGlobalAgentSettings(auth, {
+      agentId: GLOBAL_AGENTS_SID.DUST,
+      status: "disabled_by_admin",
+    });
+
+    expect(await resolveAgentIdByName(auth, "dust")).toBeNull();
+  });
+
+  it("resolves a custom agent by its exact name, ignoring case, without searching", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Sales Helper",
+    });
+
+    expect(await resolveAgentIdByName(auth, " sales helper ")).toBe(agent.sId);
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it("resolves a global agent by its name", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const helper = await AgentResource.fetchById(
+      auth,
+      GLOBAL_AGENTS_SID.HELPER
+    );
+    assert(helper);
+
+    expect(await resolveAgentIdByName(auth, helper.name.toUpperCase())).toBe(
+      GLOBAL_AGENTS_SID.HELPER
+    );
+  });
+
+  it("does not guess from a partial name", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Marketing Sales",
+    });
+
+    expect(await resolveAgentIdByName(auth, "sales")).toBeNull();
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it("does not resolve an exact name the caller cannot read", async () => {
+    const { authenticator: adminAuth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
+      name: "Private Helper",
+      scope: "hidden",
+    });
+
+    expect(await resolveAgentIdByName(adminAuth, "Private Helper")).toBeNull();
   });
 });

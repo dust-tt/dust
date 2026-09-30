@@ -167,6 +167,8 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   stackone: "productivity",
   qobra: "crm",
   "qobra us": "crm",
+  lokalise: "productivity",
+  "lokalise software development": "development",
 };
 
 // Category mapping for connectors

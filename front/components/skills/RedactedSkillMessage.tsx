@@ -5,6 +5,7 @@ import {
   useSkillsWithRelations,
 } from "@app/lib/swr/skill_configurations";
 import {
+  REQUESTABLE_SPACE_KINDS,
   useAddSpaceMembers,
   useSpaces,
   useSpacesAsAdmin,
@@ -25,11 +26,17 @@ export function RedactedSkillMessage({
   owner: LightWorkspaceType;
 }) {
   // Spaces the caller is a member of, and every space of the workspace to name the missing ones.
-  const { spaces: memberSpaces } = useSpaces({
-    workspaceId: owner.sId,
-    kinds: "all",
-  });
-  const { spaces: allSpaces } = useSpacesAsAdmin({ workspaceId: owner.sId });
+  const { spaces: memberSpaces, isSpacesLoading: isMemberSpacesLoading } =
+    useSpaces({
+      workspaceId: owner.sId,
+      kinds: "all",
+    });
+  const { spaces: allSpaces, isSpacesLoading: isAllSpacesLoading } =
+    useSpacesAsAdmin({
+      workspaceId: owner.sId,
+      kinds: REQUESTABLE_SPACE_KINDS,
+    });
+  const isSpacesLoading = isMemberSpacesLoading || isAllSpacesLoading;
   const { user } = useAuth();
   const addSpaceMembers = useAddSpaceMembers({ owner });
   const { mutateSkillRegardlessOfQueryParams: mutateSkill } = useSkill({
@@ -118,8 +125,8 @@ export function RedactedSkillMessage({
                     ? `Join space ${missingSpaceNames[0]}`
                     : "Join all required spaces"
                 }
-                isLoading={isJoiningSpaces}
-                disabled={isJoiningSpaces}
+                isLoading={isSpacesLoading || isJoiningSpaces}
+                disabled={isSpacesLoading || isJoiningSpaces}
                 onClick={() => {
                   void handleJoinSpaces();
                 }}

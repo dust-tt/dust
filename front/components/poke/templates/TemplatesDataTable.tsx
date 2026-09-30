@@ -15,8 +15,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useState } from "react";
+import { useState } from "react";
 
 interface TemplatesDisplayType {
   id: string;

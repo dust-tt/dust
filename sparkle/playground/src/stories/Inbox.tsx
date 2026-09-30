@@ -31,7 +31,6 @@ import {
   Icon,
   Inbox01,
   IntersectDust,
-  LayersThree01,
   Lightbulb04,
   Link01,
   LogOut01,
@@ -41,11 +40,13 @@ import {
   MessageQuestionCircle,
   NavigationList,
   NavigationListCollapsibleSection,
+  NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
   NavTabPill,
   NavTabPillList,
   NavTabPillTrigger,
+  Planet,
   Plus,
   PopoverContent,
   PopoverRoot,
@@ -97,18 +98,11 @@ import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxAltView } from "../components/InboxAltView";
-import { InboxView } from "../components/InboxView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import { ManageAgentsView } from "../components/ManageAgentsView";
 import { ManageSkillsView } from "../components/ManageSkillsView";
 import { ManageToolsView } from "../components/ManageToolsView";
-import {
-  type AgentSort,
-  type AgentType,
-  NewConversation,
-  NewConversationActionBar,
-  type WelcomeAgentTab,
-} from "../components/NewConversation";
+import { NewConversation } from "../components/NewConversation";
 import {
   PanelLayout,
   PanelLayoutNav,
@@ -271,7 +265,6 @@ function Inbox() {
   // P2 selection: what's shown in the "level 1" panel
   type P2View =
     | { kind: "welcome" }
-    | { kind: "inbox" }
     | { kind: "inboxAlt" }
     | { kind: "requests" }
     | { kind: "conversations" }
@@ -282,19 +275,25 @@ function Inbox() {
     | { kind: "templates" }
     | { kind: "build"; section: BuildSection };
 
-  const [p2View, setP2View] = useState<P2View>({ kind: "inbox" });
+  const [p2View, setP2View] = useState<P2View>({ kind: "inboxAlt" });
 
   // P3: conversation from a space (level 2), a file opened from a pod's
   // files screen, or a side panel opened from the level-1 conversation.
   type P3View =
     | { kind: "conversation"; conversationId: string }
     | { kind: "request"; requestId: string }
+    | { kind: "newConversation"; podName?: string }
     | SidePanelView;
 
   const [p3View, setP3View] = useState<P3View | null>(null);
 
   // P4: side panel opened from a level-2 conversation.
   const [p4View, setP4View] = useState<SidePanelView | null>(null);
+
+  const openNewConversation = (podName?: string) => {
+    setP3View({ kind: "newConversation", podName });
+    setP4View(null);
+  };
 
   // ── Space panel tab state (lifted from GroupConversationView) ────────────
   const [spaceActiveTab, setSpaceActiveTab] = useState("conversations");
@@ -353,14 +352,6 @@ function Inbox() {
   // outlives `p2View` — a Space stays lit without the panel changing.
   const [buildNavItem, setBuildNavItem] = useState("agents");
   const [searchText, setSearchText] = useState("");
-  const [welcomeAgentTab, setWelcomeAgentTab] =
-    useState<WelcomeAgentTab>("favorites");
-  const [welcomeAgentSort, setWelcomeAgentSort] = useState<AgentSort>("custom");
-  const [welcomeAgentType, setWelcomeAgentType] = useState<AgentType>("all");
-  const [welcomeAgentCategory, setWelcomeAgentCategory] = useState<
-    string | null
-  >(null);
-  const [isWelcomeToolbarPinned, setIsWelcomeToolbarPinned] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
     useState<Map<string, PodNotificationCondition>>(new Map());
 
@@ -452,6 +443,31 @@ function Inbox() {
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
       .slice(0, 30);
   }, [filteredConversations]);
+
+  const groupedConversations = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const lastWeek = new Date(today);
+    lastWeek.setDate(today.getDate() - 7);
+    const lastMonth = new Date(today);
+    lastMonth.setDate(today.getDate() - 30);
+    const groups = {
+      today: [] as Conversation[],
+      yesterday: [] as Conversation[],
+      lastWeek: [] as Conversation[],
+      lastMonth: [] as Conversation[],
+    };
+    recentConversations.forEach((c) => {
+      if (c.updatedAt >= today) groups.today.push(c);
+      else if (c.updatedAt >= yesterday) groups.yesterday.push(c);
+      else if (c.updatedAt >= lastWeek) groups.lastWeek.push(c);
+      else if (c.updatedAt >= lastMonth) groups.lastMonth.push(c);
+    });
+    return groups;
+  }, [recentConversations]);
 
   const sortedSpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {
@@ -1246,8 +1262,7 @@ function Inbox() {
   const p2Label = (() => {
     if (p2View.kind === "build")
       return BUILD_SECTION_DISPLAY[p2View.section].label;
-    if (p2View.kind === "inbox") return "Inbox";
-    if (p2View.kind === "inboxAlt") return "Inbox Alt";
+    if (p2View.kind === "inboxAlt") return "Inbox";
     if (p2View.kind === "requests") return "Requests";
     if (p2View.kind === "conversations") return "Conversations";
     if (p2View.kind === "automations") return "Automated work";
@@ -1268,66 +1283,11 @@ function Inbox() {
       return <ManageToolsView />;
     }
     if (p2View.kind === "profile" && user) return <ProfilePanel user={user} />;
-    if (p2View.kind === "inbox")
-      return (
-        <InboxView
-          spaces={spaces}
-          conversations={allConversations}
-          users={mockUsers}
-          agents={mockAgents}
-          requests={requests}
-          triggers={triggers}
-          currentUserId={user.id}
-          personalSectionLabel="Conversations"
-          selectedConversationId={
-            p3View?.kind === "conversation" ? p3View.conversationId : null
-          }
-          selectedRequestId={
-            p3View?.kind === "request" ? p3View.requestId : null
-          }
-          readRowIds={readRowIds}
-          onRowsRead={handleRowsRead}
-          unreadRowIds={unreadRowIds}
-          onRowsUnread={handleRowsUnread}
-          onLeaveConversation={handleLeaveConversation}
-          onConversationClick={(conversation) => {
-            setP3View({
-              kind: "conversation",
-              conversationId: conversation.id,
-            });
-            setP4View(null);
-          }}
-          onRequestClick={(request) => {
-            setP3View({ kind: "request", requestId: request.id });
-            setP4View(null);
-          }}
-          onRequestsClick={() => {
-            setP2View({ kind: "requests" });
-            setStickyRequestIds(new Set());
-            setP3View(null);
-            setP4View(null);
-          }}
-          onSpaceClick={(space) => {
-            setP2View({ kind: "space", spaceId: space.id });
-            setP3View(null);
-            setP4View(null);
-          }}
-          onMyPodClick={() => {
-            setP2View({ kind: "conversations" });
-            setP3View(null);
-            setP4View(null);
-          }}
-          onAutomationsClick={() => {
-            setP2View({ kind: "automations" });
-            setP3View(null);
-            setP4View(null);
-          }}
-        />
-      );
     if (p2View.kind === "inboxAlt")
       return (
         <InboxAltView
           spaces={spaces}
+          onNewConversation={openNewConversation}
           conversations={allConversations}
           requests={requests}
           triggers={triggers}
@@ -1515,7 +1475,8 @@ function Inbox() {
             setFileToRevealInKnowledge(null)
           }
           podVariant={podContext.variant}
-          showComposer
+          showComposer={false}
+          onNewConversation={() => openNewConversation(podContext.space.name)}
           currentUserId={user.id}
           readRowIds={readRowIds}
           onRowsRead={handleRowsRead}
@@ -1543,21 +1504,7 @@ function Inbox() {
         />
       );
     // welcome
-    return (
-      <NewConversation
-        greeting={greeting}
-        spaces={spaces}
-        agentTab={welcomeAgentTab}
-        onAgentTabChange={setWelcomeAgentTab}
-        agentSort={welcomeAgentSort}
-        onAgentSortChange={setWelcomeAgentSort}
-        agentType={welcomeAgentType}
-        onAgentTypeChange={setWelcomeAgentType}
-        agentCategory={welcomeAgentCategory}
-        onAgentCategoryChange={setWelcomeAgentCategory}
-        onToolbarPinnedChange={setIsWelcomeToolbarPinned}
-      />
-    );
+    return <NewConversation greeting={greeting} />;
   })();
 
   // ── P3 / P4 content ───────────────────────────────────────────────────────
@@ -1582,17 +1529,23 @@ function Inbox() {
         ? (p3Conversation?.title ?? "Conversation")
         : p3View.kind === "request"
           ? (p3Request?.title ?? "Request")
-          : sidePanelLabel(p3View);
+          : p3View.kind === "newConversation"
+            ? "New conversation"
+            : sidePanelLabel(p3View);
 
   const p3SizingType: PanelSizingType =
     p3View === null
       ? "secondary"
-      : p3View.kind === "conversation" || p3View.kind === "request"
+      : p3View.kind === "conversation" ||
+          p3View.kind === "request" ||
+          p3View.kind === "newConversation"
         ? "default"
         : sidePanelSizing(p3View);
 
   const p3Content = (() => {
     if (!p3View) return null;
+    if (p3View.kind === "newConversation")
+      return <NewConversation greeting={greeting} podName={p3View.podName} />;
     if (p3View.kind === "request") {
       if (!p3Request) return null;
       return (
@@ -1828,18 +1781,10 @@ function Inbox() {
           hasLighterFont
         />
       );
-    if (p2View.kind === "inbox")
-      return (
-        <Breadcrumbs
-          items={[{ label: "Inbox", icon: Inbox01 }]}
-          size="sm"
-          hasLighterFont
-        />
-      );
     if (p2View.kind === "inboxAlt")
       return (
         <Breadcrumbs
-          items={[{ label: "Inbox Alt", icon: Inbox01 }]}
+          items={[{ label: "Inbox", icon: Inbox01 }]}
           size="sm"
           hasLighterFont
         />
@@ -1906,29 +1851,6 @@ function Inbox() {
           hasLighterFont
         />
       );
-    if (p2View.kind === "welcome")
-      return (
-        <div
-          className={
-            "w-full transition-opacity duration-200 " +
-            (isWelcomeToolbarPinned
-              ? "opacity-100"
-              : "opacity-0 pointer-events-none")
-          }
-          aria-hidden={!isWelcomeToolbarPinned}
-        >
-          <NewConversationActionBar
-            value={welcomeAgentTab}
-            onValueChange={setWelcomeAgentTab}
-            agentSort={welcomeAgentSort}
-            onAgentSortChange={setWelcomeAgentSort}
-            agentType={welcomeAgentType}
-            onAgentTypeChange={setWelcomeAgentType}
-            agentCategory={welcomeAgentCategory}
-            onAgentCategoryChange={setWelcomeAgentCategory}
-          />
-        </div>
-      );
     return null;
   })();
 
@@ -1975,8 +1897,8 @@ function Inbox() {
         <NavTabPillTrigger value="chat" icon={IntersectDust}>
           Work
         </NavTabPillTrigger>
-        <NavTabPillTrigger value="build" icon={LayersThree01}>
-          Build
+        <NavTabPillTrigger value="build" icon={Planet}>
+          Spaces
         </NavTabPillTrigger>
         <NavTabPillTrigger value="admin" icon={Settings01}>
           Admin
@@ -2006,7 +1928,7 @@ function Inbox() {
                 variant="highlight"
                 tooltip="Create a new conversation"
                 size="sm"
-                icon={Plus}
+                icon={MessageCircle01}
                 label="New"
                 className="shrink-0"
                 onClick={() => {
@@ -2021,18 +1943,8 @@ function Inbox() {
               <NavigationListItem
                 label="Inbox"
                 icon={Inbox01}
-                selected={p2View.kind === "inbox"}
-                count={unreadCount > 0 ? unreadCount : undefined}
-                onClick={() => {
-                  setP2View({ kind: "inbox" });
-                  setP3View(null);
-                  setP4View(null);
-                }}
-              />
-              <NavigationListItem
-                label="Inbox Alt"
-                icon={Inbox01}
                 selected={p2View.kind === "inboxAlt"}
+                count={unreadCount > 0 ? unreadCount : undefined}
                 onClick={() => {
                   setP2View({ kind: "inboxAlt" });
                   setP3View(null);
@@ -2049,26 +1961,6 @@ function Inbox() {
                 onClick={() => {
                   setP2View({ kind: "requests" });
                   setStickyRequestIds(new Set());
-                  setP3View(null);
-                  setP4View(null);
-                }}
-              />
-              <NavigationListItem
-                label="Conversations"
-                icon={MessageChatSquare}
-                selected={p2View.kind === "conversations"}
-                onClick={() => {
-                  setP2View({ kind: "conversations" });
-                  setP3View(null);
-                  setP4View(null);
-                }}
-              />
-              <NavigationListItem
-                label="Automated work"
-                icon={Zap}
-                selected={p2View.kind === "automations"}
-                onClick={() => {
-                  setP2View({ kind: "automations" });
                   setP3View(null);
                   setP4View(null);
                 }}
@@ -2192,7 +2084,7 @@ function Inbox() {
             <NavigationList className="mx-sidebar-side-spacing mt-2">
               {(recentConversations.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
-                  label="Recent"
+                  label="Conversations"
                   type="collapse"
                   defaultOpen={true}
                   action={
@@ -2202,7 +2094,7 @@ function Inbox() {
                           size="xmini"
                           icon={DotsHorizontal}
                           variant="ghost"
-                          aria-label="Recent options"
+                          aria-label="Conversations options"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -2210,7 +2102,7 @@ function Inbox() {
                         />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuLabel label="Recent" />
+                        <DropdownMenuLabel label="Conversations" />
                         <DropdownMenuItem
                           label={
                             hideTriggeredConversations
@@ -2237,7 +2129,7 @@ function Inbox() {
                     </DropdownMenu>
                   }
                 >
-                  {recentConversations.map((c) => (
+                  {groupedConversations.today.map((c) => (
                     <NavigationListItem
                       key={c.id}
                       label={c.title}
@@ -2256,6 +2148,78 @@ function Inbox() {
                       }}
                     />
                   ))}
+                  {groupedConversations.yesterday.length > 0 && (
+                    <>
+                      <NavigationListCompactLabel label="Yesterday" isSticky />
+                      {groupedConversations.yesterday.map((c) => (
+                        <NavigationListItem
+                          key={c.id}
+                          label={c.title}
+                          selected={
+                            p2View.kind === "conversation" &&
+                            p2View.conversationId === c.id
+                          }
+                          moreMenu={getConversationMoreMenu(c)}
+                          onClick={() => {
+                            setP2View({
+                              kind: "conversation",
+                              conversationId: c.id,
+                            });
+                            setP3View(null);
+                            setP4View(null);
+                          }}
+                        />
+                      ))}
+                    </>
+                  )}
+                  {groupedConversations.lastWeek.length > 0 && (
+                    <>
+                      <NavigationListCompactLabel label="Last week" isSticky />
+                      {groupedConversations.lastWeek.map((c) => (
+                        <NavigationListItem
+                          key={c.id}
+                          label={c.title}
+                          selected={
+                            p2View.kind === "conversation" &&
+                            p2View.conversationId === c.id
+                          }
+                          moreMenu={getConversationMoreMenu(c)}
+                          onClick={() => {
+                            setP2View({
+                              kind: "conversation",
+                              conversationId: c.id,
+                            });
+                            setP3View(null);
+                            setP4View(null);
+                          }}
+                        />
+                      ))}
+                    </>
+                  )}
+                  {groupedConversations.lastMonth.length > 0 && (
+                    <>
+                      <NavigationListCompactLabel label="Last month" />
+                      {groupedConversations.lastMonth.map((c) => (
+                        <NavigationListItem
+                          key={c.id}
+                          label={c.title}
+                          selected={
+                            p2View.kind === "conversation" &&
+                            p2View.conversationId === c.id
+                          }
+                          moreMenu={getConversationMoreMenu(c)}
+                          onClick={() => {
+                            setP2View({
+                              kind: "conversation",
+                              conversationId: c.id,
+                            });
+                            setP3View(null);
+                            setP4View(null);
+                          }}
+                        />
+                      ))}
+                    </>
+                  )}
                 </NavigationListCollapsibleSection>
               )}
             </NavigationList>

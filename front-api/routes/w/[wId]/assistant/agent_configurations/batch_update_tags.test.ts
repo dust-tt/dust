@@ -81,9 +81,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
 
     // The change is a new version, not an in-place mutation of the current one.
     const after = await AgentResource.fetchById(auth, firstAgent.sId);
-    expect(after?.isFull() && after.content.version).toBe(
-      firstAgent.version + 1
-    );
+    expect(after?.version).toBe(firstAgent.version + 1);
   });
 
   it("tags an unpublished agent of another member built on a restricted space", async () => {

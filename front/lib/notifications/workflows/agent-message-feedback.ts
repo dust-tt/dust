@@ -1,6 +1,4 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import { getEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
@@ -43,10 +41,10 @@ const isAgentMessageFeedbackPayload = (
 const AGENT_MESSAGE_FEEDBACK_TRIGGER_ID = "agent-message-feedback";
 
 const FeedbackDetailsSchema = z.object({
-  conversationTitle: z.string(),
   userWhoGaveFeedbackFullName: z.string(),
   agentName: z.string(),
   workspaceName: z.string(),
+  isConversationShared: z.boolean(),
 });
 
 type FeedbackDetailsType = z.infer<typeof FeedbackDetailsSchema>;
@@ -58,10 +56,10 @@ const getFeedbackDetails = async ({
   subscriberId?: string | null;
   payload: AgentMessageFeedbackPayloadType;
 }): Promise<FeedbackDetailsType> => {
-  let conversationTitle: string = "A conversation";
   let userWhoGaveFeedbackFullName: string = "Someone";
   let agentName: string = "an agent";
   let workspaceName: string = "A workspace";
+  let isConversationShared = false;
 
   if (subscriberId) {
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -76,7 +74,6 @@ const getFeedbackDetails = async ({
 
     if (conversation) {
       workspaceName = auth.getNonNullableWorkspace().name;
-      conversationTitle = getConversationDisplayTitle(conversation.toJSON());
 
       const userWhoGaveFeedback = await UserResource.fetchById(
         payload.userWhoGaveFeedbackId
@@ -86,22 +83,29 @@ const getFeedbackDetails = async ({
         userWhoGaveFeedbackFullName = userWhoGaveFeedback.fullName();
       }
 
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: payload.agentConfigurationId,
-        variant: "light",
+      const agent = await AgentResource.fetchById(
+        auth,
+        payload.agentConfigurationId
+      );
+
+      if (agent) {
+        agentName = agent.name;
+      }
+
+      const feedback = await AgentMessageFeedbackResource.fetchById(auth, {
+        feedbackId: payload.feedbackId,
+        agentConfigurationId: payload.agentConfigurationId,
       });
 
-      if (agentConfiguration) {
-        agentName = agentConfiguration.name;
-      }
+      isConversationShared = feedback?.isConversationShared ?? false;
     }
   }
 
   return {
-    conversationTitle,
     userWhoGaveFeedbackFullName,
     agentName,
     workspaceName,
+    isConversationShared,
   };
 };
 
@@ -160,18 +164,24 @@ export const agentMessageFeedbackWorkflow = workflow(
         return {
           subject: `New feedback on ${details.agentName}`,
           body: `${details.userWhoGaveFeedbackFullName} left a ${payload.thumbDirection === "up" ? "positive" : "negative"} feedback on ${details.agentName}.`,
-          primaryAction: {
-            label: "View",
-            redirect: {
-              url: getConversationRoute(
-                payload.workspaceId,
-                payload.conversationId
-              ),
-            },
-          },
+          ...(details.isConversationShared
+            ? {
+                primaryAction: {
+                  label: "View",
+                  redirect: {
+                    url: getConversationRoute(
+                      payload.workspaceId,
+                      payload.conversationId
+                    ),
+                  },
+                },
+              }
+            : {}),
           data: {
             autoDelete: true,
-            conversationId: payload.conversationId,
+            ...(details.isConversationShared
+              ? { conversationId: payload.conversationId }
+              : {}),
           },
         };
       },
@@ -242,6 +252,7 @@ export const agentMessageFeedbackWorkflow = workflow(
           });
 
           let feedbackContent: string | undefined;
+          let conversation: { id: string; title: string } | undefined;
 
           if (feedbackAuth) {
             const feedback = await AgentMessageFeedbackResource.fetchById(
@@ -254,13 +265,30 @@ export const agentMessageFeedbackWorkflow = workflow(
 
             if (feedback) {
               feedbackContent = feedback.content ?? undefined;
+
+              // The conversation title may leak private content: only expose it (and the link)
+              // when the user who gave the feedback chose to share the conversation.
+              if (eventDetails.isConversationShared) {
+                const conversationResource =
+                  await ConversationResource.fetchById(
+                    feedbackAuth,
+                    event.payload.conversationId
+                  );
+                if (conversationResource) {
+                  conversation = {
+                    id: conversationResource.sId,
+                    title: getConversationDisplayTitle(
+                      conversationResource.toJSON()
+                    ),
+                  };
+                }
+              }
             }
           }
 
           feedbacks.push({
             agentName: eventDetails.agentName,
-            conversationId: event.payload.conversationId,
-            conversationTitle: eventDetails.conversationTitle,
+            conversation,
             userWhoGaveFeedbackFullName:
               eventDetails.userWhoGaveFeedbackFullName,
             thumbDirection: event.payload.thumbDirection,
@@ -360,18 +388,15 @@ export const triggerAgentMessageFeedbackNotification = async (
     return new Ok(undefined);
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "light",
-  });
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-  if (!agentConfiguration) {
+  if (!agent) {
     return new Err(
       new DustError("internal_error", "Agent configuration not found")
     );
   }
 
-  const editors = await getEditors(auth, agentConfiguration);
+  const editors = (await agent.listEditors(auth)) ?? [];
 
   if (editors.length === 0) {
     logger.info(
@@ -427,9 +452,7 @@ export const triggerAgentMessageFeedbackNotification = async (
         message: `Failed to trigger agent message feedback notification: errors: ${eventErrors}`,
       });
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (error) {
+  } catch {
     return new Err({
       name: "dust_error",
       code: "internal_error",

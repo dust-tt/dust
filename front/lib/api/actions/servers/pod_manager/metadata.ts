@@ -220,7 +220,7 @@ export const POD_MANAGER_TOOLS_METADATA = [
         .string()
         .nullable()
         .describe(
-          "Name of the agent to set as the Pod default. The tool searches matching agent configurations and uses the best match. Pass null to reset to the default (Dust)."
+          "Name of the agent to set as the Pod default, matched exactly (case-insensitive). Pass null to reset to the default (Dust)."
         ),
       dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
@@ -497,9 +497,9 @@ export const POD_MANAGER_TOOLS_METADATA = [
         .optional()
         .describe(
           "The name of the Pod agent to trigger in the new conversation. " +
-            "The tool searches matching agent configurations and uses the " +
-            "best match. Use this whenever the user asks for work to be " +
-            "done in a Pod. When omitted, no agent is triggered and the " +
+            "It is matched exactly (case-insensitive). Use this whenever the " +
+            "user asks for work to be done in a Pod. When omitted, no agent " +
+            "is triggered and the " +
             "message is posted as a static result. Use this only to " +
             "deposit a finished artifact you have already fully produced."
         ),
@@ -636,9 +636,9 @@ export const POD_MANAGER_TOOLS_METADATA = [
         .optional()
         .describe(
           "The name of the Pod agent to trigger in the conversation. " +
-            "The tool searches matching agent configurations and uses the " +
-            "best match. Use this whenever the user asks for work to be " +
-            "done in a Pod. When omitted, no agent is triggered and the " +
+            "It is matched exactly (case-insensitive). Use this whenever the " +
+            "user asks for work to be done in a Pod. When omitted, no agent " +
+            "is triggered and the " +
             "message is posted as a static result. Use this only to " +
             "deposit a finished artifact you have already fully produced."
         ),

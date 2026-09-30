@@ -1,4 +1,5 @@
 import type { GroupType } from "@app/types/groups";
+import type { UserType } from "@app/types/user";
 
 export type GroupAllowedActions = {
   canEditMembers: boolean;
@@ -10,6 +11,7 @@ export type GroupAllowedActions = {
 
 export type GroupWithAllowedActions = GroupType & {
   allowedActions?: GroupAllowedActions;
+  managers?: Pick<UserType, "sId" | "fullName" | "image">[];
 };
 
 export type GetGroupsResponseBody = {

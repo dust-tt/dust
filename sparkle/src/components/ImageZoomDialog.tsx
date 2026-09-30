@@ -12,6 +12,14 @@ import { cn } from "@sparkle/lib/utils";
 import React, { useCallback, useState } from "react";
 
 function downloadFile(url: string, filename: string) {
+  if (
+    !url.startsWith("https://") &&
+    !url.startsWith("http://") &&
+    !url.startsWith("blob:") &&
+    !url.startsWith("data:")
+  ) {
+    return;
+  }
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;

@@ -83,8 +83,8 @@ Adding the id to `STATIC_MODEL_IDS` makes these fail to compile until updated:
 | File | What to add |
 |------|-------------|
 | `front/lib/api/assistant/token_pricing/global.ts` | `CURRENT_MODEL_PRICING` entry (input/output/`cache_read_input_tokens` per 1M) + doc URL comment. |
-| `front/types/assistant/models/static_model_reasoning_efforts.ts` | `{ none, light, medium, high }` support map (`satisfies Record<StaticModelIdType, ReasoningEffortSupport>`). **Must match the config's `supportedReasoningEfforts`** (enforced by `model_tiers.test.ts`). |
-| `front/types/assistant/models/model_tiers.ts` | `STATIC_MODEL_TIERS` entry mapping each supported effort → tier name. |
+| `front/types/assistant/models/static_model_reasoning_efforts.ts` | `{ none, minimal, low, medium, high, xhigh, maximal }` support map (`satisfies Record<StaticModelIdType, ReasoningEffortSupport>`). **Must match the config's `supportedReasoningEfforts`** (enforced by `model_tiers.test.ts`). |
+| `front/types/assistant/models/model_tiers.ts` | `STATIC_MODEL_TIERS` entry mapping each supported effort → tier name (omit unsupported efforts). |
 
 And one that is **not** compile-forced, so nothing turns red if you skip it:
 
@@ -104,12 +104,20 @@ And one that is **not** compile-forced, so nothing turns red if you skip it:
 > charge 10% over global for both Anthropic and Google, so a new Gemini registered on
 > `eu/agent-platform` belongs in the list just as much as a Claude does. OpenAI uplifts only
 > the models whose pricing page lists a data-residency premium (gpt-5.4/5.5/5.6/6 yes,
-> gpt-5/5.1/5.2 no). Mistral's EU endpoints are its native region with no global sibling, so
-> nothing to add.
+> gpt-5/5.1/5.2 no). Mistral's own models are EU-only with no global sibling, so nothing to
+> add for them.
 >
 > `EU_MODEL_PRICING` derives every field by multiplying the global entry by
 > `EU_PRICING_MULTIPLIER`, so it is only correct when the EU endpoint is a flat 1.1× of global.
-> A non-uniform regional price needs an explicit entry, not the multiplier.
+> A non-uniform regional price needs an explicit entry in `EU_HOST_MODEL_PRICING`, not the
+> multiplier — always the case when the EU host differs from the global one (GLM-5.3:
+> Fireworks global, Mistral EU).
+
+> **Third-party model on a lab's own host** (e.g. GLM-5.3 on Mistral): set `lab` on the
+> endpoint (a host serving several labs leaves it off its base client), map the host's model
+> name with `modelToHostModel`, and check `PROVIDER_ID_TO_HOST` in `front/lib/api/llm/index.ts`.
+> Routing matches `lab ∈ whitelisted labs OR host ∈ whitelisted hosts`, so an endpoint whose
+> lab and host are both unmapped is silently unreachable.
 
 > **Gating is inherited, and lives in two unlinked places.** A new version of a gated model
 > stays gated — being newer is not a reason to release it. Copy the predecessor's
@@ -201,14 +209,27 @@ And one that is **not** compile-forced, so nothing turns red if you skip it:
 >   fix the ladders and defaults that name it: `ORDERED_FAST_MODEL_CONFIGS` /
 >   `ORDERED_SMALL_MODEL_CONFIGS` / `ORDERED_LARGE_MODEL_CONFIGS` in
 >   `front/lib/api/assistant/models.ts`, `getFastModelConfig` in
->   `front/lib/api/assistant/conversation/title.ts`, `preferredModelConfiguration` on the
->   `dust-*` global agents, and `MODEL_STREAMS` candidates in
+>   `front/lib/api/assistant/conversation/title.ts`, and `MODEL_STREAMS` candidates in
 >   `front/types/assistant/models/auto.ts`. These are hand-maintained lists that no type
 >   checks — nothing goes red when they point at a legacy model.
+> - **Leave global agents alone** — see [Global agents are out of scope](#global-agents-are-out-of-scope).
 >
 > A legacy model still referenced by one of those lists is the failure mode this rule exists
 > for: conversation titles ran on Gemini 3.5 Flash for three releases after 3.6/3.7/3.8
 > shipped, purely because `getFastModelConfig` was never revisited.
+
+### Global agents are out of scope
+
+**Never modify a global agent as part of adding, deprecating or removing a model.** That
+covers everything under `front/lib/api/assistant/global_agents/`: the `dust-*` agents'
+`preferredModelConfiguration` (`configurations/dust/dust.ts`), the deep-dive model routing
+(`configurations/dust/deep-dive.ts`), the descriptions in `global_agent_metadata.ts`,
+`RETIRED_GLOBAL_AGENTS_SID`, and their tests. Which model a global agent runs is a product
+decision owned separately, so it ships in its own change.
+
+A global agent pinned to a model you are marking `isLegacy` keeps working, so leave it
+there. Instead, list the global agents still pointing at the old model in your final
+report, and in the PR description, so the owners can decide.
 
 > **No marketing mirror.** The public credits page fetches `/api/marketing/model-credits`,
 > which `front/lib/api/marketing/model_credits.ts` derives at request time from
@@ -261,10 +282,17 @@ documents a model-specific override — generic host guidance is not a contradic
 each documented effort actually works on the live endpoint, and record any effort the endpoint
 accepts but the docs omit, with a note that undocumented efforts can change without notice.
 
-When the product still offers an effort the model does not have, map it in the **llms layer** with
-a `configParsers` entry (`mapReasoningNoneToMinimal`, `mapNonNoneReasoningToHigh`,
-`mapReasoningEffortToLowHighMax`, `forceHighReasoningEffort`) — never with a schema `.transform()`, and never by widening the
-endpoint schema to swallow it.
+The product vocabulary covers the full range (`none`, `minimal`, `low`, `medium`, `high`, `xhigh`,
+`maximal`; the legacy `light` is read as `low`), and the picker offers exactly the efforts a model
+marks supported. So **an effort the model does not have is marked `false` in
+`supportedReasoningEfforts` — never remapped to another one.** `configParsers` must not rewrite
+`reasoning.effort` (`effort-sent-as-selected` contract in `front/lib/llms/CONTRACTS`); the only
+exceptions are `disableReasoningWhenForcingTool` and `dropReasoning`. No schema `.transform()`
+either, and no widening the endpoint schema to swallow it.
+
+When the new model replaces one whose efforts differ (e.g. Sonnet 5.5 drops `none`, which Sonnet 5
+supports), repointing agents to it needs a `reasoningEffort` migration too
+(`replacement-model-preserves-reasoning-effort` contract).
 
 ### 1. Widen
 
@@ -296,6 +324,11 @@ Env-var names live in the sibling's `createInstance` (`DUST_MANAGED_ANTHROPIC_AP
 `VERTEX_AI_PROJECT_ID` plus GCP credentials — a `GOOGLE_APPLICATION_CREDENTIALS` service-account
 key works and needs no `gcloud auth application-default login`. Add `--bail 1` or
 `-t "<substring>"` only later, when iterating on a single case.
+
+A Vertex 404 *"Publisher model … was not found or your project does not have access to it"* on
+**every** location (`global` included), while the sibling model works on the same project, means
+the model is not enabled in the project's Model Garden yet, not that the region lacks it. Ask
+for it to be enabled before concluding anything about EU availability.
 
 ### 4. Sort every failure into one of three buckets
 
@@ -406,14 +439,10 @@ added / K2.5 deprecated (`f2824da5c5e`, #28834).
 | `front/types/assistant/models/auto.ts` | Replace it in any `MODEL_STREAMS` candidate list with the new model. |
 | `front/lib/api/assistant/models.ts` | Replace it in `ORDERED_FAST_MODEL_CONFIGS` / `ORDERED_SMALL_MODEL_CONFIGS` / `ORDERED_LARGE_MODEL_CONFIGS` — the whitelisted-model ladders behind `getFastestWhitelistedModel` & co. |
 | `front/lib/api/assistant/conversation/title.ts` | Replace it in `getFastModelConfig`, the per-provider ladder picking the model that names conversations. |
-| `front/lib/api/assistant/global_agents/configurations/dust/dust.ts` | Repoint every `preferredModelConfiguration` naming it (e.g. the `dust-kimi*` family). |
-| `front/lib/api/assistant/global_agents/global_agent_metadata.ts` | Update the agent `description` strings that name the old model version. |
-| `front/lib/api/assistant/global_agents/global_agents.ts` | If the old model had its **own** global agent (rather than a `dust-*` agent you just repointed), add its `GLOBAL_AGENTS_SID` to `RETIRED_GLOBAL_AGENTS_SID`. |
 
-Retiring a global agent that way keeps it resolvable so past conversations still render,
-while `getGlobalAgents` filters it out of list views and `isRetiredGlobalAgent` gates it out
-of new conversations. **Do not delete the `GLOBAL_AGENTS_SID` member** — the enum values are
-the `sId`s persisted in historical messages.
+Do not touch global agents (`dust-*`, deep-dive, or a model's own agent) — see
+[Global agents are out of scope](#global-agents-are-out-of-scope). Report the ones still
+pinned to the old model instead.
 
 **Keep** the id in `STATIC_MODEL_IDS`, `SUPPORTED_MODEL_CONFIGS`, `CURRENT_MODEL_PRICING`,
 `STATIC_MODEL_TIERS`, `STATIC_MODEL_SUPPORTED_REASONING_EFFORTS`, and keep its endpoint
@@ -428,7 +457,7 @@ Nothing can run on the model any more, so its serving code comes out of the code
 every agent still pinned to it must be repointed**. Its id and config stay: stored runs still
 reference the id, and consumption attribution prices and tokenizes them from it (the
 `retain-retired-model-ids` and `tokenizer-for-every-static-model` contracts). Worked example:
-GLM-5.2 retirement (the `glm-5p2` entries in `fireworks.ts`). Do Path 1's picker/global-agent
+GLM-5.2 retirement (the `glm-5p2` entries in `fireworks.ts`). Do Path 1's picker
 repointing first, then:
 
 - **Model config + registry**: remove `X_MODEL_CONFIG` from `SUPPORTED_MODEL_CONFIGS` in
@@ -442,16 +471,10 @@ repointing first, then:
   `test/endpoints/*.test.ts`; unregister from `stream/index.ts`, `setups.ts` and
   `llms/stream/index.ts`; drop the id from the `MODELS` array in
   `front/lib/model_constructors/types/models.ts`.
-- **Its global agent, if it had one**: retire it via `RETIRED_GLOBAL_AGENTS_SID` as in Path 1
-  — that is the normal answer even here, and it keeps historical conversations rendering.
-  Only tear the agent out completely when it must stop resolving at all: delete the factory
-  (`global_agents/configurations/{provider}.ts`) and the `GLOBAL_AGENTS_SID` member in
-  `front/types/assistant/assistant.ts`, which turns every exhaustive reference red — the
-  `getGlobalAgent` switch and the flag filters in `global_agents.ts`,
-  `global_agent_metadata.ts`, `prompt_context.ts` (`Record<GLOBAL_AGENTS_SID, …>`) and
-  `getGlobalAgentAuthorName`. Deleting the member abandons the `sId`s stored in past
-  messages, so justify it explicitly. (DeepSeek R1 did this in `3ca8d834527`, before
-  `RETIRED_GLOBAL_AGENTS_SID` existed — prefer retirement now.)
+- **Global agents pinned to it**: do not repoint, retire or delete them here (see
+  [Global agents are out of scope](#global-agents-are-out-of-scope)). A global agent on a
+  removed model breaks, so **stop and tell the user which agents it is** before shipping the
+  removal. Don't work around it.
 - **Feature flag**: drop the model's flag from `front/types/shared/feature_flags.ts` once
   nothing else references it.
 - **SDK**: keep the id in `KnownModelLLMId` in `sdks/js/src/types.ts`. `sdk_drift.test.ts`
@@ -490,7 +513,7 @@ on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models
 | `contextSize` / `generationTokensCount` | Real provider values (legacy config). Caps go in the dust layer. |
 | `supportsVision` | Can process images. |
 | `supportsResponseFormat` | Structured output (JSON). Often incompatible with tool use — verify. |
-| `supportedReasoningEfforts` | `{ none, light, medium, high }`. Must match `static_model_reasoning_efforts.ts`. |
+| `supportedReasoningEfforts` | `{ none, minimal, low, medium, high, xhigh, maximal }`. Must match `static_model_reasoning_efforts.ts`. |
 | `defaultReasoningEffort` | Default effort. |
 | `isLatest` / `isLegacy` | Exactly one `isLatest` per family; flip the previous one to `false`. |
 | `regionalAvailability` | `{ "us-central1", "europe-west1" }` — reflect real availability. |
@@ -522,17 +545,17 @@ on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models
 - [ ] New config inserted in `USED_MODEL_CONFIGS` by release date then strength, not appended
 - [ ] `USED_MODEL_CONFIGS` holds at most two versions of the family; every model evicted by
       that rule is `isLegacy: true` + `isLatest: false` and no longer named by any hardcoded
-      ladder (`ORDERED_*_MODEL_CONFIGS`, `getFastModelConfig`, `dust-*` global agents,
-      `MODEL_STREAMS`)
+      ladder (`ORDERED_*_MODEL_CONFIGS`, `getFastModelConfig`, `MODEL_STREAMS`)
+- [ ] No file under `front/lib/api/assistant/global_agents/` modified; global agents still
+      pinned to the superseded model listed in the report / PR description
 - [ ] `tsgo` clean; `types` / `model_tiers` tests green
 - [ ] Live endpoint test passes (or limitation flagged for follow-up)
 
 Retiring the superseded model (same PR):
 
 - [ ] Superseded model `isLegacy: true` + `isLatest: false`, dropped from `USED_MODEL_CONFIGS`
-- [ ] `MODEL_STREAMS` candidates and `dust-*` global agents repointed to the new model,
-      global-agent descriptions updated
-- [ ] If **decommissioned**: endpoints + global agent + feature flag removed; config moved from
+- [ ] `MODEL_STREAMS` candidates repointed to the new model (global agents untouched)
+- [ ] If **decommissioned**: endpoints + feature flag removed; config moved from
       `SUPPORTED_MODEL_CONFIGS` to `HISTORICAL_TOKENIZATION_MODEL_CONFIGS`; id, config export,
       pricing, tiers and reasoning efforts kept
 - [ ] Agent-config repoint migration written with hardcoded ids, batched update, dry-run

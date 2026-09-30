@@ -1590,6 +1590,55 @@ describe("Root-targeting suggestions", () => {
     expect(additions[0].suggestionId).toBe("root-diff");
   });
 
+  it("should hide unchanged blocks and separate the edits they sat between", () => {
+    editor.destroy();
+    editor = EditorFactory(
+      [
+        InstructionsDocumentExtension,
+        InstructionsRootExtension,
+        InstructionSuggestionExtension.configure({ hideUnchangedBlocks: true }),
+        BlockIdExtension,
+      ],
+      { starterKit: { document: false } }
+    );
+    editor.commands.setContent("First\n\nKeep A\n\nKeep B\n\nLast\n\nTail", {
+      contentType: "markdown",
+    });
+
+    editor.commands.applySuggestion({
+      id: "root-hide",
+      targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+      content: `<div data-type="instructions-root"><p>First edited</p><p>Keep A</p><p>Keep B</p><p>Last edited</p><p>Tail</p></div>`,
+    });
+
+    const hiddenTexts = Array.from(
+      editor.view.dom.querySelectorAll("p.hidden")
+    ).map((el) => el.textContent);
+    expect(hiddenTexts).toEqual(["Keep A", "Keep B", "Tail"]);
+    // Only the run between two edits gets a separator, not the trailing one.
+    expect(
+      editor.view.dom.querySelectorAll(".suggestion-separator")
+    ).toHaveLength(1);
+    expect(getAdditions().map((a) => a.text)).toEqual([" edited", " edited"]);
+  });
+
+  it("should keep unchanged blocks visible by default", () => {
+    editor.commands.setContent("First\n\nKeep\n\nLast", {
+      contentType: "markdown",
+    });
+
+    editor.commands.applySuggestion({
+      id: "root-default",
+      targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+      content: `<div data-type="instructions-root"><p>First edited</p><p>Keep</p><p>Last edited</p></div>`,
+    });
+
+    expect(editor.view.dom.querySelectorAll(".hidden")).toHaveLength(0);
+    expect(
+      editor.view.dom.querySelectorAll(".suggestion-separator")
+    ).toHaveLength(0);
+  });
+
   it("should accept a root-targeting suggestion and replace all content", () => {
     editor.commands.setContent("Before", { contentType: "markdown" });
 

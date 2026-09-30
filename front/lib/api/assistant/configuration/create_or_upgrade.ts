@@ -7,6 +7,7 @@ import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
+import type { AgentAuditOptions } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -17,6 +18,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -51,6 +53,8 @@ export async function createOrUpgradeAgentConfiguration({
   agentConfigurationId,
   authorId,
   dangerouslySkipPermissionFiltering,
+  skipSuggestionPruning,
+  auditMetadata,
 }: {
   auth: Authenticator;
   assistant: AgentConfigurationAssistantPayload;
@@ -61,7 +65,8 @@ export async function createOrUpgradeAgentConfiguration({
   // updates): without it those spaces are rejected and those skills silently dropped, which would
   // unrestrict the agent and strip its skills. It grants no access to what the spaces protect.
   dangerouslySkipPermissionFiltering?: boolean;
-}): Promise<
+  skipSuggestionPruning?: boolean;
+} & AgentAuditOptions): Promise<
   Result<
     { agentConfiguration: AgentConfigurationType; changed: boolean },
     Error
@@ -197,6 +202,13 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
+  // Custom models are only reachable through the global agents bound to them.
+  if (!isStaticModelId(modelConfig.modelId)) {
+    return new Err(
+      new Error(`Model "${modelConfig.modelId}" cannot be used by an agent.`)
+    );
+  }
+
   const { reasoningEffort } = assistant.model;
   if (
     reasoningEffort &&
@@ -294,14 +306,20 @@ export async function createOrUpgradeAgentConfiguration({
     if (!agentResource) {
       return new Err(new Error("Agent configuration not found."));
     }
-    const updateRes = await agentResource.updateConfiguration(auth, saveParams);
+    const updateRes = await agentResource.updateConfiguration(
+      auth,
+      saveParams,
+      { auditMetadata }
+    );
     if (updateRes.isErr()) {
       return updateRes;
     }
     savedResource = updateRes.value.resource;
     changed = updateRes.value.changed;
   } else {
-    const makeNewRes = await AgentResource.makeNew(auth, saveParams);
+    const makeNewRes = await AgentResource.makeNew(auth, saveParams, {
+      auditMetadata,
+    });
     if (makeNewRes.isErr()) {
       return makeNewRes;
     }
@@ -325,7 +343,7 @@ export async function createOrUpgradeAgentConfiguration({
 
   // Prune outdated suggestions after saving an existing agent.
   // This must happen after skills/tools are added to the new version.
-  if (agentConfigurationId) {
+  if (agentConfigurationId && !skipSuggestionPruning) {
     await pruneSuggestionsForAgent(auth, savedConfig);
   }
 

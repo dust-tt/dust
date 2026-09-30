@@ -6,6 +6,12 @@ import { createContext, useContext, useMemo } from "react";
 
 const NO_SUGGESTIONS: never[] = [];
 
+export function isPreviewedSuggestion(
+  suggestion: AgentSuggestionType | SkillSuggestionType
+): boolean {
+  return suggestion.state === "pending" && suggestion.kind !== "delete";
+}
+
 interface SuggestionPreview<T> {
   suggestions: T[];
   isApplied: boolean;
@@ -51,6 +57,13 @@ export function useIsSkillSuggestionPreview(): boolean {
   return useContext(SkillSuggestionPreviewContext).suggestions.length > 0;
 }
 
+// Whether or not the suggestions are applied, so it is known while the current state is shown.
+export function useSkillSuggestionPreviewBatchId(): string | null {
+  return (
+    useContext(SkillSuggestionPreviewContext).suggestions[0]?.batchId ?? null
+  );
+}
+
 const AgentSuggestionPreviewContext =
   createContext<SuggestionPreview<AgentSuggestionType>>(NO_PREVIEW);
 
@@ -84,6 +97,13 @@ export function useAgentSuggestionPreview(): AgentSuggestionType[] {
 
 export function useIsAgentSuggestionPreview(): boolean {
   return useContext(AgentSuggestionPreviewContext).suggestions.length > 0;
+}
+
+// Whether or not the suggestions are applied, so it is known while the current state is shown.
+export function useAgentSuggestionPreviewBatchId(): string | null {
+  return (
+    useContext(AgentSuggestionPreviewContext).suggestions[0]?.batchId ?? null
+  );
 }
 
 export type SkillDetailsSection =
@@ -139,7 +159,10 @@ export type AgentDetailsSection =
   | "skills"
   | "tools"
   | "knowledge"
-  | "model";
+  | "model"
+  | "editors"
+  | "tags"
+  | "structured_output";
 
 export function getEditedAgentSections(
   suggestions: AgentSuggestionType[]
@@ -155,6 +178,9 @@ export function getEditedAgentSections(
       case "tools":
       case "knowledge":
       case "model":
+      case "editors":
+      case "tags":
+      case "structured_output":
         sections.add(suggestion.kind);
         break;
       case "sub_agent":

@@ -15,6 +15,7 @@ import { getRedisStreamClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
@@ -1041,24 +1042,24 @@ export async function triggerFromEmail(
  */
 export async function sendToolValidationEmail({
   email,
-  agentConfiguration,
+  agent,
   blockedActions,
   conversation,
   workspace,
 }: {
   email: InboundEmail;
-  agentConfiguration: LightAgentConfigurationType;
+  agent: AgentResource;
   blockedActions: AgentLoopBlockedToolExecution[];
   conversation: { sId: string };
   workspace: LightWorkspaceType;
 }): Promise<void> {
   const localLogger = logger.child({
     conversationId: conversation.sId,
-    agentName: agentConfiguration.name,
+    agentName: agent.name,
   });
 
-  const name = `${agentConfiguration.name} (Dust agent)`;
-  const sender = `${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`;
+  const name = `${agent.name} (Dust agent)`;
+  const sender = `${agent.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`;
 
   const subject = email.subject
     .toLowerCase()
@@ -1116,7 +1117,7 @@ export async function sendToolValidationEmail({
 
   const htmlContent = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-      <p><strong>@${sanitizeHtml(agentConfiguration.name, { allowedTags: [], allowedAttributes: {} })}</strong> needs permission to use the following tool(s):</p>
+      <p><strong>@${sanitizeHtml(agent.name, { allowedTags: [], allowedAttributes: {} })}</strong> needs permission to use the following tool(s):</p>
       ${actionBlocks.join("")}
       <p style="color: #666; margin-top: 16px;">Links expire in 24 hours.</p>
       <p><a href="${conversationUrl}" style="color: #2563eb;">View conversation in Dust</a></p>
@@ -1168,20 +1169,18 @@ export async function sendToolValidationEmail({
 
 export async function replyToEmail({
   email,
-  agentConfiguration,
+  agent,
   htmlContent,
   recipient,
 }: {
   email: InboundEmail;
-  agentConfiguration?: LightAgentConfigurationType;
+  agent?: AgentResource;
   htmlContent: string;
   recipient: string;
 }) {
-  const name = agentConfiguration
-    ? `${agentConfiguration.name} (Dust agent)`
-    : "Dust agent";
-  const sender = agentConfiguration
-    ? `${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`
+  const name = agent ? `${agent.name} (Dust agent)` : "Dust agent";
+  const sender = agent
+    ? `${agent.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`
     : `assistants@${ASSISTANT_EMAIL_SUBDOMAIN}`;
 
   // subject: if Re: is there, we don't add it.

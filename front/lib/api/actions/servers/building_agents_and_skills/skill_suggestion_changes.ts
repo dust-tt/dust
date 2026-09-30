@@ -9,12 +9,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
 import {
   hasSuggestionSelfConflict,
-  pruneConflictingSkillAvailabilitySuggestions,
-  pruneConflictingSkillDeletionSuggestions,
   pruneConflictingSkillEditorsSuggestions,
   pruneConflictingSkillEditSuggestions,
-  pruneConflictingSkillNameSuggestions,
-  pruneConflictingSkillUserFacingDescriptionSuggestions,
+  pruneSupersededSingletonSkillSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -37,11 +34,8 @@ import type {
   SkillUserFacingDescriptionSuggestionType,
 } from "@app/types/suggestions/skill_suggestion";
 import {
-  isAvailabilitySkillSuggestion,
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
-  isNameSkillSuggestion,
-  isUserFacingDescriptionSkillSuggestion,
 } from "@app/types/suggestions/skill_suggestion";
 
 // Validators shared by the single-change `suggest_skill_*` tools and the `suggest` tool. They run
@@ -234,7 +228,7 @@ export function checkSkillSuggestionKindAuthorized(
   return new Ok(undefined);
 }
 
-async function pruneSupersededSkillSuggestions(
+export async function pruneSupersededSkillSuggestions(
   auth: Authenticator,
   skill: SkillResource,
   created: SkillSuggestionResource
@@ -247,33 +241,15 @@ async function pruneSupersededSkillSuggestions(
       }
       return;
     case "user_facing_description":
-      if (isUserFacingDescriptionSkillSuggestion(created)) {
-        await pruneConflictingSkillUserFacingDescriptionSuggestions(
-          auth,
-          skill,
-          [created]
-        );
-      }
-      return;
     case "name":
-      if (isNameSkillSuggestion(created)) {
-        await pruneConflictingSkillNameSuggestions(auth, skill, [created]);
-      }
-      return;
     case "availability":
-      if (isAvailabilitySkillSuggestion(created)) {
-        await pruneConflictingSkillAvailabilitySuggestions(auth, skill, [
-          created,
-        ]);
-      }
+    case "delete":
+      await pruneSupersededSingletonSkillSuggestions(auth, skill, [created]);
       return;
     case "editors":
       if (isEditorsSkillSuggestion(created)) {
         await pruneConflictingSkillEditorsSuggestions(auth, skill, [created]);
       }
-      return;
-    case "delete":
-      await pruneConflictingSkillDeletionSuggestions(auth, skill, created);
       return;
     case "create":
       // A creation targets its own placeholder skill: nothing else can conflict with it.
@@ -326,7 +302,7 @@ export async function recordSkillSuggestions(
   return created;
 }
 
-export async function recordSkillSuggestion(
+async function recordSkillSuggestion(
   auth: Authenticator,
   skill: SkillResource,
   {

@@ -94,9 +94,7 @@ export function useZendeskOrganizationTagFilters({
               "An unknown error occurred",
           });
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         sendNotification({
           type: "error",
           title: "Failed to add tag",
@@ -166,9 +164,7 @@ export function useZendeskOrganizationTagFilters({
               "An unknown error occurred",
           });
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         sendNotification({
           type: "error",
           title: "Failed to remove tag",

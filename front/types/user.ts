@@ -4,6 +4,7 @@ import type {
   EmbeddingProviderIdType,
   ModelProviderIdType,
 } from "./assistant/models/types";
+import type { SupportedLocale } from "./locale";
 import type { MembershipOriginType, MembershipSeatType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import { DbModelIdSchema } from "./shared/model_id";
@@ -96,6 +97,7 @@ export type LightWorkspaceType = {
     [key: string]: string | number | boolean | object | undefined;
   } | null;
   sharingPolicy: WorkspaceSharingPolicy;
+  locale: SupportedLocale;
   metronomeCustomerId: string | null;
   workOSOrganizationId?: string | null;
   groups?: string[];

@@ -135,6 +135,19 @@ export type ConversationItem =
 
 export type Message = ConversationMessage;
 
+/**
+ * Where a conversation stands in the stream of work you run with agents:
+ * the agent is still working, it is waiting on you, or it has finished and
+ * you have not looked yet. A conversation without one of these is read.
+ */
+export type ConversationWorkState = "thinking" | "pending" | "unread";
+
+/** Whoever a message comes from, named the way messages name their owner. */
+export interface ConversationSpeaker {
+  id: string;
+  type: "user" | "agent";
+}
+
 export interface Conversation {
   id: string;
   title: string;
@@ -150,6 +163,15 @@ export interface Conversation {
    * work, which nothing but a trigger can start.
    */
   triggerId?: string;
+  /**
+   * Who spoke last, for the conversations written without their messages. A
+   * conversation that carries its messages says it in them, and says it better.
+   */
+  lastSpeaker?: ConversationSpeaker;
+  /** Unset means read: the agent is done and you have seen it. */
+  workState?: ConversationWorkState;
+  /** What came in while you were away. Only set on "unread". */
+  unreadCount?: number;
 }
 
 export interface Space {

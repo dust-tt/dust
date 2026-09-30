@@ -20,6 +20,7 @@ import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/sett
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
 import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
 import { WorkspaceDefaultAgentPicker } from "@app/components/workspace/settings/WorkspaceDefaultAgentPicker";
+import { WorkspaceLocalePicker } from "@app/components/workspace/settings/WorkspaceLocalePicker";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -262,6 +263,7 @@ export const GovernancePage = () => {
             </GovernanceSettingSection>
             <GovernanceSettingSection label="Features" icon={ShapesPlus}>
               <WorkspaceDefaultAgentPicker owner={owner} />
+              <WorkspaceLocalePicker owner={owner} />
               <VoiceTranscriptionToggle owner={owner} />
               <EmailAgentsToggle owner={owner} />
               <ConversationExternalNotificationsToggle owner={owner} />

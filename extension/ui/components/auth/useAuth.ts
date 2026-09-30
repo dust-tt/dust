@@ -2,7 +2,11 @@ import { setDefaultInitResolver } from "@app/lib/api/config";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import logger from "@app/logger/logger";
+import { PlanTypeSchema } from "@app/types/api/poke/plans";
+import type { SubscriptionType } from "@app/types/plan";
+import { SUBSCRIPTION_STATUSES } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { isWhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
@@ -12,8 +16,29 @@ import {
   makeEnterpriseConnectionName,
 } from "@extension/shared/services/auth";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 
 const PROACTIVE_REFRESH_WINDOW_MS = 1000 * 60; // 1 minute
+
+// Subset of GetWorkspaceAuthContextResponseType consumed by the extension.
+// Unknown feature flags are dropped rather than failing the parse, since the
+// extension may be older than the server it talks to.
+const WorkspaceAuthContextResponseSchema = z.object({
+  featureFlags: z
+    .array(z.string())
+    .transform((flags) => flags.filter(isWhitelistableFeature)),
+  subscription: z.object({
+    sId: z.string().nullable(),
+    status: z.enum(SUBSCRIPTION_STATUSES),
+    stripeSubscriptionId: z.string().nullable(),
+    metronomeContractId: z.string().nullable(),
+    startDate: z.number().nullable(),
+    endDate: z.number().nullable(),
+    paymentFailingSince: z.number().nullable(),
+    plan: PlanTypeSchema,
+    requestCancelAt: z.number().nullable(),
+  }),
+});
 
 export const useAuthHook = () => {
   const platform = usePlatform();
@@ -26,6 +51,9 @@ export const useAuthHook = () => {
     string | undefined
   >();
   const [featureFlags, setFeatureFlags] = useState<WhitelistableFeature[]>([]);
+  const [subscription, setSubscription] = useState<SubscriptionType | null>(
+    null
+  );
   const { setCellInfo } = useCellContext();
 
   // Set default fetch init for the extension (overrides CellContext's credentials: "include").
@@ -74,6 +102,8 @@ export const useAuthHook = () => {
     setTokens(null);
     setWorkspace(undefined);
     setUser(null);
+    setSubscription(null);
+    setFeatureFlags([]);
     setAuthError(null);
     setForcedConnection(undefined);
     if (refreshTimerRef.current) {
@@ -211,21 +241,40 @@ export const useAuthHook = () => {
     };
   }, []);
 
-  // Fetch feature flags when workspace is ready.
+  // Fetch workspace auth context (subscription + feature flags) when ready.
+  // The model picker gates premium models on the real plan
+  // (`hasAdvancedModelAccess` / credit-priced), so a stub subscription would
+  // incorrectly lock premium models for paid workspaces.
   useEffect(() => {
     if (!isAuthenticated || !workspace || !tokens?.accessToken) {
       setFeatureFlags([]);
+      setSubscription(null);
       return;
     }
 
     void (async () => {
-      const res = await clientFetch(`/api/w/${workspace.sId}/feature-flags`);
-      if (res.ok) {
-        const { feature_flags } = await res.json();
-        setFeatureFlags(feature_flags ?? []);
-      } else {
+      const res = await clientFetch(`/api/w/${workspace.sId}/auth-context`);
+      if (!res.ok) {
         setFeatureFlags([]);
+        setSubscription(null);
+        return;
       }
+
+      const parsed = WorkspaceAuthContextResponseSchema.safeParse(
+        await res.json()
+      );
+      if (!parsed.success) {
+        logger.error(
+          { workspaceId: workspace.sId, error: parsed.error.message },
+          "Invalid workspace auth context response."
+        );
+        setFeatureFlags([]);
+        setSubscription(null);
+        return;
+      }
+
+      setFeatureFlags(parsed.data.featureFlags);
+      setSubscription(parsed.data.subscription);
     })();
   }, [workspace, tokens?.accessToken, isAuthenticated]);
 
@@ -290,5 +339,6 @@ export const useAuthHook = () => {
     handleLogout,
     handleSelectOrganization,
     featureFlags,
+    subscription,
   };
 };

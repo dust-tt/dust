@@ -19,7 +19,6 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
 import partition from "lodash/partition";
@@ -96,6 +95,13 @@ export async function getAgentIdFromName(
  * Outside regular API keys, `canEdit` is agent `write` permission; the workspace admin role alone
  * does not grant it.
  */
+/**
+ * @cc [owner:sfriquet,label:security] light-instructions-require-read
+ * For the `light` and `extra_light` variants, `instructions` MUST be `null` when `canRead` is
+ * false (see `unreadable-agent-content-hidden`). The `full` variant carries them regardless, so a
+ * caller exposing a `full` configuration with `canRead === false` MUST redact it first, by
+ * serializing the agent from an `AgentResource` built for that caller (see `agent-json-redaction`).
+ */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
   agentConfigurations: AgentConfigurationModel[],
@@ -137,7 +143,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   const tagsPerAgent =
     variant !== "extra_light"
       ? await AgentResource.batchListTags(auth, resources)
-      : new Map<ModelId, TagResource[]>();
+      : new Map<AgentResource, TagResource[]>();
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
@@ -147,13 +153,13 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
         : [];
 
     const model = getModelForAgentConfiguration(agent);
-    const tags = tagsPerAgent.get(agent.id) ?? [];
 
     const resource = resourceByConfigurationModelId.get(agent.id);
     assert(
       resource,
       `Unexpected: missing resource for configuration ${agent.id}`
     );
+    const tags = tagsPerAgent.get(resource) ?? [];
 
     const canRead = auth.can("read", resource);
     const canEdit = isRegularApiKey
@@ -172,7 +178,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       name: agent.name,
       pictureUrl: agent.pictureUrl,
       description: agent.description,
-      instructions: agent.instructions,
+      instructions: variant === "full" || canRead ? agent.instructions : null,
       instructionsHtml: variant === "full" ? agent.instructionsHtml : null,
       model,
       status: agent.status,
@@ -207,26 +213,6 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   return agentConfigurationTypes;
 }
 
-/**
- * Admins can list every agent of the workspace but the prompt, skills and knowledge of the agents
- * they cannot read (unpublished, or built on spaces they are not a member of) stay private. Tools
- * live in `actions` alongside knowledge, so all actions are dropped for now. `canRead` is set to
- * false so clients can tell the details were redacted. A light fetch is enough as input: the
- * fields that only the full variant carries are the redacted ones.
- */
-export function redactPrivateAgentConfigurationFields(
-  agent: LightAgentConfigurationType
-): AgentConfigurationType {
-  return {
-    ...agent,
-    instructions: null,
-    instructionsHtml: null,
-    actions: [],
-    codeDefinedSkillIds: [],
-    canRead: false,
-  };
-}
-
 // Identifies one agent configuration: an agent id alone spans every version of that agent.
 const configurationKey = (
   agent: Pick<LightAgentConfigurationType, "sId" | "version">
@@ -235,7 +221,7 @@ const configurationKey = (
 /**
  * @cc [owner:fabiencelier,label:security] no-skills-for-redacted-agents
  * An agent whose details were redacted (`canRead === false`) MUST get an empty `skills` array:
- * its skills are private, consistently with `redactPrivateAgentConfigurationFields`.
+ * its skills are private, consistently with the redacted serialization (`agent-json-redaction`).
  */
 export async function toAgentConfigurationsWithSkills(
   auth: Authenticator,

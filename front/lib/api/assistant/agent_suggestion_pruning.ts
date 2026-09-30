@@ -1,9 +1,11 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { validateStructuredOutputChange } from "@app/lib/api/assistant/configuration/model_update";
 import type { Authenticator } from "@app/lib/auth";
 import {
   buildDescendantMap,
   instructionBlockSetsConflict,
 } from "@app/lib/editor/instructions_block_conflict";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -14,6 +16,7 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  StructuredOutputSuggestionType,
   SubAgentSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
@@ -42,6 +45,11 @@ type ModelSuggestionResource = AgentSuggestionResource & {
   suggestion: ModelSuggestionType;
 };
 
+type StructuredOutputSuggestionResource = AgentSuggestionResource & {
+  kind: "structured_output";
+  suggestion: StructuredOutputSuggestionType;
+};
+
 type InstructionsSuggestionResource = AgentSuggestionResource & {
   kind: "instructions";
   suggestion: InstructionsSuggestionSchemaType;
@@ -52,6 +60,7 @@ interface SuggestionResourceByKind {
   instructions: InstructionsSuggestionResource;
   model: ModelSuggestionResource;
   skills: SkillsSuggestionResource;
+  structured_output: StructuredOutputSuggestionResource;
   sub_agent: SubAgentSuggestionResource;
   tools: ToolsSuggestionResource;
 }
@@ -86,6 +95,7 @@ function splitByKind(
     sub_agent: [],
     skills: [],
     model: [],
+    structured_output: [],
     instructions: [],
   };
 
@@ -98,6 +108,8 @@ function splitByKind(
       result.skills.push(suggestion);
     } else if (isSuggestionOfKind(suggestion, "model")) {
       result.model.push(suggestion);
+    } else if (isSuggestionOfKind(suggestion, "structured_output")) {
+      result.structured_output.push(suggestion);
     } else if (isSuggestionOfKind(suggestion, "instructions")) {
       result.instructions.push(suggestion);
     } else {
@@ -128,7 +140,7 @@ async function pruneSuggestions(
     return;
   }
 
-  const { tools, sub_agent, skills, model, instructions } =
+  const { tools, sub_agent, skills, model, structured_output, instructions } =
     splitByKind(pendingSuggestions);
 
   const outdatedByKind = await Promise.all([
@@ -139,6 +151,11 @@ async function pruneSuggestions(
       model,
       agentConfiguration.model.modelId,
       agentConfiguration.model.reasoningEffort ?? null
+    ),
+    getOutdatedStructuredOutputSuggestions(
+      structured_output,
+      model,
+      agentConfiguration.model
     ),
     getInstructionSuggestionsWithoutExistingBlockId(
       instructions,
@@ -272,6 +289,34 @@ function getOutdatedModelSuggestions(
   return outdatedSuggestions;
 }
 
+/**
+ * Outdated if the agent already has the suggested structured output, or if its model does not
+ * support structured output and no model suggestion of the same batch changes it.
+ */
+function getOutdatedStructuredOutputSuggestions(
+  suggestions: StructuredOutputSuggestionResource[],
+  modelSuggestions: ModelSuggestionResource[],
+  currentModel: AgentConfigurationType["model"]
+): StructuredOutputSuggestionResource[] {
+  const batchIdsChangingModel = new Set(
+    removeNulls(modelSuggestions.map((s) => s.batchId))
+  );
+  const currentResponseFormat = currentModel.responseFormat ?? null;
+
+  return suggestions.filter(({ suggestion: { responseFormat }, batchId }) => {
+    if (responseFormat === currentResponseFormat) {
+      return true;
+    }
+    if (batchId !== null && batchIdsChangingModel.has(batchId)) {
+      return false;
+    }
+    return validateStructuredOutputChange({
+      modelId: currentModel.modelId,
+      responseFormat,
+    }).isErr();
+  });
+}
+
 function extractBlockIds(instructionsHtml: string): Set<string> {
   const blockIds = new Set<string>();
   const blockIdRegex = /data-block-id="([^"]+)"/g;
@@ -325,7 +370,7 @@ function getInstructionSuggestionsWithoutExistingBlockId(
  */
 export async function pruneConflictingInstructionSuggestions(
   auth: Authenticator,
-  agentConfiguration: AgentConfigurationType,
+  agent: AgentResource,
   newSuggestions: Array<{ sId: string; targetBlockId: string }>
 ): Promise<void> {
   if (newSuggestions.length === 0) {
@@ -334,7 +379,7 @@ export async function pruneConflictingInstructionSuggestions(
 
   const allPending = await AgentSuggestionResource.listByAgentConfigurationId(
     auth,
-    agentConfiguration.sId,
+    agent.sId,
     { states: ["pending"], kind: "instructions" }
   );
 
@@ -353,15 +398,16 @@ export async function pruneConflictingInstructionSuggestions(
     ...newTargetBlockIds,
     ...existingPending.map((s) => s.suggestion.targetBlockId),
   ]);
-  const descendantMap = agentConfiguration.instructionsHtml
-    ? buildDescendantMap(agentConfiguration.instructionsHtml, allBlockIds)
+  const { instructionsHtml } = await agent.fetchInstructions();
+  const descendantMap = instructionsHtml
+    ? buildDescendantMap(instructionsHtml, allBlockIds)
     : new Map<string, Set<string>>();
 
   const toMarkOutdated = existingPending.filter((existingSugg) =>
     instructionBlockSetsConflict(
       newTargetBlockIds,
       new Set([existingSugg.suggestion.targetBlockId]),
-      agentConfiguration.instructionsHtml,
+      instructionsHtml,
       descendantMap
     )
   );

@@ -1,6 +1,7 @@
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -177,5 +178,50 @@ describe("POST /api/w/:wId/mcp/discover_oauth_metadata", () => {
       expect.anything(),
       expect.objectContaining({ dispatcher: mocks.staticIPAgent })
     );
+  });
+  it("probes an existing server at its stored URL with its stored headers", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const storedUrl = `https://mcp.${uniqueDomain()}/mcp`;
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      url: storedUrl,
+    });
+    await server.updateMetadata(auth, {
+      customHeaders: { "X-Api-Key": "stored-secret" },
+      lastSyncAt: new Date(),
+    });
+
+    const response = await postDiscover(workspace.sId, {
+      mcpServerId: server.sId,
+      url: "https://attacker.example.com/mcp",
+      customHeaders: [{ key: "X-Api-Key", value: "••••••••" }],
+    });
+
+    expect(response.status).toBe(200);
+    expect(mocks.undiciFetch).toHaveBeenCalledWith(
+      storedUrl,
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-Api-Key": "stored-secret" }),
+      })
+    );
+    expect(mocks.undiciFetch).not.toHaveBeenCalledWith(
+      "https://attacker.example.com/mcp",
+      expect.anything()
+    );
+  });
+
+  it("returns 404 for an unknown server id", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    const response = await postDiscover(workspace.sId, {
+      mcpServerId: "rms_unknown",
+    });
+
+    expect(response.status).toBe(404);
   });
 });

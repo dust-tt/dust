@@ -377,9 +377,7 @@ export async function resolveChannelId({
       if (infoResp.ok && infoResp.channel?.id) {
         return infoResp.channel.id;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (error) {
+    } catch {
       // Fall through to name-based search.
     }
   }
@@ -421,9 +419,7 @@ export async function resolveUserDisplayName({
         null
       );
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (error) {
+  } catch {
     // Return null if we can't resolve the user.
   }
 
@@ -462,9 +458,7 @@ export async function resolveChannelDisplayName({
         return `#${channelInfo.channel.name}`;
       }
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (error) {
+  } catch {
     // On error, return a fallback value.
     // If it looks like a DM, prefix with @, otherwise with #.
     if (channelId.startsWith("D")) {

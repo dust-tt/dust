@@ -23,6 +23,7 @@ import {
   isHiddenMessageOrigin,
   isLightAgentMessageType,
   isLightAgentMessageWithActionsType,
+  isMentionRequiringValidation,
   isTerminalAgentMessageStatus,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -182,9 +183,20 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   );
 };
 
-// Messages that MessageItem renders as `null`, i.e. zero-height rows in the
+export const hasMentionRequiringValidation = (
+  message: VirtuosoMessage
+): boolean =>
+  isUserMessage(message) &&
+  message.visibility !== "deleted" &&
+  message.richMentions.some(
+    (mention) => !mention.dismissed && isMentionRequiringValidation(mention)
+  );
+
+// Messages that MessageItem may render as `null`, i.e. zero-height rows in the
 // Virtuoso list. Wakeup messages are in HIDDEN_MESSAGE_ORIGINS but do render
-// (as WakeUpMessage), so they are excluded.
+// (as WakeUpMessage), so they are excluded. Hidden messages with mentions
+// requiring validation are intentionally kept: their validation cards can
+// themselves render nothing (e.g. current user can't respond).
 //
 // Zero-height rows must never be used as the list's initial scroll target:
 // VirtuosoMessageList bootstraps its size measurement by rendering the target

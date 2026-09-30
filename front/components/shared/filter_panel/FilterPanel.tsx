@@ -38,8 +38,15 @@ interface FilterPanelProps<
   isError: boolean;
   idPrefix: string;
   renderIcon?: (option: Option) => ReactNode;
+  // Replaces the option search and list for categories that are not picked among options.
+  renderCategoryContent?: (category: Category) => ReactNode;
   warning?: string;
   applyDisabled?: boolean;
+  // Rendered below the categories, for settings that are not a category.
+  categoryNavFooter?: ReactNode;
+  // Called when the panel opens and on "Clear filters", so the caller can reset its own drafts.
+  onOpen?: () => void;
+  onClearAll?: () => void;
 }
 
 export function FilterPanel<
@@ -56,8 +63,12 @@ export function FilterPanel<
   isError,
   idPrefix,
   renderIcon,
+  renderCategoryContent,
   warning,
   applyDisabled,
+  categoryNavFooter,
+  onOpen,
+  onClearAll,
 }: FilterPanelProps<Category, Option>) {
   const {
     isOpen,
@@ -99,12 +110,14 @@ export function FilterPanel<
     {}
   );
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
+  const activeCategoryContent = renderCategoryContent?.(activeCategory);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
+      onOpen?.();
     }
   };
 
@@ -138,8 +151,9 @@ export function FilterPanel<
               setSearchText("");
               resetContentScroll();
             }}
+            footer={categoryNavFooter}
           />
-          <div className="flex h-full w-80 flex-col gap-2 p-2">
+          <div className="flex h-full w-80 flex-col gap-3 p-2">
             <FilterSection
               title={categoryLabels[activeCategory]}
               action={
@@ -155,24 +169,28 @@ export function FilterPanel<
                 />
               }
             >
-              <SearchInput
-                name={`${idPrefix}-search`}
-                value={searchText}
-                onChange={(value) => {
-                  setSearchText(value);
-                  resetContentScroll();
-                }}
-                placeholder={`Search ${categoryLabels[activeCategory].toLowerCase()}`}
-              />
+              {!activeCategoryContent && (
+                <SearchInput
+                  name={`${idPrefix}-search`}
+                  value={searchText}
+                  onChange={(value) => {
+                    setSearchText(value);
+                    resetContentScroll();
+                  }}
+                  placeholder={`Search ${categoryLabels[activeCategory].toLowerCase()}`}
+                />
+              )}
             </FilterSection>
             <div
               ref={setContentScrollContainer}
-              className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
+              className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto"
             >
               {isError ? (
                 <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
                   Failed to load filters.
                 </div>
+              ) : activeCategoryContent ? (
+                activeCategoryContent
               ) : (
                 <FilterOptionCheckboxList
                   key={`${isOpen}|${activeCategory}|${searchText}`}
@@ -215,7 +233,10 @@ export function FilterPanel<
         )}
         <FilterFooter
           applyDisabled={applyDisabled}
-          onClearAll={clearAllCategories}
+          onClearAll={() => {
+            clearAllCategories();
+            onClearAll?.();
+          }}
           onCancel={() => setIsOpen(false)}
           onApply={() => {
             onFilterChange(draftFilter);

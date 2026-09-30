@@ -1,6 +1,7 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { KNOWLEDGE_CATEGORIES } from "@app/types/api/public/spaces";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
+import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
 import {
   SKILL_AVAILABILITIES,
   SKILL_STATUSES,
@@ -17,6 +18,8 @@ export const LIST_SKILLS_TOOL_NAME = "list_skills" as const;
 export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
 export const LIST_TOOLS_TOOL_NAME = "list_tools" as const;
 export const GET_TOOL_DETAILS_TOOL_NAME = "get_tool_details" as const;
+export const LIST_MODELS_TOOL_NAME = "list_models" as const;
+export const LIST_TAGS_TOOL_NAME = "list_tags" as const;
 export const SEARCH_KNOWLEDGE_TOOL_NAME = "search_knowledge" as const;
 export const LIST_WORKSPACE_MEMBERS_TOOL_NAME =
   "list_workspace_members" as const;
@@ -90,11 +93,12 @@ const paginationSchemaShape = {
 const listAgentsSchema = {
   view: z
     .enum(AGENT_VIEWS)
-    .default("all")
+    .optional()
     .describe(
-      "Which agents to list. 'all' (default): every non-private agent of the " +
-        "workspace. 'list': the agents the caller can see (the non-private ones " +
-        "plus the unpublished ones they edit); needs an interactive user. " +
+      "Which agents to list. 'list' (default): the agents the caller can see " +
+        "(the non-private ones plus the unpublished ones they edit); falls back " +
+        "to 'all' without an interactive user. 'all': every non-private agent " +
+        "of the workspace, excluding unpublished ones. " +
         "'published': published agents only. 'global': Dust's " +
         "built-in agents only. 'archived': agents that were deleted, limited " +
         "to those the caller edits, or all of them for an admin. " +
@@ -273,6 +277,12 @@ const listToolsSchema = {
   ...paginationSchemaShape,
 };
 
+const listModelsSchema = {
+  providerId: ModelProviderIdSchema.optional().describe(
+    "Only return the models of this provider (e.g. 'anthropic', 'openai', 'google_ai_studio', 'mistral')."
+  ),
+};
+
 const getToolDetailsSchema = {
   toolId: z.string().describe("The tool's id, as returned by list_tools."),
 };
@@ -398,6 +408,36 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
+    name: LIST_MODELS_TOOL_NAME,
+    description:
+      "List the models agents of this workspace can be set to, with their modelId, name, " +
+      "description and the reasoning efforts they support.",
+    schema: listModelsSchema,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Listing models",
+      done: "Listed models",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: LIST_TAGS_TOOL_NAME,
+    description:
+      "List the workspace's agent tags with their name, id and kind. Protected tags can " +
+      "only be added to or removed from agents by users who can publish agents.",
+    schema: {},
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Listing tags",
+      done: "Listed tags",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
     name: SEARCH_KNOWLEDGE_TOOL_NAME,
     description:
       "Browse or search the knowledge sources agents and skills can be given. " +
@@ -498,7 +538,8 @@ export const WORKSPACE_MANAGEMENT_SERVER = {
   serverInfo: {
     name: WORKSPACE_MANAGEMENT_SERVER_NAME,
     version: "1.0.0",
-    description: "Inventory the workspace's agents, skills, tools and groups.",
+    description:
+      "Inventory the workspace's agents, skills, tools, tags and groups.",
     icon: "ActionListCheckIcon",
     authorization: null,
     documentationUrl: null,

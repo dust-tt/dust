@@ -8,11 +8,11 @@ import {
   SkillLastEditedCell,
 } from "@app/components/skills/SkillTableCells";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { EntityTooltipCard } from "@app/components/workspace/analytics/creditsTableCells";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useTags } from "@app/lib/swr/tags";
 import { tagsSorter } from "@app/lib/utils";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
-import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getTieredReasoningEffort } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -65,6 +65,11 @@ interface AgentSearchModelCellProps {
   isDark: boolean;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] compact-model-cell
+ * A supported model cell MUST show only the provider icon and tier at every width, while its
+ * tooltip retains the model display name and any non-none reasoning effort.
+ */
 function AgentSearchModelCell({ model, isDark }: AgentSearchModelCellProps) {
   const modelConfig = model ? getSupportedModelConfig(model) : null;
   if (!model || !modelConfig) {
@@ -94,12 +99,6 @@ function AgentSearchModelCell({ model, isDark }: AgentSearchModelCellProps) {
             iconClassName="mr-2"
           >
             <div className="flex min-w-0 items-center gap-2">
-              {/* Streams are named after their tier: the chip alone carries the info. */}
-              {!isModelStreamId(modelConfig.modelId) && (
-                <span className="hidden min-w-0 truncate @xl:inline">
-                  {modelName}
-                </span>
-              )}
               <div className="shrink-0">
                 <ModelTierChip
                   model={modelConfig}
@@ -114,6 +113,51 @@ function AgentSearchModelCell({ model, isDark }: AgentSearchModelCellProps) {
   );
 }
 
+interface AgentSearchTagSelectorProps {
+  owner: WorkspaceType;
+  agent: AgentSearchItem;
+  onRefresh: () => void;
+}
+
+function AgentSearchTagSelector({
+  owner,
+  agent,
+  onRefresh,
+}: AgentSearchTagSelectorProps) {
+  const { tags, isTagsLoading } = useTags({ owner });
+  const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
+
+  if (isTagsLoading) {
+    return <Spinner size="xs" />;
+  }
+  return (
+    <TableTagSelector
+      tags={sortedTags}
+      agentTags={agent.tags}
+      agentConfigurationId={agent.sId}
+      owner={owner}
+      onChange={async () => onRefresh()}
+    />
+  );
+}
+
+// Cells render as components, so a new `columns` identity remounts every cell: an open menu
+// closes and an in-flight checkbox click is lost.
+/**
+ * @cc [owner:tdraier,label:react;performance] stable-columns
+ * `columns` MUST only be rebuilt when `canSelect`, `onSelect`, `onRefresh`, `owner` or the theme
+ * change, never on data the table loads itself. Callers MUST keep `canSelect`, `onSelect` and
+ * `onRefresh` referentially stable while the search inputs are unchanged.
+ */
+/**
+ * @cc [owner:aubin-tchoi,label:product] agent-name-tooltip
+ * Hovering or focusing an agent name must show its name and description.
+ */
+/**
+ * @cc [owner:aubin-tchoi,label:react] matching-table-density
+ * The loaded table and its loading skeleton MUST use the same density.
+ * Skeleton cells MUST match the loaded cells' alignment, visual sizes and spacing.
+ */
 export function AgentSearchTable({
   owner,
   agents,
@@ -130,8 +174,6 @@ export function AgentSearchTable({
   canSelect,
 }: AgentSearchTableProps) {
   const { isDark } = useTheme();
-  const { tags, isTagsLoading } = useTags({ owner });
-  const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
   const columns = useMemo(
     () =>
       [
@@ -210,32 +252,40 @@ export function AgentSearchTable({
           enableMultiSort: false,
           cell: ({ row: { original: agent } }) => (
             <DataTable.CellContent>
-              <button type="button" className="w-full min-w-0 text-left">
-                <div className="flex flex-row items-center gap-2 py-3">
-                  <div>
-                    <Avatar visual={agent.pictureUrl} size="sm" />
+              <Tooltip
+                align="start"
+                label={
+                  <div className="py-1.5">
+                    <EntityTooltipCard
+                      avatar={
+                        <Avatar
+                          name={agent.name}
+                          visual={agent.pictureUrl}
+                          size="xs"
+                        />
+                      }
+                      name={agent.name}
+                      description={agent.description}
+                    />
                   </div>
-                  <div className="flex min-w-0 grow flex-col">
-                    <div className="heading-sm overflow-hidden truncate text-foreground">
-                      {agent.name}
+                }
+                tooltipTriggerAsChild
+                trigger={
+                  <button type="button" className="w-full min-w-0 text-left">
+                    <div className="flex flex-row items-center gap-2 py-1">
+                      <div>
+                        <Avatar visual={agent.pictureUrl} size="xs" />
+                      </div>
+                      <div className="heading-sm min-w-0 grow overflow-hidden truncate text-foreground">
+                        {agent.name}
+                      </div>
                     </div>
-                    <div className="overflow-hidden truncate text-sm text-muted-foreground">
-                      {agent.description}
-                    </div>
-                  </div>
-                </div>
-              </button>
+                  </button>
+                }
+              />
             </DataTable.CellContent>
           ),
-          meta: { className: "w-48 @lg:w-full" },
-        },
-        {
-          id: "model" as const,
-          header: "Model",
-          cell: ({ row: { original: agent } }) => (
-            <AgentSearchModelCell model={agent.model} isDark={isDark} />
-          ),
-          meta: { className: "hidden @sm:w-28 @sm:table-cell @xl:w-56" },
+          meta: { className: "w-48 @lg:w-full", rowHeader: true },
         },
         {
           id: "access" as const,
@@ -252,7 +302,61 @@ export function AgentSearchTable({
               )}
             </DataTable.CellContent>
           ),
-          meta: { className: "hidden @lg:w-32 @lg:table-cell" },
+          meta: {
+            type: "status",
+            className: "hidden @lg:w-32 @lg:table-cell",
+          },
+        },
+        {
+          id: "model" as const,
+          header: "Model",
+          cell: ({ row: { original: agent } }) => (
+            <AgentSearchModelCell model={agent.model} isDark={isDark} />
+          ),
+          meta: { className: "hidden @sm:w-28 @sm:table-cell @xl:w-32" },
+        },
+        {
+          id: "usage" as const,
+          accessorKey: "activeUsersCount",
+          header: "Usage",
+          sortDescFirst: true,
+          enableMultiSort: false,
+          cell: ({ row: { original: agent } }) => (
+            <DataTable.BasicCellContent
+              className="font-mono"
+              label={agent.activeUsersCount?.toLocaleString() ?? "-"}
+              tooltip={
+                agent.activeUsersCount === null
+                  ? "Usage is not available for this agent."
+                  : "Number of active users in the last 30 days."
+              }
+            />
+          ),
+          meta: {
+            type: "numeric",
+            className: "hidden @sm:w-24 @sm:table-cell",
+          },
+        },
+        {
+          id: "feedback" as const,
+          header: "Feedback",
+          cell: ({ row: { original: agent } }) => {
+            if (agent.scope === "global") {
+              return <DataTable.BasicCellContent label="-" />;
+            }
+            const { up, down } = agent.feedbacks;
+            return (
+              <DataTable.BasicCellContent
+                className="font-mono"
+                label={`${up + down}`}
+                tooltip={`${up} positive and ${down} negative feedback${pluralize(up + down)}`}
+              />
+            );
+          },
+          meta: {
+            type: "numeric",
+            className: "hidden @lg:w-24 @lg:table-cell",
+          },
         },
         {
           id: "editors" as const,
@@ -262,7 +366,7 @@ export function AgentSearchTable({
               editors={agent.scope === "global" ? null : agent.editors}
             />
           ),
-          meta: { className: "hidden @lg:w-24 @lg:table-cell" },
+          meta: { className: "hidden pl-8 @lg:w-32 @lg:table-cell" },
         },
         {
           id: "tags" as const,
@@ -282,14 +386,11 @@ export function AgentSearchTable({
                       trigger={<span>{tagNames}</span>}
                     />
                   </div>
-                  {canSelect(agent) && isTagsLoading && <Spinner size="xs" />}
-                  {canSelect(agent) && !isTagsLoading && (
-                    <TableTagSelector
-                      tags={sortedTags}
-                      agentTags={agent.tags}
-                      agentConfigurationId={agent.sId}
+                  {canSelect(agent) && (
+                    <AgentSearchTagSelector
                       owner={owner}
-                      onChange={async () => onRefresh()}
+                      agent={agent}
+                      onRefresh={onRefresh}
                     />
                   )}
                 </div>
@@ -297,43 +398,6 @@ export function AgentSearchTable({
             );
           },
           meta: { className: "hidden @lg:table-cell @lg:w-24 @xl:w-40" },
-        },
-        {
-          id: "usage" as const,
-          accessorKey: "activeUsersCount",
-          header: "Usage",
-          sortDescFirst: true,
-          enableMultiSort: false,
-          cell: ({ row: { original: agent } }) => (
-            <DataTable.BasicCellContent
-              className="font-mono"
-              label={agent.activeUsersCount?.toLocaleString() ?? "-"}
-              tooltip={
-                agent.activeUsersCount === null
-                  ? "Usage is not available for this agent."
-                  : "Number of active users in the last 30 days."
-              }
-            />
-          ),
-          meta: { className: "hidden @sm:w-24 @sm:table-cell" },
-        },
-        {
-          id: "feedback" as const,
-          header: "Feedback",
-          cell: ({ row: { original: agent } }) => {
-            if (agent.scope === "global") {
-              return <DataTable.BasicCellContent label="-" />;
-            }
-            const { up, down } = agent.feedbacks;
-            return (
-              <DataTable.BasicCellContent
-                className="font-mono"
-                label={`${up + down}`}
-                tooltip={`${up} positive and ${down} negative feedback${pluralize(up + down)}`}
-              />
-            );
-          },
-          meta: { className: "hidden @lg:w-28 @lg:table-cell" },
         },
         {
           id: "updatedAt" as const,
@@ -362,51 +426,67 @@ export function AgentSearchTable({
           meta: { className: "hidden @md:table-cell @md:w-14" },
         },
       ] satisfies ColumnDef<AgentSearchRow>[],
-    [canSelect, isDark, isTagsLoading, onRefresh, onSelect, owner, sortedTags]
+    [canSelect, isDark, onRefresh, onSelect, owner]
   );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
+  // Mirror BasicCellContent's inner h-12 so the divider contributes equally to row height.
   if (isLoading && agents.length === 0) {
     return (
       <div role="status" aria-label="Loading agents">
         <DataTableSkeleton
           columns={columns}
-          rowHeight={64}
+          rowCount={12}
+          density="default"
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
               case "select":
-                return <LoadingBlock className="h-4 w-4 rounded-sm" />;
+                return (
+                  <div className="flex size-full items-center justify-center">
+                    <LoadingBlock className="h-4 w-4 rounded-sm" />
+                  </div>
+                );
               case "name":
                 return (
-                  <AvatarCellSkeleton avatarClassName="h-9 w-9 rounded-lg">
+                  <AvatarCellSkeleton>
                     <TextCellSkeleton
                       className={rowIndex % 2 === 0 ? "h-4 w-32" : "h-4 w-40"}
                     />
-                    <TextCellSkeleton className="h-4 w-3/4" />
                   </AvatarCellSkeleton>
                 );
               case "model":
-                return <TextCellSkeleton className="w-24" />;
+                return (
+                  <div className="flex items-center gap-2">
+                    <LoadingBlock className="h-5 w-5 shrink-0 rounded-sm" />
+                    <ChipCellSkeleton className="w-16" />
+                  </div>
+                );
               case "access":
                 return <ChipCellSkeleton />;
               case "tags":
                 return <TextCellSkeleton className="w-16" />;
               case "feedback":
-                return <TextCellSkeleton className="w-8" />;
-              case "usage":
-                return <TextCellSkeleton className="w-8" />;
-              case "editors":
                 return (
-                  <div className="flex -space-x-2">
-                    <LoadingBlock className="h-7 w-7 rounded-full" />
-                    <LoadingBlock className="h-7 w-7 rounded-full" />
-                    <LoadingBlock className="h-7 w-7 rounded-full" />
+                  <div className="flex h-12 items-center justify-end">
+                    <TextCellSkeleton className="w-8" />
                   </div>
                 );
+              case "usage":
+                return (
+                  <div className="flex h-12 items-center justify-end">
+                    <TextCellSkeleton className="w-8" />
+                  </div>
+                );
+              case "editors":
+                return <LoadingBlock className="h-6 w-6 rounded-full" />;
               case "updatedAt":
-                return <TextCellSkeleton className="w-20" />;
+                return (
+                  <div className="flex h-12 items-center">
+                    <TextCellSkeleton className="w-20" />
+                  </div>
+                );
               case "actions":
-                return <LoadingBlock className="h-6 w-6 rounded-md" />;
+                return <LoadingBlock className="h-8 w-8 rounded-xl" />;
               default:
                 assertNeverAndIgnore(columnId);
                 return null;
@@ -424,6 +504,7 @@ export function AgentSearchTable({
         onClick: () => onSelect(agent.sId),
       }))}
       columns={columns}
+      density="default"
       getRowId={(agent) => agent.sId}
       enableRowSelection={(row) => canSelect(row.original)}
       disableRowClickSelection

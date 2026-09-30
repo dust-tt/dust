@@ -12,6 +12,7 @@ import {
 } from "@app/lib/reinforcement/types";
 import { KNOWLEDGE_CATEGORIES } from "@app/types/api/public/spaces";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
+import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import {
   AGENT_SUGGESTION_KINDS,
@@ -107,12 +108,9 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = [
     description:
       "Get the list of available models. Can optionally filter by provider.",
     schema: {
-      providerId: z
-        .string()
-        .optional()
-        .describe(
-          "Optional provider ID to filter models (e.g., 'openai', 'anthropic', 'google_ai_studio', 'mistral')"
-        ),
+      providerId: ModelProviderIdSchema.optional().describe(
+        "Optional provider ID to filter models (e.g., 'openai', 'anthropic', 'google_ai_studio', 'mistral')"
+      ),
     },
     eager: true,
     stake: "never_ask",

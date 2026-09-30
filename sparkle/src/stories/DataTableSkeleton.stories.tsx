@@ -95,9 +95,9 @@ const columns = [
     id: "usage" as const,
     accessorKey: "usage",
     header: "Usage",
-    meta: { className: "w-[10%]", headerAlign: "right" },
+    meta: { className: "w-[10%]", type: "numeric" },
     cell: ({ row }) => (
-      <div className="text-right text-sm">{row.original.usage}</div>
+      <DataTable.BasicCellContent label={row.original.usage} />
     ),
   },
 ] satisfies ColumnDef<MemberRow, string>[];
@@ -130,7 +130,11 @@ function MemberSkeletonCell({
     case "role":
       return <ChipCellSkeleton />;
     case "usage":
-      return <TextCellSkeleton className="ml-auto w-12" />;
+      return (
+        <div className="flex h-12 items-center justify-end">
+          <TextCellSkeleton className="w-12" />
+        </div>
+      );
     default:
       assertNeverAndIgnore(columnId);
       return null;

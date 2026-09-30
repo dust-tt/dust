@@ -10,6 +10,7 @@ import {
   GPT_5_6_SOL,
   GPT_5_6_TERRA,
   GPT_5_6_TERRA_LONG_CONTEXT,
+  GPT_6_1_SOL,
   GPT_6_ASTRA,
   GPT_6_LUNA,
   GPT_6_SOL,
@@ -28,6 +29,7 @@ const MODELS_WITH_CONCISE_REASONING_SUMMARIES: ReadonlySet<Model> = new Set([
   GPT_5_6_LUNA,
   GPT_6_LUNA,
   GPT_6_SOL,
+  GPT_6_1_SOL,
 ]);
 
 export function openAIReasoningSummaryForModel(
