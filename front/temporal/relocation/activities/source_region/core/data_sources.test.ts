@@ -138,9 +138,9 @@ describe("retrieveDataSourceCoreIdsBatch", () => {
 
   it("fails before querying data sources when the workspace does not exist", async () => {
     mocks.getWorkspaceInfos.mockResolvedValue(null);
-    await expect(retrieveDataSourceCoreIdsBatch({ workspaceId })).rejects.toThrow(
-      "Workspace not found."
-    );
+    await expect(
+      retrieveDataSourceCoreIdsBatch({ workspaceId })
+    ).rejects.toThrow("Workspace not found.");
     expect(mocks.findAll).not.toHaveBeenCalled();
   });
 
