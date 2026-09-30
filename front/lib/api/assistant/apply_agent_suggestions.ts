@@ -27,10 +27,10 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
 import { mergeAgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import {
   applyInstructionEditsToHtml,
   convertMarkdownToBlockHtml,
-  getMarkdownPipeline,
 } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";

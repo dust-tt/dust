@@ -1,8 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import {
   convertBlockHtmlToMarkdown,
   convertMarkdownToBlockHtml,
-  getMarkdownPipeline,
 } from "@app/lib/editor/skill_instructions_html";
 import type {
   SeededKnowledgeNode,
@@ -148,7 +148,10 @@ export async function seedScenario(
         agentFacingDescription: seed.agentFacingDescription,
         userFacingDescription: seed.userFacingDescription ?? "",
         instructions: seed.instructions,
-        instructionsHtml: convertMarkdownToBlockHtml(seed.instructions),
+        instructionsHtml: convertMarkdownToBlockHtml(
+          seed.instructions,
+          getMarkdownPipeline("skill")
+        ),
         availability: seed.availability,
       });
       skillIdsByKey.set(seed.key, skill.sId);

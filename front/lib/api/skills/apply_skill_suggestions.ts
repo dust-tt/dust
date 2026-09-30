@@ -7,6 +7,7 @@ import { findSkillEditorsWithoutSpaceAccess } from "@app/lib/api/skills/space_re
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillEdits } from "@app/lib/editor/merge_skill_suggestion_edits";
 import { mergeSkillSuggestionEdits } from "@app/lib/editor/merge_skill_suggestion_edits";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import type { AppliedSkillInstructions } from "@app/lib/editor/skill_instructions_html";
 import {
   applyInstructionEditsToHtml,
@@ -65,9 +66,14 @@ function resolveInstructions(
     return new Ok(undefined);
   }
   const instructionsHtml =
-    skill.instructionsHtml ?? convertMarkdownToBlockHtml("");
+    skill.instructionsHtml ??
+    convertMarkdownToBlockHtml("", getMarkdownPipeline("skill"));
 
-  return applyInstructionEditsToHtml(instructionsHtml, instructionEdits);
+  return applyInstructionEditsToHtml(
+    instructionsHtml,
+    instructionEdits,
+    getMarkdownPipeline("skill")
+  );
 }
 
 async function resolveInstructionAttachments(

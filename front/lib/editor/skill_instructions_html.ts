@@ -22,7 +22,6 @@ import { parseSkillReferenceTag } from "@app/lib/skills/format";
 import { parseToolTag } from "@app/lib/tools/format";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { Extensions, JSONContent } from "@tiptap/core";
 import type { MarkdownManager } from "@tiptap/markdown";
@@ -33,10 +32,6 @@ import type {
 import type { Transform } from "@tiptap/pm/transform";
 import type { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 
-// The editor schema, tiptap, prosemirror and cheerio are only needed once
-// instructions are actually converted, and building the extension list runs
-// every node definition. Resolved on first use so front-api does not pay for it
-// at boot; the exported helpers are synchronous, hence require over import().
 // Which editor's schema converts the instructions. Agents and skills share the block model but
 // only agent instructions hold `instructionBlock` sections, so each gets its own pipeline.
 export type InstructionsSchema = "skill" | "agent";
@@ -52,63 +47,6 @@ export interface MarkdownPipeline {
   createTransform: (doc: ProseMirrorNode) => Transform;
 }
 
-const markdownPipelines: Partial<Record<InstructionsSchema, MarkdownPipeline>> =
-  {};
-
-export function setMarkdownPipelineForTesting(
-  pipeline: MarkdownPipeline,
-  schema: InstructionsSchema = "skill"
-): void {
-  markdownPipelines[schema] = pipeline;
-}
-
-function buildExtensionsForServer(schema: InstructionsSchema): Extensions {
-  switch (schema) {
-    case "skill":
-      return (
-        require("@app/lib/editor/build_skill_instructions_extensions_server") as typeof import("@app/lib/editor/build_skill_instructions_extensions_server")
-      ).buildSkillInstructionsExtensionsForServer();
-    case "agent":
-      return (
-        require("@app/lib/editor/build_agent_instructions_extensions_server") as typeof import("@app/lib/editor/build_agent_instructions_extensions_server")
-      ).buildAgentInstructionsExtensionsForServer();
-    default:
-      assertNever(schema);
-  }
-}
-
-export function getMarkdownPipeline(
-  schema: InstructionsSchema
-): MarkdownPipeline {
-  let markdownPipeline = markdownPipelines[schema];
-  if (!markdownPipeline) {
-    const { getSchema } =
-      require("@tiptap/core") as typeof import("@tiptap/core");
-    const { MarkdownManager } =
-      require("@tiptap/markdown") as typeof import("@tiptap/markdown");
-    const { DOMParser } =
-      require("@tiptap/pm/model") as typeof import("@tiptap/pm/model");
-    const { Transform } =
-      require("@tiptap/pm/transform") as typeof import("@tiptap/pm/transform");
-    const { JSDOM } = require("jsdom") as typeof import("jsdom");
-    const extensions = buildExtensionsForServer(schema);
-
-    markdownPipeline = {
-      extensions,
-      markdownManager: new MarkdownManager({ extensions }),
-      renderToHTMLString: (
-        require("@tiptap/static-renderer/pm/html-string") as typeof import("@tiptap/static-renderer/pm/html-string")
-      ).renderToHTMLString,
-      cheerio: require("cheerio") as typeof import("cheerio"),
-      document: new JSDOM("").window.document,
-      domParser: DOMParser.fromSchema(getSchema(extensions)),
-      createTransform: (doc) => new Transform(doc),
-    };
-    markdownPipelines[schema] = markdownPipeline;
-  }
-
-  return markdownPipeline;
-}
 const NODE_TYPES_WITH_BLOCK_ID = new Set<string>([
   ...BLOCK_ID_UNIQUE_ID_NODE_TYPES,
   INSTRUCTIONS_ROOT_NODE_NAME,
@@ -259,15 +197,13 @@ function recoverCustomInlineNodes(node: JSONContent): JSONContent {
   return node;
 }
 
-// Browser callers pass a pipeline built on window.document, so they never reach the jsdom
-// loader in getMarkdownPipeline.
 /**
  * Convert Markdown to stored skill instructionsHtml.
  * Uses the same extension schema as the browser editor, then strips CSS class attrs.
  */
 export function convertMarkdownToBlockHtml(
   markdown: string,
-  pipeline: MarkdownPipeline = getMarkdownPipeline("skill")
+  pipeline: MarkdownPipeline
 ): string {
   const preprocessed = preprocessMarkdownForEditor(markdown);
   const parsedDoc = preprocessed.trim()
@@ -307,7 +243,7 @@ export interface AppliedSkillInstructions {
  */
 export function convertBlockHtmlToMarkdown(
   instructionsHtml: string,
-  pipeline: MarkdownPipeline = getMarkdownPipeline("skill")
+  pipeline: MarkdownPipeline
 ): string {
   const { document, domParser, markdownManager } = pipeline;
   const doc = parseInstructionsHtml(instructionsHtml, { document, domParser });
@@ -317,7 +253,7 @@ export function convertBlockHtmlToMarkdown(
 export function applyInstructionEditsToHtml(
   instructionsHtml: string,
   edits: { targetBlockId: string; content: string }[],
-  pipeline: MarkdownPipeline = getMarkdownPipeline("skill")
+  pipeline: MarkdownPipeline
 ): Result<AppliedSkillInstructions, DustError<"invalid_request_error">> {
   const {
     createTransform,
