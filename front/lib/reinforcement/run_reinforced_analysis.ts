@@ -118,7 +118,8 @@ function buildReinforcedSkillsToolDefinitions(): Record<
   };
 }
 
-const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
+// Reinforcement suggestions are wrapped in a batch, whose analysis is length-limited.
+const REINFORCEMENT_ANALYSIS_FIELD: z.ZodRawShape = {
   analysis: z
     .string()
     .max(BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH)
@@ -126,6 +127,10 @@ const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
     .describe(
       `Why this change improves the skill (MUST be at most ${BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH} characters).`
     ),
+};
+
+const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
+  ...REINFORCEMENT_ANALYSIS_FIELD,
   sourceSuggestionIds: z
     .array(z.string())
     .min(1)
@@ -477,7 +482,11 @@ async function createSkillSuggestionsFromToolCall({
 }): Promise<ToolCallResult> {
   switch (toolName) {
     case "edit_skill": {
-      const parsed = getEditSkillToolSchema().safeParse(actionArguments);
+      const schema =
+        source === "reinforcement"
+          ? getEditSkillToolSchema().extend(REINFORCEMENT_ANALYSIS_FIELD)
+          : getEditSkillToolSchema();
+      const parsed = schema.safeParse(actionArguments);
       if (!parsed.success) {
         logger.warn(
           { contextId, toolName, error: parsed.error },
@@ -532,20 +541,6 @@ async function createSkillSuggestionsFromToolCall({
             `The suggested agent-facing description is too long ` +
             `(${parsed.data.agentFacingDescriptionEdit.content.length} characters). ` +
             `It must be ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters or less.`,
-        };
-      }
-
-      // Reinforcement suggestions are wrapped in a batch, whose analysis is length-limited.
-      if (
-        source === "reinforcement" &&
-        parsed.data.analysis &&
-        parsed.data.analysis.length > BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH
-      ) {
-        return {
-          type: "error",
-          errorMessage:
-            `The analysis is too long (${parsed.data.analysis.length} characters). ` +
-            `It must be ${BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH} characters or less.`,
         };
       }
 
