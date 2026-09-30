@@ -30,6 +30,7 @@ import type {
 } from "@app/types/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import type { LightUserType, LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
@@ -405,7 +406,7 @@ async function invalidateWorkspaceGroups(workspaceId: string): Promise<void> {
 async function invalidatePeople(workspaceId: string): Promise<void> {
   await mutate(
     (key) =>
-      typeof key === "string" &&
+      isString(key) &&
       (key.startsWith(`/api/w/${workspaceId}/members/search`) ||
         key === workspaceAuthContextUrl(workspaceId))
   );
