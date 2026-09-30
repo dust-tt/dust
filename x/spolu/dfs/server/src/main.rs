@@ -17,6 +17,11 @@ struct Config {
     listen: SocketAddr,
 }
 
+/**
+ * @cc [owner:spolu,label:concurrency] graceful-shutdown-signals
+ * SIGINT and SIGTERM MUST stop accepting HTTP connections and let in-flight requests finish before
+ * the server exits successfully.
+ */
 #[tokio::main]
 async fn main() -> Result<()> {
     let config = Config::parse();
