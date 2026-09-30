@@ -75,7 +75,7 @@ describe("UserLocaleSync", () => {
     state.userLocale = "fr-FR";
     setFormatLocale("fr-FR");
 
-    renderWithI18n();
+    renderUserLocaleSync();
 
     await waitFor(() => expect(document.documentElement.lang).toBe("en-US"));
     expect(formatNumber(1234.5)).toBe((1234.5).toLocaleString());
@@ -85,7 +85,7 @@ describe("UserLocaleSync", () => {
     state.hasLocalisation = true;
     state.userLocale = "fr-FR";
 
-    renderWithI18n();
+    renderUserLocaleSync();
 
     await waitFor(() => expect(i18n.locale).toBe("fr-FR"));
     expect(formatNumber(1234.5)).toBe("1\u202f234,5");
