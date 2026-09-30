@@ -2,7 +2,6 @@ import { Authenticator } from "@app/lib/auth";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -487,26 +486,7 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     );
   });
 
-  it("returns 400 for a conversational suggestion, even with the feature flag", async () => {
-    const { workspace, auth, skill } = await setup();
-    await FeatureFlagFactory.basic(auth, "conversational_building");
-    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
-      source: "conversational",
-      state: "pending",
-    });
-
-    const response = await patch(workspace, skill.sId, {
-      suggestionIds: [suggestion.sId],
-      state: "approved",
-    });
-
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toContain(
-      "are not available"
-    );
-  });
-
-  it("returns 400 for a conversational suggestion without the feature flag", async () => {
+  it("returns 400 for a conversational suggestion when approving", async () => {
     const { workspace, auth, skill } = await setup();
     const suggestion = await SkillSuggestionFactory.create(auth, skill, {
       source: "conversational",
@@ -673,7 +653,6 @@ describe("GET /api/w/:wId/assistant/skills/:sId/suggestions", () => {
 describe("skill suggestion sources", () => {
   it("only returns reinforcement suggestions", async () => {
     const { workspace, auth, skill } = await setup();
-    await FeatureFlagFactory.basic(auth, "conversational_building");
     const reinforcement = await SkillSuggestionFactory.create(auth, skill, {
       state: "pending",
       source: "reinforcement",

@@ -1,7 +1,7 @@
 # Conversational Building Seed
 
 Seeds data for testing the conversational builder: how conversational skill suggestions render in a
-conversation. Enables the `conversational_building` feature flag.
+conversation.
 
 ## How to use
 

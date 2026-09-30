@@ -1257,8 +1257,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("conversational_building"),
+    isRestricted: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
