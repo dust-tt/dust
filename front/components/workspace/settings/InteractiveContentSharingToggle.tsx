@@ -41,6 +41,7 @@ const SHARING_POLICY_OPTIONS: {
 ];
 
 const LABEL = "Frame sharing";
+export const FRAME_SHARING_LABEL = LABEL;
 const DESCRIPTION = "Whether frames are shareable outside the workspace";
 
 interface InteractiveContentSharingProps {

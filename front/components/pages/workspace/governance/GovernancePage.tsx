@@ -23,6 +23,7 @@ import { WorkspaceDefaultAgentPicker } from "@app/components/workspace/settings/
 import { WorkspaceLocalePicker } from "@app/components/workspace/settings/WorkspaceLocalePicker";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
+import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
@@ -138,19 +139,19 @@ export const GovernancePage = () => {
   };
 
   const sections: {
-    id: "agents" | "skills" | "frame" | "automations" | "billing";
+    sectionId: AdminSectionId;
     label: string;
     icon: ComponentType;
     governancePermissions: GovernancePermission[];
   }[] = [
     {
-      id: "agents",
+      sectionId: ADMIN_SECTION_IDS.governance.agents,
       label: "Agents",
       icon: Robot,
       governancePermissions: agents,
     },
     {
-      id: "skills",
+      sectionId: ADMIN_SECTION_IDS.governance.skills,
       label: "Skills",
       icon: PuzzlePiece01,
       governancePermissions: skills,
@@ -158,7 +159,7 @@ export const GovernancePage = () => {
     ...(triggers.length > 0
       ? [
           {
-            id: "automations" as const,
+            sectionId: ADMIN_SECTION_IDS.governance.automations,
             label: "Automations",
             icon: Clock,
             governancePermissions: triggers,
@@ -168,7 +169,7 @@ export const GovernancePage = () => {
     ...(framePermissions.length > 0 || isAdmin
       ? [
           {
-            id: "frame" as const,
+            sectionId: ADMIN_SECTION_IDS.governance.frame,
             label: "Frames",
             icon: ActionFrame,
             governancePermissions: framePermissions,
@@ -178,7 +179,7 @@ export const GovernancePage = () => {
     ...(isAdmin
       ? [
           {
-            id: "billing" as const,
+            sectionId: ADMIN_SECTION_IDS.governance.billing,
             label: "Billing and security",
             icon: Lock01,
             governancePermissions: billingAndSecurity,
@@ -216,14 +217,19 @@ export const GovernancePage = () => {
       />
       <div className="flex w-full flex-col gap-8">
         {sections.map(
-          ({ id, label, icon, governancePermissions: sectionPermissions }) => (
+          ({
+            sectionId,
+            label,
+            icon,
+            governancePermissions: sectionPermissions,
+          }) => (
             <GovernanceSettingSection
-              key={id}
-              sectionId={ADMIN_SECTION_IDS.governance[id]}
+              key={sectionId}
+              sectionId={sectionId}
               label={label}
               icon={icon}
               footer={
-                id === "skills" ? (
+                sectionId === ADMIN_SECTION_IDS.governance.skills ? (
                   <SkillDiscoverabilityWarning
                     governancePermissions={governancePermissions}
                     groups={groups}
@@ -231,7 +237,7 @@ export const GovernancePage = () => {
                 ) : undefined
               }
             >
-              {id === "frame" && isAdmin && (
+              {sectionId === ADMIN_SECTION_IDS.governance.frame && isAdmin && (
                 <InteractiveContentSharing
                   sharingPolicy={sharingPolicy}
                   doUpdateSharingPolicy={doUpdateSharingPolicy}

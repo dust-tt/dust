@@ -6,6 +6,8 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import { LayerSingle, SliderToggle } from "@dust-tt/sparkle";
 
+export const AUDIT_LOGS_EMIT_LABEL = "Audit logs";
+
 interface AuditLogsToggleProps {
   owner: WorkspaceType;
 }
@@ -31,7 +33,7 @@ export function AuditLogsGovernanceSection({ owner }: AuditLogsToggleProps) {
       icon={LayerSingle}
     >
       <GovernanceSettingRowLayout
-        label="Audit logs"
+        label={AUDIT_LOGS_EMIT_LABEL}
         description="Whether audit events are emitted to WorkOS and the audit logs section is shown in IT & Security"
         action={
           <SliderToggle

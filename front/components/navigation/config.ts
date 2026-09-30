@@ -84,7 +84,7 @@ type SubNavigationAssistantsId =
   | "community"
   | "spaces";
 
-type SubNavigationAdminId =
+export type SubNavigationAdminId =
   | "subscription"
   | "billing"
   | "governance"
@@ -102,7 +102,7 @@ type SubNavigationAdminId =
   | "usage"
   | "self_improving_skills";
 
-const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
+export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
   identity_and_provisioning: ["/w/[wId]/identity-and-provisioning"],
   governance: ["/w/[wId]/governance"],
