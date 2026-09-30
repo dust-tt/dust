@@ -3,6 +3,8 @@ import type * as sourceActivities from "@app/temporal/relocation/activities/sour
 import { RELOCATION_QUEUES_PER_CELL } from "@app/temporal/relocation/config";
 import type {
   ConversationBackfillScope,
+  ConversationBackfillSource,
+  ConversationBackfillSourceState,
   ConversationBackfillState,
 } from "@app/temporal/relocation/lib/conversation_backfill";
 import {
@@ -75,7 +77,7 @@ export async function workspaceBackfillConversationDataSourcesWorkflow({
     completed: 0,
   };
 
-  const checkpoint = (currentState: ConversationBackfillState) =>
+  const checkpoint = (currentState: ConversationBackfillState): Promise<never> =>
     continueAsNew<typeof workspaceBackfillConversationDataSourcesWorkflow>({
       ...scope,
       concurrency,
@@ -83,20 +85,25 @@ export async function workspaceBackfillConversationDataSourcesWorkflow({
     });
 
   while (state.batchIndex < state.inventory.batchCount) {
-    const sources = await source.readConversationBackfillBatch({
-      ...scope,
-      inventoryId: state.inventory.inventoryId,
-      batchIndex: state.batchIndex,
-    });
+    const sources: ConversationBackfillSource[] =
+      await source.readConversationBackfillBatch({
+        ...scope,
+        inventoryId: state.inventory.inventoryId,
+        batchIndex: state.batchIndex,
+      });
     while (state.offset < sources.length) {
       if (workflowInfo().historyLength > MAX_HISTORY_LENGTH) {
         return checkpoint(state);
       }
-      const group = sources.slice(state.offset, state.offset + concurrency);
-      let states = await source.inspectConversationBackfillSources({
-        ...scope,
-        sources: group,
-      });
+      const group: ConversationBackfillSource[] = sources.slice(
+        state.offset,
+        state.offset + concurrency
+      );
+      let states: ConversationBackfillSourceState[] =
+        await source.inspectConversationBackfillSources({
+          ...scope,
+          sources: group,
+        });
       await destination.verifyConversationBackfillDestination({
         ...scope,
         states,
@@ -105,6 +112,7 @@ export async function workspaceBackfillConversationDataSourcesWorkflow({
         ...scope,
         sources: group,
       });
+      let pollDelayMs = 1_000;
       for (;;) {
         states = await source.inspectConversationBackfillSources({
           ...scope,
@@ -121,7 +129,8 @@ export async function workspaceBackfillConversationDataSourcesWorkflow({
         if (workflowInfo().historyLength > MAX_HISTORY_LENGTH) {
           return checkpoint(state);
         }
-        await sleep("30 seconds");
+        await sleep(pollDelayMs);
+        pollDelayMs = Math.min(pollDelayMs * 2, 30_000);
       }
       await destination.verifyConversationBackfillDestination({
         ...scope,

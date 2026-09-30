@@ -143,6 +143,28 @@ describe("conversation backfill coordinator", () => {
     expect(result.completed).toBe(5);
   });
 
+  it("advances across inventory batches without losing sources", async () => {
+    mocks.prepareConversationBackfillInventory.mockResolvedValue({
+      ...inventory,
+      batchCount: 2,
+    });
+    mocks.readConversationBackfillBatch
+      .mockResolvedValueOnce(sources.slice(0, 3))
+      .mockResolvedValueOnce(sources.slice(3));
+    const result = await workspaceBackfillConversationDataSourcesWorkflow({
+      ...scope,
+      concurrency: 2,
+    });
+    expect(result.completed).toBe(5);
+    expect(result.batchIndex).toBe(2);
+    expect(result.offset).toBe(0);
+    expect(mocks.readConversationBackfillBatch).toHaveBeenNthCalledWith(2, {
+      ...scope,
+      inventoryId: inventory.inventoryId,
+      batchIndex: 1,
+    });
+  });
+
   it("stops before starting a group if destination preflight fails", async () => {
     mocks.verifyConversationBackfillDestination.mockRejectedValue(
       new Error("Destination conflict")
