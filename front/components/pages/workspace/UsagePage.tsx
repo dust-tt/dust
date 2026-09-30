@@ -157,6 +157,8 @@ function memberFromUpgradeRequest(
     scheduledSeatType: null,
     scheduledSeatChangeAt: null,
     spendLimitAwuCredits: null,
+    poolCapOverrideExpiresAt: null,
+    poolCapOverridePreviousAwuCredits: null,
     rateLimiterSpendAwuCredits: null,
     metronomeConsumedAwuCredits: null,
     spendLimitSource: "none",

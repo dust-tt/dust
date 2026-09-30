@@ -152,6 +152,13 @@ export type MemberUsageType = {
   scheduledSeatChangeAt: string | null;
   // Per-user total spend cap in AWU credits for the billing period
   spendLimitAwuCredits: number | null;
+  // When the personal pool-cap override is temporary, ISO timestamp of when
+  // it reverts to `poolCapOverridePreviousAwuCredits`. Null when permanent.
+  poolCapOverrideExpiresAt: string | null;
+  // Pool-only AWU credits restored when the temporary override expires
+  // (null = clear the override / seat default). Only meaningful when
+  // `poolCapOverrideExpiresAt` is set.
+  poolCapOverridePreviousAwuCredits: number | null;
   // AWU credits recorded in the Redis fixed-window spend-cap counter for the
   // current billing cycle — the value enforcement reads, shown alongside the
   // Elasticsearch-derived `consumedAwuCredits` to compare the two. Poke-only
@@ -1580,6 +1587,12 @@ export async function getMemberUsage({
     scheduledSeatType: null,
     scheduledSeatChangeAt: null,
     spendLimitAwuCredits,
+    poolCapOverrideExpiresAt:
+      membership.poolCapOverrideExpiresAt?.toISOString() ?? null,
+    poolCapOverridePreviousAwuCredits:
+      membership.poolCapOverrideExpiresAt !== null
+        ? membership.poolCapOverridePreviousAwuCredits
+        : null,
     rateLimiterSpendAwuCredits: null,
     metronomeConsumedAwuCredits: null,
     spendLimitSource,
@@ -2668,6 +2681,12 @@ export async function getMembersUsage({
         scheduledSeatType: scheduled?.seatType ?? null,
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
         spendLimitAwuCredits: effectiveSpendLimitAwuCredits,
+        poolCapOverrideExpiresAt:
+          membership.poolCapOverrideExpiresAt?.toISOString() ?? null,
+        poolCapOverridePreviousAwuCredits:
+          membership.poolCapOverrideExpiresAt !== null
+            ? membership.poolCapOverridePreviousAwuCredits
+            : null,
         rateLimiterSpendAwuCredits,
         metronomeConsumedAwuCredits: includeAlertLinks
           ? (metronomeConsumedByUserId.get(userId) ?? 0)

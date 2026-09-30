@@ -11,6 +11,7 @@ import {
   WorkspaceDefaultLimitInput,
 } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import { formatCredits } from "@app/lib/client/credits";
 import { useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { useUpdateUserSpendLimit } from "@app/lib/swr/memberships";
 import { useUpdateDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
@@ -23,6 +24,7 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
+  Checkbox,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -30,6 +32,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Label,
   Page,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -111,6 +114,18 @@ function MemberSpendLimitForm({
   );
   const hasPersonalOverride = member?.spendLimitSource === "override";
   const initialPersonalOverride = hasPersonalOverride ? extraAwuCredits : null;
+  const initialResetAtNextBillingCycle =
+    member?.poolCapOverrideExpiresAt !== null &&
+    member?.poolCapOverrideExpiresAt !== undefined;
+  // Baseline restored when the temporary raise expires: keep the original
+  // snapshot if one is already in flight, otherwise the current override.
+  const resetBaselineAwuCredits = initialResetAtNextBillingCycle
+    ? (member?.poolCapOverridePreviousAwuCredits ?? null)
+    : initialPersonalOverride;
+  const resetBaselineLabel =
+    resetBaselineAwuCredits === null
+      ? "no personal limit"
+      : `${formatCredits(resetBaselineAwuCredits)} credits`;
 
   const memberGroupRows = useMemo(
     () => groupRowsForMember(member, groups),
@@ -119,6 +134,9 @@ function MemberSpendLimitForm({
 
   const [personalLimitInput, setPersonalLimitInput] = useState<string>(() =>
     hasPersonalOverride ? String(extraAwuCredits) : ""
+  );
+  const [resetAtNextBillingCycle, setResetAtNextBillingCycle] = useState(
+    initialResetAtNextBillingCycle
   );
   const [groupLimitInputs, setGroupLimitInputs] = useState<
     Record<string, string>
@@ -185,6 +203,9 @@ function MemberSpendLimitForm({
 
     const personalChanged =
       personalResult.awuCredits !== initialPersonalOverride;
+    const resetChanged =
+      personalResult.awuCredits !== null &&
+      resetAtNextBillingCycle !== initialResetAtNextBillingCycle;
     const groupChanges = groupResults.flatMap(({ row, result }) =>
       result.ok && result.awuCredits !== row.poolCapAwuCredits
         ? [{ row, awuCredits: result.awuCredits }]
@@ -192,6 +213,7 @@ function MemberSpendLimitForm({
     );
     if (
       !personalChanged &&
+      !resetChanged &&
       newDefaultLimit === null &&
       groupChanges.length === 0
     ) {
@@ -206,13 +228,15 @@ function MemberSpendLimitForm({
       if (newDefaultLimit !== null) {
         tasks.push(() => doUpdateDefaultUserSpendLimit(newDefaultLimit));
       }
-      if (personalChanged) {
+      if (personalChanged || resetChanged) {
         const limit = toSpendLimit(personalResult.awuCredits);
         tasks.push(() =>
           doUpdateSpendLimit({
             memberId: member.sId,
             memberName: member.name,
             limit,
+            resetAtNextBillingCycle:
+              limit.kind === "limited" ? resetAtNextBillingCycle : false,
           })
         );
       }
@@ -288,16 +312,37 @@ function MemberSpendLimitForm({
             onChange={(cleaned) => {
               setPersonalLimitInput(cleaned);
               setValidationMessage(null);
+              if (cleaned === "") {
+                setResetAtNextBillingCycle(false);
+              }
             }}
             onRemove={
               personalLimitInput !== ""
                 ? () => {
                     setPersonalLimitInput("");
                     setValidationMessage(null);
+                    setResetAtNextBillingCycle(false);
                   }
                 : undefined
             }
           />
+          {!readOnly && personalLimitInput !== "" && (
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="reset-at-next-billing-cycle"
+                checked={resetAtNextBillingCycle}
+                onCheckedChange={(checked) =>
+                  setResetAtNextBillingCycle(checked === true)
+                }
+              />
+              <Label
+                htmlFor="reset-at-next-billing-cycle"
+                className="cursor-pointer text-sm font-normal leading-snug text-foreground"
+              >
+                Reset to {resetBaselineLabel} at the next billing cycle
+              </Label>
+            </div>
+          )}
           {editableGroupIds && (
             <span className="copy-xs text-muted-foreground">
               A personal limit applies to this member across the workspace.
