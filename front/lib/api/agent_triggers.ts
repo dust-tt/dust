@@ -1,5 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import { listActiveConfigurationIdentities } from "@app/lib/resources/agent_configuration_rows";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { AgentsUsageType } from "@app/types/data_source";
@@ -24,10 +24,9 @@ async function getAccessibleAgentsInfoBySId({
     return new Map();
   }
 
-  const accessibleAgents =
-    await AgentResource.listActiveConfigurationIdentities(auth, {
-      usageVisibleOnly: true,
-    });
+  const accessibleAgents = await listActiveConfigurationIdentities(auth, {
+    usageVisibleOnly: true,
+  });
 
   return new Map(
     accessibleAgents.map((agent) => [

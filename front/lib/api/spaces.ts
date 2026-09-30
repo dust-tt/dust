@@ -14,8 +14,8 @@ import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { listActiveConfigurationsRequestingSpace } from "@app/lib/resources/agent_configuration_rows";
 import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_requested_spaces";
-import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -423,12 +423,11 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       // requestedSpaceIds of every agent using it, so the set of agents still
       // referencing this space can change during the loop. This catches both
       // direct references and skill-driven references left over after the loop.
-      const agentsToClean =
-        await AgentResource.listActiveConfigurationsRequestingSpace(
-          auth,
-          space.id,
-          { transaction: t }
-        );
+      const agentsToClean = await listActiveConfigurationsRequestingSpace(
+        auth,
+        space.id,
+        { transaction: t }
+      );
 
       logger.info(
         { ...logContext, agentCount: agentsToClean.length },
