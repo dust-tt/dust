@@ -22,6 +22,7 @@ import {
   validateAgentNameChange,
   validateAgentPublishStateChange,
   validateAgentSkillChanges,
+  validateAgentStructuredOutputChange,
   validateAgentSubAgentChanges,
   validateAgentTagsSuggestion,
   validateAgentToolChanges,
@@ -190,6 +191,7 @@ async function planAgentEdit(
     modelId,
     reasoningEffort,
     scope,
+    structuredOutput,
     skills: skillChanges,
     tools: toolChanges,
     subAgents: subAgentChanges,
@@ -244,6 +246,21 @@ async function planAgentEdit(
     return new Err(
       new MCPError("`reasoningEffort` can only be suggested with a `modelId`.")
     );
+  }
+
+  if (structuredOutput !== undefined) {
+    // Validated against the model the agent will run, which the same edit may change.
+    const validation = validateAgentStructuredOutputChange(auth, agent, {
+      modelId: modelId ?? agent.modelConfiguration.modelId,
+      responseFormat: structuredOutput,
+    });
+    if (validation.isErr()) {
+      return validation;
+    }
+    singletons.push({
+      kind: "structured_output",
+      suggestion: validation.value,
+    });
   }
 
   if (editorChanges !== undefined) {

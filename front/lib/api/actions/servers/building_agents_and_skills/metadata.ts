@@ -139,6 +139,16 @@ export const EditAgentSuggestionSchema = z.object({
       "The new publish state: 'visible' to publish the agent (visible to the " +
         "whole workspace), 'hidden' to unpublish it (visible to editors only)."
     ),
+  structuredOutput: z
+    .string()
+    .min(1)
+    .nullable()
+    .optional()
+    .describe(
+      "The JSON schema the agent's answers must follow, as a JSON string " +
+        '`{"type":"json_schema","json_schema":{"name":...,"schema":{...}}}`, replacing the ' +
+        "current one. `null` removes the structured output."
+    ),
   skills: z
     .object({
       addSkillIds: z
