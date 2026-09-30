@@ -1263,7 +1263,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
-  static async listLimitGroupByUserModelIdInWorkspace({
+  /**
+   * Skips `canFetch`: the limit group decides which group a member's spend is recorded to and
+   * enforced against, which must not depend on the caller's verbs (API keys, internal and system
+   * auth resolve it too). Callers MUST go through `resolveLimitGroupsForUsers`, which gates on
+   * `areGroupLimitsEnabled`, and MUST NOT expose the returned groups beyond what the caller may read.
+   */
+  static async dangerouslyListLimitGroupByUserModelIdInWorkspace({
     workspace,
     userModelIds,
   }: {

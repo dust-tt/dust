@@ -149,9 +149,9 @@ describe("resolveLimitGroupForUser", () => {
       alice,
     ]);
     await limit(auth, engineering, 10_000);
-    const removed = await engineering.dangerouslyRemoveMembers(auth, {
-      users: [remy.toJSON()],
-    });
+    const removed = await GroupFactory.withoutMembers(auth, engineering, [
+      remy,
+    ]);
     if (removed.isErr()) {
       throw removed.error;
     }
@@ -163,9 +163,7 @@ describe("resolveLimitGroupForUser", () => {
     const { workspace, auth } = await setup();
     const remy = await makeMember(workspace);
     const autoGroup = await GroupFactory.regularAuto(workspace, "Auto");
-    const added = await autoGroup.dangerouslyAddMembers(auth, {
-      users: [remy.toJSON()],
-    });
+    const added = await GroupFactory.withMembers(auth, autoGroup, [remy]);
     if (added.isErr()) {
       throw added.error;
     }
@@ -205,12 +203,12 @@ describe("resolveLimitGroupsForUsers", () => {
     const carol = await makeMember(workspace);
 
     const limitGroups = await resolveLimitGroupsForUsers(auth, {
-      userModelIds: [remy.id, alice.id, bruno.id, carol.id],
+      users: [remy, alice, bruno, carol],
     });
 
-    expect(limitGroups.get(remy.id)?.sId).toBe(sales.sId);
-    expect(limitGroups.get(alice.id)?.sId).toBe(engineering.sId);
-    expect(limitGroups.get(bruno.id)?.sId).toBe(sales.sId);
-    expect(limitGroups.has(carol.id)).toBe(false);
+    expect(limitGroups.get(remy.sId)?.sId).toBe(sales.sId);
+    expect(limitGroups.get(alice.sId)?.sId).toBe(engineering.sId);
+    expect(limitGroups.get(bruno.sId)?.sId).toBe(sales.sId);
+    expect(limitGroups.has(carol.sId)).toBe(false);
   });
 });

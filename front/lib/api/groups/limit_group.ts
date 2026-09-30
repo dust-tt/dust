@@ -2,25 +2,37 @@ import { areGroupLimitsEnabled } from "@app/lib/api/groups/group_limit_eligibili
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import type { ModelId } from "@app/types/shared/model_id";
 
 /**
  * @cc [owner:rfrenoy,label:product;backend] limit-group-resolution
  * A member's limit group is, among their active memberships in cap-eligible groups that have a group
  * limit, the one with the lowest `groupLimitPriority`. Recording, enforcement and UI data MUST resolve
  * it through this function, which returns nothing when group limits are not enabled.
+ *
+ * Returns each resolved member's limit group keyed by the member's sId; members without one are absent.
  */
 export async function resolveLimitGroupsForUsers(
   auth: Authenticator,
-  { userModelIds }: { userModelIds: ModelId[] }
-): Promise<Map<ModelId, GroupResource>> {
+  { users }: { users: UserResource[] }
+): Promise<Map<string, GroupResource>> {
   if (!(await areGroupLimitsEnabled(auth))) {
     return new Map();
   }
-  return GroupResource.listLimitGroupByUserModelIdInWorkspace({
-    workspace: auth.getNonNullableWorkspace(),
-    userModelIds,
-  });
+
+  const limitGroupByUserModelId =
+    await GroupResource.dangerouslyListLimitGroupByUserModelIdInWorkspace({
+      workspace: auth.getNonNullableWorkspace(),
+      userModelIds: users.map((user) => user.id),
+    });
+
+  const limitGroupByUserId = new Map<string, GroupResource>();
+  for (const user of users) {
+    const limitGroup = limitGroupByUserModelId.get(user.id);
+    if (limitGroup) {
+      limitGroupByUserId.set(user.sId, limitGroup);
+    }
+  }
+  return limitGroupByUserId;
 }
 
 export async function resolveLimitGroupForUser(
@@ -28,7 +40,7 @@ export async function resolveLimitGroupForUser(
   { user }: { user: UserResource }
 ): Promise<GroupResource | null> {
   const limitGroups = await resolveLimitGroupsForUsers(auth, {
-    userModelIds: [user.id],
+    users: [user],
   });
-  return limitGroups.get(user.id) ?? null;
+  return limitGroups.get(user.sId) ?? null;
 }

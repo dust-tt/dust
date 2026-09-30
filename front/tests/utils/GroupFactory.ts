@@ -69,4 +69,15 @@ export class GroupFactory {
       allowProvisionedGroups: true,
     });
   }
+
+  static async withoutMembers(
+    auth: Authenticator,
+    group: GroupResource,
+    users: UserResource[]
+  ) {
+    return group.dangerouslyRemoveMembers(auth, {
+      users: users.map((u) => u.toJSON()),
+      allowProvisionedGroups: true,
+    });
+  }
 }
