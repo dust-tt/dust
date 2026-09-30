@@ -214,3 +214,18 @@ For cookie-based session resolution, call
 `@app/lib/api/workos/user`. It returns `{ session, setCookies }` — emit each
 `setCookies` value with `c.header("Set-Cookie", cookie, { append: true })`,
 as `front-api/middlewares/session_resolution.ts` does.
+
+@cc [owner:frankaloia,label:security;api] inline-file-serving-content-type-safety
+Every route that streams a stored file inline to the browser **must** check
+`isContentTypeSafeToDisplay` (or the equivalent `isSafeToDisplay` flag from
+`getFileFormat(normalizeMimeType(contentType))`) before setting the response
+`Content-Type`.
+
+If the content type is unsafe to display inline (e.g. `image/svg+xml`,
+`text/html`, `message/rfc822`), the response **must** include a
+`Content-Disposition: attachment` header so the browser downloads rather than
+renders the file, preventing stored-XSS through attacker-controlled uploads.
+
+The sole exception is thumbnail routes, which should instead return HTTP 400
+for unsafe content types (thumbnails are by definition inline image previews,
+so rejecting is safer than downloading).

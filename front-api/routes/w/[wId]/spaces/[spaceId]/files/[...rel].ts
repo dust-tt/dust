@@ -9,6 +9,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { APIErrorResponse } from "@app/types/error";
+import { getFileFormat, normalizeMimeType } from "@app/types/files";
 import {
   getPodFilesBasePath,
   isResolveMountFilePathError,
@@ -23,7 +24,19 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import type { Context, TypedResponse } from "hono";
+import path from "path";
 import { z } from "zod";
+
+function isContentTypeSafeToDisplay(contentType: string): boolean {
+  return (
+    getFileFormat(normalizeMimeType(contentType))?.isSafeToDisplay ?? false
+  );
+}
+
+function contentDispositionAttachment(fileName: string): string {
+  const asciiFallback = fileName.replace(/[^\x20-\x7E\/\\]/g, "_");
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
 
 const ParamsSchema = z.object({
   rel: z.string(),
@@ -135,9 +148,15 @@ app.get(
         "Error streaming project file (GCS)"
       )
     );
+    const headers: Record<string, string> = { "Content-Type": contentType };
+    if (!isContentTypeSafeToDisplay(contentType)) {
+      headers["Content-Disposition"] = contentDispositionAttachment(
+        path.posix.basename(normalizedGcsPath)
+      );
+    }
     return new Response(readableToReadableStream(readStream), {
       status: 200,
-      headers: { "Content-Type": contentType },
+      headers,
     });
   }
 );

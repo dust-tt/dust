@@ -402,13 +402,19 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
     }
 
     const { stream, contentType } = thumbResult.value;
+    const thumbHeaders: Record<string, string> = {
+      "Content-Type": contentType,
+      "Cache-Control": "private, max-age=3600",
+      "X-Content-Type-Options": "nosniff",
+    };
+    if (!isContentTypeSafeToDisplay(contentType)) {
+      const fileName = path.posix.basename(canonicalPath);
+      thumbHeaders["Content-Disposition"] =
+        contentDispositionAttachment(fileName);
+    }
     return new Response(readableToReadableStream(stream), {
       status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Cache-Control": "private, max-age=3600",
-        "X-Content-Type-Options": "nosniff",
-      },
+      headers: thumbHeaders,
     });
   }
 

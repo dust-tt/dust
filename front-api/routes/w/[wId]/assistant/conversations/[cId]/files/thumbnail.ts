@@ -2,7 +2,11 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import { isSupportedImageContentType } from "@app/types/files";
+import {
+  getFileFormat,
+  isSupportedImageContentType,
+  normalizeMimeType,
+} from "@app/types/files";
 import {
   getConversationFilesBasePath,
   parseScopedFilePath,
@@ -18,6 +22,12 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   cId: z.string(),
 });
+
+function isContentTypeSafeToDisplay(contentType: string): boolean {
+  return (
+    getFileFormat(normalizeMimeType(contentType))?.isSafeToDisplay ?? false
+  );
+}
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/files/thumbnail.
 const app = workspaceApp();
@@ -84,7 +94,10 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
 
   // If a FileResource exists, stream its best available version (processed if available).
   if (fileResource) {
-    if (!isSupportedImageContentType(fileResource.contentType)) {
+    if (
+      !isSupportedImageContentType(fileResource.contentType) ||
+      !isContentTypeSafeToDisplay(fileResource.contentType)
+    ) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -120,7 +133,10 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const contentType = contentTypeResult.value ?? "application/octet-stream";
-  if (!isSupportedImageContentType(contentType)) {
+  if (
+    !isSupportedImageContentType(contentType) ||
+    !isContentTypeSafeToDisplay(contentType)
+  ) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {

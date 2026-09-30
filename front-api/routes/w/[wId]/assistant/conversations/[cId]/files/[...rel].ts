@@ -3,6 +3,7 @@ import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import { getFileFormat, normalizeMimeType } from "@app/types/files";
 import {
   getConversationFilesBasePath,
   isResolveMountFilePathError,
@@ -15,7 +16,19 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import path from "path";
 import { z } from "zod";
+
+function isContentTypeSafeToDisplay(contentType: string): boolean {
+  return (
+    getFileFormat(normalizeMimeType(contentType))?.isSafeToDisplay ?? false
+  );
+}
+
+function contentDispositionAttachment(fileName: string): string {
+  const asciiFallback = fileName.replace(/[^\x20-\x7E\/\\]/g, "_");
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
 
 const ParamsSchema = z.object({
   cId: z.string(),
@@ -101,9 +114,15 @@ app.get("/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
       "Error streaming conversation file (GCS)"
     )
   );
+  const headers: Record<string, string> = { "Content-Type": contentType };
+  if (!isContentTypeSafeToDisplay(contentType)) {
+    headers["Content-Disposition"] = contentDispositionAttachment(
+      path.posix.basename(normalizedGcsPath)
+    );
+  }
   return new Response(readableToReadableStream(readStream), {
     status: 200,
-    headers: { "Content-Type": contentType },
+    headers,
   });
 });
 

@@ -1,10 +1,23 @@
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { getFileFormat, normalizeMimeType } from "@app/types/files";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import path from "path";
 import { z } from "zod";
+
+function isContentTypeSafeToDisplay(contentType: string): boolean {
+  return (
+    getFileFormat(normalizeMimeType(contentType))?.isSafeToDisplay ?? false
+  );
+}
+
+function contentDispositionAttachment(fileName: string): string {
+  const asciiFallback = fileName.replace(/[^\x20-\x7E\/\\]/g, "_");
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
 
 const ParamsSchema = z.object({
   sId: z.string(),
@@ -51,9 +64,15 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
 
   const readStream = file.getReadStream({ auth, version: "original" });
   const webStream = readableToReadableStream(readStream);
+  const headers: Record<string, string> = { "Content-Type": file.contentType };
+  if (!isContentTypeSafeToDisplay(file.contentType)) {
+    headers["Content-Disposition"] = contentDispositionAttachment(
+      path.posix.basename(file.fileName)
+    );
+  }
   return new Response(webStream, {
     status: 200,
-    headers: { "Content-Type": file.contentType },
+    headers,
   });
 });
 
