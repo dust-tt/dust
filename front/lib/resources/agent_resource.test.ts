@@ -1546,6 +1546,39 @@ describe("AgentResource", () => {
       expect(await resource.listActions(adminAuth)).toEqual([]);
     });
 
+    it("lists an unreadable agent's tools only when the filtering is dangerously skipped", async () => {
+      const { agent, adminAuth } = await setupHiddenAgentWithTool();
+
+      const resource = await AgentResource.fetchById(adminAuth, agent.sId);
+
+      assert(resource);
+      expect(await resource.listActions(adminAuth)).toEqual([]);
+      expect(
+        await resource.listActions(adminAuth, {
+          permissionFiltering: "dangerously_skip",
+        })
+      ).toHaveLength(1);
+    });
+
+    it("keeps an unreadable agent's tools when an admin changes its model in bulk", async () => {
+      const { agent, adminAuth } = await setupHiddenAgentWithTool();
+
+      const result = await AgentResource.bulkUpdate(adminAuth, [agent.sId], {
+        model: { temperature: 0.42 },
+      });
+
+      expect(result.updatedAgentIds).toEqual([agent.sId]);
+      const updated = await AgentResource.fetchById(adminAuth, agent.sId);
+      assert(updated);
+      expect(updated.version).toBe(agent.version + 1);
+      expect(updated.modelConfiguration.temperature).toBe(0.42);
+      expect(
+        await updated.listActions(adminAuth, {
+          permissionFiltering: "dangerously_skip",
+        })
+      ).toHaveLength(1);
+    });
+
     it("exposes the content and tools to an admin with the flag, without granting read", async () => {
       const { agent, adminAuth } = await setupHiddenAgentWithTool();
       await FeatureFlagFactory.basic(

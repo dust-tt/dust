@@ -186,6 +186,10 @@ export type AgentResourceInstructions = {
   instructionsHtml: string | null;
 };
 
+export type AgentActionsFetchOptions = {
+  permissionFiltering?: "default" | "dangerously_skip";
+};
+
 const AGENT_INSTRUCTIONS_ATTRIBUTES = [
   "instructions",
   "instructionsHtml",
@@ -1697,9 +1701,14 @@ export class AgentResource
   // Global agents' tools are code-defined and depend on workspace data (data sources, tool views),
   // so they are only built, through the full global agent build, when asked for.
   async listActions(
-    auth: Authenticator
+    auth: Authenticator,
+    options: AgentActionsFetchOptions = {}
   ): Promise<MCPServerConfigurationType[]> {
-    const actionsByAgent = await AgentResource.batchListActions(auth, [this]);
+    const actionsByAgent = await AgentResource.batchListActions(
+      auth,
+      [this],
+      options
+    );
     const actions = actionsByAgent.get(this);
     assert(actions !== undefined);
 
@@ -1710,7 +1719,9 @@ export class AgentResource
    * @cc [owner:tdraier,label:security] actions-require-read
    * Tools belong to a configuration version (see `batch-results-by-resource`). An agent whose
    * content the caller cannot view (see `agent-content-visibility`) MUST get `[]`: its tools carry
-   * its knowledge (data sources, tables), as private as its instructions.
+   * its knowledge (data sources, tables), as private as its instructions. The only exception is
+   * `permissionFiltering: "dangerously_skip"`, reserved for carrying a version's tools over
+   * unchanged when re-saving it (`buildResaveParams`); its result MUST NOT be exposed to the caller.
    */
   /**
    * @cc [owner:tdraier,label:performance] actions-batched-per-kind
@@ -1720,11 +1731,13 @@ export class AgentResource
    */
   static async batchListActions(
     auth: Authenticator,
-    agents: AgentResource[]
+    agents: AgentResource[],
+    { permissionFiltering = "default" }: AgentActionsFetchOptions = {}
   ): Promise<Map<AgentResource, MCPServerConfigurationType[]>> {
-    const viewableAgents = agents.filter((agent) =>
-      agent.resolveCanViewContent(auth)
-    );
+    const isListable = (agent: AgentResource) =>
+      permissionFiltering === "dangerously_skip" ||
+      agent.resolveCanViewContent(auth);
+    const viewableAgents = agents.filter(isListable);
     const [globalAgents, customAgents] = partition(
       viewableAgents,
       (agent) => agent.scope === "global"
@@ -1757,7 +1770,7 @@ export class AgentResource
 
     return new Map(
       agents.map((agent) => {
-        if (!agent.resolveCanViewContent(auth)) {
+        if (!isListable(agent)) {
           return [agent, []];
         }
         const actions =
@@ -2183,21 +2196,16 @@ export class AgentResource
       );
     }
 
-    const [content, tags, editors, skills] = await Promise.all([
+    const [content, tags, editors, skills, allActions] = await Promise.all([
       this.fetchInstructions(),
       this.listTags(auth),
       this.listEditors(auth),
       // No space filtering: tools and skills are carried over as-is, so re-saving an agent behind a
       // space the caller cannot read keeps them rather than dropping them.
       this.listSkills(auth, { permissionFiltering: "dangerously_skip" }),
+      this.listActions(auth, { permissionFiltering: "dangerously_skip" }),
     ]);
-    const actionsByConfigId = await fetchMCPServerActionConfigurations(auth, {
-      configurationModelIds: [this.agentConfigurationModelId],
-      variant: "full",
-    });
-    const actions = (
-      actionsByConfigId.get(this.agentConfigurationModelId) ?? []
-    ).filter(isServerSideMCPServerConfiguration);
+    const actions = allActions.filter(isServerSideMCPServerConfiguration);
 
     return {
       name: this.name,
