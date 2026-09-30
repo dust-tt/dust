@@ -63,7 +63,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   frame_documents: {
     description:
-      "Expose editable Document guidance and examples in the Frame skill",
+      "Expose editable Document guidance and examples in the Frame skill. Superseded by dust_documents (co-edition): do not roll out to other workspaces.",
     stage: "dust_only",
     owner: "flvndvd",
   },
