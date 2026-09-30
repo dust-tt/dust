@@ -11,7 +11,7 @@ import { config as regionConfig } from "@app/lib/api/regions/config";
 import { filterEnabledModels } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import { listActiveAgentModels } from "@app/lib/resources/agent_configuration_rows";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -127,7 +127,7 @@ export async function listActiveAgentsUsingNonRegionalModels(
     }
   }
 
-  const activeAgents = await AgentResource.listActiveAgentModels(auth);
+  const activeAgents = await listActiveAgentModels(auth);
 
   return activeAgents
     .filter(

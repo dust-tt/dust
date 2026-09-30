@@ -1,6 +1,7 @@
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import { listVersionAuthors } from "@app/lib/resources/agent_configuration_rows";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
@@ -35,7 +36,7 @@ async function fetchRecentAuthorIdsWithVersionForAgents(
     return new Map();
   }
 
-  const rows = await AgentResource.listVersionAuthors(auth, agentIds);
+  const rows = await listVersionAuthors(auth, agentIds);
 
   const byAgentId = new Map<string, { authorId: number; version: number }[]>();
   for (const { agentId, authorId, version } of rows) {
