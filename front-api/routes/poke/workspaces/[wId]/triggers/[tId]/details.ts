@@ -1,4 +1,4 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationForPoke } from "@app/lib/api/poke/agent_configurations";
 import type { PokeGetTriggerDetails } from "@app/lib/api/poke/triggers";
 import { makeWebhookRequestsGcsUrl } from "@app/lib/api/webhook_source";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -35,10 +35,10 @@ app.get(
       });
     }
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: trigger.agentConfigurationId,
-      variant: "full",
-    });
+    const agentConfiguration = await getAgentConfigurationForPoke(
+      auth,
+      trigger.agentConfigurationId
+    );
     if (!agentConfiguration) {
       return apiError(ctx, {
         status_code: 404,
