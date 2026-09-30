@@ -1,4 +1,4 @@
-import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/inputBarActions";
 import { Minimize01, UploadCloud02 } from "@dust-tt/sparkle";
 import type React from "react";
 
@@ -10,7 +10,7 @@ export type InputBarSlashMenuMode = "commands" | "attach-only";
  * @cc [owner:smb2268,label:product] slash-menu-mode-from-actions
  * A composer with the `capabilities` action MUST get the `commands` menu, one with `attachment`
  * but not `capabilities` MUST get `attach-only`, and one with neither MUST get `null`, meaning no
- * slash menu and a "+" that keeps its own menu.
+ * slash menu and no "+" (the extension composer's "+" is built by the container).
  */
 export function getInputBarSlashMenuMode(
   actions: InputBarAction[]
