@@ -123,7 +123,7 @@ async function createInstructionSuggestions({
   // for instructionsHtml used in conflict pruning).
   const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-  if (!agent || agent.scope === "global" || !agent.isFull()) {
+  if (!agent || agent.scope === "global" || !agent.canViewContent) {
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
@@ -478,7 +478,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   inspect_available_agent: async ({ agentId }, { auth }) => {
     const agent = await AgentResource.fetchById(auth, agentId);
 
-    if (!agent || !agent.isFull()) {
+    if (!agent || !agent.canViewContent) {
       return new Err(
         new MCPError(`Agent not found or not accessible: ${agentId}`, {
           tracked: false,
@@ -486,8 +486,8 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const [content, actions, skills] = await Promise.all([
-      agent.fetchContent(),
+    const [{ instructions }, actions, skills] = await Promise.all([
+      agent.fetchInstructions(),
       agent.listActions(auth),
       agent.listSkills(auth),
     ]);
@@ -498,7 +498,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       )
       .map((action) => action.mcpServerViewId);
     const agentDetails = agent.toInspectionJSON({
-      content,
+      instructions,
       toolIds,
       skillIds: skills.map((skill) => skill.sId),
     });

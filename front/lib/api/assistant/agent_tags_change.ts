@@ -82,7 +82,7 @@ export async function validateAgentTagsChange(
   }
 
   // Changing tags saves a new version, which is rebuilt from the agent's content.
-  if (!agent.isFull()) {
+  if (!agent.canViewContent) {
     return new Err(
       new DustError(
         "unauthorized",

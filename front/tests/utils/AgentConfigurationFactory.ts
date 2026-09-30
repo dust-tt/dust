@@ -159,10 +159,13 @@ export class AgentConfigurationFactory {
     }
 
     const { resource } = result.value;
-    const content = resource.isFull() ? await resource.fetchContent() : null;
+    const { instructions } = resource.canViewContent
+      ? await resource.fetchInstructions()
+      : { instructions: null };
 
     return {
-      ...resource.toJSON({ content }),
+      ...resource.toJSON(),
+      instructions,
       tags: [],
       userFavorite: false,
       instructionsHtml: overrides.instructionsHtml ?? null,

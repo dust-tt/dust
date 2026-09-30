@@ -193,7 +193,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       ]);
     }
 
-    if (!agent.isFull()) {
+    if (!agent.canViewContent) {
       return new Ok([
         {
           type: "text" as const,
@@ -208,8 +208,8 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       ]);
     }
 
-    const [content, actions, skills] = await Promise.all([
-      agent.fetchContent(),
+    const [{ instructions }, actions, skills] = await Promise.all([
+      agent.fetchInstructions(),
       agent.listActions(auth),
       agent.listSkills(auth),
     ]);
@@ -227,7 +227,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
           `- Skills: ${skillNames || "none"}\n` +
           `- Tools: ${toolNames || "none"}\n\n` +
           "Instructions (full system prompt):\n" +
-          `${content.instructions ?? "(no instructions)"}`,
+          `${instructions ?? "(no instructions)"}`,
       },
     ]);
   },

@@ -644,7 +644,7 @@ describe("saveAgentConfiguration with pending agent", () => {
       authenticator,
       pending.value.sId
     );
-    assert(resource?.isFull());
+    assert(resource?.canViewContent);
 
     const result = await resource.updateConfiguration(authenticator, {
       scope: "visible",
@@ -1251,7 +1251,7 @@ describe("AgentResource.archive and AgentResource.restore", () => {
       )
     ).toEqual(new Ok(true));
     const archived = await AgentResource.fetchById(authenticator, agent.sId);
-    assert(archived?.isFull());
+    assert(archived?.canViewContent);
 
     const result = await archived.updateConfiguration(authenticator, {
       status: "active",

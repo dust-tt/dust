@@ -52,7 +52,6 @@ import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agen
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { fetchCustomSkillById } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
-import type { FullAgentResource } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -90,7 +89,7 @@ type PlannedChange =
       agent: AgentResource;
       singletons: SingletonAgentSuggestionData[];
       instructions: {
-        agent: FullAgentResource;
+        agent: AgentResource;
         edits: InstructionSuggestionEditInput[];
       } | null;
       skills: SkillsSuggestionType[];
@@ -276,7 +275,7 @@ async function planAgentEdit(
   }
 
   let instructions: {
-    agent: FullAgentResource;
+    agent: AgentResource;
     edits: InstructionSuggestionEditInput[];
   } | null = null;
   if (instructionEdits && instructionEdits.length > 0) {
@@ -289,7 +288,7 @@ async function planAgentEdit(
       return validation;
     }
     assert(
-      agent.isFull(),
+      agent.canViewContent,
       "Validated instruction edits imply a readable agent."
     );
     instructions = { agent, edits: validation.value };

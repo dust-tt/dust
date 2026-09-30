@@ -138,7 +138,7 @@ describe("AgentResource", () => {
 
     for (const resource of [byId, byModelId]) {
       expect(resource).not.toBeNull();
-      expect(resource?.isFull()).toBe(true);
+      expect(resource?.canViewContent).toBe(true);
       expect(resource?.id).toBe(agent.agentModelId);
       expect(resource?.sId).toBe(agent.sId);
       expect(resource?.workspaceId).toBe(testContext.workspace.id);
@@ -173,9 +173,9 @@ describe("AgentResource", () => {
     );
     const asAdmin = await AgentResource.fetchById(adminAuth, agent.sId);
 
-    expect(asAuthor?.isFull()).toBe(true);
+    expect(asAuthor?.canViewContent).toBe(true);
     expect(asAuthor?.createdAt.getTime()).toBe(createdAt.getTime());
-    expect(asAdmin?.isFull()).toBe(false);
+    expect(asAdmin?.canViewContent).toBe(false);
     expect(asAdmin?.createdAt.getTime()).toBe(createdAt.getTime());
   });
 
@@ -212,9 +212,9 @@ describe("AgentResource", () => {
 
     // The tables keyed by that id (skills, tools, tags) are read by callers who cannot read the
     // agent, so the id is core: the light shape carries it just like the full one.
-    expect(asAuthor?.isFull()).toBe(true);
+    expect(asAuthor?.canViewContent).toBe(true);
     expect(asAuthor?.agentConfigurationModelId).toBe(currentConfiguration.id);
-    expect(asAdmin?.isFull()).toBe(false);
+    expect(asAdmin?.canViewContent).toBe(false);
     expect(asAdmin?.agentConfigurationModelId).toBe(currentConfiguration.id);
   });
 
@@ -247,8 +247,8 @@ describe("AgentResource", () => {
     const asAdmin = await AgentResource.fetchById(adminAuth, agent.sId);
     assert(asAuthor && asAdmin);
 
-    expect(asAuthor.isFull()).toBe(true);
-    expect(asAdmin.isFull()).toBe(false);
+    expect(asAuthor.canViewContent).toBe(true);
+    expect(asAdmin.canViewContent).toBe(false);
     for (const resource of [asAuthor, asAdmin]) {
       expect({
         name: resource.name,
@@ -290,9 +290,9 @@ describe("AgentResource", () => {
     );
     const asAdmin = await AgentResource.fetchById(adminAuth, agent.sId);
 
-    expect(asAuthor?.isFull()).toBe(true);
+    expect(asAuthor?.canViewContent).toBe(true);
     expect(asAdmin).not.toBeNull();
-    expect(asAdmin?.isFull()).toBe(false);
+    expect(asAdmin?.canViewContent).toBe(false);
     expect(asAdmin?.sId).toBe(agent.sId);
   });
 
@@ -358,7 +358,7 @@ describe("AgentResource", () => {
       expect(auth.can("list", resource)).toBe(true);
       expect(auth.can("read", resource)).toBe(false);
       expect(auth.can("write", resource)).toBe(false);
-      expect(resource.isFull()).toBe(false);
+      expect(resource.canViewContent).toBe(false);
     }
   });
 
@@ -509,14 +509,16 @@ describe("AgentResource", () => {
       testContext.authenticator,
       agent.sId
     );
-    assert(full?.isFull());
+    assert(full?.canViewContent);
 
     const restored = AgentResource.fromSnapshot(full.toSnapshot());
 
     // The restored resource is indistinguishable from the one it was serialized from.
-    expect(restored.isFull()).toBe(true);
-    assert(restored.isFull());
-    expect(await restored.fetchContent()).toEqual(await full.fetchContent());
+    expect(restored.canViewContent).toBe(true);
+    assert(restored.canViewContent);
+    expect(await restored.fetchInstructions()).toEqual(
+      await full.fetchInstructions()
+    );
     expect(restored.toSnapshot()).toEqual(full.toSnapshot());
   });
 
@@ -543,7 +545,7 @@ describe("AgentResource", () => {
       testContext.authenticator,
       agent.sId
     );
-    assert(resource?.isFull());
+    assert(resource?.canViewContent);
 
     // The snapshot round-trip must keep the agent row's `createdAt`, not fall back to the version's.
     expect(resource.createdAt.getTime()).toBe(agentCreatedAt.getTime());
@@ -561,12 +563,12 @@ describe("AgentResource", () => {
       testContext.authenticator,
       agent.sId
     );
-    assert(full?.isFull());
+    assert(full?.canViewContent);
     const snapshot = full.toSnapshot();
 
     // Every `AgentConfigurationModel` column is folded into the resource's identity/core/version
     // metadata, explicitly excluded, or content — which is never cached (see
-    // `agent-content-on-demand`). When this fails the model changed shape: reconcile the snapshot
+    // `agent-instructions-on-demand`). When this fails the model changed shape: reconcile the snapshot
     // and bump `AGENT_RESOURCE_CACHE_VERSION`.
     const foldedIntoIdentityOrCore = new Set([
       // Carried as the core `agentConfigurationModelId`, not `content`.
@@ -630,8 +632,8 @@ describe("AgentResource", () => {
       [agent.sId]
     );
 
-    assert(cached?.isFull());
-    assert(fromDatabase?.isFull());
+    assert(cached?.canViewContent);
+    assert(fromDatabase?.canViewContent);
     expect(cached.toSnapshot()).toEqual(fromDatabase.toSnapshot());
   });
 
@@ -685,7 +687,7 @@ describe("AgentResource", () => {
       testContext.authenticator,
       agent.sId
     );
-    assert(active?.isFull());
+    assert(active?.canViewContent);
     expect(active.status).toBe("active");
 
     await (await AgentResource.fetchById(
@@ -698,7 +700,7 @@ describe("AgentResource", () => {
       testContext.authenticator,
       agent.sId
     );
-    assert(archived?.isFull());
+    assert(archived?.canViewContent);
     expect(archived.status).toBe("archived");
   });
 
@@ -752,7 +754,7 @@ describe("AgentResource", () => {
       testContext.authenticator,
       agent.sId
     );
-    assert(v0?.isFull());
+    assert(v0?.canViewContent);
     expect(v0.description).toBe("v0");
 
     // A new active version supersedes it; createAgentConfiguration invalidates the cache.
@@ -766,7 +768,7 @@ describe("AgentResource", () => {
       testContext.authenticator,
       agent.sId
     );
-    assert(latest?.isFull());
+    assert(latest?.canViewContent);
     expect(latest.description).toBe("v1");
     expect(latest.version).toBeGreaterThan(v0.version);
   });
@@ -1064,7 +1066,7 @@ describe("AgentResource", () => {
     );
     const adminResource = await AgentResource.fetchById(adminAuth, agent.sId);
     expect(adminResource).not.toBeNull();
-    expect(adminResource?.isFull()).toBe(false);
+    expect(adminResource?.canViewContent).toBe(false);
   });
 
   it("resolves an agent to full when all its requested spaces are readable", async () => {
@@ -1084,7 +1086,7 @@ describe("AgentResource", () => {
     );
 
     const resource = await AgentResource.fetchById(otherAuth, agent.sId);
-    expect(resource?.isFull()).toBe(true);
+    expect(resource?.canViewContent).toBe(true);
   });
 
   it("gates read for system keys by their actual space access, not `isSystemKey()`", async () => {
@@ -1109,7 +1111,7 @@ describe("AgentResource", () => {
 
     // A full system key reads every space via its wildcard grant.
     const asFullKey = await AgentResource.fetchById(fullKeyAuth, agent.sId);
-    expect(asFullKey?.isFull()).toBe(true);
+    expect(asFullKey?.canViewContent).toBe(true);
 
     // A system key downscoped to the global group only keeps `isSystemKey()` but resolves just those
     // groups' permissions, so the restricted space is unreadable and the agent is not readable.
@@ -1121,7 +1123,7 @@ describe("AgentResource", () => {
       downscopedAuth,
       agent.sId
     );
-    expect(asDownscoped?.isFull()).toBe(false);
+    expect(asDownscoped?.canViewContent).toBe(false);
   });
 
   it("keeps code-defined global agents read-only and audience-scoped", async () => {
@@ -1454,14 +1456,16 @@ describe("AgentResource", () => {
         GLOBAL_AGENTS_SID.HELPER
       );
 
-      assert(helper?.isFull());
-      expect((await helper.fetchContent()).instructions).toContain("@help");
+      assert(helper?.canViewContent);
+      expect((await helper.fetchInstructions()).instructions).toContain(
+        "@help"
+      );
       expect(Array.isArray(await helper.listActions(authenticator))).toBe(true);
     });
   });
 
-  describe("content on demand", () => {
-    it("reads the content of the resource's own version when asked, not at fetch time", async () => {
+  describe("instructions on demand", () => {
+    it("reads the instructions of the resource's own version when asked, not at fetch time", async () => {
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
         { instructions: "before" }
@@ -1470,20 +1474,20 @@ describe("AgentResource", () => {
         testContext.authenticator,
         agent.sId
       );
-      assert(resource?.isFull());
+      assert(resource?.canViewContent);
 
       await AgentConfigurationModel.update(
         { instructions: "after", instructionsHtml: "<p>after</p>" },
         { where: { id: agent.id, workspaceId: testContext.workspace.id } }
       );
 
-      expect(await resource.fetchContent()).toEqual({
+      expect(await resource.fetchInstructions()).toEqual({
         instructions: "after",
         instructionsHtml: "<p>after</p>",
       });
     });
 
-    it("batches content by resource: null for a light one, in memory for a global one", async () => {
+    it("batches instructions by resource: null for a light one, in memory for a global one", async () => {
       const hidden = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
         {
@@ -1511,19 +1515,18 @@ describe("AgentResource", () => {
         GLOBAL_AGENTS_SID.HELPER,
       ]);
       const [lightHidden, fullVisible, helper] = resources;
-      expect(lightHidden.isFull()).toBe(false);
+      expect(lightHidden.canViewContent).toBe(false);
 
-      const contents = await AgentResource.batchFetchContent(resources);
+      const instructionsByAgent =
+        await AgentResource.batchFetchInstructions(resources);
 
-      expect(contents.get(lightHidden)).toBeNull();
-      expect(contents.get(fullVisible)?.instructions).toBe(
+      expect(instructionsByAgent.get(lightHidden)).toBeNull();
+      expect(instructionsByAgent.get(fullVisible)?.instructions).toBe(
         "visible instructions"
       );
-      expect(contents.get(helper)?.instructions).toContain("@help");
-      expect(lightHidden.toJSON({ content: null })).toMatchObject({
-        instructions: null,
-        isRedacted: true,
-      });
+      expect(instructionsByAgent.get(helper)?.instructions).toContain("@help");
+      expect(lightHidden.toJSON()).toMatchObject({ isRedacted: true });
+      expect(fullVisible.toJSON()).not.toHaveProperty("instructions");
     });
   });
 
@@ -1566,7 +1569,7 @@ describe("AgentResource", () => {
       const resource = await AgentResource.fetchById(adminAuth, agent.sId);
 
       assert(resource);
-      expect(resource.isFull()).toBe(false);
+      expect(resource.canViewContent).toBe(false);
       expect(await resource.listActions(adminAuth)).toEqual([]);
     });
 
@@ -1579,8 +1582,8 @@ describe("AgentResource", () => {
 
       const resource = await AgentResource.fetchById(adminAuth, agent.sId);
 
-      assert(resource?.isFull());
-      expect((await resource.fetchContent()).instructions).toBe(
+      assert(resource?.canViewContent);
+      expect((await resource.fetchInstructions()).instructions).toBe(
         agent.instructions
       );
       expect(await resource.listActions(adminAuth)).toHaveLength(1);
@@ -1605,8 +1608,8 @@ describe("AgentResource", () => {
         configurations
       );
 
-      assert(resource?.isFull());
-      expect((await resource.fetchContent()).instructions).toBe(
+      assert(resource?.canViewContent);
+      expect((await resource.fetchInstructions()).instructions).toBe(
         agent.instructions
       );
       expect(adminAuth.can("read", resource)).toBe(false);
@@ -1723,17 +1726,17 @@ describe("AgentResource", () => {
         await current.listVersions(authenticator);
 
       expect(rest).toEqual([]);
-      assert(latest?.isFull() && previous?.isFull());
+      assert(latest?.canViewContent && previous?.canViewContent);
       expect(latest.isCurrentVersion).toBe(true);
       expect(latest.name).toBe("Versioned agent v1");
-      expect((await latest.fetchContent()).instructions).toBe(
+      expect((await latest.fetchInstructions()).instructions).toBe(
         "v1 instructions"
       );
       expect(await latest.listActions(authenticator)).toEqual([]);
       expect(previous.isCurrentVersion).toBe(false);
       expect(previous.version).toBe(agent.version);
       expect(previous.name).toBe("Versioned agent");
-      expect((await previous.fetchContent()).instructions).toBe(
+      expect((await previous.fetchInstructions()).instructions).toBe(
         "v0 instructions"
       );
       expect(await previous.listActions(authenticator)).toHaveLength(1);
@@ -1774,7 +1777,7 @@ describe("AgentResource", () => {
         authenticator,
         agent.sId
       );
-      assert(editorView?.isFull());
+      assert(editorView?.canViewContent);
       const { agentOwnerAuth: memberAuth } = await setupAgentOwner(
         workspace,
         "user"
@@ -1941,7 +1944,7 @@ describe("AgentResource", () => {
       );
 
       const before = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(before?.isFull());
+      assert(before?.canViewContent);
       const toolsBefore = (
         await fetchMCPServerActionConfigurations(authenticator, {
           configurationModelIds: [before.agentConfigurationModelId],
@@ -1968,7 +1971,7 @@ describe("AgentResource", () => {
       });
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(after?.isFull());
+      assert(after?.canViewContent);
       // A new version, with the new model, keeping the agent's own temperature.
       expect(after.version).toBe(agent.version + 1);
       expect(after.modelConfiguration.modelId).toBe("gpt-5");
@@ -2014,7 +2017,7 @@ describe("AgentResource", () => {
         authenticator,
         agent.sId
       );
-      assert(afterFirst?.isFull());
+      assert(afterFirst?.canViewContent);
       expect(afterFirst.version).toBe(agent.version + 1);
 
       // Re-applying the exact same model is a no-op: no new version is created.
@@ -2038,7 +2041,7 @@ describe("AgentResource", () => {
         authenticator,
         agent.sId
       );
-      assert(afterSecond?.isFull());
+      assert(afterSecond?.canViewContent);
       expect(afterSecond.version).toBe(afterFirst.version);
     });
 
@@ -2114,7 +2117,7 @@ describe("AgentResource", () => {
       });
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(after?.isFull());
+      assert(after?.canViewContent);
       // A new version was created and both tags are attached to it.
       expect(after.version).toBe(agent.version + 1);
       expect(await currentTagIds(authenticator, agent.sId)).toEqual(
@@ -2144,7 +2147,7 @@ describe("AgentResource", () => {
       });
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(after?.isFull());
+      assert(after?.canViewContent);
       expect(after.version).toBe(agent.version + 1);
       expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
     });
@@ -2168,7 +2171,7 @@ describe("AgentResource", () => {
       expect(result.updatedAgentIds).toEqual([agent.sId]);
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(after?.isFull());
+      assert(after?.canViewContent);
       expect(after.version).toBe(agent.version);
     });
 
@@ -2233,7 +2236,7 @@ describe("AgentResource", () => {
       assert(res.isErr());
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(after?.isFull());
+      assert(after?.canViewContent);
       expect(after.version).toBe(agent.version);
       expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
     });
@@ -2248,7 +2251,7 @@ describe("AgentResource", () => {
         { scope: "visible" }
       );
       const before = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(before?.isFull());
+      assert(before?.canViewContent);
       expect(authenticator.can("write", before)).toBe(true);
       expect(authenticator.hasWorkspacePermission("publish", "agent")).toBe(
         false
@@ -2271,7 +2274,7 @@ describe("AgentResource", () => {
       assert(res.isErr());
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(after?.isFull());
+      assert(after?.canViewContent);
       expect(after.version).toBe(agent.version);
       expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
       const editorIds = (await after.listEditors(authenticator))?.map(
@@ -2322,7 +2325,7 @@ describe("AgentResource", () => {
       await mcpConfig.update({ jsonSchema: oldSchema });
 
       const before = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(before?.isFull());
+      assert(before?.canViewContent);
       const baseParams = await before.buildResaveParams(authenticator);
       assert(baseParams.actions);
 
@@ -2330,7 +2333,7 @@ describe("AgentResource", () => {
       const noop = await before.updateConfiguration(authenticator, baseParams);
       assert(noop.isOk());
       const afterNoop = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(afterNoop?.isFull());
+      assert(afterNoop?.canViewContent);
       expect(afterNoop.version).toBe(before.version);
 
       // Editing the schema under the `id` property is a real change and MUST create a new version,
@@ -2348,7 +2351,7 @@ describe("AgentResource", () => {
       );
       assert(edited.isOk());
       const afterEdit = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(afterEdit?.isFull());
+      assert(afterEdit?.canViewContent);
       expect(afterEdit.version).toBe(before.version + 1);
     });
   });
@@ -2362,7 +2365,7 @@ describe("AgentResource", () => {
         { scope: "visible" }
       );
       const before = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(before?.isFull());
+      assert(before?.canViewContent);
       const baseParams = await before.buildResaveParams(authenticator);
 
       const newEditor = await UserFactory.basic();
@@ -2375,7 +2378,7 @@ describe("AgentResource", () => {
       assert(res.isOk());
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(after?.isFull());
+      assert(after?.canViewContent);
       // No new version was created for an editor-only change.
       expect(after.version).toBe(before.version);
       const editorIds = (await after.listEditors(authenticator))?.map(
@@ -2392,7 +2395,7 @@ describe("AgentResource", () => {
         { scope: "visible" }
       );
       const before = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(before?.isFull());
+      assert(before?.canViewContent);
       const baseParams = await before.buildResaveParams(authenticator);
 
       const res = await before.updateConfiguration(authenticator, {
@@ -2402,7 +2405,7 @@ describe("AgentResource", () => {
       assert(res.isOk());
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(after?.isFull());
+      assert(after?.canViewContent);
       expect(after.version).toBe(before.version + 1);
       expect(after.description).toBe("A brand new description");
       expect(after.scope).toBe("visible");
@@ -2435,7 +2438,7 @@ describe("AgentResource", () => {
       );
 
       const before = await AgentResource.fetchById(auth, agent.sId);
-      assert(before?.isFull());
+      assert(before?.canViewContent);
       const baseParams = await before.buildResaveParams(auth);
 
       // A definition change bumps the version (archiving the old row); the scope change must land on
@@ -2448,7 +2451,7 @@ describe("AgentResource", () => {
       assert(res.isOk());
 
       const after = await AgentResource.fetchById(auth, agent.sId);
-      assert(after?.isFull());
+      assert(after?.canViewContent);
       expect(after.version).toBe(before.version + 1);
       expect(after.description).toBe("A brand new description");
       expect(after.scope).toBe("hidden");
@@ -2462,7 +2465,7 @@ describe("AgentResource", () => {
         { scope: "visible" }
       );
       const before = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(before?.isFull());
+      assert(before?.canViewContent);
       const baseParams = await before.buildResaveParams(authenticator);
 
       // A regular editor holds `write`/`admin` on the agent but not the workspace `publish`
@@ -2476,7 +2479,7 @@ describe("AgentResource", () => {
       assert(res.isErr());
 
       const after = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(after?.isFull());
+      assert(after?.canViewContent);
       expect(after.version).toBe(before.version);
       expect(after.scope).toBe("visible");
       expect(after.description).toBe(before.description);

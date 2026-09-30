@@ -37,7 +37,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
 
       if (
         !agentVersionResource ||
-        !agentVersionResource.isFull() ||
+        !agentVersionResource.canViewContent ||
         !auth.can("read", agentVersionResource)
       ) {
         return new Err(
@@ -50,14 +50,14 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
         );
       }
 
-      const [content, tags, actions, skills] = await Promise.all([
-        agentVersionResource.fetchContent(),
+      const [{ instructions }, tags, actions, skills] = await Promise.all([
+        agentVersionResource.fetchInstructions(),
         agentVersionResource.listTags(auth),
         agentVersionResource.listActions(auth),
         agentVersionResource.listSkills(auth),
       ]);
       const agentInfo = agentVersionResource.toSidekickAgentInfoJSON({
-        content,
+        instructions,
         tags,
         actions,
         skills,
