@@ -553,16 +553,18 @@ describe("search-backed Manage Agents", () => {
       screen.getByRole("checkbox", { name: "Not published" })
     );
     await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
-    const meCheckbox = await screen.findByRole("checkbox", { name: "Me" });
+    const currentUserCheckbox = await screen.findByRole("checkbox", {
+      name: `${editor.fullName} (You)`,
+    });
     const editorCheckboxes = within(screen.getByRole("dialog"))
       .getAllByRole("checkbox")
       .filter((checkbox) => checkbox.id.startsWith("agent-filter-option-"));
     expect(editorCheckboxes).toHaveLength(2);
-    expect(editorCheckboxes[0]).toBe(meCheckbox);
+    expect(editorCheckboxes[0]).toBe(currentUserCheckbox);
     expect(
       screen.queryByRole("checkbox", { name: editor.fullName })
     ).not.toBeInTheDocument();
-    await userEvent.click(meCheckbox);
+    await userEvent.click(currentUserCheckbox);
     await userEvent.click(screen.getByRole("tab", { name: "Models" }));
     await userEvent.click(
       await screen.findByRole("checkbox", {
@@ -584,6 +586,7 @@ describe("search-backed Manage Agents", () => {
     });
 
     await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(screen.getByText(`${editor.fullName} (You)`)).toBeInTheDocument();
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         scope: ["hidden"],
