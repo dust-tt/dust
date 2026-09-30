@@ -167,6 +167,13 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     xhigh: "ultra",
     maximal: "ultra",
   },
+  "gpt-6.1-sol": {
+    low: "premium",
+    medium: "premium",
+    high: "premium",
+    xhigh: "premium",
+    maximal: "premium",
+  },
   "gpt-6-sol": {
     none: "balanced",
     low: "premium",
