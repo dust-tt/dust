@@ -698,6 +698,8 @@ export class AgentResource
       scope: "global",
       status: configuration.status,
       versionAuthorId: null,
+      // The code-defined model can carry `metaData` (e.g. the NOOP static reply), which no
+      // configuration column holds, so it is taken as-is rather than from the row built above.
       modelConfiguration: configuration.model,
     } satisfies Pick<
       AgentResource,
