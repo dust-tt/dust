@@ -163,9 +163,9 @@ describe("reinforcement seed script integration test", () => {
     expect(allReinforcement).toBe(true);
 
     // Each reinforcement suggestion belongs to a batch of its own.
-    const batchIds = skillSuggestions.map((s) => s.batchId);
-    expect(batchIds.every((id) => id !== null)).toBe(true);
-    expect(new Set(batchIds).size).toBe(skillSuggestions.length);
+    const batchModelIds = skillSuggestions.map((s) => s.batchId);
+    expect(batchModelIds.every((id) => id !== null)).toBe(true);
+    expect(new Set(batchModelIds).size).toBe(skillSuggestions.length);
 
     // First suggestion includes an inline tool reference in its instruction edit.
     const withInlineToolReference = skillSuggestions.find((s) =>

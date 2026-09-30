@@ -26,14 +26,17 @@ export async function updateSkillSuggestionsState(
   suggestions: SkillSuggestionResource[],
   state: SkillSuggestionState
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
+  const workspaceModelId = auth.getNonNullableWorkspace().id;
   const batchModelIds = [
     ...new Set(removeNulls(suggestions.map((s) => s.batchId))),
   ];
   const batches = await BatchSuggestionResource.fetchByIds(
     auth,
     batchModelIds.map((id) =>
-      BatchSuggestionResource.modelIdToSId({ id, workspaceId })
+      BatchSuggestionResource.modelIdToSId({
+        id,
+        workspaceId: workspaceModelId,
+      })
     )
   );
 
