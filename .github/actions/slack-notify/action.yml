@@ -79,8 +79,9 @@ runs:
       if: (inputs.step == 'start' || inputs.step == 'spa_start') && steps.email.outputs.ok == 'true'
       id: slack_user
       shell: bash
+      env:
+        RESPONSE: ${{ steps.email.outputs.response }}
       run: |
-        RESPONSE='${{ steps.email.outputs.response }}'
         if ! SLACK_ID=$(echo "$RESPONSE" | jq -r '.user.id'); then
           echo "Failed to extract Slack user ID" >&2
           exit 0
