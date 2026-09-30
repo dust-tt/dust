@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import fileStorageConfig from "@app/lib/file_storage/config";
 
 /**
@@ -15,4 +16,8 @@ export async function getDestinationPrivateBucket() {
 
 export async function getDestinationTablesBucket() {
   return fileStorageConfig.getDustTablesBucket();
+}
+
+export async function getDestinationEgressPolicyBucket() {
+  return config.getEgressPolicyBucket();
 }
