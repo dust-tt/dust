@@ -2,12 +2,10 @@ import { buildDescendantMap } from "@app/lib/editor/instructions_block_conflict"
 import {
   hasSuggestionSelfConflict,
   instructionEditSetsConflict,
-  pruneConflictingSkillAvailabilitySuggestions,
   pruneConflictingSkillEditorsSuggestions,
   pruneConflictingSkillEditSuggestions,
-  pruneConflictingSkillNameSuggestions,
-  pruneConflictingSkillUserFacingDescriptionSuggestions,
   pruneOutdatedSkillEditSuggestions,
+  pruneSupersededSingletonSkillSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -576,7 +574,7 @@ describe("pruneConflictingSkillEditorsSuggestions", () => {
   });
 });
 
-describe("pruneConflictingSkillUserFacingDescriptionSuggestions", () => {
+describe("pruneSupersededSingletonSkillSuggestions: user_facing_description", () => {
   let authenticator: Awaited<
     ReturnType<typeof createResourceTest>
   >["authenticator"];
@@ -612,11 +610,9 @@ describe("pruneConflictingSkillUserFacingDescriptionSuggestions", () => {
     const other = await createDescription(skill, "Other wording.");
     const newer = await createDescription(skill, "Newer wording.");
 
-    await pruneConflictingSkillUserFacingDescriptionSuggestions(
-      authenticator,
-      skill,
-      [newer]
-    );
+    await pruneSupersededSingletonSkillSuggestions(authenticator, skill, [
+      newer,
+    ]);
 
     expect(await stateOf(older.sId)).toBe("outdated");
     expect(await stateOf(other.sId)).toBe("outdated");
@@ -641,11 +637,9 @@ describe("pruneConflictingSkillUserFacingDescriptionSuggestions", () => {
     );
     const newer = await createDescription(skill, "Newer wording.");
 
-    await pruneConflictingSkillUserFacingDescriptionSuggestions(
-      authenticator,
-      skill,
-      [newer]
-    );
+    await pruneSupersededSingletonSkillSuggestions(authenticator, skill, [
+      newer,
+    ]);
 
     expect(await stateOf(edit.sId)).toBe("pending");
     expect(await stateOf(otherSkillDescription.sId)).toBe("pending");
@@ -653,7 +647,7 @@ describe("pruneConflictingSkillUserFacingDescriptionSuggestions", () => {
   });
 });
 
-describe("pruneConflictingSkillNameSuggestions", () => {
+describe("pruneSupersededSingletonSkillSuggestions: name", () => {
   let authenticator: Awaited<
     ReturnType<typeof createResourceTest>
   >["authenticator"];
@@ -686,7 +680,9 @@ describe("pruneConflictingSkillNameSuggestions", () => {
     const older = await createName(skill, "Older Name");
     const newer = await createName(skill, "Newer Name");
 
-    await pruneConflictingSkillNameSuggestions(authenticator, skill, [newer]);
+    await pruneSupersededSingletonSkillSuggestions(authenticator, skill, [
+      newer,
+    ]);
 
     expect(await stateOf(older.sId)).toBe("outdated");
     expect(await stateOf(newer.sId)).toBe("pending");
@@ -707,15 +703,38 @@ describe("pruneConflictingSkillNameSuggestions", () => {
     );
     const newer = await createName(skill, "Newer Name");
 
-    await pruneConflictingSkillNameSuggestions(authenticator, skill, [newer]);
+    await pruneSupersededSingletonSkillSuggestions(authenticator, skill, [
+      newer,
+    ]);
 
     expect(await stateOf(edit.sId)).toBe("pending");
     expect(await stateOf(otherSkillName.sId)).toBe("pending");
     expect(await stateOf(approved.sId)).toBe("approved");
   });
+
+  it("keeps a pending suggestion of another singleton kind", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const availability = await SkillSuggestionFactory.create(
+      authenticator,
+      skill,
+      {
+        kind: "availability",
+        suggestion: { availability: "workspace_users" },
+        source: "conversational",
+      }
+    );
+    const newer = await createName(skill, "Newer Name");
+
+    await pruneSupersededSingletonSkillSuggestions(authenticator, skill, [
+      newer,
+    ]);
+
+    expect(await stateOf(availability.sId)).toBe("pending");
+    expect(await stateOf(newer.sId)).toBe("pending");
+  });
 });
 
-describe("pruneConflictingSkillAvailabilitySuggestions", () => {
+describe("pruneSupersededSingletonSkillSuggestions: availability", () => {
   let authenticator: Awaited<
     ReturnType<typeof createResourceTest>
   >["authenticator"];
@@ -748,7 +767,7 @@ describe("pruneConflictingSkillAvailabilitySuggestions", () => {
     const older = await createAvailability(skill, "workspace_users");
     const newer = await createAvailability(skill, "users_and_agents");
 
-    await pruneConflictingSkillAvailabilitySuggestions(authenticator, skill, [
+    await pruneSupersededSingletonSkillSuggestions(authenticator, skill, [
       newer,
     ]);
 
@@ -774,7 +793,7 @@ describe("pruneConflictingSkillAvailabilitySuggestions", () => {
     );
     const newer = await createAvailability(skill, "users_and_agents");
 
-    await pruneConflictingSkillAvailabilitySuggestions(authenticator, skill, [
+    await pruneSupersededSingletonSkillSuggestions(authenticator, skill, [
       newer,
     ]);
 
