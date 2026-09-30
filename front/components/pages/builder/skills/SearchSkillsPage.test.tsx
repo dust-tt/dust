@@ -451,7 +451,9 @@ describe("search-backed Manage Skills", () => {
       screen.getByRole("checkbox", { name: "Members and agents" })
     );
     await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
-    await userEvent.click(screen.getByRole("checkbox", { name: "Me" }));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: `${context.user.fullName} (You)` })
+    );
     expect(fetcher).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
@@ -476,6 +478,9 @@ describe("search-backed Manage Skills", () => {
     );
     expect(screen.getByText("Tool")).toBeInTheDocument();
     expect(screen.getByText("Editor")).toBeInTheDocument();
+    expect(
+      screen.getByText(`${context.user.fullName} (You)`)
+    ).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(3);
 
     await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
@@ -532,7 +537,7 @@ describe("search-backed Manage Skills", () => {
   });
 
   it("lists only the filter options held by matching skills, narrowed by the other selections", async () => {
-    const { facetSearch, fetcherWithBody, mount } = await setup();
+    const { context, facetSearch, fetcherWithBody, mount } = await setup();
     facetSearch.mockResolvedValue({
       skills: [],
       total: 1,
@@ -589,7 +594,7 @@ describe("search-backed Manage Skills", () => {
       )
     );
     expect(
-      screen.queryByRole("checkbox", { name: "Me" })
+      screen.queryByRole("checkbox", { name: `${context.user.fullName} (You)` })
     ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("tab", { name: "Tools" }));

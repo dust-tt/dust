@@ -142,6 +142,11 @@ function toToolFilterOptions(
 }
 
 // Access options are static; the others are the values held by the matching resources.
+/**
+ * @cc [owner:aubin-tchoi,label:product] current-editor-name
+ * Editor options MUST use the editor's full name, with ` (You)` appended for the
+ * current user. The current user's option MUST be listed first when present.
+ */
 export function getSearchFilterOptions(
   category: SearchFilterCategory,
   facets: SearchFilterFacets | undefined,
@@ -164,13 +169,15 @@ export function getSearchFilterOptions(
       }));
     }
     case "editor":
-      // The current user is listed first, as "Me".
       return (facets?.editors ?? [])
         .map(
           (editor): SearchFilterOption => ({
             category: "editor",
             id: editor.sId,
-            name: editor.sId === currentUserId ? "Me" : editor.fullName,
+            name:
+              editor.sId === currentUserId
+                ? `${editor.fullName} (You)`
+                : editor.fullName,
             image: editor.image,
             disabled: false,
           })
