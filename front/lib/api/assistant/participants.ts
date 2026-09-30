@@ -44,11 +44,7 @@ async function fetchAllAgentsById(
     await AgentResource.fetchByIds(auth, agentConfigurationIds)
   ).filter((agent) => auth.can("read", agent));
 
-  return agents.map((a) => ({
-    configurationId: a.sId,
-    name: a.name,
-    pictureUrl: a.pictureUrl,
-  }));
+  return agents.map((agent) => agent.toParticipantJSON());
 }
 
 export async function fetchConversationParticipants(

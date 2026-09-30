@@ -96,6 +96,7 @@ import type {
 } from "@app/types/assistant/agent";
 import { isAgentStatus } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import type { AgentParticipantType } from "@app/types/assistant/conversation";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -3245,6 +3246,14 @@ export class AgentResource
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
       canViewContent: this.canViewContent,
+    };
+  }
+
+  toParticipantJSON(): AgentParticipantType {
+    return {
+      configurationId: this.sId,
+      name: this.name,
+      pictureUrl: this.pictureUrl,
     };
   }
 

@@ -307,13 +307,15 @@ export async function rebuildConversationRequirements(
     auth,
     agentConfigurationIds
   );
-  const workspaceId = auth.getNonNullableWorkspace().id;
+  const workspaceModelId = auth.getNonNullableWorkspace().id;
 
   await updateConversationRequirements(auth, {
     agents: agents.map((agent) => ({
       requestedSpaceIds: agent
         .requestedSpaceModelIds()
-        .map((id) => SpaceResource.modelIdToSId({ id, workspaceId })),
+        .map((id) =>
+          SpaceResource.modelIdToSId({ id, workspaceId: workspaceModelId })
+        ),
     })),
     contentFragmentDatasourceViewIds,
     conversation: conversationResource.toJSON(),
