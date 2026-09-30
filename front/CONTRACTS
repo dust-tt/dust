@@ -698,3 +698,11 @@ usage still costs out.
 Reviewer: for a new image model, check the pricing entry exists and its numbers match the linked
 provider page.
 
+@cc [owner:sfriquet,label:product;react] translated-files-stay-translated
+In a file under `components/`, `hooks/` or `lib/` that imports a Lingui macro, every user-visible
+string (JSX text, labels, placeholders, tooltips, `aria-label`, `alt`, toasts, validation messages)
+MUST go through the Lingui macros with the English text as the message, and a sentence MUST be a
+single message, never assembled by concatenating strings or translated fragments. Text sent to
+models (`lib/actions/**`, skill and agent definitions, zod `.describe()`) MUST NOT be wrapped.
+Catalog freshness and completeness are enforced by `npm run i18n:check`, and Lingui imports in
+server code by the `noClientImportsInServer` lint rule.
