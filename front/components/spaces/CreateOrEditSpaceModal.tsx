@@ -170,8 +170,7 @@ export function CreateOrEditSpaceModal({
       const confirmed = await confirm({
         title: "Security notice",
         message:
-          "You are modifying this space's settings while not being a member yourself. " +
-          "This action will be logged for security purposes. Do you want to proceed?",
+          "You are modifying this space's settings while not being a member yourself. This action will be logged for security purposes. Do you want to proceed?",
         validateLabel: "Proceed",
         validateVariant: "warning",
       });

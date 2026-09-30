@@ -832,13 +832,11 @@ export default function DatasetView({
                   <Button
                     variant="ghost"
                     onClick={() => {
-                      const dataStr =
-                        "data:text/jsonl;charset=utf-8," +
-                        encodeURIComponent(
-                          exportDataset()
-                            .map((d) => JSON.stringify(d))
-                            .join("\n")
-                        );
+                      const dataStr = `data:text/jsonl;charset=utf-8,${encodeURIComponent(
+                        exportDataset()
+                          .map((d) => JSON.stringify(d))
+                          .join("\n")
+                      )}`;
                       const downloadAnchorNode = document.createElement("a");
                       downloadAnchorNode.setAttribute("href", dataStr);
                       downloadAnchorNode.setAttribute(

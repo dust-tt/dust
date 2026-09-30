@@ -42,9 +42,7 @@ const getAgentConfigurationVersionString = (
     return `v${config.version}`;
   }
   const versionDate = new Date(config.versionCreatedAt);
-  return (
-    "Version: " + formatTimestampToFriendlyDate(versionDate.getTime(), "long")
-  );
+  return `Version: ${formatTimestampToFriendlyDate(versionDate.getTime(), "long")}`;
 };
 
 type FeedbackFilter = "unseen" | "all";
@@ -206,12 +204,7 @@ export const FeedbacksSection = ({
                 }
                 meta={
                   agentConfig?.versionCreatedAt
-                    ? timeAgoFrom(
-                        new Date(agentConfig.versionCreatedAt).getTime(),
-                        {
-                          useLongFormat: true,
-                        }
-                      ) + " ago"
+                    ? `${timeAgoFrom(new Date(agentConfig.versionCreatedAt).getTime(), { useLongFormat: true })} ago`
                     : undefined
                 }
               >

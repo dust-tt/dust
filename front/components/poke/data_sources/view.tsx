@@ -241,9 +241,7 @@ export function ViewDataSourceTable({
                       <PokeTableCell>Last sync start</PokeTableCell>
                       <PokeTableCell>
                         {connector?.lastSyncStartTime ? (
-                          timeAgoFrom(connector?.lastSyncStartTime, {
-                            useLongFormat: true,
-                          }) + " ago"
+                          `${timeAgoFrom(connector?.lastSyncStartTime, { useLongFormat: true })} ago`
                         ) : (
                           <span className="font-bold text-warning-500">
                             never
@@ -255,9 +253,7 @@ export function ViewDataSourceTable({
                       <PokeTableCell>Last sync finish</PokeTableCell>
                       <PokeTableCell>
                         {connector?.lastSyncFinishTime ? (
-                          timeAgoFrom(connector?.lastSyncFinishTime, {
-                            useLongFormat: true,
-                          }) + " ago"
+                          `${timeAgoFrom(connector?.lastSyncFinishTime, { useLongFormat: true })} ago`
                         ) : (
                           <span className="font-bold text-warning-500">
                             never
@@ -497,11 +493,7 @@ function StuckActivitiesDialog({
             <ContentMessage
               variant="info"
               size="sm"
-              title={
-                `Found ${totalStuckActivities} stuck ` +
-                `${totalStuckActivities === 1 ? "activity" : "activities"} ` +
-                `across ${workflows.length} workflow${pluralize(workflows.length)}`
-              }
+              title={`Found ${totalStuckActivities} stuck ${totalStuckActivities === 1 ? "activity" : "activities"} across ${workflows.length} workflow${pluralize(workflows.length)}`}
               className="max-w-full"
             />
             {workflows.map((workflow) => (
@@ -543,14 +535,7 @@ function StuckActivitiesDialog({
                       <Button
                         icon={LinkExternal01}
                         variant="outline"
-                        href={
-                          "https://app.datadoghq.eu/logs?query=%40dd.env%3Aprod%20%40dd.service%3Aconnectors-worker" +
-                          `%20%40activityType%3A${encodeURIComponent(activity.activityType)}` +
-                          `%20%40workflowId%3A${encodeURIComponent(workflow.workflowId.replaceAll(":", "\\:"))}` +
-                          "&agg_m=count&agg_m_source=base&agg_t=count&cols=%40workflowId&" +
-                          "fromUser=true&messageDisplay=inline&refresh_mode=sliding&storage=hot&" +
-                          "stream_sort=time%2Cdesc&viz=stream"
-                        }
+                        href={`https://app.datadoghq.eu/logs?query=%40dd.env%3Aprod%20%40dd.service%3Aconnectors-worker%20%40activityType%3A${encodeURIComponent(activity.activityType)}%20%40workflowId%3A${encodeURIComponent(workflow.workflowId.replaceAll(":", "\\:"))}&agg_m=count&agg_m_source=base&agg_t=count&cols=%40workflowId&fromUser=true&messageDisplay=inline&refresh_mode=sliding&storage=hot&stream_sort=time%2Cdesc&viz=stream`}
                         size="xs"
                         className="p-2"
                         label="Logs"

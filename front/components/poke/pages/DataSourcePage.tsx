@@ -161,7 +161,7 @@ function FolderDisplay({
                   <ContextItem.Visual
                     visual={({ className }) =>
                       File04({
-                        className: className + " text-muted-foreground",
+                        className: `${className} text-muted-foreground`,
                       })
                     }
                   />
@@ -248,7 +248,7 @@ function FolderDisplay({
                   <ContextItem.Visual
                     visual={({ className }) =>
                       Table({
-                        className: className + " text-muted-foreground",
+                        className: `${className} text-muted-foreground`,
                       })
                     }
                   />

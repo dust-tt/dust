@@ -256,7 +256,7 @@ export function UserMenu({
       if (result.isOk()) {
         sendNotification({
           title: "Success !",
-          description: result.value + " (reloading...)",
+          description: `${result.value} (reloading...)`,
           type: "success",
         });
         setTimeout(() => {

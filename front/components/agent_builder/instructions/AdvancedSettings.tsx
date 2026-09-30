@@ -29,24 +29,24 @@ function getResponseFormatError(value: string): string | null {
   return result.isValid ? null : result.errorMessage;
 }
 
-const RESPONSE_FORMAT_PLACEHOLDER =
-  "Example:\n\n" +
-  "{\n" +
-  '  "type": "json_schema",\n' +
-  '  "json_schema": {\n' +
-  '    "name": "YourSchemaName",\n' +
-  '    "strict": true,\n' +
-  '    "schema": {\n' +
-  '      "type": "object",\n' +
-  '      "properties": {\n' +
-  '        "property1":\n' +
-  '          { "type":"string" }\n' +
-  "      },\n" +
-  '      "required": ["property1"],\n' +
-  '      "additionalProperties": false\n' +
-  "    }\n" +
-  "  }\n" +
-  "}";
+const RESPONSE_FORMAT_PLACEHOLDER = `Example:
+
+{
+  "type": "json_schema",
+  "json_schema": {
+    "name": "YourSchemaName",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "property1":
+          { "type":"string" }
+      },
+      "required": ["property1"],
+      "additionalProperties": false
+    }
+  }
+}`;
 
 function StructuredResponseFormatDialog({
   isOpen,

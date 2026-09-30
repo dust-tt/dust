@@ -1158,7 +1158,7 @@ export const VisualizationActionIframe = forwardRef<
           {!codeFullyGenerated ? (
             <div className="flex h-full w-full shrink-0">
               <Markdown
-                content={"```javascript\n" + (code ?? "") + "\n```"}
+                content={`\`\`\`javascript\n${code ?? ""}\n\`\`\``}
                 isStreaming={!codeFullyGenerated}
                 isLastMessage={true}
               />

@@ -707,8 +707,8 @@ const SpaceAppItem = ({
       type="leaf"
       isSelected={
         router.asPath === appPath ||
-        router.asPath.includes(appPath + "/") ||
-        router.asPath.includes(appPath + "?")
+        router.asPath.includes(`${appPath}/`) ||
+        router.asPath.includes(`${appPath}?`)
       }
       onItemClick={async () => {
         await setNavigationSelection({

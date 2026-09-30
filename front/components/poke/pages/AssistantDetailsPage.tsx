@@ -210,7 +210,7 @@ export function AssistantDetailsPage() {
                               <div>
                                 {action.type}
                                 {action.type === "mcp_server_configuration" &&
-                                  " (" + action.name + ")"}
+                                  ` (${action.name})`}
                               </div>
                               <JsonViewer
                                 theme={isDark ? "dark" : "light"}

@@ -36,8 +36,7 @@ export function MCPConversationCatFileDetails({
   const lines = content.split("\n").slice(1);
   const truncatedContent =
     lines.length > MAX_PREVIEW_LINES
-      ? lines.join("\n") +
-        `\n... (${lines.length - MAX_PREVIEW_LINES} more lines)`
+      ? `${lines.join("\n")}\n... (${lines.length - MAX_PREVIEW_LINES} more lines)`
       : content;
 
   return (

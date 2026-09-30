@@ -23,9 +23,7 @@ export function ZendeskTicketTagFilters({
       isAdmin={isAdmin}
       title="Ticket Tag Filters"
       description={
-        "Include or exclude tickets from the sync based on their tags. " +
-        "These filters only apply to future syncing and will not retroactively remove " +
-        "already-synced tickets."
+        "Include or exclude tickets from the sync based on their tags. These filters only apply to future syncing and will not retroactively remove already-synced tickets."
       }
       tagFilters={ticketTagFilters}
       addTag={addTicketTag}

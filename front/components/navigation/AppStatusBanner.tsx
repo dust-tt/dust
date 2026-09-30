@@ -140,16 +140,14 @@ function UnhealthyCredentialsBanner({
   } else if (!hasConfiguredEmbeddingProvider) {
     description = "Please set up your OpenAI credentials.";
   } else if (!isWorkspaceHealthy) {
-    description =
-      "The following model providers have invalid credentials: " +
-      Object.entries(providersHealth)
-        .filter(([_, isHealthy]) => !isHealthy)
-        .map(
-          ([providerId]) =>
-            PRETTIFIED_PROVIDER_NAMES[providerId as ByokModelProviderIdType]
-        )
-        .join(", ") +
-      ".";
+    const invalidProviderNames = Object.entries(providersHealth)
+      .filter(([_, isHealthy]) => !isHealthy)
+      .map(
+        ([providerId]) =>
+          PRETTIFIED_PROVIDER_NAMES[providerId as ByokModelProviderIdType]
+      )
+      .join(", ");
+    description = `The following model providers have invalid credentials: ${invalidProviderNames}.`;
   } else {
     return null;
   }

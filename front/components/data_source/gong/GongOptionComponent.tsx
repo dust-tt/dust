@@ -170,10 +170,7 @@ function PermissionProfileSelector({
                 label={
                   displayedProfile
                     ? displayedProfile.name.length > PROFILE_NAME_MAX_LENGTH
-                      ? displayedProfile.name.slice(
-                          0,
-                          PROFILE_NAME_MAX_LENGTH
-                        ) + "..."
+                      ? `${displayedProfile.name.slice(0, PROFILE_NAME_MAX_LENGTH)}...`
                       : displayedProfile.name
                     : "All participants"
                 }
