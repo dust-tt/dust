@@ -539,6 +539,18 @@ export async function removeFileFromProject(
     return new Err(new Error("File not found."));
   }
 
+  // @cc [owner:frankaloia,label:security] pod-file-remove-idor
+  // `removeFileFromProject` must verify that the resolved file belongs to
+  // the caller-supplied Pod (space) before deletion. Without these checks an
+  // authenticated workspace member could delete any workspace file by
+  // supplying an arbitrary sId, even if it is unrelated to the Pod.
+  if (file.useCase !== "project_context") {
+    return new Err(new Error("File does not belong to this project context."));
+  }
+  if (file.useCaseMetadata?.spaceId !== space.sId) {
+    return new Err(new Error("File does not belong to this space."));
+  }
+
   // Frames v2 own their source package and project-fragment cleanup. Let the canonical Frame
   // deletion path run before this function mutates any fragments so source failures are retryable.
   if (file.isFrameV2) {

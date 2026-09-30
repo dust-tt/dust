@@ -82,10 +82,36 @@ export function createNotionVerificationMiddleware(
       // Parse body as JSON for routes to access the object.
       req.body = JSON.parse(stringBody);
 
-      // Skip signature verification for the initial verification_token request, since
-      // that is what gives us the signing secret in the first place. This applies to
-      // both private client integrations and standard Dust integrations.
+      // @cc [owner:frankaloia,label:security] notion-signing-secret-overwrite-prevention
+      // Only bypass signature verification for a `verification_token` request
+      // when no signing secret is already stored for this workspace. If a
+      // secret is already provisioned, an attacker could overwrite it by
+      // POSTing a crafted `verification_token`, hijacking future webhook
+      // authentication. Reject the bypass whenever an existing entry is found.
       if (req.body.verification_token) {
+        if (useClientCredentials) {
+          // For private client integrations, check whether a signing secret is
+          // already stored. If it is, the handshake has already completed and
+          // the bypass must be rejected to prevent overwrite attacks.
+          const existingProviderWorkspaceId = req.params.providerWorkspaceId;
+          let alreadyProvisioned = false;
+          try {
+            await webhookRouterConfigManager.getEntry(
+              "notion",
+              existingProviderWorkspaceId
+            );
+            alreadyProvisioned = true;
+          } catch {
+            // No entry found — initial provisioning, bypass is safe.
+          }
+          if (alreadyProvisioned) {
+            throw new ReceiverAuthenticityError(
+              "Notion request signing verification failed. " +
+                "Signing secret already provisioned; " +
+                "verification_token is not accepted."
+            );
+          }
+        }
         return next();
       }
 
