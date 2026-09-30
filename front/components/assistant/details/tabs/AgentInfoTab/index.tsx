@@ -19,14 +19,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { formatResponseFormat } from "@app/types/assistant/models/utils";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  Avatar,
-  Chip,
-  CodeBlock,
-  cn,
-  Markdown,
-  Page,
-} from "@dust-tt/sparkle";
+import { Avatar, Chip, CodeBlock, cn, Markdown, Page } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef } from "react";
 
