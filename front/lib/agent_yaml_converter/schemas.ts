@@ -123,7 +123,6 @@ export const agentYAMLConfigSchema = z.object({
 });
 
 export type AgentYAMLTag = z.infer<typeof agentYAMLTagSchema>;
-export type AgentYAMLEditor = z.infer<typeof agentYAMLEditorSchema>;
 export type AgentYAMLDataSourceConfiguration = z.infer<
   typeof agentYAMLDataSourceConfigurationSchema
 >;

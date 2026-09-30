@@ -1,10 +1,6 @@
 import type { DatadogLogContext } from "@app/logger/logger";
 import { datadogLogs } from "@datadog/browser-logs";
 
-// Keep the exported Logger type for compatibility with existing imports. Type-only, so the
-// pino-backed module is erased from the browser bundle.
-export type { Logger } from "@app/logger/logger";
-
 // Benign error messages that should not be forwarded to Datadog.
 // - ResizeObserver: https://github.com/DataDog/browser-sdk/issues/1616
 // - "No activity within": EventSource polyfill heartbeat timeout (normal reconnection)

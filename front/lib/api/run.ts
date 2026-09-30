@@ -29,7 +29,6 @@ export type {
   GetRunStatusResponseBody,
   GetRunsResponseBody,
   PostRunCancelResponseBody,
-  PostRunsResponseBody,
 } from "@app/types/api/apps";
 
 /**

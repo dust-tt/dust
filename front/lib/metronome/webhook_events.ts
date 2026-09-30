@@ -517,7 +517,6 @@ export const MetronomeWebhookEventSchema = z.discriminatedUnion("type", [
 ]);
 
 export type MetronomeWebhookEvent = z.infer<typeof MetronomeWebhookEventSchema>;
-export type MetronomeWebhookEventType = MetronomeWebhookEvent["type"];
 
 // Resolves the Metronome `customer_id` for an event, regardless of whether
 // the payload is "flat" (contract.*, commit.*, credit.*) or wrapped under

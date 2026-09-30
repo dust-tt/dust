@@ -80,7 +80,6 @@ import assert from "assert";
 import uniq from "lodash/uniq";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
-import { z } from "zod";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -114,14 +113,6 @@ export type PostMCPServerViewResponseBody = {
   success: boolean;
   serverView: MCPServerViewType;
 };
-
-const PostMCPServerViewQueryParamsSchema = z.object({
-  mcpServerId: z.string(),
-});
-
-export type PostMCPServersQueryParams = z.infer<
-  typeof PostMCPServerViewQueryParamsSchema
->;
 
 // Per-process cache of workspaces whose auto internal MCP server views are known to be in
 // sync, keyed by workspace ModelId. See `unsafeEnsureAutoViewsForWorkspace` for the

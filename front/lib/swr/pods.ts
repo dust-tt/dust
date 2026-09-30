@@ -146,9 +146,6 @@ export function usePodFiles({
   };
 }
 
-export type PodContextContentNodeFragment =
-  PostPodContextContentNodeResponseBody["contentFragments"][number];
-
 export function useAddPodContextContentNodes({
   owner,
   podId,

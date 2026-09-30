@@ -73,6 +73,19 @@ const config: KnipConfig = {
         "@app/*": ["../front/*"],
       },
     },
+    // Only there so its `@app/*` imports of front count as uses.
+    extension: {
+      entry: [
+        "platforms/*/main.tsx!",
+        "platforms/*/background.ts!",
+        "platforms/*/content-script.ts!",
+      ],
+      project: ["{shared,platforms,ui}/**/*.{ts,tsx}!"],
+      paths: {
+        "@extension/*": ["./*"],
+        "@app/*": ["../front/*"],
+      },
+    },
   },
   // An export used only inside its own file is an unneeded `export`, not dead code.
   ignoreExportsUsedInFile: true,

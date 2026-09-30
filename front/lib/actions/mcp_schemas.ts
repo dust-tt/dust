@@ -60,9 +60,6 @@ export const MCPServerConfigurationSchema = z.union([
   ClientSideMCPServerConfigurationSchema,
 ]);
 
-export type BaseMCPServerConfigurationType = z.infer<
-  typeof BaseMCPServerConfigurationSchema
->;
 export type ServerSideMCPServerConfigurationType = z.infer<
   typeof ServerSideMCPServerConfigurationSchema
 >;

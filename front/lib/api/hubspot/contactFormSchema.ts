@@ -129,10 +129,3 @@ export const TrackingParamsSchema = z.object({
 });
 
 export type TrackingParams = z.infer<typeof TrackingParamsSchema>;
-
-// Response from the contact submit API
-export interface ContactSubmitResponse {
-  success: boolean;
-  isQualified: boolean;
-  error?: string;
-}

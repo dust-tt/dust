@@ -1,13 +1,8 @@
-import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import { z } from "zod";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationType | null;
-};
-
-export type GetLabsTranscriptsConfigurationByIdResponseBody = {
-  configuration: LabsTranscriptsConfigurationResource | null;
 };
 
 export const PatchLabsTranscriptsConfigurationBodySchema = z.object({

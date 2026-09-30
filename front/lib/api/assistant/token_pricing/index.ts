@@ -8,7 +8,6 @@ import type {
 } from "@app/types/assistant/models/models";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 
-export type { PricingEntry } from "@app/lib/api/assistant/token_pricing/global";
 export { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/global";
 
 export type InferenceRegionType = "global" | "eu";

@@ -1,9 +1,3 @@
-export {
-  type StartVerificationError,
-  startVerification,
-} from "./start_verification";
+export { startVerification } from "./start_verification";
 export * from "./twilio";
-export {
-  type ValidateVerificationError,
-  validateVerification,
-} from "./validate_verification";
+export { validateVerification } from "./validate_verification";

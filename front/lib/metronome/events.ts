@@ -18,7 +18,7 @@ import {
 } from "./constants";
 import type { MetronomeEvent, UsageType } from "./types";
 
-export { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
+export { TOOL_COST_CATEGORIES } from "@app/lib/api/mcp";
 export {
   computeRunKey,
   FREE_ORIGINS,

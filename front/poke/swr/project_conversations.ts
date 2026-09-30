@@ -13,12 +13,6 @@ interface UsePokeProjectConversationsProps {
   projectId: string;
 }
 
-export interface PokeProjectConversationsData {
-  conversations: PodConversationListItemType[];
-  hasMore: boolean;
-  isLoadingMore: boolean;
-}
-
 export function usePokeProjectConversations({
   disabled,
   limit,

@@ -22,14 +22,3 @@ export function isWebCrawlerConfiguration(
     maybeWebCrawlerConfig?.headers !== undefined
   );
 }
-
-export type ConnectorConfigurations = {
-  webcrawler: WebCrawlerConfigurationType;
-  notion: null;
-  slack: SlackConfigurationType;
-  google_drive: null;
-  github: null;
-  confluence: null;
-  microsoft: null;
-  intercom: null;
-};

@@ -52,9 +52,6 @@ export const REVIEWABLE_SKILL_SUGGESTION_SOURCES = [
   "conversational",
 ] as const satisfies readonly SkillSuggestionSource[];
 
-export type ReviewableSkillSuggestionSource =
-  (typeof REVIEWABLE_SKILL_SUGGESTION_SOURCES)[number];
-
 export const SKILL_SUGGESTION_KINDS = [
   "edit",
   "editors",

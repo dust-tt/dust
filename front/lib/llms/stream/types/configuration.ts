@@ -3,10 +3,6 @@ import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/conf
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 
-export type ReasoningEffortOf<C extends InputConfig> = NonNullable<
-  C["reasoning"]
->["effort"];
-
 // `ModelConfigurationType` is the legacy model config. Endpoints port it onto
 // the new router by nesting the corresponding `*_DEFAULT_MODEL_CONFIG` under a
 // single `modelConfig` static. This is a transitional step: over time we want

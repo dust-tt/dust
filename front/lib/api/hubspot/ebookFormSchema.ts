@@ -1,9 +1,7 @@
-import type { TrackingParams } from "@app/lib/api/hubspot/contactFormSchema";
-
 import { TrackingParamsSchema } from "@app/lib/api/hubspot/contactFormSchema";
 import { z } from "zod";
 
-export { type TrackingParams, TrackingParamsSchema };
+export { TrackingParamsSchema };
 
 // Zod validation schema for ebook form
 export const EbookFormSchema = z.object({
@@ -19,9 +17,3 @@ export const EbookFormSchema = z.object({
 });
 
 export type EbookFormData = z.infer<typeof EbookFormSchema>;
-
-export interface EbookSubmitResponse {
-  success: boolean;
-  downloadToken?: string;
-  error?: string;
-}

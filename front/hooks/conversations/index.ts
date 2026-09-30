@@ -17,7 +17,6 @@ export {
   useConversationMessages,
 } from "./useConversationMessages";
 export {
-  type ConversationParticipationOption,
   useConversationParticipants,
   useConversationParticipationOptions,
   useJoinConversation,
