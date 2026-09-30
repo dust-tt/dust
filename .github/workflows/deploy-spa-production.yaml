@@ -82,8 +82,8 @@ jobs:
           MATRIX_APP: ${{ matrix.app }}
         with:
           script: |
-            // All client_payload values come from process.env, never from inline ${{ }}
-            // expressions, to prevent JS/shell injection via repository_dispatch payloads.
+            // All client_payload values come from process.env to prevent JS injection
+            // via repository_dispatch payloads — never interpolated as GHA expressions.
             const imageTag = process.env.PAYLOAD_IMAGE_TAG;
             const sha = process.env.PAYLOAD_SHA;
             const app = process.env.MATRIX_APP;
