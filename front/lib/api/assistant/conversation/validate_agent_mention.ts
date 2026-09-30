@@ -229,7 +229,7 @@ export async function validateAgentMention(
   );
 
   const resolution = await resolveModelForMentionedAgent(auth, {
-    configuration,
+    agent,
     selection: message.requestedModel ?? undefined,
   });
 

@@ -85,11 +85,11 @@ export async function canCurrentUserAddProjectMembers(
 export async function canAgentBeUsedInProjectConversation(
   auth: Authenticator,
   {
-    configuration,
+    agent,
     conversation,
     transaction,
   }: {
-    configuration: LightAgentConfigurationType;
+    agent: AgentResource;
     conversation: ConversationWithoutContentType;
     transaction?: Transaction;
   }
@@ -97,19 +97,26 @@ export async function canAgentBeUsedInProjectConversation(
   if (!isPodConversation(conversation)) {
     throw new Error("Unexpected: conversation is not a project conversation");
   }
+  const requestedSpaceModelIds = agent.requestedSpaceModelIds();
+  const conversationSpaceModelId = getResourceIdFromSId(conversation.spaceId);
 
   // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or open spaces, otherwise we reject the mention and do not create the agent message.
   // Check to skip heavy work if the agent configuration is only using the project space.
   if (
-    configuration.requestedSpaceIds.some(
-      (spaceId) => spaceId !== conversation.spaceId
+    requestedSpaceModelIds.some(
+      (spaceModelId) => spaceModelId !== conversationSpaceModelId
     )
   ) {
     // Need to load all the spaces to check if they are restricted.
-    const spaces = await SpaceResource.fetchByIds(
+    const spaces = await SpaceResource.fetchByModelIds(
       auth,
       // Ensure we have the project's space in the list of spaces to check.
-      uniq([conversation.spaceId, ...configuration.requestedSpaceIds]),
+      uniq([
+        ...(conversationSpaceModelId !== null
+          ? [conversationSpaceModelId]
+          : []),
+        ...requestedSpaceModelIds,
+      ]),
       { transaction }
     );
     const openIds = await SpaceResource.listOpenSpaceModelIds(auth, spaces);
@@ -158,19 +165,19 @@ export async function canAgentBeUsedInProjectConversation(
 export async function isAgentRestrictedBySpaceUsage(
   auth: Authenticator,
   {
-    configuration,
+    agent,
     conversation,
   }: {
-    configuration: LightAgentConfigurationType | null;
+    agent: AgentResource | null;
     conversation: ConversationWithoutContentType;
   }
 ): Promise<boolean> {
-  if (!configuration || !isPodConversation(conversation)) {
+  if (!agent || !isPodConversation(conversation)) {
     return false;
   }
 
   return !(await canAgentBeUsedInProjectConversation(auth, {
-    configuration,
+    agent,
     conversation,
   }));
 }

@@ -8,10 +8,10 @@ import {
   getEnabledModelsForAuth,
   resolveStreamModel,
 } from "@app/lib/model_tiers/enabled_models";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
-  LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
@@ -48,11 +48,11 @@ export async function resolveModel(
   auth: Authenticator,
   {
     selection,
-    configuration,
+    agent,
     featureFlags,
   }: {
     selection?: ModelSelectionType;
-    configuration: LightAgentConfigurationType;
+    agent: AgentResource;
     featureFlags: WhitelistableFeature[];
   }
 ): Promise<{
@@ -72,8 +72,8 @@ export async function resolveModel(
 
   const agentConfig = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
-      m.providerId === configuration.model.providerId &&
-      m.modelId === configuration.model.modelId
+      m.providerId === agent.modelConfiguration.providerId &&
+      m.modelId === agent.modelConfiguration.modelId
   );
 
   const requestedConfig = userConfig ?? agentConfig;
@@ -103,9 +103,7 @@ export async function resolveModel(
   if (enabled && isModelStreamId(enabled.modelId)) {
     const streamId = enabled.modelId;
     const models = await getEnabledModelsForAuth(auth, {
-      allowedTierNamesOverride: getAgentAllowedTierNamesOverride(
-        configuration.sId
-      ),
+      allowedTierNamesOverride: getAgentAllowedTierNamesOverride(agent.sId),
     });
     const resolution = resolveStreamModel(
       models,
@@ -137,7 +135,7 @@ export async function resolveModel(
     streamEffort ??
     (selection
       ? selection.reasoningEffort
-      : configuration.model.reasoningEffort);
+      : agent.modelConfiguration.reasoningEffort);
 
   const effort =
     requestedReasoningEffort &&
@@ -174,10 +172,24 @@ export async function resolveAgentMessageModelConfig(
 
   let { resolvedModel } = agentMessage;
   if (!resolvedModel && isModelStreamId(model.modelId)) {
-    ({ resolvedModel } = await resolveModel(auth, {
-      configuration: agentConfiguration,
-      featureFlags: await getFeatureFlags(auth),
-    }));
+    // The message's pinned version, whatever the caller's current access: its configuration was
+    // already resolved for this message.
+    const [agent] = await AgentResource.fetchByIdsAndVersions(
+      auth,
+      [
+        {
+          agentId: agentConfiguration.sId,
+          agentVersion: agentConfiguration.version,
+        },
+      ],
+      { dangerouslySkipFetchCheck: true }
+    );
+    if (agent) {
+      ({ resolvedModel } = await resolveModel(auth, {
+        agent,
+        featureFlags: await getFeatureFlags(auth),
+      }));
+    }
   }
 
   const isNoopPinnedModel = model.modelId === NOOP_MODEL_ID;
