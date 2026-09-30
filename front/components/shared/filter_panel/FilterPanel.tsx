@@ -144,7 +144,7 @@ export function FilterPanel<
         align="start"
         className="w-auto rounded-2xl p-0"
       >
-        <div className="flex h-96 flex-row divide-x divide-border">
+        <div className="flex h-96 flex-row divide-x divide-border dark:divide-border-dark">
           <FilterCategoryNav
             categories={categories}
             categoryLabels={categoryLabels}
