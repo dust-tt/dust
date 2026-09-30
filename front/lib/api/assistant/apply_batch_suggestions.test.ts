@@ -26,6 +26,7 @@ import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_i
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -1317,6 +1318,88 @@ describe("applyBatchSuggestions", () => {
 
     expect(res.isErr()).toBe(true);
     expect(await fetchAgentName(agent.sId)).toBe(agent.name);
+  });
+
+  const CITY_RESPONSE_FORMAT = JSON.stringify({
+    type: "json_schema",
+    json_schema: {
+      name: "city",
+      schema: {
+        type: "object",
+        properties: { city: { type: "string" }, country: { type: "string" } },
+        required: ["city", "country"],
+        additionalProperties: false,
+      },
+    },
+  });
+
+  async function fetchAgentModel(agentId: string) {
+    const agent = await getAgentConfiguration(auth, {
+      agentId,
+      variant: "light",
+    });
+    assert(agent);
+    return agent.model;
+  }
+
+  it("sets the structured output of an agent, keeping its model", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createStructuredOutput(auth, agent, {
+      suggestion: { responseFormat: CITY_RESPONSE_FORMAT },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const model = await fetchAgentModel(agent.sId);
+    expect(model.responseFormat).toBe(CITY_RESPONSE_FORMAT);
+    expect(model.modelId).toBe(agent.model.modelId);
+  });
+
+  it("removes the structured output of an agent", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      model: {
+        providerId: "openai",
+        modelId: "gpt-5-mini",
+        responseFormat: CITY_RESPONSE_FORMAT,
+      },
+    });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createStructuredOutput(auth, agent, {
+      suggestion: { responseFormat: null },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    expect((await fetchAgentModel(agent.sId)).responseFormat).toBeUndefined();
+  });
+
+  it("writes nothing when the agent's model does not support structured output", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      model: { providerId: "mistral", modelId: MISTRAL_LARGE_MODEL_ID },
+    });
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "RenamedAgent" },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createStructuredOutput(auth, agent, {
+      suggestion: { responseFormat: CITY_RESPONSE_FORMAT },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    expect(await fetchAgentName(agent.sId)).toBe(agent.name);
+    expect((await fetchAgentModel(agent.sId)).responseFormat).toBeUndefined();
   });
 
   it("leaves the batch pending once applied", async () => {
