@@ -6,11 +6,13 @@ import { afterEach, vi } from "vitest";
 
 // Wrap every rendered tree in the Lingui provider, composing with any wrapper the test passes.
 vi.mock("@testing-library/react", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@testing-library/react")>();
-  const { createElement } = await import("react");
-  const { I18nProvider } = await import("@lingui/react");
-  const { i18n } = await import("@app/lib/i18n/i18n");
+  const [actual, { createElement }, { I18nProvider }, { i18n }] =
+    await Promise.all([
+      importOriginal<typeof import("@testing-library/react")>(),
+      import("react"),
+      import("@lingui/react"),
+      import("@app/lib/i18n/i18n"),
+    ]);
 
   const withI18n =
     (Wrapper?: JSXElementConstructor<{ children: ReactNode }>) =>
