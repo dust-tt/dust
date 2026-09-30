@@ -9,12 +9,11 @@ export type ToolReference = {
 
 export const TOOL_TAG_NAME = "tool";
 
-// Attributes group anchors on [^>\/\s] so it cannot overlap with the preceding
-// \s+ separator. Without this, \s+ and [^>]*? both match spaces and produce
-// O(n²) backtracking on adversarial input (many spaces, no closing />).
-// The (?:...)? wrapper handles the no-attributes case (<tool />).
-export const TOOL_TAG_REGEX = /<tool\s+((?:[^>\/\s][^>]*)?)\/>/g;
-export const TOOL_TAG_REGEX_BEGINNING = /^<tool\s+((?:[^>\/\s][^>]*)?)\/>/;
+// `\s` takes one separator space. Further spaces belong to the attributes.
+// `[^<>]` stops a missing close from scanning through the next `<` and
+// rescanning the rest of the input. A raw `<` in an attribute must be `&lt;`.
+export const TOOL_TAG_REGEX = /<tool\s([^<>]*?)\/>/g;
+export const TOOL_TAG_REGEX_BEGINNING = /^<tool\s([^<>]*?)\/>/;
 
 const TOOL_ELEMENT_REGEX = /<tool\b([^>]*)>[\s\S]*?<\/tool>/g;
 
