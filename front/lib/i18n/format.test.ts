@@ -101,33 +101,6 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
     });
   });
 
-  describe("legacy helpers match the module with their pinned locale", () => {
-    it("formatTimestampToFriendlyDate", () => {
-      setFormatLocale(locale);
-      expect(formatTimestampToFriendlyDate(TIMESTAMP, "short")).toBe(
-        formatDate(
-          TIMESTAMP,
-          { year: "numeric", month: "long", day: "numeric" },
-          "en-US"
-        )
-      );
-      expect(formatTimestampToFriendlyDate(TIMESTAMP, "long")).toBe(
-        formatDateTime(
-          TIMESTAMP,
-          {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            hour: "numeric",
-            minute: "numeric",
-            second: "numeric",
-          },
-          "en-US"
-        )
-      );
-    });
-  });
-
   describe("the module matches the native Intl calls", () => {
     const dateOptions: Intl.DateTimeFormatOptions = {
       year: "numeric",

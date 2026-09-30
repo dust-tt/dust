@@ -1,4 +1,3 @@
-import { DATE_FNS_LOCALES } from "@app/lib/i18n/format";
 import {
   differenceInCalendarDays,
   format,
@@ -27,9 +26,7 @@ export const formatDate = (
   pattern: string
 ): string => {
   const dateObj = toDate(date);
-  return isValid(dateObj)
-    ? format(dateObj, pattern, { locale: DATE_FNS_LOCALES["en-US"] })
-    : INVALID_DATE_LABEL;
+  return isValid(dateObj) ? format(dateObj, pattern) : INVALID_DATE_LABEL;
 };
 
 /**

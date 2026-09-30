@@ -1,6 +1,4 @@
 import type { SupportedLocale } from "@app/types/locale";
-import type { Locale } from "date-fns";
-import { enUS, fr } from "date-fns/locale";
 
 let activeFormatLocale: SupportedLocale | undefined;
 
@@ -13,11 +11,6 @@ let activeFormatLocale: SupportedLocale | undefined;
 export function setFormatLocale(locale: SupportedLocale | undefined): void {
   activeFormatLocale = locale;
 }
-
-export const DATE_FNS_LOCALES: Record<SupportedLocale, Locale> = {
-  "en-US": enUS,
-  "fr-FR": fr,
-};
 
 export function formatDate(
   date: Date | number,

@@ -1,4 +1,3 @@
-import { DATE_FNS_LOCALES } from "@app/lib/i18n/format";
 import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 
@@ -47,7 +46,5 @@ export function formatUTCDateFromMillis(ms: number): string {
  * exports.
  */
 export function formatDateFromMillis(ms: number, timezone: string): string {
-  return formatInTimeZone(ms, timezone, "yyyy-MM-dd", {
-    locale: DATE_FNS_LOCALES["en-US"],
-  });
+  return formatInTimeZone(ms, timezone, "yyyy-MM-dd");
 }
