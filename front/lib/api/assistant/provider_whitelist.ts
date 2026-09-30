@@ -1,5 +1,16 @@
 import { isModelStreamId } from "@app/types/assistant/models/auto";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { getModelMaker } from "@app/types/assistant/models/providers";
+import type {
+  ModelConfigurationType,
+  ModelMakerIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
+
+export type ModelIdentifier = Pick<
+  ModelConfigurationType,
+  "providerId" | "modelId"
+>;
 
 // Canonical way to check if a provider is whitelisted.
 // Handle the special case of the routing sentinels (auto, auto_fast, auto_complex),
@@ -9,4 +20,22 @@ export function isProviderWhitelisted(
   providerId: ModelProviderIdType
 ): boolean {
   return isModelStreamId(providerId) || whitelistedProviders.has(providerId);
+}
+
+/**
+ * @cc [owner:pmilliotte,label:security;product] model-gated-on-its-lab
+ * A model MUST be whitelisted iff its lab (`getModelMaker` of its entry in
+ * `SUPPORTED_MODEL_CONFIGS`) is in `whitelistedProviders`, whichever host serves it.
+ * A model absent from `SUPPORTED_MODEL_CONFIGS` is gated on its `providerId`.
+ * Routing sentinels (auto, auto_fast, auto_complex) are always whitelisted.
+ */
+export function isModelWhitelisted(
+  whitelistedProviders: ReadonlySet<ModelMakerIdType>,
+  model: ModelIdentifier
+): boolean {
+  const config = SUPPORTED_MODEL_CONFIGS.find(
+    (c) => c.providerId === model.providerId && c.modelId === model.modelId
+  );
+  const maker = config ? getModelMaker(config) : model.providerId;
+  return isModelStreamId(maker) || whitelistedProviders.has(maker);
 }
