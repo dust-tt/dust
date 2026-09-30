@@ -58,6 +58,9 @@
     },
     "@lingui/vite-plugin": {
       "@babel/core": "^7.29.0"
+    },
+    "@elastic/transport": {
+      "undici": "^6.29.0"
     }
   }
 }
