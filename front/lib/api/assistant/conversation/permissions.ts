@@ -1,7 +1,7 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentsSpaceIds } from "@app/lib/api/assistant/permissions";
 import { listUsersWithoutAccessToSpaceResources } from "@app/lib/api/spaces/access";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { ConversationAccessType } from "@app/lib/resources/conversation_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -194,7 +194,7 @@ export async function updateConversationRequirements(
     conversation,
     t,
   }: {
-    agents?: LightAgentConfigurationType[];
+    agents?: Pick<LightAgentConfigurationType, "requestedSpaceIds">[];
     contentFragmentDatasourceViewIds?: string[];
     conversation: ConversationWithoutContentType;
     t?: Transaction;
@@ -301,16 +301,20 @@ export async function rebuildConversationRequirements(
       auth
     );
 
-  const agents =
-    agentConfigurationIds.length > 0
-      ? await getAgentConfigurations(auth, {
-          agentIds: agentConfigurationIds,
-          variant: "light",
-        })
-      : [];
+  // The requirements must cover every agent of the conversation, including those the caller holds
+  // no verb on anymore, so the `canFetch` drop is skipped (see `agent-dangerous-fetch`).
+  const agents = await AgentResource.dangerouslyFetchByIds(
+    auth,
+    agentConfigurationIds
+  );
+  const workspaceId = auth.getNonNullableWorkspace().id;
 
   await updateConversationRequirements(auth, {
-    agents,
+    agents: agents.map((agent) => ({
+      requestedSpaceIds: agent
+        .requestedSpaceModelIds()
+        .map((id) => SpaceResource.modelIdToSId({ id, workspaceId })),
+    })),
     contentFragmentDatasourceViewIds,
     conversation: conversationResource.toJSON(),
   });
