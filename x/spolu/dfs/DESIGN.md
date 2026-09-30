@@ -84,6 +84,61 @@ workspace and grants.
 Canonical formatting emits the bare URI. When including a decorative name, percent-encode it;
 parsing validates its syntax and discards it. Paths, query strings, and fragments are not accepted.
 
+## Initial filesystem semantics
+
+These are the baseline semantics; metadata fields and wire types arrive with their operations.
+
+- **Names:** Case-sensitive UTF-8, 1–255 bytes per component; preserve Unicode without normalization.
+  Reject NUL, `/`, `.` and `..` as stored names. API relative paths reject empty components and
+  traversal; the FUSE client handles navigation in its session namespace.
+- **Kinds:** Regular files and directories only, with one canonical parent per non-root object.
+  Virtual mounts and shared entries remain aliases, not hard links.
+- **Times:** Store `atime`, `mtime`, and `ctime` as signed Unix seconds plus nanoseconds
+  (`0–999,999,999`). Initialize all three at creation. Reads do not update `atime`; clients may set
+  `atime`/`mtime`. Content changes update `mtime`/`ctime`; directory entry changes update their
+  parent's `mtime`/`ctime`; other metadata changes, including rename, update the object's `ctime`.
+  Only the server sets `ctime`; revisions, not wall-clock times, order changes.
+- **Modes:** Store the low nine permission bits, defaulting to `0644` for files and `0755` for
+  directories; clients apply umask on creation. Preserve executable bits and support chmod.
+  FUSE reports the mounting user's UID/GID. Modes support local filesystem behavior; server access
+  is governed by grants, and UID/GID or mode changes never confer server authority.
+- **Xattrs:** Nonempty UTF-8 keys without NUL, with opaque byte values (including empty values).
+  JSON represents values as standard padded base64, never lossy text. FUSE initially exposes the
+  Linux `user.*` namespace; other namespaces return unsupported. MIME type is a separate field
+  on both files and directories, defaulting to `application/octet-stream` and `inode/directory`.
+- **Unsupported:** Symlinks, hard links, special files, ownership changes, setuid/setgid/sticky bits,
+  POSIX ACLs, and advisory locks return explicit unsupported errors; never silently succeed.
+  Open/append/truncate and unlink-with-open-handles semantics are specified with file I/O in group 6.
+
+## API errors
+
+Errors use `{"error":{"code":"not_found","message":"Not found."}}`. Codes are stable;
+messages are fixed public text. Never expose paths, IDs, grants, or underlying storage errors.
+Missing, cross-workspace, and otherwise inaccessible objects all return the same `not_found`.
+Use `forbidden` only when denial reveals no hidden object, such as mutating a synthetic folder.
+Error responses carry `Cache-Control: no-store`; authentication failures also carry
+`WWW-Authenticate: Bearer`. Unknown routes return `not_found`; unsupported HTTP methods return
+`method_not_allowed` with `Allow` (distinct from unsupported filesystem operations).
+
+| Code | HTTP | Future FUSE mapping |
+| --- | --- | --- |
+| `invalid_input` | 400 | `EINVAL` |
+| `name_too_long` | 400 | `ENAMETOOLONG` |
+| `unauthenticated` | 401 | Recreate session; `EACCES` if unsuccessful. |
+| `forbidden` | 403 | `EACCES` |
+| `not_found` | 404 | `ENOENT` |
+| `method_not_allowed` | 405 | `EOPNOTSUPP` |
+| `conflict` | 409 | `EAGAIN` for stale revisions. |
+| `capacity_exhausted` | 507 | `ENOSPC` |
+| `unavailable` | 503 | `EAGAIN` |
+| `unsupported` | 501 | `EOPNOTSUPP` |
+| `internal` | 500 | `EIO` |
+
+Add distinct codes for filesystem conditions such as existing names or nonempty directories with
+their endpoints; clients must not infer errno from message text or HTTP status alone. Unknown codes
+map to `EIO`. A failure or disconnect does not prove a mutation was uncommitted: do not blindly
+replay writes; define safe retries with the mutation protocol.
+
 ## Sessions and virtual folders
 
 `POST /sessions` creates an ephemeral session with fixed grants and optional virtual mounts:

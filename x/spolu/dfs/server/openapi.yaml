@@ -2,6 +2,12 @@ openapi: 3.0.3
 info:
   title: dfs server
   version: 0.1.0
+  description: |
+    Unknown routes return 404 with ErrorResponse (not_found). Unsupported methods on known routes
+    return 405 with ErrorResponse (method_not_allowed) and an Allow header.
+    Errors carry Cache-Control: no-store. HEAD responses omit the body.
+    Future filesystem endpoints use the shared error codes below. Missing and inaccessible objects
+    produce the same not_found response; messages never contain resource or storage details.
 paths:
   /health:
     get:
@@ -21,3 +27,49 @@ paths:
                   status:
                     type: string
                     enum: [ok]
+    head:
+      operationId: healthHead
+      summary: Check liveness without a response body.
+      security: []
+      responses:
+        "200":
+          description: The HTTP server is running; no response body.
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: |
+                invalid_input and name_too_long (400), unauthenticated (401), forbidden (403),
+                not_found (404), method_not_allowed (405), conflict (409), internal (500),
+                unsupported (501), unavailable (503), capacity_exhausted (507).
+                Unauthenticated responses include WWW-Authenticate: Bearer.
+                Clients branch on codes, not messages, and must handle unknown codes.
+              enum:
+                - invalid_input
+                - name_too_long
+                - unauthenticated
+                - forbidden
+                - not_found
+                - method_not_allowed
+                - conflict
+                - internal
+                - unsupported
+                - unavailable
+                - capacity_exhausted
+            message:
+              type: string
+              description: Fixed public text; contains no request or storage details.
+      example:
+        error:
+          code: not_found
+          message: Not found.

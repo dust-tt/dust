@@ -1,7 +1,7 @@
 # Implementation plan
 
 [DESIGN.md](DESIGN.md) describes the architecture; [CONTRACTS](CONTRACTS) defines the invariants.
-The server scaffold and initial model types are implemented today.
+The server scaffold, initial model types, and API error foundation are implemented today.
 
 Work in small increments: each checkbox should produce a reviewable change with a focused test or
 demo. Split a checkbox further when needed. Keep the server runnable, update API documentation and
@@ -33,9 +33,9 @@ Validated with `tests/server_smoke.py` on native macOS and Linux in Docker using
 - [x] Parse and format both URI forms, ignoring decorative names. Reject malformed UUIDs and paths.
 - [x] Define file/directory metadata, MIME types, xattrs, parent links, and directory entries.
 - [x] Define metadata/content revisions, scoped to a workspace and object within a live session.
-- [ ] Define API errors and their HTTP mappings: missing, forbidden, conflict, invalid input,
+- [x] Define API errors and their HTTP mappings: missing, forbidden, conflict, invalid input,
   exhausted capacity, and unavailable server. Avoid leaking inaccessible object details.
-- [ ] Define the initial supported filesystem semantics: names, timestamps, modes, xattr encoding,
+- [x] Define the initial supported filesystem semantics: names, timestamps, modes, xattr encoding,
   and explicit errors for unsupported operations. Add wire types as their endpoints arrive.
 
 Workspace IDs are opaque caller-provided strings. Metadata revisions are per-object counters;

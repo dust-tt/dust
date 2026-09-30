@@ -4,7 +4,7 @@ use super::{
     ContentVersionId, EntryName, MetadataRevision, MimeType, ObjectId, ObjectRevision, WorkspaceId,
 };
 
-/// Xattr values are opaque bytes; their API encoding is defined with the wire protocol.
+/// Xattr values are opaque bytes; JSON endpoints encode them as standard padded base64.
 pub type Xattrs = BTreeMap<String, Vec<u8>>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]

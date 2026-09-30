@@ -4,17 +4,22 @@ use thiserror::Error;
 
 /**
  * @cc [owner:spolu,label:security] single-path-component
- * An EntryName MUST be nonempty and MUST NOT contain '/' or NUL, or equal '.' or '..'.
+ * An EntryName MUST contain 1..=255 UTF-8 bytes and MUST NOT contain '/' or NUL, or equal '.' or '..'.
  * Preserve accepted UTF-8 names exactly; validation MUST NOT silently normalize them.
  */
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct EntryName(String);
 
 impl EntryName {
+    pub const MAX_BYTES: usize = 255;
+
     pub fn new(value: impl Into<String>) -> Result<Self, InvalidEntryName> {
         let value = value.into();
         if value.is_empty() || matches!(value.as_str(), "." | "..") || value.contains(['/', '\0']) {
-            return Err(InvalidEntryName);
+            return Err(InvalidEntryName::InvalidComponent);
+        }
+        if value.len() > Self::MAX_BYTES {
+            return Err(InvalidEntryName::TooLong);
         }
         Ok(Self(value))
     }
@@ -39,8 +44,12 @@ impl fmt::Display for EntryName {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
-#[error("expected a nonempty name other than '.' or '..', containing neither '/' nor NUL")]
-pub struct InvalidEntryName;
+pub enum InvalidEntryName {
+    #[error("expected a nonempty name other than '.' or '..', containing neither '/' nor NUL")]
+    InvalidComponent,
+    #[error("name exceeds 255 UTF-8 bytes")]
+    TooLong,
+}
 
 /**
  * @cc [owner:spolu,label:security] canonical-relative-path
@@ -106,5 +115,22 @@ mod tests {
         for invalid in ["", ".", "..", "a/b", "a\0b"] {
             assert!(EntryName::new(invalid).is_err(), "{invalid:?}");
         }
+    }
+
+    #[test]
+    fn name_limits_count_bytes_without_normalizing_unicode() -> anyhow::Result<()> {
+        assert!(EntryName::new("a".repeat(255)).is_ok());
+        assert_eq!(
+            EntryName::new("a".repeat(256)),
+            Err(InvalidEntryName::TooLong)
+        );
+        assert!(EntryName::new(format!("{}a", "é".repeat(127))).is_ok());
+        assert_eq!(
+            EntryName::new("é".repeat(128)),
+            Err(InvalidEntryName::TooLong)
+        );
+        assert_ne!(EntryName::new("é")?, EntryName::new("e\u{301}")?);
+        assert_ne!(EntryName::new("a")?, EntryName::new("A")?);
+        Ok(())
     }
 }

@@ -1,9 +1,8 @@
-mod api;
-
 use std::net::SocketAddr;
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use dfs_server::api;
 use tokio::net::TcpListener;
 use tokio::signal::unix::{SignalKind, signal};
 use tracing::info;
