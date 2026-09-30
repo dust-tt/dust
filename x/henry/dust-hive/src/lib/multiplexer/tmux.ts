@@ -193,12 +193,6 @@ export class TmuxAdapter implements MultiplexerAdapter {
   // Layout Generation
   // ============================================================
 
-  /**
-   * @cc [owner:aubin-tchoi,label:cli] tmux-startup-input
-   * Startup commands MUST run without being typed into the interactive shell. Initial input
-   * MUST only be submitted after its ready pattern appears in the pane; a timeout MUST leave
-   * the pane's input untouched.
-   */
   generateLayout(config: LayoutConfig): string {
     const {
       envName,
