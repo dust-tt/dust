@@ -161,7 +161,8 @@ export type AgentDetailsSection =
   | "knowledge"
   | "model"
   | "editors"
-  | "tags";
+  | "tags"
+  | "structured_output";
 
 export function getEditedAgentSections(
   suggestions: AgentSuggestionType[]
@@ -179,6 +180,7 @@ export function getEditedAgentSections(
       case "model":
       case "editors":
       case "tags":
+      case "structured_output":
         sections.add(suggestion.kind);
         break;
       case "sub_agent":

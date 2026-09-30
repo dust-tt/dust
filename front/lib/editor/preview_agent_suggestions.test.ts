@@ -280,6 +280,29 @@ describe("previewAgentSuggestions", () => {
     }
   });
 
+  it("previews the suggested structured output on the model", () => {
+    const responseFormat = JSON.stringify({ type: "json_schema" });
+    const result = previewAgentSuggestions({
+      agent: AGENT,
+      suggestions: [
+        {
+          ...BASE_SUGGESTION,
+          kind: "structured_output",
+          suggestion: { responseFormat },
+        },
+      ],
+      pipeline,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.fields.model).toEqual({
+        ...AGENT.model,
+        responseFormat,
+      });
+    }
+  });
+
   it("returns an error for knowledge suggestions", () => {
     const result = previewAgentSuggestions({
       agent: AGENT,

@@ -133,6 +133,17 @@ describe("getEditedAgentSections", () => {
     );
   });
 
+  it("maps structured output to its own section", () => {
+    const sections = getEditedAgentSections([
+      {
+        ...AGENT_SUGGESTION,
+        kind: "structured_output",
+        suggestion: { responseFormat: null },
+      },
+    ]);
+    expect(sections).toEqual(new Set(["structured_output"]));
+  });
+
   it("maps sub agents to tools", () => {
     const sections = getEditedAgentSections([
       {
