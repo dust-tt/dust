@@ -303,6 +303,54 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     });
   }
 
+  /**
+   * @cc [owner:frankaloia,label:security;backend] unrevoked-invitation-role
+   * Each invitation in the authenticated workspace MUST become pending with the requested
+   * `initialRole`. Invitations outside that workspace MUST remain unchanged.
+   */
+  static async bulkUnrevoke(
+    auth: Authenticator,
+    {
+      invitations,
+      transaction,
+    }: {
+      invitations: Array<{
+        invitationId: string;
+        role: ActiveRoleType;
+      }>;
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    const workspace = auth.workspace();
+    if (!workspace || !auth.isManager()) {
+      throw new Error(
+        "Only users that can manage members for the current workspace can see membership invitations or modify them."
+      );
+    }
+
+    const invitationIdsByRole = new Map<ActiveRoleType, string[]>();
+    for (const { invitationId, role } of invitations) {
+      const invitationIds = invitationIdsByRole.get(role) ?? [];
+      invitationIds.push(invitationId);
+      invitationIdsByRole.set(role, invitationIds);
+    }
+
+    for (const [role, invitationIds] of invitationIdsByRole) {
+      // Keep the bounded role groups sequential because they share one transaction connection.
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
+      await this.model.update(
+        { status: "pending", initialRole: role },
+        {
+          where: {
+            sId: { [Op.in]: invitationIds },
+            workspaceId: workspace.id,
+          },
+          transaction,
+        }
+      );
+    }
+  }
+
   static async getPendingInvitationsCountForWorkspace({
     workspace,
     transaction,

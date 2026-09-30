@@ -9,7 +9,6 @@ import {
   getWorkspaceAdministrationVersionLock,
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -34,12 +33,10 @@ import type {
 } from "@app/types/user";
 import sgMail from "@sendgrid/mail";
 import { escape } from "html-escaper";
-import type { Transaction } from "sequelize";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 
 const EMAIL_CONCURRENCY = 8;
-const INVITATION_UPDATE_CONCURRENCY = 8;
 
 export async function getInvitation(
   auth: Authenticator,
@@ -112,29 +109,6 @@ export async function sendWorkspaceInvitationReminderEmail(
  * @param auth Authenticator
  * @returns MenbershipInvitation[] members of the workspace
  */
-
-async function batchUnrevokeInvitations(
-  auth: Authenticator,
-  invitations: Array<{ sId: string; role: ActiveRoleType }>,
-  transaction?: Transaction
-) {
-  const owner = auth.workspace();
-  if (!owner || !auth.isManager()) {
-    throw new Error(
-      "Only users that can manage members for the current workspace can see membership invitations or modify them."
-    );
-  }
-
-  await concurrentExecutor(
-    invitations,
-    ({ sId, role }) =>
-      MembershipInvitationModel.update(
-        { status: "pending", initialRole: role },
-        { where: { sId, workspaceId: owner.id }, transaction }
-      ),
-    { concurrency: INVITATION_UPDATE_CONCURRENCY }
-  );
-}
 
 interface MembershipInvitationBlob {
   email: string;
@@ -301,16 +275,15 @@ export async function handleMembershipInvitations(
         });
       }
 
-      await batchUnrevokeInvitations(
-        auth,
-        invitationsToUnrevoke.map((i) => ({
-          sId: i.sId,
+      await MembershipInvitationResource.bulkUnrevoke(auth, {
+        invitations: invitationsToUnrevoke.map((i) => ({
+          invitationId: i.sId,
           role:
             emailToRequestedRole.get(i.inviteEmail.toLowerCase().trim()) ??
             i.initialRole,
         })),
-        t
-      );
+        transaction: t,
+      });
 
       const resultsWithoutEmail: HandleMembershipInvitationResult[] =
         invitationsToUnrevoke.map((i) => ({
