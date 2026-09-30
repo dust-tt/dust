@@ -142,7 +142,7 @@ export const NavigationSidebar = React.forwardRef<
               // and margins set on it do nothing — the side spacing has to go
               // on the list itself, as the other tabs' menus already do.
               <NavTabPillContent key={tab.id} value={tab.id}>
-                <div className="mx-sidebar-side-spacing">
+                <div className="mx-sidebar-side-spacing pt-sidebar-side-spacing">
                   {subNavigation &&
                     tab.isCurrent(activePath) &&
                     (isAdminTab ? (
