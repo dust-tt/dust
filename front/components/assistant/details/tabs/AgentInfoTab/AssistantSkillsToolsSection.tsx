@@ -22,6 +22,7 @@ import type {
 } from "@app/lib/api/mcp";
 import type { PreviewedAgentCapabilities } from "@app/lib/editor/preview_agent_suggestions";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
@@ -118,9 +119,14 @@ export function AssistantSkillsToolsSection({
 
   const sortedActions = useMemo(() => {
     const removedToolIds = new Set(previewedCapabilities?.removedToolIds);
+    const removedSubAgentIds = new Set(
+      previewedCapabilities?.removedSubAgentIds
+    );
     const isRemovedTool = (action: MCPServerConfigurationType) =>
       isServerSideMCPServerConfiguration(action) &&
-      removedToolIds.has(action.mcpServerViewId);
+      (removedToolIds.has(action.mcpServerViewId) ||
+        (action.childAgentId !== null &&
+          removedSubAgentIds.has(action.childAgentId)));
 
     const currentToolIds = new Set(
       agentConfiguration.actions
@@ -161,6 +167,17 @@ export function AssistantSkillsToolsSection({
     );
   }, [skills, previewedCapabilities]);
 
+  const addedSubAgentIds = useMemo(() => {
+    const currentSubAgentIds = new Set(
+      agentConfiguration.actions
+        .filter(isServerSideMCPServerConfiguration)
+        .map((action) => action.childAgentId)
+    );
+    return (previewedCapabilities?.addedSubAgentIds ?? []).filter(
+      (subAgentId) => !currentSubAgentIds.has(subAgentId)
+    );
+  }, [agentConfiguration.actions, previewedCapabilities]);
+
   const allTools = useMemo(
     () => [...sortedActions, ...availableToolsets],
     [sortedActions, availableToolsets]
@@ -171,7 +188,7 @@ export function AssistantSkillsToolsSection({
   const visibleTools = allTools.slice(0, visibleToolsCount);
   const hasMore = allTools.length > visibleToolsCount;
 
-  const hasTools = allTools.length > 0;
+  const hasTools = allTools.length > 0 || addedSubAgentIds.length > 0;
   const hasSkills = sortedSkills.length > 0 || addedSkillIds.length > 0;
 
   return (
@@ -213,39 +230,48 @@ export function AssistantSkillsToolsSection({
                 <Spinner size="xs" />
               </div>
             ) : (
-              visibleTools.map((tool) => {
-                if (isActionData(tool)) {
+              <>
+                {visibleTools.map((tool) => {
+                  if (isActionData(tool)) {
+                    return (
+                      <Tooltip
+                        key={tool.title}
+                        label={tool.description ?? tool.title}
+                        trigger={
+                          <div className="flex flex-row items-center gap-2">
+                            {tool.avatar}
+                            <div className="truncate">{tool.title}</div>
+                          </div>
+                        }
+                        tooltipTriggerAsChild
+                      />
+                    );
+                  }
+                  const avatar = getAvatarFromIcon(tool.server.icon, "xs");
+                  const displayName = getMcpServerViewDisplayName(tool);
+                  const description = getMcpServerViewDescription(tool);
                   return (
                     <Tooltip
-                      key={tool.title}
-                      label={tool.description ?? tool.title}
+                      key={tool.sId}
+                      label={description ?? displayName}
                       trigger={
                         <div className="flex flex-row items-center gap-2">
-                          {tool.avatar}
-                          <div className="truncate">{tool.title}</div>
+                          {avatar}
+                          <div className="truncate">{displayName}</div>
                         </div>
                       }
                       tooltipTriggerAsChild
                     />
                   );
-                }
-                const avatar = getAvatarFromIcon(tool.server.icon, "xs");
-                const displayName = getMcpServerViewDisplayName(tool);
-                const description = getMcpServerViewDescription(tool);
-                return (
-                  <Tooltip
-                    key={tool.sId}
-                    label={description ?? displayName}
-                    trigger={
-                      <div className="flex flex-row items-center gap-2">
-                        {avatar}
-                        <div className="truncate">{displayName}</div>
-                      </div>
-                    }
-                    tooltipTriggerAsChild
+                })}
+                {addedSubAgentIds.map((subAgentId) => (
+                  <AddedSubAgentItem
+                    key={subAgentId}
+                    owner={owner}
+                    subAgentId={subAgentId}
                   />
-                );
-              })
+                ))}
+              </>
             )}
           </div>
           {hasMore && (
@@ -347,6 +373,37 @@ function AddedSkillItem({ owner, skillId }: AddedSkillItemProps) {
     return <Spinner size="xs" />;
   }
   return skill ? <SkillItem skill={skill} /> : null;
+}
+
+interface AddedSubAgentItemProps {
+  owner: LightWorkspaceType;
+  subAgentId: string;
+}
+
+function AddedSubAgentItem({ owner, subAgentId }: AddedSubAgentItemProps) {
+  const { agentConfiguration: subAgent, isAgentConfigurationLoading } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: subAgentId,
+    });
+  if (isAgentConfigurationLoading) {
+    return <Spinner size="xs" />;
+  }
+  if (!subAgent) {
+    return null;
+  }
+  return (
+    <Tooltip
+      label={subAgent.description || subAgent.name}
+      trigger={
+        <div className="flex flex-row items-center gap-2">
+          <Avatar size="xs" visual={subAgent.pictureUrl} />
+          <div className="truncate">@{subAgent.name}</div>
+        </div>
+      }
+      tooltipTriggerAsChild
+    />
+  );
 }
 
 interface ServerView {

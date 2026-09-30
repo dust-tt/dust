@@ -3362,29 +3362,62 @@ export class AgentResource
     auth: Authenticator,
     name?: string
   ): Promise<Result<AgentResource, Error>> {
+    const pendingAgents = await this.createPendings(auth, [
+      name ?? PENDING_AGENT_PLACEHOLDER_NAME,
+    ]);
+    if (pendingAgents.isErr()) {
+      return pendingAgents;
+    }
+
+    return new Ok(pendingAgents.value[0]);
+  }
+
+  static async createPendings(
+    auth: Authenticator,
+    names: string[]
+  ): Promise<Result<AgentResource[], Error>> {
+    if (names.length === 0) {
+      return new Ok([]);
+    }
+
     const user = auth.getNonNullableUser();
     const { defaultModel } = await getModelsForAuth(auth);
 
-    return AgentResource.makeNew(auth, {
-      name: name ?? PENDING_AGENT_PLACEHOLDER_NAME,
-      description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
-      instructions: null,
-      instructionsHtml: null,
-      pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
-      status: "pending",
-      scope: "hidden",
-      model: {
-        providerId: defaultModel.providerId,
-        modelId: defaultModel.modelId,
-        temperature: 0.7,
-        reasoningEffort: defaultModel.defaultReasoningEffort,
-      },
-      templateId: null,
-      requestedSpaceIds: [],
-      tags: [],
-      editors: [user.toJSON()],
-      authorId: user.id,
-    });
+    const results = await concurrentExecutor(
+      names,
+      (name) =>
+        this.makeNew(auth, {
+          name,
+          description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
+          instructions: null,
+          instructionsHtml: null,
+          pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
+          status: "pending",
+          scope: "hidden",
+          model: {
+            providerId: defaultModel.providerId,
+            modelId: defaultModel.modelId,
+            temperature: 0.7,
+            reasoningEffort: defaultModel.defaultReasoningEffort,
+          },
+          templateId: null,
+          requestedSpaceIds: [],
+          tags: [],
+          editors: [user.toJSON()],
+          authorId: user.id,
+        }),
+      { concurrency: 8 }
+    );
+
+    const pendingAgents: AgentResource[] = [];
+    for (const result of results) {
+      if (result.isErr()) {
+        return result;
+      }
+      pendingAgents.push(result.value);
+    }
+
+    return new Ok(pendingAgents);
   }
 
   // Applies a partial update to `this` existing agent: only properties present in `update` are
