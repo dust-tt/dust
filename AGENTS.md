@@ -25,6 +25,14 @@ the forwarded env.)
 Remember: A story name might not reflect the property name correctly, so always verify
 properties through documentation or example stories before using them.
 
+# Product analytics (PostHog + Metabase)
+
+Before adding, changing, or auditing product analytics instrumentation (PostHog events from
+`front`, `front-spa`, `front-api` or `marketing`, and the Metabase dashboards built on them), use
+the `dust-analytics` skill. It owns the event naming scheme, the client vs. server decision,
+the property rules (flat scalars, `sId`s, no PII), and the tracking-plan format expected in PRs.
+Never call the PostHog SDK directly from feature code.
+
 # Cursor Cloud specific instructions
 
 ## Logging in

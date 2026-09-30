@@ -42,7 +42,7 @@ API handlers are **not** here — they live in `front-api/routes/`, one file per
 
 - Use `npx tsgo --noEmit` to type-check the front project.
 - Use `npm run format:changed` (from the repo root) to format and lint changed files.
-- For changes related to Temporal, LLM, MCP servers, Elasticsearch, audit events, and webhook sources, and for testing, use the corresponding skills.
+- For changes related to Temporal, LLM, MCP servers, Elasticsearch, audit events, webhook sources, and product analytics (PostHog events, Metabase), and for testing, use the corresponding skills.
 
 # Running tests
 - Use `npm run test -- filetotest` directly, it will automatically use a test environment (db, redis..)
