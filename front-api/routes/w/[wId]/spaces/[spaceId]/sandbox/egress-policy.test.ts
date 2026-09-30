@@ -1,4 +1,3 @@
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -22,19 +21,12 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 
 async function setupTest({
   role = "admin",
-  enableSandboxFunctions = true,
 }: {
   role?: MembershipRoleType;
-  enableSandboxFunctions?: boolean;
 } = {}) {
   const { workspace, auth, ...rest } = await createPrivateApiMockRequest({
     role,
   });
-
-  if (enableSandboxFunctions) {
-    await FeatureFlagFactory.basic(auth, "frames_v2");
-    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
-  }
 
   return { workspace, auth, ...rest };
 }
@@ -267,18 +259,6 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     expect(
       fileStorageMock.getObject(`w/${workspace.sId}/sandboxes/${pod.sId}.json`)
     ).toBeUndefined();
-  });
-
-  it("rejects workspaces without Frame functions with a 403", async () => {
-    const { workspace } = await setupTest({ enableSandboxFunctions: false });
-    const pod = await SpaceFactory.project(workspace);
-
-    const response = await getPolicy(workspace.sId, pod.sId);
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "feature_flag_not_found" },
-    });
   });
 
   it("surfaces pending domain requests from the policy file", async () => {

@@ -1,6 +1,5 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
-import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
 import { AgentRequestedDomainsSetting } from "@app/components/sandbox/AgentRequestedDomainsSetting";
 import { MultiPodNetworkSection } from "@app/components/sandbox/MultiPodNetworkSection";
 import type { SandboxScopeSelection } from "@app/components/sandbox/SandboxScopeSelector";
@@ -13,7 +12,7 @@ import { useMemo, useState } from "react";
 
 export function SandboxPage() {
   const owner = useWorkspace();
-  const { isAdmin, isComputerEnabled, canAdministratePodNetwork } =
+  const { isAdmin, isComputerEnabled, canAdministrateComputer } =
     useComputerAdminAccess();
   const [selection, setSelection] = useState<SandboxScopeSelection>({
     includeWorkspace: true,
@@ -25,7 +24,7 @@ export function SandboxPage() {
   const { pods, isEgressPolicyPodsLoading, isEgressPolicyPodsError } =
     useEgressPolicyPods({
       owner,
-      disabled: !canAdministratePodNetwork,
+      disabled: !canAdministrateComputer,
     });
 
   const selectedPods = useMemo(() => {
@@ -95,7 +94,7 @@ export function SandboxPage() {
     return (
       <>
         <AgentRequestedDomainsSetting />
-        {canAdministratePodNetwork ? renderNetwork() : <NetworkSection />}
+        {renderNetwork()}
         <EnvironmentSection />
       </>
     );
