@@ -27,8 +27,8 @@ export async function describeAgent(
  * @cc [owner:avervaet,label:mcp;security] private-agent-instructions-not-exposed
  * MUST NOT expose an agent's instructions, tools, skills or structured output to a caller who cannot
  * view its content, whatever their role. Visibility comes exclusively from the resource
- * (`agent-content-visibility`): this handler MUST check `isFull()` before reading the instructions,
- * tools, skills or structured output.
+ * (`agent-content-visibility`): this handler MUST check `canViewContent` before reading the
+ * instructions, tools, skills or structured output.
  */
 export async function describeAgentHandler(
   args: DescribeAgentArgs,

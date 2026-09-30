@@ -122,12 +122,13 @@ export async function enrichWithInstructions(
 
 /**
  * @cc [owner:tdraier,label:security;backend] agent-json-redaction
- * `toLightAgentConfigurations` and `toAgentConfigurations` are the only place that shapes an agent's
- * configuration JSON, on top of `AgentResource.toJSON`. A resource whose content the caller cannot
- * view (`!canViewContent`) MUST serialize with `instructions: null` and, in the full shape, with
- * `instructionsHtml: null`, no `actions` and no
- * `codeDefinedSkillIds`, whatever enrichment it is handed: the head fields and the version metadata
- * are not private and are always carried.
+ * `AgentResource.toJSON` owns the base shape (see `resource-owned-serialization`);
+ * `toLightAgentConfigurations` and `toAgentConfigurations` are the only builders of an agent's
+ * configuration JSON on top of it: they add the fields that need a query and MUST NOT reshape the
+ * base fields. A resource whose content the caller cannot view (`!canViewContent`) MUST serialize
+ * with `instructions: null` and, in the full shape, with `instructionsHtml: null`, no `actions` and
+ * no `codeDefinedSkillIds`, whatever enrichment it is handed: the head fields and the version
+ * metadata are not private and are always carried.
  */
 function toLightConfigurationJSON(
   resource: AgentResource,
