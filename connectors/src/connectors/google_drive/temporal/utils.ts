@@ -46,8 +46,7 @@ async function _getMyDriveId(
 }
 export const getMyDriveIdCached = cacheWithRedis(
   _getMyDriveId,
-  (_authCredentials: OAuth2Client, connectorId: ModelId) =>
-    `${connectorId}`,
+  (_authCredentials: OAuth2Client, connectorId: ModelId) => `${connectorId}`,
   {
     ttlMs: 60 * 10 * 1000, // 10 minutes
   }
