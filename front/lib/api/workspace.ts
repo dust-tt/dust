@@ -8,6 +8,7 @@ import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { getMemberScopeWithGroupVerb } from "@app/lib/resources/group_management_access";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -319,11 +320,18 @@ async function resolveRoleFilterUserIds({
   return removeNulls(memberships.map((m) => m.user?.sId));
 }
 
+/**
+ * @cc [owner:philipperolet,label:security] managed-people-search
+ * For delegated callers, managedOnly MUST restrict results and counts to active members in their
+ * managed groups before pagination. Role and email filters MUST only narrow that scope;
+ * an empty scope stays empty.
+ */
 export async function searchMembers(
   auth: Authenticator,
   options: {
     searchTerm?: string;
     searchEmails?: string[];
+    managedOnly?: boolean;
     groupKind?: UserVisibleGroupKind;
     role?: ActiveRoleType;
   },
@@ -335,14 +343,26 @@ export async function searchMembers(
   }
 
   let restrictToUserIds: string[] | undefined;
+  if (options.managedOnly) {
+    const scope = await getMemberScopeWithGroupVerb(auth, "read_usage");
+    if (scope.kind === "ids") {
+      restrictToUserIds = (
+        await UserResource.fetchByModelIds(scope.memberModelIds)
+      ).map((user) => user.sId);
+    }
+  }
   if (options.role) {
-    restrictToUserIds = await resolveRoleFilterUserIds({
+    const roleUserIds = await resolveRoleFilterUserIds({
       workspace: owner,
       role: options.role,
     });
-    if (restrictToUserIds.length === 0) {
-      return { members: [], total: 0 };
-    }
+    const roleIds = new Set(roleUserIds);
+    restrictToUserIds = restrictToUserIds
+      ? restrictToUserIds.filter((id) => roleIds.has(id))
+      : roleUserIds;
+  }
+  if (restrictToUserIds?.length === 0) {
+    return { members: [], total: 0 };
   }
 
   let users: UserResource[];
@@ -410,7 +430,12 @@ export async function searchMembers(
           groupKinds: [options.groupKind],
         });
 
-        groups = groupsResult.map((g) => g.toJSON()).map((g) => g.name);
+        groups = groupsResult
+          .filter(
+            (group) => !options.managedOnly || auth.can("read_usage", group)
+          )
+          .map((g) => g.toJSON())
+          .map((g) => g.name);
       }
 
       return {

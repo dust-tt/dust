@@ -9,6 +9,7 @@ import {
   getGroupManagers,
   replaceGroupManagers,
 } from "@app/lib/api/groups/manager_assignments";
+import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type {
   DeleteGroupResponseBody,
@@ -18,8 +19,13 @@ import type {
 import { PatchGroupBodySchema } from "@app/types/api/groups/manage";
 import { isManageableGroupKind } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightUserType, UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import {
+  ensureHasAnyGroupPermission,
+  ensureIsManager,
+} from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -33,10 +39,20 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/groups/:groupId.
 const app = workspaceApp();
 
+function serializeGroupUsers(
+  auth: Authenticator,
+  users: UserType[]
+): LightUserType[] {
+  return auth.isManager() ? users : users.map(toLightUser);
+}
+
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsManager(),
+  ensureHasAnyGroupPermission(
+    "read_usage",
+    "Group management access required."
+  ),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetGroupResponseBody> => {
     const auth = ctx.get("auth");
@@ -88,6 +104,16 @@ app.get(
       });
     }
 
+    if (!auth.can("read_usage", group)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Group management access required.",
+        },
+      });
+    }
+
     const members = await group.getActiveMembers(auth);
     const allowedActions = getGroupAllowedActions(
       auth,
@@ -97,8 +123,11 @@ app.get(
 
     return ctx.json({
       group: { ...group.toJSON(), memberCount: members.length, allowedActions },
-      members: members.map((member) => member.toJSON()),
-      managers: await getGroupManagers(auth, group),
+      members: serializeGroupUsers(
+        auth,
+        members.map((member) => member.toJSON())
+      ),
+      managers: serializeGroupUsers(auth, await getGroupManagers(auth, group)),
     });
   }
 );
@@ -241,8 +270,11 @@ app.patch(
             isGroupManagementEnabled
           ),
         },
-        members: members.map((member) => member.toJSON()),
-        managers: assignment.managers,
+        members: serializeGroupUsers(
+          auth,
+          members.map((member) => member.toJSON())
+        ),
+        managers: serializeGroupUsers(auth, assignment.managers),
       });
     }
 
@@ -315,8 +347,11 @@ app.patch(
           isGroupManagementEnabled
         ),
       },
-      members: members.map((member) => member.toJSON()),
-      managers: await getGroupManagers(auth, group),
+      members: serializeGroupUsers(
+        auth,
+        members.map((member) => member.toJSON())
+      ),
+      managers: serializeGroupUsers(auth, await getGroupManagers(auth, group)),
     });
   }
 );

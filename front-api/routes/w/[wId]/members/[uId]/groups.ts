@@ -13,7 +13,10 @@ import { PostMemberGroupBodySchema } from "@app/types/api/groups/manage";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import {
+  ensureHasAnyGroupPermission,
+  ensureIsManager,
+} from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -67,7 +70,10 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsManager(),
+  ensureHasAnyGroupPermission(
+    "read_usage",
+    "Group management access required."
+  ),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetMemberGroupsResponseBody> => {
     const auth = ctx.get("auth");
@@ -78,8 +84,9 @@ app.get(
       return apiError(ctx, toApiError(res.error));
     }
 
+    const groups = res.value.filter((group) => auth.can("read_usage", group));
     return ctx.json({
-      groups: await GroupResource.toJSONWithMemberCounts(auth, res.value),
+      groups: await GroupResource.toJSONWithMemberCounts(auth, groups),
     });
   }
 );

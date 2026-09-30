@@ -197,8 +197,16 @@ clean up grants and their internal groups when the managed group is deleted.
 For [member usage reads](../../../front/lib/api/credits/members_usage.ts), restrict the candidate members
 to the authorized set before search, sorting, pagination, and counts. Intersect user-selected filters
 with that set. Apply the same restriction to the People members list and usage-editor lookups. The
-People add-member search is deliberately broader: it returns minimal identities for active workspace
-members, without exposing their usage or other administration data.
+People list uses `managedOnly=true` on the existing member search: the server derives the group
+scope, deduplicates active members, and applies it before search, counts, and pagination. Group lists
+support the same mode; group and member-group management reads enforce the same scope. The
+add-member picker keeps the broader directory search, returning minimal identities without usage
+or other administration data.
+
+For People visibility, reuse `read_usage`, which the group-manager role grants on manual,
+provisioned, and admin-granting groups. Ordinary `read` is too broad because workspace members
+already hold it on other groups. Use `canEditMembers` separately to enable membership controls;
+read-only managed groups still appear.
 
 Replace the role-only gates on the relevant individual read/write routes with these checks. Enforce
 write authorization inside [setUserSpendLimit](../../../front/lib/api/users/spend_limit.ts) and
@@ -241,7 +249,15 @@ section, group table, and limit inputs. Render a restricted People view in
 hooks and actions in the workspace views so group managers do not fetch hidden sections.
 Use the auth-context scope and group permissions to populate filters, navigation, and edit controls.
 Keep the admin-only read-only state for admin-granting groups, alongside the delegated membership
-authorization for other manual groups.
+authorization for other manual groups. Hide workspace role changes, workspace removal, invitations,
+group creation/deletion, and manager appointments unless the caller independently has their existing
+permissions. When saving membership, omit the name unless it changed so the API does not require
+rename authority for a membership-only edit.
+
+Existing mutation hooks update group data. Refreshing the scoped People list and displayed
+permissions after a change is an optional follow-up; a reload is an acceptable initial fallback.
+Server permission-cache invalidation and current authorization on every request remain required.
+
 Explain in the manager picker and membership editor that membership carries the group's access,
 roles, and seats.
 

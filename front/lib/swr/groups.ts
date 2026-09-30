@@ -29,7 +29,7 @@ import type {
 } from "@app/types/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { LightUserType, LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -177,8 +177,8 @@ export function useGroup({
 
   return {
     group: data?.group ?? null,
-    members: data ? data.members : emptyArray<UserType>(),
-    managers: data ? data.managers : emptyArray<UserType>(),
+    members: data ? data.members : emptyArray<LightUserType>(),
+    managers: data ? data.managers : emptyArray<LightUserType>(),
     isGroupLoading: !error && !data && !disabled && !!groupId,
     isGroupError: !!error,
     mutateGroup: mutate,
