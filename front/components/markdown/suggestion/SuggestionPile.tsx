@@ -6,7 +6,10 @@ import {
   getBatchSuggestionTitle,
   PendingBatchSuggestionCard,
 } from "@app/components/markdown/suggestion/BatchSuggestionDirective";
-import { DEFAULT_SUGGESTION_VISUAL } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
+import {
+  DEFAULT_SUGGESTION_VISUAL,
+  RestrictedSuggestionCard,
+} from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import type { SuggestionPileBulkAction } from "@app/components/markdown/suggestion/suggestionTracking";
 import {
   trackSuggestionCardDecision,
@@ -222,8 +225,9 @@ export function ConversationSuggestionPile({
 
   const batchesById = new Map(batches.map((b) => [b.id, b]));
   const pileBatches = batchIds.flatMap((id) => batchesById.get(id) ?? []);
+
   if (pileBatches.length === 0) {
-    return null;
+    return <RestrictedSuggestionCard />;
   }
 
   const pendingBatches = pileBatches.filter((b) => b.state === "pending");

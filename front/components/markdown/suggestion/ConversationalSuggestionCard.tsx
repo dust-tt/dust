@@ -147,3 +147,16 @@ export function ConversationalSuggestionCard({
     </Card>
   );
 }
+
+/**
+ * Stands in for a batch the viewer cannot read: `fetchByIds` omits a batch with any member the
+ * viewer cannot access, so its title and analysis are never shown.
+ */
+export function RestrictedSuggestionCard() {
+  return (
+    <ConversationalSuggestionCard
+      title="Suggested changes"
+      analysis="The agent has made a suggestion to improve an agent or a skill but you don't have the permissions to read it."
+    />
+  );
+}

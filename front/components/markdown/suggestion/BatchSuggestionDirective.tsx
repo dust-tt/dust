@@ -13,7 +13,10 @@ import {
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { AgentSuggestionDetails } from "@app/components/markdown/suggestion/AgentSuggestionDetails";
-import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
+import {
+  ConversationalSuggestionCard,
+  RestrictedSuggestionCard,
+} from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import {
   DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS,
   isAgentActionCardSuggestion,
@@ -478,8 +481,9 @@ function BatchSuggestion({ owner, batchId }: BatchSuggestionProps) {
     return <LoadingBlock className="h-24 w-full" />;
   }
 
+  // The batch is omitted when the viewer cannot read all of its suggestions.
   if (!batch) {
-    return null;
+    return <RestrictedSuggestionCard />;
   }
 
   // A reviewed batch is shown like a reviewed suggestion: its state chip and title only.
