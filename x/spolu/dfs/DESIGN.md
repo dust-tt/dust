@@ -24,9 +24,16 @@ concurrent clients. Competing writers to the same file serialize; unrelated file
 
 ## Objects and grants
 
-Files and directories have a stable, never-reused ID, MIME type, and xattrs. Directory entries map
+Files and directories have a stable ID, MIME type, and xattrs. Directory entries map
 `(parent ID, name)` to object IDs. Renames and moves preserve identity; content updates create a new
-version without changing the file ID. Content versions must never be reused, including after recovery.
+version without changing the file ID.
+
+The server generates object IDs and separate content-version IDs using
+[`uuid::Uuid::new_v4()`](https://docs.rs/uuid/latest/uuid/struct.Uuid.html#method.new_v4).
+Store UUIDs as 16 bytes internally; object records use `(workspace, "objects", UUID)` keys. SlateDB
+accepts these keys but does not allocate IDs. Generation needs no database round trip or persisted
+counter. UUIDv4 provides 122 random bits; uniqueness is probabilistic. Always generate fresh IDs for
+new objects and versions, including after recovery; never deliberately recycle them.
 
 A grant is a caller-defined opaque string, such as `u:spolu@dust.tt` or `g:engineering`; prefixes have
 no special meaning to dfs. Clients create a session with a workspace and at most **512 distinct
@@ -38,17 +45,29 @@ grants are the union of its own and its ancestors' grants. Access requires an in
 session's grants. The server checks this on every request; cross-workspace access is forbidden
 even when grant strings match.
 
-A SlateDB index `(workspace, grant, object ID)` lists files/directories explicitly carrying a grant.
-Discover accessible roots by scanning each session grant's prefix, merging and deduplicating
-results. The 512-grant cap bounds scan fan-out and search filter size, not the number of matching
-objects; paginate results. Recipient paths are virtual mounts: `/spolu/C` can appear as `/jd/shared/C`
-without exposing `/spolu`. Both paths refer to the same stable object ID.
+Store explicit grant attachments in both directions:
+
+| SlateDB key | Purpose |
+| --- | --- |
+| `(workspace, "grants_by_object", object ID, grant)` | Read an object's grants for authorization. |
+| `(workspace, "objects_by_grant", grant, object ID)` | Discover accessible files/directories. |
+
+Update both indexes atomically, first in the owner's overlay and later in SlateDB. Inherited access
+uses the current ancestor chain; do not copy inherited grants into these indexes. Root discovery
+scans at most 512 grant prefixes and merges/deduplicates object IDs. Paginate results: the grant cap
+bounds scan fan-out and search filter size, not the number of matching objects.
 
 ## Object URIs
 
-Persistent references to files and folders use `dfs://<object_id>`, for example
-`dfs://initiative-dfs--S7SpznuSuH`. The entire object ID is opaque and immutable; the URI contains no
-filesystem path and remains unchanged across renames and moves.
+Persistent references to files and folders accept `dfs://<uuid>` or `dfs://<name>--<uuid>`, with the
+UUID encoded as 32 lowercase hexadecimal characters without hyphens. Only the UUID identifies the
+object; the optional name is decorative, ignored during resolution, and need not match its current
+name. For example, both URIs reference the same object:
+
+- `dfs://550e8400e29b41d4a716446655440000`
+- `dfs://initiative-dfs--550e8400e29b41d4a716446655440000`
+
+URIs contain no filesystem path and remain valid across renames and moves.
 
 Paths are for session navigation and display. A URI identifies the object, not a content version;
 deleting the object makes the reference unavailable. Resolving a URI always enforces the session's
@@ -63,8 +82,8 @@ workspace and grants.
   "workspace_id": "workspace_123",
   "grants": ["u:spolu@dust.tt", "g:engineering"],
   "mounts": {
-    "current/conversation": "dfs://initiative-dfs--S7SpznuSuH",
-    "current/pod": "dfs://initiative-dfs--K9RqvNxLmP"
+    "current/conversation": "dfs://initiative-dfs--550e8400e29b41d4a716446655440000",
+    "current/pod": "dfs://initiative-dfs--f47ac10b58cc4372a5670e02b2c3d479"
   }
 }
 ```
@@ -85,6 +104,19 @@ and virtual paths come from the session rather than individual requests.
   ancestors. Synthetic parents and mount entries cannot be mutated through filesystem operations.
 - `DELETE /sessions/{session_id}` closes the session. Recreate on expiry or owner restart, or to change
   grants/mounts; discard cached namespace views and reestablish subscriptions when recreating.
+
+### Root and shared folder rendering
+
+The session root combines authorized workspace-root entries, a synthetic `/shared` folder, and
+configured virtual folders such as `/current`. Reserve `/shared` in the session namespace.
+
+Populate `/shared` from the grant-to-object index, using the owner's overlay plus SlateDB. Omit
+objects already reachable through an authorized ancestor or directly from the workspace root.
+Render each remaining object under its basename, disambiguating collisions with stable object IDs.
+Thus a grant on `/spolu/C` exposes `/shared/C` without exposing `/spolu`.
+
+These entries are aliases, not copied directories. Listing `/shared/C` reads C's ordinary directory
+entries; grant changes update the rendered view through session notifications and cache invalidation.
 
 ## Writes, fsync, and recovery
 
