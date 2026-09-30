@@ -46,6 +46,13 @@ describe("skill tag names", () => {
       parseSkillTag('<skill id="ski_A" name="Meeting "Notes"" />')
     ).toMatchObject({ id: "ski_A", name: "Meeting " });
   });
+
+  it("parses a tag whose separator is more than one space", () => {
+    expect(parseSkillTag('<skill  id="ski_A" name="Notes" />')).toMatchObject({
+      id: "ski_A",
+      name: "Notes",
+    });
+  });
 });
 
 describe("skill ref tags", () => {

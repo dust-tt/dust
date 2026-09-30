@@ -17,18 +17,15 @@ export const UNAVAILABLE_SKILL_LABEL = "Unavailable skill";
 // Letters, digits, underscores and hyphens only, e.g. "meeting-notes".
 export const SUGGESTION_REF_REGEX = /^[\w-]+$/;
 
-// Attributes group anchors on [^>\/\s] so it cannot overlap with the preceding
-// \s+ separator. Without this, \s+ and [^>]*? both match spaces and produce
-// O(n²) backtracking on adversarial input (many spaces, no closing />).
-// The (?:...)? wrapper handles the no-attributes case (<skill />).
-export const SKILL_TAG_REGEX =
-  /<skill\s+((?:[^>\/\s][^>]*)?)(?:\/>|><\/skill>)/g;
-const SKILL_TAG_REGEX_BEGINNING =
-  /^<skill\s+((?:[^>\/\s][^>]*)?)(?:\/>|><\/skill>)/;
+// `\s` takes one separator space. `[^>]*?` takes any further spaces with the
+// attributes, so the two cannot overlap. `\s+` next to `[^>]*?` is O(n²) on
+// `<skill` plus many spaces and no `/>`.
+export const SKILL_TAG_REGEX = /<skill\s([^>]*?)(?:\/>|><\/skill>)/g;
+const SKILL_TAG_REGEX_BEGINNING = /^<skill\s([^>]*?)(?:\/>|><\/skill>)/;
 export const SKILL_REFERENCE_TAG_REGEX =
-  /<(skill|unavailable_skill)\s+((?:[^>\/\s][^>]*)?)(?:\/>|><\/\1>)/g;
+  /<(skill|unavailable_skill)\s([^>]*?)(?:\/>|><\/\1>)/g;
 export const SKILL_REFERENCE_TAG_REGEX_BEGINNING =
-  /^<(skill|unavailable_skill)\s+((?:[^>\/\s][^>]*)?)(?:\/>|><\/\1>)/;
+  /^<(skill|unavailable_skill)\s([^>]*?)(?:\/>|><\/\1>)/;
 
 const SKILL_ELEMENT_REGEX = /<skill\b([^>]*)>[\s\S]*?<\/skill>/g;
 
