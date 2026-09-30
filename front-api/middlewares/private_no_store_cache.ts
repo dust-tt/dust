@@ -17,6 +17,6 @@ export function ensurePrivateNoStoreCache(response: Response): Response {
 
 export function applyPrivateNoStoreCacheHeader(ctx: Context): void {
   if (!ctx.res.headers.has("Cache-Control")) {
-    ctx.res.headers.set("Cache-Control", PRIVATE_NO_STORE_CACHE_CONTROL);
+    ctx.header("Cache-Control", PRIVATE_NO_STORE_CACHE_CONTROL);
   }
 }

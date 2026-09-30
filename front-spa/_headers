@@ -4,18 +4,3 @@
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
-
-/index.html
-  Content-Security-Policy: frame-ancestors 'self'
-  X-Frame-Options: SAMEORIGIN
-
-/oauth/index.html
-  Content-Security-Policy: frame-ancestors 'self'
-  X-Frame-Options: SAMEORIGIN
-
-/email/index.html
-  Content-Security-Policy: frame-ancestors 'self'
-  X-Frame-Options: SAMEORIGIN
-
-/share/index.html
-  Content-Security-Policy: frame-ancestors 'self' https://dust.tt https://*.dust.tt

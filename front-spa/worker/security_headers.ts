@@ -1,5 +1,4 @@
-export const SHARE_FRAME_ANCESTORS =
-  "'self' https://dust.tt https://*.dust.tt" as const;
+export const SHARE_FRAME_ANCESTORS = "'self' https://dust.tt" as const;
 
 export const APP_FRAME_ANCESTORS = "'self'" as const;
 

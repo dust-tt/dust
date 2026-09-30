@@ -5,6 +5,9 @@ main = "./worker/app.ts"
 [assets]
 directory = "./dist/app"
 not_found_handling = "none"
+# HTML entry routes are also static files; run the Worker first so security
+# headers apply to `/`, `/share/`, etc., not only unmatched deep links.
+run_worker_first = true
 binding = "ASSETS"
 
 [vars]

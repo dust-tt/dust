@@ -1,38 +1,27 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import {
-  APP_FRAME_ANCESTORS,
-  applySecurityHeaders,
-  frameAncestorsCsp,
-  SHARE_FRAME_ANCESTORS,
-} from "./security_headers.ts";
+import { applySecurityHeaders, frameAncestorsCsp } from "./security_headers.ts";
 
 describe("frameAncestorsCsp", () => {
-  it("allows Dust-owned hosts for share paths", () => {
+  it("allows dust.tt for share paths", () => {
     assert.equal(
       frameAncestorsCsp("/share/frame/abc"),
-      `frame-ancestors ${SHARE_FRAME_ANCESTORS}`
+      "frame-ancestors 'self' https://dust.tt"
     );
     assert.equal(
       frameAncestorsCsp("/share"),
-      `frame-ancestors ${SHARE_FRAME_ANCESTORS}`
+      "frame-ancestors 'self' https://dust.tt"
     );
   });
 
   it("restricts non-share paths to self", () => {
-    assert.equal(
-      frameAncestorsCsp("/"),
-      `frame-ancestors ${APP_FRAME_ANCESTORS}`
-    );
+    assert.equal(frameAncestorsCsp("/"), "frame-ancestors 'self'");
     assert.equal(
       frameAncestorsCsp("/w/abc/assistant"),
-      `frame-ancestors ${APP_FRAME_ANCESTORS}`
+      "frame-ancestors 'self'"
     );
-    assert.equal(
-      frameAncestorsCsp("/favicon.ico"),
-      `frame-ancestors ${APP_FRAME_ANCESTORS}`
-    );
+    assert.equal(frameAncestorsCsp("/favicon.ico"), "frame-ancestors 'self'");
   });
 });
 
@@ -45,7 +34,7 @@ describe("applySecurityHeaders", () => {
     assert.equal(res.headers.get("X-Content-Type-Options"), "nosniff");
     assert.equal(
       res.headers.get("Content-Security-Policy"),
-      `frame-ancestors ${APP_FRAME_ANCESTORS}`
+      "frame-ancestors 'self'"
     );
     assert.equal(res.headers.get("X-Frame-Options"), "SAMEORIGIN");
     assert.equal(
@@ -62,7 +51,7 @@ describe("applySecurityHeaders", () => {
     assert.equal(res.headers.get("X-Content-Type-Options"), "nosniff");
     assert.equal(
       res.headers.get("Content-Security-Policy"),
-      `frame-ancestors ${SHARE_FRAME_ANCESTORS}`
+      "frame-ancestors 'self' https://dust.tt"
     );
     assert.equal(res.headers.get("X-Frame-Options"), null);
   });
