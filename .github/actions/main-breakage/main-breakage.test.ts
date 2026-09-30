@@ -685,6 +685,23 @@ describe("infra retry", () => {
     assert.equal(github.calls.reruns, 0);
   });
 
+  it("does not retry a failure in a setup step that also builds code", async () => {
+    globalThis.fetch = (async () =>
+      new Response("", { status: 500 })) as typeof fetch;
+    const github = fakeGithub({
+      otherRuns: [{ run_number: 6, conclusion: "success" }],
+      jobs: [
+        {
+          name: "Test Shard 3 of 6",
+          conclusion: "failure",
+          steps: [{ name: "Setup Node Dependencies", conclusion: "failure" }],
+        },
+      ],
+    });
+    assert.match((await notifyWith(github)) ?? "", /main is broken/);
+    assert.equal(github.calls.reruns, 0);
+  });
+
   it("does not retry a manual rerun", async () => {
     globalThis.fetch = (async () =>
       new Response("", { status: 500 })) as typeof fetch;

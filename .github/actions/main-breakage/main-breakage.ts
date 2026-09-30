@@ -201,11 +201,11 @@ async function getAttemptConclusion({
 }
 
 // Steps that only prepare the runner, so their failure says nothing about the code under test.
+// A composite step that also builds repository code is reported as one step, so it stays out.
 const INFRA_STEPS = new Set([
   "Set up job",
   "Initialize containers",
   "Checkout",
-  "Setup Node Dependencies",
   "Install Postgres",
   "Install Redis",
   "Install Protoc",
