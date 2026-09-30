@@ -455,7 +455,8 @@ export class AgentResource
 {
   private readonly requestedSpaceIds: ModelId[];
   private _codeDefinedSkillIds: string[] = [];
-  // Caller-independent resources (loaded, not yet materialized) are full; `materialize` narrows it.
+  // A resource not yet materialized for a caller (e.g. re-saved by `bulkUpdate`) may view its
+  // content; `materialize` sets it for the caller.
   private _canViewContent = true;
   private _globalContent: AgentResourceInstructions | null = null;
 
@@ -517,7 +518,7 @@ export class AgentResource
   }
 
   // Whether the caller the resource was materialized for may view its content (see
-  // `agent-content-visibility`): the `full` resources, as opposed to `light` ones.
+  // `agent-content-visibility`).
   get canViewContent(): boolean {
     return this._canViewContent;
   }
