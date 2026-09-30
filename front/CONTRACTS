@@ -717,3 +717,10 @@ server code by the `noClientImportsInServer` lint rule.
 Code under `components/` and `hooks/` MUST NOT reference the `Intl` global: dates, numbers,
 currencies, file sizes, hour cycles and the local time zone go through `lib/i18n/format.ts`, the
 only place that calls `Intl` for UI code. Enforced by the `noRestrictedGlobals` lint rule.
+
+@cc [owner:frankaloia,label:security;backend] oauth-connection-ownership-before-token
+Before calling getMCPConnectionAccessToken or otherwise using a caller-supplied OAuth
+connectionId, the code MUST call checkConnectionOwnership(auth, connectionId) and reject
+if it returns Err. This ensures the connection belongs to the calling user in the calling
+workspace; without the check any workspace member can obtain another user's live OAuth
+access token by supplying a foreign connectionId.
