@@ -80,6 +80,23 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
       cache_read_input_tokens: 0.4,
     },
   },
+  // Verified 2026-09-30: https://developers.openai.com/api/docs/models/gpt-6.1-sol
+  // Cached input is 5% of the uncached rate (gpt-6-sol: 10%). Prompts above 272K
+  // input tokens cost 2x input and cache rates and 1.5x output for the full request.
+  "gpt-6.1-sol": {
+    input: 2.0,
+    output: 10.0,
+    cache_creation_input_tokens: 2.5,
+    cache_read_input_tokens: 0.1,
+    long_context: {
+      // `computeTokensCostForUsageInMicroUsd` switches tiers inclusively.
+      prompt_token_threshold: 272_001,
+      input: 4.0,
+      output: 15.0,
+      cache_creation_input_tokens: 5.0,
+      cache_read_input_tokens: 0.2,
+    },
+  },
   // Verified 2026-09-22: https://developers.openai.com/api/docs/pricing
   // Prompts above 272K input tokens cost 2x input and 1.5x output for the full request.
   "gpt-6-sol": {
