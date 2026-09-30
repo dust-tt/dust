@@ -2,16 +2,21 @@ import { EditedSectionBar } from "@app/components/assistant/details/DetailsSecti
 import {
   useEditedSkillSections,
   useIsSkillSuggestionPreview,
+  useSkillSuggestionPreview,
 } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
+import { resolveDisplayedEditors } from "@app/components/members/resolveDisplayedEditors";
+import { mergeSkillSuggestionEdits } from "@app/lib/editor/merge_skill_suggestion_edits";
+import { useMemberDetails } from "@app/lib/swr/assistants";
 import {
   useSkillEditors,
   useUpdateSkillEditors,
 } from "@app/lib/swr/skill_editors";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import { editorUserSchema } from "@app/types/editors";
+import { isEditorsSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Button, Plus } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,6 +48,17 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
 
   const isPreview = useIsSkillSuggestionPreview();
   const editedSections = useEditedSkillSections();
+  const previewSuggestions = useSkillSuggestionPreview();
+  const suggestedEditors = useMemo(() => {
+    const edits = mergeSkillSuggestionEdits(
+      previewSuggestions.filter(isEditorsSkillSuggestion)
+    );
+    return edits.isOk() ? (edits.value.editors ?? null) : null;
+  }, [previewSuggestions]);
+  const { membersById, isMembersLoading } = useMemberDetails({
+    workspaceId: owner.sId,
+    userIds: suggestedEditors?.addUserIds ?? [],
+  });
 
   const canManageEditors = skill.canAdministrate && !isPreview;
   const formValues = useMemo<EditorsFormData>(() => ({ editors }), [editors]);
@@ -61,6 +77,12 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
   const hasChanges =
     editors.length !== selectedEditors.length ||
     selectedEditors.some((editor) => !persistedEditorIds.has(editor.sId));
+
+  const displayedEditors = resolveDisplayedEditors({
+    editors: suggestedEditors ? editors : selectedEditors,
+    suggestedEditors,
+    membersById,
+  });
 
   const onRemoveMember = (user: SearchMemberWithWorkspaceType) => {
     if (!canManageEditors || form.formState.isSubmitting) {
@@ -133,12 +155,12 @@ export function SkillEditorsTab({ owner, user, skill }: AgentEditorsTabProps) {
         allowRemoveSelfAndProvisionedUsers
         currentUser={user}
         membersData={{
-          members: selectedEditors.map((user) => ({
+          members: displayedEditors.map((user) => ({
             ...user,
             workspace: owner,
           })),
-          isLoading: isEditorsLoading,
-          totalMembersCount: selectedEditors.length,
+          isLoading: isEditorsLoading || isMembersLoading,
+          totalMembersCount: displayedEditors.length,
           mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
         }}
         showColumns={canManageEditors ? ["name", "remove"] : ["name"]}
