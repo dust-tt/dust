@@ -30,7 +30,7 @@ export const SKILL_REFERENCE_TAG_REGEX =
 export const SKILL_REFERENCE_TAG_REGEX_BEGINNING =
   /^<(skill|unavailable_skill)\s+((?:[^>\/\s][^>]*)?)(?:\/>|><\/\1>)/;
 
-const SKILL_ELEMENT_REGEX = /<skill([^>]*)>[\s\S]*?<\/skill>/g;
+const SKILL_ELEMENT_REGEX = /<skill\b([^>]*)>[\s\S]*?<\/skill>/g;
 
 function parseSkillTagAttributes(
   attributes: string,
@@ -167,7 +167,7 @@ export function stripSkillTagPresentationAttributes(content: string): string {
     .replace(SKILL_ELEMENT_REGEX, (tag, attributes: string) => {
       const skill = parseSkillTag(`<${SKILL_TAG_NAME}${attributes} />`);
       if (!skill) {
-        return tag.replace(/(<skill[^>]*?)\s+icon="[^"]*"/, "$1");
+        return tag.replace(/(<skill\b[^>]*?)\s+icon="[^"]*"/, "$1");
       }
 
       return serializeSkillTag({
@@ -191,9 +191,9 @@ export function stripSkillTagPresentationAttributes(content: string): string {
 // Matches a <skill ...> opening tag, whether self-closing (<skill ... />, the
 // form stored in the markdown `instructions`) or paired (<skill ...></skill>,
 // the form stored in the rendered `instructionsHtml`).
-const SKILL_OPEN_TAG_REGEX = /<skill[^>]*?\/?>/g;
+const SKILL_OPEN_TAG_REGEX = /<skill\b[^>]*?\/?>/g;
 
-const SKILL_NAME_ATTRIBUTE_REGEX = /(name=")[^"]*(")/;
+const SKILL_NAME_ATTRIBUTE_REGEX = /(\bname=")[^"]*(")/;
 
 /**
  * Rewrites the `name` attribute of every inline reference to `skillId` from
@@ -207,7 +207,7 @@ export function renameSkillReferencesInContent(
   { skillId, newName }: { skillId: string; newName: string }
 ): string {
   return content.replace(SKILL_OPEN_TAG_REGEX, (tag) => {
-    const id = tag.match(/id="([^"]+)"/)?.[1];
+    const id = tag.match(/\bid="([^"]+)"/)?.[1];
 
     if (id === skillId) {
       return tag.replace(

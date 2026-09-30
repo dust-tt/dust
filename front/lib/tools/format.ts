@@ -16,10 +16,10 @@ export const TOOL_TAG_NAME = "tool";
 export const TOOL_TAG_REGEX = /<tool\s+((?:[^>\/\s][^>]*)?)\/>/g;
 export const TOOL_TAG_REGEX_BEGINNING = /^<tool\s+((?:[^>\/\s][^>]*)?)\/>/;
 
-const TOOL_ELEMENT_REGEX = /<tool([^>]*)>[\s\S]*?<\/tool>/g;
+const TOOL_ELEMENT_REGEX = /<tool\b([^>]*)>[\s\S]*?<\/tool>/g;
 
 function parseAttribute(attributes: string, name: string): string | null {
-  const value = new RegExp(`(?:^|\s)${name}="([^"]*)"`).exec(attributes)?.[1];
+  const value = new RegExp(`(?:^|\\s)${name}="([^"]*)"`).exec(attributes)?.[1];
   if (value === undefined || value === "") {
     return null;
   }
@@ -77,7 +77,7 @@ export function stripToolTagPresentationAttributes(content: string): string {
     .replace(TOOL_ELEMENT_REGEX, (tag, attributes: string) => {
       const tool = parseToolTag(`<${TOOL_TAG_NAME}${attributes} />`);
       if (!tool) {
-        return tag.replace(/(<tool[^>]*?)\s+icon="[^"]*"/, "$1");
+        return tag.replace(/(<tool\b[^>]*?)\s+icon="[^"]*"/, "$1");
       }
 
       return serializeToolTag({
