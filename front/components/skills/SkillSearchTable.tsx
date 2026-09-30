@@ -272,6 +272,7 @@ export function SkillSearchTable({
       <div role="status" aria-label="Loading skills">
         <DataTableSkeleton
           columns={columns}
+          rowCount={12}
           density="default"
           SkeletonCell={({ columnId, rowIndex }) => {
             switch (columnId) {
@@ -298,13 +299,7 @@ export function SkillSearchTable({
                   </div>
                 );
               case "editors":
-                return (
-                  <div className="flex -space-x-[18px]">
-                    <LoadingBlock className="h-6 w-6 rounded-full" />
-                    <LoadingBlock className="h-6 w-6 rounded-full" />
-                    <LoadingBlock className="h-6 w-6 rounded-full" />
-                  </div>
-                );
+                return <LoadingBlock className="h-6 w-6 rounded-full" />;
               case "updatedAt":
                 return (
                   <div className="flex h-12 items-center">
