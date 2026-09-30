@@ -2659,4 +2659,224 @@ describe("AgentResource", () => {
       expect(sIds).not.toContain(other.sId);
     });
   });
+
+  describe("pinned versions", () => {
+    it("resolves each (agentId, version) pair in first-occurrence order, once", async () => {
+      const { authenticator } = testContext;
+      const first = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Pinned first", description: "first v0" }
+      );
+      await AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        first.sId,
+        {
+          description: "first v1",
+        }
+      );
+      const second = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Pinned second", description: "second v0" }
+      );
+
+      const resources = await AgentResource.fetchByIdsAndVersions(
+        authenticator,
+        [
+          { agentId: first.sId, version: first.version + 1 },
+          { agentId: second.sId, version: second.version },
+          { agentId: first.sId, version: first.version },
+          { agentId: first.sId, version: first.version + 1 },
+          { agentId: first.sId, version: first.version + 2 },
+          { agentId: "missing-agent", version: 0 },
+        ]
+      );
+
+      expect(
+        resources.map((resource) => [
+          resource.sId,
+          resource.description,
+          resource.isCurrentVersion,
+        ])
+      ).toEqual([
+        [first.sId, "first v1", true],
+        [second.sId, "second v0", true],
+        [first.sId, "first v0", false],
+      ]);
+    });
+
+    it("resolves a global agent once, whatever version is asked for", async () => {
+      const resources = await AgentResource.fetchByIdsAndVersions(
+        testContext.authenticator,
+        [
+          { agentId: GLOBAL_AGENTS_SID.HELPER, version: 0 },
+          { agentId: GLOBAL_AGENTS_SID.HELPER, version: 42 },
+        ]
+      );
+
+      expect(resources.map((resource) => resource.sId)).toEqual([
+        GLOBAL_AGENTS_SID.HELPER,
+      ]);
+      expect(resources[0]?.scope).toBe("global");
+    });
+
+    it("does not resolve a pinned version of another workspace's agent", async () => {
+      const other = await createResourceTest({ role: "admin" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        other.authenticator
+      );
+
+      expect(
+        await AgentResource.fetchByIdsAndVersions(testContext.authenticator, [
+          { agentId: agent.sId, version: agent.version },
+        ])
+      ).toEqual([]);
+    });
+  });
+
+  describe("dangerous fetches", () => {
+    it("keep an agent the caller cannot fetch, without verbs or content", async () => {
+      const { authenticator, workspace } = testContext;
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "hidden", instructions: "secret" }
+      );
+      const { agentOwnerAuth: memberAuth } = await setupAgentOwner(
+        workspace,
+        "user"
+      );
+      const reference = { agentId: agent.sId, version: agent.version };
+
+      expect(await AgentResource.fetchByIds(memberAuth, [agent.sId])).toEqual(
+        []
+      );
+      expect(
+        await AgentResource.fetchByIdsAndVersions(memberAuth, [reference])
+      ).toEqual([]);
+
+      const [byId] = await AgentResource.dangerouslyFetchByIds(memberAuth, [
+        agent.sId,
+      ]);
+      const [byVersion] = await AgentResource.dangerouslyFetchByIdsAndVersions(
+        memberAuth,
+        [reference]
+      );
+      for (const resource of [byId, byVersion]) {
+        assert(resource);
+        expect(resource.sId).toBe(agent.sId);
+        expect(resource.name).toBe(agent.name);
+        expect(resource.canViewContent).toBe(false);
+        expect(resource.getAllowedVerbs(memberAuth).size).toBe(0);
+        expect(memberAuth.can("read", resource)).toBe(false);
+        expect(
+          (await AgentResource.batchFetchInstructions([resource])).get(resource)
+        ).toBeNull();
+      }
+    });
+
+    it("stay scoped to the caller's workspace", async () => {
+      const other = await createResourceTest({ role: "admin" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        other.authenticator
+      );
+
+      expect(
+        await AgentResource.dangerouslyFetchByIds(testContext.authenticator, [
+          agent.sId,
+        ])
+      ).toEqual([]);
+      expect(
+        await AgentResource.dangerouslyFetchByIdsAndVersions(
+          testContext.authenticator,
+          [{ agentId: agent.sId, version: agent.version }]
+        )
+      ).toEqual([]);
+    });
+  });
+
+  describe("global agent list and name search", () => {
+    it("listGlobalAgents returns the workspace's global agents", async () => {
+      const globalAgents = await AgentResource.listGlobalAgents(
+        testContext.authenticator
+      );
+
+      expect(globalAgents.map((agent) => agent.sId)).toContain(
+        GLOBAL_AGENTS_SID.HELPER
+      );
+      expect(globalAgents.every((agent) => agent.scope === "global")).toBe(
+        true
+      );
+    });
+
+    it("searchByName matches active custom agents by case-insensitive substring", async () => {
+      const { agent: beta } = await buildAgentInState({
+        scope: "visible",
+        status: "active",
+        name: "Searchable Beta",
+      });
+      const { agent: alpha } = await buildAgentInState({
+        scope: "hidden",
+        status: "active",
+        name: "Searchable Alpha",
+      });
+      await buildAgentInState({
+        scope: "visible",
+        status: "archived",
+        name: "Searchable Archived",
+      });
+      await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Unrelated" }
+      );
+
+      const sIds = (
+        await AgentResource.searchByName(
+          testContext.authenticator,
+          "SEARCHABLE"
+        )
+      ).map((agent) => agent.sId);
+
+      expect(sIds).toEqual([alpha.sId, beta.sId]);
+    });
+
+    it("searchByName matches the query literally, not as a pattern", async () => {
+      const percent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Growth 100% agent" }
+      );
+      await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Growth 100 agent" }
+      );
+
+      const sIds = (
+        await AgentResource.searchByName(testContext.authenticator, "100%")
+      ).map((agent) => agent.sId);
+
+      expect(sIds).toEqual([percent.sId]);
+    });
+
+    it("searchByName includes matching active global agents after custom ones", async () => {
+      const helper = await AgentResource.fetchById(
+        testContext.authenticator,
+        GLOBAL_AGENTS_SID.HELPER
+      );
+      assert(helper?.status === "active");
+      const custom = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: `My ${helper.name} agent` }
+      );
+
+      const sIds = (
+        await AgentResource.searchByName(
+          testContext.authenticator,
+          helper.name.toUpperCase()
+        )
+      ).map((agent) => agent.sId);
+
+      expect(sIds.indexOf(custom.sId)).toBeGreaterThanOrEqual(0);
+      expect(sIds.indexOf(GLOBAL_AGENTS_SID.HELPER)).toBeGreaterThan(
+        sIds.indexOf(custom.sId)
+      );
+    });
+  });
 });

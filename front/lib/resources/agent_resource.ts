@@ -8,7 +8,10 @@ import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
-import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  getGlobalAgents,
+  listDefaultGlobalAgentIds,
+} from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
   buildAuditLogTarget,
@@ -116,6 +119,7 @@ import assert from "assert";
 import isEqual from "lodash/isEqual";
 import partition from "lodash/partition";
 import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
 import type {
   Attributes,
   Includeable,
@@ -179,6 +183,11 @@ const AGENT_INSTRUCTIONS_ATTRIBUTES = [
   "instructions",
   "instructionsHtml",
 ] as const;
+
+export type AgentVersionReference = {
+  agentId: string;
+  version: number;
+};
 
 // The outcome of a `bulkUpdate`: the agents whose save succeeded (`updatedAgentIds`, a change
 // applied or an already-satisfied no-op), and the requested ids that were skipped (not resolvable,
@@ -358,9 +367,10 @@ export interface AgentResource
  * The authoritative resolvers `fetchByModelIdWithAuth`/`fetchByModelIds`/`fetchById(s)` MUST resolve
  * a custom agent to its current configuration version — the row its `currentVersion` pointer
  * designates (see `fetch-current-version`) — so two fetched resources sharing an `id`
- * (= `agentModelId`) are consistent at a given time. `fetchVersion`/`listVersions` are the only
- * resolvers that deliberately resolve other versions (see `agent-versions`); such a resource is told
- * apart by `isCurrentVersion` and is read-only. The `from*` factories are an unchecked fast
+ * (= `agentModelId`) are consistent at a given time. `fetchVersion`/`listVersions` and
+ * `(dangerously)fetchByIdsAndVersions` are the only resolvers that deliberately resolve other
+ * versions (see `agent-versions`, `fetch-pinned-versions`); such a resource is told apart by
+ * `isCurrentVersion` and is read-only. The `from*` factories are an unchecked fast
  * path: they build a resource from whatever configuration the caller supplies, and do NOT yet
  * guarantee it is the current version — a caller deciding about the agent's current state must pass
  * that version, or use `fetch*`. (`from*` are intended to become private and enforce this.) Global
@@ -768,10 +778,11 @@ export class AgentResource
    * `version` equals the agent's `currentVersion` pointer (see `agent-current-version-pointer`) —
    * scoped to the authed workspace. Each is materialized for the caller, whose `canViewContent`
    * follows `agent-content-visibility`; a resource the caller cannot fetch at all (holds no verb on,
-   * per `canFetch`) is dropped. An agent with no configuration yields no resource, and at most one
-   * resource is returned per `agentModelId`. `fetchById(s)` additionally resolve global agents by
-   * `sId` (they have no configuration rows) via `getGlobalAgents`, gated by the same `canFetch`
-   * check; `fetchByModelId(s)` cannot, since global agents have no `agentModelId`.
+   * per `canFetch`) is dropped, except by `dangerouslyFetchByIds` (see `agent-dangerous-fetch`).
+   * An agent with no configuration yields no resource, and at most one resource is returned per
+   * `agentModelId`. `fetchById(s)` additionally resolve global agents by `sId` (they have no
+   * configuration rows) via `getGlobalAgents`, gated by the same `canFetch` check;
+   * `fetchByModelId(s)` cannot, since global agents have no `agentModelId`.
    */
   static async fetchByModelIds(
     auth: Authenticator,
@@ -815,6 +826,34 @@ export class AgentResource
     auth: Authenticator,
     agentIds: string[]
   ): Promise<AgentResource[]> {
+    return this.resolveByIds(auth, agentIds, { skipFetchCheck: false });
+  }
+
+  // Skips the `canFetch` drop, for callers displaying agents reached through another
+  // access-controlled object (e.g. the historical agents of a conversation the caller can read) or
+  // running as internal/system jobs: they must keep the agent's identity even once the caller holds
+  // no verb on it.
+  /**
+   * @cc [owner:tdraier,label:security] agent-dangerous-fetch
+   * The `dangerouslyFetchByIds`/`dangerouslyFetchByIdsAndVersions` resolvers MUST behave as
+   * `fetchByIds`/`fetchByIdsAndVersions` except that they skip the `canFetch` drop: resources are
+   * still materialized for the caller, so one the caller holds no verb on carries no verb
+   * (`auth.can` is false for all of them) and `canViewContent` false, and exposes core fields only
+   * (see `unreadable-agent-content-hidden`). Workspace scoping and missing-agent omission are
+   * unchanged.
+   */
+  static async dangerouslyFetchByIds(
+    auth: Authenticator,
+    agentIds: string[]
+  ): Promise<AgentResource[]> {
+    return this.resolveByIds(auth, agentIds, { skipFetchCheck: true });
+  }
+
+  private static async resolveByIds(
+    auth: Authenticator,
+    agentIds: string[],
+    { skipFetchCheck }: { skipFetchCheck: boolean }
+  ): Promise<AgentResource[]> {
     if (agentIds.length === 0) {
       return [];
     }
@@ -825,7 +864,7 @@ export class AgentResource
 
     const [customResources, globalResources] = await Promise.all([
       this.fetchManyFromStore(auth, customAgentIds),
-      this.fetchGlobalAgents(auth, globalAgentIds),
+      this.fetchGlobalAgents(auth, globalAgentIds, { skipFetchCheck }),
     ]);
 
     const adminCanSeePrivateEntities =
@@ -833,13 +872,13 @@ export class AgentResource
 
     const resourcesById = new Map(
       [
-        ...customResources.map((resource) =>
-          resource.materialize(auth, { adminCanSeePrivateEntities })
-        ),
+        ...customResources
+          .map((resource) =>
+            resource.materialize(auth, { adminCanSeePrivateEntities })
+          )
+          .filter((resource) => skipFetchCheck || resource.canFetch(auth)),
         ...globalResources,
-      ]
-        .filter((resource) => resource.canFetch(auth))
-        .map((resource) => [resource.sId, resource])
+      ].map((resource) => [resource.sId, resource])
     );
     return removeNulls(uniqueAgentIds.map((id) => resourcesById.get(id)));
   }
@@ -849,7 +888,8 @@ export class AgentResource
   // plan/availability) and gated by the same `canFetch` check as custom agents.
   private static async fetchGlobalAgents(
     auth: Authenticator,
-    globalAgentIds: string[]
+    globalAgentIds: string[],
+    { skipFetchCheck = false }: { skipFetchCheck?: boolean } = {}
   ): Promise<AgentResource[]> {
     if (globalAgentIds.length === 0) {
       return [];
@@ -858,7 +898,87 @@ export class AgentResource
     const configurations = await getGlobalAgents(auth, globalAgentIds, "light");
     return configurations
       .map((configuration) => this.fromGlobalAgent(auth, configuration))
-      .filter((resource) => resource.canFetch(auth));
+      .filter((resource) => skipFetchCheck || resource.canFetch(auth));
+  }
+
+  /**
+   * @cc [owner:tdraier,label:backend;security] fetch-pinned-versions
+   * Resolves each requested `(agentId, version)` pair to that exact configuration version, scoped to
+   * the authed workspace, whether or not it is the agent's current one. Each resource is
+   * materialized for the caller as `agent-versions` requires (verbs from that version's own row,
+   * `isCurrentVersion` from the pointer read together with it) and dropped when the caller cannot
+   * fetch it. Results MUST follow first-occurrence input order, with at most one resource per pair,
+   * omitting pairs matching no configuration. A global agent is not versioned: every pair naming it
+   * resolves to its single code-defined version, returned once, whatever `version` the pair asks for.
+   */
+  static async fetchByIdsAndVersions(
+    auth: Authenticator,
+    agentVersions: AgentVersionReference[]
+  ): Promise<AgentResource[]> {
+    return this.resolveByIdsAndVersions(auth, agentVersions, {
+      skipFetchCheck: false,
+    });
+  }
+
+  // Skips the `canFetch` drop (see `agent-dangerous-fetch`), for callers rendering the pinned
+  // versions of messages in a conversation the caller can read: historical agents keep their
+  // identity even once the caller holds no verb on them.
+  static async dangerouslyFetchByIdsAndVersions(
+    auth: Authenticator,
+    agentVersions: AgentVersionReference[]
+  ): Promise<AgentResource[]> {
+    return this.resolveByIdsAndVersions(auth, agentVersions, {
+      skipFetchCheck: true,
+    });
+  }
+
+  private static async resolveByIdsAndVersions(
+    auth: Authenticator,
+    agentVersions: AgentVersionReference[],
+    { skipFetchCheck }: { skipFetchCheck: boolean }
+  ): Promise<AgentResource[]> {
+    const referenceKey = ({ agentId, version }: AgentVersionReference) =>
+      isGlobalAgentId(agentId) ? agentId : `${agentId}:${version}`;
+    const uniqueAgentVersions = uniqBy(agentVersions, referenceKey);
+    const [globalAgentVersions, customAgentVersions] = partition(
+      uniqueAgentVersions,
+      ({ agentId }) => isGlobalAgentId(agentId)
+    );
+
+    const [customResources, globalResources] = await Promise.all([
+      customAgentVersions.length > 0
+        ? this.loadConfigurationVersions(auth, {
+            where: {
+              [Op.or]: customAgentVersions.map(({ agentId, version }) => ({
+                sId: agentId,
+                version,
+              })),
+            },
+          })
+        : [],
+      this.fetchGlobalAgents(
+        auth,
+        globalAgentVersions.map(({ agentId }) => agentId),
+        { skipFetchCheck }
+      ),
+    ]);
+
+    const resourcesByKey = new Map(
+      [
+        ...customResources.filter(
+          (resource) => skipFetchCheck || resource.canFetch(auth)
+        ),
+        ...globalResources,
+      ].map((resource) => [
+        referenceKey({ agentId: resource.sId, version: resource.version }),
+        resource,
+      ])
+    );
+    return removeNulls(
+      uniqueAgentVersions.map((reference) =>
+        resourcesByKey.get(referenceKey(reference))
+      )
+    );
   }
 
   static async fetchById(
@@ -910,13 +1030,31 @@ export class AgentResource
       return AgentResource.fetchGlobalAgents(auth, [this.sId]);
     }
 
-    // One statement, so the `currentVersion` pointer and the version rows are read consistently.
+    const versions = await AgentResource.loadConfigurationVersions(auth, {
+      where: {
+        agentId: this.id,
+        ...(version !== undefined ? { version } : {}),
+      },
+      limit,
+    });
+    return versions.filter((resource) => resource.canFetch(auth));
+  }
+
+  // The configuration versions matching `where` in the authed workspace, newest first, materialized
+  // for the caller but not `canFetch`-filtered. One statement, so each row's agent `currentVersion`
+  // pointer is read consistently with it.
+  private static async loadConfigurationVersions(
+    auth: Authenticator,
+    {
+      where,
+      limit,
+    }: { where: WhereOptions<AgentConfigurationModel>; limit?: number }
+  ): Promise<AgentResource[]> {
     const configurations = await AgentConfigurationModel.findAll({
       attributes: { exclude: [...AGENT_INSTRUCTIONS_ATTRIBUTES] },
       where: {
-        workspaceId: this.workspaceId,
-        agentId: this.id,
-        ...(version !== undefined ? { version } : {}),
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       include: [{ model: AgentModel, required: true }],
       order: [["version", "DESC"]],
@@ -931,22 +1069,20 @@ export class AgentResource
       return new AgentResource(agent.get(), configurationAttributes);
     });
     const adminCanSeePrivateEntities =
-      await AgentResource.resolveAdminCanSeePrivateEntities(auth, versions);
+      await this.resolveAdminCanSeePrivateEntities(auth, versions);
 
-    return versions
-      .map((resource) =>
-        resource.materialize(auth, { adminCanSeePrivateEntities })
-      )
-      .filter((resource) => resource.canFetch(auth));
+    return versions.map((resource) =>
+      resource.materialize(auth, { adminCanSeePrivateEntities })
+    );
   }
 
   /**
    * @cc [owner:tdraier,label:backend] previous-version-read-only
    * A resource built on a configuration version other than the agent's current one (from
-   * `fetchVersion`/`listVersions` or `dangerouslyFromConfigurationModels`) is read-only: the
-   * definition and lifecycle mutations that act on the current version (`buildResaveParams`,
-   * `updateConfiguration`, `updateScopeInPlace`, `archive`, `restore`) MUST refuse it, since they
-   * would rebuild or gate on a stale version.
+   * `fetchVersion`/`listVersions`, `(dangerously)fetchByIdsAndVersions` or
+   * `dangerouslyFromConfigurationModels`) is read-only: the definition and lifecycle mutations that
+   * act on the current version (`buildResaveParams`, `updateConfiguration`, `updateScopeInPlace`,
+   * `archive`, `restore`) MUST refuse it, since they would rebuild or gate on a stale version.
    */
   get isCurrentVersion(): boolean {
     return this.version === this.currentVersion;
@@ -963,8 +1099,8 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:backend] agent-list-through-fetch-by-ids
-   * The `listBy*`/`fetchByName` resolvers MUST NOT build resources themselves: they run a
-   * lightweight id-only query for the matching agents, then hydrate through the shared
+   * The `listBy*`/`fetchByName`/`searchByName` resolvers MUST NOT build resources themselves: they
+   * run a lightweight id-only query for the matching agents, then hydrate through the shared
    * access-controlled resolver `fetchByIds`, so current-version resolution and access control stay
    * centralized (see `fetch-current-version`). Predicates on head fields (`name`, `status`, `scope`)
    * read the denormalized `agents` row directly; predicates on a version's rows (skills/tools/tags)
@@ -1027,6 +1163,46 @@ export class AgentResource
     });
     const [resource] = await this.fetchByIds(auth, agentIds);
     return resource ?? null;
+  }
+
+  // Active agents, custom and global, whose current name contains `query` case-insensitively
+  // (matched literally, not as a pattern), filtered to what the caller can fetch: custom agents
+  // first, then global ones, each in name order.
+  static async searchByName(
+    auth: Authenticator,
+    query: string
+  ): Promise<AgentResource[]> {
+    const [customAgentIds, globalAgents] = await Promise.all([
+      this.listCurrentVersionAgentIds(auth, {
+        agentWhere: {
+          status: "active",
+          name: { [Op.iLike]: `%${query.replace(/[\\%_]/g, "\\$&")}%` },
+        },
+      }),
+      this.listGlobalAgents(auth),
+    ]);
+    const customAgents = await this.fetchByIds(auth, customAgentIds);
+
+    const normalizedQuery = query.toLowerCase();
+    const byName = (a: AgentResource, b: AgentResource) =>
+      a.name.localeCompare(b.name);
+    return [
+      ...customAgents.toSorted(byName),
+      ...globalAgents
+        .filter(
+          (agent) =>
+            agent.status === "active" &&
+            agent.name.toLowerCase().includes(normalizedQuery)
+        )
+        .toSorted(byName),
+    ];
+  }
+
+  // Every global agent the workspace offers, disabled ones included (each carries its status), as
+  // `getGlobalAgents` resolves them for the workspace's plan, flags and settings, filtered to what
+  // the caller can fetch.
+  static async listGlobalAgents(auth: Authenticator): Promise<AgentResource[]> {
+    return this.fetchByIds(auth, listDefaultGlobalAgentIds());
   }
 
   // Every agent of the authed workspace whose current status is in `status` (active by default),
