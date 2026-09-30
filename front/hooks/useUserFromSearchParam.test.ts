@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  replaceMock,
   searchParamHolder,
   setPendingInputText,
   setSelectedAgent,
@@ -10,6 +11,7 @@ const {
   setSuppressDefaultAgent,
   userDetailsHolder,
 } = vi.hoisted(() => ({
+  replaceMock: vi.fn(),
   searchParamHolder: { current: null as string | null },
   setPendingInputText: vi.fn(),
   setSelectedAgent: vi.fn(),
@@ -26,6 +28,7 @@ const {
 
 vi.mock("@app/lib/platform", () => ({
   useSearchParam: () => searchParamHolder.current,
+  useAppRouter: () => ({ replace: replaceMock }),
 }));
 
 vi.mock("@app/lib/swr/assistants", () => ({
@@ -57,7 +60,20 @@ describe("useUserFromSearchParam", () => {
     window.history.replaceState(null, "", "/w/w1/conversation/new");
   });
 
-  it("pre-fills a user mention, clears the agent, and cleans the URL", async () => {
+  it("clears the agent immediately when ?user= appears, before details load", () => {
+    searchParamHolder.current = "user_123";
+    userDetailsHolder.current = null;
+
+    renderHook(() => useUserFromSearchParam("w1"));
+
+    expect(setSuppressDefaultAgent).toHaveBeenCalledWith(true);
+    expect(setSelectedAgent).toHaveBeenCalledWith(null);
+    expect(setSelectedSingleAgent).toHaveBeenCalledWith(null);
+    expect(setPendingInputText).not.toHaveBeenCalled();
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("pre-fills a user mention and cleans user/agent from the URL via the router", async () => {
     searchParamHolder.current = "user_123";
     userDetailsHolder.current = {
       fullName: "Ada Lovelace",
@@ -67,35 +83,24 @@ describe("useUserFromSearchParam", () => {
     window.history.replaceState(
       null,
       "",
-      "/w/w1/conversation/new?user=user_123&agent=agent_1"
+      "/w/w1/conversation/new?user=user_123&agent=dust#?selectedTab=favorites"
     );
 
     renderHook(() => useUserFromSearchParam("w1"));
 
     await waitFor(() => {
-      expect(setSuppressDefaultAgent).toHaveBeenCalledWith(true);
+      expect(setPendingInputText).toHaveBeenCalledWith(
+        ":mention_user[Ada Lovelace]{sId=user_123} ",
+        { replace: true }
+      );
     });
 
-    expect(setSelectedAgent).toHaveBeenCalledWith(null);
-    expect(setSelectedSingleAgent).toHaveBeenCalledWith(null);
-    expect(setPendingInputText).toHaveBeenCalledWith(
-      ":mention_user[Ada Lovelace]{sId=user_123} ",
-      { replace: true }
+    expect(replaceMock).toHaveBeenCalledWith(
+      "/w/w1/conversation/new#?selectedTab=favorites"
     );
-    expect(window.location.search).toBe("");
   });
 
-  it("does nothing until member details are available", () => {
-    searchParamHolder.current = "user_123";
-    userDetailsHolder.current = null;
-
-    renderHook(() => useUserFromSearchParam("w1"));
-
-    expect(setPendingInputText).not.toHaveBeenCalled();
-    expect(setSuppressDefaultAgent).not.toHaveBeenCalled();
-  });
-
-  it("applies a given user id only once", async () => {
+  it("re-applies after ?user= is cleared and set again with the same id", async () => {
     searchParamHolder.current = "user_123";
     userDetailsHolder.current = {
       fullName: "Ada Lovelace",
@@ -109,10 +114,19 @@ describe("useUserFromSearchParam", () => {
       expect(setPendingInputText).toHaveBeenCalledTimes(1);
     });
 
+    searchParamHolder.current = null;
     act(() => {
       rerender();
     });
 
-    expect(setPendingInputText).toHaveBeenCalledTimes(1);
+    searchParamHolder.current = "user_123";
+    act(() => {
+      rerender();
+    });
+
+    await waitFor(() => {
+      expect(setPendingInputText).toHaveBeenCalledTimes(2);
+    });
+    expect(setSuppressDefaultAgent).toHaveBeenCalledWith(true);
   });
 });
