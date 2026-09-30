@@ -23,10 +23,13 @@ pub(crate) struct NewFileAttributes {
 /**
  * @cc [owner:spolu,label:security;backend] authorized-content-publication
  * After upload, reauthorize the session and current namespace, then check the expected content
- * version or name vacancy in a snapshot validated at publication. Preserve unrelated metadata edits.
- * Persist content metadata, directory changes, event, and the request fingerprint/result in one batch.
+ * version or name vacancy in a snapshot validated at publication. Preserve unrelated metadata
+ * edits.
+ * Persist content metadata, directory changes, event, and the request fingerprint/result in one
+ * batch.
  * A replay MUST authorize its current object and match the fingerprint; never publish a second
- * mutation. Acknowledgement, including replay, MUST wait for receipt durability. No blob I/O belongs
+ * mutation. Acknowledgement, including replay, MUST follow the configured visibility/durability
+ * mode. No blob I/O belongs
  * inside snapshot preparation or publication. Callers MUST hold the request and content gates.
  */
 pub(crate) async fn publish_content(
@@ -143,7 +146,7 @@ pub(crate) async fn publish_content(
         storage
             .workspace(&session.workspace)
             .map_err(|_| ApiError::Unavailable)?
-            .await_durable()
+            .acknowledge()
             .await
             .map_err(|_| ApiError::Unavailable)?;
     }
@@ -171,7 +174,7 @@ pub(crate) async fn operation_status(
         storage
             .workspace(&session.workspace)
             .map_err(|_| ApiError::Unavailable)?
-            .await_durable()
+            .acknowledge()
             .await
             .map_err(|_| ApiError::Unavailable)?;
     }

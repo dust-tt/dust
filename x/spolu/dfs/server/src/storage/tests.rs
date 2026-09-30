@@ -46,6 +46,7 @@ async fn storage_configuration_requires_a_pair_without_fallback() -> Result<()> 
     let disabled = StorageConfig {
         gcs_bucket: None,
         uploads: UploadConfig::default(),
+        cache: super::CacheConfig::default(),
         gcs_prefix: None,
     };
     ensure!(disabled.open().await?.is_none());
@@ -53,16 +54,19 @@ async fn storage_configuration_requires_a_pair_without_fallback() -> Result<()> 
         StorageConfig {
             gcs_bucket: Some("bucket".to_owned()),
             uploads: UploadConfig::default(),
+            cache: super::CacheConfig::default(),
             gcs_prefix: None,
         },
         StorageConfig {
             gcs_bucket: None,
             uploads: UploadConfig::default(),
+            cache: super::CacheConfig::default(),
             gcs_prefix: Some("dev".parse()?),
         },
         StorageConfig {
             gcs_bucket: Some("gs://bucket".to_owned()),
             uploads: UploadConfig::default(),
+            cache: super::CacheConfig::default(),
             gcs_prefix: Some("dev".parse()?),
         },
     ] {

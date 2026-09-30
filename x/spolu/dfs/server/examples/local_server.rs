@@ -13,6 +13,8 @@ use tokio::{
 struct Config {
     #[arg(long)]
     store: PathBuf,
+    #[command(flatten)]
+    cache: dfs_server::storage::CacheConfig,
     #[arg(long, default_value = "127.0.0.1:8080")]
     listen: String,
 }
@@ -21,13 +23,13 @@ struct Config {
 async fn main() -> Result<()> {
     let config = Config::parse();
     std::fs::create_dir_all(&config.store)?;
-    let storage = Arc::new(
-        Storage::open(
-            Arc::new(LocalFileSystem::new_with_prefix(config.store)?),
-            &"fixture".parse()?,
-        )
-        .await?,
-    );
+    let mut storage = Storage::open(
+        Arc::new(LocalFileSystem::new_with_prefix(config.store)?),
+        &"fixture".parse()?,
+    )
+    .await?;
+    storage.enable_cache(config.cache)?;
+    let storage = Arc::new(storage);
     let state = api::ApiState::new(Some(storage.clone()), api::Access::from_env()?);
     let listener = TcpListener::bind(config.listen).await?;
     let mut interrupt = signal(SignalKind::interrupt())?;

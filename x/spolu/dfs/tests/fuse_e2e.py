@@ -304,6 +304,7 @@ def host(args):
     else:
         prefix = None
         command = [str(ROOT / "target/debug/examples/local_server"), "--listen", f"0.0.0.0:{port}", "--store", str(work / "object-store")]
+    command += ["--write-mode", args.write_mode, "--cache-dir", str(work)]
     server = None
     container_name = "dfs-fuse-test-" + uuid.uuid4().hex
     success = False
@@ -336,8 +337,14 @@ def host(args):
                 *([] if args.bucket else ["--pagination"]),
             ], check=True, timeout=900)
             if phase == "exercise":
-                server.kill()
-                server.wait(timeout=10)
+                if args.write_mode == "cached":
+                    # Cached acknowledgements promise visibility; explicitly drain before this check.
+                    server.send_signal(signal.SIGTERM)
+                    server.wait(timeout=70)
+                    assert server.returncode == 0
+                else:
+                    server.kill()
+                    server.wait(timeout=10)
                 server = None
                 shutil.rmtree(scratch)
             else:
@@ -363,6 +370,7 @@ def host(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--write-mode", choices=["sync", "cached"], default="sync")
     parser.add_argument("--bucket", help="Use real GCS; otherwise use a local filesystem object store")
     parser.add_argument("--prefix", default="dfs-dev/spolu")
     parser.add_argument("--phase", choices=["exercise", "restart"])

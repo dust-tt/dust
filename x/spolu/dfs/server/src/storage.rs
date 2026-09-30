@@ -11,6 +11,7 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 
 use crate::model::WorkspaceId;
+pub use cache::{CacheConfig, WriteMode};
 pub use commit::{MetadataBatch, MetadataMutation};
 pub use content::BlobRead;
 use keys::Keyspace;
@@ -37,6 +38,9 @@ pub struct StorageConfig {
 
     #[command(flatten)]
     uploads: UploadConfig,
+
+    #[command(flatten)]
+    cache: CacheConfig,
 }
 
 impl StorageConfig {
@@ -48,7 +52,8 @@ impl StorageConfig {
                 let store = gcs_store(bucket)?;
                 let transfers = self.uploads.budget()?;
                 let mut storage = Storage::open(store, prefix).await?;
-                storage.transfers = transfers;
+                storage.transfers = Arc::new(transfers);
+                storage.enable_cache(self.cache.clone())?;
                 Ok(Some(storage))
             }
             _ => bail!("GCS storage requires both --gcs-bucket and --gcs-prefix"),
@@ -117,11 +122,13 @@ impl FromStr for StoragePrefix {
 pub struct InvalidStoragePrefix;
 
 pub struct Storage {
-    metadata: Db,
+    metadata: Arc<Db>,
+    metadata_cache: Arc<dyn slatedb::db_cache::DbCache>,
     blobs: Arc<dyn ObjectStore>,
-    publish: Mutex<()>,
+    publish: Arc<Mutex<()>>,
+    cache: Option<Arc<cache::Cache>>,
     object_locks: locks::ObjectLockTable,
-    transfers: upload::TransferBudget,
+    transfers: Arc<upload::TransferBudget>,
     content_locks: locks::ObjectLockTable,
     request_locks: locks::ObjectLockTable,
 }
@@ -134,7 +141,30 @@ pub struct WorkspaceStorage<'a> {
 
 impl WorkspaceStorage<'_> {
     pub async fn read_view(&self) -> Result<ReadView> {
+        let _publish = if self.storage.cache.is_some() {
+            Some(self.storage.publish.lock().await)
+        } else {
+            None
+        };
+        self.read_view_inner().await
+    }
+
+    async fn read_view_inner(&self) -> Result<ReadView> {
         Ok(ReadView {
+            _content_pins: self
+                .storage
+                .cache
+                .as_ref()
+                .map(|cache| cache.content_pins())
+                .transpose()?
+                .unwrap_or_default(),
+            overlay: self
+                .storage
+                .cache
+                .as_ref()
+                .map(|cache| cache.snapshot())
+                .transpose()?
+                .unwrap_or_default(),
             keys: self.keys.clone(),
             snapshot: self.storage.metadata.snapshot().await?,
         })
@@ -142,6 +172,15 @@ impl WorkspaceStorage<'_> {
 }
 
 impl Storage {
+    async fn get_visible(&self, key: Vec<u8>) -> Result<Option<slatedb::bytes::Bytes>> {
+        if let Some(cache) = &self.cache
+            && let Some((_, value)) = cache.snapshot()?.get(&key)
+        {
+            return Ok(value.clone());
+        }
+        Ok(self.metadata.get(key).await?)
+    }
+
     pub(crate) async fn reserve_transfer(&self) -> Result<upload::TransferLease, UploadError> {
         self.transfers.acquire().await
     }
@@ -153,10 +192,49 @@ impl Storage {
         })
     }
 
+    /// Enable volatile publication before exposing this storage to clients.
+    pub fn enable_cache(&mut self, config: CacheConfig) -> Result<()> {
+        if config.write_mode == WriteMode::Cached {
+            anyhow::ensure!(self.cache.is_none(), "cache already enabled");
+            let cache = cache::Cache::new(config)?;
+            cache.start(
+                self.metadata.clone(),
+                self.blobs.clone(),
+                self.publish.clone(),
+            )?;
+            self.cache = Some(cache);
+        }
+        Ok(())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn pause_persistence(&self, paused: bool) {
+        if let Some(cache) = &self.cache {
+            cache
+                .paused
+                .store(paused, std::sync::atomic::Ordering::Release);
+            cache.resume();
+        }
+    }
+
+    pub fn cached(&self) -> bool {
+        self.cache.is_some()
+    }
+
+    /// Explicit maintenance/shutdown barrier; cached client fsync does not call this.
+    pub async fn drain_persistence(&self) -> Result<()> {
+        if let Some(cache) = &self.cache {
+            cache.drain().await?;
+        }
+        self.metadata.flush().await?;
+        Ok(())
+    }
+
     /**
      * @cc [owner:spolu,label:error-handling] bounded-storage-retries
-     * SlateDB and its background workers MUST NOT retry backend failures indefinitely. Rely on
-     * the GCS client's bounded retries so credential and exhausted I/O failures can propagate.
+     * Each backend attempt MUST use bounded retries. Cached blob persistence may retry with backoff
+     * while bounded staging applies backpressure. A SlateDB submission/durability error MUST halt
+     * cached publication until restart; it MUST NOT retry an ambiguously submitted metadata batch.
      */
     pub async fn open(store: Arc<dyn ObjectStore>, prefix: &StoragePrefix) -> Result<Self> {
         Self::open_with_settings(
@@ -184,9 +262,10 @@ impl Storage {
         settings: Settings,
     ) -> Result<Self> {
         let blobs = Arc::new(PrefixStore::new(store.clone(), prefix.blobs_path()));
+        let metadata_cache = Arc::new(slatedb::db_cache::foyer::FoyerCache::new());
         let metadata = Db::builder(prefix.metadata_path(), store)
             .with_settings(settings)
-            .with_db_cache_disabled()
+            .with_db_cache(metadata_cache.clone(), 0)
             .build()
             .await
             .context("open SlateDB metadata store")?;
@@ -198,11 +277,13 @@ impl Storage {
             return Err(error);
         }
         Ok(Self {
-            metadata,
+            metadata: Arc::new(metadata),
+            metadata_cache,
             blobs,
-            publish: Mutex::new(()),
+            publish: Arc::new(Mutex::new(())),
+            cache: None,
             object_locks: locks::ObjectLockTable::default(),
-            transfers: UploadConfig::default().budget()?,
+            transfers: Arc::new(UploadConfig::default().budget()?),
             content_locks: locks::ObjectLockTable::default(),
             request_locks: locks::ObjectLockTable::default(),
         })
@@ -210,17 +291,24 @@ impl Storage {
 
     /**
      * @cc [owner:spolu,label:concurrency] storage-shutdown
-     * After draining HTTP requests, shutdown MUST await SlateDB close and propagate its failure.
+     * After draining HTTP requests, shutdown MUST drain cached publication with a bounded timeout,
+     * then await SlateDB close and propagate failures.
      * Dropping the server's storage handle MUST NOT be treated as a successful close.
      */
     pub async fn close(&self) -> Result<()> {
+        if let Some(cache) = &self.cache {
+            cache.close().await?;
+        }
         self.metadata
             .close()
             .await
-            .context("close SlateDB metadata store")
+            .context("close SlateDB metadata store")?;
+        self.metadata_cache.close().await?;
+        Ok(())
     }
 }
 
+pub(crate) mod cache;
 mod codec;
 mod commit;
 mod content;
@@ -232,3 +320,11 @@ mod read;
 mod tests;
 mod upload;
 mod workspace;
+
+impl Drop for Storage {
+    fn drop(&mut self) {
+        if let Some(cache) = &self.cache {
+            cache.abort();
+        }
+    }
+}

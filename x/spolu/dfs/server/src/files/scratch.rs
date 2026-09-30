@@ -14,6 +14,9 @@ pub(super) struct Scratch {
 }
 
 impl Scratch {
+    pub fn limit(&self) -> u64 {
+        self.limit
+    }
     pub fn new(directory: PathBuf, limit: u64) -> Self {
         Self {
             directory,
@@ -27,7 +30,8 @@ impl Scratch {
      * Reserve the entire resulting logical file size before allocating disk or reading file bytes.
      * Reject quota exhaustion instead of accumulating waiters or silently spilling without a bound.
      * Scratch files MUST be anonymous/unlinked on supported Unix hosts, disappear after their final
-     * descriptor closes (including process death), and never be recovery inputs. Release reservations
+     * descriptor closes (including process death), and never be recovery inputs. Release
+     * reservations
      * on every failure or cancellation. Disk full/quota failures MUST return CapacityExhausted.
      */
     pub async fn create(&self, size: u64) -> Result<ScratchFile, ApiError> {

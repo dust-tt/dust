@@ -117,10 +117,8 @@ pub(super) async fn read(
         return Err(ApiError::NotFound);
     }
     session.check_active()?;
-    let object = NamespaceRead::new(state.storage()?, &session.workspace, &session.grants)
-        .await?
-        .stat(handle.object_id)
-        .await?;
+    let view = NamespaceRead::new(state.storage()?, &session.workspace, &session.grants).await?;
+    let object = view.stat(handle.object_id).await?;
     let ObjectKind::File(content) = object.kind else {
         return Err(ApiError::IsDirectory);
     };
@@ -136,6 +134,7 @@ pub(super) async fn read(
         .read_blob_stream(handle.object_id, &content, body.offset, body.length)
         .await
         .map_err(upload_error)?;
+    drop(view);
     let mut response = Body::from_stream(
         bytes
             .stream

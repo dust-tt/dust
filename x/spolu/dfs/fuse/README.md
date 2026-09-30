@@ -95,7 +95,7 @@ production server still requires explicit GCS configuration; it never falls back
   remains sticky on that handle, including flush/fsync. Close it and inspect server state before
   resuming; an error is not proof that nothing committed. Namespace operations are not retried.
 - Release frees handles; Linux ignores its errors for `close()`, so flush reports write failures.
-  Directory fsync checks access and relies on preceding namespace operations already being durable.
+  Directory fsync checks access and relies on preceding namespace operations already being acknowledged.
   Rename preserves open handles; unlink/replacement invalidates them, as in the server PoC.
 - Symlinks, hard links, special files, ownership changes, extra mode bits, ACLs, advisory locks, and
   fallocate return unsupported errors. Mapped/executable content is outside the supported baseline;
@@ -122,3 +122,8 @@ python3 tests/fuse_e2e.py --bucket dust-dev-dfs-poc-spolu-20260930 --prefix dfs-
 ```
 
 The harness prints report paths and timings. [Recorded baseline](../bench/FUSE.md).
+
+Use `--write-mode cached` on the server to acknowledge server visibility without waiting for GCS or
+SlateDB durability. The FUSE mount settings do not change. `tests/fuse_e2e.py --write-mode cached`
+verifies two mounts and recovery after a graceful persistence drain; focused storage tests separately
+exercise loss of the pending suffix. See [cache benchmarks](../bench/CACHE.md).

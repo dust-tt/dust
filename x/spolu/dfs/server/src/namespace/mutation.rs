@@ -24,9 +24,11 @@ where
  * Preparation MUST only read its supplied snapshot and build a complete mutation batch; it may be
  * repeated and MUST NOT publish or perform external side effects. Lock every touched object/parent
  * in workspace/ID order before publication. Validate the snapshot sequence under publication for
- * successes, no-ops, and errors so queued requests cannot disclose stale conflicts after revocation.
+ * successes, no-ops, and errors so queued requests cannot disclose stale conflicts after
+ * revocation.
  * A stale attempt MUST release all locks, reread, reauthorize, and rediscover its lock set. Limit
- * retries to 16 attempts, then return Conflict without publication. Release object/publication locks
+ * retries to 16 attempts, then return Conflict without publication. Release object/publication
+ * locks
  * before durability waits. Never retry an error after submission, whose outcome may be ambiguous.
  */
 pub(super) async fn mutate_content<T, F, Fut>(
@@ -84,7 +86,7 @@ where
         drop(locks);
         if let Some(published) = published {
             published
-                .await_durable()
+                .acknowledge()
                 .await
                 .map_err(|_| ApiError::Unavailable)?;
             return Ok(output);

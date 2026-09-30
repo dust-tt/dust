@@ -102,7 +102,7 @@ pub(super) async fn status(
             .stat(crate::model::ObjectId::from_bytes(record.object_id))
             .await?;
         scoped
-            .await_durable()
+            .acknowledge()
             .await
             .map_err(|_| ApiError::Unavailable)?;
         return Ok(no_store(Json(UploadReceipt {

@@ -2,12 +2,12 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use anyhow::{Context, Result, ensure};
 use slatedb::{
-    WriteBatch, WriteHandle,
     bytes::Bytes,
     object_store::{ObjectStoreExt, path::Path},
 };
 use tokio::sync::MutexGuard;
 
+use super::cache::{Publication, Rows, write_batch};
 use super::{OperationRecord, ReadView, UploadedBlob, WorkspaceStorage, codec};
 use crate::model::{
     ContentVersionId, DirectoryEntry, EntryName, ObjectId, ObjectKind, ObjectMetadata, RequestId,
@@ -53,7 +53,8 @@ impl WorkspaceStorage<'_> {
      * @cc [owner:spolu,label:backend] optimistic-metadata-preparation
      * Prepare rows and validate preserved content against one snapshot of this workspace outside
      * publication. The snapshot sequence MUST travel with the batch. Every touched object/parent
-     * MUST be included in its lock set. An empty batch represents a validated no-op, never an event.
+     * MUST be included in its lock set. An empty batch represents a validated no-op, never an
+     * event.
      */
     pub(crate) async fn prepare_metadata(
         &self,
@@ -65,10 +66,11 @@ impl WorkspaceStorage<'_> {
 
     /**
      * @cc [owner:spolu,label:backend] proven-content-references
-     * New content references MUST match completed descriptors from this storage instance and
-     * workspace, including object ID, version, and measured size. Every other reference MUST equal
-     * the existing file content in the supplied snapshot. Reject unused descriptors. Perform no
-     * blob I/O while preparing a batch; upload completion must precede namespace publication.
+     * New content references MUST match completed local or remote descriptors from this storage
+     * instance and workspace, including object ID, version, and measured size. Every other reference
+     * MUST equal the existing file content in the supplied snapshot. Reject unused descriptors.
+     * Perform no blob I/O while preparing a batch; content staging/upload completion must precede
+     * namespace publication.
      */
     pub(crate) async fn prepare_content(
         &self,
@@ -84,7 +86,8 @@ impl WorkspaceStorage<'_> {
         let batch = if mutations.is_empty() {
             None
         } else {
-            let batch = self.prepare(mutations)?;
+            let mut batch = self.prepare(mutations)?;
+            batch.uploads = uploads.to_vec();
             for upload in uploads {
                 let reference = batch
                     .references
@@ -113,17 +116,19 @@ impl WorkspaceStorage<'_> {
 
     /**
      * @cc [owner:spolu,label:backend] synchronous-storage-commit
-     * Every published content reference MUST already exist in the workspace/object/version blob
-     * store with the declared size. Upload failure MUST leave all metadata unchanged. Publish
-     * metadata, both grant indexes, and the change event in one SlateDB batch, then await WAL
-     * durability before returning success. Failure after submission can have an ambiguous outcome;
-     * retain uploaded blobs, and never claim that an error proves the batch did not commit.
+     * Every published content reference MUST exist in local staging or the remote blob store with
+     * the declared size. Transfer failure MUST leave metadata unchanged. Publish metadata, grant
+     * indexes, and the event atomically in the overlay or SlateDB. Synchronous mode MUST await WAL
+     * durability; cached mode MUST persist ordered batches only after their uploads complete.
+     * Failure after submission can have an ambiguous outcome; retain uploaded blobs, and never
+     * claim that an error proves the batch did not commit.
      */
     pub async fn commit(&self, batch: MetadataBatch) -> Result<u64> {
         let PreparedBatch {
             writes,
             changed,
             references,
+            ..
         } = self.prepare(batch.mutations)?;
 
         let mut uploaded = HashSet::new();
@@ -160,12 +165,10 @@ impl WorkspaceStorage<'_> {
                 writes,
                 changed,
                 references: HashMap::new(),
+                uploads: batch.uploads,
             })
             .await?;
-        handle
-            .await_durable()
-            .await
-            .context("persist metadata WAL")?;
+        handle.acknowledge().await.context("persist metadata WAL")?;
         Ok(sequence)
     }
 
@@ -241,17 +244,15 @@ impl WorkspaceStorage<'_> {
             }
         }
 
-        let mut writes = WriteBatch::new();
-        for (key, value) in rows {
-            match value {
-                Some(value) => writes.put(key, value),
-                None => writes.delete(key),
-            }
-        }
+        let writes = rows
+            .into_iter()
+            .map(|(key, value)| (key, value.map(Bytes::from)))
+            .collect();
         Ok(PreparedBatch {
             writes,
             changed,
             references,
+            uploads: Vec::new(),
         })
     }
 
@@ -265,7 +266,7 @@ impl WorkspaceStorage<'_> {
         }
     }
 
-    /// Callers authorize the object and choose a current content version before fetching bytes.
+    /// Read a remotely persisted version in full. Request handlers use read_blob_stream instead.
     pub async fn read_blob(&self, object: ObjectId, version: ContentVersionId) -> Result<Bytes> {
         self.storage
             .blobs
@@ -298,7 +299,8 @@ fn insert(
 }
 
 struct PreparedBatch {
-    writes: WriteBatch,
+    writes: Rows,
+    uploads: Vec<UploadedBlob>,
     changed: BTreeSet<[u8; 16]>,
     references: HashMap<ObjectId, crate::model::FileContent>,
 }
@@ -322,16 +324,13 @@ impl PreparedMetadata {
 }
 
 pub(crate) struct PublishedMetadata {
-    handle: Option<WriteHandle>,
+    handle: Option<Publication>,
 }
 
 impl PublishedMetadata {
-    pub(crate) async fn await_durable(self) -> Result<()> {
+    pub(crate) async fn acknowledge(self) -> Result<()> {
         if let Some(handle) = self.handle {
-            handle
-                .await_durable()
-                .await
-                .context("persist metadata WAL")?;
+            handle.acknowledge().await.context("persist metadata WAL")?;
         }
         Ok(())
     }
@@ -387,13 +386,13 @@ impl MetadataWrite<'_> {
 
     #[cfg(test)]
     pub async fn read_view(&self) -> Result<ReadView> {
-        self.workspace.read_view().await
+        self.workspace.read_view_inner().await
     }
 
     /**
      * @cc [owner:spolu,label:backend] metadata-only-content-preservation
      * Every published file reference MUST match an existing record in the guarded view. This
-     * method MUST perform no blob I/O, and success MUST wait for the atomic batch's WAL durability.
+     * method MUST perform no blob I/O and acknowledge according to the configured write mode.
      */
     #[cfg(test)]
     pub async fn commit(self, mutations: Vec<MetadataMutation>) -> Result<u64> {
@@ -407,54 +406,56 @@ impl MetadataWrite<'_> {
             );
         }
         let (sequence, handle) = self.submit(prepared).await?;
-        handle
-            .await_durable()
-            .await
-            .context("persist metadata WAL")?;
+        handle.acknowledge().await.context("persist metadata WAL")?;
         Ok(sequence)
     }
 
     async fn current_sequence(&self) -> Result<u64> {
         self.workspace
             .storage
-            .metadata
-            .get(self.workspace.keys.change_sequence())
+            .get_visible(self.workspace.keys.change_sequence())
             .await?
             .map(|bytes| codec::decode(&bytes))
             .transpose()
             .map(|sequence: Option<u64>| sequence.unwrap_or(0))
     }
 
-    async fn submit(self, prepared: PreparedBatch) -> Result<(u64, WriteHandle)> {
+    async fn submit(self, prepared: PreparedBatch) -> Result<(u64, Publication)> {
         let previous = self.current_sequence().await?;
         self.submit_at(prepared, previous).await
     }
 
-    async fn submit_at(self, prepared: PreparedBatch, previous: u64) -> Result<(u64, WriteHandle)> {
+    async fn submit_at(self, prepared: PreparedBatch, previous: u64) -> Result<(u64, Publication)> {
         let PreparedBatch {
             mut writes,
             changed,
+            uploads,
             ..
         } = prepared;
         let sequence = previous
             .checked_add(1)
             .context("change sequence exhausted")?;
-        writes.put(
+        writes.insert(
             self.workspace.keys.change_sequence(),
-            codec::encode(&sequence)?,
+            Some(codec::encode(&sequence)?.into()),
         );
-        writes.put(
+        writes.insert(
             self.workspace.keys.change(sequence),
-            codec::encode(&changed.into_iter().collect::<Vec<_>>())?,
+            Some(codec::encode(&changed.into_iter().collect::<Vec<_>>())?.into()),
         );
-        Ok((
-            sequence,
-            self.workspace
-                .storage
-                .metadata
-                .write(writes)
-                .await
-                .context("publish metadata batch")?,
-        ))
+        let storage = self.workspace.storage;
+        let publication = if let Some(cache) = &storage.cache {
+            cache.publish(writes, uploads)?;
+            Publication::Visible
+        } else {
+            Publication::Remote(
+                storage
+                    .metadata
+                    .write(write_batch(&writes))
+                    .await
+                    .context("publish metadata batch")?,
+            )
+        };
+        Ok((sequence, publication))
     }
 }

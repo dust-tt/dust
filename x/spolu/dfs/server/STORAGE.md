@@ -1,5 +1,8 @@
 # Synchronous storage
 
+This section describes the default `--write-mode sync` baseline. The
+[cached publication](#cached-publication) section specifies visibility and persistence in cached mode.
+
 `Storage::workspace()` creates a trusted internal handle. Each `read_view()` captures one SlateDB
 snapshot for related lookups and scans. Scans take typed exclusive cursors and a limit of 1–1000.
 Object batches fetch at most 1000 IDs, in order, with up to 16 concurrent point reads. Grant
@@ -162,3 +165,13 @@ version-pinned reads, serialized appends, sparse/random edits, truncation, fsync
 handle exhaustion, and receipt recovery. File API tests also run against GCS across reopen. A separate
 withheld-WAL test disconnects the publishing caller and verifies atomic mutation/receipt recovery or
 discard, including a concurrent retry waiting for the first publication's outcome.
+
+## Cached publication
+
+`--write-mode cached` layers bounded immutable content staging and an atomic metadata overlay over
+this persisted format. No local-only reference enters SlateDB. Reads and ordered index scans merge
+consistent overlay/base snapshots; tombstones suppress persisted rows. The ordered worker uploads
+required blobs before submitting metadata/index/event/receipt batches, then retires only durable
+entries that have not been superseded. Fsync/retries acknowledge visibility in this mode; workspace
+creation always waits for durability. A crash recovers only the durable prefix, including its
+receipts, and discards staging. The synchronous format and mode remain available for comparison.

@@ -71,7 +71,8 @@ async fn streams_exceed_budget_without_collecting_and_fail_without_publication()
         upload_memory_mib: 12,
         upload_concurrency: 4,
     }
-    .budget()?;
+    .budget()?
+    .into();
     let workspace = WorkspaceId::new("w")?;
     let scoped = storage.workspace(&workspace)?;
     exercise_streams(&scoped).await?;
@@ -125,7 +126,8 @@ async fn shared_budget_bounds_active_and_waiting_transfers_before_polling_bodies
         upload_memory_mib: 12,
         upload_concurrency: 4,
     }
-    .budget()?;
+    .budget()?
+    .into();
     let workspace = WorkspaceId::new("w")?;
     let scoped = storage.workspace(&workspace)?;
     let polled = Arc::new(AtomicUsize::new(0));

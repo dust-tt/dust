@@ -19,12 +19,48 @@ pub struct BlobRead {
 }
 
 impl WorkspaceStorage<'_> {
+    pub(crate) async fn edit_staged(
+        &self,
+        object: ObjectId,
+        base: &FileContent,
+        offset: u64,
+        length: u64,
+        size: u64,
+        input: BoxStream<'static, Result<Bytes>>,
+    ) -> Result<(super::UploadedBlob, [u8; 32]), UploadError> {
+        let cache = self.storage.cache.as_ref().context("cache disabled")?;
+        let key = self.blob_path(object, base.version);
+        let local = match cache.staging.get(&key)? {
+            Some(local) => local,
+            None => {
+                let bytes = self
+                    .read_blob_stream(object, base, 0, base.size_bytes)
+                    .await?;
+                let local = cache.staging.stage(bytes.stream).await?;
+                cache.staging.register(key, local.clone())?;
+                cache.staging.retain_clean(local.clone())?;
+                local
+            }
+        };
+        let _lease = self.storage.transfers.acquire().await?;
+        let (version, hash) = cache
+            .staging
+            .edit(&local, offset, length, size, input)
+            .await?;
+        Ok((
+            self.staged_descriptor(object, crate::model::ContentVersionId::generate(), version)?,
+            hash,
+        ))
+    }
+
     /**
      * @cc [owner:spolu,label:performance;backend] bounded-version-reads
      * Read exactly the selected immutable version and clamp ranges to EOF. Hold a shared transfer
      * reservation until the consumer drains or drops the stream. Never collect the complete file;
-     * poll the backend only as the consumer asks for bytes. Check blob size and response range before
-     * returning headers. Callers MUST authorize the object and selected version before opening.
+     * poll the backend only as the consumer asks for bytes. Check blob size and response range
+     * before
+     * returning headers. Callers MUST authorize the object and selected version before opening and
+     * retain that read view (or a completed-upload descriptor) until this method returns.
      */
     pub async fn read_blob_stream(
         &self,
@@ -41,7 +77,61 @@ impl WorkspaceStorage<'_> {
             });
         }
         let lease = self.storage.transfers.acquire().await?;
+        if let Some(cache) = &self.storage.cache
+            && let Some(local) = cache
+                .staging
+                .get(&self.blob_path(object, content.version))?
+        {
+            if local.size != content.size_bytes {
+                return Err(anyhow::anyhow!("staged size mismatch").into());
+            }
+            let source = local.stream(offset, length);
+            let stream = stream::unfold((source, lease), |(mut source, lease)| async move {
+                source.next().await.map(|chunk| (chunk, (source, lease)))
+            })
+            .boxed();
+            return Ok(BlobRead { length, stream });
+        }
         let end = offset + length;
+        if let Some(cache) = &self.storage.cache {
+            let cache = cache.clone();
+            let store = self.storage.blobs.clone();
+            let path = self.blob_path(object, content.version);
+            let size = content.size_bytes;
+            let mut source = stream::try_unfold(offset, move |position| {
+                let (cache, store, path) = (cache.clone(), store.clone(), path.clone());
+                async move {
+                    if position >= end {
+                        return Ok(None);
+                    }
+                    let block = tokio::time::timeout(
+                        Duration::from_secs(30),
+                        cache
+                            .staging
+                            .read_block(&store, &path, size, position / 1_048_576),
+                    )
+                    .await
+                    .context("content read timed out")??;
+                    let start = (position % 1_048_576) as usize;
+                    let count = (end - position).min((block.len() - start) as u64) as usize;
+                    Ok(Some((
+                        block.slice(start..start + count),
+                        position + count as u64,
+                    )))
+                }
+            })
+            .boxed();
+            let first = source
+                .next()
+                .await
+                .context("missing first content block")??;
+            let source = stream::once(async { Ok(first) }).chain(source).boxed();
+            let stream = stream::unfold((source, lease), |(mut source, lease)| async move {
+                source.next().await.map(|chunk| (chunk, (source, lease)))
+            })
+            .boxed();
+            return Ok(BlobRead { length, stream });
+        }
         let result = self
             .storage
             .blobs
@@ -109,7 +199,8 @@ mod tests {
             upload_memory_mib: 12,
             upload_concurrency: 4,
         }
-        .budget()?;
+        .budget()?
+        .into();
         let workspace = WorkspaceId::new("w")?;
         let scoped = storage.workspace(&workspace)?;
         let object = ObjectId::generate();

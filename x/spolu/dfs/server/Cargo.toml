@@ -13,10 +13,11 @@ dfs-protocol = { path = "../protocol" }
 futures = "0.3"
 getrandom = "0.4"
 hex = "0.4"
+im = { version = "15", default-features = false }
 postcard = { version = "1", default-features = false, features = ["use-std"] }
 serde = { version = "1", features = ["derive"] }
 sha2 = "0.10"
-slatedb = { version = "0.17", default-features = false, features = ["gcp"] }
+slatedb = { version = "0.17", default-features = false, features = ["gcp", "foyer"] }
 subtle = "2"
 tempfile = "3"
 thiserror = "2"

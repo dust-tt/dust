@@ -12,7 +12,7 @@ info:
     Missing and inaccessible objects
     produce the same not_found response; messages never contain resource or storage details.
     Session object reads use current ancestor grants in one snapshot per request, with no
-    dfs metadata or authorization cache. An in-flight read may finish against its original snapshot.
+    stale authorization cache. Cached mode merges the metadata overlay with SlateDB. An in-flight read may finish against its original snapshot.
     Mutations prepare from a snapshot and acquire workspace/object locks for all touched objects
     and parents in ID order. Publication validates the workspace change sequence before atomically
     submitting. On change, release locks and retry with fresh metadata, authorization, and lock targets;
@@ -21,7 +21,11 @@ info:
     and return not_found before name collisions or revision conflicts. Namespace locks release before
     WAL durability waits; file content/request gates span the whole mutation. Unrelated writes in the
     same workspace may trigger retries. File mutation request receipts persist atomically with their
-    metadata and survive restart; status/replay always checks current object authorization.
+    metadata; only the durable prefix survives restart. Status/replay checks current authorization.
+    With --write-mode sync (default), filesystem mutations wait for GCS and SlateDB durability.
+    With --write-mode cached, they acknowledge atomic server visibility from local RAM/disk and the
+    metadata overlay. Fsync and receipts do not promise remote durability; a crash may discard a
+    consistent suffix of acknowledged mutations. Workspace creation remains durable in both modes.
 paths:
   /health:
     get:
@@ -163,7 +167,7 @@ paths:
         ID. Does not reserve the name, lock the file, publish metadata, or acknowledge fsync.
         Unpublished reservations share a server-wide cap of 1024 and expire after 15 minutes;
         expiry is not extended by status or transfer. Session closure/expiry/restart invalidates access.
-        Successful durable publication immediately releases the reservation slot.
+        Successful publication immediately releases the reservation slot.
       security:
         - SessionKey: []
       requestBody:
@@ -229,14 +233,13 @@ paths:
   /uploads/status:
     post:
       operationId: uploadStatus
-      summary: Recover upload completion or durable publication state.
+      summary: Recover upload completion or publication state.
       description: |
         For an unpublished reservation, checks the original session, target, and preconditions. Missing,
         expired, failed, restarted, or other-session reservations return not_found (404). Pending uploads
         have complete false and null size; completed unpublished uploads have published false.
-        Published receipts survive restart and return complete/published true with expires_in_seconds
-        zero, after a durability barrier. Any currently authorized session in the workspace may recover
-        them. Deletion/revocation hides the receipt. Status does not renew reservations; a missing
+        Published receipts return complete/published true with expires_in_seconds zero. Only durable
+        receipts survive restart. Any currently authorized session in the workspace may recover them. Deletion/revocation hides the receipt. Status does not renew reservations; a missing
         receipt does not prove no orphan was uploaded or that a concurrent commit cannot still finish.
       security:
         - SessionKey: []
@@ -258,19 +261,20 @@ paths:
   /uploads/commit:
     post:
       operationId: commitUpload
-      summary: Publish a completed upload atomically and durably.
+      summary: Publish a completed upload atomically.
       description: |
         Reauthorizes the live session and target, then checks name vacancy for creation or the expected
         content version for replacement. Creation accepts initial MIME/xattrs/mode. Replacement rejects
         supplied MIME/mode or nonempty xattrs and preserves current metadata. Metadata, indexes, event,
-        and request receipt commit atomically after blob completion; success waits for WAL durability.
+        and request receipt commit atomically after blob completion; success follows the configured write mode.
         The upload ID is the request ID. Identical commit arguments replay the original result, including
-        after session recreation/server restart; changed arguments conflict (409). Replay reauthorizes
+        after session recreation; only durable receipts survive restart. Changed arguments conflict (409).
+        Replay reauthorizes
         the current object and does not require the old upload reservation. Unpublished uploads still
         require their original live session and reservation. Request disconnect does not cancel an
         admitted publication. Global file-job exhaustion returns capacity_exhausted (507).
         Successful publication/replay immediately releases the reservation slot; status/retries use the
-        durable receipt. Failed commits retain the completed upload until reservation expiry.
+        published receipt. Failed commits retain the completed upload until reservation expiry.
       security:
         - SessionKey: []
       requestBody:
@@ -295,8 +299,7 @@ paths:
       description: |
         Rechecks current grants and requires a regular file. At least one of read/write must be true;
         append requires write. Opening does not reserve a writer or scratch file. Truncate requires
-        write and a fresh client request_id, publishes an empty version durably, and starts sequence at
-        one. Otherwise request_id must be omitted/null and sequence starts at zero. Truncating-open
+        write and a fresh client request_id, publishes an empty version, and starts sequence at one. Otherwise request_id must be omitted/null and sequence starts at zero. Truncating-open
         retries reuse the original request ID but return a new handle and current attributes.
         Handles cap at 4096/server and 256/session, returning capacity_exhausted (507). Close, session
         expiry/closure, or restart invalidates them. Rename preserves the handle; unlink/replacement
@@ -374,14 +377,16 @@ paths:
         response; only successful completion allows advancing. Append chooses current EOF under the
         per-file writer gate and ignores the supplied offset. Other writes preserve existing bytes
         outside the range; growth fills gaps with zero bytes. A zero-byte write never extends the file.
-        Random edits assemble a full immutable version in quota-reserved anonymous disk, stream it
-        to GCS, then reauthorize and publish metadata/event/receipt atomically and durably. Other files
-        may proceed concurrently. Default shared scratch quota is 1 GiB, with 16 admitted file jobs.
+        Synchronous edits assemble and upload a full immutable version using quota-reserved scratch.
+        Cached edits share unchanged local pages and stage changed pages in bounded RAM/disk.
+        Both reauthorize and publish metadata/event/receipt atomically; cached acknowledgement requires
+        visibility, synchronous acknowledgement requires durability. Other files proceed concurrently.
+        Default scratch limit is 1 GiB (also the cached edit file-size limit), with 16 admitted jobs.
         Input frames are at most 1 MiB; input idle timeout is 30 seconds and preparation is limited to
         15 minutes. Interrupted/short/long bodies return invalid_input; quota/disk/job exhaustion returns
         capacity_exhausted. Failed writes leave no partial publication and fsync reports their failure.
-        Use a fresh client UUID per operation. Identical request IDs/arguments/bytes replay the durable
-        original result; mismatches conflict. After restart, recreate a session/handle and retry the same
+        Use a fresh client UUID per operation. Identical request IDs/arguments/bytes replay the original
+        published result; mismatches conflict. After restart, recreate a session/handle and retry the same
         request ID with the new handle's next sequence. A disconnect or unavailable response can have
         committed: use status or retry, never assume it failed. Publication outlives HTTP cancellation.
       security:
@@ -441,7 +446,7 @@ paths:
       operationId: truncateFile
       summary: Change file length through a writable handle.
       description: |
-        Uses the same per-file serialization, handle sequence, scratch quota, durable receipt, and
+        Uses the same per-file serialization, handle sequence, resource limits, atomic receipt, and
         retry rules as write. Shrink removes trailing bytes; extension supplies zeros. Always publishes
         a fresh content version, including for zero or unchanged length. Append mode does not affect
         truncate. Publication preserves unrelated metadata and rechecks current access/base version.
@@ -470,8 +475,9 @@ paths:
         Waits behind admitted handle writes, checks current session/grants, rejects through_sequence
         beyond the last accepted sequence (conflict), and reports an unresolved write failure. A failed
         handle must retry its last request/sequence or close/reopen; new sequences cannot hide failures.
-        Success waits for the current SlateDB WAL prefix. All successful writes are already durable in
-        this synchronous baseline. Unpublished uploads and client-only buffers cannot satisfy fsync.
+        Cached mode confirms server visibility without waiting for GCS, SlateDB, or local disk fsync.
+        Synchronous mode also waits for the current SlateDB WAL prefix. Unpublished uploads and
+        client-only buffers cannot satisfy fsync. A cached acknowledgement may be lost after a crash.
       security:
         - SessionKey: []
       requestBody:
@@ -512,7 +518,7 @@ paths:
       summary: Recover a file mutation receipt after an ambiguous response or restart.
       description: |
         Requires current access to the object in the session's workspace, including after session
-        recreation. Returns the original durable result, which may differ from current attributes.
+        recreation. Returns the original published result, which may differ from current attributes.
         Null means no receipt was visible in the snapshot, not proof of failure; a mutation may still
         be in flight. Safely retry with the same request ID. Missing/inaccessible objects or a receipt
         belonging to another object return not_found. Receipt retention is currently indefinite.
@@ -675,7 +681,7 @@ paths:
         remove keys and empty base64 strings store empty bytes. Require at least one supplied scalar
         or xattr entry. Every accepted update increments the revision and sets server ctime,
         preserving identity, parent, content reference, and grants. Reads never change atime.
-        Metadata and the indexing event must be durable before returning. A failed/disconnected
+        Metadata and the indexing event publish atomically, with acknowledgement per configured mode. A failed/disconnected
         request may already have committed; re-read attributes to resolve an ambiguous outcome.
       security:
         - SessionKey: []
@@ -713,7 +719,7 @@ paths:
         parent/name/revision/ctime and both parents' revision/mtime/ctime atomically with child
         entries, replaced-object deletion, both grant-index removals, and the event. One parent is
         updated once for same-directory renames. Inherited access changes through current ancestry.
-        Blobs are retained. Await durability before acknowledging a mutation; failed/disconnected
+        Blobs are retained. Acknowledge according to the configured write mode; failed/disconnected
         requests may have committed. Re-read state before retrying; replacement has no destination
         revision precondition and applies to the entry current at publication.
       security:
@@ -744,8 +750,8 @@ paths:
         directories return is_directory (400), while roots return forbidden (403).
         Delete metadata, the child entry, and both directions of every explicit grant attachment
         atomically with the parent revision/mtime/ctime and event. Retain blobs for snapshots/recovery.
-        Acknowledge only after durability. Repeating after deletion returns not_found (404).
-        Open-handle behavior is deferred to file I/O; there are no file handles yet.
+        Acknowledge according to the configured write mode. Repeating after deletion returns not_found (404).
+        Further operations on open handles for the removed object are rejected.
       security:
         - SessionKey: []
       requestBody:
@@ -769,7 +775,7 @@ paths:
         return conflict (409); files return not_directory (400), nonempty directories return
         not_empty (409), and roots return forbidden (403). Never remove recursively.
         Delete metadata, the child entry, and both explicit grant indexes atomically with parent
-        revision/mtime/ctime and the event. Acknowledge after durability; repeating returns not_found.
+        revision/mtime/ctime and the event. Acknowledge according to the configured write mode; repeating returns not_found.
         A failed/disconnected mutation may have committed; inspect state before retrying.
       security:
         - SessionKey: []
@@ -824,8 +830,8 @@ paths:
         attachment. Omitted grants stay unchanged. Empty strings, NUL, slashes, and Unicode are opaque
         grant values. The bound is per request; an object may have more than 512 attachments.
         Every accepted patch advances the object's revision and server ctime, even if the requested
-        states already hold. Both index directions, metadata, and an event commit atomically and
-        durably before returning. Parent, content, xattrs, modes, atime, and mtime stay unchanged.
+        states already hold. Both index directions, metadata, and an event commit atomically,
+        with acknowledgement per configured write mode. Parent, content, xattrs, modes, atime, and mtime stay unchanged.
         Revocation is not a deny: an ancestor or another matching grant can still authorize access.
         Subsequent session requests see the new grants; in-flight reads may use their prior snapshot.
         An error/disconnect may have committed. Re-read the grant list/revision before retrying,
@@ -914,7 +920,7 @@ components:
       type: object
       additionalProperties: false
       required: [request_id, object_id, content_version, size_bytes, metadata_revision]
-      description: Original durable mutation result; later edits may have changed current attributes.
+      description: Original published mutation result; later edits may have changed current attributes. The version is not a historical read capability; coalesced intermediate content need not exist in GCS.
       properties:
         request_id:
           type: string
@@ -1098,7 +1104,7 @@ components:
           type: boolean
         published:
           type: boolean
-          description: True only when status confirms a durable namespace publication.
+          description: True only when status confirms an acknowledged namespace publication.
         size_bytes:
           type: integer
           format: uint64
@@ -1109,7 +1115,7 @@ components:
           type: integer
           format: uint64
           minimum: 0
-          description: Remaining reservation lifetime rounded down; zero for durable published receipts.
+          description: Remaining reservation lifetime rounded down; zero for published receipts.
     ObjectId:
       type: string
       pattern: '^[0-9a-f]{32}$'

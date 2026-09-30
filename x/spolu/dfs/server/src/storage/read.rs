@@ -8,12 +8,17 @@ use std::{
 use anyhow::{Context, Result, ensure};
 use futures::{StreamExt, TryStreamExt, stream};
 use slatedb::{
-    DbSnapshot, KeyValue,
+    DbSnapshot,
     config::{DurabilityLevel, ScanOptions},
 };
 
 use super::{codec, keys::Keyspace};
 use crate::model::{DirectoryEntry, EntryName, ObjectId, ObjectMetadata};
+
+struct Row {
+    key: slatedb::bytes::Bytes,
+    value: slatedb::bytes::Bytes,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ChangeEvent {
@@ -23,21 +28,32 @@ pub struct ChangeEvent {
 
 /**
  * @cc [owner:spolu,label:security] workspace-read-view
- * Every lookup and scan in a view MUST use its fixed workspace and one SlateDB snapshot.
+ * Every lookup and scan MUST use its fixed workspace and one consistent SlateDB/overlay snapshot.
+ * Overlay tombstones MUST suppress base rows; page limits MUST apply after the ordered merge.
+ * Views MUST pin their visible staged versions, including versions later coalesced out of remote
+ * persistence. Content callers MUST retain the view until acquiring a version-pinned read stream.
  * Scans MUST be bounded and cursors MUST be relative to their typed prefix; callers cannot supply
  * arbitrary database keys. Corrupt records MUST return errors, never masquerade as absent data.
  */
 #[derive(Clone)]
 pub struct ReadView {
     pub(super) keys: Keyspace,
+    pub(super) overlay: super::cache::Overlay,
+    pub(super) _content_pins: super::cache::ContentPins,
     pub(super) snapshot: Arc<DbSnapshot>,
 }
 
 impl ReadView {
+    pub(super) async fn get(&self, key: Vec<u8>) -> Result<Option<slatedb::bytes::Bytes>> {
+        if let Some((_, value)) = self.overlay.get(&key) {
+            return Ok(value.clone());
+        }
+        Ok(self.snapshot.get(key).await?)
+    }
+
     /// Resolve the workspace root from the same snapshot as its namespace and grants.
     pub(crate) async fn root_id(&self) -> Result<ObjectId> {
         let bytes = self
-            .snapshot
             .get(self.keys.workspace_record())
             .await?
             .context("missing workspace record")?;
@@ -47,8 +63,7 @@ impl ReadView {
 
     /// Memory-visible mutation sequence from the same snapshot as metadata and authorization.
     pub(crate) async fn sequence(&self) -> Result<u64> {
-        self.snapshot
-            .get(self.keys.change_sequence())
+        self.get(self.keys.change_sequence())
             .await?
             .map(|bytes| codec::decode(&bytes))
             .transpose()
@@ -66,7 +81,8 @@ impl ReadView {
 
     /**
      * @cc [owner:spolu,label:security] bounded-grant-intersection
-     * Grant checks MUST use this view's workspace and snapshot, comparing exact opaque grant values.
+     * Grant checks MUST use this view's workspace and snapshot, comparing exact opaque grant
+     * values.
      * Check at most 512 session grants without enumerating an object's unbounded attachment set.
      */
     pub async fn has_any_grant(&self, object: ObjectId, grants: &BTreeSet<String>) -> Result<bool> {
@@ -77,7 +93,7 @@ impl ReadView {
             .collect();
         stream::iter(keys)
             .map(|key| async move {
-                let value = self.snapshot.get(key).await?;
+                let value = self.get(key).await?;
                 if let Some(value) = value {
                     codec::decode::<()>(&value)?;
                     Ok::<_, anyhow::Error>(true)
@@ -91,16 +107,14 @@ impl ReadView {
     }
 
     pub async fn object(&self, id: ObjectId) -> Result<Option<ObjectMetadata>> {
-        self.snapshot
-            .get(self.keys.object(id))
+        self.get(self.keys.object(id))
             .await?
             .map(|bytes| codec::decode_object(&bytes, &self.keys.workspace, id))
             .transpose()
     }
 
     pub async fn child(&self, parent: ObjectId, name: &EntryName) -> Result<Option<ObjectId>> {
-        self.snapshot
-            .get(self.keys.child(parent, name))
+        self.get(self.keys.child(parent, name))
             .await?
             .map(|bytes| codec::decode(&bytes).map(ObjectId::from_bytes))
             .transpose()
@@ -268,7 +282,7 @@ impl ReadView {
         after: Option<&[u8]>,
         limit: usize,
         durability: DurabilityLevel,
-    ) -> Result<Vec<KeyValue>> {
+    ) -> Result<Vec<Row>> {
         ensure!(
             (1..=1000).contains(&limit),
             "scan limit must be between 1 and 1000"
@@ -284,13 +298,58 @@ impl ReadView {
                 &ScanOptions::default().with_durability_filter(durability),
             )
             .await?;
+        let full_start = after.map(|suffix| [prefix, suffix].concat());
+        let mut overlay = self
+            .overlay
+            .range((
+                full_start
+                    .map(Bound::Excluded)
+                    .unwrap_or_else(|| Bound::Included(prefix.to_vec())),
+                Bound::<Vec<u8>>::Unbounded,
+            ))
+            .peekable();
+        let remote_only = matches!(durability, DurabilityLevel::Remote);
+        let mut base = iterator.next().await?;
         let mut rows = Vec::new();
         while rows.len() < limit {
-            let Some(row) = iterator.next().await? else {
-                break;
+            let next_overlay = if remote_only {
+                None
+            } else {
+                match overlay.peek() {
+                    Some(row) if row.0.starts_with(prefix) => Some(row),
+                    _ => None,
+                }
             };
-            ensure!(row.key.starts_with(prefix), "scan escaped its prefix");
-            rows.push(row);
+            if let Some((key, (_, value))) = next_overlay
+                && base
+                    .as_ref()
+                    .is_none_or(|row| key.as_slice() <= row.key.as_ref())
+            {
+                let key = (*key).clone();
+                let value = value.clone();
+                overlay.next();
+                if base
+                    .as_ref()
+                    .is_some_and(|row| row.key.as_ref() == key.as_slice())
+                {
+                    base = iterator.next().await?;
+                }
+                if let Some(value) = value {
+                    rows.push(Row {
+                        key: key.into(),
+                        value,
+                    });
+                }
+            } else if let Some(row) = base.take() {
+                ensure!(row.key.starts_with(prefix), "scan escaped its prefix");
+                rows.push(Row {
+                    key: row.key,
+                    value: row.value,
+                });
+                base = iterator.next().await?;
+            } else {
+                break;
+            }
         }
         Ok(rows)
     }

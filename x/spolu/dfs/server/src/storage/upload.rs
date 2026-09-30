@@ -105,9 +105,20 @@ pub struct UploadedBlob {
     object_id: ObjectId,
     content: FileContent,
     origin: Arc<dyn ObjectStore>,
+    pub(super) local: Option<Arc<super::cache::LocalVersion>>,
+    persisted: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl UploadedBlob {
+    pub(super) fn object_key(&self) -> Result<Vec<u8>> {
+        Ok(super::keys::Keyspace::new(self.workspace.clone())?.object(self.object_id))
+    }
+
+    pub(super) fn is_referenced_by(&self, value: &[u8]) -> Result<bool> {
+        let object = super::codec::decode_object(value, &self.workspace, self.object_id)?;
+        Ok(object.kind == crate::model::ObjectKind::File(self.content.clone()))
+    }
+
     pub fn workspace(&self) -> &WorkspaceId {
         &self.workspace
     }
@@ -129,16 +140,21 @@ impl WorkspaceStorage<'_> {
     /**
      * @cc [owner:spolu,label:backend] immutable-streamed-upload
      * Uploads MUST NOT publish metadata. Return an internal descriptor only after the complete
-     * measured body exists at its workspace/object/version key. Final writes MUST be create-only;
+     * measured body exists in local staging or at its workspace/object/version key. Remote writes
+     * MUST be create-only;
      * multipart uploads MUST use a fresh temporary key and a conditional copy. Never overwrite or
      * delete an immutable version on failure, including ambiguous completion outcomes.
      */
     /**
      * @cc [owner:spolu,label:performance] shared-transfer-budget
-     * Before polling input or allocating a part, acquire capacity from this Storage's shared budget.
-     * At most one 8 MiB part and one 1 MiB input frame may be retained per active transfer. Await each
+     * Foreground transfers MUST acquire the shared budget before polling input or allocating a
+     * part.
+     * At most one 8 MiB part and one 1 MiB input frame may be retained per active transfer. Await
+     * each
      * part before reading more input; never queue file bytes between tasks. Bound admitted waiters,
      * multipart count, and input idle time. Oversized producer frames MUST fail before copying.
+     * Background persistence MUST have separate
+     * bounded concurrency so remote uploads cannot occupy foreground transfer slots.
      */
     pub async fn upload_blob<S>(
         &self,
@@ -150,6 +166,12 @@ impl WorkspaceStorage<'_> {
         S: Stream<Item = Result<Bytes>> + Send,
     {
         let _lease = self.storage.transfers.acquire().await?;
+        if let Some(cache) = &self.storage.cache {
+            let local = cache.staging.stage(input).await?;
+            return self
+                .staged_descriptor(object_id, version, local)
+                .map_err(UploadError::Backend);
+        }
         let final_path = self.blob_path(object_id, version);
         let temporary = Path::from(format!(
             "staging/{}/{}",
@@ -157,9 +179,14 @@ impl WorkspaceStorage<'_> {
             ContentVersionId::generate()
         ));
         let mut multipart: Option<Box<dyn MultipartUpload>> = None;
-        let result = self
-            .transfer(input, &final_path, &temporary, &mut multipart)
-            .await;
+        let result = transfer(
+            &self.storage.blobs,
+            input,
+            &final_path,
+            &temporary,
+            &mut multipart,
+        )
+        .await;
         if let Some(mut upload) = multipart {
             if result.is_err() {
                 // Cleanup is best effort; a lost completion response may have created the object.
@@ -180,93 +207,162 @@ impl WorkspaceStorage<'_> {
                 size_bytes,
             },
             origin: self.storage.blobs.clone(),
+            local: None,
+            persisted: Arc::new(std::sync::atomic::AtomicBool::new(true)),
         })
     }
+}
 
-    async fn transfer<S>(
-        &self,
-        input: S,
-        final_path: &Path,
-        temporary: &Path,
-        multipart: &mut Option<Box<dyn MultipartUpload>>,
-    ) -> Result<u64, UploadError>
-    where
-        S: Stream<Item = Result<Bytes>> + Send,
-    {
-        futures::pin_mut!(input);
-        let mut part = BytesMut::with_capacity(UPLOAD_PART_BYTES);
-        let mut size = 0_u64;
-        loop {
-            let next = tokio::time::timeout(INPUT_IDLE_TIMEOUT, input.next())
-                .await
-                .map_err(|_| UploadError::Input)?;
-            let Some(chunk) = next else { break };
-            let chunk = chunk.map_err(|_| UploadError::Input)?;
-            if chunk.len() > MAX_INPUT_CHUNK_BYTES {
-                return Err(UploadError::Input);
-            }
-            size = size
-                .checked_add(chunk.len() as u64)
-                .ok_or(UploadError::Capacity)?;
-            if size > MAX_FILE_BYTES {
-                return Err(UploadError::Capacity);
-            }
-            let mut remaining = chunk.as_ref();
-            while !remaining.is_empty() {
-                let take = remaining.len().min(UPLOAD_PART_BYTES - part.len());
-                part.extend_from_slice(&remaining[..take]);
-                remaining = &remaining[take..];
-                if part.len() == UPLOAD_PART_BYTES {
-                    if multipart.is_none() {
-                        *multipart = Some(
-                            self.storage
-                                .blobs
-                                .put_multipart(temporary)
-                                .await
-                                .context("start temporary multipart upload")?,
-                        );
-                    }
-                    if let Some(upload) = multipart {
-                        upload
-                            .put_part(part.freeze().into())
+async fn transfer<S>(
+    blobs: &Arc<dyn ObjectStore>,
+    input: S,
+    final_path: &Path,
+    temporary: &Path,
+    multipart: &mut Option<Box<dyn MultipartUpload>>,
+) -> Result<u64, UploadError>
+where
+    S: Stream<Item = Result<Bytes>> + Send,
+{
+    futures::pin_mut!(input);
+    let mut part = BytesMut::with_capacity(UPLOAD_PART_BYTES);
+    let mut size = 0_u64;
+    loop {
+        let next = tokio::time::timeout(INPUT_IDLE_TIMEOUT, input.next())
+            .await
+            .map_err(|_| UploadError::Input)?;
+        let Some(chunk) = next else { break };
+        let chunk = chunk.map_err(|_| UploadError::Input)?;
+        if chunk.len() > MAX_INPUT_CHUNK_BYTES {
+            return Err(UploadError::Input);
+        }
+        size = size
+            .checked_add(chunk.len() as u64)
+            .ok_or(UploadError::Capacity)?;
+        if size > MAX_FILE_BYTES {
+            return Err(UploadError::Capacity);
+        }
+        let mut remaining = chunk.as_ref();
+        while !remaining.is_empty() {
+            let take = remaining.len().min(UPLOAD_PART_BYTES - part.len());
+            part.extend_from_slice(&remaining[..take]);
+            remaining = &remaining[take..];
+            if part.len() == UPLOAD_PART_BYTES {
+                if multipart.is_none() {
+                    *multipart = Some(
+                        blobs
+                            .put_multipart(temporary)
                             .await
-                            .context("upload part")?;
-                    }
-                    part = BytesMut::with_capacity(UPLOAD_PART_BYTES);
+                            .context("start temporary multipart upload")?,
+                    );
                 }
+                if let Some(upload) = multipart {
+                    upload
+                        .put_part(part.freeze().into())
+                        .await
+                        .context("upload part")?;
+                }
+                part = BytesMut::with_capacity(UPLOAD_PART_BYTES);
             }
         }
-        if let Some(upload) = multipart {
-            if !part.is_empty() {
-                upload
-                    .put_part(part.freeze().into())
-                    .await
-                    .context("upload last part")?;
-            }
-            upload
-                .complete()
-                .await
-                .context("complete temporary multipart upload")?;
-            self.storage
-                .blobs
-                .copy_opts(
-                    temporary,
-                    final_path,
-                    CopyOptions::new().with_mode(CopyMode::Create),
-                )
-                .await
-                .context("create immutable content from completed upload")?;
-        } else {
-            // Small and empty files need only one create-only request.
-            self.storage
-                .blobs
-                .put_opts(final_path, part.freeze().into(), PutMode::Create.into())
-                .await
-                .context("create immutable content")?;
-        }
-        Ok(size)
     }
+    if let Some(upload) = multipart {
+        if !part.is_empty() {
+            upload
+                .put_part(part.freeze().into())
+                .await
+                .context("upload last part")?;
+        }
+        upload
+            .complete()
+            .await
+            .context("complete temporary multipart upload")?;
+        blobs
+            .copy_opts(
+                temporary,
+                final_path,
+                CopyOptions::new().with_mode(CopyMode::Create),
+            )
+            .await
+            .context("create immutable content from completed upload")?;
+    } else {
+        // Small and empty files need only one create-only request.
+        blobs
+            .put_opts(final_path, part.freeze().into(), PutMode::Create.into())
+            .await
+            .context("create immutable content")?;
+    }
+    Ok(size)
 }
 
 #[cfg(test)]
 pub(super) mod tests;
+
+impl WorkspaceStorage<'_> {
+    pub(crate) fn staged_descriptor(
+        &self,
+        object_id: ObjectId,
+        version: ContentVersionId,
+        local: Arc<super::cache::LocalVersion>,
+    ) -> Result<UploadedBlob> {
+        let cache = self.storage.cache.as_ref().context("cache disabled")?;
+        let local = cache
+            .staging
+            .register(self.blob_path(object_id, version), local)?;
+        Ok(UploadedBlob {
+            workspace: self.keys.workspace.clone(),
+            object_id,
+            content: FileContent {
+                version,
+                size_bytes: local.size,
+            },
+            origin: self.storage.blobs.clone(),
+            local: Some(local),
+            persisted: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        })
+    }
+}
+
+impl UploadedBlob {
+    pub(super) async fn persist(&self, blobs: &Arc<dyn ObjectStore>) -> Result<()> {
+        use std::sync::atomic::Ordering;
+        if self.persisted.load(Ordering::Acquire) {
+            return Ok(());
+        }
+        let local = self.local.as_ref().context("missing staged bytes")?;
+        let final_path = Path::from(format!(
+            "v1/{}/{}/{}",
+            hex::encode(self.workspace.as_str().as_bytes()),
+            self.object_id,
+            self.content.version
+        ));
+        let temporary = Path::from(format!(
+            "staging/{}/{}",
+            hex::encode(self.workspace.as_str().as_bytes()),
+            ContentVersionId::generate()
+        ));
+        let mut multipart = None;
+        let result = transfer(
+            blobs,
+            local.stream(0, local.size),
+            &final_path,
+            &temporary,
+            &mut multipart,
+        )
+        .await;
+        if let Some(mut upload) = multipart {
+            if result.is_err() {
+                let _ = tokio::time::timeout(Duration::from_secs(10), upload.abort()).await;
+            }
+            let _ = tokio::time::timeout(Duration::from_secs(10), blobs.delete(&temporary)).await;
+        }
+        if let Err(error) = result {
+            // An earlier create may have completed despite a lost response. UUID keys never repeat.
+            match blobs.head(&final_path).await {
+                Ok(meta) if meta.size == self.content.size_bytes => {}
+                _ => return Err(error.into()),
+            }
+        }
+        self.persisted.store(true, Ordering::Release);
+        Ok(())
+    }
+}

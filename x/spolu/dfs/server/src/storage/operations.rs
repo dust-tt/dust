@@ -16,8 +16,7 @@ pub struct OperationRecord {
 
 impl ReadView {
     pub(crate) async fn operation(&self, id: RequestId) -> Result<Option<OperationRecord>> {
-        self.snapshot
-            .get(self.keys.operation(id))
+        self.get(self.keys.operation(id))
             .await?
             .map(|bytes| codec::decode(&bytes))
             .transpose()
@@ -25,9 +24,12 @@ impl ReadView {
 }
 
 impl WorkspaceStorage<'_> {
-    /// Await the currently visible WAL prefix, including a receipt observed before this call.
-    pub(crate) async fn await_durable(&self) -> Result<()> {
-        self.storage.metadata.flush().await?;
+    /// Acknowledge visibility in cached mode or the currently visible WAL prefix in synchronous
+    /// mode.
+    pub(crate) async fn acknowledge(&self) -> Result<()> {
+        if !self.storage.cached() {
+            self.storage.metadata.flush().await?;
+        }
         Ok(())
     }
 }

@@ -20,10 +20,10 @@ sandbox belongs to exactly one workspace, and several sandboxes can access that 
 The PoC runs one server process serving one shard across many workspaces and concurrent clients.
 Competing writers to the same file serialize; unrelated files proceed independently.
 
-Implement a synchronous end-to-end baseline first: read from SlateDB/GCS and finish required GCS
-uploads followed by durable SlateDB batches before acknowledging mutations. Metadata-only operations
-need no blob upload. Add the server caching and asynchronous write architecture below once that
-baseline works through FUSE and survives restart.
+The server supports `--write-mode sync` (default, the durable baseline) and `--write-mode cached`
+(server visibility with asynchronous persistence). Workspace creation always persists its authority
+before returning. Metadata-only filesystem operations need no blob upload. Sections 8–9 remain
+deferred while we evaluate cached-path performance.
 
 The synchronous storage API and on-disk format are specified in [server/STORAGE.md](server/STORAGE.md).
 It uses workspace-scoped snapshots and atomic metadata/index/event batches, acknowledging commits
@@ -163,7 +163,7 @@ The synchronous baseline caches neither dfs metadata nor authorization decisions
 
 `POST /objects/mkdir` creates an authorized child and updates its parent atomically.
 `POST /objects/update` patches MIME, xattrs, mode, and atime/mtime with a required expected metadata
-revision; stale revisions conflict. Both set server ctime, publish indexing events, and await durability.
+revision; stale revisions conflict. Both set server ctime and publish indexing events, with acknowledgement per configured write mode.
 Xattr patches use base64 values, null deletions, and a 32 KiB total key/value limit. Authorize before
 checking collisions/revisions; denied mutations publish nothing.
 Early development uses one metadata format; incompatible layout changes require a fresh store.
@@ -275,7 +275,7 @@ mounts remain deferred.
   namespace commit publishes the entire version atomically; it may become visible before its WAL
   wait finishes. In the synchronous baseline every successful write is durable and visible before
   fsync. Fsync waits for preceding writes on that handle and reports their failures; release does not
-  substitute for it. Later server caching changes durability, not the visibility barrier.
+  substitute for it. Cached mode changes durability, not the visibility barrier.
 
 ### Uploads and publication
 
@@ -324,7 +324,7 @@ and sequence or close/reopen the handle. `/files/close` releases it without subs
 
 Use a fresh client UUID per edit. Persist its request fingerprint and result with the mutation;
 identical retries return the original receipt, while changed arguments/bytes conflict. Receipts are
-workspace-scoped and always reauthorize the current object. `/files/status` recovers a durable receipt
+workspace-scoped and always reauthorize the current object. `/files/status` recovers a visible receipt
 after a lost response; null can mean the operation is still in flight. After restart, recreate the
 session/handle and retry with the original request ID. Admitted publication continues after HTTP
 disconnect; graceful shutdown drains those jobs before closing SlateDB. Receipt reclamation is deferred.
@@ -354,19 +354,19 @@ Concurrent edits can cause skips/repeats, as with the HTTP listing contract. Up 
 (default eight) bound concurrency; kernel read/write requests are capped at 1 MiB. Each mount caps inodes
 at 100,000 and file/directory handles at 256 each. Exceeding limits returns an error.
 
-Writes publish synchronously; flush/fsync wait for server acknowledgement and report sticky write
+Writes publish to the server before returning; flush/fsync wait for server acknowledgement and report sticky write
 failures. Retry an ambiguous edit once with the same request ID/sequence/bytes; unresolved failures
 require closing the handle and checking server state before further edits. Namespace mutations are
 not blindly retried. Release frees handles; Linux does not propagate release errors to `close`, so
-flush is the error-reporting boundary. Directory fsync relies on already-durable namespace mutations.
+flush is the error-reporting boundary. Directory fsync relies on already-acknowledged namespace mutations in the configured write mode.
 Ownership changes, links, special files, ACLs, advisory locks, and allocation operations are unsupported.
 Mapped/executable content is outside the supported baseline. `statfs` reports unknown capacity as
 zero. See [fuse/README.md](fuse/README.md) for operation and deployment limits.
 
 ## Writes, fsync, and recovery
 
-The initial synchronous implementation waits for any content upload and a durable metadata batch.
-The following visibility-only behavior is introduced with server caching after that baseline works.
+Synchronous mode waits for content upload and durable metadata. Cached mode implements the following
+visibility-only behavior; restarting creates new sessions and discards all volatile state.
 
 The foreground path uses only the shard owner's local state:
 
@@ -380,12 +380,46 @@ SlateDB or local-disk durability. Batch and pipeline requests to keep workloads 
 Background workers upload immutable blobs concurrently, then apply ordered atomic metadata batches
 to SlateDB. Pending references stay outside SlateDB until their blobs exist in GCS; its automatic WAL
 flushes must never persist references to local-only data. Retire overlay entries after their mutations
-are applied to SlateDB. Never evict unuploaded content; apply backpressure when staging space is full.
+are durable in SlateDB, preserving newer entries for the same keys. Never evict required unuploaded
+content; apply backpressure when staging space is full. Superseded versions coalesced out of a durable
+batch may be discarded once their read pins are released.
 
 Persist a consistent prefix of mutations, including directory changes and grants. Recovery uses the
 durable SlateDB prefix and discards pending local state: recent acknowledged mutations may be lost,
 but metadata and content remain consistent. Retain blobs referenced by live or recoverable state;
 reclaim orphaned blobs later.
+
+### Cached mode implementation
+
+- Content uses immutable 64 KiB pages shared across versions. Changed pages stay in RAM or spill to
+  private temporary disk files without fsync; sparse extensions read as zeroes. Cold edits fetch their
+  base once. Reads of persisted content use a bounded cache of 1 MiB ranges. Cache keys include the
+  workspace, object, and version; authorization always uses current metadata.
+- Defaults: 256 MiB content RAM, 4 GiB spill disk, 128 MiB pending metadata accounting, and a 64 MiB
+  SlateDB block cache. Content budgets count shared pages once. Process overhead and transfer buffers
+  are additional. Configure `--cache-memory-bytes`, `--cache-disk-bytes`, `--cache-dir`, and
+  `--overlay-bytes` (matching `DFS_*` environment variables). Clean entries may be evicted; dirty
+  capacity exhaustion rejects new writes. The queue also caps at 65,536 pending mutations.
+- A persistent ordered map gives cheap, consistent overlay snapshots, including tombstones. All
+  point reads and paginated directory/grant scans merge the overlay with a SlateDB snapshot. Views
+  pin their current staged content until the caller obtains a pinned stream; overwrites and background
+  retirement cannot invalidate an already-selected read.
+- Publication wakes one ordered persistence worker. After `--persist-interval-ms` (100 ms), it
+  captures up to 4096 queued mutations and coalesces their rows. It uploads only versions referenced
+  by the final object rows, with `--persist-concurrency` (16). Create-then-delete needs no blob upload.
+  All receipts and events remain in the atomic metadata batch. Background upload buffers are bounded
+  separately (about 8 MiB per worker) to preserve foreground transfer capacity. Each retained version
+  is still a full GCS blob; local pages are not separate GCS objects. Later batches may upload another
+  full version of the same file. Coalescing is not persistent block deduplication or delta encoding.
+- Counters/logs distinguish visible, applied, and durable publication progress. Blob failures retry
+  with backoff and bounded staging; SlateDB submission/durability failure stops publication until
+  restart. Graceful shutdown drains for `--persist-drain-timeout-seconds` (60 by default) and reports
+  failure if incomplete.
+- Receipts are visible alongside their mutation and become durable in the same persistence batch.
+  Cached acknowledgements, including receipts, may disappear after a crash. A receipt records the
+  original result and does not promise historical content access: coalesced versions need never reach
+  GCS. Durable receipt expiry and blob reclamation remain deferred; client/API response shapes are
+  unchanged.
 
 ## Caching and synchronization
 

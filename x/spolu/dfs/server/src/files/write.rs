@@ -59,7 +59,7 @@ pub(crate) async fn replay(
             return Err(ApiError::Conflict);
         }
         scoped
-            .await_durable()
+            .acknowledge()
             .await
             .map_err(|_| ApiError::Unavailable)?;
     }
@@ -69,12 +69,12 @@ pub(crate) async fn replay(
 impl Files {
     /**
      * @cc [owner:spolu,label:backend;concurrency] serialized-file-edit
-     * Serialize each handle's mutation sequence and each object's content mutation through durable
-     * publication, without holding namespace publication locks across I/O. Append MUST select EOF
-     * after acquiring the content gate. Stream old content and incoming bytes through bounded buffers
-     * into quota-reserved anonymous disk, then upload a fresh immutable version. Recheck current grants
-     * and the base version at publication; never overwrite unrelated metadata changes. Record failures
-     * before awaits so cancellation cannot turn a failed mutation into a successful fsync.
+     * Serialize each handle's mutation sequence and each object's content mutation through the
+     * configured acknowledgement, without holding namespace publication locks across I/O. Append
+     * MUST select EOF after acquiring the content gate. Use bounded immutable pages in cached mode
+     * or streamed scratch assembly and upload in synchronous mode. Never modify a published version.
+     * Recheck grants and the base version at publication; never overwrite unrelated metadata edits.
+     * Record failures before awaits so cancellation cannot make fsync hide an unresolved mutation.
      */
     pub async fn edit(
         &self,
@@ -114,10 +114,8 @@ impl Files {
             .await
             .map_err(|_| ApiError::Unavailable)?;
         session.check_active()?;
-        let object = NamespaceRead::new(storage, &session.workspace, &session.grants)
-            .await?
-            .stat(handle.object_id)
-            .await?;
+        let read = NamespaceRead::new(storage, &session.workspace, &session.grants).await?;
+        let object = read.stat(handle.object_id).await?;
         let ObjectKind::File(base) = object.kind else {
             return Err(ApiError::IsDirectory);
         };
@@ -177,6 +175,23 @@ impl Files {
             return Err(ApiError::CapacityExhausted);
         }
         let prepare = async {
+            if storage.cached() {
+                if size > self.scratch.limit() {
+                    return Err(ApiError::CapacityExhausted);
+                }
+                let (blob, hash) = scoped
+                    .edit_staged(handle.object_id, &base, offset, length, size, input)
+                    .await
+                    .map_err(upload_error)?;
+                let hash = fingerprint((
+                    "edit",
+                    handle.object_id.as_bytes(),
+                    canonical_kind,
+                    append,
+                    hash,
+                ))?;
+                return Ok((blob, hash));
+            }
             let mut scratch = self.scratch.create(size).await?;
             self.copy_base(&scoped, handle.object_id, &base, size, &mut scratch.file)
                 .await?;
@@ -206,6 +221,7 @@ impl Files {
         let (blob, hash) = tokio::time::timeout(Duration::from_secs(15 * 60), prepare)
             .await
             .map_err(|_| ApiError::Unavailable)??;
+        drop(read);
         namespace::publish_content(
             storage,
             session,

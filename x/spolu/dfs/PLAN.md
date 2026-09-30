@@ -227,6 +227,9 @@ buffers. Commands are in [fuse/README.md](fuse/README.md); timings are in
 
 ## 8. Synchronous recovery and failure handling
 
+Deferred to prioritize section 10 and performance evaluation. Keep focused cached-path recovery
+checks in section 10; broader failure coverage and reclamation remain pending here.
+
 - [ ] Inject failures before/after upload, metadata commit, durability confirmation, and response.
   Include directory, grant, and multi-object mutations.
 - [ ] Verify acknowledged mutations survive restart, interrupted mutations are atomic, and every
@@ -243,6 +246,8 @@ buffers. Commands are in [fuse/README.md](fuse/README.md); timings are in
 requiring local server state. There is still exactly one server process.
 
 ## 9. Change subscriptions and Product integration
+
+Deferred until after section 10's performance evaluation.
 
 - [ ] Publish ordered mutation notifications with workspace scope and session-valid sequence
   numbers.
@@ -261,28 +266,41 @@ clients assuming stale namespace state is current.
 
 ## 10. Local server caching and asynchronous writes
 
-Begin only after the synchronous end-to-end baseline and recovery checks pass.
+Build on section 7's synchronous end-to-end baseline. Prioritize performance evaluation before
+sections 8 and 9; include focused consistency and recovery checks for the new cached path.
 
-- [ ] Add bounded caches for persisted metadata and content; key content by workspace/object/version
+- [x] Add bounded caches for persisted metadata and content; key content by workspace/object/version
   and keep authorization current. Compare behavior with the uncached baseline.
-- [ ] Add RAM staging with local-disk spill, capacity limits, dirty/clean tracking, and
+- [x] Add RAM staging with local-disk spill, capacity limits, dirty/clean tracking, and
   backpressure. Never evict unuploaded content.
-- [ ] Add an atomic metadata overlay and ordered mutation IDs. Keep pending references outside
+- [x] Add an atomic metadata overlay and ordered mutation IDs. Keep pending references outside
   SlateDB until their blobs exist in GCS.
-- [ ] Serve reads, directory/grant scans, and tombstones through the combined overlay and SlateDB.
-- [ ] Publish staged bytes and metadata together. Change fsync to acknowledge server-side visibility
+- [x] Serve reads, directory/grant scans, and tombstones through the combined overlay and SlateDB.
+- [x] Publish staged bytes and metadata together. Change fsync to acknowledge server-side visibility
   without waiting for GCS, SlateDB durability, or local-disk fsync.
-- [ ] Upload immutable blobs concurrently with bounded workers and retries; apply dependent
+- [x] Coalesce superseded content versions within a contiguous persistence batch. Upload only its
+  final referenced blobs concurrently with bounded workers and retries; apply dependent
   metadata, grant indexes, and indexing events to SlateDB in an ordered, consistent prefix.
-- [ ] Retire overlay mutations after applying them to SlateDB without erasing newer changes.
+- [x] Retire overlay mutations after applying them to SlateDB without erasing newer changes.
   Distinguish visible, applied, and durable progress.
-- [ ] On restart, recover the durable prefix and discard pending staging/overlay state. Recreate
+- [x] On restart, recover the durable prefix and discard pending staging/overlay state. Recreate
   sessions and invalidate client caches; losing recent acknowledged changes is now allowed.
-- [ ] Repeat crash tests at upload, WAL, batch, and overlay-retirement boundaries. Ensure surviving
+- [x] Repeat crash tests at upload, WAL, batch, and overlay-retirement boundaries. Ensure surviving
   metadata never references local-only bytes and related indexes are never partially updated.
 
 **Done when:** fsync and untar remain responsive with GCS persistence paused, other clients see
 published bytes immediately, and crashes lose at most a consistent suffix of recent mutations.
+
+Implemented selectable `--write-mode cached` with shared immutable local pages, disk spill, bounded
+staging, consistent overlay/base snapshots and paging, pinned reads, and ordered background persistence.
+The worker coalesces up to 4096 queued mutations after a 100 ms interval and uploads with 16-way
+concurrency by default. All receipts/events persist, while superseded content versions need not upload.
+Workspace provisioning remains durable; graceful shutdown drains with a configurable timeout.
+
+Focused tests cover paused persistence, two-session visibility/revocation, retries, spill/capacity,
+coalesced versions and deletion, pinned old reads, upload/WAL crash boundaries, and overlay retirement.
+Performance results and remaining full-file snapshot amplification are in [bench/CACHE.md](bench/CACHE.md).
+Sections 8–9 remain deferred; no client cache or subscription changes are included.
 
 ## 11. Client caching, batching, and workload performance
 
@@ -293,6 +311,9 @@ published bytes immediately, and crashes lose at most a consistent suffix of rec
 - [ ] Add directory attribute prefetch and folder-local read-ahead where measurements justify them.
 - [ ] Batch/pipeline small-file operations while keeping publication boundaries, retry behavior, and
   per-file serialization explicit.
+- [ ] Evaluate persistent chunking or deltas if repeated full-file snapshots across persistence
+  batches still amplify large-file random edits; current coalescing eliminates intermediate versions
+  only within each selected batch.
 - [ ] Measure cache misses, lock contention, staging pressure, upload backlog, and persistence lag;
   tune limits and concurrency without adding persistence waits to normal fsync.
 

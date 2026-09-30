@@ -18,8 +18,31 @@ async fn acknowledged_batch_survives_process_kill() -> Result<()> {
     .await
 }
 
+#[tokio::test]
+async fn cached_process_kill_discards_pending_state_and_keeps_the_durable_prefix() -> Result<()> {
+    let directory = tempfile::tempdir()?;
+    let location = directory.path().to_str().context("non-UTF-8 temp path")?;
+    for mode in ["pending", "durable"] {
+        exercise_with_mode("local", location, &format!("cached-{mode}"), Some(mode)).await?;
+    }
+    Ok(())
+}
+
 pub(super) async fn exercise_recovery(backend: &str, location: &str, prefix: &str) -> Result<()> {
-    let mut writer = command(backend, location, prefix, "write")?.spawn()?;
+    exercise_with_mode(backend, location, prefix, None).await
+}
+
+async fn exercise_with_mode(
+    backend: &str,
+    location: &str,
+    prefix: &str,
+    cached: Option<&str>,
+) -> Result<()> {
+    let mut writer_command = command(backend, location, prefix, "write")?;
+    if let Some(mode) = cached {
+        writer_command.env("DFS_RECOVERY_CACHED", mode);
+    }
+    let mut writer = writer_command.spawn()?;
     let stdout = writer.stdout.take().context("missing worker stdout")?;
     let mut lines = BufReader::new(stdout).lines();
     let object_id = tokio::time::timeout(Duration::from_secs(60), async {
@@ -32,9 +55,12 @@ pub(super) async fn exercise_recovery(backend: &str, location: &str, prefix: &st
     })
     .await??;
     writer.kill().await?;
-    let reader = command(backend, location, prefix, "read")?
-        .env("DFS_RECOVERY_OBJECT", object_id.to_string())
-        .spawn()?;
+    let mut reader_command = command(backend, location, prefix, "read")?;
+    reader_command.env("DFS_RECOVERY_OBJECT", object_id.to_string());
+    if let Some(mode) = cached {
+        reader_command.env("DFS_RECOVERY_CACHED", mode);
+    }
+    let reader = reader_command.spawn()?;
     let output = tokio::time::timeout(Duration::from_secs(60), reader.wait_with_output()).await??;
     ensure!(
         output.status.success(),
@@ -74,7 +100,16 @@ async fn worker() -> Result<()> {
         "gcs" => gcs_store(&location)?,
         _ => bail!("unknown recovery backend"),
     };
-    let storage = Storage::open(store, &prefix).await?;
+    let mut storage = Storage::open(store, &prefix).await?;
+    let cached = std::env::var("DFS_RECOVERY_CACHED").ok();
+    if cached.is_some() && std::env::var("DFS_RECOVERY_MODE")? == "write" {
+        storage.enable_cache(CacheConfig {
+            write_mode: WriteMode::Cached,
+            persist_interval_ms: 0,
+            ..Default::default()
+        })?;
+        storage.pause_persistence(cached.as_deref() == Some("pending"));
+    }
     let workspace = WorkspaceId::new("recovery-workspace")?;
     let scoped = storage.workspace(&workspace)?;
     match std::env::var("DFS_RECOVERY_MODE")?.as_str() {
@@ -86,6 +121,9 @@ async fn worker() -> Result<()> {
                     .await?
                     == 1
             );
+            if cached.as_deref() == Some("durable") {
+                storage.drain_persistence().await?;
+            }
             let mut stdout = std::io::stdout();
             stdout.write_all(format!("DFS_ACK:{}\n", file.id).as_bytes())?;
             stdout.flush()?;
@@ -93,7 +131,13 @@ async fn worker() -> Result<()> {
         }
         "read" => {
             let id = std::env::var("DFS_RECOVERY_OBJECT")?.parse()?;
-            verify_fixture(&scoped, id).await?;
+            if cached.as_deref() == Some("pending") {
+                let view = scoped.read_view().await?;
+                ensure!(view.object(id).await?.is_none());
+                ensure!(view.changes(0, 100).await?.is_empty());
+            } else {
+                verify_fixture(&scoped, id).await?;
+            }
             storage.close().await?;
         }
         _ => bail!("unknown recovery mode"),

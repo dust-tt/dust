@@ -9,22 +9,22 @@ Rust 2024 workspace. Architecture: [DESIGN.md](DESIGN.md). Implementation invari
 graceful shutdown on SIGINT/SIGTERM. The health route supports `GET` (returning `{"status":"ok"}`)
 and `HEAD` for process liveness. The server library defines typed IDs, object URIs, relative paths,
 metadata, directory entries, revision tokens, and shared API errors with focused tests. Its storage
-API provides workspace-scoped snapshots, immutable blobs, and synchronous metadata/index/event
+API provides workspace-scoped snapshots, immutable blobs, and atomic metadata/index/event
 batches. Workspace creation issues a workspace key; that key issues sessions with fixed grants and
 authorizes explicit grant listing/updates.
 Session-authenticated reads, mkdir, metadata updates, moves/removal, and root/shared projections
 are available. File APIs provide streamed uploads/publication, range reads, session handles, random
-writes, append, truncate, fsync, and durable retry receipts. `dfs-client` provides portable streamed
-HTTP access; `dfs-fuse` mounts on Linux with live grant checks and server-backed fsync. Shared wire
-and model types live in `dfs-protocol`; the server reexports the model. Custom virtual mounts and
-search remain later increments.
+writes, append, truncate, fsync, and retry receipts that persist with their mutations. `dfs-client`
+provides streamed HTTP access; `dfs-fuse` mounts on Linux with live grant checks and server-backed
+fsync. Shared wire and model types live in `dfs-protocol`; the server reexports the model. Custom
+virtual mounts and search remain later increments.
 Optional GCS configuration opens SlateDB before serving HTTP and
 closes it after requests and admitted file jobs drain. Without it, the HTTP scaffold still runs without
 external services.
 The server runs natively on macOS and Linux.
 
-Start with synchronous GCS/SlateDB operations through a single server, then add local server caching
-and asynchronous persistence after the end-to-end filesystem works. See [PLAN.md](PLAN.md).
+Both synchronous GCS/SlateDB writes and server-local caching with asynchronous persistence are
+available through one server. Performance evaluation takes priority over sections 8–9; see [PLAN.md](PLAN.md).
 
 ## Develop
 
@@ -74,7 +74,8 @@ startup. SlateDB adds no retries over the GCS client's bounded retry policy, so 
 do not cause an endless startup retry loop. Run only one server against a given prefix.
 
 SlateDB 0.17 stores WAL/SST/manifest objects under `<prefix>/metadata/`; immutable file blobs live
-under `<prefix>/blobs/`. No dfs content cache or metadata overlay is enabled. See
+under `<prefix>/blobs/`. The default synchronous mode has no dfs content staging or metadata overlay;
+enable them with `--write-mode cached`. Both modes use a bounded SlateDB block cache. See
 [server/STORAGE.md](server/STORAGE.md) for the internal API, versioned format, and durability rules.
 
 ## Workspaces and sessions
@@ -160,7 +161,7 @@ creation has no `mounts` field.
 
 ## Directory creation and metadata updates
 
-Both endpoints require a session key and return attributes after the atomic SlateDB batch is durable.
+Both endpoints require a session key and acknowledge atomic publication according to the server write mode.
 
 | Request | JSON body | Result |
 | --- | --- | --- |
@@ -209,7 +210,7 @@ revision validation. Roots return `forbidden`; moves into the source subtree ret
 Wrong kinds return `is_directory`/`not_directory`; nonempty removal/replacement returns `not_empty`.
 
 Each change atomically updates child entries, object/parent revisions and times, and events, deleting
-both grant indexes for removed/replaced objects, then awaits durability. Their blobs remain for
+both grant indexes for removed/replaced objects, with acknowledgement per server write mode. Their blobs remain for
 snapshots/recovery; handles to deleted objects return `not_found`. Repeated removal returns `not_found`.
 
 ## File I/O
@@ -229,10 +230,12 @@ separately. See [OpenAPI](server/openapi.yaml) for exact fields and headers.
 | `POST /files/truncate` | Set `{handle_id, request_id, sequence, size_bytes}`; growth supplies zeros. |
 | `POST /files/fsync` | Wait for `{handle_id, through_sequence}`; report unresolved failures. |
 | `POST /files/close` | Release `{handle_id}`. |
-| `POST /files/status` | Recover the durable receipt for `{object_id, request_id}`; null may mean still in flight. |
+| `POST /files/status` | Recover the published receipt for `{object_id, request_id}`; null may mean still in flight. |
 
 Use `application/octet-stream` for binary bodies. Upload completion alone does not publish a file.
-Successful publication/edits finish GCS first, then one durable metadata/index/event/receipt batch.
+In synchronous mode, successful publication/edits finish GCS first, then one durable
+metadata/index/event/receipt batch. Cached mode stages locally and acknowledges atomic visibility;
+background persistence coalesces intermediate versions before uploading and committing metadata.
 Reads pin the selected version for the response and clamp ranges to EOF. Rename preserves handles;
 unlink/replacement invalidates handles to the deleted object. Every content operation checks grants.
 
@@ -307,3 +310,21 @@ end-to-end test commands. macFUSE is excluded. A mount takes only a session-key 
 and zero metadata TTLs, and supports namespace edits, streamed file I/O, xattrs, and server-backed
 flush/fsync. Remount with a new session after expiry or server restart. The initial synchronous
 baseline and its measured limits are recorded in [bench/FUSE.md](bench/FUSE.md).
+
+## Cached server mode
+
+Pass `--write-mode cached` to enable server-local content staging and the metadata overlay. Writes
+and fsync acknowledge visibility to other clients; recent acknowledgements can be lost on a crash.
+The default `--write-mode sync` retains the durable baseline. Workspace creation remains durable.
+See [DESIGN.md](DESIGN.md#cached-mode-implementation) for configurable limits and persistence behavior.
+
+```sh
+RUSTC_WRAPPER= cargo build --locked -p dfs-server --bin dfs-server --example local_server
+python3 tests/fuse_e2e.py --write-mode cached
+python3 tests/fuse_e2e.py --write-mode cached --bucket dust-dev-dfs-poc-spolu-20260930
+python3 bench/cache.py --write-mode cached
+```
+
+The corpus benchmark uses a fresh GCS prefix and separate Linux mounts, verifies every extracted
+file through another session, and reports foreground timings and remaining persistence drain time.
+It does not touch a running development server or its storage prefix.

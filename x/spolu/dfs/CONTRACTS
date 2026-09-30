@@ -70,7 +70,9 @@ in server RAM/local disk and MUST NOT wait for GCS uploads, SlateDB durability, 
 All file contents, including small files, MUST be stored outside SlateDB as immutable versions in
 GCS. Upload synchronously in the initial path; stage in server RAM/local disk and upload
 asynchronously in the later cached path. SlateDB stores metadata and indexes, never file bytes.
-Never evict unuploaded staged content; apply backpressure when staging is full.
+Never evict unuploaded staged content needed by current or pending references; apply backpressure
+when staging is full. Coalescing may discard superseded versions after atomic persistence of the
+selected prefix, while read snapshots and streams keep their own version pins.
 
 @cc [owner:spolu,label:backend] consistent-durable-prefix
 Pending references MUST remain outside SlateDB until their blobs exist in GCS. Persist ordered,
@@ -119,16 +121,20 @@ rejecting sequence numbers the server has not accepted.
 Content transfer completion MUST contain no namespace side effects and MUST NOT acknowledge
 write/fsync. Explicit upload publication is a separate mutation.
 Metadata commits MUST accept internal completed-upload descriptors instead of file bytes, validate
-workspace/object/version/size and storage origin, then publish atomically and await durability.
+workspace/object/version/size and storage origin, then publish atomically. Synchronous mode MUST
+await durability; cached mode MUST acknowledge server visibility and persist asynchronously.
 Clients MUST NOT be able to construct trusted descriptors. Publication MUST reauthorize and check
 current namespace/content preconditions even when the upload previously passed authorization.
 
 @cc [owner:spolu,label:backend] recoverable-file-mutations
-File mutations MUST atomically persist a workspace-scoped request fingerprint and result with their
-metadata/index/event batch. Identical retries MUST return the durable original result without
+File mutations MUST atomically publish a workspace-scoped request fingerprint and result with their
+metadata/index/event batch, first in the overlay in cached mode. Persistence MUST include the receipt
+in the same durable batch. Identical retries MUST return the original visible result without
 repeating the mutation; changed arguments or bytes MUST conflict. Recovery/status MUST authorize
 the current object. A missing receipt or disconnected caller MUST NOT be treated as proof of failure.
-Never reclaim receipts until a retry-expiry protocol makes reuse safe.
+Never reclaim receipts until a retry-expiry protocol makes reuse safe. Receipts record original
+results, not historical content availability. Coalescing MAY omit intermediate blobs only when the
+atomic durable batch preserves its final content references, all receipts/events, and active reads.
 
 @cc [owner:spolu,label:security] fuse-session-and-cache-boundary
 A FUSE mount MUST retain its original session scope. Session expiry, closure, or server restart MUST

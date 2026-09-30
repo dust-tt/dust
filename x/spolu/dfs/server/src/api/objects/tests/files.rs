@@ -798,3 +798,5 @@ async fn readers_pin_versions_and_stale_uploads_cannot_overwrite_a_newer_write()
     ensure!(read_bytes(&f, &handle).await? == b"new"[..]);
     f.close().await
 }
+
+mod cached;

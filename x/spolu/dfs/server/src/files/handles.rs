@@ -63,7 +63,8 @@ impl Files {
      * @cc [owner:spolu,label:security;performance] bounded-session-handles
      * Handles MUST belong to one session and stable object, with fixed read/write/append flags.
      * Bound handles globally and per session, and reclaim expired/closed-session entries on access.
-     * A handle MUST NOT retain grants as authority: content operations reauthorize the current object.
+     * A handle MUST NOT retain grants as authority: content operations reauthorize the current
+     * object.
      * Opening MUST NOT lock the object's writer for the handle lifetime or allocate a scratch file.
      */
     pub async fn open(
@@ -136,8 +137,11 @@ impl Files {
     /**
      * @cc [owner:spolu,label:backend] explicit-handle-barrier
      * Fsync MUST wait behind admitted handle mutations and reject unseen sequence numbers or an
-     * unresolved failed/cancelled mutation. Reauthorize after waiting. Successful fsync MUST wait for
-     * the visible SlateDB prefix; upload receipts and client buffers alone never satisfy the barrier.
+     * unresolved failed/cancelled mutation. Reauthorize after waiting. Successful fsync MUST wait
+     * for
+     * server visibility in cached mode or the visible SlateDB prefix in synchronous mode.
+     * Unpublished
+     * upload receipts and client buffers alone never satisfy the barrier.
      */
     pub async fn fsync(
         &self,
@@ -163,7 +167,7 @@ impl Files {
         storage
             .workspace(&handle.session.workspace)
             .map_err(|_| ApiError::Unavailable)?
-            .await_durable()
+            .acknowledge()
             .await
             .map_err(|_| ApiError::Unavailable)
     }

@@ -504,7 +504,7 @@ impl fuser::Filesystem for Filesystem {
         _datasync: bool,
         reply: ReplyEmpty,
     ) {
-        // Every completed namespace operation already waited for durable publication.
+        // Completed namespace operations already satisfied the server's acknowledgement mode.
         empty_reply(self.stat(ino).map(|_| ()), reply);
     }
     fn open(&self, _req: &Request, ino: INodeNo, flags: OpenFlags, reply: ReplyOpen) {
