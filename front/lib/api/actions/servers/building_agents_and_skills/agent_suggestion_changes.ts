@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { validateInstructionEditTargets } from "@app/lib/api/actions/servers/building_agents_and_skills/instruction_edits";
 import {
   LIST_MODELS_TOOL_NAME,
   WORKSPACE_MANAGEMENT_SERVER_NAME,
@@ -36,9 +37,7 @@ import {
   fetchSuggestableTools,
 } from "@app/lib/api/assistant/suggestable_tools";
 import type { Authenticator } from "@app/lib/auth";
-import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
 import { DustError } from "@app/lib/error";
-import { hasSuggestionSelfConflict } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
@@ -445,18 +444,6 @@ export async function validateAgentInstructionsChange(
     );
   }
 
-  const unknownBlockIds = findUnknownTargetBlockIds(
-    instructionsHtml,
-    edits.map((edit) => edit.targetBlockId)
-  );
-  if (unknownBlockIds.length > 0) {
-    return new Err(
-      new MCPError(
-        `These blocks do not exist in the agent's instructions: ${unknownBlockIds.join(", ")}.`
-      )
-    );
-  }
-
   const pending = await AgentSuggestionResource.listByAgentConfigurationId(
     auth,
     agent.sId,
@@ -478,15 +465,13 @@ export async function validateAgentInstructionsChange(
     return new Err(new MCPError(editsValidation.error));
   }
 
-  if (
-    hasSuggestionSelfConflict({ instructionEdits: edits }, instructionsHtml)
-  ) {
-    return new Err(
-      new MCPError(
-        "The suggested instruction edits overlap (a block and one of its descendants are " +
-          "both targeted). Target each region of the instructions only once."
-      )
-    );
+  const targetsValidation = validateInstructionEditTargets(
+    instructionsHtml,
+    edits,
+    "agent"
+  );
+  if (targetsValidation.isErr()) {
+    return targetsValidation;
   }
 
   return new Ok(edits);
