@@ -1,5 +1,6 @@
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import { navigationHistoryEntryTitle } from "@app/components/data_source_view/context/utils";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { NON_REMOTE_DATABASE_TABLE_MIME_TYPES } from "@app/lib/content_nodes_constants";
@@ -10,7 +11,6 @@ import {
 import { compareStrings } from "@app/lib/i18n/format";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import { CATEGORY_DETAILS, getSpaceIcon } from "@app/lib/spaces";
-import { timeAgoFrom } from "@app/lib/utils";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import {
   DATA_SOURCE_VIEW_CATEGORIES,
@@ -207,7 +207,7 @@ function getNodeDescription(
   const parts = [
     spaceName,
     node.lastUpdatedAt
-      ? `Updated ${timeAgoFrom(node.lastUpdatedAt)} ago`
+      ? `Updated ${timeAgoFrom(node.lastUpdatedAt)}`
       : undefined,
   ].filter((part) => part !== undefined);
   return parts.length > 0 ? parts.join(" · ") : undefined;

@@ -6,13 +6,10 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
 import { clientFetch } from "@app/lib/egress/client";
-import {
-  decodeSqids,
-  formatTimestampToFriendlyDate,
-  timeAgoFrom,
-} from "@app/lib/utils";
+import { decodeSqids, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { CheckStuckResponseBody } from "@app/types/api/data_sources/check_stuck";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
 import type { CoreAPIDataSource } from "@app/types/core/data_source";
@@ -205,8 +202,7 @@ export function ViewDataSourceTable({
                           <span className="font-bold text-green-600">
                             {timeAgoFrom(connector?.pausedAt, {
                               useLongFormat: true,
-                            })}{" "}
-                            ago
+                            })}
                           </span>
                         ) : (
                           "N/A"
@@ -241,7 +237,9 @@ export function ViewDataSourceTable({
                       <PokeTableCell>Last sync start</PokeTableCell>
                       <PokeTableCell>
                         {connector?.lastSyncStartTime ? (
-                          `${timeAgoFrom(connector?.lastSyncStartTime, { useLongFormat: true })} ago`
+                          timeAgoFrom(connector?.lastSyncStartTime, {
+                            useLongFormat: true,
+                          })
                         ) : (
                           <span className="font-bold text-warning-500">
                             never
@@ -253,7 +251,9 @@ export function ViewDataSourceTable({
                       <PokeTableCell>Last sync finish</PokeTableCell>
                       <PokeTableCell>
                         {connector?.lastSyncFinishTime ? (
-                          `${timeAgoFrom(connector?.lastSyncFinishTime, { useLongFormat: true })} ago`
+                          timeAgoFrom(connector?.lastSyncFinishTime, {
+                            useLongFormat: true,
+                          })
                         ) : (
                           <span className="font-bold text-warning-500">
                             never
@@ -287,8 +287,7 @@ export function ViewDataSourceTable({
                           <span className="font-bold text-green-600">
                             {timeAgoFrom(connector?.lastSyncSuccessfulTime, {
                               useLongFormat: true,
-                            })}{" "}
-                            ago
+                            })}
                           </span>
                         ) : (
                           <span className="font-bold text-warning-600">

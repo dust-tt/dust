@@ -7,10 +7,10 @@ import { SuggestedSkillAvailability } from "@app/components/skill_builder/Sugges
 import { SuggestedSkillName } from "@app/components/skill_builder/SuggestedSkillName";
 import { SuggestedSkillUserFacingDescription } from "@app/components/skill_builder/SuggestedSkillUserFacingDescription";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { formatRelativeTime } from "@app/lib/client/relative_time";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
 import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   SkillSuggestionState,

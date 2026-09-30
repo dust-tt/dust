@@ -4,7 +4,6 @@ import {
   formatCalendarDate,
   formatCalendarDateTime,
   formatDate,
-  formatRelativeTime,
   getRelativeDateBucket,
 } from "./timestamps";
 
@@ -13,11 +12,6 @@ import {
 // format and bucket dates in the system's local timezone, matching moment's
 // default (timezone-naive) behavior.
 const NOW = new Date(2026, 8, 10, 15, 0, 0); // Thu 2026-09-10 15:00 local
-
-const SECOND = 1000;
-const MINUTE = 60 * SECOND;
-const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -88,25 +82,6 @@ describe("formatCalendarDate", () => {
   it("renders an invalid date like moment instead of throwing", () => {
     expect(formatCalendarDate(Number.NaN)).toBe("Invalid date");
     expect(formatCalendarDate(new Date(Number.NaN))).toBe("Invalid date");
-  });
-});
-
-describe("formatRelativeTime", () => {
-  it("formats a past date with the 'ago' suffix", () => {
-    expect(formatRelativeTime(NOW.getTime() - 3 * HOUR)).toMatch(/ago$/);
-  });
-
-  it("formats a future date with the 'in' prefix", () => {
-    expect(formatRelativeTime(NOW.getTime() + 2 * DAY)).toMatch(/^in /);
-  });
-
-  it("accepts a Date object", () => {
-    expect(formatRelativeTime(new Date(NOW.getTime() - HOUR))).toMatch(/ago$/);
-  });
-
-  it("renders an invalid date like moment instead of throwing", () => {
-    expect(formatRelativeTime(Number.NaN)).toBe("Invalid date");
-    expect(formatRelativeTime(new Date(Number.NaN))).toBe("Invalid date");
   });
 });
 

@@ -1,3 +1,5 @@
+import { formatDate, formatRelativeTime } from "@app/lib/i18n/format";
+import { getActiveLocale } from "@app/lib/i18n/i18n";
 import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
@@ -108,6 +110,11 @@ export function formatMicroUsdCompact(microUsd: number): string {
 // Relative UTC day label for a reset/refill date: "today", "tomorrow", a
 // weekday within the week ("on Monday"), or the calendar date beyond that
 // ("on Oct 6"). Shared by the fair-use and premium-usage reset copy.
+/**
+ * @cc [owner:sfriquet,label:product] reset-day-in-ui-locale
+ * The day label MUST be formatted in the active UI locale (`getActiveLocale`), not in the format
+ * locale of `setFormatLocale`, and "today" and "tomorrow" MUST come from `numeric: "auto"`.
+ */
 export function formatRelativeResetDay(isoDate: string): string {
   const resetAt = new Date(isoDate);
   const now = new Date();
@@ -123,23 +130,24 @@ export function formatRelativeResetDay(isoDate: string): string {
   );
   const delayDays = Math.round((resetDayMs - currentDayMs) / ONE_DAY_MS);
 
-  if (delayDays <= 0) {
-    return "today";
-  }
-  if (delayDays === 1) {
-    return "tomorrow";
+  const locale = getActiveLocale();
+
+  if (delayDays < 2) {
+    return formatRelativeTime(
+      Math.max(delayDays, 0),
+      "day",
+      { numeric: "auto" },
+      locale
+    );
   }
   if (delayDays < 7) {
-    return `on ${resetAt.toLocaleDateString("en-US", {
-      weekday: "long",
-      timeZone: "UTC",
-    })}`;
+    return `on ${formatDate(resetAt, { weekday: "long", timeZone: "UTC" }, locale)}`;
   }
-  return `on ${resetAt.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  })}`;
+  return `on ${formatDate(
+    resetAt,
+    { month: "short", day: "numeric", timeZone: "UTC" },
+    locale
+  )}`;
 }
 
 // Browser display only: tolerates an unrecognized timeframe (the server may

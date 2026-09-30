@@ -2,11 +2,12 @@ import { TabContentChildSectionLayout } from "@app/components/agent_builder/obse
 import { useDismissFeedback } from "@app/hooks/useDismissFeedback";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import config from "@app/lib/api/config";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import {
   useAgentConfigurationFeedbacksByDescVersion,
   useAgentConfigurationHistory,
 } from "@app/lib/swr/assistants";
-import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -204,7 +205,12 @@ export const FeedbacksSection = ({
                 }
                 meta={
                   agentConfig?.versionCreatedAt
-                    ? `${timeAgoFrom(new Date(agentConfig.versionCreatedAt).getTime(), { useLongFormat: true })} ago`
+                    ? timeAgoFrom(
+                        new Date(agentConfig.versionCreatedAt).getTime(),
+                        {
+                          useLongFormat: true,
+                        }
+                      )
                     : undefined
                 }
               >
@@ -314,7 +320,7 @@ function FeedbackCard({
         <div className="flex flex-col">
           <div className="font-semibold">{feedback.userName}</div>
           <div className="text-sm text-muted-foreground">
-            {timeSinceFeedback} ago
+            {timeSinceFeedback}
           </div>
         </div>
       </div>

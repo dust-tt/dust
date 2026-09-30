@@ -1,9 +1,9 @@
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { timeAgoFrom } from "@app/lib/utils";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import type { KeyType } from "@app/types/key";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -401,9 +401,9 @@ function buildColumns({
           className="whitespace-nowrap"
           label={
             info.row.original.lastUsedAt
-              ? `${timeAgoFrom(info.row.original.lastUsedAt, {
+              ? timeAgoFrom(info.row.original.lastUsedAt, {
                   useLongFormat: true,
-                })} ago`
+                })
               : "Never"
           }
         />

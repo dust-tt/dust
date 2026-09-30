@@ -348,6 +348,10 @@ msgctxt "font name"
 msgid "Lora"
 msgstr "Lora"
 
+#: front/lib/client/relative_time.ts
+msgid "just now"
+msgstr "just now"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Dust builds a personal memory from your conversations and uses it to tailor future responses."
 msgstr "Dust builds a personal memory from your conversations and uses it to tailor future responses."
@@ -364,6 +368,10 @@ msgstr "Notify me about"
 #: front/components/me/NotificationPreferences.tsx
 msgid "Applies to in-app popups, email, and Slack"
 msgstr "Applies to in-app popups, email, and Slack"
+
+#: front/lib/client/relative_time.ts
+msgid "Invalid date"
+msgstr "Invalid date"
 
 #: front/components/me/NotificationPreferences.tsx
 msgid "Every 30 minutes"

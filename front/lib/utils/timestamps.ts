@@ -5,7 +5,6 @@ import {
 import {
   differenceInCalendarDays,
   format,
-  formatDistance,
   isToday,
   isTomorrow,
   isValid,
@@ -143,18 +142,6 @@ export const formatCalendarDate = (date: Date | number): string => {
   }
 
   return format(dateObj, "dd/MM/yyyy");
-};
-
-export const formatRelativeTime = (
-  date: Date | number,
-  now: Date = new Date()
-): string => {
-  const dateObj = toDate(date);
-  if (!isValid(dateObj)) {
-    return INVALID_DATE_LABEL;
-  }
-
-  return formatDistance(dateObj, now, { addSuffix: true });
 };
 
 export const formatCalendarDateTime = (
