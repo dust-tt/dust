@@ -13,6 +13,7 @@ import {
   validateEnvName,
 } from "../lib/environment";
 import { logger } from "../lib/logger";
+import type { LayoutConfig } from "../lib/multiplexer";
 import { findRepoRoot, getWorktreeDir, HIVES_DIR } from "../lib/paths";
 import type { PortAllocation } from "../lib/ports";
 import { allocateNextPort, calculatePorts, savePortAllocation } from "../lib/ports";
@@ -339,7 +340,7 @@ function buildOpenOptions(
   warmCommand?: string;
   noAttach?: boolean;
   initialCommand?: string;
-  initialInput?: string;
+  initialInput?: LayoutConfig["initialInput"];
   compact?: boolean;
   unifiedLogs?: boolean;
 } {
@@ -347,7 +348,7 @@ function buildOpenOptions(
     warmCommand?: string;
     noAttach?: boolean;
     initialCommand?: string;
-    initialInput?: string;
+    initialInput?: LayoutConfig["initialInput"];
     compact?: boolean;
     unifiedLogs?: boolean;
   } = {};
@@ -360,7 +361,10 @@ function buildOpenOptions(
         .split("-")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ");
-      openOpts.initialInput = `/rename ${sessionName}`;
+      openOpts.initialInput = {
+        text: `/rename ${sessionName}`,
+        readyPattern: "Ask Codex to do anything",
+      };
     }
   }
   if (options.compact) openOpts.compact = true;
