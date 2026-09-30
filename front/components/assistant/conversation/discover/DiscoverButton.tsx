@@ -13,7 +13,7 @@ export function DiscoverButton({ onClick, isOpening }: DiscoverButtonProps) {
       onClick={onClick}
       className={classNames(
         "group relative inline-flex h-9 items-center gap-2 rounded-full pl-3 pr-4",
-        "border border-border bg-background text-foreground",
+        "border border-border bg-muted text-foreground",
         "shadow-[0px_1px_1px_-0.5px_rgba(0,0,0,0.05),0px_2px_4px_-2px_rgba(0,0,0,0.06)]",
         "transition-[color,background-color,border-color,box-shadow,scale,translate] duration-[160ms] ease-emphasized",
         "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-px",
@@ -42,7 +42,7 @@ export function DiscoverButton({ onClick, isOpening }: DiscoverButtonProps) {
               "-translate-y-1 opacity-0 blur-[2px] motion-reduce:translate-y-0 motion-reduce:blur-none"
           )}
         >
-          Discover Skills and agents
+          Discover Skills and Agents
         </span>
         <span
           aria-hidden={!isOpening}

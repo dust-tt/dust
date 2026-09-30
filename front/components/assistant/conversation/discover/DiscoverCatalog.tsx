@@ -23,7 +23,6 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCatalogSearch } from "@app/lib/swr/catalog_search";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { useTagsUsage } from "@app/lib/swr/tags";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -56,9 +55,9 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 const CATALOG_VIEWS: { id: CatalogView; label: string }[] = [
-  { id: "favorites", label: "Favorites" },
-  { id: "popular", label: "Most Popular" },
   { id: "all", label: "All" },
+  { id: "popular", label: "Most Popular" },
+  { id: "favorites", label: "Favorites" },
   { id: "mine", label: "Mine" },
 ];
 
@@ -590,7 +589,6 @@ interface CatalogRowProps {
 export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
   const name = getItemName(item);
   const handle = item.kind === "agent" ? `@${name}` : `/${name}`;
-  const isMobile = useIsMobile();
   const [isCopied, copy] = useCopyToClipboard();
   const copyHandle = () =>
     copy(
@@ -612,56 +610,40 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
     );
   const avatar =
     item.kind === "agent" ? (
-      <Avatar size={isMobile ? "md" : "lg"} visual={item.agent.pictureUrl} />
+      <Avatar size="md" visual={item.agent.pictureUrl} />
     ) : (
-      <SkillCatalogAvatar
-        icon={item.skill.icon}
-        isDustProvided={item.isDustProvided}
-        size={isMobile ? "md" : "lg"}
-      />
+      <SkillCatalogAvatar icon={item.skill.icon} size="md" />
     );
+  const useLabel = item.kind === "agent" ? `Chat with ${name}` : `Use ${name}`;
   return (
-    <div
-      className={cn(
-        "group relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2",
-        "border-b border-separator py-4 last:border-b-0 md:gap-y-1"
-      )}
-    >
-      <div className="col-start-1 row-start-1 shrink-0 md:row-span-2">
-        {avatar}
-      </div>
-      <div className="col-start-2 col-end-4 row-start-1 flex min-w-0 items-center gap-2 self-center md:col-end-3 md:self-end">
-        {isMobile ? (
-          <span className="heading-base notranslate truncate text-foreground">
-            {name}
-          </span>
-        ) : (
+    <div className="group relative flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
+      <div className="shrink-0 self-start">{avatar}</div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
-            aria-label={`Show ${name} details`}
-            onClick={onDetails}
+            aria-label={useLabel}
+            onClick={onUse}
             className="heading-base notranslate cursor-pointer truncate text-left text-foreground after:absolute after:inset-0"
           >
             {name}
           </button>
-        )}
-        <TooltipProvider>
-          <TooltipRoot open={isCopied}>
-            <TooltipTrigger asChild>
-              <span className="relative shrink-0">
-                <Chip
-                  size="xs"
-                  label={handle}
-                  className="font-mono"
-                  onClick={copyHandle}
-                />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Copied !</TooltipContent>
-          </TooltipRoot>
-        </TooltipProvider>
-      </div>
-      <div className="col-start-1 col-end-3 row-start-2 flex min-w-0 flex-col gap-1 self-start md:col-start-2">
+          <TooltipProvider>
+            <TooltipRoot open={isCopied}>
+              <TooltipTrigger asChild>
+                <span className="relative shrink-0">
+                  <Chip
+                    size="xs"
+                    label={handle}
+                    className="font-mono"
+                    onClick={copyHandle}
+                  />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Copied !</TooltipContent>
+            </TooltipRoot>
+          </TooltipProvider>
+        </div>
         <div className="flex h-5 items-center gap-4 copy-sm">
           <ItemAuthor item={item} />
           {item.activeUsersCount !== null && (
@@ -672,11 +654,11 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
             </span>
           )}
         </div>
-        <p className="copy-sm line-clamp-2 text-muted-foreground">
+        <p className="copy-sm mt-1 line-clamp-2 text-muted-foreground">
           {getItemDescription(item)}
         </p>
       </div>
-      <div className="relative col-start-3 row-start-2 flex shrink-0 items-center gap-1 self-end md:row-span-2 md:row-start-1 md:self-center">
+      <div className="relative flex shrink-0 items-center gap-1 self-start">
         {onPin && (
           <Button
             variant="ghost"
@@ -695,8 +677,9 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
         <Button
           variant="outline"
           size="sm"
-          label={item.kind === "agent" ? "Chat" : "Use"}
-          onClick={onUse}
+          label="Details"
+          aria-label={`Show ${name} details`}
+          onClick={onDetails}
         />
       </div>
     </div>
@@ -705,23 +688,13 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
 
 interface SkillCatalogAvatarProps {
   icon: string | null;
-  isDustProvided: boolean;
   size?: "md" | "lg";
 }
 
 export function SkillCatalogAvatar({
   icon,
-  isDustProvided,
   size = "lg",
 }: SkillCatalogAvatarProps) {
-  const SkillAvatar = useMemo(
-    () =>
-      getSkillAvatarIcon({
-        icon,
-        // Null editedBy is how the avatar marks a Dust-provided skill.
-        editedBy: isDustProvided ? null : "custom",
-      }),
-    [icon, isDustProvided]
-  );
+  const SkillAvatar = useMemo(() => getSkillAvatarIcon(icon), [icon]);
   return <SkillAvatar size={size} className="shrink-0" />;
 }
