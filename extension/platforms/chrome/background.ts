@@ -106,6 +106,11 @@ const openSidePanelSchema = z
     message: "Either conversationId or agentId must be provided",
   });
 
+const closeSidePanelSchema = z.object({
+  action: z.literal("closeSidePanel"),
+  workspaceId: z.string().regex(/^[a-zA-Z0-9_-]{10,}$/),
+});
+
 const getPanelStateSchema = z.object({
   action: z.literal("getPanelState"),
 });
@@ -162,6 +167,8 @@ async function getPanelState(
  *     Opens an existing conversation directly.
  *   - { action: "openSidePanel", workspaceId, agentId }
  *     Opens a new conversation with the given agent pre-selected in the input bar.
+ *   - { action: "closeSidePanel", workspaceId }
+ *     Closes the side panel in the window that sent the message.
  *   - { action: "getPanelState" }
  *     Returns the general state of the open side panel (active workspace,
  *     conversation, and Pod IDs), regardless of which workspace is requesting it.
@@ -170,6 +177,16 @@ async function getPanelState(
  */
 chrome.runtime.onMessageExternal.addListener(
   (request, sender, sendResponse) => {
+    if (closeSidePanelSchema.safeParse(request).success) {
+      // The side panel is opened per window (see below), so close it per window too.
+      if (sender.tab) {
+        void chrome.sidePanel.close({ windowId: sender.tab.windowId });
+      } else {
+        log("[onMessageExternal] closeSidePanel sent without a tab:", request);
+      }
+      return true;
+    }
+
     const stateParsed = getPanelStateSchema.safeParse(request);
     if (stateParsed.success) {
       void getPanelState(sender, sendResponse);
@@ -180,6 +197,7 @@ chrome.runtime.onMessageExternal.addListener(
 
     if (!parsed.success) {
       log("[onMessageExternal] Invalid params:", request);
+      sendResponse({ success: false, error: "Invalid params." });
       return true;
     }
 
