@@ -10,6 +10,7 @@ import {
   DEFAULT_TIMEOUT_MS,
   HTTP_CLIENT_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/http_client/metadata";
+import { validateExternalUrl } from "@app/lib/api/url_safety";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
@@ -99,6 +100,13 @@ function validateAndSanitizeHeaders(
   return requestHeaders;
 }
 
+/**
+ * @cc [owner:frankaloia,label:security] ssrf-url-validation
+ * `url` MUST pass `validateExternalUrl` (HTTPS-only, non-private destination)
+ * before any network connection is made. A non-null return from
+ * `validateExternalUrl` MUST cause the handler to return an `Err` without
+ * calling `untrustedFetch`.
+ */
 async function handleSendRequest(
   {
     url,
@@ -120,6 +128,17 @@ async function handleSendRequest(
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   const requestHeaders = validateAndSanitizeHeaders(headers);
+
+  // Guard: reject non-HTTPS schemes and private/reserved IP addresses to
+  // prevent the model from turning this tool into an open SSRF proxy.
+  const urlError = await validateExternalUrl(url);
+  if (urlError !== null) {
+    return new Err(
+      new MCPError(`Invalid request URL: ${urlError}`, {
+        tracked: false,
+      })
+    );
+  }
 
   const bearerToken = await getBearerToken(auth, { runContext });
   if (bearerToken) {

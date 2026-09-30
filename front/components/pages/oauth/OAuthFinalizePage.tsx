@@ -5,6 +5,14 @@ import { isOAuthProvider } from "@app/types/oauth/lib";
 import { Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo } from "react";
 
+/**
+ * @cc [owner:frankaloia,label:security] opener-origin-validation
+ * The `opener_origin` stored in OAuth connection metadata MUST be validated
+ * against `window.location.origin` before being used as the `targetOrigin`
+ * argument to `window.opener.postMessage`. Any value that does not exactly
+ * match `window.location.origin` MUST be replaced with `window.location.origin`
+ * so that the connection ID is never sent to an attacker-controlled origin.
+ */
 export function OAuthFinalizePage() {
   const router = useAppRouter();
   const providerParam = usePathParam("provider");
@@ -55,19 +63,22 @@ export function OAuthFinalizePage() {
             provider: validProvider,
           };
 
-      // Get opener origin from connection metadata (passed through OAuth flow)
-      const openerOrigin = res.isOk()
+      // Get opener origin from connection metadata (passed through OAuth flow).
+      // Only use it when it exactly matches this page's own origin; any other
+      // value would let an attacker-supplied URL receive the connection ID.
+      const rawOpenerOrigin = res.isOk()
         ? res.value.metadata.opener_origin
         : undefined;
+      const openerOrigin =
+        typeof rawOpenerOrigin === "string" &&
+        rawOpenerOrigin === window.location.origin
+          ? rawOpenerOrigin
+          : window.location.origin;
 
       // Method 1: window.opener (preferred, direct communication)
-      // Use opener origin from metadata, fall back to window.location.origin if not available
       if (window.opener && !window.opener.closed) {
         try {
-          window.opener.postMessage(
-            messageData,
-            openerOrigin ?? window.location.origin
-          );
+          window.opener.postMessage(messageData, openerOrigin);
         } catch (e) {
           logger.error(
             { err: e },
