@@ -17,12 +17,12 @@ import {
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { serializeSkillNodeClipboardHTML } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCatalogSearch } from "@app/lib/swr/catalog_search";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
-import { useTagsUsage } from "@app/lib/swr/tags";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -254,6 +254,12 @@ interface SearchCatalogProps extends CatalogSourceProps {
   isDebouncing: boolean;
 }
 
+/**
+ * @cc [owner:frankaloia,label:product] catalog-tags-follow-visible-agents
+ * The tag filter MUST list tags on agents the caller can see, from an unfiltered agent-search
+ * tags facet. It MUST NOT call the admin-only tags usage endpoint. Selecting a tag, changing
+ * the view, or typing a search MUST NOT drop the other tags from that list.
+ */
 function SearchCatalog({
   owner,
   query,
@@ -266,16 +272,24 @@ function SearchCatalog({
   ...actions
 }: SearchCatalogProps) {
   const catalogSearch = useCatalogSearch({ owner, query });
-  const { tags: tagsWithUsage, isTagsLoading } = useTagsUsage({ owner });
+  // Facets follow every filter on the query, so this request stays unfiltered. Otherwise
+  // choosing a tag would collapse the list to that tag.
+  const { facets, isAgentsLoading: isTagsLoading } = useSearchAgents({
+    owner,
+    searchTerm: "",
+    limit: 0,
+    facets: ["tags"],
+  });
   const tags = useMemo(
-    () => tagsWithUsage.filter((tag) => tag.usage > 0).sort(tagsSorter),
-    [tagsWithUsage]
+    () => [...(facets?.tags ?? [])].sort(tagsSorter),
+    [facets?.tags]
   );
 
   return (
     <CatalogLayout
       filters={query}
       tags={tags}
+      isTagsLoading={isTagsLoading}
       search={search}
       onSearchChange={onSearchChange}
       onUpdateFilters={onUpdateFilters}
@@ -283,10 +297,7 @@ function SearchCatalog({
       <CatalogResults
         items={catalogSearch.items}
         isLoading={
-          isDebouncing ||
-          isTagsLoading ||
-          catalogSearch.isLoading ||
-          catalogSearch.isLoadingMore
+          isDebouncing || catalogSearch.isLoading || catalogSearch.isLoadingMore
         }
         hasError={catalogSearch.hasError}
         hasNextPage={catalogSearch.hasMore}
@@ -394,6 +405,7 @@ export function DiscoverCatalog({
 interface CatalogLayoutProps {
   filters: CatalogFilters;
   tags: { sId: string; name: string }[];
+  isTagsLoading?: boolean;
   search: string;
   onSearchChange: (value: string) => void;
   onUpdateFilters: (update: Partial<CatalogFilters>) => void;
@@ -403,6 +415,7 @@ interface CatalogLayoutProps {
 function CatalogLayout({
   filters,
   tags,
+  isTagsLoading = false,
   search,
   onSearchChange,
   onUpdateFilters,
@@ -420,6 +433,7 @@ function CatalogLayout({
         <CatalogFiltersNav
           filters={filters}
           tags={tags}
+          isTagsLoading={isTagsLoading}
           onUpdateFilters={onUpdateFilters}
         />
         {children}
@@ -431,12 +445,14 @@ function CatalogLayout({
 interface CatalogFiltersNavProps {
   filters: CatalogFilters;
   tags: { sId: string; name: string }[];
+  isTagsLoading: boolean;
   onUpdateFilters: (update: Partial<CatalogFilters>) => void;
 }
 
 function CatalogFiltersNav({
   filters: { view, kind, tagId },
   tags,
+  isTagsLoading,
   onUpdateFilters,
 }: CatalogFiltersNavProps) {
   return (
@@ -465,20 +481,27 @@ function CatalogFiltersNav({
           />
         ))}
       </NavigationList>
-      {tags.length > 0 && kind !== "skill" && (
-        <NavigationList>
-          {tags.map((t) => (
-            <NavigationListItem
-              key={t.sId}
-              label={capitalizeWords(t.name)}
-              selected={tagId === t.sId}
-              onClick={() =>
-                onUpdateFilters({ tagId: tagId === t.sId ? null : t.sId })
-              }
-            />
-          ))}
-        </NavigationList>
-      )}
+      {kind !== "skill" &&
+        (tags.length > 0 ? (
+          <NavigationList>
+            {tags.map((t) => (
+              <NavigationListItem
+                key={t.sId}
+                label={capitalizeWords(t.name)}
+                selected={tagId === t.sId}
+                onClick={() =>
+                  onUpdateFilters({ tagId: tagId === t.sId ? null : t.sId })
+                }
+              />
+            ))}
+          </NavigationList>
+        ) : (
+          isTagsLoading && (
+            <div className="flex px-2 py-1">
+              <Spinner size="xs" />
+            </div>
+          )
+        ))}
     </nav>
   );
 }
