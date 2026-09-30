@@ -1,20 +1,23 @@
 /**
  * Worker for the poke (backoffice) SPA.
  *
- * Static assets (JS, CSS, images) are served directly by the Workers Static
- * Assets layer — this worker is NOT invoked for those requests.
- *
- * This worker only runs when no static file matched the request path
- * (not_found_handling = "none" in wrangler config). Its job is to:
- *
- * 1. Return 404 for missing assets under /assets/ (prevent SPA fallback
- *    from serving index.html with a 200 for broken JS/CSS imports).
- *
- * 2. Fall back to index.html for all other paths (SPA routing).
+ * With `run_worker_first = true`, this Worker sees every request. Hashed
+ * `/assets/*` and other non-HTML static files are passed through to ASSETS.
+ * HTML navigations use the SPA fallback so security headers always apply.
  */
+
+import { applySecurityHeaders } from "./security_headers";
 
 interface Env {
   ASSETS: Fetcher;
+}
+
+function isNonHtmlStaticResponse(response: Response): boolean {
+  if (response.status === 404 || response.status >= 300) {
+    return false;
+  }
+  const contentType = response.headers.get("content-type") ?? "";
+  return !contentType.includes("text/html");
 }
 
 export default {
@@ -23,9 +26,24 @@ export default {
     const path = url.pathname;
 
     if (path.startsWith("/assets/")) {
-      return new Response("Not Found", { status: 404 });
+      const asset = await env.ASSETS.fetch(request);
+      if (asset.status === 404) {
+        return applySecurityHeaders(
+          new Response("Not Found", { status: 404 }),
+          path
+        );
+      }
+      return asset;
     }
 
-    return env.ASSETS.fetch(new URL("/index.html", url.origin));
+    const maybeAsset = await env.ASSETS.fetch(request);
+    if (isNonHtmlStaticResponse(maybeAsset)) {
+      return maybeAsset;
+    }
+
+    return applySecurityHeaders(
+      await env.ASSETS.fetch(new URL("/index.html", url.origin)),
+      path
+    );
   },
 };
