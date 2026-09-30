@@ -15,7 +15,17 @@ function makeBatch(
   id: string,
   state: BatchSuggestionType["state"]
 ): BatchSuggestionType {
-  return { id, state } as BatchSuggestionType;
+  return {
+    id,
+    state,
+    createdAt: 0,
+    updatedAt: 0,
+    title: null,
+    analysis: null,
+    sourceConversationId: null,
+    agentSuggestions: [],
+    skillSuggestions: [],
+  };
 }
 
 beforeEach(() => {
