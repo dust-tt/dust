@@ -389,10 +389,7 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
     userLocale,
     isSaving: isSavingLocale,
     doUpdateUserLocale,
-  } = useUserLocale({
-    owner,
-    disabled: !hasLocalisation,
-  });
+  } = useUserLocale({ owner });
   const [localLocale, setLocalLocale] = useState<SupportedLocale | null>(null);
 
   const modEnterLabel = useMemo(

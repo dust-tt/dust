@@ -1,34 +1,26 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { useUserMetadata } from "@app/lib/swr/user";
+import { useAuthContext } from "@app/lib/swr/workspaces";
 import type { SupportedLocale } from "@app/types/locale";
-import { isSupportedLocale, USER_LOCALE_METADATA_KEY } from "@app/types/locale";
+import { USER_LOCALE_METADATA_KEY } from "@app/types/locale";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 
 interface UseUserLocaleProps {
   owner: LightWorkspaceType;
-  disabled?: boolean;
 }
 
-/**
- * @cc [owner:sfriquet,label:product] user-locale-defaults-to-workspace-locale
- * `userLocale` MUST be the locale stored in the user's global `locale` metadata when it is one of
- * `SUPPORTED_LOCALES`, and MUST be `owner.locale` in every other case: no stored value, value
- * still loading, hook disabled, or a stored value that is not a supported locale.
- */
-export function useUserLocale({ owner, disabled }: UseUserLocaleProps) {
+export function useUserLocale({ owner }: UseUserLocaleProps) {
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
-  const { metadata, mutateMetadata } = useUserMetadata(
-    USER_LOCALE_METADATA_KEY,
-    { disabled }
-  );
+  const { locale: authLocale } = useAuth();
+  const { mutateAuthContext } = useAuthContext({
+    workspaceId: owner.sId,
+    disabled: true,
+  });
 
-  const storedLocale = metadata?.value;
-  const userLocale = isSupportedLocale(storedLocale)
-    ? storedLocale
-    : owner.locale;
+  const userLocale = authLocale ?? owner.locale;
 
   const doUpdateUserLocale = async (
     locale: SupportedLocale
@@ -53,7 +45,7 @@ export function useUserLocale({ owner, disabled }: UseUserLocaleProps) {
         return false;
       }
 
-      await mutateMetadata();
+      await mutateAuthContext();
       return true;
     } finally {
       setIsSaving(false);
