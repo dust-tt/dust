@@ -430,6 +430,7 @@ export function SearchSkillsPage() {
         user={user}
         skillId={skillId ?? null}
         onClose={() => setSkillId(undefined)}
+        showFavoriteButton
       />
     </>
   );
