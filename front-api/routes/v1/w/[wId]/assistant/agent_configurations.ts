@@ -132,8 +132,8 @@ app.get(
     const agentsGetView = view ?? defaultAgentGetView;
     const withAuthors = withAuthorsParam === "true";
 
-    // `admin_internal` lifts the scope restrictions (unpublished agents the caller does not
-    // edit), and skipping the permission filtering lifts the space ones.
+    // `admin_internal` lists every agent the admin can fetch (all of them), unpublished ones and
+    // ones built on spaces they cannot read included.
     const isUnrestricted = agentsGetView === "all_unrestricted";
 
     let agentConfigurations = await getAgentConfigurationsForView({
@@ -142,7 +142,6 @@ app.get(
         ? "admin_internal"
         : normalizeAgentView(agentsGetView),
       variant: "light",
-      dangerouslySkipPermissionFiltering: isUnrestricted,
     });
 
     if (withAuthors) {

@@ -18,15 +18,12 @@ import { Err, Ok } from "@app/types/shared/result";
 
 function resolveAgentView(view: AgentViewType): {
   agentsGetView: AgentsGetViewType;
-  dangerouslySkipPermissionFiltering: boolean;
 } {
-  // `all_unrestricted` maps onto `admin_internal` to lift the scope restriction (unpublished
-  // agents the caller does not edit) plus permission filtering to lift the space one, exactly
-  // like the public agent_configurations endpoint does.
+  // `all_unrestricted` maps onto `admin_internal`, which lists every agent the admin can fetch
+  // (all of them), exactly like the public agent_configurations endpoint does.
   if (view === "all_unrestricted") {
     return {
       agentsGetView: "admin_internal",
-      dangerouslySkipPermissionFiltering: true,
     };
   }
 
@@ -35,7 +32,6 @@ function resolveAgentView(view: AgentViewType): {
   // to the agents the caller edits, or all of them for an admin.
   return {
     agentsGetView: view,
-    dangerouslySkipPermissionFiltering: false,
   };
 }
 
@@ -79,8 +75,7 @@ export async function listAgents(
     return new Err(viewDenied);
   }
 
-  const { agentsGetView, dangerouslySkipPermissionFiltering } =
-    resolveAgentView(view);
+  const { agentsGetView } = resolveAgentView(view);
 
   // `limit` stays out of the fetch on purpose: it has no offset counterpart, and the view
   // applies it in SQL before the requested-space filtering, so a page would silently come
@@ -92,7 +87,6 @@ export async function listAgents(
     sort: "alphabetical",
     variant: "light",
     omitHeavyAttributes: true,
-    dangerouslySkipPermissionFiltering,
   });
 
   const paginated = paginate(agents, { cursor, limit });

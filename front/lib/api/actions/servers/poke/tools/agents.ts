@@ -10,7 +10,7 @@ import {
   getTargetAuth,
   jsonResponse,
 } from "@app/lib/api/actions/servers/poke/tools/utils";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -170,22 +170,15 @@ export const agentHandlers: AgentHandlers = {
     }
     const targetAuth = targetAuthResult.value;
 
-    // Try active agents first (admin_internal), then archived.
-    let agents = await getAgentConfigurationsForView({
-      auth: targetAuth,
-      agentsGetView: "admin_internal",
+    const configuration = await getAgentConfiguration(targetAuth, {
+      agentId: agent_id,
       variant: "full",
     });
-    let agent = agents.find((a) => a.sId === agent_id) ?? null;
-
-    if (!agent) {
-      agents = await getAgentConfigurationsForView({
-        auth: targetAuth,
-        agentsGetView: "archived",
-        variant: "full",
-      });
-      agent = agents.find((a) => a.sId === agent_id) ?? null;
-    }
+    const agent =
+      configuration &&
+      (configuration.status === "active" || configuration.status === "archived")
+        ? configuration
+        : null;
 
     if (!agent) {
       return new Err(
