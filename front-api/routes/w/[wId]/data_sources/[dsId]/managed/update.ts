@@ -80,6 +80,21 @@ app.post(
 
     const body = ctx.req.valid("json");
 
+    const ownershipCheck = await checkConnectionOwnership(
+      auth,
+      body.connectionId
+    );
+    if (ownershipCheck.isErr()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "Connection does not belong to this user/workspace",
+        },
+      });
+    }
+
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
       logger

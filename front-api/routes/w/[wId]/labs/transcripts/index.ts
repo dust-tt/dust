@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/lib/api/labs/transcripts";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import logger from "@app/logger/logger";
 import {
@@ -54,6 +55,23 @@ app.post(
     const { provider } = body;
     const { oAuthConnectionId, useConnectorConnection, apiKey } =
       getConnectionDetails(body);
+
+    if (oAuthConnectionId) {
+      const ownershipCheck = await checkConnectionOwnership(
+        auth,
+        oAuthConnectionId
+      );
+      if (ownershipCheck.isErr()) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Connection does not belong to this user/workspace",
+          },
+        });
+      }
+    }
 
     const transcriptsConfigurationAlreadyExists =
       await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
