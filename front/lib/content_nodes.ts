@@ -153,6 +153,14 @@ export function getLocationForDataSourceViewContentNodeWithSpace(
     : locationWithoutSpace;
 }
 
+// Whether a node is the root of its data source view, as returned by the search API or built by
+// `getDataSourceViewRootNode`.
+export function isDataSourceViewRootNode(
+  node: DataSourceViewContentNode
+): boolean {
+  return node.mimeType === DATA_SOURCE_MIME_TYPE;
+}
+
 /**
  * @cc [owner:smb2268,label:product] view-root-node-matches-search
  * The returned node MUST carry `DATA_SOURCE_NODE_ID` as `internalId`, `DATA_SOURCE_MIME_TYPE`

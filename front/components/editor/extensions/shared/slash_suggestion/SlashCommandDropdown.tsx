@@ -142,6 +142,8 @@ export interface SlashCommandDropdownRef {
   // The row the keyboard would act on, null when the "Back" row or nothing is highlighted.
   // Optional so wrappers that only forward key handling keep satisfying the type.
   getHighlightedItem?: () => SlashCommand | null;
+  // Sub-menus with levels: go up one and return true, or return false at their root.
+  navigateUp?: () => boolean;
 }
 
 const SUB_MENU_BACK_ITEM_ID = "slash-sub-menu-back";

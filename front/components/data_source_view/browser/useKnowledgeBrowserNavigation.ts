@@ -3,7 +3,13 @@ import { getKnowledgeBrowserEntryLabel } from "@app/components/data_source_view/
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import type { NavigationHistoryState } from "@app/components/data_source_view/context/useNavigationHistory";
 import { useNavigationHistory } from "@app/components/data_source_view/context/useNavigationHistory";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { isDataSourceViewRootNode } from "@app/lib/content_nodes";
+import { isDataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import type { EnrichedSpaceType } from "@app/types/space";
 import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -33,8 +39,9 @@ export function getNavigateUpIndex(
   navigationHistory: NavigationHistoryEntryType[]
 ): number {
   let index = navigationHistory.length - 2;
-  // Landing on a pod's space level would bounce straight back down; go to the root instead.
-  if (index === 1 && isSkippedPodCategory(navigationHistory, 2)) {
+  // Landing on a pod's space or category level would bounce straight back down; go to the root
+  // instead.
+  if (index <= 2 && isSkippedPodCategory(navigationHistory, 2)) {
     index = 0;
   }
   return Math.max(index, 0);
@@ -72,18 +79,65 @@ export function getKnowledgeBrowserBreadcrumbItems(
   }));
 }
 
-type NavigationSetters = Pick<
+type NavigationTarget = Pick<
   NavigationHistoryState,
+  | "navigationHistory"
   | "setSpaceEntry"
   | "setCategoryEntry"
   | "setDataSourceViewEntry"
   | "addNodeEntry"
 >;
 
+/**
+ * @cc [owner:smb2268,label:product] node-entry-fills-ancestors
+ * Entering a node row from above its data source view (a search hit) MUST first set the missing
+ * ancestors, the view's space, category and the view itself, so the history keeps the shape
+ * `navigation-history-shape` requires; from the view or a node level it only appends the node. A
+ * node that is a view's root MUST land on the view level rather than be appended. From the root,
+ * where no row navigates to a node, or when the view's category is not one the history can hold,
+ * the history MUST stay unchanged.
+ */
+function navigateToNode(
+  node: DataSourceViewContentNode,
+  navigation: NavigationTarget
+): void {
+  const { navigationHistory } = navigation;
+  const currentEntry = navigationHistory[navigationHistory.length - 1];
+  const { dataSourceView } = node;
+  const { category } = dataSourceView;
+  if (!isDataSourceViewCategoryWithoutApps(category)) {
+    return;
+  }
+  switch (currentEntry.type) {
+    case "root":
+      return;
+    case "space":
+      navigation.setCategoryEntry(category);
+      navigation.setDataSourceViewEntry(dataSourceView);
+      break;
+    case "category":
+      navigation.setDataSourceViewEntry(dataSourceView);
+      break;
+    case "data_source":
+      break;
+    case "node":
+      // A view's root node returns from inside the view to its level.
+      if (isDataSourceViewRootNode(node)) {
+        navigation.setDataSourceViewEntry(dataSourceView);
+      }
+      break;
+    default:
+      assertNever(currentEntry);
+  }
+  if (!isDataSourceViewRootNode(node)) {
+    navigation.addNodeEntry(node);
+  }
+}
+
 // Enters the level a browser row stands for.
 export function navigateToKnowledgeBrowserItem(
   item: KnowledgeBrowserItem,
-  navigation: NavigationSetters
+  navigation: NavigationTarget
 ): void {
   switch (item.kind) {
     case "space":
@@ -96,7 +150,7 @@ export function navigateToKnowledgeBrowserItem(
       navigation.setDataSourceViewEntry(item.dataSourceView);
       return;
     case "node":
-      navigation.addNodeEntry(item.node);
+      navigateToNode(item.node, navigation);
       return;
     default:
       assertNeverAndIgnore(item);
