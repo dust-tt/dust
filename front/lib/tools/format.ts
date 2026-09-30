@@ -9,12 +9,17 @@ export type ToolReference = {
 
 export const TOOL_TAG_NAME = "tool";
 
-// Attributes group anchors on [^>\/\s] so it cannot overlap with the preceding
-// \s+ separator. Without this, \s+ and [^>]*? both match spaces and produce
-// O(n²) backtracking on adversarial input (many spaces, no closing />).
-// The (?:...)? wrapper handles the no-attributes case (<tool />).
-export const TOOL_TAG_REGEX = /<tool\s+((?:[^>\/\s][^>]*)?)\/>/g;
-export const TOOL_TAG_REGEX_BEGINNING = /^<tool\s+((?:[^>\/\s][^>]*)?)\/>/;
+// The separator is an atomic `\s+`: matched in a lookahead, then consumed by
+// the backreference, so it cannot give spaces back. A backtracking `\s+` next
+// to a group that also matches spaces is O(n²) on `<tool` plus many spaces
+// and no `/>`. Exactly one `\s` is linear too, but it rejects tags with more
+// than one space (`<tool  />`, `<tool  name="x" />`).
+// Group 1 is that separator. Group 2 is the attributes. The attribute group
+// cannot start with whitespace, so it does not overlap the separator. The
+// `(?:...)?` wrapper handles the no-attributes case (`<tool />`).
+export const TOOL_TAG_REGEX = /<tool(?=(\s+))\1((?:[^>\/\s][^>]*)?)\/>/g;
+export const TOOL_TAG_REGEX_BEGINNING =
+  /^<tool(?=(\s+))\1((?:[^>\/\s][^>]*)?)\/>/;
 
 const TOOL_ELEMENT_REGEX = /<tool\b([^>]*)>[\s\S]*?<\/tool>/g;
 
@@ -43,7 +48,7 @@ function parseToolTagAttributes(attributes: string): ToolReference | null {
 }
 
 export function parseToolTag(tag: string): ToolReference | null {
-  const attributes = TOOL_TAG_REGEX_BEGINNING.exec(tag)?.[1];
+  const attributes = TOOL_TAG_REGEX_BEGINNING.exec(tag)?.[2];
 
   if (!attributes) {
     return null;

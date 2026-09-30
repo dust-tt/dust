@@ -17,18 +17,23 @@ export const UNAVAILABLE_SKILL_LABEL = "Unavailable skill";
 // Letters, digits, underscores and hyphens only, e.g. "meeting-notes".
 export const SUGGESTION_REF_REGEX = /^[\w-]+$/;
 
-// Attributes group anchors on [^>\/\s] so it cannot overlap with the preceding
-// \s+ separator. Without this, \s+ and [^>]*? both match spaces and produce
-// O(n²) backtracking on adversarial input (many spaces, no closing />).
-// The (?:...)? wrapper handles the no-attributes case (<skill />).
+// The separator is an atomic `\s+`: matched in a lookahead, then consumed by
+// the backreference, so it cannot give spaces back. A backtracking `\s+` next
+// to a group that also matches spaces is O(n²) on `<skill` plus many spaces
+// and no `/>`. Exactly one `\s` is linear too, but it rejects tags with more
+// than one space (`<skill  />`, `<skill  name="x" />`).
+// Group 1 is that separator. Group 2 (group 3 on the reference regexes, after
+// the tag name) is the attributes. The attribute group cannot start with
+// whitespace, so it does not overlap the separator. The `(?:...)?` wrapper
+// handles the no-attributes case (`<skill />`).
 export const SKILL_TAG_REGEX =
-  /<skill\s+((?:[^>\/\s][^>]*)?)(?:\/>|><\/skill>)/g;
+  /<skill(?=(\s+))\1((?:[^>\/\s][^>]*)?)(?:\/>|><\/skill>)/g;
 const SKILL_TAG_REGEX_BEGINNING =
-  /^<skill\s+((?:[^>\/\s][^>]*)?)(?:\/>|><\/skill>)/;
+  /^<skill(?=(\s+))\1((?:[^>\/\s][^>]*)?)(?:\/>|><\/skill>)/;
 export const SKILL_REFERENCE_TAG_REGEX =
-  /<(skill|unavailable_skill)\s+((?:[^>\/\s][^>]*)?)(?:\/>|><\/\1>)/g;
+  /<(skill|unavailable_skill)(?=(\s+))\2((?:[^>\/\s][^>]*)?)(?:\/>|><\/\1>)/g;
 export const SKILL_REFERENCE_TAG_REGEX_BEGINNING =
-  /^<(skill|unavailable_skill)\s+((?:[^>\/\s][^>]*)?)(?:\/>|><\/\1>)/;
+  /^<(skill|unavailable_skill)(?=(\s+))\2((?:[^>\/\s][^>]*)?)(?:\/>|><\/\1>)/;
 
 const SKILL_ELEMENT_REGEX = /<skill\b([^>]*)>[\s\S]*?<\/skill>/g;
 
@@ -56,7 +61,7 @@ function parseSkillTagAttributes(
 }
 
 export function parseSkillTag(tag: string): SkillReference | null {
-  const attributes = SKILL_TAG_REGEX_BEGINNING.exec(tag)?.[1];
+  const attributes = SKILL_TAG_REGEX_BEGINNING.exec(tag)?.[2];
 
   if (!attributes) {
     return null;
@@ -72,7 +77,7 @@ export function parseSkillReferenceTag(tag: string): SkillReference | null {
     return null;
   }
 
-  const [, tagName, attributes] = match;
+  const [, tagName, , attributes] = match;
 
   return parseSkillTagAttributes(attributes, {
     unavailable: tagName === UNAVAILABLE_SKILL_TAG_NAME,
@@ -122,20 +127,20 @@ function parseSkillRef(attributes: string): string | null {
 
 export function extractSkillRefs(content: string): string[] {
   const refs = [...content.matchAll(SKILL_TAG_REGEX)].map((m) =>
-    parseSkillRef(m[1])
+    parseSkillRef(m[2])
   );
   return uniq(removeNulls(refs));
 }
 
 export function hasUnparsableSkillRefTag(content: string): boolean {
   const refTags = [...content.matchAll(SKILL_TAG_REGEX)].filter((m) =>
-    /\bref\s*=/.test(m[1])
+    /\bref\s*=/.test(m[2])
   );
   const refOpeningTags = content.match(/<skill\b[^>]*\bref\s*=/g) ?? [];
 
   return (
     refOpeningTags.length !== refTags.length ||
-    refTags.some((m) => parseSkillRef(m[1]) === null)
+    refTags.some((m) => parseSkillRef(m[2]) === null)
   );
 }
 
@@ -143,12 +148,15 @@ export function resolveSkillRefTags(
   content: string,
   skillReferenceByRef: Map<string, SkillReference>
 ): string {
-  return content.replace(SKILL_TAG_REGEX, (tag, attributes: string) => {
-    const ref = parseSkillRef(attributes);
-    const skill = ref ? skillReferenceByRef.get(ref) : undefined;
+  return content.replace(
+    SKILL_TAG_REGEX,
+    (tag, _separator: string, attributes: string) => {
+      const ref = parseSkillRef(attributes);
+      const skill = ref ? skillReferenceByRef.get(ref) : undefined;
 
-    return skill ? serializeSkillTag(skill, { html: true }) : tag;
-  });
+      return skill ? serializeSkillTag(skill, { html: true }) : tag;
+    }
+  );
 }
 
 export function serializeUnavailableSkillTag(
