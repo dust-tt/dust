@@ -211,14 +211,15 @@ export function FilesBrowser({
 
     path.forEach((folder, index) => {
       const isLast = index === path.length - 1;
+      const icon = getDataSourceIcon(folder) ?? Folder;
       if (isLast) {
-        items.push({ label: folder.fileName, icon: Folder });
+        items.push({ label: folder.fileName, icon });
         return;
       }
 
       items.push({
         label: folder.fileName,
-        icon: Folder,
+        icon,
         onClick: () => {
           setCurrentFolderId(folder.id);
           onClearRevealedFile?.();
