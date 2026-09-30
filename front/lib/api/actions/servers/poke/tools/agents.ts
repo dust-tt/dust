@@ -10,8 +10,8 @@ import {
   getTargetAuth,
   jsonResponse,
 } from "@app/lib/api/actions/servers/poke/tools/utils";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
+import { getAgentConfigurationForPoke } from "@app/lib/api/poke/agent_configurations";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { Err } from "@app/types/shared/result";
 
@@ -178,10 +178,10 @@ export const agentHandlers: AgentHandlers = {
     }
     const targetAuth = targetAuthResult.value;
 
-    const configuration = await getAgentConfiguration(targetAuth, {
-      agentId: agent_id,
-      variant: "full",
-    });
+    const configuration = await getAgentConfigurationForPoke(
+      targetAuth,
+      agent_id
+    );
     const agent =
       configuration &&
       (configuration.status === "active" || configuration.status === "archived")

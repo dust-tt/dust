@@ -1,5 +1,5 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationForPoke } from "@app/lib/api/poke/agent_configurations";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -44,10 +44,7 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "full",
-    });
+    const agentConfiguration = await getAgentConfigurationForPoke(auth, aId);
     if (!agentConfiguration) {
       return apiError(ctx, {
         status_code: 404,
