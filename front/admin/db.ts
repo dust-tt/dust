@@ -108,6 +108,11 @@ import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pi
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
+// Labs - Can be removed at all times if a solution is dropped
+import {
+  LabsTranscriptsConfigurationModel,
+  LabsTranscriptsHistoryModel,
+} from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
 import { ModelDegradationModel } from "@app/lib/resources/storage/models/model_degradations";
@@ -255,6 +260,8 @@ export function loadAllModels() {
     FeatureFlagModel,
     GlobalFeatureFlagModel,
     KillSwitchModel,
+    LabsTranscriptsConfigurationModel,
+    LabsTranscriptsHistoryModel,
     ModelDegradationModel,
     PluginRunModel,
     AgentMemoryModel,
