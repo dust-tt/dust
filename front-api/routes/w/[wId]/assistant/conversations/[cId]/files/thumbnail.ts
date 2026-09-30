@@ -2,17 +2,14 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import {
-  getFileFormat,
-  isSupportedImageContentType,
-  normalizeMimeType,
-} from "@app/types/files";
+import { isSupportedImageContentType } from "@app/types/files";
 import {
   getConversationFilesBasePath,
   parseScopedFilePath,
 } from "@app/types/mount_path";
 import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import { isContentTypeSafeToDisplay } from "@front-api/lib/file_serving";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -22,12 +19,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   cId: z.string(),
 });
-
-function isContentTypeSafeToDisplay(contentType: string): boolean {
-  return (
-    getFileFormat(normalizeMimeType(contentType))?.isSafeToDisplay ?? false
-  );
-}
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/files/thumbnail.
 const app = workspaceApp();

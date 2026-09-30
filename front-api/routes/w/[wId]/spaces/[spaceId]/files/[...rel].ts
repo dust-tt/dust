@@ -9,7 +9,6 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { APIErrorResponse } from "@app/types/error";
-import { getFileFormat, normalizeMimeType } from "@app/types/files";
 import {
   getPodFilesBasePath,
   isResolveMountFilePathError,
@@ -18,6 +17,10 @@ import {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import {
+  contentDispositionAttachment,
+  isContentTypeSafeToDisplay,
+} from "@front-api/lib/file_serving";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -26,17 +29,6 @@ import { withSpace } from "@front-api/middlewares/with_space";
 import type { Context, TypedResponse } from "hono";
 import path from "path";
 import { z } from "zod";
-
-function isContentTypeSafeToDisplay(contentType: string): boolean {
-  return (
-    getFileFormat(normalizeMimeType(contentType))?.isSafeToDisplay ?? false
-  );
-}
-
-function contentDispositionAttachment(fileName: string): string {
-  const asciiFallback = fileName.replace(/[^\x20-\x7E\/\\]/g, "_");
-  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
-}
 
 const ParamsSchema = z.object({
   rel: z.string(),
