@@ -29,19 +29,17 @@ describe("PendingInvitationsTable", () => {
     const createdAt = Date.UTC(2026, 8, 3, 12, 0, 0);
 
     render(
-      <I18nProvider i18n={i18n}>
-        <PendingInvitationsTable
-          invitations={[
-            {
-              token: "token",
-              workspaceName: "Acme",
-              initialRole: "user",
-              createdAt,
-              isExpired: false,
-            },
-          ]}
-        />
-      </I18nProvider>
+      <PendingInvitationsTable
+        invitations={[
+          {
+            token: "token",
+            workspaceName: "Acme",
+            initialRole: "user",
+            createdAt,
+            isExpired: false,
+          },
+        ]}
+      />
     );
 
     expect(screen.getByText("Invited")).toBeDefined();
