@@ -111,55 +111,6 @@ const closeSidePanelSchema = z.object({
   workspaceId: z.string().regex(/^[a-zA-Z0-9_-]{10,}$/),
 });
 
-async function closeSidePanel(
-  workspaceId: string,
-  sender: chrome.runtime.MessageSender,
-  sendResponse: (response?: unknown) => void
-): Promise<void> {
-  const tab = sender.tab;
-  if (!tab?.id || tab.windowId === undefined) {
-    sendResponse({ success: false, error: "No sender tab available." });
-    return;
-  }
-
-  try {
-    const { selectedWorkspace } = await chrome.storage.local.get([
-      "selectedWorkspace",
-    ]);
-    if (workspaceId !== selectedWorkspace) {
-      log("[onMessageExternal] User selected another workspace.");
-      sendResponse({ success: false, error: "Workspace mismatch." });
-      return;
-    }
-
-    if (isGoogleChrome()) {
-      if (typeof chrome.sidePanel.close !== "function") {
-        sendResponse({
-          success: false,
-          error: "Closing the native side panel requires Chrome 141 or later.",
-        });
-        return;
-      }
-
-      await chrome.sidePanel.close({ windowId: tab.windowId });
-      sendResponse({ success: true, closed: true });
-      return;
-    }
-
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      action: "closeSidebar",
-    });
-    sendResponse(response ?? { success: true, closed: true });
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unknown error closing side panel.";
-    log("[onMessageExternal] Error closing side panel:", message);
-    sendResponse({ success: false, error: message });
-  }
-}
-
 /**
  * Listener for messages sent from external websites that are whitelisted on the manifest.
  * It allows to open the side panel and either navigate to an existing conversation
@@ -177,9 +128,13 @@ async function closeSidePanel(
  */
 chrome.runtime.onMessageExternal.addListener(
   (request, sender, sendResponse) => {
-    const closeParsed = closeSidePanelSchema.safeParse(request);
-    if (closeParsed.success) {
-      void closeSidePanel(closeParsed.data.workspaceId, sender, sendResponse);
+    if (closeSidePanelSchema.safeParse(request).success) {
+      // The side panel is opened per window (see below), so close it per window too.
+      if (sender.tab) {
+        void chrome.sidePanel.close({ windowId: sender.tab.windowId });
+      } else {
+        log("[onMessageExternal] closeSidePanel sent without a tab:", request);
+      }
       return true;
     }
 
