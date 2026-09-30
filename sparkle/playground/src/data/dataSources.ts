@@ -476,7 +476,7 @@ export function getDataSourceIcon(
   item: DataSource
 ): React.ComponentType<{ className?: string }> | undefined {
   if (isDataSourceFolder(item)) {
-    return Folder;
+    return item.icon ?? Folder;
   }
 
   if (item.fileType) {
