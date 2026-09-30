@@ -11,7 +11,8 @@
     "start": "next start --keepAliveTimeout 5000",
     "sitemap": "next-sitemap",
     "contentful:migrate": "contentful-migration --space-id $CONTENTFUL_SPACE_ID --management-token $CONTENTFUL_MANAGEMENT_TOKEN",
-    "tsgo": "tsgo"
+    "tsgo": "tsgo",
+    "test": "vitest --run"
   },
   "dependencies": {
     "@contentful/rich-text-react-renderer": "^16.1.6",
@@ -56,6 +57,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.1.0",
     "@types/node": "^24.12.2",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
@@ -63,10 +65,12 @@
     "@typescript/native-preview": "^7.0.0-dev.20260224.1",
     "@tailwindcss/postcss": "^4.3.0",
     "contentful-migration": "^5.1.0",
+    "jsdom": "^26.0.0",
 
     "next-sitemap": "^4.2.3",
     "postcss": "^8.5.6",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.16"
   },
   "browser": {
     "net": false,

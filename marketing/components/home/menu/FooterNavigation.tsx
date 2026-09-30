@@ -6,7 +6,14 @@ import type { LinkProps } from "next/link";
 import Link from "next/link";
 import * as React from "react";
 
-export function FooterNavigation() {
+interface FooterNavigationProps {
+  // Reopens the cookie banner so visitors can change or withdraw consent.
+  onOpenCookieSettings?: () => void;
+}
+
+export function FooterNavigation({
+  onOpenCookieSettings,
+}: FooterNavigationProps) {
   return (
     <div className="z-11 flex w-full flex-col items-center gap-6 border-b border-t border-border bg-muted-background pb-16 pt-12">
       <div className="w-full px-6 sm:px-12">
@@ -54,6 +61,19 @@ export function FooterNavigation() {
                   ))}
             </div>
           ))}
+          {onOpenCookieSettings && (
+            <div className="col-span-12">
+              <button
+                type="button"
+                onClick={onOpenCookieSettings}
+                className="text-left"
+              >
+                <A variant="secondary" className="label-sm">
+                  Cookie Settings
+                </A>
+              </button>
+            </div>
+          )}
         </Grid>
       </div>
     </div>
