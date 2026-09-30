@@ -8,6 +8,7 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  StructuredOutputSuggestionType,
   SubAgentSuggestionType,
   TagsSuggestionType,
   ToolsSuggestionType,
@@ -21,6 +22,7 @@ export interface AgentEdits {
   scope?: "hidden" | "visible";
   editors?: EditorsSuggestionType;
   tags?: TagsSuggestionType;
+  structuredOutput?: StructuredOutputSuggestionType;
   instructions?: InstructionsSuggestionSchemaType[];
   skills?: SkillsSuggestionType[];
   tools?: ToolsSuggestionType[];
@@ -69,6 +71,9 @@ function fieldEditsForSuggestion(
 
     case "tags":
       return new Ok({ tags: data.suggestion });
+
+    case "structured_output":
+      return new Ok({ structuredOutput: data.suggestion });
 
     case "instructions":
       return new Ok({ instructions: [data.suggestion] });

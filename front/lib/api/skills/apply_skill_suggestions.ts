@@ -1,8 +1,3 @@
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
 import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
@@ -23,6 +18,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   SkillAttachedKnowledge,
+  SkillAuditOptions,
   UpdateSkillParams,
 } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -228,24 +224,11 @@ async function resolveSkillFieldEdits(
 async function writeAvailabilityChange(
   auth: Authenticator,
   skill: SkillResource,
-  availability: SkillAvailability
+  availability: SkillAvailability,
+  { auditMetadata }: SkillAuditOptions
 ): Promise<void> {
-  const previousAvailability = skill.availability;
-  await SkillResource.updateAvailabilities(auth, [skill], availability);
-
-  void emitAuditLogEvent({
-    auth,
-    action: "skill.availability_updated",
-    targets: [
-      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      { type: "skill", id: skill.sId, name: skill.name },
-    ],
-    context: getAuditLogContext(auth),
-    metadata: {
-      skill_name: skill.name,
-      previous_availability: previousAvailability,
-      new_availability: availability,
-    },
+  await SkillResource.updateAvailabilities(auth, [skill], availability, {
+    auditMetadata,
   });
 }
 
@@ -253,39 +236,24 @@ async function writeAvailabilityChange(
 async function writeEditorsChange(
   auth: Authenticator,
   skill: SkillResource,
-  { usersToAdd, usersToRemove }: SkillEditorsChange
+  { usersToAdd, usersToRemove }: SkillEditorsChange,
+  { auditMetadata }: SkillAuditOptions
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
-  const addRes = await skill.addEditors(auth, usersToAdd);
+  const addRes = await skill.addEditors(auth, usersToAdd, { auditMetadata });
   if (addRes.isErr()) {
     return new Err(
       new DustError("invalid_request_error", addRes.error.message)
     );
   }
 
-  const removeRes = await skill.removeEditors(auth, usersToRemove);
+  const removeRes = await skill.removeEditors(auth, usersToRemove, {
+    auditMetadata,
+  });
   if (removeRes.isErr()) {
     return new Err(
       new DustError("invalid_request_error", removeRes.error.message)
     );
   }
-
-  void emitAuditLogEvent({
-    auth,
-    action: "skill.editors_updated",
-    targets: [
-      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      { type: "skill", id: skill.sId, name: skill.name },
-    ],
-    context: getAuditLogContext(auth),
-    metadata: {
-      skill_name: skill.name,
-      added_editor_ids: usersToAdd.map((u) => u.sId).join(","),
-      removed_editor_ids: usersToRemove.map((u) => u.sId).join(","),
-      actor_added_self: String(
-        usersToAdd.some((u) => u.sId === auth.user()?.sId)
-      ),
-    },
-  });
 
   return new Ok(undefined);
 }
@@ -495,7 +463,8 @@ async function findEditorsWithoutAccess(
 export async function writeSkillChange(
   auth: Authenticator,
   skill: SkillResource,
-  change: ResolvedSkillChange
+  change: ResolvedSkillChange,
+  { auditMetadata }: SkillAuditOptions = {}
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
   switch (change.type) {
     case "create": {
@@ -511,7 +480,11 @@ export async function writeSkillChange(
         }
       );
 
-      await skill.updateSkill(auth, { ...update, requestedSpaceIds });
+      await skill.updateSkill(
+        auth,
+        { ...update, requestedSpaceIds },
+        { auditMetadata }
+      );
       return new Ok(undefined);
     }
     case "edit": {
@@ -545,18 +518,26 @@ export async function writeSkillChange(
       // TODO(achilleburah): make the editor change and skill update atomic so if editors changes
       //  fails, the skill update is rolled back.
       if (update) {
-        await skill.updateSkill(auth, { ...update, requestedSpaceIds });
+        await skill.updateSkill(
+          auth,
+          { ...update, requestedSpaceIds },
+          { auditMetadata }
+        );
       }
       if (availability) {
-        await writeAvailabilityChange(auth, skill, availability);
+        await writeAvailabilityChange(auth, skill, availability, {
+          auditMetadata,
+        });
       }
       if (editorsChange) {
-        return writeEditorsChange(auth, skill, editorsChange);
+        return writeEditorsChange(auth, skill, editorsChange, {
+          auditMetadata,
+        });
       }
       return new Ok(undefined);
     }
     case "delete":
-      await skill.archive(auth);
+      await skill.archive(auth, { auditMetadata });
       return new Ok(undefined);
     default:
       return assertNever(change);

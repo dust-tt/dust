@@ -7,6 +7,8 @@ import type {
   SkillUpdateEditKind,
   ToolCall,
 } from "@app/tests/conversational-building-evals/lib/types";
+import { ResponseFormatSchema } from "@app/types/assistant/models/types";
+import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
@@ -360,6 +362,41 @@ export function validateFinalToolCall(
       return { success: true };
     }
 
+    case "suggestAgentStructuredOutput": {
+      const found = findSuggestion(finalToolCall, "edit_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.agentKey),
+        label: `agent "${assertion.agentKey}"`,
+      });
+      if (!found.success) {
+        return found;
+      }
+      const { structuredOutput } = found.item;
+      if (!isString(structuredOutput)) {
+        return {
+          success: false,
+          error: `Expected a structuredOutput JSON string, got ${JSON.stringify(structuredOutput)}`,
+        };
+      }
+      const validation = validateResponseFormat(structuredOutput);
+      if (!validation.isValid) {
+        return { success: false, error: validation.errorMessage };
+      }
+      const { required } = ResponseFormatSchema.parse(
+        JSON.parse(structuredOutput)
+      ).json_schema.schema;
+      const missing = assertion.requiredProperties.filter(
+        (pattern) => !required.some((name) => pattern.test(name))
+      );
+      if (missing.length > 0) {
+        return {
+          success: false,
+          error: `No required property matches ${missing.join(", ")}; required: ${JSON.stringify(required)}`,
+        };
+      }
+      return { success: true };
+    }
+
     default:
       assertNever(assertion);
   }
@@ -392,7 +429,8 @@ export function validateEntityMention(
 
   if (
     assertion.type === "suggestAgentInstructionsChange" ||
-    assertion.type === "suggestAgentModelChange"
+    assertion.type === "suggestAgentModelChange" ||
+    assertion.type === "suggestAgentStructuredOutput"
   ) {
     const expectedAgentId = resolveAgentId(scenario, assertion.agentKey);
     const mentioned = mentionedIds(responseText, BUILD_AGENT_REGEX);

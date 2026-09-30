@@ -58,7 +58,7 @@ export function UsageMembersSection({
           {requests && (
             <ButtonsSwitchList
               size="xs"
-              defaultValue="members"
+              value={activeTab}
               onValueChange={(value: string) =>
                 requests.onTabChange(
                   value === "requests" ? "requests" : "members"
@@ -76,45 +76,43 @@ export function UsageMembersSection({
               />
             </ButtonsSwitchList>
           )}
-          {activeTab === "members" && (
-            <div className="flex flex-row items-center gap-2">
-              {groups.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      label={selectedGroupName ?? allGroupsLabel}
-                      size="sm"
-                      isSelect
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+          <div className="flex flex-row items-center gap-2">
+            {groups.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    label={selectedGroupName ?? allGroupsLabel}
+                    size="sm"
+                    isSelect
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    label={allGroupsLabel}
+                    onClick={() => onGroupChange(null)}
+                  />
+                  {groups.map((group) => (
                     <DropdownMenuItem
-                      label={allGroupsLabel}
-                      onClick={() => onGroupChange(null)}
+                      key={group.sId}
+                      label={group.name}
+                      onClick={() => onGroupChange(group.sId)}
                     />
-                    {groups.map((group) => (
-                      <DropdownMenuItem
-                        key={group.sId}
-                        label={group.name}
-                        onClick={() => onGroupChange(group.sId)}
-                      />
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              {extraFilters}
-            </div>
-          )}
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {activeTab === "members" && extraFilters}
+          </div>
         </div>
-        {activeTab === "members" ? (
+        {activeTab === "members" && (
           <div className="flex flex-col gap-2">
             {membersTable}
             {selectionBanner}
           </div>
-        ) : (
-          requests?.table
         )}
+        {/* Keep pending request actions alive across tab changes. */}
+        <div hidden={activeTab !== "requests"}>{requests?.table}</div>
       </div>
     </div>
   );

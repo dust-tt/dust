@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -297,6 +298,27 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     });
     expect(body.suggestions[0].createdAt).toBeDefined();
     expect(body.suggestions[0].updatedAt).toBeDefined();
+  });
+
+  it("approves a batched suggestion through its batch", async () => {
+    const { workspace, auth, skill } = await setup();
+    const batch = await BatchSuggestionFactory.createEmpty(auth);
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      batchModelId: batch.id,
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+    const reloadedBatch = await BatchSuggestionResource.fetchById(
+      auth,
+      batch.sId
+    );
+    expect(reloadedBatch?.state).toBe("approved");
   });
 
   it("admin can update suggestions in their workspace", async () => {

@@ -12,8 +12,9 @@ import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 function upgradeRequestsUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/credits/upgrade-requests`;
@@ -71,30 +72,46 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
   return { doRequestUpgrade };
 }
 
-// Admin-only: pending upgrade requests for the workspace. Fetched on the Usage
+// Pending upgrade requests in the caller's scope. Fetched on the Usage
 // page both to render the Requests tab and to back its count badge, so it is
 // not gated behind tab visibility.
 export function useUpgradeRequests({
   workspaceId,
   disabled,
+  groupId,
+  searchTerm = "",
 }: {
   workspaceId: string;
   disabled?: boolean;
+  groupId?: string;
+  searchTerm?: string;
 }) {
   const { fetcher } = useFetcher();
   const upgradeRequestsFetcher: Fetcher<GetUpgradeRequestsResponseBody> =
     fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    upgradeRequestsUrl(workspaceId),
+    groupId
+      ? `${upgradeRequestsUrl(workspaceId)}?${new URLSearchParams({ groupId })}`
+      : upgradeRequestsUrl(workspaceId),
     upgradeRequestsFetcher,
     { disabled }
   );
 
   const requests = data?.requests ?? emptyArray();
+  const filteredRequests = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
+    return requests.filter(
+      ({ requester, status }) =>
+        status === "pending" &&
+        (!search ||
+          requester.name.toLowerCase().includes(search) ||
+          requester.email?.toLowerCase().includes(search))
+    );
+  }, [requests, searchTerm]);
 
   return {
-    upgradeRequests: requests,
+    upgradeRequests: filteredRequests,
     isUpgradeRequestsLoading: !error && !data && !disabled,
     isUpgradeRequestsError: !!error,
     mutateUpgradeRequests: mutate,
@@ -107,7 +124,7 @@ export function useResolveUpgradeRequest({
   workspaceId: string;
 }) {
   const sendNotification = useSendNotification();
-  const { mutate } = useSWRWithDefaults(upgradeRequestsUrl(workspaceId), null);
+  const { mutate } = useSWRConfig();
 
   const doResolveUpgradeRequest = useCallback(
     async ({
@@ -119,21 +136,41 @@ export function useResolveUpgradeRequest({
       requesterName: string;
       status: Exclude<MembershipUpgradeRequestStatus, "pending">;
     }): Promise<boolean> => {
-      const res = await clientFetch(
-        `${upgradeRequestsUrl(workspaceId)}/${requestId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status }),
-        }
-      );
+      let res: Response | null;
+      try {
+        res = await clientFetch(
+          `${upgradeRequestsUrl(workspaceId)}/${requestId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+          }
+        );
+      } catch {
+        // Fetch can fail before receiving an HTTP response (for example, when offline).
+        res = null;
+      }
 
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
+      // Refresh every group-filtered list, including when another manager already resolved it.
+      await mutate(
+        (key) =>
+          typeof key === "string" &&
+          key.startsWith(upgradeRequestsUrl(workspaceId))
+      );
+      if (!res?.ok) {
+        const message = res
+          ? (await getErrorFromResponse(res)).message
+          : "Could not reach the server.";
         sendNotification({
           type: "error",
-          title: "Failed to resolve upgrade request",
-          description: errorData.message,
+          title:
+            status === "approved"
+              ? "Changes saved, but approval failed"
+              : "Failed to resolve upgrade request",
+          description:
+            status === "approved"
+              ? `Your limit or seat changes were saved, but the request could not be marked approved. ${message}`
+              : message,
         });
         return false;
       }
@@ -141,12 +178,9 @@ export function useResolveUpgradeRequest({
       // Resolving always removes the request from the pending list. Only an
       // approval edits the member's seat / limit, so the members-usage surface
       // only needs refreshing on approve.
-      await Promise.all([
-        mutate(),
-        status === "approved"
-          ? invalidateMembersUsage(workspaceId)
-          : Promise.resolve(),
-      ]);
+      if (status === "approved") {
+        await invalidateMembersUsage(workspaceId);
+      }
 
       switch (status) {
         case "approved":

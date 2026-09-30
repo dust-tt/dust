@@ -37,3 +37,12 @@ export function validateResponseFormat(
 
   return { isValid: true };
 }
+
+// Indents a response format for display. A value that is not valid JSON is returned as is.
+export function formatResponseFormat(responseFormat: string): string {
+  try {
+    return JSON.stringify(JSON.parse(responseFormat), null, 2);
+  } catch {
+    return responseFormat;
+  }
+}

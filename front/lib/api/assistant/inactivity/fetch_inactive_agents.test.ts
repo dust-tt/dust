@@ -207,7 +207,7 @@ describe("fetchArchivableAgents", () => {
 
   it("evaluates an agent the admin cannot read, without a bypass", async () => {
     // Hidden, authored by someone else, and built on a space the admin is not a member of: the
-    // admin holds `admin` but not `read` on it, so it comes back as a light resource, which carries
+    // admin holds `admin` but not `read` on it, so it comes back without its content, which carries
     // everything the rules need.
     const { authenticator, workspace } = await createResourceTest({
       role: "user",

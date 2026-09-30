@@ -5,7 +5,7 @@ import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { MAX_TAG_LENGTH } from "@app/types/tag";
+import { MAX_TAG_LENGTH, MAX_TAGS_PER_CHANGE } from "@app/types/tag";
 
 type AgentTagsChangeError = DustError<"unauthorized" | "invalid_request_error">;
 
@@ -82,7 +82,7 @@ export async function validateAgentTagsChange(
   }
 
   // Changing tags saves a new version, which is rebuilt from the agent's content.
-  if (!agent.isFull()) {
+  if (!agent.canViewContent) {
     return new Err(
       new DustError(
         "unauthorized",
@@ -101,6 +101,15 @@ export async function validateAgentTagsChange(
   }
   const addNames = addNamesRes.value;
   const removeNames = removeNamesRes.value;
+
+  if (addNames.length + removeNames.length > MAX_TAGS_PER_CHANGE) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        `A change can add or remove at most ${MAX_TAGS_PER_CHANGE} tags.`
+      )
+    );
+  }
 
   if (addNames.length === 0 && removeNames.length === 0) {
     return new Err(

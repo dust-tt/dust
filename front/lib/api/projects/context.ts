@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import {
   getAttachmentFromContentNodeContentFragment,
   isContentFragmentDataSourceNode,
@@ -13,6 +15,7 @@ import {
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
+import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
 import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup";
 import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
 import type { Authenticator } from "@app/lib/auth";
@@ -441,6 +444,58 @@ export async function addFileToProject(
   requestDustProjectIncrementalSync(auth, space);
 
   return new Ok(fragmentRes.value);
+}
+
+/**
+ * Saves a conversation Frames v2 package to the Pod files. A package is a folder whose registered
+ * resource is the manifest inside it, so it goes through the Frame move rather than moving as a
+ * single file, and lands at the Pod root under its folder name.
+ */
+export async function addFrameV2ToProject(
+  auth: Authenticator,
+  { frame, space }: { frame: FileResource; space: SpaceResource }
+): Promise<Result<FileResource, DustError>> {
+  const sourceDirectoryPath = frame.getFrameV2SourceDirectoryPath(auth);
+  if (!sourceDirectoryPath) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Frame source folder not found.",
+    });
+  }
+
+  // The source is a conversation path, so the file system also mounts that conversation's Pod.
+  const fsRes = await DustFileSystem.fromScopedPath(auth, sourceDirectoryPath);
+  if (fsRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_error",
+      message: fsRes.error.message,
+    });
+  }
+
+  const moved = await moveFrameV2Source(auth, {
+    dustFs: fsRes.value,
+    sourceDirectoryPath,
+    destinationDirectoryPath: podScopedPath(
+      space.sId,
+      path.posix.basename(sourceDirectoryPath)
+    ),
+  });
+  if (moved.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code:
+        moved.error.code === "conflict"
+          ? "invalid_request_error"
+          : "internal_error",
+      message: moved.error.message,
+    });
+  }
+
+  requestDustProjectIncrementalSync(auth, space);
+
+  return new Ok(moved.value.frame);
 }
 
 /**

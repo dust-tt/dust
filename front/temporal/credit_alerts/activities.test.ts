@@ -67,6 +67,7 @@ describe("expireWorkspacePoolCapOverridesActivity", () => {
     await expiredMembership.updatePoolCapOverride({
       poolCapOverrideAwuCredits: 500,
       poolCapOverrideExpiresAt: new Date(Date.now() - 60 * 60 * 1000),
+      poolCapOverridePreviousAwuCredits: 200,
     });
 
     const activeWorkspace = await WorkspaceFactory.metronome({
@@ -81,6 +82,44 @@ describe("expireWorkspacePoolCapOverridesActivity", () => {
     await activeMembership.updatePoolCapOverride({
       poolCapOverrideAwuCredits: 900,
       poolCapOverrideExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      poolCapOverridePreviousAwuCredits: 100,
+    });
+
+    await expireWorkspacePoolCapOverridesActivity(expiredWorkspace.sId);
+
+    const revertedMembership =
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user: expiredUser,
+        workspace: expiredWorkspace,
+      });
+    expect(revertedMembership?.poolCapOverrideAwuCredits).toBe(200);
+    expect(revertedMembership?.poolCapOverrideExpiresAt).toBeNull();
+    expect(revertedMembership?.poolCapOverridePreviousAwuCredits).toBeNull();
+
+    const untouchedMembership =
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user: activeUser,
+        workspace: activeWorkspace,
+      });
+    expect(untouchedMembership?.poolCapOverrideAwuCredits).toBe(900);
+    expect(untouchedMembership?.poolCapOverrideExpiresAt).not.toBeNull();
+    expect(untouchedMembership?.poolCapOverridePreviousAwuCredits).toBe(100);
+  });
+
+  it("clears the override when the previous baseline was null", async () => {
+    const expiredWorkspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: "cust_expired_null_prev_xxx",
+    });
+    const expiredUser = await UserFactory.basic();
+    const expiredMembership = await MembershipFactory.associate(
+      expiredWorkspace,
+      expiredUser,
+      { role: "user" }
+    );
+    await expiredMembership.updatePoolCapOverride({
+      poolCapOverrideAwuCredits: 500,
+      poolCapOverrideExpiresAt: new Date(Date.now() - 60 * 60 * 1000),
+      poolCapOverridePreviousAwuCredits: null,
     });
 
     await expireWorkspacePoolCapOverridesActivity(expiredWorkspace.sId);
@@ -92,14 +131,7 @@ describe("expireWorkspacePoolCapOverridesActivity", () => {
       });
     expect(revertedMembership?.poolCapOverrideAwuCredits).toBeNull();
     expect(revertedMembership?.poolCapOverrideExpiresAt).toBeNull();
-
-    const untouchedMembership =
-      await MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user: activeUser,
-        workspace: activeWorkspace,
-      });
-    expect(untouchedMembership?.poolCapOverrideAwuCredits).toBe(900);
-    expect(untouchedMembership?.poolCapOverrideExpiresAt).not.toBeNull();
+    expect(revertedMembership?.poolCapOverridePreviousAwuCredits).toBeNull();
   });
 
   it("is a no-op when nothing has expired in the given workspace", async () => {

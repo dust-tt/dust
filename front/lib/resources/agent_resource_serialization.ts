@@ -7,6 +7,7 @@ import type {
   AgentActionsEnrichment,
   AgentConfigurationType,
   AgentFavoriteEnrichment,
+  AgentInstructionsEnrichment,
   AgentRecentAuthors,
   AgentTagsEnrichment,
   LightAgentConfigurationType,
@@ -14,9 +15,9 @@ import type {
 
 // The `enrichWith*` steps below each run the one query a configuration field needs, batched over
 // statically-loaded `AgentResource`s. They have no dependency on one another, so
-// `toLightAgentConfigurations`/`toAgentConfigurations` fan them out in parallel and hand the results
-// to the resource, which shapes and redacts the JSON (see `agent-json-redaction`). Both builders
-// accept any resource, custom or global, `full` or `light`.
+// `toLightAgentConfigurations`/`toAgentConfigurations` fan them out in parallel and shape and redact
+// the JSON on top of `AgentResource.toJSON` (see `agent-json-redaction`). Both builders accept any
+// resource, custom or global, whether or not the caller can view its content.
 
 /**
  * @cc [owner:tdraier,label:backend] enrich-favorites-key-per-agent
@@ -100,20 +101,107 @@ export async function enrichWithActions(
 }
 
 /**
- * Renders `LightAgentConfigurationType`s: the queried `userFavorite` and `tags`, shaped by
- * `AgentResource.toLightConfigurationJSON`.
+ * @cc [owner:tdraier,label:backend] enrich-instructions-key-per-version
+ * `enrichWithInstructions` keys its result by the input resource, which is one configuration
+ * version: the instructions belong to that version. A resource whose content the caller cannot view
+ * gets `null` instructions.
+ */
+export async function enrichWithInstructions(
+  resources: AgentResource[]
+): Promise<Map<AgentResource, AgentInstructionsEnrichment>> {
+  const instructionsByAgent =
+    await AgentResource.batchFetchInstructions(resources);
+
+  return new Map(
+    [...instructionsByAgent].map(([resource, instructions]) => [
+      resource,
+      instructions ?? { instructions: null, instructionsHtml: null },
+    ])
+  );
+}
+
+/**
+ * @cc [owner:tdraier,label:security;backend] agent-json-redaction
+ * `AgentResource.toJSON` owns the base shape (see `resource-owned-serialization`);
+ * `toLightAgentConfigurations` and `toAgentConfigurations` are the only builders of an agent's
+ * configuration JSON on top of it: they add the fields that need a query and MUST NOT reshape the
+ * base fields. A resource whose content the caller cannot view (`!canViewContent`) MUST serialize
+ * with `instructions: null` and, in the full shape, with `instructionsHtml: null`, no `actions` and
+ * no `codeDefinedSkillIds`, whatever enrichment it is handed: the head fields and the version
+ * metadata are not private and are always carried.
+ */
+function toLightConfigurationJSON(
+  resource: AgentResource,
+  {
+    instructions,
+    userFavorite,
+    tags,
+  }: Pick<AgentInstructionsEnrichment, "instructions"> &
+    AgentFavoriteEnrichment &
+    AgentTagsEnrichment
+): LightAgentConfigurationType {
+  return {
+    ...resource.toJSON(),
+    instructions: resource.canViewContent ? instructions : null,
+    userFavorite,
+    tags,
+  };
+}
+
+function toConfigurationJSON(
+  resource: AgentResource,
+  {
+    instructions,
+    instructionsHtml,
+    userFavorite,
+    tags,
+    actions,
+  }: AgentInstructionsEnrichment &
+    AgentFavoriteEnrichment &
+    AgentTagsEnrichment &
+    AgentActionsEnrichment
+): AgentConfigurationType {
+  const light = toLightConfigurationJSON(resource, {
+    instructions,
+    userFavorite,
+    tags,
+  });
+  if (!resource.canViewContent) {
+    return {
+      ...light,
+      instructionsHtml: null,
+      actions: [],
+      codeDefinedSkillIds: [],
+    };
+  }
+
+  return {
+    ...light,
+    instructionsHtml,
+    actions,
+    ...(resource.scope === "global"
+      ? { codeDefinedSkillIds: resource.codeDefinedSkillIds }
+      : {}),
+  };
+}
+
+/**
+ * Renders `LightAgentConfigurationType`s: the queried `instructions`, `userFavorite` and `tags` on
+ * top of `AgentResource.toJSON`.
  */
 export async function toLightAgentConfigurations(
   auth: Authenticator,
   resources: AgentResource[]
 ): Promise<LightAgentConfigurationType[]> {
-  const [favorites, tags] = await Promise.all([
+  const [instructions, favorites, tags] = await Promise.all([
+    enrichWithInstructions(resources),
     enrichWithFavorites(auth, resources),
     enrichWithTags(auth, resources),
   ]);
 
   return resources.map((resource) =>
-    resource.toLightConfigurationJSON({
+    toLightConfigurationJSON(resource, {
+      ...(instructions.get(resource) ?? { instructions: null }),
       ...(favorites.get(resource.sId) ?? { userFavorite: false }),
       ...(tags.get(resource) ?? { tags: [] }),
     })
@@ -121,21 +209,26 @@ export async function toLightAgentConfigurations(
 }
 
 /**
- * Renders full `AgentConfigurationType`s: the light enrichments plus the batched `actions`, shaped
- * (and redacted for a `light` resource) by `AgentResource.toConfigurationJSON`.
+ * Renders full `AgentConfigurationType`s: the light enrichments plus the batched `instructionsHtml`
+ * and `actions` (redacted when the caller cannot view the content).
  */
 export async function toAgentConfigurations(
   auth: Authenticator,
   resources: AgentResource[]
 ): Promise<AgentConfigurationType[]> {
-  const [favorites, tags, actions] = await Promise.all([
+  const [instructions, favorites, tags, actions] = await Promise.all([
+    enrichWithInstructions(resources),
     enrichWithFavorites(auth, resources),
     enrichWithTags(auth, resources),
     enrichWithActions(auth, resources),
   ]);
 
   return resources.map((resource) =>
-    resource.toConfigurationJSON({
+    toConfigurationJSON(resource, {
+      ...(instructions.get(resource) ?? {
+        instructions: null,
+        instructionsHtml: null,
+      }),
       ...(favorites.get(resource.sId) ?? { userFavorite: false }),
       ...(tags.get(resource) ?? { tags: [] }),
       ...(actions.get(resource) ?? { actions: [] }),

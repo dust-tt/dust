@@ -209,14 +209,27 @@ And one that is **not** compile-forced, so nothing turns red if you skip it:
 >   fix the ladders and defaults that name it: `ORDERED_FAST_MODEL_CONFIGS` /
 >   `ORDERED_SMALL_MODEL_CONFIGS` / `ORDERED_LARGE_MODEL_CONFIGS` in
 >   `front/lib/api/assistant/models.ts`, `getFastModelConfig` in
->   `front/lib/api/assistant/conversation/title.ts`, `preferredModelConfiguration` on the
->   `dust-*` global agents, and `MODEL_STREAMS` candidates in
+>   `front/lib/api/assistant/conversation/title.ts`, and `MODEL_STREAMS` candidates in
 >   `front/types/assistant/models/auto.ts`. These are hand-maintained lists that no type
 >   checks — nothing goes red when they point at a legacy model.
+> - **Leave global agents alone** — see [Global agents are out of scope](#global-agents-are-out-of-scope).
 >
 > A legacy model still referenced by one of those lists is the failure mode this rule exists
 > for: conversation titles ran on Gemini 3.5 Flash for three releases after 3.6/3.7/3.8
 > shipped, purely because `getFastModelConfig` was never revisited.
+
+### Global agents are out of scope
+
+**Never modify a global agent as part of adding, deprecating or removing a model.** That
+covers everything under `front/lib/api/assistant/global_agents/`: the `dust-*` agents'
+`preferredModelConfiguration` (`configurations/dust/dust.ts`), the deep-dive model routing
+(`configurations/dust/deep-dive.ts`), the descriptions in `global_agent_metadata.ts`,
+`RETIRED_GLOBAL_AGENTS_SID`, and their tests. Which model a global agent runs is a product
+decision owned separately, so it ships in its own change.
+
+A global agent pinned to a model you are marking `isLegacy` keeps working, so leave it
+there. Instead, list the global agents still pointing at the old model in your final
+report, and in the PR description, so the owners can decide.
 
 > **No marketing mirror.** The public credits page fetches `/api/marketing/model-credits`,
 > which `front/lib/api/marketing/model_credits.ts` derives at request time from
@@ -426,14 +439,10 @@ added / K2.5 deprecated (`f2824da5c5e`, #28834).
 | `front/types/assistant/models/auto.ts` | Replace it in any `MODEL_STREAMS` candidate list with the new model. |
 | `front/lib/api/assistant/models.ts` | Replace it in `ORDERED_FAST_MODEL_CONFIGS` / `ORDERED_SMALL_MODEL_CONFIGS` / `ORDERED_LARGE_MODEL_CONFIGS` — the whitelisted-model ladders behind `getFastestWhitelistedModel` & co. |
 | `front/lib/api/assistant/conversation/title.ts` | Replace it in `getFastModelConfig`, the per-provider ladder picking the model that names conversations. |
-| `front/lib/api/assistant/global_agents/configurations/dust/dust.ts` | Repoint every `preferredModelConfiguration` naming it (e.g. the `dust-kimi*` family). |
-| `front/lib/api/assistant/global_agents/global_agent_metadata.ts` | Update the agent `description` strings that name the old model version. |
-| `front/lib/api/assistant/global_agents/global_agents.ts` | If the old model had its **own** global agent (rather than a `dust-*` agent you just repointed), add its `GLOBAL_AGENTS_SID` to `RETIRED_GLOBAL_AGENTS_SID`. |
 
-Retiring a global agent that way keeps it resolvable so past conversations still render,
-while `getGlobalAgents` filters it out of list views and `isRetiredGlobalAgent` gates it out
-of new conversations. **Do not delete the `GLOBAL_AGENTS_SID` member** — the enum values are
-the `sId`s persisted in historical messages.
+Do not touch global agents (`dust-*`, deep-dive, or a model's own agent) — see
+[Global agents are out of scope](#global-agents-are-out-of-scope). Report the ones still
+pinned to the old model instead.
 
 **Keep** the id in `STATIC_MODEL_IDS`, `SUPPORTED_MODEL_CONFIGS`, `CURRENT_MODEL_PRICING`,
 `STATIC_MODEL_TIERS`, `STATIC_MODEL_SUPPORTED_REASONING_EFFORTS`, and keep its endpoint
@@ -448,7 +457,7 @@ Nothing can run on the model any more, so its serving code comes out of the code
 every agent still pinned to it must be repointed**. Its id and config stay: stored runs still
 reference the id, and consumption attribution prices and tokenizes them from it (the
 `retain-retired-model-ids` and `tokenizer-for-every-static-model` contracts). Worked example:
-GLM-5.2 retirement (the `glm-5p2` entries in `fireworks.ts`). Do Path 1's picker/global-agent
+GLM-5.2 retirement (the `glm-5p2` entries in `fireworks.ts`). Do Path 1's picker
 repointing first, then:
 
 - **Model config + registry**: remove `X_MODEL_CONFIG` from `SUPPORTED_MODEL_CONFIGS` in
@@ -462,16 +471,10 @@ repointing first, then:
   `test/endpoints/*.test.ts`; unregister from `stream/index.ts`, `setups.ts` and
   `llms/stream/index.ts`; drop the id from the `MODELS` array in
   `front/lib/model_constructors/types/models.ts`.
-- **Its global agent, if it had one**: retire it via `RETIRED_GLOBAL_AGENTS_SID` as in Path 1
-  — that is the normal answer even here, and it keeps historical conversations rendering.
-  Only tear the agent out completely when it must stop resolving at all: delete the factory
-  (`global_agents/configurations/{provider}.ts`) and the `GLOBAL_AGENTS_SID` member in
-  `front/types/assistant/assistant.ts`, which turns every exhaustive reference red — the
-  `getGlobalAgent` switch and the flag filters in `global_agents.ts`,
-  `global_agent_metadata.ts`, `prompt_context.ts` (`Record<GLOBAL_AGENTS_SID, …>`) and
-  `getGlobalAgentAuthorName`. Deleting the member abandons the `sId`s stored in past
-  messages, so justify it explicitly. (DeepSeek R1 did this in `3ca8d834527`, before
-  `RETIRED_GLOBAL_AGENTS_SID` existed — prefer retirement now.)
+- **Global agents pinned to it**: do not repoint, retire or delete them here (see
+  [Global agents are out of scope](#global-agents-are-out-of-scope)). A global agent on a
+  removed model breaks, so **stop and tell the user which agents it is** before shipping the
+  removal. Don't work around it.
 - **Feature flag**: drop the model's flag from `front/types/shared/feature_flags.ts` once
   nothing else references it.
 - **SDK**: keep the id in `KnownModelLLMId` in `sdks/js/src/types.ts`. `sdk_drift.test.ts`
@@ -542,17 +545,17 @@ on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models
 - [ ] New config inserted in `USED_MODEL_CONFIGS` by release date then strength, not appended
 - [ ] `USED_MODEL_CONFIGS` holds at most two versions of the family; every model evicted by
       that rule is `isLegacy: true` + `isLatest: false` and no longer named by any hardcoded
-      ladder (`ORDERED_*_MODEL_CONFIGS`, `getFastModelConfig`, `dust-*` global agents,
-      `MODEL_STREAMS`)
+      ladder (`ORDERED_*_MODEL_CONFIGS`, `getFastModelConfig`, `MODEL_STREAMS`)
+- [ ] No file under `front/lib/api/assistant/global_agents/` modified; global agents still
+      pinned to the superseded model listed in the report / PR description
 - [ ] `tsgo` clean; `types` / `model_tiers` tests green
 - [ ] Live endpoint test passes (or limitation flagged for follow-up)
 
 Retiring the superseded model (same PR):
 
 - [ ] Superseded model `isLegacy: true` + `isLatest: false`, dropped from `USED_MODEL_CONFIGS`
-- [ ] `MODEL_STREAMS` candidates and `dust-*` global agents repointed to the new model,
-      global-agent descriptions updated
-- [ ] If **decommissioned**: endpoints + global agent + feature flag removed; config moved from
+- [ ] `MODEL_STREAMS` candidates repointed to the new model (global agents untouched)
+- [ ] If **decommissioned**: endpoints + feature flag removed; config moved from
       `SUPPORTED_MODEL_CONFIGS` to `HISTORICAL_TOKENIZATION_MODEL_CONFIGS`; id, config export,
       pricing, tiers and reasoning efforts kept
 - [ ] Agent-config repoint migration written with hardcoded ids, batched update, dry-run

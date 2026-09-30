@@ -780,11 +780,12 @@ describe("activateFramePublication", () => {
   it("rolls back the allowlist and function rows when activation fails", async () => {
     const { auth, frame, workspaceId } = await setupFrame();
     vi.spyOn(frame, "computeAuthorizedFileAccess").mockImplementation(
-      async (_auth, { frameContent }) => ({
-        generatedByUserId: auth.getNonNullableUser().id,
-        frameContentHash: computeFrameContentHash(frameContent),
-        refs: [{ kind: "file_id", ref: "fil_ABCDEFGHIJ" }],
-      })
+      async (_auth, { frameContent }) =>
+        new Ok({
+          generatedByUserId: auth.getNonNullableUser().id,
+          frameContentHash: computeFrameContentHash(frameContent),
+          refs: [{ kind: "file_id", ref: "fil_ABCDEFGHIJ" }],
+        })
     );
 
     const activeBundle = "export default function Active() {}";
@@ -853,16 +854,17 @@ describe("activateFramePublication", () => {
   it("refreshes the sharing allowlist before activating a new bundle", async () => {
     const { auth, frame } = await setupFrame();
     vi.spyOn(frame, "computeAuthorizedFileAccess").mockImplementation(
-      async (_auth, { frameContent }) => ({
-        generatedByUserId: auth.getNonNullableUser().id,
-        frameContentHash: computeFrameContentHash(frameContent),
-        refs: [
-          {
-            kind: "file_id",
-            ref: "fil_ABCDEFGHIJ",
-          },
-        ],
-      })
+      async (_auth, { frameContent }) =>
+        new Ok({
+          generatedByUserId: auth.getNonNullableUser().id,
+          frameContentHash: computeFrameContentHash(frameContent),
+          refs: [
+            {
+              kind: "file_id",
+              ref: "fil_ABCDEFGHIJ",
+            },
+          ],
+        })
     );
 
     const firstBundle = "export default function First() {}";
@@ -1104,11 +1106,11 @@ describe("publishFramePublication", () => {
       async (_auth, { frameContent }) => {
         activationStarted.resolve();
         await releaseActivation.promise;
-        return {
+        return new Ok({
           generatedByUserId: auth.getNonNullableUser().id,
           frameContentHash: computeFrameContentHash(frameContent),
           refs: [],
-        };
+        });
       }
     );
 

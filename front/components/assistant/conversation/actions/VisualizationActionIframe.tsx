@@ -745,7 +745,7 @@ function CodeDrawer({
   return (
     <Sheet
       open={isOpened}
-      onOpenChange={(open) => {
+      onOpenChange={(open: boolean) => {
         if (!open) {
           onClose();
         }

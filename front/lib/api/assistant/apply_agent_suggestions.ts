@@ -4,7 +4,10 @@ import { validateAgentEditorsChange } from "@app/lib/api/assistant/agent_editors
 import type { AgentTagsChange } from "@app/lib/api/assistant/agent_tags_change";
 import { validateAgentTagsChange } from "@app/lib/api/assistant/agent_tags_change";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
-import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
+import {
+  resolveAgentModelChange,
+  validateStructuredOutputChange,
+} from "@app/lib/api/assistant/configuration/model_update";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import {
   checkSkillAddition,
@@ -31,12 +34,12 @@ import {
 } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
+import type { AgentAuditOptions } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
 import type {
   AgentConfigurationScope,
@@ -46,12 +49,14 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   CreateSuggestionType,
   EditorsSuggestionType,
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
+  StructuredOutputSuggestionType,
   SubAgentSuggestionType,
   TagsSuggestionType,
   ToolsSuggestionType,
@@ -90,6 +95,11 @@ export type ResolvedAgentChange =
     }
   | { type: "delete"; agentId: string };
 
+export type BatchCreations = {
+  skillIds: Set<string>;
+  agentsById: Map<string, AgentResource>;
+};
+
 function pickDefaultAvatar(): string {
   return DROID_AVATAR_URLS[
     Math.floor(Math.random() * DROID_AVATAR_URLS.length)
@@ -101,9 +111,9 @@ function pickDefaultAvatar(): string {
  * A `create` suggestion MUST only be applied to the `pending` placeholder agent it targets: it
  * turns that placeholder into an `active`, `hidden` agent (same `sId`, editors unchanged) carrying
  * the suggested name, description, instructions, tools and skills. Tools and skills are checked
- * again against live state, as when added to an existing agent. Applying it to an agent that is not
- * `pending`, or with a tool or skill that no longer qualifies, fails with `invalid_request_error`
- * and changes nothing.
+ * again against live state, as when added to an existing agent, except a skill that a creation of
+ * the same batch makes active. Applying it to an agent that is not `pending`, or with a tool or
+ * skill that no longer qualifies, fails with `invalid_request_error` and changes nothing.
  */
 async function resolveCreateSuggestion(
   auth: Authenticator,
@@ -114,7 +124,8 @@ async function resolveCreateSuggestion(
     instructions,
     toolIds = [],
     skillIds = [],
-  }: CreateSuggestionType
+  }: CreateSuggestionType,
+  createdSkillIds: Set<string>
 ): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
   if (agent.status !== "pending") {
     return new Err(
@@ -156,7 +167,8 @@ async function resolveCreateSuggestion(
   const resolvedSkills = await resolveSkillsEdits(
     auth,
     [],
-    skillIds.map((skillId) => ({ action: "add", skillId }))
+    skillIds.map((skillId) => ({ action: "add", skillId })),
+    createdSkillIds
   );
   if (resolvedSkills.isErr()) {
     return resolvedSkills;
@@ -270,6 +282,34 @@ async function resolveModelEdit(
   return new Ok({ ...currentModel, ...modelRes.value });
 }
 
+/**
+ * @cc [owner:fabiencelier,label:product] structured-output-validated-against-saved-model
+ * A suggested structured output MUST be validated (`validateStructuredOutputChange`) against
+ * `model`, the model the new version is saved with once any model suggestion of the same batch is
+ * applied, not against the agent's current model. When validation fails, nothing is written.
+ */
+function resolveStructuredOutputEdit(
+  model: LightAgentConfigurationType["model"],
+  structuredOutput: StructuredOutputSuggestionType | undefined
+): Result<LightAgentConfigurationType["model"], ApplyAgentSuggestionsError> {
+  if (!structuredOutput) {
+    return new Ok(model);
+  }
+
+  const { responseFormat } = structuredOutput;
+  const validation = validateStructuredOutputChange({
+    modelId: model.modelId,
+    responseFormat,
+  });
+  if (validation.isErr()) {
+    return new Err(
+      new DustError("invalid_request_error", validation.error.message)
+    );
+  }
+
+  return new Ok({ ...model, responseFormat: responseFormat ?? undefined });
+}
+
 type AgentActionPayload = AgentConfigurationAssistantPayload["actions"][number];
 
 /**
@@ -332,15 +372,19 @@ async function resolveToolsEdits(
 
 /**
  * Carries the agent's actions over, with the suggested sub-agents added or removed. Added
- * sub-agents are checked again against live state (see `suggestable-sub-agents-match-builder`)
- * and run through the `run_agent` tool with the builder's defaults. A sub-agent already added, or
- * already removed, since the suggestion was recorded is skipped.
+ * sub-agents are checked again against live state (see `suggestable-sub-agents-match-builder`),
+ * except an agent that a creation of the same batch makes active, and run through the `run_agent`
+ * tool with the builder's defaults. A sub-agent already added, or already removed, since the
+ * suggestion was recorded is skipped.
  */
 async function resolveSubAgentsEdits(
   auth: Authenticator,
   currentActions: AgentActionPayload[],
   subAgents: SubAgentSuggestionType[],
-  { agentId }: { agentId: string }
+  {
+    agentId,
+    createdAgentsById,
+  }: { agentId: string; createdAgentsById: Map<string, AgentResource> }
 ): Promise<
   Result<
     { actions: AgentActionPayload[]; hasRemovedSubAgents: boolean },
@@ -386,9 +430,10 @@ async function resolveSubAgentsEdits(
       ...addedSubAgentIds,
     ]);
     for (const subAgentId of addedSubAgentIds) {
-      const addition = checkSubAgentAddition(subAgentId, suggestable, {
-        agentId,
-      });
+      const createdAgent = createdAgentsById.get(subAgentId);
+      const addition = createdAgent
+        ? new Ok(createdAgent)
+        : checkSubAgentAddition(subAgentId, suggestable, { agentId });
       if (addition.isErr()) {
         return new Err(new DustError("invalid_request_error", addition.error));
       }
@@ -409,13 +454,14 @@ async function resolveSubAgentsEdits(
 
 /**
  * Carries the agent's current skills over, with the suggested skills added or removed. Added skills
- * are checked again against live state. A skill already added, or already removed,
- * since the suggestion was recorded is skipped.
+ * are checked again against live state, except a skill that a creation of the same batch makes
+ * active. A skill already added, or already removed, since the suggestion was recorded is skipped.
  */
 async function resolveSkillsEdits(
   auth: Authenticator,
   currentSkills: SkillResource[],
-  skills: SkillsSuggestionType[]
+  skills: SkillsSuggestionType[],
+  createdSkillIds: Set<string>
 ): Promise<
   Result<
     { skillIds: string[]; hasRemovedSkills: boolean },
@@ -437,6 +483,9 @@ async function resolveSkillsEdits(
 
   const suggestable = await fetchSuggestableSkills(auth, [...addedSkillIds]);
   for (const skillId of addedSkillIds) {
+    if (createdSkillIds.has(skillId)) {
+      continue;
+    }
     const addition = checkSkillAddition(skillId, suggestable);
     if (addition.isErr()) {
       return new Err(new DustError("invalid_request_error", addition.error));
@@ -498,13 +547,15 @@ async function resolveAgentFieldEdits(
   {
     name,
     model,
+    structuredOutput,
     description,
     scope,
     instructions,
     skills,
     tools,
     subAgents,
-  }: AgentEdits
+  }: AgentEdits,
+  creations: BatchCreations
 ): Promise<
   Result<AgentConfigurationAssistantPayload, ApplyAgentSuggestionsError>
 > {
@@ -528,13 +579,21 @@ async function resolveAgentFieldEdits(
   if (resolvedModel.isErr()) {
     return resolvedModel;
   }
-  const nextModel = resolvedModel.value;
+  const resolvedStructuredOutput = resolveStructuredOutputEdit(
+    resolvedModel.value,
+    structuredOutput
+  );
+  if (resolvedStructuredOutput.isErr()) {
+    return resolvedStructuredOutput;
+  }
+  const nextModel = resolvedStructuredOutput.value;
 
   const currentSkills = current.skills ?? [];
   const resolvedSkills = await resolveSkillsEdits(
     auth,
     currentSkills,
-    skills ?? []
+    skills ?? [],
+    creations.skillIds
   );
   if (resolvedSkills.isErr()) {
     return resolvedSkills;
@@ -552,7 +611,7 @@ async function resolveAgentFieldEdits(
     auth,
     resolvedActions.value.actions,
     subAgents ?? [],
-    { agentId: agent.sId }
+    { agentId: agent.sId, createdAgentsById: creations.agentsById }
   );
   if (resolvedToolsWithSubAgents.isErr()) {
     return resolvedToolsWithSubAgents;
@@ -647,6 +706,7 @@ async function resolveTagsEdit(
 function hasAgentFieldEdits({
   name,
   model,
+  structuredOutput,
   description,
   instructions,
   skills,
@@ -656,6 +716,7 @@ function hasAgentFieldEdits({
   return (
     name !== undefined ||
     model !== undefined ||
+    structuredOutput !== undefined ||
     description !== undefined ||
     (instructions?.length ?? 0) > 0 ||
     (skills?.length ?? 0) > 0 ||
@@ -667,7 +728,8 @@ function hasAgentFieldEdits({
 async function resolveAgentEdits(
   auth: Authenticator,
   agent: AgentResource,
-  edits: AgentEdits
+  edits: AgentEdits,
+  creations: BatchCreations
 ): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
   if (agent.scope === "global" || agent.status !== "active") {
     return new Err(
@@ -693,7 +755,12 @@ async function resolveAgentEdits(
   // must not.
   let assistant: AgentConfigurationAssistantPayload | null = null;
   if (hasAgentFieldEdits(edits)) {
-    const assistantRes = await resolveAgentFieldEdits(auth, agent, edits);
+    const assistantRes = await resolveAgentFieldEdits(
+      auth,
+      agent,
+      edits,
+      creations
+    );
     if (assistantRes.isErr()) {
       return assistantRes;
     }
@@ -732,9 +799,11 @@ export async function resolveAgentSuggestions(
   {
     agent,
     suggestions,
+    creations,
   }: {
     agent: AgentResource;
     suggestions: AgentSuggestionResource[];
+    creations: BatchCreations;
   }
 ): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
   const actions = new Set(
@@ -769,14 +838,19 @@ export async function resolveAgentSuggestions(
           )
         );
       }
-      return resolveCreateSuggestion(auth, agent, parsed.data.suggestion);
+      return resolveCreateSuggestion(
+        auth,
+        agent,
+        parsed.data.suggestion,
+        creations.skillIds
+      );
     }
     case "edit": {
       const edits = mergeAgentEdits(suggestions);
       if (edits.isErr()) {
         return edits;
       }
-      return resolveAgentEdits(auth, agent, edits.value);
+      return resolveAgentEdits(auth, agent, edits.value, creations);
     }
     case "delete":
       return resolveDeleteSuggestion(agent);
@@ -787,7 +861,8 @@ export async function resolveAgentSuggestions(
 
 async function archiveAgent(
   auth: Authenticator,
-  agentId: string
+  agentId: string,
+  { auditMetadata }: AgentAuditOptions
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
   // Fetched at write time: an earlier write may have saved a newer version of the agent.
   const agent = await AgentResource.fetchById(auth, agentId);
@@ -800,7 +875,7 @@ async function archiveAgent(
     );
   }
 
-  const archiveResult = await agent.archive(auth);
+  const archiveResult = await agent.archive(auth, { auditMetadata });
   if (archiveResult.isErr()) {
     return new Err(
       new DustError("invalid_request_error", archiveResult.error.message)
@@ -821,7 +896,8 @@ async function archiveAgent(
 async function saveAgentConfiguration(
   auth: Authenticator,
   agentId: string,
-  assistant: AgentConfigurationAssistantPayload
+  assistant: AgentConfigurationAssistantPayload,
+  { auditMetadata }: AgentAuditOptions
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
   const res = await createOrUpgradeAgentConfiguration({
     auth,
@@ -830,6 +906,7 @@ async function saveAgentConfiguration(
     // Pruning cleans up after edits made in the agent builder. Here we only apply suggestions:
     // they are still `pending` during the save, so pruning would wrongly outdate them.
     skipSuggestionPruning: true,
+    auditMetadata,
   });
   if (res.isErr()) {
     return new Err(new DustError("invalid_request_error", res.error.message));
@@ -839,8 +916,8 @@ async function saveAgentConfiguration(
 }
 
 /**
- * Creates the tags named `names` that do not exist (restoring a soft-deleted one of the same name)
- * and returns every tag.
+ * Returns the tags named `names`, matching existing tags case-insensitively
+ * and creating the other ones.
  */
 async function createMissingTags(
   auth: Authenticator,
@@ -850,14 +927,20 @@ async function createMissingTags(
     return [];
   }
 
-  // Tags created since the change was resolved are reused rather than created again.
-  const existing = await TagResource.findByNames(auth, names);
-  const existingNames = new Set(existing.map((tag) => tag.name));
-  const created = await concurrentExecutor(
-    names.filter((name) => !existingNames.has(name)),
-    (name) => TagResource.makeNew(auth, { name, kind: "standard" }),
-    { concurrency: 4 }
+  // A tag created since the change was resolved (e.g. by another step of the batch) is reused.
+  const tagsByKey = new Map(
+    (await TagResource.findAll(auth)).map((tag) => [
+      tag.name.toLowerCase(),
+      tag,
+    ])
   );
+  const existing = removeNulls(
+    names.map((name) => tagsByKey.get(name.toLowerCase()) ?? null)
+  );
+  const created = await TagResource.makeNewForNames(auth, {
+    names: names.filter((name) => !tagsByKey.has(name.toLowerCase())),
+    kind: "standard",
+  });
 
   return [...existing, ...created];
 }
@@ -893,13 +976,18 @@ async function updateAgentWithoutFullSave(
     scope: Exclude<AgentConfigurationScope, "global"> | null;
     editors: UserType[] | null;
     tags: { addTags: TagResource[]; removeTags: TagResource[] } | null;
-  }
+  },
+  { auditMetadata }: AgentAuditOptions
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
-  const res = await agent.updateConfiguration(auth, {
-    ...(scope ? { scope } : {}),
-    ...(editors ? { editors } : {}),
-    ...(tags ?? {}),
-  });
+  const res = await agent.updateConfiguration(
+    auth,
+    {
+      ...(scope ? { scope } : {}),
+      ...(editors ? { editors } : {}),
+      ...(tags ?? {}),
+    },
+    { auditMetadata }
+  );
   if (res.isErr()) {
     return new Err(new DustError("invalid_request_error", res.error.message));
   }
@@ -910,11 +998,14 @@ async function updateAgentWithoutFullSave(
 export async function writeAgentChange(
   auth: Authenticator,
   agent: AgentResource,
-  change: ResolvedAgentChange
+  change: ResolvedAgentChange,
+  { auditMetadata }: AgentAuditOptions = {}
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
   switch (change.type) {
     case "create":
-      return saveAgentConfiguration(auth, change.agentId, change.assistant);
+      return saveAgentConfiguration(auth, change.agentId, change.assistant, {
+        auditMetadata,
+      });
     case "edit": {
       const tags = change.tags
         ? {
@@ -934,16 +1025,22 @@ export async function writeAgentChange(
                 ...change.assistant,
                 tags: applyTagsDelta(change.assistant.tags, tags),
               }
-            : change.assistant
+            : change.assistant,
+          { auditMetadata }
         );
       }
       if (change.scope || change.editors || tags) {
-        return updateAgentWithoutFullSave(auth, agent, { ...change, tags });
+        return updateAgentWithoutFullSave(
+          auth,
+          agent,
+          { ...change, tags },
+          { auditMetadata }
+        );
       }
       return new Ok(undefined);
     }
     case "delete":
-      return archiveAgent(auth, change.agentId);
+      return archiveAgent(auth, change.agentId, { auditMetadata });
     default:
       return assertNever(change);
   }

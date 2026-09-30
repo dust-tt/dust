@@ -47,6 +47,7 @@ export type KnownModelLLMId =
   | "gpt-5.6-luna"
   | "gpt-6-luna"
   | "gpt-6-sol"
+  | "gpt-6.1-sol"
   | "gpt-5.4-mini"
   | "gpt-5.4-nano"
   | "gpt-5-nano"
@@ -932,6 +933,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "remote_db_query_identity_labels"
   | "discovery_homepage"
   | "localisation"
+  | "co_edition"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

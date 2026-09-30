@@ -121,6 +121,15 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     xhigh: true,
     maximal: true,
   },
+  "gpt-6.1-sol": {
+    none: false,
+    minimal: false,
+    low: true,
+    medium: true,
+    high: true,
+    xhigh: true,
+    maximal: true,
+  },
   "gpt-6-sol": {
     none: true,
     minimal: false,

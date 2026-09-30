@@ -800,13 +800,15 @@ async function streamAgentAnswerToSlack(
 
           if (shouldSplitMessage) {
             const splitMessages = splitContentForSlack(formattedContent);
+            let shouldPostFollowUpMessages = true;
 
             if (filesUploaded.length > 0) {
-              await deleteAndRepostMessageWithFiles({
-                messageUpdate: { ...messageUpdate, text: splitMessages[0] },
-                ...conversationData,
-                uploadedFiles: filesUploaded,
-              });
+              shouldPostFollowUpMessages =
+                await deleteAndRepostMessageWithFiles({
+                  messageUpdate: { ...messageUpdate, text: splitMessages[0] },
+                  ...conversationData,
+                  uploadedFiles: filesUploaded,
+                });
             } else {
               await postSlackMessageUpdate({
                 messageUpdate: { ...messageUpdate, text: splitMessages[0] },
@@ -820,7 +822,7 @@ async function streamAgentAnswerToSlack(
               });
             }
 
-            if (splitMessages.length > 1) {
+            if (shouldPostFollowUpMessages && splitMessages.length > 1) {
               await postThreadFollowUpMessages(
                 splitMessages.slice(1),
                 conversationData
@@ -1024,7 +1026,7 @@ async function deleteAndRepostMessageWithFiles({
   conversation: ConversationPublicType;
   streamHandler: SlackStreamHandler;
   uploadedFiles: { file: Buffer; filename: string }[];
-}): Promise<void> {
+}): Promise<boolean> {
   const { slackChannelId, slackClient, slackMessageTs } = slack;
   const conversationUrl = makeConversationUrl(
     connector.workspaceId,
@@ -1034,28 +1036,56 @@ async function deleteAndRepostMessageWithFiles({
   const deleteTs = streamHandler.messageTs;
 
   // First post a new message with files
-  const response = await slackClient.filesUploadV2({
-    ...makeMessageUpdateBlocksAndText(
-      conversationUrl,
-      connector.workspaceId,
-      messageUpdate,
-      { isUpload: true }
-    ),
-    channel_id: slackChannelId,
-    file_uploads: uploadedFiles,
-    thread_ts: slackMessageTs,
-  });
+  try {
+    const response = await slackClient.filesUploadV2({
+      ...makeMessageUpdateBlocksAndText(
+        conversationUrl,
+        connector.workspaceId,
+        messageUpdate,
+        { isUpload: true }
+      ),
+      channel_id: slackChannelId,
+      file_uploads: uploadedFiles,
+      thread_ts: slackMessageTs,
+    });
 
-  if (response?.error) {
-    logger.error(
+    if (response && typeof response === "object" && response.error) {
+      logger.error(
+        {
+          provider: "slack",
+          connectorId: connector.id,
+          conversationId: conversation.sId,
+          err: response.error,
+        },
+        "Failed to repost Slack message with files."
+      );
+    }
+  } catch (error) {
+    if (
+      !isSlackWebAPIPlatformError(error) ||
+      error.data.error !== "internal_error"
+    ) {
+      throw error;
+    }
+
+    logger.warn(
       {
         provider: "slack",
         connectorId: connector.id,
         conversationId: conversation.sId,
-        err: response.error,
+        err: error,
+        uploadedFileCount: uploadedFiles.length,
       },
-      "Failed to repost Slack message with files."
+      "Slack returned internal_error while uploading generated files."
     );
+
+    await slackClient.chat.postMessage({
+      channel: slackChannelId,
+      text: ":warning: Slack couldn't upload the generated file(s), so they aren't attached.",
+      thread_ts: slackMessageTs,
+    });
+
+    return false;
   }
 
   // Then, delete the original message
@@ -1077,6 +1107,8 @@ async function deleteAndRepostMessageWithFiles({
       );
     }
   }
+
+  return true;
 }
 
 async function postSlackMessageUpdate({

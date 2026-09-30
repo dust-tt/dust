@@ -28,7 +28,7 @@ export async function getAgentDetails(
     `- Scope: ${agent.scope}\n` +
     `- Model: ${agent.modelConfiguration.providerId}/${agent.modelConfiguration.modelId}\n`;
 
-  if (!agent.isFull()) {
+  if (!agent.canViewContent) {
     return new Ok([
       {
         type: "text" as const,
@@ -41,7 +41,8 @@ export async function getAgentDetails(
     ]);
   }
 
-  const [actions, skills] = await Promise.all([
+  const [{ instructions }, actions, skills] = await Promise.all([
+    agent.fetchInstructions(),
     agent.listActions(auth),
     agent.listSkills(auth),
   ]);
@@ -56,7 +57,7 @@ export async function getAgentDetails(
         `- Skills: ${skillNames || "none"}\n` +
         `- Tools: ${toolNames || "none"}\n\n` +
         "Instructions (full system prompt):\n" +
-        `${agent.content.instructions ?? "(no instructions)"}`,
+        `${instructions ?? "(no instructions)"}`,
     },
   ]);
 }

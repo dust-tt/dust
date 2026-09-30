@@ -41,7 +41,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { redactString } from "@app/types/shared/utils/string_utils";
+import { redactSecret } from "@app/types/shared/utils/string_utils";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 import { Op } from "sequelize";
 
@@ -628,7 +628,7 @@ export class InternalMCPServerInMemoryResource {
     }
 
     const redactedSecret = this.internalServerCredential.sharedSecret
-      ? redactString(this.internalServerCredential.sharedSecret, 4)
+      ? redactSecret(this.internalServerCredential.sharedSecret)
       : null;
 
     const redactedHeaders = this.internalServerCredential.customHeaders
@@ -637,7 +637,7 @@ export class InternalMCPServerInMemoryResource {
             ([key, value]) => [
               key,
               value !== null && value !== undefined
-                ? redactString(value, 4)
+                ? redactSecret(value)
                 : value,
             ]
           )

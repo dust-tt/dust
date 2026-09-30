@@ -27,8 +27,8 @@ export async function describeAgent(
  * @cc [owner:avervaet,label:mcp;security] private-agent-instructions-not-exposed
  * MUST NOT expose an agent's instructions, tools, skills or structured output to a caller who cannot
  * view its content, whatever their role. Visibility comes exclusively from the resource
- * (`agent-content-visibility`): this handler MUST check `isFull()` before reading the instructions,
- * tools, skills or structured output.
+ * (`agent-content-visibility`): this handler MUST check `canViewContent` before reading the
+ * instructions, tools, skills or structured output.
  */
 export async function describeAgentHandler(
   args: DescribeAgentArgs,
@@ -52,7 +52,7 @@ export async function describeAgentHandler(
     `- Model: ${agent.modelConfiguration.providerId}/${agent.modelConfiguration.modelId}\n` +
     `- Tags: ${tagNames || "none"}\n`;
 
-  if (!agent.isFull()) {
+  if (!agent.canViewContent) {
     return new Ok([
       {
         type: "text" as const,
@@ -64,10 +64,12 @@ export async function describeAgentHandler(
     ]);
   }
 
-  const [actions, skills] = await Promise.all([
-    agent.listActions(auth),
-    agent.listSkills(auth),
-  ]);
+  const [{ instructions, instructionsHtml }, actions, skills] =
+    await Promise.all([
+      agent.fetchInstructions(),
+      agent.listActions(auth),
+      agent.listSkills(auth),
+    ]);
   // Tools carry their id, as `list_tools` prints them, so that they can be removed by id. Sub-agent
   // actions carry the id of the agent they run instead, which is how sub-agents are removed.
   const toolNames = actions
@@ -84,7 +86,6 @@ export async function describeAgentHandler(
     .map((skill) => `${skill.name} [${skill.sId}]`)
     .join(", ");
 
-  const { instructions, instructionsHtml } = agent.content;
   const instructionsBlock = instructionsHtml
     ? "Instructions (full system prompt), as HTML whose blocks carry a data-block-id — " +
       "required to target block-level instruction edits:\n" +

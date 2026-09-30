@@ -7,6 +7,7 @@ import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
+import type { AgentAuditOptions } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -53,6 +54,7 @@ export async function createOrUpgradeAgentConfiguration({
   authorId,
   dangerouslySkipPermissionFiltering,
   skipSuggestionPruning,
+  auditMetadata,
 }: {
   auth: Authenticator;
   assistant: AgentConfigurationAssistantPayload;
@@ -64,7 +66,7 @@ export async function createOrUpgradeAgentConfiguration({
   // unrestrict the agent and strip its skills. It grants no access to what the spaces protect.
   dangerouslySkipPermissionFiltering?: boolean;
   skipSuggestionPruning?: boolean;
-}): Promise<
+} & AgentAuditOptions): Promise<
   Result<
     { agentConfiguration: AgentConfigurationType; changed: boolean },
     Error
@@ -304,14 +306,20 @@ export async function createOrUpgradeAgentConfiguration({
     if (!agentResource) {
       return new Err(new Error("Agent configuration not found."));
     }
-    const updateRes = await agentResource.updateConfiguration(auth, saveParams);
+    const updateRes = await agentResource.updateConfiguration(
+      auth,
+      saveParams,
+      { auditMetadata }
+    );
     if (updateRes.isErr()) {
       return updateRes;
     }
     savedResource = updateRes.value.resource;
     changed = updateRes.value.changed;
   } else {
-    const makeNewRes = await AgentResource.makeNew(auth, saveParams);
+    const makeNewRes = await AgentResource.makeNew(auth, saveParams, {
+      auditMetadata,
+    });
     if (makeNewRes.isErr()) {
       return makeNewRes;
     }

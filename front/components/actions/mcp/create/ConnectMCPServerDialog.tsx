@@ -97,7 +97,7 @@ export function ConnectMCPServerDialog({
     owner,
     connectionType: "workspace",
   });
-  const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
+  const { discoverOAuthMetadataForServer } = useDiscoverOAuthMetadata(owner);
   const { updateServerView } = useUpdateMCPServerView(owner, mcpServerView);
 
   const serverType = useMemo(
@@ -142,13 +142,8 @@ export function ConnectMCPServerDialog({
             return;
           }
           setIsLoading(true);
-          const discoverOAuthMetadataRes = await discoverOAuthMetadata(
-            mcpServerView.server.url,
-            mcpServerView.server.customHeaders
-              ? Object.entries(mcpServerView.server.customHeaders).map(
-                  ([key, value]) => ({ key, value: String(value) })
-                )
-              : undefined
+          const discoverOAuthMetadataRes = await discoverOAuthMetadataForServer(
+            mcpServerView.server.sId
           );
 
           if (
@@ -183,7 +178,7 @@ export function ConnectMCPServerDialog({
     isOpen,
     serverType,
     remoteMCPServerOAuthDiscoveryDone,
-    discoverOAuthMetadata,
+    discoverOAuthMetadataForServer,
     form,
     sendNotification,
   ]);

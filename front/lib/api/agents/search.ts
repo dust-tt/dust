@@ -7,7 +7,6 @@ import {
 } from "@app/lib/agent_search/query";
 import { buildAgentDefaultSort } from "@app/lib/agent_search/ranking";
 import { toAgentListItem } from "@app/lib/agent_search/serialization";
-import { listDefaultGlobalAgentIds } from "@app/lib/api/assistant/global_agents/global_agents";
 import {
   AGENT_SEARCH_ALIAS_NAME,
   bucketsToArray,
@@ -25,6 +24,7 @@ import type {
   AgentSearchSortOrder,
   AgentSearchTermsFacet,
 } from "@app/types/agent_search/agent_search";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { Err, Ok } from "@app/types/shared/result";
 import { isNumber, removeNulls } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
@@ -66,10 +66,7 @@ function buildFacetAggregation(
 async function listSearchableGlobalAgents(
   auth: Authenticator
 ): Promise<AgentResource[]> {
-  const agents = await AgentResource.fetchByIds(
-    auth,
-    listDefaultGlobalAgentIds()
-  );
+  const agents = await AgentResource.listGlobalAgents(auth);
   return agents.filter(
     (agent) => agent.status === "active" && auth.can("read", agent)
   );
@@ -197,4 +194,32 @@ export async function searchAgents(
     hasMore: offset + hits.length < totalCount,
     facets: facetValues,
   });
+}
+
+/**
+ * @cc [owner:tdraier,label:product;security] agent-name-resolution
+ * Resolves a user- or model-supplied agent name to the sId of an active agent the caller can
+ * `read`, or null when none matches or the name is blank. "dust" and "dust agent" (trimmed,
+ * case-insensitive) resolve to the Dust global agent; any other name MUST match an agent's name
+ * exactly, ignoring case (see `agent-fetch-by-name`): a partial or approximate name resolves to
+ * nothing, never to a guess.
+ */
+export async function resolveAgentIdByName(
+  auth: Authenticator,
+  agentName: string
+): Promise<string | null> {
+  const trimmedName = agentName.trim();
+  if (trimmedName.length === 0) {
+    return null;
+  }
+
+  const normalizedName = trimmedName.toLowerCase();
+  const agent =
+    normalizedName === "dust" || normalizedName === "dust agent"
+      ? await AgentResource.fetchById(auth, GLOBAL_AGENTS_SID.DUST)
+      : await AgentResource.fetchByName(auth, trimmedName);
+
+  return agent && agent.status === "active" && auth.can("read", agent)
+    ? agent.sId
+    : null;
 }

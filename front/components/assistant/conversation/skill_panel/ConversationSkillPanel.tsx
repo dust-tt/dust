@@ -8,6 +8,7 @@ import {
   SkillSuggestionPreviewProvider,
 } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { SuggestionPreviewHeader } from "@app/components/assistant/details/SuggestionPreviewHeader";
+import { trackSuggestionPreviewToggle } from "@app/components/markdown/suggestion/suggestionTracking";
 import {
   SkillDetailsContent,
   SkillDetailsHeader,
@@ -79,14 +80,23 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
         "flex h-panel flex-col bg-panel-background",
         hasPreview &&
           isApplied &&
-          "rounded-r-xl outline-4 -outline-offset-4 outline-highlight-100"
+          "rounded-r-xl outline-[3.5px] -outline-offset-[3.5px] outline-highlight-100"
       )}
     >
       {hasPreview ? (
         <SuggestionPreviewHeader
           isApplied={isApplied}
           hasCreation={previewSuggestions.some(isCreateSkillSuggestion)}
-          onToggle={() => setHiddenPreviewData(isApplied ? data : undefined)}
+          onToggle={() => {
+            if (batchId) {
+              trackSuggestionPreviewToggle({
+                batchId,
+                targetKind: "skill",
+                showing: isApplied ? "current" : "suggested",
+              });
+            }
+            setHiddenPreviewData(isApplied ? data : undefined);
+          }}
           onClose={closePanel}
         />
       ) : (

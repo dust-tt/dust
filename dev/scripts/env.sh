@@ -7,6 +7,7 @@
 # are expected to already be in the process environment — do not re-export them here.
 
 export DUST_REPO_ROOT="${DUST_REPO_ROOT:-/workspace}"
+export DUST_INFRA_LOG_DIR="${DUST_INFRA_LOG_DIR:-/tmp/dust-infra}"
 export DUST_IN_CONTAINER="${DUST_IN_CONTAINER:-1}"
 export DUST_APPS_PROMPT_FILE="${DUST_APPS_PROMPT_FILE:-/tmp/dust-infra/start-apps.prompt}"
 # Persistent core/target volume: keep recent artifacts, drop the rest.
@@ -150,9 +151,22 @@ apply_local_overrides() {
   export NEXT_PUBLIC_DUST_API_URL=${BASE_API_URL}
   export NEXT_PUBLIC_DUST_APP_URL=${BASE_SPA_URL}
 
+  export METRONOME_WEBHOOK_SECRET=${METRONOME_WEBHOOK_SECRET:-"MISSING SECRET: GET FROM METRONOME WHEN REGISTERING WEBHOOK"}
+
+  export WORKSPACE_ID="DevWkSpace"
+
+  DEV_ENV_NAME_FILE="${DEV_ENV_NAME_FILE:-${DUST_INFRA_LOG_DIR}/dev-env-name}"
+  if [ -f "${DEV_ENV_NAME_FILE}" ]; then
+    export DEV_ENV_NAME="$(tr -d '\n' <"${DEV_ENV_NAME_FILE}")"
+  else
+    # Pick a random 8-char and store it in the file
+    export DEV_ENV_NAME="$(openssl rand -hex 4)"
+    echo "$DEV_ENV_NAME" > "${DEV_ENV_NAME_FILE}"
+  fi
+
   # Written by ensure-ngrok.sh once the local agent has a public URL. Read the
   # file only — do not query the agent here (env.sh is sourced via BASH_ENV often).
-  SBX_DEV_FRONT_URL_FILE="${SBX_DEV_FRONT_URL_FILE:-${DUST_INFRA_LOG_DIR:-/tmp/dust-infra}/sbx-dev-front-url}"
+  SBX_DEV_FRONT_URL_FILE="${SBX_DEV_FRONT_URL_FILE:-${DUST_INFRA_LOG_DIR}/sbx-dev-front-url}"
   if [ -f "${SBX_DEV_FRONT_URL_FILE}" ]; then
     export SBX_DEV_FRONT_URL="$(tr -d '\n' <"${SBX_DEV_FRONT_URL_FILE}")"
     # Agent-proxied sandbox traffic is redirected through the cloud egress
@@ -164,7 +178,7 @@ apply_local_overrides() {
 
   # Viz tunnel so sandboxes can fetch frame-runtime from local viz (:3007).
   # Sandbox-only (DUST_VIZ_URL): the browser keeps loading viz from VIZ_PUBLIC_URL.
-  SBX_DEV_VIZ_URL_FILE="${SBX_DEV_VIZ_URL_FILE:-${DUST_INFRA_LOG_DIR:-/tmp/dust-infra}/sbx-dev-viz-url}"
+  SBX_DEV_VIZ_URL_FILE="${SBX_DEV_VIZ_URL_FILE:-${DUST_INFRA_LOG_DIR}/sbx-dev-viz-url}"
   if [ -f "${SBX_DEV_VIZ_URL_FILE}" ]; then
     export SBX_DEV_VIZ_URL="$(tr -d '\n' <"${SBX_DEV_VIZ_URL_FILE}")"
     export SBX_DEV_UNRESTRICTED_EGRESS="${SBX_DEV_UNRESTRICTED_EGRESS:-true}"

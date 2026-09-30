@@ -26,7 +26,7 @@ describe("resource-owned agent search indexation", () => {
     );
 
     const resource = await AgentResource.fetchById(auth, agent.sId);
-    assert(resource !== null && resource.isFull());
+    assert(resource !== null && resource.canViewContent);
 
     // Changing an agent's scope needs the workspace-wide `publish` capability.
     await GroupPermissionResource.setForEverybody(auth, {

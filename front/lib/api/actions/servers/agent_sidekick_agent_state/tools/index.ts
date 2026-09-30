@@ -35,11 +35,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
           ? await agent.fetchVersion(auth, agentVersion)
           : agent;
 
-      if (
-        !agentVersionResource ||
-        !agentVersionResource.isFull() ||
-        !auth.can("read", agentVersionResource)
-      ) {
+      if (!agentVersionResource || !auth.can("read", agentVersionResource)) {
         return new Err(
           new MCPError(
             `Agent configuration not found: ${agentConfigurationId}`,
@@ -50,12 +46,14 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
         );
       }
 
-      const [tags, actions, skills] = await Promise.all([
+      const [{ instructions }, tags, actions, skills] = await Promise.all([
+        agentVersionResource.fetchInstructions(),
         agentVersionResource.listTags(auth),
         agentVersionResource.listActions(auth),
         agentVersionResource.listSkills(auth),
       ]);
       const agentInfo = agentVersionResource.toSidekickAgentInfoJSON({
+        instructions,
         tags,
         actions,
         skills,

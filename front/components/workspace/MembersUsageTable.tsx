@@ -14,6 +14,7 @@ import {
   OVER_POOL_LIMIT_BAR_CLASSES,
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
+import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
 import type {
   MemberFairUseUsage,
@@ -114,6 +115,8 @@ type RowData = {
   spendLimitAwuCredits: number | null;
   spendLimitSource: EffectiveSpendLimitSource;
   spendLimitGroupName: string | null;
+  poolCapOverrideExpiresAt: string | null;
+  poolCapOverridePreviousAwuCredits: number | null;
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
   isTotalAllowedUsagePending: boolean;
@@ -285,6 +288,8 @@ interface PoolCreditUsageBarProps {
   // access, i.e. a zero pool limit.
   effectiveLimit: number | null;
   isTotalAllowedUsagePending: boolean;
+  poolCapOverrideExpiresAt: string | null;
+  poolCapOverridePreviousAwuCredits: number | null;
 }
 
 // Single-segment bar showing only the workspace pool share of a member's
@@ -294,6 +299,8 @@ function PoolCreditUsageBar({
   memberUsageLimit,
   effectiveLimit,
   isTotalAllowedUsagePending: isPending,
+  poolCapOverrideExpiresAt,
+  poolCapOverridePreviousAwuCredits,
 }: PoolCreditUsageBarProps) {
   const poolLimit = computePoolLimitAwuCredits({
     memberUsageLimit,
@@ -308,11 +315,34 @@ function PoolCreditUsageBar({
         ? 100
         : 0;
   const limitLabel = formatCredits(poolLimit);
+  const temporaryResetLabel =
+    poolCapOverrideExpiresAt !== null
+      ? poolCapOverridePreviousAwuCredits === null
+        ? `Resets to no personal limit on ${formatConsumptionDate(poolCapOverrideExpiresAt)}`
+        : `Resets to ${formatCredits(poolCapOverridePreviousAwuCredits)} credits on ${formatConsumptionDate(poolCapOverrideExpiresAt)}`
+      : null;
   return (
     <div className="flex w-full flex-col gap-1">
       <div className="flex justify-between text-xs tabular-nums text-foreground">
         <span>{formatCredits(consumedFromPool)}</span>
-        {isPending ? <Spinner size="xs" /> : <span>{limitLabel}</span>}
+        {isPending ? (
+          <Spinner size="xs" />
+        ) : (
+          <span className="inline-flex items-center gap-1">
+            <span>{limitLabel}</span>
+            {temporaryResetLabel && (
+              <Tooltip
+                tooltipTriggerAsChild
+                label={temporaryResetLabel}
+                trigger={
+                  <span className="inline-flex text-muted-foreground">
+                    <Icon visual={Clock} size="xs" />
+                  </span>
+                }
+              />
+            )}
+          </span>
+        )}
       </div>
       <div className="flex h-3 w-full items-center">
         <ProgressBar
@@ -708,6 +738,10 @@ function buildPoolCreditUsageColumn(
           effectiveLimit={info.row.original.spendLimitAwuCredits}
           isTotalAllowedUsagePending={
             info.row.original.isTotalAllowedUsagePending
+          }
+          poolCapOverrideExpiresAt={info.row.original.poolCapOverrideExpiresAt}
+          poolCapOverridePreviousAwuCredits={
+            info.row.original.poolCapOverridePreviousAwuCredits
           }
         />
       </div>
@@ -1286,6 +1320,9 @@ export function MembersUsageTable({
           spendLimitAwuCredits: m.spendLimitAwuCredits,
           spendLimitSource: m.spendLimitSource,
           spendLimitGroupName: m.spendLimitGroupName,
+          poolCapOverrideExpiresAt: m.poolCapOverrideExpiresAt,
+          poolCapOverridePreviousAwuCredits:
+            m.poolCapOverridePreviousAwuCredits,
           scheduledSeatType: m.scheduledSeatType,
           scheduledSeatChangeAt: m.scheduledSeatChangeAt,
           isTotalAllowedUsagePending: totalAllowedUsagePendingMemberIds.has(

@@ -1,3 +1,4 @@
+import { createClientExecutableFile } from "@app/lib/api/files/client_executable";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import { Authenticator } from "@app/lib/auth";
@@ -16,6 +17,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import type { MockFileVersion } from "@app/tests/utils/mocks/file_storage";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -1433,6 +1435,34 @@ describe("FileResource", () => {
       });
     });
 
+    it("surfaces an actionable untracked error when creating a Frame with a workspace API key", async () => {
+      const {
+        authenticator: auth,
+        workspace,
+        globalGroup,
+      } = await createResourceTest({});
+      const key = await KeyFactory.regular(globalGroup);
+      const apiKeyAuth = await Authenticator.fromKey(key, workspace.sId);
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const result = await createClientExecutableFile(apiKeyAuth, {
+        content: "export default function Frame() { return <div>Hello</div>; }",
+        conversationId: conversation.sId,
+        fileName: "Frame.tsx",
+        mimeType: frameContentType,
+      });
+
+      assert(result.isErr());
+      expect(result.error).toEqual({
+        tracked: false,
+        message:
+          "Frame file access requires a user signed in to Dust. Create or update this Frame in the Dust app.",
+      });
+    });
+
     it("refreshAuthorizedFileAccess replaces prior rows with the refreshed allowlist", async () => {
       const { authenticator: auth } = await createResourceTest({});
 
@@ -1475,11 +1505,12 @@ describe("FileResource", () => {
       vi.spyOn(FileResource, "fetchById").mockResolvedValue(null);
 
       const refreshed = await frameFile.refreshAuthorizedFileAccess(auth);
+      assert(refreshed.isOk());
 
-      expect(refreshed.frameContentHash).toBe(
+      expect(refreshed.value.frameContentHash).toBe(
         computeFrameContentHash('useFile("fil_ABCDEFGHIJ");')
       );
-      expect(refreshed.unverifiableRefs).toEqual(["fil_ABCDEFGHIJ"]);
+      expect(refreshed.value.unverifiableRefs).toEqual(["fil_ABCDEFGHIJ"]);
 
       const rows = await AuthorizedFileAccessModel.findAll({
         where: {

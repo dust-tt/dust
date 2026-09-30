@@ -1,3 +1,4 @@
+import { UserLocaleSync } from "@dust-tt/front/components/app/UserLocaleSync";
 import { ProfileOnboardingDialog } from "@dust-tt/front/components/onboarding/ProfileOnboardingDialog";
 import { AppAuthContextLayout } from "@dust-tt/front/components/sparkle/AppAuthContextLayout";
 import { computeIsMetronomeCheckout } from "@dust-tt/front/lib/client/subscription";
@@ -21,6 +22,11 @@ interface WorkspacePageProps {
   children?: ReactNode;
 }
 
+/**
+ * @cc [owner:sfriquet,label:product] startup-loader-waits-for-user-locale
+ * When the auth context loads, the startup loading screen MUST stay visible until `UserLocaleSync`
+ * reports ready, so the workspace is never shown in a locale it is about to switch away from.
+ */
 export function WorkspacePage({ children }: WorkspacePageProps) {
   const wId = useRequiredPathParam("wId");
   const isRequireCanUseProduct = useIsRequireCanUseProduct();
@@ -31,13 +37,13 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
 
   const signalAppReady = useAppReadyContext();
 
-  // Signal that the app is ready when auth is loaded or on error
-  // This will dismiss the loading screen
+  // Signal that the app is ready on error. Otherwise `UserLocaleSync` signals it once the user
+  // locale is active, which dismisses the loading screen.
   useEffect(() => {
-    if ((isAuthenticated && authContext) || authContextError) {
+    if (authContextError) {
       signalAppReady();
     }
-  }, [isAuthenticated, authContext, authContextError, signalAppReady]);
+  }, [authContextError, signalAppReady]);
 
   if (authContextError) {
     return <AuthErrorPage error={authContextError} />;
@@ -71,6 +77,7 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
 
   return (
     <AppAuthContextLayout authContext={authContext}>
+      <UserLocaleSync onReady={signalAppReady} />
       {isMetronomeCheckout && isRequireCanUseProduct && (
         <ProfileOnboardingDialog />
       )}

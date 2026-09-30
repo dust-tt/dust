@@ -37,7 +37,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { redactString } from "@app/types/shared/utils/string_utils";
+import {
+  redactObjectValues,
+  redactSecret,
+} from "@app/types/shared/utils/string_utils";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import {
   discoverAuthorizationServerMetadata,
@@ -62,8 +65,6 @@ import type {
 import { Op } from "sequelize";
 import type { Dispatcher } from "undici";
 import { fetch as undiciFetch } from "undici";
-
-const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
 export function getMCPAuthorizationScope({
   extraScopes,
@@ -99,7 +100,7 @@ async function getMCPServerEgressAgent(
   auth: Authenticator,
   serverUrl: string
 ): Promise<Dispatcher | undefined> {
-  if (await shouldUseStaticIpProxy(auth, serverUrl)) {
+  if (await shouldUseStaticIpProxy(auth, { url: serverUrl })) {
     const staticIPAgent = getStaticIPProxyAgent();
     if (staticIPAgent) {
       return staticIPAgent;
@@ -902,6 +903,12 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
   }
 
   // Serialization.
+  /**
+   * @cc [owner:pmilliotte,label:security;mcp] credentials-always-redacted
+   * `sharedSecret` and every `customHeaders` value MUST be passed through `redactSecret`, whatever
+   * the server's age or the caller. Code that authenticates to the server reads
+   * `getSharedSecret()` / `getCustomHeaders()`, never this output.
+   */
   toJSON(): Omit<
     RemoteMCPServerType,
     "url" | "lastSyncAt" | "lastError" | "sharedSecret"
@@ -918,32 +925,11 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     const sharedSecretValue = this.getSharedSecret();
     const customHeadersValue = this.getCustomHeaders();
 
-    const currentTime = new Date();
-    const createdAt = new Date(this.createdAt);
-    const timeDifference = Math.abs(
-      currentTime.getTime() - createdAt.getTime()
-    );
-    const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
-    const shouldRedact =
-      differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES;
+    const secret = sharedSecretValue ? redactSecret(sharedSecretValue) : null;
 
-    const secret = sharedSecretValue
-      ? shouldRedact
-        ? redactString(sharedSecretValue, 4)
-        : sharedSecretValue
+    const headers = customHeadersValue
+      ? redactObjectValues(customHeadersValue)
       : null;
-
-    const headers =
-      customHeadersValue && shouldRedact
-        ? Object.fromEntries(
-            Object.entries(customHeadersValue).map(([key, value]) => [
-              key,
-              value !== null && value !== undefined
-                ? redactString(String(value), 4)
-                : value,
-            ])
-          )
-        : customHeadersValue;
 
     return {
       sId: this.sId,

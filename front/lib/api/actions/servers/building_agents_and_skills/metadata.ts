@@ -11,6 +11,7 @@ import {
 } from "@app/types/assistant/skill_configuration_constants";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { SkillInstructionEditItemSchema } from "@app/types/suggestions/skill_suggestion";
+import { MAX_TAGS_PER_CHANGE } from "@app/types/tag";
 import { z } from "zod";
 
 export const BUILDING_AGENTS_AND_SKILLS_SERVER_NAME =
@@ -138,6 +139,16 @@ export const EditAgentSuggestionSchema = z.object({
       "The new publish state: 'visible' to publish the agent (visible to the " +
         "whole workspace), 'hidden' to unpublish it (visible to editors only)."
     ),
+  structuredOutput: z
+    .string()
+    .min(1)
+    .nullable()
+    .optional()
+    .describe(
+      "The JSON schema the agent's answers must follow, as a JSON string " +
+        '`{"type":"json_schema","json_schema":{"name":...,"schema":{...}}}`, replacing the ' +
+        "current one. `null` removes the structured output."
+    ),
   skills: z
     .object({
       addSkillIds: z
@@ -200,6 +211,7 @@ export const EditAgentSuggestionSchema = z.object({
     .object({
       addTags: z
         .array(z.string())
+        .max(MAX_TAGS_PER_CHANGE)
         .optional()
         .describe(
           "Names of the tags to add to the agent. A tag that does not exist yet is created " +
@@ -207,6 +219,7 @@ export const EditAgentSuggestionSchema = z.object({
         ),
       removeTags: z
         .array(z.string())
+        .max(MAX_TAGS_PER_CHANGE)
         .optional()
         .describe("Names of the agent's tags to remove from it."),
     })

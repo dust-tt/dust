@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wait for infra (when started in parallel), optional WorkOS seed, then mprocs app graph.
+# Wait for infra (when started in parallel), WorkOS seed, then mprocs app graph.
 set -euo pipefail
 
 DUST_DEV_SCRIPT_NAME=apps
@@ -53,7 +53,9 @@ if [ -n "${DEV_WORKOS_USER_ID:-}" ] && [ -n "${DEV_WORKOS_USER_EMAIL:-}" ]; then
   }
 else
   log "DEV_WORKOS_USER_ID/EMAIL not set — skipping seed (add runtime secrets, then restart apps)"
+  exit 1
 fi
+
 
 # Public HTTPS tunnels so E2B sandboxes can reach local front-api (:3000) and viz (:3007).
 # Soft-fails when NGROK_AUTHTOKEN is missing; URLs are also read by apply_local_overrides.

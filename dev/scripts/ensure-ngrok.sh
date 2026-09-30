@@ -32,28 +32,6 @@ ngrok_agent_up() {
   curl -sf "${NGROK_API_URL}/api/tunnels" >/dev/null 2>&1
 }
 
-# Stable per-container id so restarts keep the same endpoint names when possible.
-ngrok_dev_id() {
-  if [ -f "${NGROK_DEV_ID_FILE}" ]; then
-    local existing
-    existing="$(tr -d '[:space:]' <"${NGROK_DEV_ID_FILE}")"
-    if [ -n "${existing}" ]; then
-      printf '%s' "${existing}"
-      return 0
-    fi
-  fi
-  local id
-  id="$(openssl rand -hex 4)"
-  printf '%s\n' "${id}" >"${NGROK_DEV_ID_FILE}"
-  chmod 644 "${NGROK_DEV_ID_FILE}"
-  printf '%s' "${id}"
-}
-
-rotate_ngrok_dev_id() {
-  rm -f "${NGROK_DEV_ID_FILE}"
-  ngrok_dev_id >/dev/null
-}
-
 front_endpoint_url() {
   printf 'https://dust-dev-front-%s.%s' "$1" "${NGROK_DOMAIN_SUFFIX}"
 }
@@ -178,11 +156,10 @@ start_ngrok_agent() {
     return 1
   fi
 
-  local id front_url viz_url
-  id="$(ngrok_dev_id)"
-  front_url="$(front_endpoint_url "${id}")"
-  viz_url="$(viz_endpoint_url "${id}")"
-  write_ngrok_config "${id}"
+  local front_url viz_url
+  front_url="$(front_endpoint_url "${DEV_ENV_NAME}")"
+  viz_url="$(viz_endpoint_url "${DEV_ENV_NAME}")"
+  write_ngrok_config "${DEV_ENV_NAME}"
 
   log "Starting ngrok endpoints front=${front_url} viz=${viz_url}..."
   # NGROK_AUTHTOKEN is read from the environment by the ngrok agent.
@@ -285,34 +262,20 @@ if ! ngrok_agent_up; then
   fi
 fi
 
-DEV_ID="$(ngrok_dev_id)"
-PREFERRED_FRONT_URL="$(front_endpoint_url "${DEV_ID}")"
-PREFERRED_VIZ_URL="$(viz_endpoint_url "${DEV_ID}")"
+PREFERRED_FRONT_URL="$(front_endpoint_url "${DEV_ENV_NAME}")"
+PREFERRED_VIZ_URL="$(viz_endpoint_url "${DEV_ENV_NAME}")"
 
 # Front-api is required for sandbox API callbacks.
 if ! ensure_tunnel "${NGROK_FRONT_ADDR}" "${SBX_DEV_FRONT_URL_FILE}" \
   "Sandbox front tunnel (SBX_DEV_FRONT_URL)" "front-api" "${PREFERRED_FRONT_URL}"; then
-  # Endpoint name may already be claimed on the shared account — rotate and retry once.
-  log "front tunnel failed; rotating endpoint id and retrying once"
-  stop_ngrok_agent
-  rotate_ngrok_dev_id
-  DEV_ID="$(ngrok_dev_id)"
-  PREFERRED_FRONT_URL="$(front_endpoint_url "${DEV_ID}")"
-  PREFERRED_VIZ_URL="$(viz_endpoint_url "${DEV_ID}")"
-  if ! start_ngrok_agent || ! ensure_tunnel "${NGROK_FRONT_ADDR}" "${SBX_DEV_FRONT_URL_FILE}" \
-    "Sandbox front tunnel (SBX_DEV_FRONT_URL)" "front-api" "${PREFERRED_FRONT_URL}"; then
-    rm -f "${SBX_DEV_FRONT_URL_FILE}" "${SBX_DEV_VIZ_URL_FILE}"
-    exit 0
-  fi
+  # Endpoint name may already be claimed - fail hard.
+  log "front tunnel failed - check on https://dashboard.ngrok.com/endpoints what is holding ${PREFERRED_FRONT_URL};"
+  exit 1
 fi
 
 # Viz so sandboxes can fetch frame-runtime from local viz (:3007).
-# Soft-fail: some plans may not allow a second concurrent tunnel.
 if ! ensure_tunnel "${NGROK_VIZ_ADDR}" "${SBX_DEV_VIZ_URL_FILE}" \
   "Sandbox viz tunnel (SBX_DEV_VIZ_URL)" "viz" "${PREFERRED_VIZ_URL}"; then
-  log "viz tunnel (:3007) not available; sandboxes will fall back to VIZ_PUBLIC_URL"
-  rm -f "${SBX_DEV_VIZ_URL_FILE}"
-elif tunnels_share_public_url; then
-  log "viz tunnel collided with front URL; dropping viz URL file (sandboxes use VIZ_PUBLIC_URL)"
-  rm -f "${SBX_DEV_VIZ_URL_FILE}"
+  log "viz tunnel (:3007) - check on https://dashboard.ngrok.com/endpoints what is holding ${PREFERRED_VIZ_URL};"
+  exit 1
 fi

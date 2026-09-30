@@ -27,6 +27,7 @@ import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -119,7 +120,7 @@ function expectMcpError(
 }
 
 // An agent built on a restricted space its owner belongs to: a workspace admin outside that space
-// holds `admin` on it but not `read`, so they only get its light resource (no instructions).
+// holds `admin` on it but not `read`, so they fetch it without its content (no instructions).
 async function createAgentOnUnreadableSpace(workspace: WorkspaceType) {
   const owner = await addMember(workspace);
   const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -1152,6 +1153,47 @@ describe("building_agents_and_skills tools", () => {
         expect(pending[0].sId).not.toBe(previous.sId);
       });
 
+      it("keeps a pending suggestion of another kind", async () => {
+        const { authenticator, workspace, globalSpace } =
+          await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const server = await RemoteMCPServerFactory.create(workspace);
+        const view = await MCPServerViewFactory.create(
+          workspace,
+          server.sId,
+          globalSpace
+        );
+        const skill = await seedSkill(authenticator, { name: "Other Skill" });
+        const previous = await AgentSuggestionFactory.createSkills(
+          authenticator,
+          agent,
+          { suggestion: { action: "add", skillId: skill.sId } }
+        );
+
+        extractBatchId(
+          await runSuggest(authenticator, {
+            title: "Add ticket tool",
+            analysis: "The agent needs to open tickets.",
+            suggestions: [
+              {
+                kind: "edit_agent",
+                agentId: agent.sId,
+                tools: { addToolIds: [view.sId] },
+              },
+            ],
+          })
+        );
+
+        const pending =
+          await AgentSuggestionResource.listByAgentConfigurationId(
+            authenticator,
+            agent.sId,
+            { states: ["pending"], kind: "skills" }
+          );
+        expect(pending.map((s) => s.sId)).toEqual([previous.sId]);
+      });
+
       it("records the removal of one of the agent's tools", async () => {
         const { authenticator, workspace, globalSpace } =
           await createResourceTest({ role: "user" });
@@ -2165,6 +2207,146 @@ describe("building_agents_and_skills tools", () => {
             editTags(agent.sId, { addTags: ["Official"] })
           ),
           "protected tags"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editTags(agent.sId, {
+              addTags: Array.from({ length: 21 }, (_, i) => `Tag ${i}`),
+            })
+          ),
+          "at most 20 tags"
+        );
+      });
+    });
+
+    describe("structured output changes", () => {
+      const CITY_RESPONSE_FORMAT = JSON.stringify({
+        type: "json_schema",
+        json_schema: {
+          name: "city",
+          schema: {
+            type: "object",
+            properties: {
+              city: { type: "string" },
+              country: { type: "string" },
+            },
+            required: ["city", "country"],
+            additionalProperties: false,
+          },
+        },
+      });
+
+      const editStructuredOutput = (
+        agentId: string,
+        structuredOutput: string | null
+      ) => ({
+        title: "Answer in JSON",
+        analysis: "The agent's answers are consumed as JSON.",
+        suggestions: [{ kind: "edit_agent", agentId, structuredOutput }],
+      });
+
+      it("records one pending structured output suggestion, without applying it", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+
+        const batchId = extractBatchId(
+          await runSuggest(
+            authenticator,
+            editStructuredOutput(agent.sId, CITY_RESPONSE_FORMAT)
+          )
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          authenticator,
+          batchId
+        );
+        expect(batch?.agentSuggestions.map((s) => s.toJSON())).toMatchObject([
+          {
+            kind: "structured_output",
+            state: "pending",
+            suggestion: { responseFormat: CITY_RESPONSE_FORMAT },
+          },
+        ]);
+        const agentResource = await AgentResource.fetchById(
+          authenticator,
+          agent.sId
+        );
+        expect(
+          agentResource?.modelConfiguration.responseFormat
+        ).toBeUndefined();
+      });
+
+      it("records the removal of the agent's structured output", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent = await AgentConfigurationFactory.createTestAgent(
+          authenticator,
+          {
+            model: {
+              providerId: "openai",
+              modelId: "gpt-5-mini",
+              responseFormat: CITY_RESPONSE_FORMAT,
+            },
+          }
+        );
+
+        const batchId = extractBatchId(
+          await runSuggest(authenticator, editStructuredOutput(agent.sId, null))
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          authenticator,
+          batchId
+        );
+        expect(batch?.agentSuggestions.map((s) => s.toJSON())).toMatchObject([
+          { kind: "structured_output", suggestion: { responseFormat: null } },
+        ]);
+      });
+
+      it("rejects changes that are invalid or change nothing", async () => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const unsupportedModelAgent =
+          await AgentConfigurationFactory.createTestAgent(authenticator, {
+            name: "Mistral Agent",
+            model: { providerId: "mistral", modelId: MISTRAL_LARGE_MODEL_ID },
+          });
+
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editStructuredOutput(agent.sId, "{not json")
+          ),
+          "Invalid JSON"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editStructuredOutput(
+              agent.sId,
+              JSON.stringify({ type: "json_schema" })
+            )
+          ),
+          "Invalid response format"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editStructuredOutput(agent.sId, null)
+          ),
+          "no structured output to remove"
+        );
+        expectMcpError(
+          await runSuggest(
+            authenticator,
+            editStructuredOutput(
+              unsupportedModelAgent.sId,
+              CITY_RESPONSE_FORMAT
+            )
+          ),
+          "does not support structured output"
         );
       });
     });

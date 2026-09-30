@@ -68,6 +68,25 @@ describe("MCPOAuthProvider.getUpdatedExtraConfig", () => {
     );
   });
 
+  it("stamps static IP when the OAuth resource is a hardcoded official MCP URL", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const provider = new MCPOAuthProvider();
+
+    const updated = await provider.getUpdatedExtraConfig(authenticator, {
+      useCase: "platform_actions",
+      extraConfig: {
+        client_id: "client",
+        client_secret: "secret",
+        token_endpoint: "https://oauth2.googleapis.com/token",
+        authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+        resource: "https://bigquery.googleapis.com/mcp",
+        use_static_ip_proxy: "false",
+      },
+    });
+
+    expect(updated.use_static_ip_proxy).toBe("true");
+  });
+
   it("keeps workspace connection metadata authoritative for personal actions", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const provider = new MCPOAuthProvider();
