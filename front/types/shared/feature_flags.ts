@@ -472,12 +472,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "sfriquet",
   },
-  conversational_building: {
-    description:
-      "Enable the building_agents_and_skills MCP server: agents can propose agent and skill updates from a conversation as reviewable suggestions.",
-    stage: "dust_only",
-    owner: "fabiencelier",
-  },
   agent_message_consumption_writes: {
     description:
       "Write agent-message consumption items and outbox events as usage is incurred. Shadow mode keeps existing billing.",

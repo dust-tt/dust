@@ -2,7 +2,6 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -12,13 +11,10 @@ import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-async function setup({ withFlag = true }: { withFlag?: boolean } = {}) {
+async function setup() {
   const { workspace, auth } = await createPrivateApiMockRequest({
     role: "user",
   });
-  if (withFlag) {
-    await FeatureFlagFactory.basic(auth, "conversational_building");
-  }
 
   const agentConfiguration =
     await AgentConfigurationFactory.createTestAgent(auth);

@@ -11,7 +11,6 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -37,7 +36,6 @@ async function setup() {
   const { workspace, auth } = await createPrivateApiMockRequest({
     role: "user",
   });
-  await FeatureFlagFactory.basic(auth, "conversational_building");
 
   const agentConfiguration =
     await AgentConfigurationFactory.createTestAgent(auth);
@@ -132,8 +130,6 @@ async function setupSkill(
   const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
     role,
   });
-
-  await FeatureFlagFactory.basic(auth, "conversational_building");
 
   const skill = await SkillFactory.create(auth, options.skill);
   // Refresh authenticator to pick up the skill's editor group membership.
@@ -581,7 +577,6 @@ describe("approving skill suggestions", () => {
     const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
       role: "user",
     });
-    await FeatureFlagFactory.basic(auth, "conversational_building");
     const { restrictedSpace, view } = await toolViewInRestrictedSpace(
       workspace,
       auth
@@ -707,10 +702,9 @@ describe("approving skill suggestions", () => {
   });
 
   it("allows an admin who is not an editor to approve and apply a delete suggestion", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace } = await createPrivateApiMockRequest({
       role: "admin",
     });
-    await FeatureFlagFactory.basic(auth, "conversational_building");
 
     const skillOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, skillOwner, {
@@ -1083,7 +1077,6 @@ async function setupAgent(options: { role?: MembershipRoleType } = {}) {
   const { workspace, auth, user } = await createPrivateApiMockRequest({
     role: options.role ?? "user",
   });
-  await FeatureFlagFactory.basic(auth, "conversational_building");
   const agent = await AgentConfigurationFactory.createTestAgent(auth);
   const batch = await BatchSuggestionFactory.createEmpty(auth);
 
@@ -1096,7 +1089,6 @@ describe("approving agent suggestions", () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
     });
-    await FeatureFlagFactory.basic(auth, "conversational_building");
     const batch = await BatchSuggestionFactory.createEmpty(auth);
     const pending = await AgentResource.createPending(auth);
     if (pending.isErr()) {

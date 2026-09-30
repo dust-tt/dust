@@ -28,8 +28,6 @@ import {
   SKILLS_TOOLS_GUIDANCE_SECTION,
   workflowVisualizationSection,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/agent_suggestions_shared";
-import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   SKILL_INSTRUCTIONS_GUIDANCE_BODY,
   SKILL_KNOWLEDGE_NODES_SECTION,
@@ -305,9 +303,4 @@ export const conversationalBuildingSkill = {
   ],
   version: 1,
   icon: "ActionListCheckIcon",
-  isRestricted: async (auth: Authenticator) => {
-    const flags = await getFeatureFlags(auth);
-
-    return !flags.includes("conversational_building");
-  },
 } as const satisfies GlobalSkillDefinition;
