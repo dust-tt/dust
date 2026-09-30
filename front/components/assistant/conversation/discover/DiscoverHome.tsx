@@ -258,7 +258,10 @@ function FeaturedCarousel({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <SectionTitle title="Featured" isRefreshing={isRefreshing} />
+        <SectionTitle
+          title="Curated by your admins"
+          isRefreshing={isRefreshing}
+        />
         {(canScroll.left || canScroll.right) && (
           <div className="flex items-center gap-1">
             <Button
