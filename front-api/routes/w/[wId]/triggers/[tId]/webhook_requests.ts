@@ -29,6 +29,21 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
+  // @cc [owner:frankaloia,label:security] webhook-requests-ownership
+  // Only the trigger's editor or a workspace manager/admin may read its
+  // stored webhook payloads. Any other workspace member MUST receive 403.
+  if (!auth.isManager() && !trigger.isEditedBy(auth)) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only managers, admins, or the editor of the" +
+          " trigger can view its webhook requests.",
+      },
+    });
+  }
+
   try {
     const r = await fetchRecentWebhookRequestTriggersWithPayload(auth, {
       trigger: trigger.toJSON(),

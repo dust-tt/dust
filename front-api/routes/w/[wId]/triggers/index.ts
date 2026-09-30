@@ -6,6 +6,7 @@ import {
   TriggerResource,
 } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import logger from "@app/logger/logger";
 import type { GetTriggersResponseBody } from "@app/types/api/assistant/configuration/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
@@ -233,9 +234,28 @@ app.patch(
         });
       }
 
+      // @cc [owner:frankaloia,label:security] webhook-source-view-workspace-ownership
+      // The webhookSourceViewId supplied by the caller MUST belong to the
+      // caller's workspace. Passing a foreign view ID MUST be rejected with
+      // 400 before the trigger is persisted.
       const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
         ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
         : null;
+
+      if (webhookSourceViewId !== null) {
+        const views = await WebhookSourcesViewResource.fetchByIds(auth, [
+          validatedTrigger.webhookSourceViewId,
+        ]);
+        if (views.length === 0) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Webhook source view not found or not accessible.",
+            },
+          });
+        }
+      }
 
       const executionMode = validatedTrigger.executionMode;
       const spaceIdRes = await resolveTriggerSpaceId(
@@ -362,9 +382,30 @@ app.post(
       }
 
       const validatedTrigger = triggerValidation.data;
+
+      // @cc [owner:frankaloia,label:security] webhook-source-view-workspace-ownership
+      // The webhookSourceViewId supplied by the caller MUST belong to the
+      // caller's workspace. Passing a foreign view ID MUST be rejected with
+      // 400 before the trigger is persisted.
       const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
         ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
         : null;
+
+      if (webhookSourceViewId !== null) {
+        const views = await WebhookSourcesViewResource.fetchByIds(auth, [
+          validatedTrigger.webhookSourceViewId,
+        ]);
+        if (views.length === 0) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Webhook source view not found or not accessible.",
+            },
+          });
+        }
+      }
+
       const executionPerDay = isWebhookTriggerData(validatedTrigger)
         ? validatedTrigger.executionPerDayLimitOverride
         : null;
