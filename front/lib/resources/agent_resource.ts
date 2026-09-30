@@ -126,7 +126,14 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op, UniqueConstraintError, ValidationError } from "sequelize";
+import {
+  col,
+  fn,
+  Op,
+  where as sequelizeWhere,
+  UniqueConstraintError,
+  ValidationError,
+} from "sequelize";
 
 // A draft belongs to its current author until it is published. This is ownership, not an editor
 // grant: once the agent leaves draft status, only explicit grants confer editorship.
@@ -1178,17 +1185,42 @@ export class AgentResource
     return [...new Set(agents.map((agent) => agent.sId))];
   }
 
-  // The single active agent whose current version bears this exact name (active names are unique per
-  // workspace), or null when none matches or the caller cannot fetch it.
+  /**
+   * @cc [owner:tdraier,label:product] agent-fetch-by-name
+   * Resolves the active agent the caller can fetch whose name equals `name`, ignoring case, or null.
+   * A custom agent wins over a global one of the same name. When several custom agents match (active
+   * names are unique only case-sensitively), the one named exactly `name` wins; otherwise the name
+   * is ambiguous and nothing is returned.
+   */
   static async fetchByName(
     auth: Authenticator,
     name: string
   ): Promise<AgentResource | null> {
+    const lowerName = name.toLowerCase();
     const agentIds = await this.listCurrentVersionAgentIds(auth, {
-      agentWhere: { name, status: "active" },
+      agentWhere: {
+        status: "active",
+        [Op.and]: [sequelizeWhere(fn("lower", col("agent.name")), lowerName)],
+      },
     });
-    const [resource] = await this.fetchByIds(auth, agentIds);
-    return resource ?? null;
+    const customMatches = await this.fetchByIds(auth, agentIds);
+    if (customMatches.length > 0) {
+      const exactMatch = customMatches.find(
+        (resource) => resource.name === name
+      );
+      return (
+        exactMatch ?? (customMatches.length === 1 ? customMatches[0] : null)
+      );
+    }
+
+    const globalAgents = await this.listGlobalAgents(auth);
+    return (
+      globalAgents.find(
+        (resource) =>
+          resource.status === "active" &&
+          resource.name.toLowerCase() === lowerName
+      ) ?? null
+    );
   }
 
   // Every global agent the workspace offers, disabled ones included (each carries its status), as

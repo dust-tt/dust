@@ -2480,6 +2480,62 @@ describe("AgentResource", () => {
       ).toBeNull();
     });
 
+    it("fetchByName ignores case and prefers the exact name when several agents match", async () => {
+      const exact = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Case Agent" }
+      );
+      await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "case agent" }
+      );
+
+      expect(
+        (
+          await AgentResource.fetchByName(
+            testContext.authenticator,
+            "Case Agent"
+          )
+        )?.sId
+      ).toBe(exact.sId);
+      expect(
+        await AgentResource.fetchByName(testContext.authenticator, "CASE AGENT")
+      ).toBeNull();
+    });
+
+    it("fetchByName resolves a single custom agent whatever the case", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Mixed Case Agent" }
+      );
+
+      expect(
+        (
+          await AgentResource.fetchByName(
+            testContext.authenticator,
+            "mixed CASE agent"
+          )
+        )?.sId
+      ).toBe(agent.sId);
+    });
+
+    it("fetchByName falls back to a global agent of that name", async () => {
+      const helper = await AgentResource.fetchById(
+        testContext.authenticator,
+        GLOBAL_AGENTS_SID.HELPER
+      );
+      assert(helper);
+
+      expect(
+        (
+          await AgentResource.fetchByName(
+            testContext.authenticator,
+            helper.name.toUpperCase()
+          )
+        )?.sId
+      ).toBe(GLOBAL_AGENTS_SID.HELPER);
+    });
+
     it("listByWorkspace returns the workspace's active agents", async () => {
       const first = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
