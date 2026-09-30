@@ -173,14 +173,19 @@ const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
 
 // Full-only payload: the private `AgentConfigurationModel` columns. Never loaded with the resource:
 // read on demand through `fetchContent`/`batchFetchContent` (see `agent-content-on-demand`).
-export type AgentResourceContent = {
+export type AgentResourceInstructions = {
   instructions: string | null;
   instructionsHtml: string | null;
 };
 
-export type AgentContentEnrichment = { content: AgentResourceContent | null };
+export type AgentContentEnrichment = {
+  content: AgentResourceInstructions | null;
+};
 
-const AGENT_CONTENT_ATTRIBUTES = ["instructions", "instructionsHtml"] as const;
+const AGENT_INSTRUCTIONS_ATTRIBUTES = [
+  "instructions",
+  "instructionsHtml",
+] as const;
 
 // The outcome of a `bulkUpdate`: the agents whose save succeeded (`updatedAgentIds`, a change
 // applied or an already-satisfied no-op), and the requested ids that were skipped (not resolvable,
@@ -463,7 +468,7 @@ export class AgentResource
   private _codeDefinedSkillIds: string[] = [];
   // Caller-independent resources (loaded, not yet materialized) are full; `materialize` narrows it.
   private _canViewContent = true;
-  private _globalContent: AgentResourceContent | null = null;
+  private _globalContent: AgentResourceInstructions | null = null;
 
   private _verbs: Set<GrantVerb> = new Set();
   private _isRegularApiKey = false;
@@ -538,7 +543,9 @@ export class AgentResource
    * resource (see `unreadable-agent-is-light`). A global agent's content is code-defined, built with
    * the resource and served from memory.
    */
-  async fetchContent(this: FullAgentResource): Promise<AgentResourceContent> {
+  async fetchContent(
+    this: FullAgentResource
+  ): Promise<AgentResourceInstructions> {
     const contents = await AgentResource.batchFetchContent([this]);
     const content = contents.get(this);
     assert(content, `Unexpected: missing content for agent ${this.sId}`);
@@ -548,14 +555,14 @@ export class AgentResource
 
   static async batchFetchContent(
     resources: AgentResource[]
-  ): Promise<Map<AgentResource, AgentResourceContent | null>> {
+  ): Promise<Map<AgentResource, AgentResourceInstructions | null>> {
     const customResources = resources.filter(
       (resource) => resource.isFull() && resource.scope !== "global"
     );
     const configurations =
       customResources.length > 0
         ? await AgentConfigurationModel.findAll({
-            attributes: ["id", ...AGENT_CONTENT_ATTRIBUTES],
+            attributes: ["id", ...AGENT_INSTRUCTIONS_ATTRIBUTES],
             where: {
               id: uniq(
                 customResources.map(
@@ -914,7 +921,7 @@ export class AgentResource
 
     // One statement, so the `currentVersion` pointer and the version rows are read consistently.
     const configurations = await AgentConfigurationModel.findAll({
-      attributes: { exclude: [...AGENT_CONTENT_ATTRIBUTES] },
+      attributes: { exclude: [...AGENT_INSTRUCTIONS_ATTRIBUTES] },
       where: {
         workspaceId: this.workspaceId,
         agentId: this.id,
@@ -1192,7 +1199,7 @@ export class AgentResource
         {
           model: AgentConfigurationModel,
           required: true,
-          attributes: { exclude: [...AGENT_CONTENT_ATTRIBUTES] },
+          attributes: { exclude: [...AGENT_INSTRUCTIONS_ATTRIBUTES] },
           where: { version: { [Op.col]: "agent.currentVersion" } },
         },
       ],
@@ -3091,7 +3098,11 @@ export class AgentResource
       content,
       toolIds,
       skillIds,
-    }: { content: AgentResourceContent; toolIds: string[]; skillIds: string[] }
+    }: {
+      content: AgentResourceInstructions;
+      toolIds: string[];
+      skillIds: string[];
+    }
   ): {
     sId: string;
     name: string;
@@ -3119,7 +3130,7 @@ export class AgentResource
       actions,
       skills,
     }: {
-      content: AgentResourceContent;
+      content: AgentResourceInstructions;
       tags: TagResource[];
       actions: MCPServerConfigurationType[];
       skills: SkillResource[];
