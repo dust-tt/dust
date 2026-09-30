@@ -71,7 +71,7 @@ const WEBHOOK_REQUEST_MAX_SIZE_BYTES = 2 * 1024 * 1024;
 const app = createHono();
 
 /**
- * @cc [owner:flvndvd,label:security;performance] body-limit-before-buffer
+ * @cc [owner:frankaloia,label:security;performance] body-limit-before-buffer
  * The `bodyLimit` middleware MUST be applied before the handler reads the body.
  * This ensures oversized requests are rejected at the middleware layer without
  * buffering the full payload in memory, preventing CWE-770 resource exhaustion.

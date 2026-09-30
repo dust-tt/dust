@@ -342,7 +342,7 @@ type EmailWebhookErrorLogContext = {
 };
 
 /**
- * @cc [owner:flvndvd,label:security] temp-file-cleanup
+ * @cc [owner:frankaloia,label:security] temp-file-cleanup
  * All temporary files written by formidable during multipart parsing MUST be
  * deleted before this function returns. Files included in the returned
  * `InboundEmail.attachments` are excluded from cleanup here — callers are

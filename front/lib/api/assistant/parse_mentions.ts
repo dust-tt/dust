@@ -5,6 +5,8 @@ import type { RichAgentMention } from "@app/types/assistant/mentions";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 
 const MAX_MENTION_LABEL_LENGTH = 1000;
+// Cap markdown to avoid O(k×n) toLowerCase cost on unbounded inputs.
+const MAX_MARKDOWN_LENGTH = 100_000;
 
 /**
  * Parses pasted text containing @ mentions and converts them to the proper
@@ -18,6 +20,11 @@ export async function parseMentionsInMarkdown({
   auth: Authenticator;
   markdown: string;
 }): Promise<string> {
+  // Bound input length to avoid O(k×n) cost from per-replacement toLowerCase.
+  if (markdown.length > MAX_MARKDOWN_LENGTH) {
+    return markdown;
+  }
+
   // Fetch agent configurations.
   const agentConfigurations = await getAgentConfigurationsForView({
     auth,
