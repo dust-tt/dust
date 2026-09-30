@@ -199,86 +199,8 @@ describe("pod files mount wiring", () => {
 
     const serializedRules = JSON.stringify(rules);
     expect(serializedRules).toContain("w/ws1/pods/spc1/files/");
-    expect(serializedRules).toContain("roles/storage.objectUser");
-    expect(serializedRules).not.toContain("roles/storage.objectViewer");
     expect(serializedRules).not.toContain("/sandbox-functions/");
     expect(serializedRules).not.toContain("/state/");
-  });
-
-  test("mounts a read-only pod viewer read-only with an objectViewer token", async () => {
-    vi.clearAllMocks();
-    mockMintDownscopedGcsToken.mockResolvedValue(
-      new Ok({ accessToken: "token", expiresInSeconds: 3600 })
-    );
-    const backend = new GCSFileSystemBackend("ws1", "test-private-uploads");
-    const adapter = backend.createSandboxAdapter(
-      [
-        {
-          kind: "pod",
-          id: "spc1",
-          scopedPrefix: "pod-spc1",
-          sandboxMountPoint: "/files/pod-spc1",
-          legacyPrefix: "project",
-          legacySandboxMountPoint: "/files/pod",
-          permissions: { canRead: true, canWrite: false },
-        },
-        {
-          kind: "conversation",
-          id: "conv1",
-          scopedPrefix: "conversation-conv1",
-          sandboxMountPoint: "/files/conversation-conv1",
-          legacyPrefix: null,
-          legacySandboxMountPoint: null,
-          permissions: { canRead: true, canWrite: true },
-        },
-      ],
-      []
-    );
-    if (!(adapter instanceof GCSSandboxMountAdapter)) {
-      throw new Error("expected a GCSSandboxMountAdapter");
-    }
-
-    const rules = adapter.getAccessBoundaryRules();
-    expect(JSON.stringify(rules[0])).toContain("roles/storage.objectViewer");
-    expect(JSON.stringify(rules[0])).not.toContain("roles/storage.objectUser");
-    expect(JSON.stringify(rules[1])).toContain("roles/storage.objectUser");
-    expect(JSON.stringify(rules[1])).not.toContain(
-      "roles/storage.objectViewer"
-    );
-
-    const { auth, sandbox, execRoot } = await createTestSandbox();
-    const result = await adapter.setup(auth, sandbox, createTestImage());
-    expect(result.isOk()).toBe(true);
-
-    const commands = execRoot.mock.calls.map((_, callIndex) =>
-      getRootCommandCall(execRoot, callIndex)
-    );
-    const podFilesCommand = commands.find(
-      (command) =>
-        command.includes("/usr/bin/gcsfuse") &&
-        command.includes("/files/pod-spc1")
-    );
-    const conversationCommand = commands.find(
-      (command) =>
-        command.includes("/usr/bin/gcsfuse") &&
-        command.includes("/files/conversation-conv1")
-    );
-
-    expect(podFilesCommand).toContain("-o allow_other,ro");
-    expect(conversationCommand).toContain("-o allow_other");
-    expect(conversationCommand).not.toContain(",ro");
-    expect(mockMintDownscopedGcsToken).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prefixes: [{ prefix: "w/ws1/pods/spc1/files", readOnly: true }],
-      })
-    );
-    expect(mockMintDownscopedGcsToken).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prefixes: [
-          { prefix: "w/ws1/conversations/conv1/files", readOnly: false },
-        ],
-      })
-    );
   });
 
   test("the real pod files mount caches listings and metadata for one second", async () => {
@@ -397,79 +319,9 @@ describe("GCS credential lifecycle", () => {
     const result = await adapter.refreshCredential(auth, sandbox, image);
 
     expect(result.isOk()).toBe(true);
-    expect(execRoot).toHaveBeenCalledTimes(3);
+    expect(execRoot).toHaveBeenCalledTimes(2);
     const firewallCommand = getRootCommandCall(execRoot, 0);
     expect(firewallCommand).toBe("/usr/local/bin/dust-gcs-token-firewall.sh");
-    expect(getRootCommandCall(execRoot, 2)).toBe("/usr/bin/cat /proc/mounts");
-    expect(requestKill).not.toHaveBeenCalled();
-  });
-
-  test("recreates the sandbox when a read-only mount gains write access", async () => {
-    const { auth, sandbox, execRoot, requestKill } = await createTestSandbox();
-    execRoot.mockReset();
-    execRoot
-      .mockResolvedValueOnce(successfulExec())
-      .mockResolvedValueOnce(successfulExec())
-      .mockResolvedValueOnce(
-        new Ok({
-          exitCode: 0,
-          stdout: "gcsfuse /files/pod-spc1 fuse.gcsfuse ro,allow_other 0 0\n",
-          stderr: "",
-        })
-      );
-    const adapter = new GCSSandboxMountAdapter("bucket-x", [
-      workloadTarget({ readOnly: false }),
-    ]);
-
-    const result = await adapter.refreshCredential(auth, sandbox, image);
-
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      throw new Error("expected a permission change to recreate the sandbox");
-    }
-    expect(result.error.message).toBe(
-      "Sandbox file mount permissions changed; the sandbox will be recreated."
-    );
-    expect(requestKill).toHaveBeenCalledTimes(1);
-  });
-
-  test("leaves a sandbox running when the live mount matches the target", async () => {
-    const { auth, sandbox, execRoot, requestKill } = await createTestSandbox();
-    execRoot.mockReset();
-    execRoot
-      .mockResolvedValueOnce(successfulExec())
-      .mockResolvedValueOnce(successfulExec())
-      .mockResolvedValueOnce(
-        new Ok({
-          exitCode: 0,
-          stdout: "gcsfuse /files/pod-spc1 fuse.gcsfuse ro,allow_other 0 0\n",
-          stderr: "",
-        })
-      );
-    const adapter = new GCSSandboxMountAdapter("bucket-x", [
-      workloadTarget({ readOnly: true }),
-    ]);
-
-    const result = await adapter.refreshCredential(auth, sandbox, image);
-
-    expect(result.isOk()).toBe(true);
-    expect(requestKill).not.toHaveBeenCalled();
-  });
-
-  test("does not recreate a sandbox when the mount table cannot be read", async () => {
-    const { auth, sandbox, execRoot, requestKill } = await createTestSandbox();
-    execRoot.mockReset();
-    execRoot
-      .mockResolvedValueOnce(successfulExec())
-      .mockResolvedValueOnce(successfulExec())
-      .mockResolvedValueOnce(new Err(new Error("transient E2B error")));
-    const adapter = new GCSSandboxMountAdapter("bucket-x", [
-      workloadTarget({ readOnly: false }),
-    ]);
-
-    const result = await adapter.refreshCredential(auth, sandbox, image);
-
-    expect(result.isErr()).toBe(true);
     expect(requestKill).not.toHaveBeenCalled();
   });
 

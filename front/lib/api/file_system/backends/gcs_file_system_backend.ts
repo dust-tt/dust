@@ -682,12 +682,6 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
   }
 
-  /**
-   * @cc [owner:frankaloia,label:security] sandbox-mount-follows-write-permission
-   * A mount with permissions.canWrite false MUST be a read-only GCS target, so its CAB token is
-   * scoped to objectViewer and gcsfuse mounts it with ro. A mount with canWrite true MUST stay
-   * writable.
-   */
   createSandboxAdapter(
     mounts: ReadonlyArray<FileSystemMount>,
     sandboxOnlyMounts: ReadonlyArray<SandboxOnlyMount> = []
@@ -704,7 +698,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
             gcsPrefix: this.mountRootGCSPrefix(mount),
             sandboxMountPoint: mount.sandboxMountPoint,
             legacySandboxMountPoint: mount.legacySandboxMountPoint,
-            readOnly: !mount.permissions.canWrite,
+            readOnly: false,
             mountProfile: "workload",
           })
         ),

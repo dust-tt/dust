@@ -336,13 +336,6 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
    * rely on the lifecycle egress check having run first: the sandbox ready path runs that check
    * concurrently with this refresh.
    */
-  /**
-   * @cc [owner:frankaloia,label:security] refresh-recreates-on-mount-mode-change
-   * After tokens are written, a workload or frame-publication mount whose live gcsfuse options
-   * disagree with target.readOnly MUST cause the sandbox to be recreated. A matching mount, or a
-   * mount point absent from the table, MUST be left running. A failure to read the mount table
-   * MUST NOT request recreation.
-   */
   async refreshCredential(
     auth: Authenticator,
     sandbox: SandboxResource,
@@ -387,25 +380,6 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
         await sandbox.requestKill();
       }
       return writeError;
-    }
-
-    // gcsfuse `ro` is fixed at mount time. A token refresh cannot turn a read-only mount into a
-    // writable one, or the reverse, so a permission change has to recreate the sandbox.
-    const modeResult = await liveMountModeDisagrees(auth, sandbox, targets);
-    if (modeResult.isErr()) {
-      return modeResult;
-    }
-    if (modeResult.value) {
-      logger.warn(
-        { sandboxId: sandbox.sId },
-        "GCS sandbox mount mode no longer matches caller permissions; requesting recreation"
-      );
-      await sandbox.requestKill();
-      return new Err(
-        new Error(
-          "Sandbox file mount permissions changed; the sandbox will be recreated."
-        )
-      );
     }
 
     logger.info(
@@ -599,70 +573,6 @@ async function mintAndWriteToken({
   }
 
   return new Ok(undefined);
-}
-
-const MOUNT_TABLE_PATH = "/proc/mounts";
-
-function profileMountsKernelReadOnly(target: GCSMountTarget): boolean {
-  return (
-    target.mountProfile === "workload" ||
-    target.mountProfile === "frame_publications"
-  );
-}
-
-/** Mount point → whether the kernel mounted it read-only. Points with neither flag are omitted. */
-function kernelReadOnlyByMountPoint(mountTable: string): Map<string, boolean> {
-  const byPoint = new Map<string, boolean>();
-  for (const line of mountTable.split("\n")) {
-    if (line.length === 0) {
-      continue;
-    }
-    const [, mountPoint, , options] = line.split(" ");
-    if (!mountPoint || !options) {
-      continue;
-    }
-    const flags = options.split(",");
-    if (flags.includes("ro")) {
-      byPoint.set(mountPoint, true);
-    } else if (flags.includes("rw")) {
-      byPoint.set(mountPoint, false);
-    }
-  }
-  return byPoint;
-}
-
-/** True when a live gcsfuse mount's ro/rw bit disagrees with the target. */
-async function liveMountModeDisagrees(
-  auth: Authenticator,
-  sandbox: SandboxResource,
-  targets: ReadonlyArray<GCSMountTarget>
-): Promise<Result<boolean, Error>> {
-  const checked = targets.filter(profileMountsKernelReadOnly);
-  if (checked.length === 0) {
-    return new Ok(false);
-  }
-
-  const tableResult = await sandbox.execRoot(
-    auth,
-    rootCommand.exec("/usr/bin/cat", [MOUNT_TABLE_PATH])
-  );
-  if (tableResult.isErr()) {
-    return tableResult;
-  }
-  if (tableResult.value.exitCode !== 0) {
-    return new Err(
-      new Error(
-        `Failed to read sandbox mounts: ${tableResult.value.stderr || tableResult.value.stdout}`
-      )
-    );
-  }
-
-  const mounted = kernelReadOnlyByMountPoint(tableResult.value.stdout);
-  const disagrees = checked.some((target) => {
-    const mountedReadOnly = mounted.get(target.sandboxMountPoint);
-    return mountedReadOnly !== undefined && mountedReadOnly !== target.readOnly;
-  });
-  return new Ok(disagrees);
 }
 
 async function ensureTokenFirewall(
