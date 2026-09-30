@@ -87,7 +87,25 @@ export function AdminSettingsSearchNav({
       return;
     }
     setQuery("");
-    void router.push(buildAdminSettingHref(menu.href, entry));
+    const href = buildAdminSettingHref(menu.href, entry);
+    const target = new URL(href, window.location.origin);
+    const samePage =
+      target.pathname === window.location.pathname &&
+      target.search === window.location.search;
+
+    if (samePage) {
+      // React Router updates the hash via history.pushState, which does not
+      // fire `hashchange`. Assigning location.hash does, so the highlight hook
+      // re-runs. Clear first when the hash is unchanged so the jump re-triggers.
+      const nextHash = `#${entry.sectionId}`;
+      if (window.location.hash === nextHash) {
+        window.location.hash = "";
+      }
+      window.location.hash = entry.sectionId;
+      return;
+    }
+
+    void router.push(href);
   };
 
   return (
