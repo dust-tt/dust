@@ -157,6 +157,7 @@ export function DiscoverHome({
     <>
       {!isFeaturedHidden && (
         <FeaturedCarousel
+          title={`Curated by ${owner.name}`}
           items={featured}
           isLoading={isFeaturedLoadingAll}
           isRefreshing={isCatalogRefreshing}
@@ -206,6 +207,7 @@ function SectionTitle({ title, isRefreshing }: SectionTitleProps) {
 }
 
 interface FeaturedCarouselProps {
+  title: string;
   items: CatalogItem[];
   isLoading: boolean;
   isRefreshing: boolean;
@@ -213,6 +215,7 @@ interface FeaturedCarouselProps {
 }
 
 function FeaturedCarousel({
+  title,
   items,
   isLoading,
   isRefreshing,
@@ -258,10 +261,7 @@ function FeaturedCarousel({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <SectionTitle
-          title="Curated by your admins"
-          isRefreshing={isRefreshing}
-        />
+        <SectionTitle title={title} isRefreshing={isRefreshing} />
         {(canScroll.left || canScroll.right) && (
           <div className="flex items-center gap-1">
             <Button
