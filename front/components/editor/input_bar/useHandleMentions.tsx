@@ -49,9 +49,15 @@ const useHandleMentions = ({
   stickyMentions,
 }: UseHandleMentionsOptions) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
-  const { setSelectedSingleAgent } = useContext(InputBarContext);
+  const {
+    setSelectedSingleAgent,
+    setSuppressDefaultAgent,
+    suppressDefaultAgent,
+  } = useContext(InputBarContext);
   // When present, useAgentFromSearchParam owns the selection on the new-conversation page.
   const agentSearchParam = useSearchParam("agent");
+  // When present, useUserFromSearchParam owns the composer and clears any agent.
+  const userSearchParam = useSearchParam("user");
 
   // Priority: draft > sticky mentions > @dust fallback.
   // Also resets when the conversation changes so stale state doesn't leak.
@@ -67,11 +73,23 @@ const useHandleMentions = ({
     if (currentId !== prevConversationIdRef.current) {
       prevConversationIdRef.current = currentId;
       externalAgentSetRef.current = false;
+      setSuppressDefaultAgent(false);
       setSelectedSingleAgent(null);
     }
 
     // An external source (URL param) already set the agent — do not override.
     if (externalAgentSetRef.current) {
+      return;
+    }
+
+    // New conversation with ?user= (or after it applied): leave the composer to
+    // useUserFromSearchParam (user mention, no agent). Do not apply @dust.
+    if (
+      (userSearchParam || suppressDefaultAgent) &&
+      !conversation &&
+      !isAgentBuilder
+    ) {
+      setSelectedSingleAgent(null);
       return;
     }
 
@@ -127,12 +145,15 @@ const useHandleMentions = ({
     }
   }, [
     agentSearchParam,
+    userSearchParam,
+    suppressDefaultAgent,
     isAgentBuilder,
     conversation,
     stickyMentions,
     allAgents,
     getDraft,
     setSelectedSingleAgent,
+    setSuppressDefaultAgent,
     defaultAgentId,
     isDefaultAgentLoading,
   ]);
@@ -140,12 +161,19 @@ const useHandleMentions = ({
   useEffect(() => {
     if (selectedAgent) {
       // @TODO we should handle this in each event handler and not inside the useEffect
+      setSuppressDefaultAgent(false);
       setSelectedSingleAgent(selectedAgent);
       externalAgentSetRef.current = true;
     } else if (pendingInputText && !pendingInputText.replace) {
       queueMicrotask(() => editorService.insertText(pendingInputText.text));
     }
-  }, [selectedAgent, pendingInputText, editorService, setSelectedSingleAgent]);
+  }, [
+    selectedAgent,
+    pendingInputText,
+    editorService,
+    setSelectedSingleAgent,
+    setSuppressDefaultAgent,
+  ]);
 
   return { stickyMentionsTextContent };
 };
