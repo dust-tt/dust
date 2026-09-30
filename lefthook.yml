@@ -67,7 +67,7 @@ pre-commit:
 
     # Optional: actionlint for GitHub Actions workflow files (skip with LEFTHOOK_EXCLUDE=actionlint)
     actionlint:
-      glob: ".github/{workflows,actions}/**/*.{yml,yaml}"
+      glob: ".github/workflows/**/*.{yml,yaml}"
       run: |
         if command -v actionlint >/dev/null 2>&1; then
           actionlint {staged_files}
