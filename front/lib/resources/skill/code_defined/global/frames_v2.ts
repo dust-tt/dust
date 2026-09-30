@@ -751,4 +751,4 @@ the UI linter for v2 Frames, and run \`dsbx frame publish\` in the same Computer
 When fixing a validation or runtime problem, preserve working structure and make the smallest
 targeted edit. ${hasFunctions ? "Do not replace an entire UI or function for a localized state, schema, or styling bug." : "Do not replace an entire UI for a localized state or styling bug."}
 
-${buildInteractiveContentAuthoringProseV2({ hasDocuments, hasFunctions })}`;
+${buildInteractiveContentAuthoringProseV2({ hasFramesV2: true, hasDocuments, hasFunctions })}`;
