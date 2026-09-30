@@ -119,6 +119,15 @@
       ]
     },
     {
+      "includes": [
+        "front/components/**/*.{js,jsx,ts,tsx}",
+        "front/hooks/**/*.{js,jsx,ts,tsx}",
+        "front/lib/swr/**/*.{js,jsx,ts,tsx}",
+        "!**/*.{test,spec}.{js,jsx,ts,tsx}"
+      ],
+      "plugins": ["./.grit/patterns/noBareLocaleCompare.grit"]
+    },
+    {
       "includes": ["front-api/**/*.ts", "!front-api/routes/types.ts"],
       "plugins": ["./.grit/patterns/noInlineSuccessResponseBody.grit"]
     },
