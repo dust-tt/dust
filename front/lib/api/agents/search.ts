@@ -213,13 +213,17 @@ export async function resolveAgentIdByName(
   if (trimmedName.length === 0) {
     return null;
   }
+  const isResolvable = (agent: AgentResource | null): agent is AgentResource =>
+    agent !== null && agent.status === "active" && auth.can("read", agent);
+
   const normalizedName = trimmedName.toLowerCase();
   if (normalizedName === "dust" || normalizedName === "dust agent") {
-    return GLOBAL_AGENTS_SID.DUST;
+    const dust = await AgentResource.fetchById(auth, GLOBAL_AGENTS_SID.DUST);
+    return isResolvable(dust) ? dust.sId : null;
   }
 
   const exactMatch = await AgentResource.fetchByName(auth, trimmedName);
-  if (exactMatch && auth.can("read", exactMatch)) {
+  if (isResolvable(exactMatch)) {
     return exactMatch.sId;
   }
 
@@ -238,5 +242,9 @@ export async function resolveAgentIdByName(
     return null;
   }
 
-  return result.value.agents[0]?.sId ?? null;
+  // The index can lag behind the database (e.g. an agent archived since), so the hit is re-checked
+  // against the current resource.
+  const [hit] = result.value.agents;
+  const hitAgent = hit ? await AgentResource.fetchById(auth, hit.sId) : null;
+  return isResolvable(hitAgent) ? hitAgent.sId : null;
 }

@@ -23,7 +23,9 @@ import {
 } from "@app/lib/agent_search/query";
 import { buildAgentNameAutocompleteQuery } from "@app/lib/agent_search/ranking";
 import { resolveAgentIdByName, searchAgents } from "@app/lib/api/agents/search";
+import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { matchesAgentSearchFilters } from "@app/tests/utils/agent_search";
@@ -439,6 +441,23 @@ describe("searchAgents", () => {
 });
 
 describe("resolveAgentIdByName", () => {
+  function mockHitFor(workspaceId: string, agentId: string, name: string) {
+    mockSearch.mockResolvedValue({
+      hits: {
+        total: { value: 1, relation: "eq" },
+        hits: [
+          {
+            _source: makeDocument({
+              workspace_id: workspaceId,
+              agent_id: agentId,
+              name,
+            }),
+          },
+        ],
+      },
+    });
+  }
+
   beforeEach(() => {
     mockSearch.mockReset();
     mockHits([]);
@@ -467,30 +486,45 @@ describe("resolveAgentIdByName", () => {
     expect(mockSearch).not.toHaveBeenCalled();
   });
 
+  it("does not resolve the Dust aliases when an admin disabled Dust", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    await upsertGlobalAgentSettings(auth, {
+      agentId: GLOBAL_AGENTS_SID.DUST,
+      status: "disabled_by_admin",
+    });
+
+    expect(await resolveAgentIdByName(auth, "dust")).toBeNull();
+  });
+
   it("falls back to the top search hit", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "user",
     });
-    mockSearch.mockResolvedValue({
-      hits: {
-        total: { value: 1, relation: "eq" },
-        hits: [
-          {
-            _source: makeDocument({
-              workspace_id: workspace.sId,
-              agent_id: "fuzzy",
-              name: "Marketing Sales",
-            }),
-          },
-        ],
-      },
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Marketing Sales",
     });
+    mockHitFor(workspace.sId, agent.sId, "Marketing Sales");
 
-    expect(await resolveAgentIdByName(auth, " sales ")).toBe("fuzzy");
+    expect(await resolveAgentIdByName(auth, " sales ")).toBe(agent.sId);
     expect(mockSearch.mock.calls[0][0]).toMatchObject({ size: 1 });
     expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([
       buildAgentNameAutocompleteQuery("sales"),
     ]);
+  });
+
+  it("does not resolve a search hit whose agent was archived since it was indexed", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "user",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Marketing Sales",
+    });
+    const resource = await AgentResource.fetchById(auth, agent.sId);
+    assert(resource);
+    await resource.archive(auth);
+    mockHitFor(workspace.sId, agent.sId, "Marketing Sales");
+
+    expect(await resolveAgentIdByName(auth, " sales ")).toBeNull();
   });
 
   it("does not resolve an exact name the caller cannot read", async () => {
