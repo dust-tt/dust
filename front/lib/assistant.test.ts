@@ -16,6 +16,7 @@ import {
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { FIREWORKS_GLM_5P3_MODEL_ID } from "@app/types/assistant/models/fireworks";
 import {
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_6_SOL_MODEL_CONFIG,
@@ -40,6 +41,15 @@ function createMockModel(
     ...GPT_5_6_LUNA_MODEL_CONFIG,
     ...overrides,
   };
+}
+
+// GLM-5.3's ids on an ungated base, so only the whitelist decides.
+function createFireworksGlmModel(): ModelConfigurationType {
+  return createMockModel({
+    providerId: "fireworks",
+    modelId: FIREWORKS_GLM_5P3_MODEL_ID,
+    largeModel: false,
+  });
 }
 
 function createMockPlan(
@@ -590,10 +600,7 @@ describe("filterEnabledModels", () => {
   it("should include all providers when whiteListedProviders is null", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const model = createMockModel({
-      providerId: "fireworks",
-      largeModel: false,
-    });
+    const model = createFireworksGlmModel();
 
     const result = filterEnabledModels([model], {
       featureFlags: [],
@@ -603,5 +610,29 @@ describe("filterEnabledModels", () => {
       whitelistedProviders: getWhitelistedProviders(auth),
     });
     expect(result).toContain(model);
+  });
+
+  it("should gate a Fireworks-served model on its lab, not on its host", async () => {
+    const zaiWorkspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["zai"],
+    });
+    const openaiWorkspace = await WorkspaceFactory.basic({
+      whiteListedProviders: ["openai"],
+    });
+    const model = createFireworksGlmModel();
+
+    const enabledFor = async (workspaceId: string) => {
+      const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+      return filterEnabledModels([model], {
+        featureFlags: [],
+        plan: auth.plan(),
+        regionalModelsOnly: false,
+        region: TEST_REGION,
+        whitelistedProviders: getWhitelistedProviders(auth),
+      });
+    };
+
+    expect(await enabledFor(zaiWorkspace.sId)).toContain(model);
+    expect(await enabledFor(openaiWorkspace.sId)).toHaveLength(0);
   });
 });

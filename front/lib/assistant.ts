@@ -1,4 +1,4 @@
-import { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
+import { isModelWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
 import {
   isCreditPricedPlanPrefix,
   isUpgraded,
@@ -150,7 +150,7 @@ export function isModelEnabled(
 ) {
   return (
     isModelAvailable(m, { featureFlags, plan, regionalModelsOnly, region }) &&
-    isProviderWhitelisted(whitelistedProviders, m.providerId)
+    isModelWhitelisted(whitelistedProviders, m)
   );
 }
 
