@@ -1,3 +1,4 @@
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   useUpdateUsageNotifications,
   useUsageNotifications,
@@ -83,9 +84,7 @@ export function UsageNotificationsCard({
                 pattern="[0-9]*"
                 placeholder="Disabled"
                 value={
-                  currentThreshold === 0
-                    ? ""
-                    : currentThreshold.toLocaleString()
+                  currentThreshold === 0 ? "" : formatNumber(currentThreshold)
                 }
                 unit={
                   currentThreshold === 0 && !isEditingThreshold
@@ -94,7 +93,7 @@ export function UsageNotificationsCard({
                 }
                 normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                 formatValue={(value) =>
-                  value ? Number(value).toLocaleString() : value
+                  value ? formatNumber(Number(value)) : value
                 }
                 onSave={handleSaveBalanceThreshold}
                 onFocus={() => setIsEditingThreshold(true)}

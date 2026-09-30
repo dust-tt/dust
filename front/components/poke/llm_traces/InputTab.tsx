@@ -2,6 +2,7 @@ import { ToolCallCard } from "@app/components/poke/llm_traces/ToolCallsView";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { LLMTraceInput } from "@app/lib/api/llm/traces/types";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   isAgentFunctionCallContent,
   isAgentTextContent,
@@ -174,7 +175,7 @@ export function InputTab({ input }: InputTabProps) {
           <Collapsible defaultOpen={false}>
             <CollapsibleTrigger>
               <h3 className="text-lg font-medium">
-                System Prompt ({promptText.length.toLocaleString()} chars)
+                System Prompt ({formatNumber(promptText.length)} chars)
               </h3>
             </CollapsibleTrigger>
             <CollapsibleContent>

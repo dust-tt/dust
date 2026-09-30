@@ -1,3 +1,5 @@
+import { formatNumber } from "@app/lib/i18n/format";
+import { isString } from "@app/types/shared/utils/general";
 import { cn } from "@dust-tt/sparkle";
 
 interface LegendDotProps {
@@ -86,7 +88,7 @@ export function ChartTooltipCard({
                 {r.label}
               </span>
               <span className="ml-auto font-medium tabular-nums text-foreground">
-                {r.value.toLocaleString()}
+                {isString(r.value) ? r.value : formatNumber(r.value)}
               </span>
               {typeof r.percent === "number" && (
                 <span className="text-muted-foreground">({r.percent}%)</span>

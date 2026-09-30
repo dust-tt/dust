@@ -1,4 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   editCustomerCreditSegmentAmount,
   findPerUserCustomerCreditSegment,
@@ -160,7 +161,7 @@ export const grantUserFreeCreditsPlugin = createPlugin({
 
     return new Ok({
       display: "text",
-      value: `Granted ${amountCredits.toLocaleString()} free AWU credits to ${user.email ?? userId}. New total free allowance: ${newAllowanceAwu.toLocaleString()} credits.`,
+      value: `Granted ${formatNumber(amountCredits)} free AWU credits to ${user.email ?? userId}. New total free allowance: ${formatNumber(newAllowanceAwu)} credits.`,
     });
   },
 });

@@ -2,6 +2,7 @@ import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useAutomationsOverview } from "@app/hooks/useAutomationsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
+import { formatNumber } from "@app/lib/i18n/format";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
 
@@ -42,12 +43,12 @@ export function AutomationsOverview({
       />
       <SummaryCard
         label="Triggers enabled"
-        value={`${triggers.enabled.toLocaleString()} / ${triggers.total.toLocaleString()}`}
+        value={`${formatNumber(triggers.enabled)} / ${formatNumber(triggers.total)}`}
         hint={disabledCount > 0 ? `${disabledCount} disabled` : null}
       />
       <SummaryCard
         label="Workspace pool"
-        value={`${triggers.workspacePool.toLocaleString()} / ${triggers.total.toLocaleString()}`}
+        value={`${formatNumber(triggers.workspacePool)} / ${formatNumber(triggers.total)}`}
         hint={memberPoolCount > 0 ? `${memberPoolCount} on member pool` : null}
       />
     </div>

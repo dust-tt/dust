@@ -15,6 +15,7 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
+import { formatNumber } from "@app/lib/i18n/format";
 import { useKeys } from "@app/lib/swr/apps";
 import { useKeyScopableSpaces } from "@app/lib/swr/spaces";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
@@ -95,18 +96,18 @@ function APIKeysOverview({
           consumptionError
             ? "Credit consumption is temporarily unavailable"
             : consumingKeyCount > 0
-              ? `${consumingKeyCount.toLocaleString()} API key${pluralize(consumingKeyCount)} used this period`
+              ? `${formatNumber(consumingKeyCount)} API key${pluralize(consumingKeyCount)} used this period`
               : "No API key consumption this period"
         }
       />
       <SummaryCard
         label="Keys active"
-        value={`${activeKeyCount.toLocaleString()} / ${keys.length.toLocaleString()}`}
+        value={`${formatNumber(activeKeyCount)} / ${formatNumber(keys.length)}`}
         hint={
           cappedKeyCount > 0
-            ? `${cappedKeyCount.toLocaleString()} at the monthly cap`
+            ? `${formatNumber(cappedKeyCount)} at the monthly cap`
             : revokedKeyCount > 0
-              ? `${revokedKeyCount.toLocaleString()} revoked`
+              ? `${formatNumber(revokedKeyCount)} revoked`
               : null
         }
       />

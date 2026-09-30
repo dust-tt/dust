@@ -11,6 +11,7 @@ import {
   setDefaultUserSpendLimit,
 } from "@app/lib/api/workspace/default_user_spend_limit";
 import { MAX_AWU_DISCOUNT_PERCENT } from "@app/lib/credits/awu_purchase_constants";
+import { formatNumber } from "@app/lib/i18n/format";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import {
   DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED,
@@ -57,7 +58,7 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
         type: "number",
         variant: "text",
         label: "Monthly usage cap (credits)",
-        description: `Workspace-level monthly spend cap for the Metronome spend-threshold alert. Set to 0 to disable. Range: 0-${MAX_AWU_USAGE_CAP_CREDITS.toLocaleString()}.`,
+        description: `Workspace-level monthly spend cap for the Metronome spend-threshold alert. Set to 0 to disable. Range: 0-${formatNumber(MAX_AWU_USAGE_CAP_CREDITS)}.`,
         async: true,
       },
       balanceThresholdCredits: {
@@ -308,10 +309,10 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
         existingConfig ? "Changes saved" : "Configuration created",
         `Discount: ${defaultDiscountPercent}%`,
         `PAYG: ${paygEnabled ? "on" : "off"}`,
-        `Usage cap: ${resolvedUsageCapCredits?.toLocaleString() ?? "disabled"}`,
-        `Balance threshold: ${balanceThresholdCredits > 0 ? `${balanceThresholdCredits.toLocaleString()} credits` : "disabled"}`,
-        `Pool limit: ${defaultPoolCapCredits.toLocaleString()} credits`,
-        `Programmatic cap: ${programmaticMonthlyCapCredits > 0 ? `${programmaticMonthlyCapCredits.toLocaleString()} credits/month` : "disabled"}`,
+        `Usage cap: ${resolvedUsageCapCredits === null ? "disabled" : formatNumber(resolvedUsageCapCredits)}`,
+        `Balance threshold: ${balanceThresholdCredits > 0 ? `${formatNumber(balanceThresholdCredits)} credits` : "disabled"}`,
+        `Pool limit: ${formatNumber(defaultPoolCapCredits)} credits`,
+        `Programmatic cap: ${programmaticMonthlyCapCredits > 0 ? `${formatNumber(programmaticMonthlyCapCredits)} credits/month` : "disabled"}`,
         `Auto-upgrade: ${autoSeatUpgradeEnabled ? "on" : "off"}`,
         `Top-up (enterprise): ${topUpEnabled ? "on" : "off"}`,
         `Auto invoice finalization: ${autoInvoiceFinalizationEnabled ? "on" : "off"}`,

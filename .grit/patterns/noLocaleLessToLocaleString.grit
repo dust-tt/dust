@@ -1,0 +1,24 @@
+engine biome(1.0)
+language js
+
+// Disallows `toLocaleString` calls without a locale, which format in the
+// browser's locale instead of the user's.
+// Use `formatNumber` or `formatDateTime` from `@app/lib/i18n/format` instead.
+pattern locale_less_to_locale_string_call() {
+    or {
+        `$_.toLocaleString()`,
+        `$_.toLocaleString(undefined)`,
+        `$_.toLocaleString(undefined, $_)`,
+        `$_?.toLocaleString()`,
+        `$_?.toLocaleString(undefined)`,
+        `$_?.toLocaleString(undefined, $_)`
+    }
+}
+
+locale_less_to_locale_string_call() as $call where {
+    register_diagnostic(
+        span = $call,
+        message = "`toLocaleString` calls without a locale format in the browser's locale. Use `formatNumber` or `formatDateTime` from `@app/lib/i18n/format` instead.",
+        severity = "error"
+    )
+}

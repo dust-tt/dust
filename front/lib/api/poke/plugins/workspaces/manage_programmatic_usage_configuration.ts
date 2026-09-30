@@ -10,6 +10,7 @@ import {
   startOrResumeEnterprisePAYG,
   stopEnterprisePAYG,
 } from "@app/lib/credits/payg";
+import { formatNumber } from "@app/lib/i18n/format";
 import { PAYG_ELIGIBLE_TIERS } from "@app/lib/metronome/types";
 import {
   isEnterprisePlanPrefix,
@@ -40,7 +41,7 @@ export const ProgrammaticUsageConfigurationSchema = z
       .min(0, "Free credits must be positive")
       .max(
         MAX_FREE_CREDITS_DOLLARS,
-        `Free credits cannot exceed $${MAX_FREE_CREDITS_DOLLARS.toLocaleString()}`
+        `Free credits cannot exceed $${formatNumber(MAX_FREE_CREDITS_DOLLARS)}`
       )
       .optional(),
     defaultDiscountPercent: z
@@ -58,7 +59,7 @@ export const ProgrammaticUsageConfigurationSchema = z
       .min(0, "PAYG cap must be positive")
       .max(
         MAX_PAYG_CAP_DOLLARS,
-        `PAYG cap cannot exceed $${MAX_PAYG_CAP_DOLLARS.toLocaleString()}`
+        `PAYG cap cannot exceed $${formatNumber(MAX_PAYG_CAP_DOLLARS)}`
       )
       .optional(),
     customDailyCapEnabled: z.boolean().default(false),
@@ -70,7 +71,7 @@ export const ProgrammaticUsageConfigurationSchema = z
       )
       .max(
         MAX_DAILY_CAP_DOLLARS,
-        `Daily cap cannot exceed $${MAX_DAILY_CAP_DOLLARS.toLocaleString()}`
+        `Daily cap cannot exceed $${formatNumber(MAX_DAILY_CAP_DOLLARS)}`
       )
       .optional(),
   })
@@ -163,7 +164,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         type: "number",
         variant: "text",
         label: "Negotiated Monthly Free Credits (USD)",
-        description: `Negotiated monthly free credits ($1-$${MAX_FREE_CREDITS_DOLLARS.toLocaleString()}). ⚠️This will top-up next billing cycle's free credits. If you want an immediate top-up, use "Buy Committed Credits" plugin in free mode.`,
+        description: `Negotiated monthly free credits ($1-$${formatNumber(MAX_FREE_CREDITS_DOLLARS)}). ⚠️This will top-up next billing cycle's free credits. If you want an immediate top-up, use "Buy Committed Credits" plugin in free mode.`,
         async: true,
         dependsOn: { field: "freeCreditsOverrideEnabled", value: true },
       },
@@ -187,7 +188,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         type: "number",
         variant: "text",
         label: "Pay-as-you-go Spending Cap (US$)",
-        description: `Maximum monthly PAYG spending (required to enable PAYG). Range: $1-$${MAX_PAYG_CAP_DOLLARS.toLocaleString()}.`,
+        description: `Maximum monthly PAYG spending (required to enable PAYG). Range: $1-$${formatNumber(MAX_PAYG_CAP_DOLLARS)}.`,
         async: true,
         dependsOn: { field: "paygEnabled", value: true },
       },
@@ -202,7 +203,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         type: "number",
         variant: "text",
         label: "Daily Cap (USD)",
-        description: `Maximum daily programmatic spending ($${MIN_DAILY_CAP_DOLLARS}-$${MAX_DAILY_CAP_DOLLARS.toLocaleString()}).`,
+        description: `Maximum daily programmatic spending ($${MIN_DAILY_CAP_DOLLARS}-$${formatNumber(MAX_DAILY_CAP_DOLLARS)}).`,
         async: true,
         dependsOn: { field: "customDailyCapEnabled", value: true },
       },
@@ -222,11 +223,11 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       calculateFreeCreditAmountMicroUsd(userCount);
     const automaticCreditsDollars = automaticCreditsMicroUsd / 1_000_000;
 
-    const freeCreditsDescription = `Enable negotiated free monthly credits to replace default free credits amount. Current default amount (seat-based): $${automaticCreditsDollars.toLocaleString()}`;
+    const freeCreditsDescription = `Enable negotiated free monthly credits to replace default free credits amount. Current default amount (seat-based): $${formatNumber(automaticCreditsDollars)}`;
 
     const defaultDailyCapMicroUsd = await getDefaultDailyCapMicroUsd(auth);
     const defaultDailyCapDollars = defaultDailyCapMicroUsd / 1_000_000;
-    const dailyCapDescription = `Override the default daily spending cap. Current default: $${defaultDailyCapDollars.toLocaleString()}/day.`;
+    const dailyCapDescription = `Override the default daily spending cap. Current default: $${formatNumber(defaultDailyCapDollars)}/day.`;
 
     const config =
       await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);

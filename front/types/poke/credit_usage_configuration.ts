@@ -1,4 +1,5 @@
 import { MAX_AWU_DISCOUNT_PERCENT } from "@app/lib/credits/awu_purchase_constants";
+import { formatNumber } from "@app/lib/i18n/format";
 import { z } from "zod";
 
 export const MAX_AWU_USAGE_CAP_CREDITS = 2_000_000;
@@ -21,7 +22,7 @@ export const CreditUsageConfigurationSchema = z.object({
     .min(0, "AWU usage cap must be non-negative")
     .max(
       MAX_AWU_USAGE_CAP_CREDITS,
-      `AWU usage cap cannot exceed ${MAX_AWU_USAGE_CAP_CREDITS.toLocaleString()} credits`
+      `AWU usage cap cannot exceed ${formatNumber(MAX_AWU_USAGE_CAP_CREDITS)} credits`
     )
     .default(0),
   balanceThresholdCredits: z

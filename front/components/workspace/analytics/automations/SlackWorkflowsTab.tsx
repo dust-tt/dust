@@ -4,6 +4,7 @@ import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useSlackWorkflowsOverview } from "@app/hooks/useSlackWorkflowsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   useRevokeSlackWorkflow,
   useSlackWorkflows,
@@ -104,7 +105,7 @@ function SlackWorkflowsOverview({
       />
       <SummaryCard
         label="Workflows allowed"
-        value={workflowCount.toLocaleString()}
+        value={formatNumber(workflowCount)}
         hint={null}
       />
     </div>

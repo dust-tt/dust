@@ -4,7 +4,7 @@ import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
-import { formatDateTime } from "@app/lib/i18n/format";
+import { formatDateTime, formatNumber } from "@app/lib/i18n/format";
 import { timeAgoFrom } from "@app/lib/utils";
 import { LoadingBlock, Page, Tooltip } from "@dust-tt/sparkle";
 
@@ -77,7 +77,7 @@ export function ConsumptionOverviewView({
     `${formatConsumptionDate(period.startDate)} to ${formatConsumptionDate(period.endDate)}`,
     ...(analyticsScope.kind === "workspace"
       ? [
-          `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
+          `${formatNumber(members.active)} of ${formatNumber(members.total)} members active`,
         ]
       : []),
     ...(lastRecordAt

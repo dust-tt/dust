@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { formatNumber } from "@app/lib/i18n/format";
 import { addCreditToContract } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_FREE_SEAT_CREDIT,
@@ -155,7 +156,7 @@ export async function applyLegacyCreditMigrationAtActivation({
       amount: convertedAwuCredits,
       startingAt: startingAtIso,
       endingBefore: endingBeforeIso,
-      name: `Legacy credit conversion: ${convertedAwuCredits.toLocaleString()} AWU`,
+      name: `Legacy credit conversion: ${formatNumber(convertedAwuCredits)} AWU`,
       uniquenessKey: `legacy-credit-conversion:${workspace.sId}:${metronomeContractId}`,
       applicableProductTags: [USAGE_TAG],
       priority: AWU_PRIORITY_PURCHASED_COMMIT,

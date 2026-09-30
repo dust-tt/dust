@@ -1,4 +1,5 @@
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   useUpdateUsageSettings,
   useUsageSettings,
@@ -30,7 +31,7 @@ export function CreditSpendCheckpointSettingsCard({
       <SettingsList>
         <SettingsList.Row
           title="Credit spend checkpoint"
-          description={`Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches ${CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS.toLocaleString()} credits.`}
+          description={`Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches ${formatNumber(CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS)} credits.`}
           action={
             <SliderToggle
               selected={usageSettings.creditSpendCheckpointEnabled}
