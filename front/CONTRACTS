@@ -724,31 +724,3 @@ connectionId, the code MUST call checkConnectionOwnership(auth, connectionId) an
 if it returns Err. This ensures the connection belongs to the calling user in the calling
 workspace; without the check any workspace member can obtain another user's live OAuth
 access token by supplying a foreign connectionId.
-
-@cc [owner:frankaloia,label:security;performance] mcp-notification-limits
-Every MCP progress-notification handler MUST enforce per-tool-call count and byte-size
-limits. Remote and client-side MCP servers can send unbounded notification streams;
-without caps they exhaust Redis, Postgres JSONB, and GCS for all tenants on the cell.
-
-Constants in `front/lib/actions/mcp_actions.ts`:
-- `MAX_PROGRESS_NOTIFICATIONS_PER_CALL = 100`
-- `MAX_PROGRESS_NOTIFICATION_TOTAL_BYTES = 5 MB`
-
-A notification that pushes either counter over the limit MUST be silently dropped
-(with a `logger.warn`) and MUST NOT be emitted to the notification event stream.
-
-@cc [owner:frankaloia,label:security;performance] zip-entry-count-cap
-ZIP archives processed for skill detection MUST be rejected when their entry count
-exceeds `MAX_ZIP_ENTRIES` (1 000). `extractZipEntries` MUST check that count before
-mapping central-directory records into `ZipEntry` objects, and `openAndValidateZip`
-MUST run that check before decompressed-size summation or skill-directory scanning.
-
-The SKILL.md scanner is O(entries × skill-dirs); without the entry cap a 5 MB ZIP with
-~80 k tiny entries (headers alone fill the size budget) causes quadratic synchronous CPU
-work that blocks the shared front-api Node.js event loop for all tenants. The entry cap
-bounds that scan at O(MAX_ZIP_ENTRIES²).
-
-Skill-directory count alone MUST NOT reject an archive and MUST NOT truncate the
-detected skills. A small archive with more than 50 skill directories was previously a
-successful public API import, including when `names` selects a single skill
-(`api-backward-compatibility`).

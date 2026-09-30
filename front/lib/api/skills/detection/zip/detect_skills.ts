@@ -30,6 +30,13 @@ export const MAX_ZIP_ENTRIES = 1_000;
 /**
  * Extracts a flat list of ZipEntry from a ZIP buffer using adm-zip.
  */
+/**
+ * @cc [owner:frankaloia,label:security;performance] zip-entry-count-cap
+ * MUST return Err when the central-directory entry count exceeds
+ * `MAX_ZIP_ENTRIES` (1000), and MUST do so before mapping records into
+ * `ZipEntry` objects. An over-cap archive MUST NOT be returned for
+ * decompressed-size summation or skill-directory scanning.
+ */
 function extractZipEntries(
   zipBuffer: Buffer
 ): Result<{ entries: ZipEntry[]; zip: AdmZip }, Error> {
@@ -124,6 +131,13 @@ function openAndValidateZip(
  * by scanning for SKILL.md files. Returns ZipDetectedSkill[] where each
  * attachment carries an `originalEntryName` (the raw zip path before prefix
  * stripping), analogous to the `sha` in GitHubDetectedSkillAttachment.
+ */
+/**
+ * @cc [owner:frankaloia,label:security;api] zip-skill-directory-count-accepted
+ * Skill-directory count alone MUST NOT reject an archive and MUST NOT truncate
+ * the detected skills. A small archive with more than 50 skill directories MUST
+ * still be detected, including when a later `names` filter selects a single
+ * skill (`api-backward-compatibility`).
  */
 export function detectSkillsFromZip({
   zipBuffer,

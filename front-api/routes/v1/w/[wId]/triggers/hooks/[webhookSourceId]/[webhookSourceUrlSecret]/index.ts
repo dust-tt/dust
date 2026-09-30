@@ -29,8 +29,16 @@ export const WEBHOOK_REQUEST_MAX_SIZE_BYTES = 2 * 1024 * 1024;
 /**
  * Streams the request body into a Buffer, aborting as soon as `maxBytes` is
  * exceeded. Returns null when the body is over the limit so the caller can
- * reject *before* the full allocation completes, preventing OOM on
- * unauthenticated, anonymous-accessible endpoints.
+ * reject before the full allocation completes.
+ */
+/**
+ * @cc [owner:frankaloia,label:security;api] webhook-body-streamed-before-auth
+ * MUST count body bytes as they arrive. Once the running total exceeds
+ * `maxBytes`, MUST cancel the unread remainder, MUST NOT retain the chunk that
+ * crossed the cap, and MUST return null. The trigger webhook POST in this file
+ * MUST call this with `WEBHOOK_REQUEST_MAX_SIZE_BYTES` and MUST respond HTTP
+ * 400 when it returns null. That handler MUST NOT read the body with
+ * `arrayBuffer()` or `text()` before the cap is applied.
  */
 async function readBodyWithSizeLimit(
   request: Request,

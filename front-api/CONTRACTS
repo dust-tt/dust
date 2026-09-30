@@ -214,16 +214,3 @@ For cookie-based session resolution, call
 `@app/lib/api/workos/user`. It returns `{ session, setCookies }` — emit each
 `setCookies` value with `c.header("Set-Cookie", cookie, { append: true })`,
 as `front-api/middlewares/session_resolution.ts` does.
-
-@cc [owner:frankaloia,label:security;api] webhook-body-streamed-before-auth
-The unauthenticated trigger webhook
-`POST /api/v1/w/:wId/triggers/hooks/:webhookSourceId/:webhookSourceUrlSecret`
-MUST enforce `WEBHOOK_REQUEST_MAX_SIZE_BYTES` while streaming the request body.
-As soon as the running byte total exceeds that cap, the handler MUST cancel the
-unread remainder and respond with HTTP 400. It MUST NOT buffer the body with
-`arrayBuffer()` or `text()` before applying the cap.
-
-This route is mounted outside `publicApiAuth` and already has a 2 MB cap. The
-obligation is that existing cap: it must be applied incrementally so an anonymous
-oversized POST cannot allocate the full body before rejection. Other webhook
-receivers are not given a new body cap by this contract.

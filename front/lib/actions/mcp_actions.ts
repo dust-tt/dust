@@ -382,6 +382,15 @@ export async function runToolCallWithDetachedSignal<T>(
  * May fail when connecting to remote/client-side servers.
  * In case of an error, the error content is bubbled up to expose it to the model.
  */
+/**
+ * @cc [owner:frankaloia,label:security;performance] mcp-notification-limits
+ * A `notifications/progress` notification that would make this call's count
+ * exceed `MAX_PROGRESS_NOTIFICATIONS_PER_CALL` (100), or its byte total exceed
+ * `MAX_PROGRESS_NOTIFICATION_TOTAL_BYTES` (5 MB), MUST NOT be emitted. It MUST
+ * be dropped with `logger.warn`. The byte total MUST be the UTF-8 size of
+ * `JSON.stringify(notification)` via `computeTextByteSize`, not the UTF-16
+ * string length.
+ */
 export async function* tryCallMCPTool(
   auth: Authenticator,
   inputs: Record<string, unknown> | undefined,
