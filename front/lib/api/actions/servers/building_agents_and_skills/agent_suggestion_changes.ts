@@ -498,12 +498,17 @@ export async function validateAgentCreation(
 }
 
 /**
- * Checks each tool and skill a new agent is created with could be added to an existing agent (see
- * `checkToolAddition` and `checkSkillAddition`), so the creation can be applied later.
+ * Checks each tool, skill and sub-agent a new agent is created with could be added to an existing
+ * agent (see `checkToolAddition`, `checkSkillAddition` and `checkSubAgentAddition`), so the creation
+ * can be applied later.
  */
 export async function validateAgentCreationCapabilities(
   auth: Authenticator,
-  { toolIds, skillIds }: { toolIds: string[]; skillIds: string[] }
+  {
+    toolIds,
+    skillIds,
+    subAgentIds,
+  }: { toolIds: string[]; skillIds: string[]; subAgentIds: string[] }
 ): Promise<Result<undefined, MCPError>> {
   if (new Set(toolIds).size !== toolIds.length) {
     return new Err(new MCPError("Each tool can only be added once."));
@@ -511,10 +516,20 @@ export async function validateAgentCreationCapabilities(
   if (new Set(skillIds).size !== skillIds.length) {
     return new Err(new MCPError("Each skill can only be added once."));
   }
+  if (new Set(subAgentIds).size !== subAgentIds.length) {
+    return new Err(new MCPError("Each sub-agent can only be added once."));
+  }
 
-  const [suggestableTools, suggestableSkills] = await Promise.all([
+  const [
+    suggestableTools,
+    suggestableSkills,
+    suggestableSubAgents,
+    runAgentTool,
+  ] = await Promise.all([
     fetchSuggestableTools(auth, toolIds),
     fetchSuggestableSkills(auth, skillIds),
+    fetchSuggestableSubAgents(auth, subAgentIds),
+    subAgentIds.length > 0 ? fetchRunAgentTool(auth) : null,
   ]);
 
   for (const toolId of toolIds) {
@@ -525,6 +540,17 @@ export async function validateAgentCreationCapabilities(
   }
   for (const skillId of skillIds) {
     const addition = checkSkillAddition(skillId, suggestableSkills);
+    if (addition.isErr()) {
+      return new Err(new MCPError(addition.error));
+    }
+  }
+  if (subAgentIds.length > 0 && !runAgentTool) {
+    return new Err(
+      new MCPError("The tool to run sub-agents is not available.")
+    );
+  }
+  for (const subAgentId of subAgentIds) {
+    const addition = checkSubAgentAddition(subAgentId, suggestableSubAgents);
     if (addition.isErr()) {
       return new Err(new MCPError(addition.error));
     }

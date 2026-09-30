@@ -72,6 +72,19 @@ export const CreateAgentSuggestionSchema = z.object({
     .describe(
       "Temporary names of skills created in this call, to give the agent."
     ),
+  subAgentIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Ids of the active agents to give the agent as sub-agents, which it can run to delegate a " +
+        "task."
+    ),
+  subAgentRefs: z
+    .array(z.string().regex(SUGGESTION_REF_REGEX))
+    .optional()
+    .describe(
+      "Temporary names of agents created in this call, to give the agent as sub-agents."
+    ),
 });
 
 export type CreateAgentSuggestion = z.infer<typeof CreateAgentSuggestionSchema>;

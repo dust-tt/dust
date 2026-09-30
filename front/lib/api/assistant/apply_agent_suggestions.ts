@@ -110,10 +110,11 @@ function pickDefaultAvatar(): string {
  * @cc [owner:fabiencelier,label:product] create-activates-placeholder-only
  * A `create` suggestion MUST only be applied to the `pending` placeholder agent it targets: it
  * turns that placeholder into an `active`, `hidden` agent (same `sId`, editors unchanged) carrying
- * the suggested name, description, instructions, tools and skills. Tools and skills are checked
- * again against live state, as when added to an existing agent, except a skill that a creation of
- * the same batch makes active. Applying it to an agent that is not `pending`, or with a tool or
- * skill that no longer qualifies, fails with `invalid_request_error` and changes nothing.
+ * the suggested name, description, instructions, tools, skills and sub-agents. Tools, skills and
+ * sub-agents are checked again against live state, as when added to an existing agent, except a
+ * skill or sub-agent that a creation of the same batch makes active. Applying it to an agent that
+ * is not `pending`, or with a tool, skill or sub-agent that no longer qualifies, fails with
+ * `invalid_request_error` and changes nothing.
  */
 async function resolveCreateSuggestion(
   auth: Authenticator,
@@ -124,8 +125,9 @@ async function resolveCreateSuggestion(
     instructions,
     toolIds = [],
     skillIds = [],
+    subAgentIds = [],
   }: CreateSuggestionType,
-  createdSkillIds: Set<string>
+  creations: BatchCreations
 ): Promise<Result<ResolvedAgentChange, ApplyAgentSuggestionsError>> {
   if (agent.status !== "pending") {
     return new Err(
@@ -164,11 +166,20 @@ async function resolveCreateSuggestion(
   if (resolvedActions.isErr()) {
     return resolvedActions;
   }
+  const resolvedSubAgents = await resolveSubAgentsEdits(
+    auth,
+    resolvedActions.value.actions,
+    subAgentIds.map((childAgentId) => ({ action: "add", childAgentId })),
+    { agentId: agent.sId, createdAgentsById: creations.agentsById }
+  );
+  if (resolvedSubAgents.isErr()) {
+    return resolvedSubAgents;
+  }
   const resolvedSkills = await resolveSkillsEdits(
     auth,
     [],
     skillIds.map((skillId) => ({ action: "add", skillId })),
-    createdSkillIds
+    creations.skillIds
   );
   if (resolvedSkills.isErr()) {
     return resolvedSkills;
@@ -196,7 +207,7 @@ async function resolveCreateSuggestion(
         temperature: 0.7,
         reasoningEffort: defaultModel.defaultReasoningEffort,
       },
-      actions: resolvedActions.value.actions,
+      actions: resolvedSubAgents.value.actions,
       skills: resolvedSkills.value.skillIds.map((sId) => ({ sId })),
       tags: [],
       editors: editors.map((e) => ({ sId: e.sId })),
@@ -380,7 +391,7 @@ async function resolveToolsEdits(
 async function resolveSubAgentsEdits(
   auth: Authenticator,
   currentActions: AgentActionPayload[],
-  subAgents: SubAgentSuggestionType[],
+  subAgents: Pick<SubAgentSuggestionType, "action" | "childAgentId">[],
   {
     agentId,
     createdAgentsById,
@@ -842,7 +853,7 @@ export async function resolveAgentSuggestions(
         auth,
         agent,
         parsed.data.suggestion,
-        creations.skillIds
+        creations
       );
     }
     case "edit": {

@@ -55,11 +55,14 @@ export async function fetchSuggestableSubAgents(
   );
 }
 
-/** The agent a suggestion adds as a sub-agent of `agentId`, among the `suggestable` ones. */
+/**
+ * The agent a suggestion adds as a sub-agent, among the `suggestable` ones. `agentId` is the agent
+ * it is added to, when that agent already exists: a new agent has no id to be its own sub-agent.
+ */
 export function checkSubAgentAddition(
   subAgentId: string,
   suggestable: Map<string, AgentResource>,
-  { agentId }: { agentId: string }
+  { agentId }: { agentId?: string } = {}
 ): Result<AgentResource, string> {
   if (subAgentId === agentId) {
     return new Err("An agent cannot be its own sub-agent.");
