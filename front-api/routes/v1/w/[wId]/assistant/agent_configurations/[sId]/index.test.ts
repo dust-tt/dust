@@ -195,8 +195,9 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
       expect(data.agentConfiguration.canRead).toBe(false);
       expect(data.agentConfiguration.canEdit).toBe(true);
     } else {
-      expect(response.status).toBe(403);
-      expect(data.error.type).toBe("workspace_auth_error");
+      // A regular key holds no permission on a hidden agent: it cannot fetch it.
+      expect(response.status).toBe(404);
+      expect(data.error.type).toBe("agent_configuration_not_found");
     }
 
     const patchResponse = await patchAgentConfiguration(
@@ -227,8 +228,9 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     const response = await getAgentConfiguration(workspace, key, agent.sId);
     const data = await response.json();
 
-    expect(response.status, JSON.stringify(data)).toBe(403);
-    expect(data.error.type).toBe("workspace_auth_error");
+    // Draft and pending agents are authorized as hidden: a regular key cannot fetch them.
+    expect(response.status, JSON.stringify(data)).toBe(404);
+    expect(data.error.type).toBe("agent_configuration_not_found");
   });
 
   it("does not report global or archived agents as editable with an admin key", async () => {

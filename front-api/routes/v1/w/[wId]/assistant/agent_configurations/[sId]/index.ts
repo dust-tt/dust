@@ -1,11 +1,12 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
+import {
+  toAgentConfigurations,
+  toLightAgentConfigurations,
+} from "@app/lib/resources/agent_resource_serialization";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   DeleteAgentConfigurationResponseType,
   GetOrPatchAgentConfigurationResponseType,
@@ -297,14 +298,11 @@ app.get(
 
     // Retired global agents (e.g. gpt-4) stay resolvable internally for past conversations but
     // must not be exposed through the public API.
-    const agentConfiguration = isRetiredGlobalAgent(sId)
+    const agent = isRetiredGlobalAgent(sId)
       ? null
-      : await getAgentConfiguration(auth, {
-          agentId: sId,
-          variant: configVariant,
-        });
+      : await AgentResource.fetchById(auth, sId);
 
-    if (!agentConfiguration) {
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -315,10 +313,10 @@ app.get(
     }
 
     const isUnpublished =
-      agentConfiguration.scope === "hidden" ||
-      agentConfiguration.status === "draft" ||
-      agentConfiguration.status === "pending";
-    if ((!agentConfiguration.canRead || isUnpublished) && !auth.isAdmin()) {
+      agent.scope === "hidden" ||
+      agent.status === "draft" ||
+      agent.status === "pending";
+    if ((!auth.can("read", agent) || isUnpublished) && !auth.isAdmin()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -328,28 +326,14 @@ app.get(
       });
     }
 
-    // The legacy full variant carries the private fields regardless of access, so it is serialized
-    // from the caller's resource, which redacts them unless the caller can view the content (see
+    // The resource redacts the private fields unless the caller can view the content (see
     // `light-instructions-require-read`).
-    let configuration: LightAgentConfigurationType & {
-      codeDefinedSkillIds?: string[];
-    } = agentConfiguration;
-    if (configVariant === "full") {
-      const agent = await AgentResource.fetchById(auth, agentConfiguration.sId);
-      if (!agent) {
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "agent_configuration_not_found",
-            message: "The agent configuration you requested was not found.",
-          },
-        });
-      }
-      [configuration] = await toAgentConfigurations(auth, [agent]);
-    }
-
+    const [configuration] =
+      configVariant === "full"
+        ? await toAgentConfigurations(auth, [agent])
+        : await toLightAgentConfigurations(auth, [agent]);
     const [serialized] = await toAgentConfigurationsWithSkills(auth, [
-      configuration,
+      { ...configuration, codeDefinedSkillIds: agent.codeDefinedSkillIds },
     ]);
 
     return ctx.json({ agentConfiguration: serialized });
@@ -366,12 +350,8 @@ app.patch(
     const { sId } = ctx.req.valid("param");
     const body = ctx.req.valid("json");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: sId,
-      variant: "light",
-    });
-
-    if (!agentConfiguration) {
+    const agent = await AgentResource.fetchById(auth, sId);
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -383,21 +363,8 @@ app.patch(
 
     // it's a public endpoint, so we need to check we are auth with a user, to set a favorite
     if (body.userFavorite !== undefined && auth.user()) {
-      const agent = await AgentResource.fetchById(auth, sId);
-      if (!agent) {
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "agent_configuration_not_found",
-            message: `Could not find agent configuration ${sId}`,
-          },
-        });
-      }
-
       const updateRes = await agent.setUserFavorite(auth, body.userFavorite);
-      if (updateRes.isOk()) {
-        agentConfiguration.userFavorite = body.userFavorite;
-      } else {
+      if (updateRes.isErr()) {
         return apiError(ctx, {
           status_code: 500,
           api_error: {
@@ -432,8 +399,9 @@ app.patch(
       });
     }
 
+    const [configuration] = await toLightAgentConfigurations(auth, [agent]);
     const [serialized] = await toAgentConfigurationsWithSkills(auth, [
-      agentConfiguration,
+      { ...configuration, codeDefinedSkillIds: agent.codeDefinedSkillIds },
     ]);
 
     return ctx.json({ agentConfiguration: serialized });
