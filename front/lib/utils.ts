@@ -1,3 +1,4 @@
+import { formatDate, formatDateTime, formatNumber } from "@app/lib/i18n/format";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
@@ -22,6 +23,10 @@ export const shallowBlockClone = (block: any) => {
   return b;
 };
 
+function formatCount(count: number) {
+  return formatNumber(count, { useGrouping: false }, "en-US");
+}
+
 function maybePlural(unit: number, label: string) {
   return `${label}${unit > 1 ? "s" : ""}`;
 }
@@ -40,19 +45,19 @@ export const timeAgoFrom = (
   const months = Math.floor(days / 30);
   const years = Math.floor(days / 365);
   if (years > 0) {
-    return `${years}${useLongFormat ? maybePlural(years, " year") : "y"}`;
+    return `${formatCount(years)}${useLongFormat ? maybePlural(years, " year") : "y"}`;
   }
   if (months > 0) {
-    return `${months}${useLongFormat ? maybePlural(months, " month") : "m"}`;
+    return `${formatCount(months)}${useLongFormat ? maybePlural(months, " month") : "m"}`;
   }
   if (days > 0) {
-    return `${days}${useLongFormat ? maybePlural(days, " day") : "d"}`;
+    return `${formatCount(days)}${useLongFormat ? maybePlural(days, " day") : "d"}`;
   }
   if (hours > 0) {
-    return `${hours}${useLongFormat ? maybePlural(hours, " hour") : "h"}`;
+    return `${formatCount(hours)}${useLongFormat ? maybePlural(hours, " hour") : "h"}`;
   }
   if (minutes > 0) {
-    return `${minutes}${
+    return `${formatCount(minutes)}${
       useLongFormat ? maybePlural(minutes, " minute") : "min"
     }`;
   }
@@ -85,39 +90,51 @@ export function formatTimestampToFriendlyDate(
   timestamp: number,
   version: "long" | "short" | "compact" | "compactWithDay" = "long"
 ): string {
-  const date = new Date(timestamp);
-
   switch (version) {
     case "compact":
-      return date
-        .toLocaleDateString("en-US", {
+      return formatDate(
+        timestamp,
+        {
           month: "short",
           year: "numeric",
-        })
-        .replace(" ", ", ");
+        },
+        "en-US"
+      ).replace(" ", ", ");
 
     case "short":
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+      return formatDate(
+        timestamp,
+        {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        },
+        "en-US"
+      );
 
     case "long":
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        second: "numeric",
-      });
+      return formatDateTime(
+        timestamp,
+        {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "numeric",
+          minute: "numeric",
+          second: "numeric",
+        },
+        "en-US"
+      );
     case "compactWithDay":
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
+      return formatDate(
+        timestamp,
+        {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        },
+        "en-US"
+      );
   }
 }
 

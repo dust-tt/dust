@@ -1,5 +1,6 @@
 import { useUserLocale } from "@app/hooks/useUserLocale";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import { setFormatLocale } from "@app/lib/i18n/format";
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
 import logger from "@app/logger/logger";
 import { DEFAULT_LOCALE } from "@app/types/locale";
@@ -14,6 +15,12 @@ interface UserLocaleSyncProps {
  * Once its catalog has loaded, the active UI locale MUST be `DEFAULT_LOCALE` when the
  * `localisation` flag is disabled, and the `userLocale` of `useUserLocale` otherwise. While the
  * catalog loads or after it failed to load, `locale-switch-never-blocks-rendering` applies.
+ */
+/**
+ * @cc [owner:sfriquet,label:product] format-locale-follows-user-locale
+ * Once the catalog of the resolved locale has loaded, the format locale set with `setFormatLocale`
+ * MUST be `undefined` (the browser's locale) when the `localisation` flag is disabled, and the
+ * `userLocale` of `useUserLocale` otherwise. It MUST be set before the UI locale is activated.
  */
 /**
  * @cc [owner:sfriquet,label:product;react] locale-switch-never-blocks-rendering
@@ -34,13 +41,16 @@ export function UserLocaleSync({ onReady }: UserLocaleSyncProps) {
   const hasLocalisation = hasFeature("localisation");
   const { userLocale } = useUserLocale({ owner });
   const locale = hasLocalisation ? userLocale : DEFAULT_LOCALE;
+  const formatLocale = hasLocalisation ? userLocale : undefined;
 
-  // Syncs the external Lingui instance and the document language with the resolved locale.
+  // Syncs the format locale, the external Lingui instance and the document language with the
+  // resolved locale.
   useEffect(() => {
     let isCurrent = true;
     loadCatalog(locale)
       .then((messages) => {
         if (isCurrent) {
+          setFormatLocale(formatLocale);
           i18n.loadAndActivate({ locale, messages });
           document.documentElement.lang = locale;
         }
@@ -56,7 +66,7 @@ export function UserLocaleSync({ onReady }: UserLocaleSyncProps) {
     return () => {
       isCurrent = false;
     };
-  }, [locale, onReady]);
+  }, [locale, formatLocale, onReady]);
 
   return null;
 }
