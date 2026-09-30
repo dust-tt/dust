@@ -29,6 +29,7 @@ const AGENT_SUGGESTION_KIND_ACCEPTED_VERBS: Record<
   // Turning the pending placeholder into an agent is a definition edit.
   create: ["write"],
   model: ["write", "admin"],
+  structured_output: ["write", "admin"],
   scope: ["write", "admin"],
   editors: ["admin"],
   tags: ["write", "admin"],

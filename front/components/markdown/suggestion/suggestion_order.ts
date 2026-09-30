@@ -13,6 +13,7 @@ const AGENT_SUGGESTION_KIND_ORDER = [
   "description",
   "instructions",
   "model",
+  "structured_output",
   "skills",
   "tools",
   "sub_agent",

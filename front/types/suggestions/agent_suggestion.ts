@@ -21,6 +21,7 @@ export const AGENT_SUGGESTION_KINDS = [
   "scope",
   "editors",
   "tags",
+  "structured_output",
 ] as const;
 
 export type AgentSuggestionKind = (typeof AGENT_SUGGESTION_KINDS)[number];
@@ -43,6 +44,7 @@ export function getAgentSuggestionAction(
     case "name":
     case "scope":
     case "skills":
+    case "structured_output":
     case "sub_agent":
     case "tags":
     case "tools":
@@ -185,6 +187,12 @@ const TagsSuggestionSchema = z
     "At least one of addTags or removeTags must be non-empty."
   );
 
+// The JSON schema the agent's answers must follow, as stored on its model configuration (a
+// `ResponseFormat` serialized as JSON), or `null` to remove it.
+const StructuredOutputSuggestionSchema = z.object({
+  responseFormat: z.string().min(1).nullable(),
+});
+
 const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;
 const KnowledgeSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]),
@@ -217,6 +225,9 @@ export type NameSuggestionType = z.infer<typeof NameSuggestionSchema>;
 export type ScopeSuggestionType = z.infer<typeof ScopeSuggestionSchema>;
 export type EditorsSuggestionType = z.infer<typeof EditorsSuggestionSchema>;
 export type TagsSuggestionType = z.infer<typeof TagsSuggestionSchema>;
+export type StructuredOutputSuggestionType = z.infer<
+  typeof StructuredOutputSuggestionSchema
+>;
 
 export function isToolsSuggestion(data: unknown): data is ToolsSuggestionType {
   return ToolsSuggestionSchema.safeParse(data).success;
@@ -251,6 +262,7 @@ export type SuggestionPayload =
   | NameSuggestionType
   | ScopeSuggestionType
   | SkillsSuggestionType
+  | StructuredOutputSuggestionType
   | SubAgentSuggestionType
   | TagsSuggestionType
   | ToolsSuggestionType;
@@ -284,6 +296,10 @@ export const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
     suggestion: EditorsSuggestionSchema,
   }),
   z.object({ kind: z.literal("tags"), suggestion: TagsSuggestionSchema }),
+  z.object({
+    kind: z.literal("structured_output"),
+    suggestion: StructuredOutputSuggestionSchema,
+  }),
 ]);
 
 export type AgentSuggestionData = z.infer<typeof AgentSuggestionDataSchema>;
@@ -385,6 +401,11 @@ export type AgentTagsSuggestionType = Extract<
   { kind: "tags" }
 >;
 
+export type AgentStructuredOutputSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "structured_output" }
+>;
+
 export interface ToolSuggestionRelations {
   tool: MCPServerViewType;
 }
@@ -434,6 +455,7 @@ export type AgentSuggestionWithRelationsType =
   | (AgentNameSuggestionType & { relations: null })
   | (AgentScopeSuggestionType & { relations: null })
   | AgentSkillsSuggestionWithRelationsType
+  | (AgentStructuredOutputSuggestionType & { relations: null })
   | AgentSubAgentSuggestionWithRelationsType
   | (AgentTagsSuggestionType & { relations: null })
   | AgentToolsSuggestionWithRelationsType;
