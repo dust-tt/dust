@@ -130,7 +130,7 @@ Error responses carry `Cache-Control: no-store`; authentication failures also ca
 `WWW-Authenticate: Bearer`. Unknown routes return `not_found`; unsupported HTTP methods return
 `method_not_allowed` with `Allow` (distinct from unsupported filesystem operations).
 
-| Code | HTTP | Future FUSE mapping |
+| Code | HTTP | FUSE mapping |
 | --- | --- | --- |
 | `invalid_input` | 400 | `EINVAL` |
 | `name_too_long` | 400 | `ENAMETOOLONG` |
@@ -255,7 +255,8 @@ filtering may examine multiple bounded batches.
 
 Aliases return real object attributes and IDs; listing the target uses ordinary directory APIs.
 Renames, moves, revocations, and deletions affect subsequent requests. Returned metadata never
-includes canonical parents; client-side virtual parent navigation remains deferred with FUSE.
+includes canonical parents. FUSE maintains visible parents for `/shared` traversal; custom session
+mounts remain deferred.
 
 ## File I/O contract
 
@@ -333,6 +334,34 @@ Configure `DFS_FILE_MUTATIONS`, `DFS_SCRATCH_BYTES`, and `DFS_SCRATCH_DIR`. Rese
 size before assembly; exhaustion returns `capacity_exhausted`. Anonymous files and quota reservations
 release on completion/failure; process death leaves no named scratch files. Preparation has a 15-minute
 timeout; metadata publication is never cancelled by that timeout.
+
+## Initial FUSE client
+
+`dfs-protocol` shares model/wire types, `dfs-client` streams blocking HTTP, and `dfs-fuse` mounts on
+Linux with `fuser` 0.18. Server/client development works natively on macOS; use a Linux sandbox with
+`/dev/fuse` for mounts. macFUSE is excluded for now.
+
+Each mount holds one fixed session key loaded from a private file. Recreate the session and remount
+after expiry/restart; never silently substitute credentials under existing inodes or handles.
+Object IDs plus their visible projection identify mount-local inodes. `/shared/.../..` follows visible
+parents; synthetic root/shared entries are read-only. Provision workspace-root children through the
+trusted API. Kernel references, open handles, and child links retain inodes; forget/release reclaim
+them. No inode numbers are reused within a mount.
+
+Start with zero entry/attribute TTLs, direct I/O, no kernel writeback, and no client content or
+authorization cache. Directory reads page with bounded state; seeking backwards replays pages.
+Concurrent edits can cause skips/repeats, as with the HTTP listing contract. Up to 32 blocking workers
+(default eight) bound concurrency; kernel read/write requests are capped at 1 MiB. Each mount caps inodes
+at 100,000 and file/directory handles at 256 each. Exceeding limits returns an error.
+
+Writes publish synchronously; flush/fsync wait for server acknowledgement and report sticky write
+failures. Retry an ambiguous edit once with the same request ID/sequence/bytes; unresolved failures
+require closing the handle and checking server state before further edits. Namespace mutations are
+not blindly retried. Release frees handles; Linux does not propagate release errors to `close`, so
+flush is the error-reporting boundary. Directory fsync relies on already-durable namespace mutations.
+Ownership changes, links, special files, ACLs, advisory locks, and allocation operations are unsupported.
+Mapped/executable content is outside the supported baseline. `statfs` reports unknown capacity as
+zero. See [fuse/README.md](fuse/README.md) for operation and deployment limits.
 
 ## Writes, fsync, and recovery
 

@@ -4,8 +4,9 @@ use axum::{
     http::{StatusCode, header},
     response::Response,
 };
+use dfs_protocol::wire::CommitUploadRequest;
+use dfs_protocol::wire::{StartUploadRequest, UploadReceipt, UploadStatusRequest};
 use futures::StreamExt;
-use serde::{Deserialize, Serialize};
 use tokio::time::Instant;
 
 use super::{
@@ -17,32 +18,6 @@ use crate::{
     storage::UploadError,
     uploads::{self, Upload, UploadTarget},
 };
-
-/// @swaggerschema StartUploadRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(tag = "operation", rename_all = "snake_case", deny_unknown_fields)]
-enum StartUploadRequest {
-    Create {
-        parent_id: String,
-        name: String,
-    },
-    Replace {
-        object_id: String,
-        expected_content_version: String,
-    },
-}
-
-/// @swaggerschema UploadReceipt in server/openapi.yaml.
-#[derive(Serialize)]
-struct UploadReceipt {
-    upload_id: String,
-    object_id: String,
-    content_version: String,
-    complete: bool,
-    published: bool,
-    size_bytes: Option<u64>,
-    expires_in_seconds: u64,
-}
 
 impl From<Upload> for UploadReceipt {
     fn from(upload: Upload) -> Self {
@@ -96,13 +71,6 @@ pub(super) async fn start(
         StatusCode::CREATED,
         Json(UploadReceipt::from(upload)),
     )))
-}
-
-/// @swaggerschema UploadStatusRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct UploadStatusRequest {
-    upload_id: String,
 }
 
 /// @swagger See POST /uploads/status in server/openapi.yaml.
@@ -229,17 +197,6 @@ pub(super) async fn content(
     Ok(no_store(Json(UploadReceipt::from(lease.finish(blob)?))))
 }
 
-/// @swaggerschema CommitUploadRequest in server/openapi.yaml.
-#[derive(Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct CommitUploadRequest {
-    upload_id: String,
-    mime_type: Option<String>,
-    #[serde(default)]
-    xattrs: std::collections::BTreeMap<String, String>,
-    mode: Option<u16>,
-}
-
 /// @swagger See POST /uploads/commit in server/openapi.yaml.
 pub(super) async fn commit(
     State(state): State<ApiState>,
@@ -269,7 +226,7 @@ pub(super) async fn commit(
                 .map_err(|_| ApiError::Unavailable)?;
             if let Some(record) = files::replay(storage, &session, request_id, hash).await? {
                 state.uploads.release_published(&session.workspace, id)?;
-                return Ok(no_store(Json(super::files::MutationReceipt::new(
+                return Ok(no_store(Json(super::files::mutation_receipt(
                     request_id, record,
                 ))));
             }
@@ -317,7 +274,7 @@ pub(super) async fn commit(
             )
             .await?;
             state.uploads.release_published(&session.workspace, id)?;
-            Ok(no_store(Json(super::files::MutationReceipt::new(
+            Ok(no_store(Json(super::files::mutation_receipt(
                 request_id, record,
             ))))
         })

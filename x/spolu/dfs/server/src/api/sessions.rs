@@ -6,7 +6,10 @@ use axum::{
     http::{HeaderMap, StatusCode, request::Parts},
     response::Response,
 };
-use serde::{Deserialize, Serialize};
+use dfs_protocol::wire::{
+    CreateSessionRequest, CreateSessionResponse, CreateWorkspaceRequest, CreateWorkspaceResponse,
+    SessionResponse,
+};
 
 use super::{
     ApiError, ApiState,
@@ -14,40 +17,6 @@ use super::{
     json_body, no_store,
 };
 use crate::model::WorkspaceId;
-
-/// @swaggerschema CreateWorkspaceRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct CreateWorkspaceRequest {
-    workspace_id: String,
-    #[serde(default)]
-    root_grants: Vec<String>,
-}
-
-/// @swaggerschema CreateWorkspaceResponse in server/openapi.yaml.
-#[derive(Serialize)]
-struct CreateWorkspaceResponse {
-    workspace_id: String,
-    root_id: String,
-    workspace_key: String,
-}
-
-/// @swaggerschema CreateSessionRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct CreateSessionRequest {
-    workspace_id: String,
-    grants: Vec<String>,
-}
-
-/// @swaggerschema SessionResponse in server/openapi.yaml.
-#[derive(Serialize)]
-struct SessionResponse {
-    session_id: String,
-    workspace_id: String,
-    grants: BTreeSet<String>,
-    expires_at: u64,
-}
 
 impl From<&Session> for SessionResponse {
     fn from(session: &Session) -> Self {
@@ -58,14 +27,6 @@ impl From<&Session> for SessionResponse {
             expires_at: session.expires_at,
         }
     }
-}
-
-/// @swaggerschema CreateSessionResponse in server/openapi.yaml.
-#[derive(Serialize)]
-struct CreateSessionResponse {
-    #[serde(flatten)]
-    session: SessionResponse,
-    session_key: String,
 }
 
 /// @swagger See POST /workspaces in server/openapi.yaml.

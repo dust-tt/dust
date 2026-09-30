@@ -2,8 +2,8 @@
 
 [DESIGN.md](DESIGN.md) describes the architecture; [CONTRACTS](CONTRACTS) defines the invariants.
 The server scaffold, object model, synchronous storage, workspace/session APIs, namespace reads,
-directory creation, metadata updates, grant administration, moves/removal, root/shared views, and
-synchronous file I/O are implemented today.
+directory creation, metadata updates, grant administration, moves/removal, root/shared views,
+synchronous file I/O, and a Linux FUSE client are implemented today.
 
 Work in small increments: each checkbox should produce a reviewable change with a focused test or
 demo. Split a checkbox further when needed. Keep the server runnable, update API documentation and
@@ -146,8 +146,8 @@ The first three tasks are implemented. Read APIs accept well-known `root` and `s
 Shared discovery merges grant prefixes in object-ID order with bounded candidate pages; filtering
 can produce empty pages with a continuation. Root/canonical listings use name order. Shared lookup
 extracts the ID from its mandatory suffix and rechecks access and the current rendered name; no
-extra index is needed. Synthetic directories are read-only; virtual mounts, alias parent navigation,
-and the tasks above remain deferred.
+extra index is needed. Synthetic directories are read-only. FUSE follows visible parents inside
+`/shared`; custom virtual mounts and the unchecked tasks above remain deferred.
 
 **Done when:** sharing `/spolu/C` exposes `/shared/C--<uuid>` without exposing `/spolu`; conversation/pod
 aliases survive target renames and cannot reveal hidden ancestors.
@@ -194,23 +194,36 @@ Large-file transfers stay within the configured memory budget and recovery needs
 
 ## 7. First Rust FUSE client and end-to-end baseline
 
-- [ ] Add a Rust API client and share protocol types where needed. Configure endpoint, session
+- [x] Add a Rust API client and share protocol types where needed. Configure endpoint, session
   credentials, and mount location without logging tokens or placing them in URLs. Preserve streaming,
   range reads, and backpressure through the client.
-- [ ] Set up a Linux sandbox with `/dev/fuse` and mount permissions; use existing `dust-sandbox`
+- [x] Set up a Linux sandbox with `/dev/fuse` and mount permissions; use existing `dust-sandbox`
   conventions. Keep the server runnable natively on macOS.
-- [ ] Map object IDs and virtual namespace positions to mount-local inodes, with correct parent
+- [x] Map object IDs and virtual namespace positions to mount-local inodes, with correct parent
   traversal and inode/handle lifetimes.
-- [ ] Implement lookup, getattr, readdir, open, and read; mount an authorized tree read-only first.
-- [ ] Add create, mkdir, write, truncate, rename, unlink, rmdir, and supported xattr operations.
-- [ ] Implement flush/fsync/release and propagate failures. Never acknowledge fsync while writes
+- [x] Implement lookup, getattr, readdir, open, and read; mount an authorized tree read-only first.
+- [x] Add create, mkdir, write, truncate, rename, unlink, rmdir, and supported xattr operations.
+- [x] Implement flush/fsync/release and propagate failures. Never acknowledge fsync while writes
   remain only in the client; return explicit errors for unsupported filesystem operations.
-- [ ] Use conservative client/kernel cache settings and validate two simultaneous mounts.
-- [ ] Record baseline timings for `ls`, `find`, `cat`, edits, and small-file `untar`; repeat reads
+- [x] Use conservative client/kernel cache settings and validate two simultaneous mounts.
+- [x] Record baseline timings for `ls`, `find`, `cat`, edits, and small-file `untar`; repeat reads
   after restarting the server with no surviving local disk.
 
 **Done when:** FUSE → server → GCS/SlateDB works end to end with sharing and two clients. This is
 the gate before adding dfs server caching; slow synchronous performance is expected at this stage.
+
+Implemented `dfs-protocol`, the portable blocking `dfs-client`, and Linux-only `dfs-fuse` using
+`fuser` 0.18. Native macOS builds/tests need no FUSE driver; macFUSE is excluded. The mount takes a
+session-key file, keeps zero metadata/name TTLs, and uses direct I/O without kernel writeback.
+Inodes retain visible parents; directory paging uses bounded cursors. Writes/retries, sticky errors,
+and flush/fsync use the server protocol. Synthetic root/shared entries remain read-only.
+
+Validated real Linux mounts from macOS through Docker, including two grant scopes, revocation on
+open handles, session closure, quota/flush failures, multi-page directories, and unsupported locks.
+The GCS fixture kills the server, removes scratch, recreates sessions, and remounts acknowledged
+files. An 80 MiB real-HTTP client test exercises streamed upload/read and ranges without whole-file
+buffers. Commands are in [fuse/README.md](fuse/README.md); timings are in
+[bench/FUSE.md](bench/FUSE.md). No CI job is added.
 
 ## 8. Synchronous recovery and failure handling
 
@@ -327,6 +340,9 @@ machine with the documented durability tradeoff.
 
 ## Future work
 
+- [ ] Handle ownership preservation during cross-filesystem `mv` into dfs. Define supported
+  UID/GID and `chown` semantics while keeping grants authoritative; cover moves that copy content
+  successfully but currently report `failed to preserve ownership: Operation not supported`.
 - [ ] Preserve open files after unlink/replacement, with detached metadata, explicit grant semantics,
   retained content, and last-handle reclamation, before claiming POSIX open-after-unlink support.
 - [ ] Add workspace-key rotation/recovery and revocation, including lost creation responses and

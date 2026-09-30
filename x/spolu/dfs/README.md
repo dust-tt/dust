@@ -14,8 +14,10 @@ batches. Workspace creation issues a workspace key; that key issues sessions wit
 authorizes explicit grant listing/updates.
 Session-authenticated reads, mkdir, metadata updates, moves/removal, and root/shared projections
 are available. File APIs provide streamed uploads/publication, range reads, session handles, random
-writes, append, truncate, fsync, and durable retry receipts. Virtual mounts, search, and FUSE remain
-later increments.
+writes, append, truncate, fsync, and durable retry receipts. `dfs-client` provides portable streamed
+HTTP access; `dfs-fuse` mounts on Linux with live grant checks and server-backed fsync. Shared wire
+and model types live in `dfs-protocol`; the server reexports the model. Custom virtual mounts and
+search remain later increments.
 Optional GCS configuration opens SlateDB before serving HTTP and
 closes it after requests and admitted file jobs drain. Without it, the HTTP scaffold still runs without
 external services.
@@ -153,7 +155,8 @@ request. A filtered page can be empty with non-null `next_after`; keep paging un
 canonical listings use name order/cursors. All requests recheck grants, ancestry, and current names.
 Synthetic stat returns directory mode `0555`, empty xattrs, revision zero, and epoch timestamps;
 these fixed attributes are not change tokens. Synthetic mutations return `forbidden`.
-Virtual mounts and virtual parent navigation remain deferred; session creation has no `mounts` field.
+FUSE follows visible parents inside `/shared`. Custom virtual mounts remain deferred; session
+creation has no `mounts` field.
 
 ## Directory creation and metadata updates
 
@@ -297,6 +300,10 @@ timeouts and cleans up its child processes. It clears dfs GCS configuration in i
 so it never opens a configured development database. Pass `--binary` when using a custom Cargo
 target directory.
 
-The FUSE client will start in a Linux sandbox with `/dev/fuse` and mount permissions, following
-`cli/dust-sandbox`. macOS mounting is possible through [macFUSE](https://macfuse.github.io/), but
-client compatibility and mounting will be validated in that increment.
+## Linux FUSE client
+
+See [fuse/README.md](fuse/README.md) for native Linux mounts, Docker development from macOS, and
+end-to-end test commands. macFUSE is excluded. A mount takes only a session-key file, uses direct I/O
+and zero metadata TTLs, and supports namespace edits, streamed file I/O, xattrs, and server-backed
+flush/fsync. Remount with a new session after expiry or server restart. The initial synchronous
+baseline and its measured limits are recorded in [bench/FUSE.md](bench/FUSE.md).

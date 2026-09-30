@@ -7,13 +7,14 @@ use axum::{
     http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
 };
+use dfs_protocol::wire::{
+    CloseFileRequest, FsyncFileRequest, MutationReceipt, MutationStatusRequest, OpenFileRequest,
+    OpenFileResponse, ReadFileRequest, TruncateFileRequest,
+};
 use futures::{StreamExt, stream};
-use serde::{Deserialize, Serialize};
 
 use super::{
-    ApiError, ApiState, json_body, no_store,
-    objects::{ObjectAttributes, object_id},
-    sessions::AuthenticatedSession,
+    ApiError, ApiState, json_body, no_store, objects::object_id, sessions::AuthenticatedSession,
 };
 use crate::{
     files::{HandleMode, WriteKind, WriteRequest, upload_error},
@@ -22,53 +23,14 @@ use crate::{
     storage::OperationRecord,
 };
 
-/// @swaggerschema MutationReceipt in server/openapi.yaml.
-#[derive(Serialize)]
-pub(super) struct MutationReceipt {
-    request_id: String,
-    object_id: String,
-    content_version: String,
-    size_bytes: u64,
-    metadata_revision: u64,
-}
-
-impl MutationReceipt {
-    pub(super) fn new(id: RequestId, record: OperationRecord) -> Self {
-        Self {
-            request_id: id.to_string(),
-            object_id: ObjectId::from_bytes(record.object_id).to_string(),
-            content_version: ContentVersionId::from_bytes(record.content_version).to_string(),
-            size_bytes: record.size_bytes,
-            metadata_revision: record.metadata_revision,
-        }
+pub(super) fn mutation_receipt(id: RequestId, record: OperationRecord) -> MutationReceipt {
+    MutationReceipt {
+        request_id: id.to_string(),
+        object_id: ObjectId::from_bytes(record.object_id).to_string(),
+        content_version: ContentVersionId::from_bytes(record.content_version).to_string(),
+        size_bytes: record.size_bytes,
+        metadata_revision: record.metadata_revision,
     }
-}
-
-/// @swaggerschema OpenFileRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct OpenFileRequest {
-    object_id: String,
-    #[serde(default = "yes")]
-    read: bool,
-    #[serde(default)]
-    write: bool,
-    #[serde(default)]
-    append: bool,
-    #[serde(default)]
-    truncate: bool,
-    request_id: Option<String>,
-}
-fn yes() -> bool {
-    true
-}
-
-/// @swaggerschema OpenFileResponse in server/openapi.yaml.
-#[derive(Serialize)]
-struct OpenFileResponse {
-    handle_id: String,
-    sequence: u64,
-    attributes: ObjectAttributes,
 }
 
 /// @swagger See POST /files/open in server/openapi.yaml.
@@ -138,16 +100,6 @@ pub(super) async fn open(
             result
         })
         .await
-}
-
-/// @swaggerschema ReadFileRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ReadFileRequest {
-    handle_id: String,
-    content_version: Option<String>,
-    offset: u64,
-    length: u64,
 }
 
 /// @swagger See POST /files/read in server/openapi.yaml.
@@ -247,19 +199,9 @@ pub(super) async fn write(
                 .files
                 .edit(state.storage()?, &handle, request, input)
                 .await?;
-            Ok(no_store(Json(MutationReceipt::new(request_id, result))))
+            Ok(no_store(Json(mutation_receipt(request_id, result))))
         })
         .await
-}
-
-/// @swaggerschema TruncateFileRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct TruncateFileRequest {
-    handle_id: String,
-    request_id: String,
-    sequence: u64,
-    size_bytes: u64,
 }
 
 /// @swagger See POST /files/truncate in server/openapi.yaml.
@@ -289,17 +231,9 @@ pub(super) async fn truncate(
                     stream::empty().boxed(),
                 )
                 .await?;
-            Ok(no_store(Json(MutationReceipt::new(request_id, result))))
+            Ok(no_store(Json(mutation_receipt(request_id, result))))
         })
         .await
-}
-
-/// @swaggerschema FsyncFileRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct FsyncFileRequest {
-    handle_id: String,
-    through_sequence: u64,
 }
 
 /// @swagger See POST /files/fsync in server/openapi.yaml.
@@ -317,13 +251,6 @@ pub(super) async fn fsync(
     Ok(no_store(StatusCode::NO_CONTENT))
 }
 
-/// @swaggerschema CloseFileRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct CloseFileRequest {
-    handle_id: String,
-}
-
 /// @swagger See POST /files/close in server/openapi.yaml.
 pub(super) async fn close(
     State(state): State<ApiState>,
@@ -334,14 +261,6 @@ pub(super) async fn close(
     let handle = state.files.handle(&session, parse(&body.handle_id)?)?;
     state.files.close(&handle).await?;
     Ok(no_store(StatusCode::NO_CONTENT))
-}
-
-/// @swaggerschema MutationStatusRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct MutationStatusRequest {
-    object_id: String,
-    request_id: String,
 }
 
 /// @swagger See POST /files/status in server/openapi.yaml.
@@ -359,7 +278,7 @@ pub(super) async fn status(
         request_id,
     )
     .await?
-    .map(|record| MutationReceipt::new(request_id, record));
+    .map(|record| mutation_receipt(request_id, record));
     Ok(no_store(Json(receipt)))
 }
 

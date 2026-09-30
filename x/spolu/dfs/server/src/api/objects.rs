@@ -7,43 +7,18 @@ use axum::{
     response::Response,
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
-use serde::{Deserialize, Serialize};
+use dfs_protocol::wire::{
+    EntryAttributes, KindAttributes, ListRequest, ListResponse, LookupRequest, MkdirRequest,
+    ObjectAttributes, RemoveRequest, RenameRequest, StatRequest, UpdateMetadataRequest,
+};
 
 use super::{ApiError, ApiState, json_body, no_store, sessions::AuthenticatedSession};
 use crate::{
-    model::{EntryName, ObjectId, ObjectKind, ObjectMetadata, PosixAttributes, Timestamp},
+    model::{EntryName, ObjectId, PosixAttributes, Timestamp},
     namespace::{self, NamespaceId, NamespaceNode, NamespaceRead, SyntheticDirectory},
 };
 
-/// @swaggerschema StatRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct StatRequest {
-    object_id: String,
-}
-
-/// @swaggerschema LookupRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct LookupRequest {
-    parent_id: String,
-    name: String,
-}
-
-/// @swaggerschema ListRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ListRequest {
-    directory_id: String,
-    #[serde(default)]
-    after: Option<String>,
-    #[serde(default = "default_limit")]
-    limit: usize,
-}
-
-pub(super) fn default_limit() -> usize {
-    100
-}
+pub(super) use dfs_protocol::wire::default_limit;
 
 /**
  * @cc [owner:spolu,label:security] object-response-boundary
@@ -52,52 +27,6 @@ pub(super) fn default_limit() -> usize {
  * exposing its hidden ancestry. Xattrs MUST use padded standard base64 so arbitrary bytes round-trip
  * without loss.
  */
-/// @swaggerschema ObjectAttributes in server/openapi.yaml.
-#[derive(Serialize)]
-pub(super) struct ObjectAttributes {
-    object_id: String,
-    #[serde(flatten)]
-    kind: KindAttributes,
-    mime_type: String,
-    xattrs: BTreeMap<String, String>,
-    metadata_revision: u64,
-    #[serde(flatten)]
-    posix: PosixAttributes,
-}
-
-#[derive(Serialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-enum KindAttributes {
-    File {
-        content_version: String,
-        size_bytes: u64,
-    },
-    Directory,
-}
-
-impl From<ObjectMetadata> for ObjectAttributes {
-    fn from(object: ObjectMetadata) -> Self {
-        Self {
-            object_id: object.id.to_string(),
-            kind: match object.kind {
-                ObjectKind::File(content) => KindAttributes::File {
-                    content_version: content.version.to_string(),
-                    size_bytes: content.size_bytes,
-                },
-                ObjectKind::Directory => KindAttributes::Directory,
-            },
-            mime_type: object.mime_type.to_string(),
-            xattrs: object
-                .xattrs
-                .into_iter()
-                .map(|(key, value)| (key, STANDARD.encode(value)))
-                .collect(),
-            metadata_revision: object.metadata_revision.get(),
-            posix: object.posix,
-        }
-    }
-}
-
 impl From<NamespaceNode> for ObjectAttributes {
     fn from(node: NamespaceNode) -> Self {
         match node {
@@ -115,19 +44,6 @@ impl From<NamespaceNode> for ObjectAttributes {
             },
         }
     }
-}
-
-/// @swaggerschema ListResponse in server/openapi.yaml.
-#[derive(Serialize)]
-struct ListResponse {
-    entries: Vec<EntryAttributes>,
-    next_after: Option<String>,
-}
-
-#[derive(Serialize)]
-struct EntryAttributes {
-    name: String,
-    attributes: ObjectAttributes,
 }
 
 /// @swagger See POST /objects/stat in server/openapi.yaml.
@@ -182,32 +98,6 @@ pub(super) async fn list(
             .collect(),
         next_after: page.next_after,
     })))
-}
-
-/// @swaggerschema MkdirRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct MkdirRequest {
-    parent_id: String,
-    name: String,
-    mime_type: Option<String>,
-    #[serde(default)]
-    xattrs: BTreeMap<String, String>,
-    mode: Option<u16>,
-}
-
-/// @swaggerschema UpdateMetadataRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct UpdateMetadataRequest {
-    object_id: String,
-    expected_metadata_revision: u64,
-    mime_type: Option<String>,
-    #[serde(default)]
-    xattrs: BTreeMap<String, Option<String>>,
-    mode: Option<u16>,
-    atime: Option<Timestamp>,
-    mtime: Option<Timestamp>,
 }
 
 /// @swagger See POST /objects/mkdir in server/openapi.yaml.
@@ -289,26 +179,6 @@ pub(super) async fn update(
     )
     .await?;
     Ok(no_store(Json(ObjectAttributes::from(object))))
-}
-
-/// @swaggerschema RenameRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RenameRequest {
-    object_id: String,
-    expected_metadata_revision: u64,
-    parent_id: String,
-    name: String,
-    #[serde(default)]
-    replace: bool,
-}
-
-/// @swaggerschema RemoveRequest in server/openapi.yaml.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RemoveRequest {
-    object_id: String,
-    expected_metadata_revision: u64,
 }
 
 /// @swagger See POST /objects/rename in server/openapi.yaml.

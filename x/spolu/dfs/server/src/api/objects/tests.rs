@@ -1,3 +1,4 @@
+use crate::model::{ObjectKind, ObjectMetadata};
 mod authorization;
 mod concurrency;
 mod entries;

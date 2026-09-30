@@ -129,3 +129,15 @@ metadata/index/event batch. Identical retries MUST return the durable original r
 repeating the mutation; changed arguments or bytes MUST conflict. Recovery/status MUST authorize
 the current object. A missing receipt or disconnected caller MUST NOT be treated as proof of failure.
 Never reclaim receipts until a retry-expiry protocol makes reuse safe.
+
+@cc [owner:spolu,label:security] fuse-session-and-cache-boundary
+A FUSE mount MUST retain its original session scope. Session expiry, closure, or server restart MUST
+fail closed; a new session requires a fresh mount and namespace state. The initial client MUST use
+zero entry/attribute TTLs and direct I/O without writeback or authorization/content caching. Store
+credentials only in authorization headers; never log them or embed them in URLs.
+
+@cc [owner:spolu,label:backend] fuse-publication-errors
+FUSE writes, flush, and fsync MUST NOT acknowledge client-only bytes. Serialize per-handle sequences
+and keep unresolved write errors sticky through flush/fsync. Retry ambiguous edits only with identical
+request IDs, arguments, and bytes; do not blindly retry namespace mutations. Unsupported operations,
+including cross-mount advisory locks, MUST return errors rather than promise unsupported semantics.

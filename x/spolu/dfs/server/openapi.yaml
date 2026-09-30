@@ -3,6 +3,7 @@ info:
   title: dfs server
   version: 0.1.0
   description: |
+    Shared Rust request/response types are defined in protocol/src/wire.rs.
     Unknown routes return 404 with ErrorResponse (not_found). Unsupported methods on known routes
     return 405 with ErrorResponse (method_not_allowed) and an Allow header.
     Errors carry Cache-Control: no-store. HEAD responses omit the body.

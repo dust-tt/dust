@@ -158,7 +158,7 @@ impl Storage {
      * SlateDB and its background workers MUST NOT retry backend failures indefinitely. Rely on
      * the GCS client's bounded retries so credential and exhausted I/O failures can propagate.
      */
-    pub(crate) async fn open(store: Arc<dyn ObjectStore>, prefix: &StoragePrefix) -> Result<Self> {
+    pub async fn open(store: Arc<dyn ObjectStore>, prefix: &StoragePrefix) -> Result<Self> {
         Self::open_with_settings(
             store,
             prefix,
