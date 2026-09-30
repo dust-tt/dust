@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/actions/servers/poke/tools/utils";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { Err } from "@app/types/shared/result";
 
 type AgentHandlers = Pick<
@@ -67,11 +68,24 @@ export const agentHandlers: AgentHandlers = {
     }
     const targetAuth = targetAuthResult.value;
 
-    const allAgents = await getAgentConfigurationsForView({
-      auth: targetAuth,
-      agentsGetView: status === "archived" ? "archived" : "admin_internal",
-      variant: "light",
-    });
+    const agents =
+      status === "archived"
+        ? await AgentResource.listByWorkspace(targetAuth, {
+            status: "archived",
+          })
+        : [
+            ...(await AgentResource.listGlobalAgents(targetAuth)).filter(
+              (agent) => agent.status === "active"
+            ),
+            ...(await AgentResource.listByWorkspace(targetAuth)),
+          ];
+    const instructionsByAgent =
+      await AgentResource.batchFetchInstructions(agents);
+    const allAgents = agents.map((agent) => ({
+      ...agent.toJSON(),
+      instructionsLength:
+        instructionsByAgent.get(agent)?.instructions?.length ?? 0,
+    }));
 
     // Sort by versionCreatedAt DESC, sId ASC as tiebreaker.
     // Null versionCreatedAt is treated as oldest.
@@ -138,7 +152,7 @@ export const agentHandlers: AgentHandlers = {
         status: a.status,
         version: a.version,
         versionCreatedAt: a.versionCreatedAt,
-        instructionsLength: a.instructions?.length ?? 0,
+        instructionsLength: a.instructionsLength,
         requestedSpaceCount: a.requestedSpaceIds.length,
       })),
       nextPageCursor,

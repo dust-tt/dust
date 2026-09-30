@@ -4,10 +4,10 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import type { MCPServerViewDisplayMetadata } from "@app/lib/resources/mcp_server_view_resource";
@@ -159,13 +159,16 @@ async function listConsumptionFacetCatalogWithoutTracing(
     "agents",
     "agent",
     requestedDimensions,
-    () =>
-      getAgentConfigurationsForView({
-        auth,
-        agentsGetView: "analytics",
-        variant: "extra_light",
-        omitHeavyAttributes: true,
-      })
+    async () => {
+      const [globalAgents, customAgents] = await Promise.all([
+        AgentResource.listGlobalAgents(auth),
+        AgentResource.listByWorkspace(auth),
+      ]);
+      return [
+        ...globalAgents.filter((agent) => agent.status === "active"),
+        ...customAgents,
+      ];
+    }
   );
   const models = await traceFacetCatalogLoad(
     "models",

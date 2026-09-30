@@ -4,7 +4,6 @@ import type {
   ActivationNudgePushedResourceType,
 } from "@app/lib/api/activation/nudge";
 import { listActivationPodsByUser } from "@app/lib/api/activation/pods";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
   createSpaceAndGroup,
@@ -459,12 +458,11 @@ export const activationManagementPlugin = createPlugin({
         withTools: false,
         withFileAttachments: false,
       }),
-      getAgentConfigurationsForView({
-        auth,
-        agentsGetView: "published",
-        variant: "light",
-        omitHeavyAttributes: true,
-      }),
+      AgentResource.listByWorkspace(auth).then((agents) =>
+        agents.filter(
+          (agent) => agent.scope === "visible" && auth.can("read", agent)
+        )
+      ),
       GroupResource.listAllWorkspaceGroups(auth, {
         groupKinds: [...MANAGEABLE_GROUP_KINDS],
       }),
