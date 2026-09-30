@@ -328,7 +328,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           existingName,
           originalName
         );
-        if (existingToolName.isOk() && existingToolName.value === prefixedName) {
+        if (
+          existingToolName.isOk() &&
+          existingToolName.value === prefixedName
+        ) {
           return {
             hasConflict: true,
             name,

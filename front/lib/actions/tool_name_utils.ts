@@ -95,7 +95,7 @@ export function getModelFacingToolNames(
 } {
   const droppedPrefixNames = new Set<string>();
   const prefixedNames: { originalName: string; prefixedName: string }[] = [];
-  
+
   for (const originalName of toolNames) {
     const prefixedName = tryGetPrefixedToolName(serverName, originalName);
     if (prefixedName.isErr()) {

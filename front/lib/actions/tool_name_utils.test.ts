@@ -1,7 +1,7 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import {
-  getPrefixedToolName,
   getModelFacingToolNames,
+  getPrefixedToolName,
   wouldDropToolNamePrefix,
 } from "@app/lib/actions/tool_name_utils";
 import { describe, expect, it } from "vitest";
