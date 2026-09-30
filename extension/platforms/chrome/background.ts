@@ -152,7 +152,9 @@ async function closeSidePanel(
     sendResponse(response ?? { success: true, closed: true });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Unknown error closing side panel.";
+      error instanceof Error
+        ? error.message
+        : "Unknown error closing side panel.";
     log("[onMessageExternal] Error closing side panel:", message);
     sendResponse({ success: false, error: message });
   }
@@ -173,97 +175,99 @@ async function closeSidePanel(
  *
  * We return true to keep the message channel open for async response.
  */
-chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
-  const closeParsed = closeSidePanelSchema.safeParse(request);
-  if (closeParsed.success) {
-    void closeSidePanel(closeParsed.data.workspaceId, sender, sendResponse);
-    return true;
-  }
-
-  const parsed = openSidePanelSchema.safeParse(request);
-
-  if (!parsed.success) {
-    log("[onMessageExternal] Invalid params:", request);
-    sendResponse({ success: false, error: "Invalid params." });
-    return true;
-  }
-
-  const { workspaceId, conversationId, agentId } = parsed.data;
-  const hasConversationId = !!conversationId;
-
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]) {
-      void chrome.sidePanel
-        .open({
-          windowId: tabs[0].windowId,
-        })
-        .then(() => {
-          chrome.storage.local.get(
-            ["extensionReady", "selectedWorkspace"],
-            ({ extensionReady, selectedWorkspace }) => {
-              if (workspaceId != selectedWorkspace) {
-                log("[onMessageExternal] User selected another workspace.");
-                return;
-              }
-
-              const sendMessage = () => {
-                const params = JSON.stringify(
-                  hasConversationId ? { conversationId } : { agentId }
-                );
-                void chrome.runtime.sendMessage({
-                  type: "EXT_ROUTE_CHANGE",
-                  pathname: "/run",
-                  search: `?${params}`,
-                });
-              };
-
-              if (!extensionReady) {
-                let retries = 0;
-                const MAX_RETRIES = 15;
-                const RETRY_INTERVAL = 500; // Check every 500ms 15 times = 7.5s total.
-
-                const checkReady = () => {
-                  if (retries >= MAX_RETRIES) {
-                    log(
-                      "[onMessageExternal] Max retries reached waiting for extension ready."
-                    );
-                    return;
-                  }
-
-                  chrome.storage.local.get(
-                    ["extensionReady"],
-                    ({ extensionReady }) => {
-                      if (chrome.runtime.lastError) {
-                        log(
-                          "[onMessageExternal] Error checking extension ready:",
-                          chrome.runtime.lastError
-                        );
-                        return;
-                      }
-
-                      if (extensionReady) {
-                        sendMessage();
-                      } else {
-                        retries++;
-                        setTimeout(checkReady, RETRY_INTERVAL);
-                      }
-                    }
-                  );
-                };
-                checkReady();
-              } else {
-                sendMessage();
-              }
-            }
-          );
-        })
-        .catch((err) => {
-          log("[onMessageExternal] Error opening side panel:", err);
-        });
+chrome.runtime.onMessageExternal.addListener(
+  (request, sender, sendResponse) => {
+    const closeParsed = closeSidePanelSchema.safeParse(request);
+    if (closeParsed.success) {
+      void closeSidePanel(closeParsed.data.workspaceId, sender, sendResponse);
+      return true;
     }
-  });
 
-  return true;
-});
+    const parsed = openSidePanelSchema.safeParse(request);
+
+    if (!parsed.success) {
+      log("[onMessageExternal] Invalid params:", request);
+      sendResponse({ success: false, error: "Invalid params." });
+      return true;
+    }
+
+    const { workspaceId, conversationId, agentId } = parsed.data;
+    const hasConversationId = !!conversationId;
+
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        void chrome.sidePanel
+          .open({
+            windowId: tabs[0].windowId,
+          })
+          .then(() => {
+            chrome.storage.local.get(
+              ["extensionReady", "selectedWorkspace"],
+              ({ extensionReady, selectedWorkspace }) => {
+                if (workspaceId != selectedWorkspace) {
+                  log("[onMessageExternal] User selected another workspace.");
+                  return;
+                }
+
+                const sendMessage = () => {
+                  const params = JSON.stringify(
+                    hasConversationId ? { conversationId } : { agentId }
+                  );
+                  void chrome.runtime.sendMessage({
+                    type: "EXT_ROUTE_CHANGE",
+                    pathname: "/run",
+                    search: `?${params}`,
+                  });
+                };
+
+                if (!extensionReady) {
+                  let retries = 0;
+                  const MAX_RETRIES = 15;
+                  const RETRY_INTERVAL = 500; // Check every 500ms 15 times = 7.5s total.
+
+                  const checkReady = () => {
+                    if (retries >= MAX_RETRIES) {
+                      log(
+                        "[onMessageExternal] Max retries reached waiting for extension ready."
+                      );
+                      return;
+                    }
+
+                    chrome.storage.local.get(
+                      ["extensionReady"],
+                      ({ extensionReady }) => {
+                        if (chrome.runtime.lastError) {
+                          log(
+                            "[onMessageExternal] Error checking extension ready:",
+                            chrome.runtime.lastError
+                          );
+                          return;
+                        }
+
+                        if (extensionReady) {
+                          sendMessage();
+                        } else {
+                          retries++;
+                          setTimeout(checkReady, RETRY_INTERVAL);
+                        }
+                      }
+                    );
+                  };
+                  checkReady();
+                } else {
+                  sendMessage();
+                }
+              }
+            );
+          })
+          .catch((err) => {
+            log("[onMessageExternal] Error opening side panel:", err);
+          });
+      }
+    });
+
+    return true;
+  }
+);
 
 registerMessageListener(platform);
