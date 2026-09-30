@@ -53,6 +53,17 @@ const config: KnipConfig = {
         // Read by swagger-jsdoc from their `@swagger` comments.
         "routes/**/swagger*.ts!",
       ],
+      // Legacy (non-space) public API stubs: nothing imports them, since their parent legacy
+      // sub-apps re-export the space-scoped ones, but `url-aligned-route-files` in
+      // front-api/CONTRACTS requires one file per URL. Brackets are escaped for the glob.
+      ignoreFiles: [
+        "routes/v1/w/\\[wId\\]/apps/\\[aId\\]/runs/\\[runId\\]/index.ts",
+        "routes/v1/w/\\[wId\\]/data_sources/\\[dsId\\]/documents/\\[documentId\\]/{index,parents}.ts",
+        "routes/v1/w/\\[wId\\]/data_sources/\\[dsId\\]/folders/\\[fId\\].ts",
+        "routes/v1/w/\\[wId\\]/data_sources/\\[dsId\\]/tables/csv.ts",
+        "routes/v1/w/\\[wId\\]/data_sources/\\[dsId\\]/tables/\\[tId\\]/{index,parents}.ts",
+        "routes/v1/w/\\[wId\\]/data_sources/\\[dsId\\]/tables/\\[tId\\]/rows/{index,\\[rId\\]}.ts",
+      ],
       project: [
         "**/*.{ts,tsx}!",
         "!tests/**!",
