@@ -93,6 +93,7 @@ import type {
   AgentModelConfigurationType,
   AgentReinforcementMode,
   AgentStatus,
+  GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import { isAgentStatus } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -198,6 +199,30 @@ const AGENT_INSTRUCTIONS_ATTRIBUTES = [
 export type AgentVersionReference = {
   agentId: string;
   agentVersion: number;
+};
+
+// `dangerouslySkipFetchCheck` is for callers displaying agents reached through another
+// access-controlled object (e.g. the historical agents of a conversation the caller can read), or
+// deciding access themselves: they must keep the agent's identity even once the caller holds no
+// verb on it.
+/**
+ * @cc [owner:tdraier,label:security] agent-dangerous-fetch
+ * With `dangerouslySkipFetchCheck`, `fetchByIds`/`fetchByIdsAndVersions` MUST behave as without it
+ * except that they skip the `canFetch` drop: resources are still materialized for the caller, so
+ * one the caller holds no verb on carries no verb (`auth.can` is false for all of them) and
+ * `canViewContent` false, and exposes core fields only (see `unreadable-agent-content-hidden`).
+ * Workspace scoping and missing-agent omission are unchanged.
+ */
+/**
+ * @cc [owner:tdraier,label:backend] global-agent-context
+ * `globalAgentContext` is the conversation turn a global agent is resolved for: it MUST only be
+ * forwarded to `getGlobalAgents`, so it only shapes global agents (today their
+ * `modelConfiguration`, e.g. the NOOP static reply), and MUST NOT affect custom agents. Global
+ * resources are never cached, so a turn's context never reaches another read.
+ */
+export type AgentFetchOptions = {
+  dangerouslySkipFetchCheck?: boolean;
+  globalAgentContext?: GlobalAgentContext;
 };
 
 // The outcome of a `bulkUpdate`: the agents whose save succeeded (`updatedAgentIds`, a change
@@ -379,7 +404,7 @@ export interface AgentResource
  * a custom agent to its current configuration version — the row its `currentVersion` pointer
  * designates (see `fetch-current-version`) — so two fetched resources sharing an `id`
  * (= `agentModelId`) are consistent at a given time. `fetchVersion`/`listVersions` and
- * `(dangerously)fetchByIdsAndVersions` are the only resolvers that deliberately resolve other
+ * `fetchByIdsAndVersions` are the only resolvers that deliberately resolve other
  * versions (see `agent-versions`, `fetch-pinned-versions`); such a resource is told apart by
  * `isCurrentVersion` and is read-only. The `from*` factories are an unchecked fast
  * path: they build a resource from whatever configuration the caller supplies, and do NOT yet
@@ -673,7 +698,11 @@ export class AgentResource
       scope: "global",
       status: configuration.status,
       versionAuthorId: null,
-    } satisfies Pick<AgentResource, "scope" | "status" | "versionAuthorId">);
+      modelConfiguration: configuration.model,
+    } satisfies Pick<
+      AgentResource,
+      "scope" | "status" | "versionAuthorId" | "modelConfiguration"
+    >);
     resource._codeDefinedSkillIds = configuration.codeDefinedSkillIds ?? [];
     resource._globalContent = {
       instructions: configuration.instructions,
@@ -789,9 +818,9 @@ export class AgentResource
    * `version` equals the agent's `currentVersion` pointer (see `agent-current-version-pointer`) —
    * scoped to the authed workspace. Each is materialized for the caller, whose `canViewContent`
    * follows `agent-content-visibility`; a resource the caller cannot fetch at all (holds no verb on,
-   * per `canFetch`) is dropped, except by `dangerouslyFetchByIds` (see `agent-dangerous-fetch`).
-   * An agent with no configuration yields no resource, and at most one resource is returned per
-   * `agentModelId`. `fetchById(s)` additionally resolve global agents by `sId` (they have no
+   * per `canFetch`) is dropped, except with `dangerouslySkipFetchCheck` (see
+   * `agent-dangerous-fetch`). An agent with no configuration yields no resource, and at most one
+   * resource is returned per `agentModelId`. `fetchById(s)` additionally resolve global agents by `sId` (they have no
    * configuration rows) via `getGlobalAgents`, gated by the same `canFetch` check;
    * `fetchByModelId(s)` cannot, since global agents have no `agentModelId`.
    */
@@ -835,41 +864,11 @@ export class AgentResource
    */
   static async fetchByIds(
     auth: Authenticator,
-    agentIds: string[]
-  ): Promise<AgentResource[]> {
-    return this.resolveByIds(auth, agentIds, {
-      dangerouslySkipFetchCheck: false,
-    });
-  }
-
-  // Skips the `canFetch` drop, for callers displaying agents reached through another
-  // access-controlled object (e.g. the historical agents of a conversation the caller can read) or
-  // running as internal/system jobs: they must keep the agent's identity even once the caller holds
-  // no verb on it.
-  /**
-   * @cc [owner:tdraier,label:security] agent-dangerous-fetch
-   * The `dangerouslyFetchByIds`/`dangerouslyFetchByIdsAndVersions` resolvers MUST behave as
-   * `fetchByIds`/`fetchByIdsAndVersions` except that they skip the `canFetch` drop: resources are
-   * still materialized for the caller, so one the caller holds no verb on carries no verb
-   * (`auth.can` is false for all of them) and `canViewContent` false, and exposes core fields only
-   * (see `unreadable-agent-content-hidden`). Workspace scoping and missing-agent omission are
-   * unchanged.
-   */
-  static async dangerouslyFetchByIds(
-    auth: Authenticator,
-    agentIds: string[]
-  ): Promise<AgentResource[]> {
-    return this.resolveByIds(auth, agentIds, {
-      dangerouslySkipFetchCheck: true,
-    });
-  }
-
-  // `dangerouslySkipFetchCheck` skips the `canFetch` drop, for `dangerouslyFetchByIds` only (see
-  // `agent-dangerous-fetch`).
-  private static async resolveByIds(
-    auth: Authenticator,
     agentIds: string[],
-    { dangerouslySkipFetchCheck }: { dangerouslySkipFetchCheck: boolean }
+    {
+      dangerouslySkipFetchCheck = false,
+      globalAgentContext,
+    }: AgentFetchOptions = {}
   ): Promise<AgentResource[]> {
     if (agentIds.length === 0) {
       return [];
@@ -883,6 +882,7 @@ export class AgentResource
       this.fetchManyFromStore(auth, customAgentIds),
       this.fetchGlobalAgents(auth, globalAgentIds, {
         dangerouslySkipFetchCheck,
+        globalAgentContext,
       }),
     ]);
 
@@ -906,21 +906,25 @@ export class AgentResource
 
   // Global agents are code-defined and have no `agent`/configuration rows, so they cannot be
   // resolved by the version query; they are built from `getGlobalAgents` (which enforces workspace
-  // plan/availability) and gated by the same `canFetch` check as custom agents, which
-  // `dangerouslySkipFetchCheck` skips for the `dangerously*` resolvers (see
-  // `agent-dangerous-fetch`).
+  // plan/availability) and gated by the same `canFetch` check as custom agents.
   private static async fetchGlobalAgents(
     auth: Authenticator,
     globalAgentIds: string[],
     {
       dangerouslySkipFetchCheck = false,
-    }: { dangerouslySkipFetchCheck?: boolean } = {}
+      globalAgentContext,
+    }: AgentFetchOptions = {}
   ): Promise<AgentResource[]> {
     if (globalAgentIds.length === 0) {
       return [];
     }
 
-    const configurations = await getGlobalAgents(auth, globalAgentIds, "light");
+    const configurations = await getGlobalAgents(
+      auth,
+      globalAgentIds,
+      "light",
+      { globalAgentContext }
+    );
     return configurations
       .map((configuration) => this.fromGlobalAgent(auth, configuration))
       .filter(
@@ -941,29 +945,11 @@ export class AgentResource
    */
   static async fetchByIdsAndVersions(
     auth: Authenticator,
-    agentVersions: AgentVersionReference[]
-  ): Promise<AgentResource[]> {
-    return this.resolveByIdsAndVersions(auth, agentVersions, {
-      dangerouslySkipFetchCheck: false,
-    });
-  }
-
-  // Skips the `canFetch` drop (see `agent-dangerous-fetch`), for callers rendering the pinned
-  // versions of messages in a conversation the caller can read: historical agents keep their
-  // identity even once the caller holds no verb on them.
-  static async dangerouslyFetchByIdsAndVersions(
-    auth: Authenticator,
-    agentVersions: AgentVersionReference[]
-  ): Promise<AgentResource[]> {
-    return this.resolveByIdsAndVersions(auth, agentVersions, {
-      dangerouslySkipFetchCheck: true,
-    });
-  }
-
-  private static async resolveByIdsAndVersions(
-    auth: Authenticator,
     agentVersions: AgentVersionReference[],
-    { dangerouslySkipFetchCheck }: { dangerouslySkipFetchCheck: boolean }
+    {
+      dangerouslySkipFetchCheck = false,
+      globalAgentContext,
+    }: AgentFetchOptions = {}
   ): Promise<AgentResource[]> {
     const referenceKey = ({ agentId, agentVersion }: AgentVersionReference) =>
       isGlobalAgentId(agentId) ? agentId : `${agentId}:${agentVersion}`;
@@ -988,7 +974,7 @@ export class AgentResource
       this.fetchGlobalAgents(
         auth,
         globalAgentVersions.map(({ agentId }) => agentId),
-        { dangerouslySkipFetchCheck }
+        { dangerouslySkipFetchCheck, globalAgentContext }
       ),
     ]);
 
@@ -1069,8 +1055,8 @@ export class AgentResource
 
   // The configuration versions matching `where` in the authed workspace, newest first, materialized
   // for the caller. One statement, so each row's agent `currentVersion` pointer is read
-  // consistently with it. `dangerouslySkipFetchCheck` skips the `canFetch` drop, for
-  // `dangerouslyFetchByIdsAndVersions` only (see `agent-dangerous-fetch`).
+  // consistently with it. `dangerouslySkipFetchCheck` skips the `canFetch` drop (see
+  // `agent-dangerous-fetch`).
   private static async loadConfigurationVersions(
     auth: Authenticator,
     {
@@ -1116,7 +1102,7 @@ export class AgentResource
   /**
    * @cc [owner:tdraier,label:backend] previous-version-read-only
    * A resource built on a configuration version other than the agent's current one (from
-   * `fetchVersion`/`listVersions`, `(dangerously)fetchByIdsAndVersions` or
+   * `fetchVersion`/`listVersions`, `fetchByIdsAndVersions` or
    * `dangerouslyFromConfigurationModels`) is read-only: the definition and lifecycle mutations that
    * act on the current version (`buildResaveParams`, `updateConfiguration`, `updateScopeInPlace`,
    * `archive`, `restore`) MUST refuse it, since they would rebuild or gate on a stale version.
@@ -1439,8 +1425,8 @@ export class AgentResource
   /**
    * @cc [owner:tdraier,label:backend;performance] agent-resource-cache
    * The cache holds the caller-independent resource; the caller-dependent gates MUST NOT be cached:
-   * `materialize` MUST run on every read, and the `canFetch` drop on every read except through the
-   * `dangerously*` resolvers (see `agent-dangerous-fetch`). Entries have no TTL, so every write
+   * `materialize` MUST run on every read, and the `canFetch` drop on every read except with
+   * `dangerouslySkipFetchCheck` (see `agent-dangerous-fetch`). Entries have no TTL, so every write
    * that changes or deletes an agent's cached version MUST invalidate its entry — via
    * `AgentResource.invalidateCache` here, or the leaf `invalidateAgentResourceCache`/
    * `invalidateAgentResourceCaches` helpers that lower-level write and deletion paths can import

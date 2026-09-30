@@ -107,7 +107,9 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     // whatever verb the caller holds on the agent itself, so the `canFetch` drop is skipped (see
     // `agent-dangerous-fetch`).
     const agents = (
-      await AgentResource.dangerouslyFetchByIds(auth, uniqueAgentIds)
+      await AgentResource.fetchByIds(auth, uniqueAgentIds, {
+        dangerouslySkipFetchCheck: true,
+      })
     ).filter((agent) => agent.requestedSpacesReadable(auth));
 
     if (agents.length !== uniqueAgentIds.length) {

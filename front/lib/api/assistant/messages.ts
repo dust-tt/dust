@@ -292,7 +292,9 @@ async function batchRenderUserMessages(
   // render without their agent metadata.
   const mentionedAgents =
     agentConfigurationIds.length > 0
-      ? await AgentResource.dangerouslyFetchByIds(auth, agentConfigurationIds)
+      ? await AgentResource.fetchByIds(auth, agentConfigurationIds, {
+          dangerouslySkipFetchCheck: true,
+        })
       : [];
   const reactionsByMessageId = await getMessagesReactions(auth, {
     messageIds: userMessages.map((m) => m.id),
@@ -544,7 +546,9 @@ async function batchRenderAgentMessagesWithContentHydration<
           // in) messages of a conversation the user already has access to. We want to keep
           // displaying these agents even if the user has since lost access to the space that hosts
           // them, otherwise those past messages would render without their agent metadata.
-          AgentResource.dangerouslyFetchByIds(auth, agentConfigurationIds)
+          AgentResource.fetchByIds(auth, agentConfigurationIds, {
+            dangerouslySkipFetchCheck: true,
+          })
         : [],
   ];
 

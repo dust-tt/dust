@@ -2842,12 +2842,13 @@ describe("AgentResource", () => {
         await AgentResource.fetchByIdsAndVersions(memberAuth, [reference])
       ).toEqual([]);
 
-      const [byId] = await AgentResource.dangerouslyFetchByIds(memberAuth, [
-        agent.sId,
-      ]);
-      const [byVersion] = await AgentResource.dangerouslyFetchByIdsAndVersions(
+      const [byId] = await AgentResource.fetchByIds(memberAuth, [agent.sId], {
+        dangerouslySkipFetchCheck: true,
+      });
+      const [byVersion] = await AgentResource.fetchByIdsAndVersions(
         memberAuth,
-        [reference]
+        [reference],
+        { dangerouslySkipFetchCheck: true }
       );
       for (const resource of [byId, byVersion]) {
         assert(resource);
@@ -2869,16 +2870,49 @@ describe("AgentResource", () => {
       );
 
       expect(
-        await AgentResource.dangerouslyFetchByIds(testContext.authenticator, [
-          agent.sId,
-        ])
+        await AgentResource.fetchByIds(testContext.authenticator, [agent.sId], {
+          dangerouslySkipFetchCheck: true,
+        })
       ).toEqual([]);
       expect(
-        await AgentResource.dangerouslyFetchByIdsAndVersions(
+        await AgentResource.fetchByIdsAndVersions(
           testContext.authenticator,
-          [{ agentId: agent.sId, agentVersion: agent.version }]
+          [{ agentId: agent.sId, agentVersion: agent.version }],
+          { dangerouslySkipFetchCheck: true }
         )
       ).toEqual([]);
+    });
+  });
+
+  describe("global agent context", () => {
+    it("shapes a global agent's model for the turn, not custom agents", async () => {
+      const { authenticator } = testContext;
+      const custom = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Context-free agent" }
+      );
+      const globalAgentContext = { userMessageRank: 1, staticReply: "hello" };
+
+      const [dust, customAgent] = await AgentResource.fetchByIds(
+        authenticator,
+        [GLOBAL_AGENTS_SID.DUST, custom.sId],
+        { globalAgentContext }
+      );
+      const [pinnedDust] = await AgentResource.fetchByIdsAndVersions(
+        authenticator,
+        [{ agentId: GLOBAL_AGENTS_SID.DUST, agentVersion: 0 }],
+        { globalAgentContext }
+      );
+
+      for (const resource of [dust, pinnedDust]) {
+        expect(resource?.modelConfiguration.metaData).toEqual({
+          staticResponse: "hello",
+        });
+      }
+      expect(customAgent?.modelConfiguration).toEqual(
+        (await AgentResource.fetchById(authenticator, custom.sId))
+          ?.modelConfiguration
+      );
     });
   });
 
