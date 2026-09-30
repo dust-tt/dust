@@ -6,6 +6,7 @@ import type {
   PokeSeatLimitScheduleResponseBody,
   SeatLimitScheduleInputPhase,
 } from "@app/lib/api/poke/seat_limits_schedule";
+import { formatDateTime } from "@app/lib/i18n/format";
 import {
   usePokeSeatLimitSchedule,
   useUpdatePokeSeatLimitSchedule,
@@ -148,7 +149,7 @@ function utcInputToLocalLabel(value: string): string | null {
   if (isNaN(date.getTime())) {
     return null;
   }
-  return date.toLocaleString(undefined, {
+  return formatDateTime(date, {
     dateStyle: "medium",
     timeStyle: "short",
   });

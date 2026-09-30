@@ -4,6 +4,7 @@ import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { timeAgoFrom } from "@app/lib/utils";
 import { LoadingBlock, Page, Tooltip } from "@dust-tt/sparkle";
 
@@ -101,7 +102,7 @@ export function ConsumptionOverviewView({
           lastRecordAt &&
           index === header.length - 1 ? (
             <Tooltip
-              label={new Date(lastRecordAt).toLocaleString()}
+              label={formatDateTime(new Date(lastRecordAt))}
               tooltipTriggerAsChild
               trigger={<span>{item}</span>}
             />

@@ -9,6 +9,7 @@ import {
 } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { clearActionRequiredIfNoBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
@@ -72,7 +73,7 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
       const dayOfWeek = now.toLocaleDateString("en-US", {
         weekday: "long",
       });
-      parts.push(`Locale: ${now.toLocaleString()} (${dayOfWeek})`);
+      parts.push(`Locale: ${formatDateTime(now)} (${dayOfWeek})`);
     }
 
     return new Ok([

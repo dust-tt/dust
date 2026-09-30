@@ -3,6 +3,7 @@ import { OutputTab } from "@app/components/poke/llm_traces/OutputTab";
 import { RawJsonTab } from "@app/components/poke/llm_traces/RawJsonTab";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeLLMTrace } from "@app/poke/swr";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
@@ -40,7 +41,7 @@ function formatTokenUsage({
 }
 
 function formatTimestamp(timestamp: string): string {
-  return new Date(timestamp).toLocaleString();
+  return formatDateTime(new Date(timestamp));
 }
 
 export function LLMTracePage() {

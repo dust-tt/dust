@@ -1,5 +1,6 @@
 import type { ChipColor } from "@app/components/poke/conversation/MessageMetadata";
 import { StatusBadge } from "@app/components/poke/conversation/MessageMetadata";
+import { formatDateTime } from "@app/lib/i18n/format";
 import type {
   CompactionMessageStatus,
   CompactionMessageType,
@@ -92,7 +93,7 @@ export const UserMessageView = ({
               }
               color={USER_VISIBILITY[message.visibility]?.color ?? "primary"}
             />
-            <span>{new Date(message.created).toLocaleString()}</span>
+            <span>{formatDateTime(message.created)}</span>
             {message.context.origin === "wakeup" && (
               <StatusBadge label="wake-up" color="highlight" />
             )}
@@ -112,7 +113,7 @@ export const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
     <div className="w-full text-sm">
       <div className="font-bold">[content_fragment] {message.title}</div>
       <div className="text-sm text-muted-foreground">
-        date : {new Date(message.created).toLocaleString()} {" • "}
+        date : {formatDateTime(message.created)} {" • "}
         version :{message.version} {" • "}
         textBytes :{isFileContentFragment(message) ? message.textBytes : "N/A"}
       </div>
@@ -154,7 +155,7 @@ export const CompactionMessageView = ({
           label={COMPACTION_STATUS[message.status]?.label ?? message.status}
           color={COMPACTION_STATUS[message.status]?.color ?? "primary"}
         />
-        date : {new Date(message.created).toLocaleString()} {" • "}
+        date : {formatDateTime(message.created)} {" • "}
         version :{message.version}
       </div>
       {message.content && <Markdown content={message.content || ""} />}

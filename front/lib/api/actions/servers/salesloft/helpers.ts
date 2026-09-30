@@ -13,6 +13,7 @@ import type {
   SalesloftStep,
   SalesloftUser,
 } from "@app/lib/api/actions/servers/salesloft/types";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -33,7 +34,7 @@ export function formatActionAsString(
   parts.push(`Status: ${action.action.status}`);
   parts.push(`Due: ${action.action.due ? "Yes" : "No"}`);
   if (action.action.due_on) {
-    parts.push(`Due On: ${new Date(action.action.due_on).toLocaleString()}`);
+    parts.push(`Due On: ${formatDateTime(new Date(action.action.due_on))}`);
   }
 
   if (action.person) {

@@ -9,6 +9,7 @@ import {
 import { VAL_TOWN_TOOLS_METADATA } from "@app/lib/api/actions/servers/val_town/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { RequestInit } from "undici";
@@ -86,7 +87,7 @@ export function createValTownTools(
         if (val.links?.html) {
           resultText += `HTML Link: ${val.links.html}\n`;
         }
-        resultText += `Created: ${new Date(val.createdAt).toLocaleString()}\n`;
+        resultText += `Created: ${formatDateTime(new Date(val.createdAt))}\n`;
 
         return new Ok([
           {
@@ -147,7 +148,7 @@ export function createValTownTools(
           if (val.author?.username) {
             resultText += `HTTP Endpoint: https://${val.author.username}-${val.name}.web.val.run\n`;
           }
-          resultText += `Created: ${new Date(val.createdAt).toLocaleString()}\n`;
+          resultText += `Created: ${formatDateTime(new Date(val.createdAt))}\n`;
           resultText += `---\n`;
         }
 
@@ -204,7 +205,7 @@ export function createValTownTools(
           if (val.author?.username) {
             resultText += `HTTP Endpoint: https://${val.author.username}-${val.name}.web.val.run\n`;
           }
-          resultText += `Created: ${new Date(val.createdAt).toLocaleString()}\n`;
+          resultText += `Created: ${formatDateTime(new Date(val.createdAt))}\n`;
           resultText += `---\n`;
         }
 
@@ -261,10 +262,10 @@ export function createValTownTools(
             }
           }
           if (file.createdAt) {
-            resultText += `Created: ${new Date(file.createdAt).toLocaleString()}\n`;
+            resultText += `Created: ${formatDateTime(file.createdAt)}\n`;
           }
           if (file.updatedAt) {
-            resultText += `Updated: ${new Date(file.updatedAt).toLocaleString()}\n`;
+            resultText += `Updated: ${formatDateTime(file.updatedAt)}\n`;
           }
           resultText += `---\n`;
         }

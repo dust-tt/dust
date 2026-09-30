@@ -163,6 +163,10 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
       hour: "2-digit",
       minute: "2-digit",
     };
+    const dateTimeOptions: Intl.DateTimeFormatOptions = {
+      dateStyle: "medium",
+      timeStyle: "short",
+    };
 
     it("formatDate", () => {
       setFormatLocale(locale);
@@ -186,6 +190,9 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
       setFormatLocale(locale);
       const date = new Date(TIMESTAMP);
       expect(formatDateTime(TIMESTAMP)).toBe(date.toLocaleString(locale));
+      expect(formatDateTime(date, dateTimeOptions)).toBe(
+        date.toLocaleString(locale, dateTimeOptions)
+      );
     });
 
     it("formatNumber", () => {
@@ -341,6 +348,10 @@ describe("format locale resolution", () => {
     expect(formatTime(date)).toBe(date.toLocaleTimeString());
     expect(formatTime(date, options)).toBe(
       date.toLocaleTimeString(undefined, options)
+    );
+    expect(formatDateTime(date)).toBe(date.toLocaleString());
+    expect(formatDateTime(date, options)).toBe(
+      date.toLocaleString(undefined, options)
     );
     expect(formatNumber(1234.5)).toBe((1234.5).toLocaleString());
   });

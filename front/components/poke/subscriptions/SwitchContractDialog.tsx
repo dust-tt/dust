@@ -4,6 +4,7 @@ import {
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { clientFetch } from "@app/lib/egress/client";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { amountCents } from "@app/lib/metronome/amounts";
 import {
   commitmentAmount,
@@ -734,7 +735,7 @@ export default function SwitchContractDialog({
     if (isNaN(d.getTime())) {
       return null;
     }
-    return d.toLocaleString(undefined, {
+    return formatDateTime(d, {
       dateStyle: "medium",
       timeStyle: "short",
     });
@@ -749,7 +750,7 @@ export default function SwitchContractDialog({
     if (isNaN(d.getTime())) {
       return null;
     }
-    return d.toLocaleString(undefined, {
+    return formatDateTime(d, {
       dateStyle: "medium",
       timeStyle: "short",
     });
