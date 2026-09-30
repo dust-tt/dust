@@ -106,6 +106,58 @@ const openSidePanelSchema = z
     message: "Either conversationId or agentId must be provided",
   });
 
+const closeSidePanelSchema = z.object({
+  action: z.literal("closeSidePanel"),
+  workspaceId: z.string().regex(/^[a-zA-Z0-9_-]{10,}$/),
+});
+
+async function closeSidePanel(
+  workspaceId: string,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response?: unknown) => void
+): Promise<void> {
+  const tab = sender.tab;
+  if (!tab?.id || tab.windowId === undefined) {
+    sendResponse({ success: false, error: "No sender tab available." });
+    return;
+  }
+
+  try {
+    const { selectedWorkspace } = await chrome.storage.local.get([
+      "selectedWorkspace",
+    ]);
+    if (workspaceId !== selectedWorkspace) {
+      log("[onMessageExternal] User selected another workspace.");
+      sendResponse({ success: false, error: "Workspace mismatch." });
+      return;
+    }
+
+    if (isGoogleChrome()) {
+      if (typeof chrome.sidePanel.close !== "function") {
+        sendResponse({
+          success: false,
+          error: "Closing the native side panel requires Chrome 141 or later.",
+        });
+        return;
+      }
+
+      await chrome.sidePanel.close({ windowId: tab.windowId });
+      sendResponse({ success: true, closed: true });
+      return;
+    }
+
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      action: "closeSidebar",
+    });
+    sendResponse(response ?? { success: true, closed: true });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown error closing side panel.";
+    log("[onMessageExternal] Error closing side panel:", message);
+    sendResponse({ success: false, error: message });
+  }
+}
+
 /**
  * Listener for messages sent from external websites that are whitelisted on the manifest.
  * It allows to open the side panel and either navigate to an existing conversation
@@ -116,14 +168,23 @@ const openSidePanelSchema = z
  *     Opens an existing conversation directly.
  *   - { action: "openSidePanel", workspaceId, agentId }
  *     Opens a new conversation with the given agent pre-selected in the input bar.
+ *   - { action: "closeSidePanel", workspaceId }
+ *     Closes the side panel in the window that sent the message.
  *
  * We return true to keep the message channel open for async response.
  */
-chrome.runtime.onMessageExternal.addListener((request) => {
+chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
+  const closeParsed = closeSidePanelSchema.safeParse(request);
+  if (closeParsed.success) {
+    void closeSidePanel(closeParsed.data.workspaceId, sender, sendResponse);
+    return true;
+  }
+
   const parsed = openSidePanelSchema.safeParse(request);
 
   if (!parsed.success) {
     log("[onMessageExternal] Invalid params:", request);
+    sendResponse({ success: false, error: "Invalid params." });
     return true;
   }
 

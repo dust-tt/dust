@@ -412,6 +412,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.action === "closeSidebar") {
+    hideSidebar();
+    sendResponse({ success: true, visible: sidebarVisible });
+    return true;
+  }
+
   if (message.action === "toggleSidebar") {
     toggleSidebar();
     sendResponse({ success: true, visible: sidebarVisible });
