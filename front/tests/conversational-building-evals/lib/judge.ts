@@ -8,6 +8,7 @@ import type {
   JudgeResult,
   SeededScenario,
   TestCase,
+  ToolCall,
 } from "@app/tests/conversational-building-evals/lib/types";
 import { getTestCaseUserMessageForDisplay } from "@app/tests/conversational-building-evals/lib/types";
 import { getJudgeLLM } from "@app/tests/utils/eval_llm";
@@ -53,9 +54,7 @@ User message:
 
 {{WORKSPACE_AGENTS}}
 
-## Final suggestion tool call
-
-{{FINAL_TOOL_CALL}}
+{{SUGGESTION_TOOL_CALLS}}
 
 ## Tools Called (in order; calls of the same round were issued in parallel)
 
@@ -74,7 +73,7 @@ User message:
 ## General Evaluation Checklist (apply to all scenarios)
 
 1. **Intent Understanding**: Did the agent correctly understand which skill to change and what the user wanted changed?
-2. **Suggestion Content** (the key output, carried by the final suggestion tool call's arguments):
+2. **Suggestion Content** (the key output, carried by the arguments of the suggestion tool call(s) above):
    - Does the suggestion implement exactly what the user asked, without inventing unrelated changes?
    - For skill updates: do the edits preserve the parts of the existing instructions the user did
      not ask to change? Each \`instructionEdits\` item replaces one block identified by
@@ -145,6 +144,35 @@ async function renderWorkspaceAgents(
   return rendered.length > 0 ? rendered.join("\n\n") : "(none)";
 }
 
+function renderToolCallArguments(toolCall: ToolCall): string {
+  return `${toolCall.name}(${JSON.stringify(toolCall.arguments, null, 2)})`;
+}
+
+// The suggestion(s) the run is judged on: the final call, or every accepted `suggest` call when
+// the scenario expects separate suggestions, since each of them is recorded.
+function renderSuggestionToolCalls(
+  testCase: TestCase,
+  { toolCalls, finalToolCall }: ExecutionResult
+): string {
+  if (testCase.expectedFinalToolCall.type === "separateSuggestions") {
+    const accepted = toolCalls.filter(
+      (tc) => tc.name === TOOL.suggest && !tc.isError
+    );
+    return [
+      "## Accepted suggestion tool calls (each one is recorded as its own suggestion)",
+      "",
+      accepted.length > 0
+        ? accepted.map(renderToolCallArguments).join("\n\n")
+        : "(none)",
+    ].join("\n");
+  }
+  return [
+    "## Final suggestion tool call",
+    "",
+    finalToolCall ? renderToolCallArguments(finalToolCall) : "(none)",
+  ].join("\n");
+}
+
 // One line per call, with its round: calls of the same round were issued in parallel.
 function renderToolCalls(toolCallRounds: ExecutedToolCall[][]): string {
   const lines = toolCallRounds.flatMap((round, i) =>
@@ -163,7 +191,7 @@ export async function evaluateWithJudge(
   numRuns: number
 ): Promise<JudgeResult> {
   const { auth } = scenario;
-  const { toolCallRounds, responseText, finalToolCall } = execution;
+  const { toolCallRounds, responseText } = execution;
 
   const prompt = JUDGE_PROMPT.replace(
     "{{USER_MESSAGE}}",
@@ -173,10 +201,8 @@ export async function evaluateWithJudge(
     .replace("{{WORKSPACE_REFERENCES}}", renderWorkspaceReferences(scenario))
     .replace("{{WORKSPACE_AGENTS}}", await renderWorkspaceAgents(scenario))
     .replace(
-      "{{FINAL_TOOL_CALL}}",
-      finalToolCall
-        ? `${finalToolCall.name}(${JSON.stringify(finalToolCall.arguments, null, 2)})`
-        : "(none)"
+      "{{SUGGESTION_TOOL_CALLS}}",
+      renderSuggestionToolCalls(testCase, execution)
     )
     .replace("{{TOOL_CALLS}}", renderToolCalls(toolCallRounds))
     .replace("{{AGENT_RESPONSE}}", responseText || "(empty)")

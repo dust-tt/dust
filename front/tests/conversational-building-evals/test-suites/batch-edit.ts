@@ -86,6 +86,11 @@ export const batchEditSuite: TestSuite = {
 - Each suggestion must only change the name: no description, instructions or availability change.
 - Score 0-1 if a compliant skill is renamed, a non-compliant one is left out, a skill gets the
   wrong team, or the renames are batched into a single call.
+- Score 3 if the five renames are correct and recorded by exactly five suggest calls, with no call
+  rejected by the tool.
+- Score 2 if the five renames are correct and recorded one per call, but some intermediate calls
+  were rejected by the tool (e.g. a title that is too long, or an attempt to rename an already
+  compliant skill) before being retried or dropped.
 - The closing message must surface the recorded suggestion directives and mention every renamed
   skill.
 `.trim(),
