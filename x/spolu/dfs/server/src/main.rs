@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use dfs_server::api;
+use dfs_server::{api, storage::StorageConfig};
 use tokio::net::TcpListener;
 use tokio::signal::unix::{SignalKind, signal};
 use tracing::info;
@@ -14,6 +14,9 @@ struct Config {
     /// Address on which to listen for HTTP requests.
     #[arg(long, env = "DFS_LISTEN", default_value = "127.0.0.1:8080")]
     listen: SocketAddr,
+
+    #[command(flatten)]
+    storage: StorageConfig,
 }
 
 /**
@@ -31,10 +34,11 @@ async fn main() -> Result<()> {
     let listener = TcpListener::bind(config.listen)
         .await
         .with_context(|| format!("bind HTTP listener at {}", config.listen))?;
+    let storage = config.storage.open().await?;
 
     info!(address = %listener.local_addr()?, "dfs server listening");
 
-    axum::serve(listener, api::router())
+    let serve_result = axum::serve(listener, api::router())
         .with_graceful_shutdown(async move {
             tokio::select! {
                 _ = interrupt.recv() => {}
@@ -43,7 +47,14 @@ async fn main() -> Result<()> {
             info!("dfs server shutting down");
         })
         .await
-        .context("serve HTTP requests")?;
+        .context("serve HTTP requests");
+
+    let close_result = match storage {
+        Some(storage) => storage.close().await,
+        None => Ok(()),
+    };
+    serve_result?;
+    close_result?;
 
     info!("dfs server stopped");
     Ok(())

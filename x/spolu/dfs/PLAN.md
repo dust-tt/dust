@@ -46,8 +46,10 @@ errors can later map consistently to FUSE errors.
 
 ## 2. Synchronous GCS and SlateDB storage
 
-- [ ] Configure GCS credentials, bucket/prefix separation, and SlateDB lifecycle. Add a real-GCS
+- [x] Configure GCS credentials, bucket/prefix separation, and SlateDB lifecycle. Add a real-GCS
   integration fixture alongside fast local tests.
+- [x] Run the opt-in GCS fixture against a development bucket; GCS and local memory/filesystem
+  backends exercise durable writes, close/reopen, immutable blob creation, and scoped cleanup.
 - [ ] Define versioned metadata encodings and unambiguous workspace/key prefixes, including
   arbitrary grant strings. Verify workspace isolation and prefix scans at the byte-encoding
   boundary.
@@ -62,6 +64,9 @@ errors can later map consistently to FUSE errors.
 
 **Done when:** storage fixtures survive a fresh process, and failed uploads cannot publish metadata
 that references missing bytes.
+
+GCS lifecycle fixture validated on 2026-09-30 against `dust-dev-dfs-poc-spolu-20260930` in `dust-dev`,
+under `dfs-dev/spolu/tests/<uuid>/`, with local ADC. Fresh-process crash recovery remains to be tested.
 
 ## 3. Workspace bootstrap and sessions
 

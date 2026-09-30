@@ -11,6 +11,7 @@ clap = { version = "4", features = ["derive", "env"] }
 mime = "0.3"
 percent-encoding = "2"
 serde = { version = "1", features = ["derive"] }
+slatedb = { version = "0.17", default-features = false, features = ["gcp"] }
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal"] }
 tracing = "0.1"
@@ -18,7 +19,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]
+futures = "0.3"
 serde_json = "1"
+tempfile = "3"
 tower = { version = "0.5", features = ["util"] }
 
 [lints]
