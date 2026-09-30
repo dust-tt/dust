@@ -20,7 +20,9 @@ export function useShareFrameMetadata({
     fetcher;
   const { setCellInfo } = useCellContext();
 
-  const swrKey = shareToken ? `/api/share/frame/${shareToken}` : null;
+  const swrKey = shareToken
+    ? `/api/share/frame/${encodeURIComponent(shareToken)}`
+    : null;
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
     swrKey,
@@ -59,7 +61,7 @@ export function useSendOtpVerification({ shareToken }: { shareToken: string }) {
   const doSendOtp = useCallback(
     async (email: string): Promise<OtpResult> => {
       const res = await clientFetch(
-        `/api/v1/public/frames/${shareToken}/verify-email`,
+        `/api/v1/public/frames/${encodeURIComponent(shareToken)}/verify-email`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -91,7 +93,7 @@ export function useVerifyOtpCode({ shareToken }: { shareToken: string }) {
   const doVerifyCode = useCallback(
     async (email: string, code: string): Promise<OtpResult> => {
       const res = await clientFetch(
-        `/api/v1/public/frames/${shareToken}/verify-code`,
+        `/api/v1/public/frames/${encodeURIComponent(shareToken)}/verify-code`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
