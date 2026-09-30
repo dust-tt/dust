@@ -1,10 +1,10 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type {
   AgentConfigurationType,
   AgentReinforcementMode,
@@ -91,17 +91,18 @@ export class AgentConfigurationFactory {
 
     // Re-read the full config: as the caller when they are a workspace member (so the returned
     // verbs reflect their editor grant), otherwise as the internal admin — legacy tests build agents
-    // with a non-member auth, which `getAgentConfigurations` rejects.
-    // `dangerouslySkipPermissionFiltering` lets tests build agents on spaces the caller cannot read.
+    // with a non-member auth. `dangerouslySkipFetchCheck` lets tests build agents on spaces the
+    // caller cannot read. The content is the one just saved (no tools yet), so it is restored from
+    // the inputs when the reader cannot view it.
     const readAuth = auth.isUser() ? auth : internalAuth;
-    const config = await getAgentConfiguration(readAuth, {
-      agentId: result.value.sId,
-      variant: "full",
-      dangerouslySkipPermissionFiltering: true,
+    const resource = await AgentResource.fetchById(readAuth, result.value.sId, {
+      dangerouslySkipFetchCheck: true,
     });
-    assert(config, "The saved agent must be resolvable");
+    assert(resource, "The saved agent must be resolvable");
+    const [config] = await toAgentConfigurations(readAuth, [resource]);
+    assert(config, "The saved agent must be serializable");
 
-    return config;
+    return { ...config, instructions, instructionsHtml };
   }
 
   /**
