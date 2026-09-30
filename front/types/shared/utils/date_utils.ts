@@ -39,6 +39,12 @@ export function formatUTCDateFromMillis(ms: number): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * @cc [owner:sfriquet,label:product] machine-readable-day
+ * The result MUST be the `yyyy-MM-dd` calendar day of `ms` in `timezone`, with ASCII digits,
+ * whatever the format locale set with `setFormatLocale`: callers use it as a bucket key and in
+ * exports.
+ */
 export function formatDateFromMillis(ms: number, timezone: string): string {
   return formatInTimeZone(ms, timezone, "yyyy-MM-dd");
 }
