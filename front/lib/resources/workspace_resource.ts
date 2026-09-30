@@ -58,7 +58,15 @@ const WORKSPACE_FULLY_BLOCKED_ERROR_MESSAGE =
   "Workspace is fully blocked. Use `workspace unblock` before managing conversation blocks.";
 const INVALID_WORKSPACE_KILL_SWITCH_METADATA_ERROR_PREFIX =
   "Invalid workspace kill switch metadata:";
-const WORKSPACE_CACHE_KEY_VERSION = 3;
+/**
+ * @cc [owner:sfriquet,label:backend;performance] cache-version-bump-keeps-previous-key-in-sync
+ * When `WORKSPACE_CACHE_KEY_VERSION` is bumped, the store's `migration.previousKey` MUST resolve to
+ * the key of the previous version, so that pods still running the previous version (during a
+ * rolling deploy or after a rollback) never read a snapshot that the current version failed to
+ * invalidate.
+ */
+const WORKSPACE_CACHE_KEY_VERSION = 4;
+const PREVIOUS_WORKSPACE_CACHE_KEY_VERSION = 3;
 
 export type WorkspaceConversationKillSwitchValue = {
   conversationIds: string[];
@@ -154,9 +162,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       keyAttribute: "sId",
       migration: {
         previousKey: {
-          cacheId: "_fetchByIdUncached",
-          key: (workspaceId: string) => `workspace:v2:${workspaceId}`,
-          keyPattern: "workspace:v2:*",
+          cacheId: "workspace_by_sid",
+          key: (workspaceId: string) =>
+            `v${PREVIOUS_WORKSPACE_CACHE_KEY_VERSION}:${workspaceId}`,
+          keyPattern: `v${PREVIOUS_WORKSPACE_CACHE_KEY_VERSION}:*`,
         },
         readFrom: "new",
         copyToOtherKey: "after_read",
@@ -523,6 +532,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         | "workOSOrganizationId"
         | "metadata"
         | "sharingPolicy"
+        | "locale"
       >
     >
   ) {

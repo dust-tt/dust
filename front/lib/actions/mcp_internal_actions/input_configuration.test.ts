@@ -31,6 +31,7 @@ const mockWorkspace: WorkspaceType = {
   metadata: {},
   metronomeCustomerId: null,
   sharingPolicy: "all_scopes",
+  locale: "en-US",
   regionalModelsOnly: false,
 };
 

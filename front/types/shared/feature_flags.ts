@@ -495,6 +495,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "adrsimon",
   },
+  localisation: {
+    description: "Workspace and user language settings for the product UI",
+    stage: "dust_only",
+    owner: "sfriquet",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";

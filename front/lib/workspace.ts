@@ -27,6 +27,7 @@ export function renderLightWorkspaceType({
     role,
     segmentation: workspace.segmentation,
     sharingPolicy: workspace.sharingPolicy,
+    locale: workspace.locale,
     metronomeCustomerId: workspace.metronomeCustomerId ?? null,
     regionalModelsOnly: workspace.regionalModelsOnly,
     sId: workspace.sId,

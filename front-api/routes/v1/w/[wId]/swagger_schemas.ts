@@ -98,6 +98,11 @@
  *           nullable: true
  *           description: Default provider for embeddings in the workspace
  *           example: "openai"
+ *         locale:
+ *           type: string
+ *           enum: [en-US, fr-FR]
+ *           description: Default language of the product UI for the workspace members
+ *           example: "en-US"
  *     Context:
  *       type: object
  *       required:
