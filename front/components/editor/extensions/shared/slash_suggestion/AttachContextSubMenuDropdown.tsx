@@ -1,6 +1,10 @@
 import { useBrowsableSpaces } from "@app/components/data_source_view/browser/useBrowsableSpaces";
 import { useKnowledgeBrowserItems } from "@app/components/data_source_view/browser/useKnowledgeBrowserItems";
-import { useKnowledgeBrowserNavigation } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
+import {
+  getKnowledgeBrowserBreadcrumbItems,
+  navigateToKnowledgeBrowserItem,
+  useKnowledgeBrowserNavigation,
+} from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
 import { AttachContextSlashMenuItemIcon } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSlashMenuItemIcon";
 import type { AttachContextSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import {
@@ -16,10 +20,8 @@ import {
   buildBrowseCommands,
   buildRootBrowseSections,
   getAttachableNodeForItem,
-  getKnowledgeBrowserBreadcrumbItems,
   isLoadMoreKnowledgeBrowserSlashCommand,
   isNavigateKnowledgeBrowserSlashCommand,
-  navigateToKnowledgeBrowserItem,
 } from "@app/components/editor/extensions/shared/slash_suggestion/knowledgeBrowserSlashCommands";
 import type {
   SlashCommand,
@@ -181,7 +183,6 @@ export const AttachContextSubMenuDropdown = forwardRef<
     const { spaces, isLoading: isBrowsableSpacesLoading } = useBrowsableSpaces({
       owner,
       spaces: scopedSpaces,
-      enabled: true,
     });
 
     const navigation = useKnowledgeBrowserNavigation({ spaces });

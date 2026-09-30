@@ -1,11 +1,8 @@
 import type { KnowledgeBrowserItem } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import {
-  getKnowledgeBrowserEntryLabel,
+  getBrowsableDataSourceViewTitle,
   KNOWLEDGE_BROWSER_GROUP_LABELS,
 } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
-import { getVisibleNavigationEntries } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
-import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
-import type { NavigationHistoryState } from "@app/components/data_source_view/context/useNavigationHistory";
 import type { AttachContextSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import { SELECT_ATTACH_CONTEXT_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
@@ -13,7 +10,6 @@ import type { SlashCommand } from "@app/components/editor/extensions/shared/slas
 import { getDataSourceViewRootNode } from "@app/lib/content_nodes";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import { ChevronRight, DotsHorizontal } from "@dust-tt/sparkle";
 
 export const NAVIGATE_KNOWLEDGE_BROWSER_ACTION = "navigate-knowledge-browser";
@@ -141,7 +137,11 @@ export function toKnowledgeBrowserSlashCommands(
       endIcon: ChevronRight,
       icon: item.icon,
       id: `browse-${item.kind}-${item.id}`,
-      label: item.title,
+      // The menu names a pod's own data source by its files; the row keeps the stored name.
+      label:
+        item.kind === "data_source"
+          ? getBrowsableDataSourceViewTitle(item.dataSourceView)
+          : item.title,
     };
   });
 }
@@ -157,18 +157,6 @@ export function getLoadMoreKnowledgeBrowserSlashCommand({
     id: LOAD_MORE_KNOWLEDGE_BROWSER_ID,
     label: isLoading ? "Loading…" : "Show more",
   };
-}
-
-export function getKnowledgeBrowserBreadcrumbItems(
-  navigationHistory: NavigationHistoryEntryType[],
-  navigateTo: (index: number) => void
-): BreadcrumbsItem[] {
-  return getVisibleNavigationEntries(navigationHistory).map(
-    ({ entry, index }) => ({
-      label: getKnowledgeBrowserEntryLabel(entry),
-      onClick: () => navigateTo(index),
-    })
-  );
 }
 
 // The root lists spaces under a heading and pods under a second one, like the Agent Builder.
@@ -219,34 +207,4 @@ export function buildBrowseCommands(
     );
   }
   return commands;
-}
-
-type NavigationSetters = Pick<
-  NavigationHistoryState,
-  | "setSpaceEntry"
-  | "setCategoryEntry"
-  | "setDataSourceViewEntry"
-  | "addNodeEntry"
->;
-
-export function navigateToKnowledgeBrowserItem(
-  item: KnowledgeBrowserItem,
-  navigation: NavigationSetters
-): void {
-  switch (item.kind) {
-    case "space":
-      navigation.setSpaceEntry(item.space);
-      return;
-    case "category":
-      navigation.setCategoryEntry(item.category);
-      return;
-    case "data_source":
-      navigation.setDataSourceViewEntry(item.dataSourceView);
-      return;
-    case "node":
-      navigation.addNodeEntry(item.node);
-      return;
-    default:
-      assertNeverAndIgnore(item);
-  }
 }
