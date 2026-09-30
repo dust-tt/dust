@@ -3,6 +3,7 @@ import { AuditLogsSection } from "@app/components/workspace/AuditLogsSection";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import {
@@ -94,7 +95,11 @@ function DomainVerification({
   owner,
 }: DomainVerificationProps) {
   return (
-    <WorkspaceSection icon={Globe01} title="Domain Verification">
+    <WorkspaceSection
+      icon={Globe01}
+      title="Domain Verification"
+      sectionId={ADMIN_SECTION_IDS.identity.domain}
+    >
       <Page.P variant="secondary">
         Verify your company domains to enable Single Sign-On (SSO), automatic
         workspace enrollment for team members, and secure connections to your

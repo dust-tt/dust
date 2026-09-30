@@ -1,3 +1,4 @@
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import type { AuditLogsPortal } from "@app/lib/api/audit/workos_audit";
 import { useOpenAuditLogsPortal } from "@app/lib/swr/workos";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -26,7 +27,11 @@ export function AuditLogsSection({ owner }: AuditLogsSectionProps) {
   };
 
   return (
-    <WorkspaceSection title="Audit Logs" icon={File04}>
+    <WorkspaceSection
+      title="Audit Logs"
+      icon={File04}
+      sectionId={ADMIN_SECTION_IDS.identity.auditLogs}
+    >
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <Page.P variant="secondary">

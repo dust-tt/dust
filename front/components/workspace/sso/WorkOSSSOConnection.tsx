@@ -1,5 +1,6 @@
 import { ToggleEnforceEnterpriseConnectionModal } from "@app/components/workspace/sso/Toggle";
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import {
   useDisableWorkOSSSOConnection,
@@ -55,7 +56,11 @@ export default function WorkOSSSOConnection({
   const isSSOConfigured = ssoStatus?.status === "configured";
 
   return (
-    <WorkspaceSection title="Authentication and access" icon={Lock01}>
+    <WorkspaceSection
+      title="Authentication and access"
+      icon={Lock01}
+      sectionId={ADMIN_SECTION_IDS.identity.sso}
+    >
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <div className="flex flex-row items-center gap-2">

@@ -23,6 +23,7 @@ import { WorkspaceDefaultAgentPicker } from "@app/components/workspace/settings/
 import { WorkspaceLocalePicker } from "@app/components/workspace/settings/WorkspaceLocalePicker";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import {
@@ -218,6 +219,7 @@ export const GovernancePage = () => {
           ({ id, label, icon, governancePermissions: sectionPermissions }) => (
             <GovernanceSettingSection
               key={id}
+              sectionId={ADMIN_SECTION_IDS.governance[id]}
               label={label}
               icon={icon}
               footer={
@@ -257,11 +259,19 @@ export const GovernancePage = () => {
         {isAdmin && (
           <>
             <RoleProvisioningSection owner={owner} groups={groups} />
-            <GovernanceSettingSection label="Pods" icon={Cube01}>
+            <GovernanceSettingSection
+              sectionId={ADMIN_SECTION_IDS.governance.pods}
+              label="Pods"
+              icon={Cube01}
+            >
               <OpenPodPolicy owner={owner} />
               <PodKnowledgePolicy owner={owner} />
             </GovernanceSettingSection>
-            <GovernanceSettingSection label="Features" icon={ShapesPlus}>
+            <GovernanceSettingSection
+              sectionId={ADMIN_SECTION_IDS.governance.features}
+              label="Features"
+              icon={ShapesPlus}
+            >
               <WorkspaceDefaultAgentPicker owner={owner} />
               <WorkspaceLocalePicker owner={owner} />
               <VoiceTranscriptionToggle owner={owner} />
@@ -275,6 +285,7 @@ export const GovernancePage = () => {
               <InactiveAgentArchival owner={owner} />
             </GovernanceSettingSection>
             <GovernanceSettingSection
+              sectionId={ADMIN_SECTION_IDS.governance.messaging}
               label="Messaging apps"
               icon={CloudArrowLeftRight}
             >
