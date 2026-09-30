@@ -4,10 +4,6 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 
-// Re-exported so SWR hooks and other consumers can import the response type
-// from the Hono route file, matching the convention of our other routes.
-export type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
-
 // Mounted at /api/v1/w/:wId/verified_domains.
 const app = publicApiApp();
 

@@ -5,8 +5,6 @@ import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-export type { GetAutoGroupIdsForSpacesResponseType } from "@dust-tt/client";
-
 const GetAutoGroupIdsForSpacesQuerySchema = z.object({
   spaceIds: z
     .string()

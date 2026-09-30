@@ -10,10 +10,6 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-export type {
-  ManagedPermissionsResponse as PokeGetDataSourcePermissionsResponseBody,
-};
-
 const ParamsSchema = z.object({
   dsId: z.string(),
 });

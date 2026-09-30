@@ -1,13 +1,10 @@
 import {
-  type GetWorkspaceProgrammaticCostResponse,
   getProgrammaticCost,
   ProgrammaticCostQuerySchema,
 } from "@app/lib/api/analytics/programmatic_cost";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-
-export type { GetWorkspaceProgrammaticCostResponse };
 
 // Mounted at /api/poke/workspaces/:wId/analytics/programmatic-cost.
 const app = pokeApp();

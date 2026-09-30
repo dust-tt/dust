@@ -25,10 +25,6 @@ const PostMCPRegisterRequestBodySchema = z.object({
   serverName: ClientSideMCPServerNameSchema,
 });
 
-export type PostMCPRegisterRequestBody = z.infer<
-  typeof PostMCPRegisterRequestBodySchema
->;
-
 // Mounted at /api/w/:wId/mcp/register.
 const app = workspaceApp();
 

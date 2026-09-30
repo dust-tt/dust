@@ -9,8 +9,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import spaceId from "./[spaceId]";
 
-export type { GetBySpacesSummaryResponseBody };
-
 export function sortSpacesSummary<T extends { id: number }>(
   spaces: T[],
   conversationsBySpace: Map<number, { unreadConversations: unknown[] }>,

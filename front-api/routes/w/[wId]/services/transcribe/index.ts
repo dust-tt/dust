@@ -13,8 +13,6 @@ import formidable from "formidable";
 import { stream } from "hono/streaming";
 import getToken from "./get-token";
 
-export type PostTranscribeResponseBody = { text: string };
-
 // Mounted at /api/w/:wId/services/transcribe.
 //
 // We extend the workspace context with `HttpBindings` so we can reach the

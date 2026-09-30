@@ -1,11 +1,7 @@
 import type {
-  InvitationsLookupRequestBodyType,
   InvitationsLookupResponse,
-  ShareTokenLookupRequestBodyType,
   ShareTokenLookupResponse,
-  UserLookupRequestBodyType,
   UserLookupResponse,
-  WorkspaceLookupRequestBodyType,
   WorkspaceLookupResponse,
 } from "@app/lib/api/cells/lookup";
 import {
@@ -26,17 +22,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type {
-  InvitationsLookupRequestBodyType,
-  InvitationsLookupResponse,
-  ShareTokenLookupRequestBodyType,
-  ShareTokenLookupResponse,
-  UserLookupRequestBodyType,
-  UserLookupResponse,
-  WorkspaceLookupRequestBodyType,
-  WorkspaceLookupResponse,
-};
 
 type LookupResponseBody =
   | UserLookupResponse

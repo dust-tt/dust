@@ -1,5 +1,4 @@
 import {
-  type GetWorkspaceProgrammaticCostResponse,
   getProgrammaticCost,
   ProgrammaticCostQuerySchema,
 } from "@app/lib/api/analytics/programmatic_cost";
@@ -7,8 +6,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-
-export type { GetWorkspaceProgrammaticCostResponse };
 
 // Mounted at /api/w/:wId/analytics/programmatic-cost.
 const app = workspaceApp();

@@ -1,6 +1,5 @@
 import {
   AwuUsageAnalyticsQuerySchema,
-  type AwuUsageAnalyticsResponse,
   getAwuUsageFromAnalytics,
 } from "@app/lib/api/analytics/awu_usage_analytics";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
@@ -8,8 +7,6 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type { AwuUsageAnalyticsResponse };
 
 const CSV_HEADERS = ["date", "granularity", "series", "credits"] as const;
 

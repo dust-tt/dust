@@ -9,8 +9,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
 
-export type { SeatPlanResponseBody };
-
 function seatPlanErrorToApi(ctx: Context, err: SeatPlanError) {
   switch (err.type) {
     case "not_configured":

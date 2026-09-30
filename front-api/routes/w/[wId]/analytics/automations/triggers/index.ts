@@ -1,8 +1,5 @@
 import { AutomationTriggersBodySchema } from "@app/lib/api/analytics/automations/schema";
-import type {
-  AutomationTriggerRow,
-  GetAutomationTriggersResponse,
-} from "@app/lib/api/analytics/automations/triggers";
+import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { fetchAutomationTriggers } from "@app/lib/api/analytics/automations/triggers";
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/schema";
@@ -14,8 +11,6 @@ import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import tId from "./[tId]";
-
-export type { GetAutomationTriggersResponse };
 
 // Mounted at /api/w/:wId/analytics/automations/triggers.
 const app = workspaceApp();

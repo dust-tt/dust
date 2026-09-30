@@ -4,8 +4,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
-export type { GetProviderCredentialsResponseBody };
-
 // Mounted at /api/w/:wId/provider_credentials.
 const app = workspaceApp();
 
