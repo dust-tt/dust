@@ -4,12 +4,13 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
-import type { SingletonAgentSuggestionData } from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
+import type {
+  KeyedAgentSuggestionData,
+  SingletonAgentSuggestionData,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/agent_suggestion_changes";
 import {
   recordAgentCreationSuggestion,
-  recordAgentSkillSuggestions,
-  recordAgentSubAgentSuggestions,
-  recordAgentToolSuggestions,
+  recordKeyedAgentSuggestions,
   recordSingletonAgentSuggestions,
   validateAgentCreation,
   validateAgentCreationCapabilities,
@@ -67,12 +68,7 @@ import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type {
-  CreateSuggestionType,
-  SkillsSuggestionType,
-  SubAgentSuggestionType,
-  ToolsSuggestionType,
-} from "@app/types/suggestions/agent_suggestion";
+import type { CreateSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillCreateSuggestionType,
   SkillSuggestionData,
@@ -93,9 +89,7 @@ type PlannedChange =
         agent: FullAgentResource;
         edits: InstructionSuggestionEditInput[];
       } | null;
-      skills: SkillsSuggestionType[];
-      tools: ToolsSuggestionType[];
-      subAgents: SubAgentSuggestionType[];
+      keyed: KeyedAgentSuggestionData[];
     }
   | {
       type: "skill_creation";
@@ -295,7 +289,7 @@ async function planAgentEdit(
     instructions = { agent, edits: validation.value };
   }
 
-  let skills: SkillsSuggestionType[] = [];
+  const keyed: KeyedAgentSuggestionData[] = [];
   const addSkillIds = skillChanges?.addSkillIds ?? [];
   const removeSkillIds = skillChanges?.removeSkillIds ?? [];
   if (addSkillIds.length > 0 || removeSkillIds.length > 0) {
@@ -306,10 +300,14 @@ async function planAgentEdit(
     if (validation.isErr()) {
       return validation;
     }
-    skills = validation.value;
+    keyed.push(
+      ...validation.value.map((suggestion) => ({
+        kind: "skills" as const,
+        suggestion,
+      }))
+    );
   }
 
-  let tools: ToolsSuggestionType[] = [];
   const addToolIds = toolChanges?.addToolIds ?? [];
   const removeToolIds = toolChanges?.removeToolIds ?? [];
   if (addToolIds.length > 0 || removeToolIds.length > 0) {
@@ -320,10 +318,14 @@ async function planAgentEdit(
     if (validation.isErr()) {
       return validation;
     }
-    tools = validation.value;
+    keyed.push(
+      ...validation.value.map((suggestion) => ({
+        kind: "tools" as const,
+        suggestion,
+      }))
+    );
   }
 
-  let subAgents: SubAgentSuggestionType[] = [];
   const addAgentIds = subAgentChanges?.addAgentIds ?? [];
   const removeAgentIds = subAgentChanges?.removeAgentIds ?? [];
   if (addAgentIds.length > 0 || removeAgentIds.length > 0) {
@@ -334,16 +336,15 @@ async function planAgentEdit(
     if (validation.isErr()) {
       return validation;
     }
-    subAgents = validation.value;
+    keyed.push(
+      ...validation.value.map((suggestion) => ({
+        kind: "sub_agent" as const,
+        suggestion,
+      }))
+    );
   }
 
-  if (
-    singletons.length === 0 &&
-    instructions === null &&
-    skills.length === 0 &&
-    tools.length === 0 &&
-    subAgents.length === 0
-  ) {
+  if (singletons.length === 0 && instructions === null && keyed.length === 0) {
     return new Err(
       new MCPError(
         `The edit of agent "${agentId}" does not change anything: provide at least one field.`
@@ -356,9 +357,7 @@ async function planAgentEdit(
     agent,
     singletons,
     instructions,
-    skills,
-    tools,
-    subAgents,
+    keyed,
   });
 }
 
@@ -382,9 +381,7 @@ async function planAgentDeletion(
     agent,
     singletons: [{ kind: "delete", suggestion: validation.value }],
     instructions: null,
-    skills: [],
-    tools: [],
-    subAgents: [],
+    keyed: [],
   });
 }
 
@@ -835,18 +832,8 @@ async function recordPlannedChange(
         }
       }
 
-      await recordAgentSkillSuggestions(auth, change.agent, {
-        skills: change.skills,
-        conversation,
-        batch,
-      });
-      await recordAgentToolSuggestions(auth, change.agent, {
-        tools: change.tools,
-        conversation,
-        batch,
-      });
-      await recordAgentSubAgentSuggestions(auth, change.agent, {
-        subAgents: change.subAgents,
+      await recordKeyedAgentSuggestions(auth, change.agent, {
+        data: change.keyed,
         conversation,
         batch,
       });
