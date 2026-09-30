@@ -2,6 +2,7 @@ import {
   getGroupKindChip,
   PROVISIONED_GROUP_TOOLTIP,
 } from "@app/components/groups/GroupKinds";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   useAddMemberToGroup,
   useGroups,
@@ -40,6 +41,7 @@ export function MemberGroupsSection({
   userId,
   disabled,
 }: MemberGroupsSectionProps) {
+  const { isManager } = useAuth();
   const [groupSearch, setGroupSearch] = useState("");
   const [pendingGroupId, setPendingGroupId] = useState<string | null>(null);
 
@@ -51,6 +53,7 @@ export function MemberGroupsSection({
   const { groups: addableGroups } = useGroups({
     owner,
     kinds: ADDABLE_GROUP_KINDS,
+    managedOnly: !isManager,
     disabled,
   });
 
@@ -60,14 +63,25 @@ export function MemberGroupsSection({
     userId,
   });
 
+  const editableGroupIds = useMemo(
+    () =>
+      new Set(
+        addableGroups
+          .filter((group) => group.allowedActions?.canEditMembers)
+          .map((group) => group.sId)
+      ),
+    [addableGroups]
+  );
+
   const selectableGroups = useMemo(() => {
     const memberGroupIds = new Set(memberGroups.map((g) => g.sId));
     return addableGroups.filter(
       (group) =>
+        editableGroupIds.has(group.sId) &&
         !memberGroupIds.has(group.sId) &&
         group.name.toLowerCase().includes(groupSearch.toLowerCase())
     );
-  }, [addableGroups, memberGroups, groupSearch]);
+  }, [addableGroups, memberGroups, groupSearch, editableGroupIds]);
 
   // While an addition is in flight the group is not in `memberGroups` yet: show it as a busy chip
   // so the change is visible immediately.
@@ -103,50 +117,52 @@ export function MemberGroupsSection({
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
         <div className="heading-base text-foreground">Groups</div>
-        <DropdownMenu
-          onOpenChange={(open) => {
-            if (open) {
-              setGroupSearch("");
-            }
-          }}
-        >
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="xs"
-              icon={Plus}
-              label="Add to group"
-              isSelect
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-[320px]" collisionPadding={8}>
-            <DropdownMenuSearchbar
-              name="group-search"
-              placeholder="Search groups"
-              value={groupSearch}
-              onChange={setGroupSearch}
-              autoFocus
-            />
-            {selectableGroups.map((group) => (
-              <DropdownMenuItem
-                key={group.sId}
-                label={group.name}
-                endComponent={
-                  <span className="text-sm text-muted-foreground">
-                    {group.memberCount} member{pluralize(group.memberCount)}
-                  </span>
-                }
-                onClick={() => void onAdd(group)}
+        {editableGroupIds.size > 0 && (
+          <DropdownMenu
+            onOpenChange={(open) => {
+              if (open) {
+                setGroupSearch("");
+              }
+            }}
+          >
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="xs"
+                icon={Plus}
+                label="Add to group"
+                isSelect
               />
-            ))}
-            {selectableGroups.length === 0 && (
-              <DropdownMenuItem
-                label={groupSearch ? "No groups found" : "All groups added"}
-                disabled
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="min-w-[320px]" collisionPadding={8}>
+              <DropdownMenuSearchbar
+                name="group-search"
+                placeholder="Search groups"
+                value={groupSearch}
+                onChange={setGroupSearch}
+                autoFocus
               />
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              {selectableGroups.map((group) => (
+                <DropdownMenuItem
+                  key={group.sId}
+                  label={group.name}
+                  endComponent={
+                    <span className="text-sm text-muted-foreground">
+                      {group.memberCount} member{pluralize(group.memberCount)}
+                    </span>
+                  }
+                  onClick={() => void onAdd(group)}
+                />
+              ))}
+              {selectableGroups.length === 0 && (
+                <DropdownMenuItem
+                  label={groupSearch ? "No groups found" : "All groups added"}
+                  disabled
+                />
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {isMemberGroupsLoading ? (
@@ -179,7 +195,11 @@ export function MemberGroupsSection({
                 color={getGroupKindChip(group.kind).color}
                 label={group.name}
                 isBusy={pendingGroupId === group.sId}
-                onRemove={() => void onRemove(group)}
+                onRemove={
+                  editableGroupIds.has(group.sId) && !pendingGroupId
+                    ? () => void onRemove(group)
+                    : undefined
+                }
               />
             )
           )}
