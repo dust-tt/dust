@@ -1,6 +1,7 @@
 // @vitest-environment node: the server has no DOM globals, jsdom must not hide a reliance on them.
 import {
   applyInstructionEditsToHtml,
+  convertBlockHtmlToMarkdown,
   convertMarkdownToBlockHtml,
 } from "@app/lib/editor/skill_instructions_html";
 import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
@@ -231,6 +232,28 @@ describe("convertMarkdownToBlockHtml", () => {
 
     expect(skill.parent("p").text()).toContain("for legacy callers");
   });
+
+  it("escapes HTML special characters in text exactly once", () => {
+    const md = 'Say "hi" & <role> > then stop.';
+
+    const html = convertMarkdownToBlockHtml(md);
+
+    expect(load(html)("p").text()).toBe(md);
+    expect(html).toContain("&lt;role&gt;");
+    expect(html).not.toContain("&amp;lt;");
+    expect(html).not.toContain("&amp;amp;");
+    expect(html).not.toContain("&amp;quot;");
+    expect(convertBlockHtmlToMarkdown(html)).toBe(md);
+  });
+
+  it("round-trips raw markdown blocks holding HTML special characters", () => {
+    const md = '| "quoted" | <tag> & co |\n|---|---|\n| 1 | 2 |';
+
+    const html = convertMarkdownToBlockHtml(md);
+
+    expect(load(html)("div[data-raw-markdown]").attr("data-content")).toBe(md);
+    expect(convertBlockHtmlToMarkdown(html)).toBe(md);
+  });
 });
 
 describe("applyInstructionEditsToHtml", () => {
@@ -416,6 +439,32 @@ describe("applyInstructionEditsToHtml", () => {
       expect(result.value.instructions).toBe(
         'Use <skill id="skl_abc" name="A > B" icon="ActionSpeakIcon" /> then stop.'
       );
+    }
+  });
+
+  it("keeps HTML special characters escaped once in edited and untouched blocks", () => {
+    const html = convertMarkdownToBlockHtml(
+      '<role>\n\nyou say hello\n\n</role>\n\n| "quoted" | <tag> |\n|---|---|\n| 1 | 2 |'
+    );
+    const [, , helloId] = blockIds(html);
+
+    const result = applyInstructionEditsToHtml(html, [
+      {
+        targetBlockId: helloId,
+        content: '<p>You say "hello" &amp; &lt;wave&gt;.</p>',
+      },
+    ]);
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const { instructions, instructionsHtml } = result.value;
+      expect(instructions).toBe(
+        '<role>\n\nYou say "hello" & <wave>.\n\n</role>\n\n| "quoted" | <tag> |\n|---|---|\n| 1 | 2 |'
+      );
+      expect(instructionsHtml).not.toContain("&amp;lt;");
+      expect(instructionsHtml).not.toContain("&amp;amp;");
+      expect(instructionsHtml).not.toContain("&amp;quot;");
+      expect(convertBlockHtmlToMarkdown(instructionsHtml)).toBe(instructions);
     }
   });
 
