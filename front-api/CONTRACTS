@@ -215,7 +215,7 @@ For cookie-based session resolution, call
 `setCookies` value with `c.header("Set-Cookie", cookie, { append: true })`,
 as `front-api/middlewares/session_resolution.ts` does.
 
-@cc [owner:frankaloia,label:security;api] inline-file-serving-content-type-safety
+@cc [label:security;api] inline-file-serving-content-type-safety
 Every route that streams a stored file inline to the browser **must** check
 `isContentTypeSafeToDisplay` (or the equivalent `isSafeToDisplay` flag from
 `getFileFormat(normalizeMimeType(contentType))`) before setting the response
