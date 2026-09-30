@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getPinnedAgentConfigurationForRun } from "@app/lib/api/assistant/configuration/run_configuration";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
 import {
@@ -219,10 +219,9 @@ async function mintExecToken(
     return;
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
+  const agentConfiguration = await getPinnedAgentConfigurationForRun(auth, {
     agentId: agentMessage.configuration.sId,
     agentVersion: agentMessage.configuration.version,
-    variant: "full",
   });
   if (!agentConfiguration) {
     logger.error(

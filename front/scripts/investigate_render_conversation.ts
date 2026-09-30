@@ -1,7 +1,6 @@
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
@@ -14,6 +13,7 @@ import {
 } from "@app/lib/api/assistant/skills_rendering";
 import { legacyModelIdToModel } from "@app/lib/api/llm";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
+import { getAgentConfigurationForPoke } from "@app/lib/api/poke/agent_configurations";
 import { Authenticator } from "@app/lib/auth";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
@@ -63,7 +63,7 @@ makeScript(
     const [conversationRes, agentConfiguration] = await Promise.all([
       // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       getConversation(auth, conversationId, true),
-      getAgentConfiguration(auth, { agentId, variant: "full" }),
+      getAgentConfigurationForPoke(auth, agentId),
     ]);
 
     if (conversationRes.isErr()) {

@@ -1,6 +1,5 @@
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { Authenticator } from "@app/lib/auth";
@@ -11,6 +10,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -75,10 +75,11 @@ async function resolveAgentConfigurationId(
   t?: Transaction
 ): Promise<string> {
   const fetchAuth = await authForConversationFetch(auth, t);
-  const existing = await getAgentConfiguration(fetchAuth, {
-    agentId: agentConfigurationId,
-    variant: "extra_light",
-  });
+  const existing = await AgentResource.fetchById(
+    fetchAuth,
+    agentConfigurationId,
+    { dangerouslySkipFetchCheck: true }
+  );
   if (existing) {
     return agentConfigurationId;
   }
