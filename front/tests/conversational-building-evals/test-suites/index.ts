@@ -1,4 +1,5 @@
 import type { TestSuite } from "@app/tests/conversational-building-evals/lib/types";
+import { batchEditSuite } from "@app/tests/conversational-building-evals/test-suites/batch-edit";
 import { createAgentSuite } from "@app/tests/conversational-building-evals/test-suites/create-agent";
 import { skillManagementSuite } from "@app/tests/conversational-building-evals/test-suites/skill-management";
 import { skillMetadataSuite } from "@app/tests/conversational-building-evals/test-suites/skill-metadata";
@@ -11,4 +12,5 @@ export const allTestSuites: TestSuite[] = [
   skillMetadataSuite,
   createAgentSuite,
   updateAgentSuite,
+  batchEditSuite,
 ];

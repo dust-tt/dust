@@ -56,7 +56,7 @@ User message:
 
 {{FINAL_TOOL_CALL}}
 
-## Tools Called (in order)
+## Tools Called (in order; calls of the same round were issued in parallel)
 
 {{TOOL_CALLS}}
 
@@ -112,7 +112,9 @@ async function renderWorkspaceSkills(
 ): Promise<string> {
   const rendered: string[] = [];
   for (const skillId of scenario.skillIdsByKey.values()) {
-    rendered.push(await runTool(scenario, TOOL.describeSkill, { skillId }));
+    rendered.push(
+      (await runTool(scenario, TOOL.describeSkill, { skillId })).text
+    );
   }
   return rendered.length > 0 ? rendered.join("\n\n") : "(none)";
 }
@@ -135,7 +137,9 @@ async function renderWorkspaceAgents(
 ): Promise<string> {
   const rendered: string[] = [];
   for (const agentId of scenario.agentIdsByKey.values()) {
-    rendered.push(await runTool(scenario, TOOL.describeAgent, { agentId }));
+    rendered.push(
+      (await runTool(scenario, TOOL.describeAgent, { agentId })).text
+    );
   }
   return rendered.length > 0 ? rendered.join("\n\n") : "(none)";
 }
@@ -147,7 +151,7 @@ export async function evaluateWithJudge(
   numRuns: number
 ): Promise<JudgeResult> {
   const { auth } = scenario;
-  const { toolCalls, responseText, finalToolCall } = execution;
+  const { toolCallRounds, responseText, finalToolCall } = execution;
 
   const prompt = JUDGE_PROMPT.replace(
     "{{USER_MESSAGE}}",
@@ -164,9 +168,15 @@ export async function evaluateWithJudge(
     )
     .replace(
       "{{TOOL_CALLS}}",
-      toolCalls.length > 0
-        ? toolCalls
-            .map((tc) => `- ${tc.name}(${JSON.stringify(tc.arguments)})`)
+      toolCallRounds.length > 0
+        ? toolCallRounds
+            .flatMap((round, i) =>
+              round.map(
+                (tc) =>
+                  `- round ${i + 1}: ${tc.name}(${JSON.stringify(tc.arguments)})` +
+                  (tc.isError ? " -> rejected by the tool, no effect" : "")
+              )
+            )
             .join("\n")
         : "(none)"
     )
