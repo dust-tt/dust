@@ -8,12 +8,15 @@ publish.workspace = true
 anyhow = "1"
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 clap = { version = "4", features = ["derive", "env"] }
+getrandom = "0.4"
 hex = "0.4"
 mime = "0.3"
 percent-encoding = "2"
 postcard = { version = "1", default-features = false, features = ["use-std"] }
 serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
 slatedb = { version = "0.17", default-features = false, features = ["gcp"] }
+subtle = "2"
 thiserror = "2"
 tokio = { version = "1", features = ["io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync"] }
 tracing = "0.1"
@@ -24,6 +27,7 @@ uuid = { version = "1", features = ["v4"] }
 futures = "0.3"
 serde_json = "1"
 tempfile = "3"
+tokio = { version = "1", features = ["test-util"] }
 tower = { version = "0.5", features = ["util"] }
 
 [lints]

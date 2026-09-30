@@ -143,9 +143,20 @@ their endpoints; clients must not infer errno from message text or HTTP status a
 map to `EIO`. A failure or disconnect does not prove a mutation was uncommitted: do not blindly
 replay writes; define safe retries with the mutation protocol.
 
-## Sessions and virtual folders
+## Workspace creation, sessions, and virtual folders
 
-`POST /sessions` creates an ephemeral session with fixed grants and optional virtual mounts:
+`POST /workspaces`, authenticated with the operator's `DFS_SERVER_KEY`, accepts a caller-provided
+`workspace_id` and optional `root_grants`. It durably creates the workspace root, explicit root grant
+indexes, and workspace key hash in one batch, then returns `workspace_id`, `root_id`, and a fresh
+`workspace_key` once. Existing workspaces return a conflict; missing server configuration disables
+creation. Root grants default to empty; do not implicitly grant every session access to the root.
+
+The trusted workspace key may create sessions with any grant set in that workspace. It stays with
+the trusted Product/caller; sandboxes receive session keys. Future grant attachment/revocation APIs
+also require the workspace key. Session creation never attaches grants to objects.
+
+`POST /sessions`, authenticated with the workspace key, creates an ephemeral session with fixed
+grants and optional virtual mounts:
 
 ```json
 {
@@ -161,9 +172,14 @@ replay writes; define safe retries with the mutation protocol.
 These targets might currently live at `/spolu@dust.tt/conversations/AXXX` and
 `/jd@dust.tt/pods/podZZZ`; their URIs survive changes to those paths.
 
-The server returns `session_id`, an opaque `session_token`, and `expires_at`. Filesystem operations,
-search, and change subscriptions carry `Authorization: Bearer <session_token>`; workspace, grants,
-and virtual paths come from the session rather than individual requests.
+The server returns `session_id`, an opaque `session_key`, workspace/grants, and `expires_at` in Unix
+seconds. Workspace/session keys contain 256 random bits; retain only SHA-256 hashes. Sessions expire
+after one hour and are lost on restart. The current registry caps live sessions at 10,000 and cleans
+expired entries on access. Workspace/session JSON requests are capped at 64 KiB.
+
+`GET /sessions/current` returns the authenticated session's scope and expiry without its key.
+Filesystem operations, search, and change subscriptions carry `Authorization: Bearer <session_key>`;
+workspace, grants, and virtual paths come from the session rather than individual requests.
 
 - Resolve mount target URIs to directories at creation, requiring access within the workspace.
   Target renames/moves preserve the alias; current grants still govern every access.
@@ -172,8 +188,13 @@ and virtual paths come from the session rather than individual requests.
 - Mounts provide aliases only. They grant no additional access and create no persistent directories.
   Operations inside them affect the target; `..` follows virtual parents without exposing target
   ancestors. Synthetic parents and mount entries cannot be mutated through filesystem operations.
-- `DELETE /sessions/{session_id}` closes the session. Recreate on expiry or owner restart, or to change
-  grants/mounts; discard cached namespace views and reestablish subscriptions when recreating.
+- `DELETE /sessions/{session_id}` requires that session's own key and closes it. Recreate on expiry,
+  owner restart, or to change grants/mounts; discard cached namespace views and reestablish subscriptions.
+
+Nonempty mounts are currently rejected until mount validation is implemented in group 5. Key rotation
+and recovery of a workspace key lost with its creation response are future work. Use authenticated
+TLS termination when exposing the API beyond local development; keys travel only in response bodies
+and Authorization headers, never URLs or logs.
 
 ### Root and shared folder rendering
 

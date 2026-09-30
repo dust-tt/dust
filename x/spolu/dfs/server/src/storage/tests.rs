@@ -147,6 +147,8 @@ async fn gcs_storage_round_trip() -> Result<()> {
     tokio::time::timeout(Duration::from_secs(120), async {
         exercise_storage(store.clone(), &prefix).await?;
         recovery::exercise_recovery("gcs", &bucket, &format!("{}/recovery", prefix.0)).await?;
+        crate::api::exercise_sessions(store.clone(), &format!("{}/sessions", prefix.0).parse()?)
+            .await?;
         cleanup_fixture(store, &prefix).await
     })
     .await
@@ -472,6 +474,78 @@ async fn commits_and_change_events_wait_for_wal_durability() -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[tokio::test]
+async fn workspace_authority_requires_a_durable_creation_batch() -> Result<()> {
+    let store: Arc<dyn ObjectStore> = Arc::new(InMemory::new());
+    let prefix = "authority".parse()?;
+    let storage = Arc::new(
+        Storage::open_with_settings(
+            store.clone(),
+            &prefix,
+            Settings {
+                flush_interval: None,
+                ..Default::default()
+            },
+        )
+        .await?,
+    );
+    let workspace = WorkspaceId::new("w")?;
+    let writer_store = storage.clone();
+    let writer_workspace = workspace.clone();
+    let writer = tokio::spawn(async move {
+        writer_store
+            .create_workspace(&writer_workspace, [42; 32], &["root".to_owned()].into())
+            .await
+    });
+    let keys = Keyspace::new(workspace.clone())?;
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while storage
+            .metadata
+            .get(keys.workspace_record())
+            .await?
+            .is_none()
+        {
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+        Ok::<_, anyhow::Error>(())
+    })
+    .await??;
+    ensure!(!writer.is_finished());
+    ensure!(storage.workspace_record(&workspace).await?.is_none());
+    ensure!(
+        storage
+            .workspace(&workspace)?
+            .read_view()
+            .await?
+            .changes(0, 10)
+            .await?
+            .is_empty()
+    );
+    storage
+        .metadata
+        .close_with_options(slatedb::config::CloseOptions { flush_type: None })
+        .await?;
+    ensure!(writer.await?.is_err());
+    let reopened = Storage::open(store, &prefix).await?;
+    ensure!(reopened.workspace_record(&workspace).await?.is_none());
+    ensure!(
+        reopened
+            .metadata
+            .scan_prefix(keys.prefix(), ..)
+            .await?
+            .next()
+            .await?
+            .is_none()
+    );
+    ensure!(
+        reopened
+            .create_workspace(&workspace, [43; 32], &Default::default())
+            .await?
+            .is_some()
+    );
+    reopened.close().await
 }
 
 async fn cleanup_fixture(store: Arc<dyn ObjectStore>, prefix: &StoragePrefix) -> Result<()> {

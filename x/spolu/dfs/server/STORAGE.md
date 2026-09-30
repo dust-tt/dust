@@ -6,6 +6,10 @@ The namespace service will authorize requests, check parent/cycle/collision/revi
 and serialize competing object mutations before calling this layer; there are no filesystem HTTP
 endpoints yet.
 
+Workspace creation atomically persists its root, explicit root grants in both directions, key hash,
+and initial change event. An existing workspace namespace is never replaced. Authentication reads
+workspace records at remote durability; only the SHA-256 digest of a workspace key is persisted.
+
 `commit(MetadataBatch)` validates records and uploads, uploads new immutable content, verifies
 existing content references, and publishes one atomic SlateDB batch. The caller supplies all related
 object and child-index mutations; `SetGrant` always changes both grant indexes. Duplicate keys and
@@ -39,6 +43,7 @@ and a one-byte family tag. IDs below are raw 16-byte UUIDs; names and grants pre
 | `04` | Objects by grant | Grant byte length (`u32` big-endian), grant bytes, object ID | Unit |
 | `05` | Changes | Sequence (`u64` big-endian) | Array of affected IDs |
 | `06` | Change sequence | Empty | Last sequence (`u64`) |
+| `07` | Workspace | Empty | Root ID (`[u8; 16]`), key hash (`[u8; 32]`) |
 
 Length prefixes keep workspaces and grants distinct even with slashes, NUL, Unicode, or shared
 prefixes. Names/grants at the end of a key need no length delimiter. Fixed-width big-endian change

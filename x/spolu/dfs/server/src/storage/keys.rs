@@ -82,6 +82,14 @@ impl Keyspace {
     pub fn change_sequence(&self) -> Vec<u8> {
         self.family(6)
     }
+
+    pub fn workspace_record(&self) -> Vec<u8> {
+        self.family(7)
+    }
+
+    pub fn prefix(&self) -> &[u8] {
+        &self.prefix
+    }
 }
 
 fn append_string(key: &mut Vec<u8>, value: &str) -> Result<()> {

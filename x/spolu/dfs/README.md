@@ -10,7 +10,8 @@ graceful shutdown on SIGINT/SIGTERM. The health route supports `GET` (returning 
 and `HEAD` for process liveness. The server library defines typed IDs, object URIs, relative paths,
 metadata, directory entries, revision tokens, and shared API errors with focused tests. Its storage
 API provides workspace-scoped snapshots, immutable blobs, and synchronous metadata/index/event
-batches. Filesystem HTTP operations, sessions, search, and FUSE follow in separate increments.
+batches. Workspace creation issues a workspace key; that key issues sessions with fixed grants.
+Filesystem HTTP operations, search, and FUSE follow in separate increments.
 Optional GCS configuration opens SlateDB before serving HTTP and
 closes it after requests drain. Without it, the HTTP scaffold still runs without external services.
 The server runs natively on macOS and Linux.
@@ -69,6 +70,32 @@ SlateDB 0.17 stores WAL/SST/manifest objects under `<prefix>/metadata/`; immutab
 under `<prefix>/blobs/`. No dfs content cache or metadata overlay is enabled. See
 [server/STORAGE.md](server/STORAGE.md) for the internal API, versioned format, and durability rules.
 
+## Workspaces and sessions
+
+Configure `DFS_SERVER_KEY` with an operator-generated secret (32–512 ASCII letters, digits, `-`,
+or `_`; for example, generate 32 random bytes as hex). This environment-only key enables
+`POST /workspaces`; without it, workspace creation is disabled. GCS must also be configured.
+Use TLS termination beyond local development. All credentials use `Authorization: Bearer <key>`.
+
+| Request | Credential | Body / result |
+| --- | --- | --- |
+| `POST /workspaces` | Server key | `{ "workspace_id": "w", "root_grants": ["g:admins"] }` → workspace key and root ID |
+| `POST /sessions` | Workspace key | `{ "workspace_id": "w", "grants": ["g:admins"] }` → session key, ID, scope, expiry |
+| `GET /sessions/current` | Session key | Current workspace, grants, and expiry; never the key |
+| `DELETE /sessions/{session_id}` | That session's key | Close the session; 204 |
+
+Save creation keys from their responses; they are returned once. Workspace keys survive restart and
+can mint any grant set in their workspace. Keep them with trusted callers; give sandboxes session keys.
+Sessions expire after one hour or restart and cannot mint sessions or administer grants. The limit
+is 512 distinct grants per session and 10,000 live sessions per process; expired entries are removed
+on session access/creation/closure. Grants are opaque strings, including empty strings; duplicates
+are deduplicated. Bodies are limited to 64 KiB and reject unknown fields.
+
+Root grants default to empty; sharing the root grants access through inheritance. Session creation
+never attaches grants to objects. Nonempty virtual mounts return `unsupported` until group 5. Existing
+workspace IDs return `conflict` without changing their key or root. Key rotation/recovery is future
+work: a lost creation response may leave a workspace whose key cannot be recovered yet.
+
 ## Storage and server checks
 
 Normal `cargo test --locked --workspace` runs real SlateDB against memory and temporary filesystem
@@ -76,7 +103,9 @@ object stores, without GCS or database mocks. The opt-in cloud fixture uses the 
 create immutable blobs, commit scoped metadata/index/event batches, and verify reads after reopening.
 Local tests also withhold WAL flushing and inject upload failures. A subprocess test kills the
 writer after acknowledgement and verifies the full batch from a fresh process, locally and on GCS.
-The cloud fixture creates a fresh `<test-prefix>/tests/<uuid>/` for every run and deletes only that
+The same cloud fixture exercises workspace/session HTTP handlers against GCS, including restart:
+workspace keys remain valid and old session keys fail. The cloud fixture creates a fresh
+`<test-prefix>/tests/<uuid>/` for every run and deletes only that
 run's objects after success; failures leave the isolated prefix for inspection. The ignored `worker`
 test is an internal subprocess helper, not a standalone test command.
 

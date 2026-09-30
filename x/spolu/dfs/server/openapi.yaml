@@ -6,7 +6,9 @@ info:
     Unknown routes return 404 with ErrorResponse (not_found). Unsupported methods on known routes
     return 405 with ErrorResponse (method_not_allowed) and an Allow header.
     Errors carry Cache-Control: no-store. HEAD responses omit the body.
-    Future filesystem endpoints use the shared error codes below. Missing and inaccessible objects
+    Workspace/session requests accept at most 64 KiB of JSON. Malformed JSON, unknown fields, and
+    oversized bodies return invalid_input (400). All workspace/session responses disable caching.
+    Missing and inaccessible objects
     produce the same not_found response; messages never contain resource or storage details.
 paths:
   /health:
@@ -34,8 +36,222 @@ paths:
       responses:
         "200":
           description: The HTTP server is running; no response body.
+  /workspaces:
+    post:
+      operationId: createWorkspace
+      summary: Create a workspace and return its key once.
+      description: |
+        Requires DFS_SERVER_KEY in Authorization. If workspace creation is disabled (no configured
+        server key) or storage is unavailable, returns unavailable (503). The workspace record,
+        root, explicit root grants, and initial event are persisted atomically before returning.
+        An existing workspace returns conflict (409) without replacing its root or key.
+        Initial root grants default to empty and apply to descendants through inheritance.
+        The workspace key can mint any grant set within this workspace; keep it with trusted callers.
+        Only its hash is stored. A lost response may leave a created workspace whose key cannot be
+        recovered; key rotation is future work. Do not assume a failed request was uncommitted.
+      security:
+        - ServerKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkspaceRequest'
+      responses:
+        "201":
+          description: Workspace persisted; save its key from this response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateWorkspaceResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /sessions:
+    post:
+      operationId: createSession
+      summary: Exchange a workspace key for a session with fixed grants.
+      description: |
+        The workspace key must match workspace_id. Wrong keys, missing workspaces, and keys from
+        another workspace all return unauthenticated (401). Server and session keys are not accepted.
+        Grants are opaque; deduplicate before enforcing the limit of 512 distinct grants. Empty
+        sets and empty grant strings are allowed. Creating a session never attaches grants to objects.
+        Nonempty mounts return unsupported (501) until mount validation is implemented.
+        Sessions expire after one hour, on explicit closure, or on server restart. A process supports
+        at most 10000 live sessions (capacity_exhausted, 507). Expired entries are cleaned on access.
+      security:
+        - WorkspaceKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        "201":
+          description: Session created; its key is returned only here.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSessionResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /sessions/current:
+    get:
+      operationId: currentSession
+      summary: Read the authenticated session's workspace, grants, and expiry.
+      security:
+        - SessionKey: []
+      responses:
+        "200":
+          description: The session is valid; credentials are never echoed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+    head:
+      operationId: currentSessionHead
+      summary: Check session validity without a response body.
+      security:
+        - SessionKey: []
+      responses:
+        "200":
+          description: The session is valid; no response body.
+        default:
+          $ref: '#/components/responses/ApiError'
+  /sessions/{session_id}:
+    delete:
+      operationId: closeSession
+      summary: Close the session authenticated by its own key.
+      description: |
+        A key cannot close another session (not_found, 404). Closed, expired, and unknown keys return
+        unauthenticated (401). The session ID is not a credential.
+      security:
+        - SessionKey: []
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Session closed; no response body.
+        default:
+          $ref: '#/components/responses/ApiError'
 components:
+  securitySchemes:
+    ServerKey:
+      type: http
+      scheme: bearer
+      description: Operator-configured DFS_SERVER_KEY; used only for workspace creation.
+    WorkspaceKey:
+      type: http
+      scheme: bearer
+      description: Workspace key returned by POST /workspaces; used to create sessions.
+    SessionKey:
+      type: http
+      scheme: bearer
+      description: Session key returned by POST /sessions; fixes the workspace and grants.
+  responses:
+    ApiError:
+      description: |
+        Shared error envelope. Requests may fail with invalid_input (400), unauthenticated (401),
+        not_found (404), conflict (409), internal (500), unsupported (501), unavailable (503), or
+        capacity_exhausted (507). Credentials and resource/storage details are never included.
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum: [no-store]
+        WWW-Authenticate:
+          description: Present on unauthenticated responses.
+          schema:
+            type: string
+            enum: [Bearer]
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    CreateWorkspaceRequest:
+      type: object
+      additionalProperties: false
+      required: [workspace_id]
+      properties:
+        workspace_id:
+          type: string
+          minLength: 1
+          description: Caller-provided, opaque, case-sensitive workspace identifier.
+        root_grants:
+          type: array
+          default: []
+          description: At most 512 distinct opaque strings; duplicates are deduplicated.
+          items:
+            type: string
+    CreateWorkspaceResponse:
+      type: object
+      additionalProperties: false
+      required: [workspace_id, root_id, workspace_key]
+      properties:
+        workspace_id:
+          type: string
+        root_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        workspace_key:
+          type: string
+          pattern: '^dfsw_[0-9a-f]{64}$'
+          description: Secret returned once; 256 random bits. Never send in a URL.
+    CreateSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [workspace_id, grants]
+      properties:
+        workspace_id:
+          type: string
+          minLength: 1
+        grants:
+          type: array
+          description: At most 512 distinct opaque strings; duplicates are deduplicated.
+          items:
+            type: string
+        mounts:
+          type: object
+          default: {}
+          description: Only an empty map is supported in this increment.
+          additionalProperties:
+            type: string
+    SessionResponse:
+      type: object
+      required: [session_id, workspace_id, grants, expires_at]
+      properties:
+        session_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        workspace_id:
+          type: string
+        grants:
+          type: array
+          uniqueItems: true
+          maxItems: 512
+          items:
+            type: string
+        expires_at:
+          type: integer
+          format: int64
+          description: Expiration time in Unix seconds; not extended by requests.
+    CreateSessionResponse:
+      allOf:
+        - $ref: '#/components/schemas/SessionResponse'
+        - type: object
+          required: [session_key]
+          properties:
+            session_key:
+              type: string
+              pattern: '^dfss_[0-9a-f]{64}$'
+              description: Secret returned once; 256 random bits. Never send in a URL.
     ErrorResponse:
       type: object
       additionalProperties: false

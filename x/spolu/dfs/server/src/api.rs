@@ -1,15 +1,52 @@
+mod access;
 mod error;
+mod sessions;
 
-use axum::{Json, Router, routing::get};
+use std::sync::Arc;
+
+use axum::{
+    Json, Router,
+    extract::DefaultBodyLimit,
+    routing::{delete, get, post},
+};
 use serde::Serialize;
 
+use crate::storage::Storage;
+pub use access::Access;
 pub use error::ApiError;
+#[cfg(test)]
+pub(crate) use sessions::tests::exercise_sessions;
 
-pub fn router() -> Router {
+#[derive(Clone)]
+pub struct ApiState {
+    storage: Option<Arc<Storage>>,
+    access: Arc<Access>,
+}
+
+impl ApiState {
+    pub fn new(storage: Option<Arc<Storage>>, access: Access) -> Self {
+        Self {
+            storage,
+            access: Arc::new(access),
+        }
+    }
+
+    fn storage(&self) -> Result<&Storage, ApiError> {
+        self.storage.as_deref().ok_or(ApiError::Unavailable)
+    }
+}
+
+pub fn router(state: ApiState) -> Router {
     Router::new()
         .route("/health", get(health))
+        .route("/workspaces", post(sessions::create_workspace))
+        .route("/sessions", post(sessions::create_session))
+        .route("/sessions/current", get(sessions::current_session))
+        .route("/sessions/{session_id}", delete(sessions::close_session))
+        .layer(DefaultBodyLimit::max(64 * 1024))
         .fallback(|| async { ApiError::NotFound })
         .method_not_allowed_fallback(|| async { ApiError::MethodNotAllowed })
+        .with_state(state)
 }
 
 #[derive(Serialize)]
@@ -44,7 +81,7 @@ mod tests {
                 "method_not_allowed",
             ),
         ] {
-            let response = router()
+            let response = router(ApiState::new(None, Access::new(None)?))
                 .oneshot(
                     Request::builder()
                         .method(method)
@@ -69,7 +106,7 @@ mod tests {
     #[tokio::test]
     async fn health_and_head_remain_available() -> anyhow::Result<()> {
         for method in ["GET", "HEAD"] {
-            let response = router()
+            let response = router(ApiState::new(None, Access::new(None)?))
                 .oneshot(
                     Request::builder()
                         .method(method)

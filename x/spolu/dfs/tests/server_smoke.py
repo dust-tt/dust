@@ -15,7 +15,7 @@ def check_server(binary: Path, stop_signal: signal.Signals) -> None:
     environment = {
         key: value
         for key, value in os.environ.items()
-        if key not in {"DFS_GCS_BUCKET", "DFS_GCS_PREFIX"}
+        if key not in {"DFS_GCS_BUCKET", "DFS_GCS_PREFIX", "DFS_SERVER_KEY"}
     }
     process = subprocess.Popen(
         [str(binary), "--listen", "127.0.0.1:0"],

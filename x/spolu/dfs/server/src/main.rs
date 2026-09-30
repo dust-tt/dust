@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -28,17 +28,19 @@ struct Config {
 async fn main() -> Result<()> {
     let config = Config::parse();
     init_tracing()?;
+    let access = api::Access::from_env()?;
 
     let mut interrupt = signal(SignalKind::interrupt()).context("register SIGINT handler")?;
     let mut terminate = signal(SignalKind::terminate()).context("register SIGTERM handler")?;
     let listener = TcpListener::bind(config.listen)
         .await
         .with_context(|| format!("bind HTTP listener at {}", config.listen))?;
-    let storage = config.storage.open().await?;
+    let storage = config.storage.open().await?.map(Arc::new);
 
     info!(address = %listener.local_addr()?, "dfs server listening");
 
-    let serve_result = axum::serve(listener, api::router())
+    let state = api::ApiState::new(storage.clone(), access);
+    let serve_result = axum::serve(listener, api::router(state))
         .with_graceful_shutdown(async move {
             tokio::select! {
                 _ = interrupt.recv() => {}

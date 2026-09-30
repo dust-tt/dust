@@ -4,10 +4,17 @@ session's workspace. Matching grant strings or possession of an object ID MUST N
 across workspaces.
 
 @cc [owner:spolu,label:security] session-authority
-Session creation MUST authenticate the caller and authorize its workspace and supplied grants.
+Workspace creation MUST require the configured server API key. Session creation MUST verify the
+workspace key against durable workspace state; that key may delegate any grant set in its workspace.
+Session keys MUST NOT authorize workspace creation, grant administration, or further sessions.
 Grants are opaque strings; dfs MUST NOT infer identities or membership from their prefixes.
 Reject more than 512 distinct grants. Workspace, grants, and virtual mounts are fixed for a session;
 subsequent requests MUST NOT override them. Expired or closed sessions MUST be rejected.
+
+@cc [owner:spolu,label:security] workspace-grant-administration
+Workspace creation MUST atomically persist its root and caller-supplied explicit root grants.
+Session creation MUST NOT attach grants to any object. Future grant attachment/revocation APIs MUST
+require the workspace key; sharing a grant with an object MUST NOT confer grant administration.
 
 @cc [owner:spolu,label:security] live-grant-authorization
 An object's effective grants are the union of its explicit grants and its current ancestors' grants.

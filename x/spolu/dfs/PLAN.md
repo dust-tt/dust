@@ -1,8 +1,8 @@
 # Implementation plan
 
 [DESIGN.md](DESIGN.md) describes the architecture; [CONTRACTS](CONTRACTS) defines the invariants.
-The server scaffold, initial model types, API errors, and synchronous storage foundation are
-implemented today.
+The server scaffold, initial model types, API errors, synchronous storage, workspace creation, and
+sessions are implemented today.
 
 Work in small increments: each checkbox should produce a reviewable change with a focused test or
 demo. Split a checkbox further when needed. Keep the server runnable, update API documentation and
@@ -75,22 +75,25 @@ withheld/failed WAL persistence are covered locally; the broader failure matrix 
 See [server/STORAGE.md](server/STORAGE.md) for formats and commit guarantees.
 The current blob API buffers whole files; group 6 replaces it with streaming before FUSE integration.
 
-## 3. Workspace bootstrap and sessions
+## 3. Workspace creation and sessions
 
-- [ ] Define how the trusted caller proves its workspace and allowed grant set; never treat
-  arbitrary client-supplied grants as proof of authority. Provide a deterministic authenticator for
-  tests.
-- [ ] Define who can provision workspace roots and attach/revoke grants; record these decisions in
-  contracts before exposing the corresponding mutation APIs.
-- [ ] Persist workspace roots through the synchronous storage path.
-- [ ] Implement session creation with opaque tokens, expiry, fixed workspace/grants, and the limit
+- [x] Protect `POST /workspaces` with the server API key. Return a fresh workspace key once; persist
+  only its hash. Use explicit test credentials with the real authentication path in tests.
+- [x] Let workspace keys mint sessions with any supplied grant set in their own workspace.
+  Reserve future grant administration for workspace keys; session keys cannot change grants.
+- [x] Persist workspace authority, root, initial root grants, and event through one synchronous batch.
+- [x] Implement session creation with opaque keys, expiry, fixed workspace/grants, and the limit
   of 512 distinct grants. Treat grant strings as opaque values.
-- [ ] Add bearer-session lookup, explicit closure, expiry cleanup, and rejection after server
+- [x] Add bearer-session lookup, explicit closure, expiry cleanup, and rejection after server
   restart. Recreated sessions discard previous namespace state and subscriptions.
-- [ ] Reject unsupported mount requests until mount validation exists in group 5.
+- [x] Reject unsupported mount requests until mount validation exists in group 5.
 
-**Done when:** two sessions can connect to one workspace, while expired tokens, unauthorized grant
-sets, and cross-workspace requests fail.
+**Done when:** two sessions can connect to one workspace, while expired keys, invalid credentials,
+and cross-workspace requests fail. Session-supplied grants never attach to objects.
+
+Local tests cover concurrent creation, key separation, grant limits, expiry/closure, and interrupted
+workspace persistence. The GCS fixture verifies durable roots/grants and workspace-key reuse after
+restart while old session keys fail.
 
 ## 4. Persistent namespace and grant enforcement
 
@@ -284,6 +287,8 @@ machine with the documented durability tradeoff.
 
 ## Future work
 
+- [ ] Add workspace-key rotation/recovery and revocation, including lost creation responses and
+  explicit decisions about invalidating already-issued sessions.
 - [ ] Evaluate chunked immutable content and manifests if small edits to large files make whole-version
   uploads too expensive. Define atomic publication, range reads, and reclamation for shared chunks.
 - [ ] Add owner epochs identifying each server's ownership tenure so stale revisions and cursors
