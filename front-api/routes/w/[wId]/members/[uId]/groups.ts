@@ -13,10 +13,7 @@ import { PostMemberGroupBodySchema } from "@app/types/api/groups/manage";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import {
-  ensureHasAnyGroupPermission,
-  ensureIsManager,
-} from "@front-api/middlewares/ensure_role";
+import { ensureHasAnyGroupPermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -94,7 +91,10 @@ app.get(
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsManager(),
+  ensureHasAnyGroupPermission(
+    "write",
+    "Group membership management access required."
+  ),
   validate("param", ParamsSchema),
   validate("json", PostMemberGroupBodySchema),
   async (ctx): HandlerResult<PostMemberGroupResponseBody> => {
@@ -118,7 +118,10 @@ app.post(
 /** @ignoreswagger */
 app.delete(
   "/:groupId",
-  ensureIsManager(),
+  ensureHasAnyGroupPermission(
+    "write",
+    "Group membership management access required."
+  ),
   validate("param", GroupParamsSchema),
   async (ctx): HandlerResult<DeleteMemberGroupResponseBody> => {
     const auth = ctx.get("auth");
