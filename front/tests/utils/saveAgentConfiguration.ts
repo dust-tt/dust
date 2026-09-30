@@ -1,7 +1,7 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import type { SaveAgentConfigurationParams } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -41,20 +41,23 @@ export async function saveAgentConfiguration(
   }
 
   // Re-read the saved agent. `makeNew` returns a resource resolved for the saver, which comes back
-  // `light` when the saver cannot read it (seeds attribute agents to other authors and may build
-  // them hidden or on spaces the saver is not a member of). Skip the read gate to always get the
-  // full config; read as the caller when they are a workspace member, otherwise as the internal
-  // admin (`getAgentConfigurations` rejects non-member auths).
+  // redacted when the saver cannot read it (seeds attribute agents to other authors and may build
+  // them hidden or on spaces the saver is not a member of). Skip the fetch check to always resolve
+  // it; read as the caller when they are a workspace member, otherwise as the internal admin.
   const readAuth = auth.isUser()
     ? auth
     : await Authenticator.internalAdminForWorkspace(
         auth.getNonNullableWorkspace().sId
       );
-  const config = await getAgentConfiguration(readAuth, {
-    agentId: savedResource.sId,
-    variant: "light",
-    dangerouslySkipPermissionFiltering: true,
+  const resource = await AgentResource.fetchById(readAuth, savedResource.sId, {
+    dangerouslySkipFetchCheck: true,
   });
+  const [config] = resource
+    ? await toLightAgentConfigurations(readAuth, [resource], {
+        withFavorites: false,
+        withTags: false,
+      })
+    : [];
   if (!config) {
     return new Err(new Error("The saved agent must be resolvable."));
   }
