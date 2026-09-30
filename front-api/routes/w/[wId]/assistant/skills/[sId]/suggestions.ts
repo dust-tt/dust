@@ -1,3 +1,4 @@
+import { updateSkillSuggestionsState } from "@app/lib/api/skills/update_skill_suggestions_state";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -134,7 +135,20 @@ app.patch(
       });
     }
 
-    await SkillSuggestionResource.bulkUpdateState(auth, suggestions, state);
+    const updateRes = await updateSkillSuggestionsState(
+      auth,
+      suggestions,
+      state
+    );
+    if (updateRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: updateRes.error.message,
+        },
+      });
+    }
 
     if (state === "approved" || state === "rejected") {
       await postSkillSuggestionStatusUpdate(auth, suggestions, state);
