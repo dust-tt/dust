@@ -43,6 +43,8 @@ export const ClariCallSchema = z
   })
   .passthrough();
 
+export type ClariCall = z.infer<typeof ClariCallSchema>;
+
 export const ClariCallsResponseSchema = z.object({
   calls: z.array(ClariCallSchema),
   pagination: z

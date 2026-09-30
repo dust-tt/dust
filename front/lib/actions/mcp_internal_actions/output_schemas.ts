@@ -1,5 +1,13 @@
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { UserQuestionSchema } from "@app/lib/actions/types";
+import type {
+  ClariCall,
+  ClariCallDetails,
+} from "@app/lib/api/actions/servers/clari_copilot/types";
+import {
+  ClariCallDetailsSchema,
+  ClariCallSchema,
+} from "@app/lib/api/actions/servers/clari_copilot/types";
 import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { ALL_FILE_FORMATS } from "@app/types/files";
@@ -1026,10 +1034,60 @@ export const isAgentPauseOutputResourceType = (
 export const OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE =
   "application/vnd.dust.tool-output.outlook-mail-folder-list" as const;
 
+const OutlookFolderItemSchema = z.object({
+  name: z.string(),
+  childFolderCount: z.number().optional(),
+  unreadItemCount: z.number().optional(),
+  totalItemCount: z.number().optional(),
+});
+
+const OutlookMailFolderListResourceSchema = z.object({
+  mimeType: z.literal(OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE),
+  uri: z.literal(""),
+  text: z.string(),
+  path: z.array(z.string()),
+  folders: z.array(OutlookFolderItemSchema),
+});
+
+export type OutlookMailFolderListResourceType = z.infer<
+  typeof OutlookMailFolderListResourceSchema
+>;
+
 // Clari Copilot tool outputs.
 
 export const CLARI_CALL_LIST_MIME_TYPE =
   "application/vnd.dust.tool-output.clari-call-list" as const;
 
+const ClariCallListResourceSchema = z.object({
+  mimeType: z.literal(CLARI_CALL_LIST_MIME_TYPE),
+  uri: z.literal(""),
+  text: z.string(),
+  calls: z.array(ClariCallSchema),
+  pagination: z
+    .object({
+      matched: z.number().optional(),
+      hasMore: z.boolean().optional(),
+      nextPageSkip: z.number().optional(),
+    })
+    .optional(),
+});
+
+export type ClariCallListResourceType = z.infer<
+  typeof ClariCallListResourceSchema
+> & {
+  calls: ClariCall[];
+};
+
 export const CLARI_CALL_DETAILS_MIME_TYPE =
   "application/vnd.dust.tool-output.clari-call-details" as const;
+
+const ClariCallDetailsResourceSchema = z.object({
+  mimeType: z.literal(CLARI_CALL_DETAILS_MIME_TYPE),
+  uri: z.string(),
+  text: z.string(),
+  call: ClariCallDetailsSchema,
+});
+
+export type ClariCallDetailsResourceType = z.infer<
+  typeof ClariCallDetailsResourceSchema
+> & { call: ClariCallDetails };

@@ -17,7 +17,6 @@ import type { MCPServersUsage } from "@app/lib/api/agent_actions";
 import type {
   PatchMCPServerBodySchema,
   PostRequestActionsAccessBodySchema,
-  UpdateMCPToolSettingsBodySchema,
   UpdateMCPToolsSettingsBodySchema,
 } from "@app/lib/api/mcp_schemas";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
@@ -287,10 +286,6 @@ export type GetMCPServerViewsListResponseBody = {
 export type PatchMCPServerToolsPermissionsResponseBody = {
   success: boolean;
 };
-
-export type UpdateMCPToolSettingsBodyType = z.infer<
-  typeof UpdateMCPToolSettingsBodySchema
->;
 
 export type UpdateMCPToolsSettingsBodyType = z.infer<
   typeof UpdateMCPToolsSettingsBodySchema
