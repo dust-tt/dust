@@ -1099,8 +1099,8 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:backend] agent-list-through-fetch-by-ids
-   * The `listBy*`/`fetchByName`/`searchByName` resolvers MUST NOT build resources themselves: they
-   * run a lightweight id-only query for the matching agents, then hydrate through the shared
+   * The `listBy*`/`fetchByName` resolvers MUST NOT build resources themselves: they run a
+   * lightweight id-only query for the matching agents, then hydrate through the shared
    * access-controlled resolver `fetchByIds`, so current-version resolution and access control stay
    * centralized (see `fetch-current-version`). Predicates on head fields (`name`, `status`, `scope`)
    * read the denormalized `agents` row directly; predicates on a version's rows (skills/tools/tags)
@@ -1163,39 +1163,6 @@ export class AgentResource
     });
     const [resource] = await this.fetchByIds(auth, agentIds);
     return resource ?? null;
-  }
-
-  // Active agents, custom and global, whose current name contains `query` case-insensitively
-  // (matched literally, not as a pattern), filtered to what the caller can fetch: custom agents
-  // first, then global ones, each in name order.
-  static async searchByName(
-    auth: Authenticator,
-    query: string
-  ): Promise<AgentResource[]> {
-    const [customAgentIds, globalAgents] = await Promise.all([
-      this.listCurrentVersionAgentIds(auth, {
-        agentWhere: {
-          status: "active",
-          name: { [Op.iLike]: `%${query.replace(/[\\%_]/g, "\\$&")}%` },
-        },
-      }),
-      this.listGlobalAgents(auth),
-    ]);
-    const customAgents = await this.fetchByIds(auth, customAgentIds);
-
-    const normalizedQuery = query.toLowerCase();
-    const byName = (a: AgentResource, b: AgentResource) =>
-      a.name.localeCompare(b.name);
-    return [
-      ...customAgents.toSorted(byName),
-      ...globalAgents
-        .filter(
-          (agent) =>
-            agent.status === "active" &&
-            agent.name.toLowerCase().includes(normalizedQuery)
-        )
-        .toSorted(byName),
-    ];
   }
 
   // Every global agent the workspace offers, disabled ones included (each carries its status), as

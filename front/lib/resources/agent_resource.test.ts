@@ -2793,7 +2793,7 @@ describe("AgentResource", () => {
     });
   });
 
-  describe("global agent list and name search", () => {
+  describe("global agent list", () => {
     it("listGlobalAgents returns the workspace's global agents", async () => {
       const globalAgents = await AgentResource.listGlobalAgents(
         testContext.authenticator
@@ -2804,78 +2804,6 @@ describe("AgentResource", () => {
       );
       expect(globalAgents.every((agent) => agent.scope === "global")).toBe(
         true
-      );
-    });
-
-    it("searchByName matches active custom agents by case-insensitive substring", async () => {
-      const { agent: beta } = await buildAgentInState({
-        scope: "visible",
-        status: "active",
-        name: "Searchable Beta",
-      });
-      const { agent: alpha } = await buildAgentInState({
-        scope: "hidden",
-        status: "active",
-        name: "Searchable Alpha",
-      });
-      await buildAgentInState({
-        scope: "visible",
-        status: "archived",
-        name: "Searchable Archived",
-      });
-      await AgentConfigurationFactory.createTestAgent(
-        testContext.authenticator,
-        { name: "Unrelated" }
-      );
-
-      const sIds = (
-        await AgentResource.searchByName(
-          testContext.authenticator,
-          "SEARCHABLE"
-        )
-      ).map((agent) => agent.sId);
-
-      expect(sIds).toEqual([alpha.sId, beta.sId]);
-    });
-
-    it("searchByName matches the query literally, not as a pattern", async () => {
-      const percent = await AgentConfigurationFactory.createTestAgent(
-        testContext.authenticator,
-        { name: "Growth 100% agent" }
-      );
-      await AgentConfigurationFactory.createTestAgent(
-        testContext.authenticator,
-        { name: "Growth 100 agent" }
-      );
-
-      const sIds = (
-        await AgentResource.searchByName(testContext.authenticator, "100%")
-      ).map((agent) => agent.sId);
-
-      expect(sIds).toEqual([percent.sId]);
-    });
-
-    it("searchByName includes matching active global agents after custom ones", async () => {
-      const helper = await AgentResource.fetchById(
-        testContext.authenticator,
-        GLOBAL_AGENTS_SID.HELPER
-      );
-      assert(helper?.status === "active");
-      const custom = await AgentConfigurationFactory.createTestAgent(
-        testContext.authenticator,
-        { name: `My ${helper.name} agent` }
-      );
-
-      const sIds = (
-        await AgentResource.searchByName(
-          testContext.authenticator,
-          helper.name.toUpperCase()
-        )
-      ).map((agent) => agent.sId);
-
-      expect(sIds.indexOf(custom.sId)).toBeGreaterThanOrEqual(0);
-      expect(sIds.indexOf(GLOBAL_AGENTS_SID.HELPER)).toBeGreaterThan(
-        sIds.indexOf(custom.sId)
       );
     });
   });
