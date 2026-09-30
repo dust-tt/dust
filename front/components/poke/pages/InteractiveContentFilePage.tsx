@@ -1,6 +1,6 @@
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { formatFileSize } from "@app/lib/utils";
+import { formatFileSize } from "@app/lib/i18n/format";
 import type { GetPokeFileResponseBody } from "@app/types/api/poke/files";
 import type { FileTypeWithMetadata, SharingGrantType } from "@app/types/files";
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
@@ -57,7 +57,7 @@ export function InteractiveContentFilePage({
           <Chip color="info" label={`Version: ${file.version}`} size="sm" />
           <Chip
             color="primary"
-            label={`Size: ${formatFileSize(file.fileSize)}`}
+            label={`Size: ${formatFileSize(file.fileSize, "en-US")}`}
             size="sm"
           />
         </div>

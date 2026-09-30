@@ -221,6 +221,26 @@
     },
     {
       "includes": [
+        "front/components/**/*.{js,jsx,ts,tsx}",
+        "front/hooks/**/*.{js,jsx,ts,tsx}"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "Intl": "Format with the functions of @app/lib/i18n/format instead of Intl."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
         "front/migrations/**",
         "front/mailing/**",
         "connectors/migrations/**"

@@ -1,5 +1,6 @@
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
 import { clientFetch } from "@app/lib/egress/client";
+import { getLocalTimeZone } from "@app/lib/i18n/format";
 import logger from "@app/logger/logger";
 import { useCallback } from "react";
 
@@ -38,7 +39,7 @@ export function useVisualizationRetry({
                 },
               ],
               context: {
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                timezone: getLocalTimeZone(),
                 profilePictureUrl: null,
               },
             }),

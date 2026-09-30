@@ -1,3 +1,4 @@
+import { formatCurrency } from "@app/lib/i18n/format";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { toBaseSeatType } from "@app/types/memberships";
 import type { Chip } from "@dust-tt/sparkle";
@@ -81,10 +82,10 @@ export function seatTypeChipColor(seatType: MembershipSeatType): SeatChipColor {
 
 export function formatAmount(cents: number, currency: string): string {
   const locale = currency.toUpperCase() === "USD" ? "en-US" : "fr-FR";
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
+  return formatCurrency(
+    cents / 100,
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(cents / 100);
+    { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+    locale
+  );
 }

@@ -712,3 +712,8 @@ single message, never assembled by concatenating strings or translated fragments
 models (`lib/actions/**`, skill and agent definitions, zod `.describe()`) MUST NOT be wrapped.
 Catalog freshness and completeness are enforced by `npm run i18n:check`, and Lingui imports in
 server code by the `noClientImportsInServer` lint rule.
+
+@cc [owner:sfriquet,label:product;react] ui-intl-through-format-module
+Code under `components/` and `hooks/` MUST NOT reference the `Intl` global: dates, numbers,
+currencies, file sizes, hour cycles and the local time zone go through `lib/i18n/format.ts`, the
+only place that calls `Intl` for UI code. Enforced by the `noRestrictedGlobals` lint rule.

@@ -1,3 +1,4 @@
+import { prefersTwentyFourHourTime } from "@app/lib/i18n/format";
 import type {
   WakeUpScheduleConfig,
   WakeUpType,
@@ -16,16 +17,6 @@ function formatWakeUpTimeOfDay(timestamp: number): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-// Whether the viewer's locale prefers 24-hour time. Used to keep cron
-// schedule descriptions (rendered by cronstrue) consistent with the
-// time-of-day strings produced by `formatWakeUpTimeOfDay` above.
-function prefers24HourTime(): boolean {
-  const { hourCycle } = new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-  }).resolvedOptions();
-  return hourCycle === "h23" || hourCycle === "h24";
 }
 
 // Compute the millisecond timestamp of the next time a wake-up fires. For
@@ -84,7 +75,7 @@ export function describeWakeUpSchedule(
     case "cron": {
       let description = cronstrue.toString(config.cron, {
         verbose: false,
-        use24HourTimeFormat: prefers24HourTime(),
+        use24HourTimeFormat: prefersTwentyFourHourTime(),
       });
       // cronstrue renders DOM steps as ", every N days in a month", which
       // reads awkwardly. Reword to natural English; "every 2" becomes

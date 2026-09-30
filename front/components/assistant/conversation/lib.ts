@@ -1,4 +1,5 @@
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
+import { getLocalTimeZone } from "@app/lib/i18n/format";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
@@ -50,7 +51,7 @@ export function createPlaceholderUserMessage({
       email,
       fullName,
       profilePictureUrl: image,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+      timezone: getLocalTimeZone() ?? "UTC",
       username,
       origin: "web",
     },

@@ -1,5 +1,6 @@
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
+import { getLocalTimeZone } from "@app/lib/i18n/format";
 import { useResumeOngoingAgentLoopsPolling } from "@app/lib/swr/ongoing_agent_loops";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { PostMessagesResponseBody } from "@app/types/api/assistant/messages";
@@ -77,8 +78,7 @@ export function useSubmitMessage({
         contentFragments.uploaded.length > 0 ||
         contentFragments.contentNodes.length > 0
       ) {
-        const timezone =
-          Intl.DateTimeFormat().resolvedOptions().timeZone || "Etc/UTC";
+        const timezone = getLocalTimeZone() || "Etc/UTC";
 
         const contentFragmentBodies = [
           ...contentFragments.uploaded.map((cf) => ({
@@ -137,8 +137,7 @@ export function useSubmitMessage({
           body: JSON.stringify({
             content: input,
             context: {
-              timezone:
-                Intl.DateTimeFormat().resolvedOptions().timeZone || "Etc/UTC",
+              timezone: getLocalTimeZone() || "Etc/UTC",
               profilePictureUrl: user.image,
               clientSideMCPServerIds,
               selectedMCPServerViewIds,

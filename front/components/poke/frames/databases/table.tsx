@@ -1,7 +1,7 @@
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeFrameDatabase } from "@app/lib/api/poke/frames";
-import { formatFileSize } from "@app/lib/utils";
+import { formatFileSize } from "@app/lib/i18n/format";
 import { usePokeFrameDatabases } from "@app/poke/swr/frames";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -16,7 +16,7 @@ const columns: ColumnDef<PokeFrameDatabase>[] = [
   {
     accessorKey: "sizeBytes",
     header: "Size",
-    cell: ({ row }) => formatFileSize(row.original.sizeBytes),
+    cell: ({ row }) => formatFileSize(row.original.sizeBytes, "en-US"),
   },
 ];
 

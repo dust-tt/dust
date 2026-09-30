@@ -1,3 +1,4 @@
+import { formatCurrency } from "@app/lib/i18n/format";
 import type { SupportedCurrency } from "@app/types/currency";
 
 /**
@@ -66,11 +67,12 @@ export function formatCurrencyAmount({
   amount: number;
   currency: SupportedCurrency;
 }): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-    maximumFractionDigits: 2,
-  }).format(amount);
+  return formatCurrency(
+    amount,
+    currency.toUpperCase(),
+    { maximumFractionDigits: 2 },
+    "en-US"
+  );
 }
 
 export function formatCurrencyAmountCents({
