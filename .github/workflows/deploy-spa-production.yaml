@@ -39,6 +39,10 @@ jobs:
 
       - name: Resolve version ID
         id: version
+        # @cc [owner:frankaloia,label:security] gh-actions-expression-injection-prevention
+        # client_payload/inputs values are routed through env: so the shell never sees
+        # an unquoted ${{ }} expression. The version ID is also validated as a UUID so
+        # it cannot contain shell metacharacters even when referenced in later steps.
         env:
           VERSION_ID_PAYLOAD: ${{ github.event.client_payload[format('spa_{0}_version_id', matrix.app)] }}
           VERSION_ID_INPUT: ${{ inputs.version_id }}
@@ -47,7 +51,12 @@ jobs:
           # workflow_dispatch: single version_id input
           VERSION_ID="${VERSION_ID_PAYLOAD:-$VERSION_ID_INPUT}"
           if [ -z "$VERSION_ID" ]; then
-            echo "::error::No version ID provided for ${{ matrix.app }}. Cannot promote without an explicit version ID."
+            echo "::error::No version ID provided. Cannot promote without an explicit version ID."
+            exit 1
+          fi
+          # Cloudflare Worker version IDs are UUIDs; reject anything else.
+          if ! [[ "$VERSION_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+            echo "::error::version_id '${VERSION_ID}' does not match the expected UUID format."
             exit 1
           fi
           echo "id=${VERSION_ID}" >> "$GITHUB_OUTPUT"
@@ -59,21 +68,32 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: front-spa
+          # steps.version.outputs.id was validated as a UUID above (hex + hyphens only),
+          # so it is safe to interpolate into the wrangler command line here.
           command: versions deploy ${{ steps.version.outputs.id }}@100% --config wrangler-${{ matrix.app }}.toml -y
           wranglerVersion: "4.80.0"
 
       - name: Create deploy tag
         if: ${{ github.event.client_payload.sha && github.event.client_payload.image_tag }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PAYLOAD_SHA: ${{ github.event.client_payload.sha }}
+          PAYLOAD_IMAGE_TAG: ${{ github.event.client_payload.image_tag }}
+          MATRIX_APP: ${{ matrix.app }}
         with:
           script: |
-            const tag = `refs/tags/spa/${{ matrix.app }}/${{ github.event.client_payload.image_tag }}`;
+            // All client_payload values come from process.env, never from inline ${{ }}
+            // expressions, to prevent JS/shell injection via repository_dispatch payloads.
+            const imageTag = process.env.PAYLOAD_IMAGE_TAG;
+            const sha = process.env.PAYLOAD_SHA;
+            const app = process.env.MATRIX_APP;
+            const tag = `refs/tags/spa/${app}/${imageTag}`;
             try {
               await github.rest.git.createRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 ref: tag,
-                sha: '${{ github.event.client_payload.sha }}',
+                sha: sha,
               });
             } catch (e) {
               // Tag already exists (redeployment of same commit) — ignore.
