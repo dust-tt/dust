@@ -1152,6 +1152,47 @@ describe("building_agents_and_skills tools", () => {
         expect(pending[0].sId).not.toBe(previous.sId);
       });
 
+      it("keeps a pending suggestion of another kind", async () => {
+        const { authenticator, workspace, globalSpace } =
+          await createResourceTest({ role: "user" });
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const server = await RemoteMCPServerFactory.create(workspace);
+        const view = await MCPServerViewFactory.create(
+          workspace,
+          server.sId,
+          globalSpace
+        );
+        const skill = await seedSkill(authenticator, { name: "Other Skill" });
+        const previous = await AgentSuggestionFactory.createSkills(
+          authenticator,
+          agent,
+          { suggestion: { action: "add", skillId: skill.sId } }
+        );
+
+        extractBatchId(
+          await runSuggest(authenticator, {
+            title: "Add ticket tool",
+            analysis: "The agent needs to open tickets.",
+            suggestions: [
+              {
+                kind: "edit_agent",
+                agentId: agent.sId,
+                tools: { addToolIds: [view.sId] },
+              },
+            ],
+          })
+        );
+
+        const pending =
+          await AgentSuggestionResource.listByAgentConfigurationId(
+            authenticator,
+            agent.sId,
+            { states: ["pending"], kind: "skills" }
+          );
+        expect(pending.map((s) => s.sId)).toEqual([previous.sId]);
+      });
+
       it("records the removal of one of the agent's tools", async () => {
         const { authenticator, workspace, globalSpace } =
           await createResourceTest({ role: "user" });

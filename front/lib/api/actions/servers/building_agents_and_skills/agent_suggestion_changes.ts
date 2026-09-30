@@ -48,6 +48,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
   AgentSuggestionData,
+  AgentSuggestionKind,
   CreateSuggestionType,
   DeleteSuggestionType,
   DescriptionSuggestionType,
@@ -624,16 +625,6 @@ export async function validateAgentToolChanges(
   ]);
 }
 
-function isSupersededToolSuggestion(
-  suggestion: AgentSuggestionResource,
-  toolIds: Set<string>
-): boolean {
-  return (
-    isToolsSuggestion(suggestion.suggestion) &&
-    toolIds.has(suggestion.suggestion.toolId)
-  );
-}
-
 /**
  * Checks each sub-agent can be added to or removed from the agent. An added sub-agent
  * is run through the `run_agent` tool, with the builder's defaults.
@@ -824,146 +815,77 @@ export async function recordAgentCreationSuggestion(
   return new Ok(suggestion);
 }
 
-/**
- * @cc [owner:fabiencelier,label:product] single-pending-per-skill
- * Recording skill suggestions MUST mark every other `pending` skill suggestion on the same agent
- * and for the same skill `outdated`, and never the recorded ones, like sidekick's
- * `suggest_skills`.
- */
-export async function recordAgentSkillSuggestions(
-  auth: Authenticator,
-  agent: AgentResource,
-  {
-    skills,
-    conversation,
-    batch,
-  }: {
-    skills: SkillsSuggestionType[];
-    conversation: ConversationType;
-    batch: BatchSuggestionResource | null;
-  }
-): Promise<AgentSuggestionResource[]> {
-  if (skills.length === 0) {
-    return [];
-  }
+/** Kinds of which a single suggestion may be pending per agent and per item at a time. */
+export type KeyedAgentSuggestionData = Extract<
+  AgentSuggestionData,
+  { kind: "skills" | "tools" | "sub_agent" }
+>;
 
-  const skillIds = new Set(skills.map((s) => s.skillId));
-  const pending = await AgentSuggestionResource.listByAgentConfigurationId(
-    auth,
-    agent.sId,
-    { states: ["pending"], kind: "skills" }
-  );
-  await markDuplicateSuggestionsAsOutdated(
-    auth,
-    pending,
-    (s) =>
-      isSkillsSuggestion(s.suggestion) && skillIds.has(s.suggestion.skillId)
-  );
-
-  return AgentSuggestionResource.createSuggestionsForAgent(
-    auth,
-    agent,
-    skills.map((suggestion) => ({
-      kind: "skills" as const,
-      suggestion,
-      analysis: null,
-      state: "pending" as const,
-      conversationId: conversation.id,
-      source: "conversational" as const,
-      batchId: batch?.id ?? null,
-    }))
-  );
+/** Identifies the item a keyed suggestion targets, or null when the row is not a keyed kind. */
+function keyedSuggestionItemOf(
+  kind: AgentSuggestionKind,
+  suggestion: unknown
+): string | null {
+  switch (kind) {
+    case "skills":
+      return isSkillsSuggestion(suggestion)
+        ? `skills:${suggestion.skillId}`
+        : null;
+    case "tools":
+      return isToolsSuggestion(suggestion)
+        ? `tools:${suggestion.toolId}`
+        : null;
+    case "sub_agent":
+      return isSubAgentSuggestion(suggestion)
+        ? `sub_agent:${suggestion.childAgentId}`
+        : null;
+    default:
+      return null;
+  }
 }
 
 /**
- * @cc [owner:fabiencelier,label:product] single-pending-per-tool
- * Recording tool suggestions MUST mark every other `pending` tool suggestion on the same agent and
- * for the same tool `outdated`, and never the recorded ones, like sidekick's `suggest_tools`.
+ * @cc [owner:fabiencelier;avervaet,label:product] single-pending-per-item
+ * Recording suggestions of keyed kinds MUST mark every other `pending` suggestion on the same agent
+ * of the same kind and for the same item (skill, tool or sub-agent) `outdated`, and never the
+ * recorded ones. Concurrent calls are not serialized: they can leave several pending suggestions
+ * for an item on the agent.
  */
-export async function recordAgentToolSuggestions(
+export async function recordKeyedAgentSuggestions(
   auth: Authenticator,
   agent: AgentResource,
   {
-    tools,
+    data,
     conversation,
     batch,
   }: {
-    tools: ToolsSuggestionType[];
+    data: KeyedAgentSuggestionData[];
     conversation: ConversationType;
     batch: BatchSuggestionResource | null;
   }
 ): Promise<AgentSuggestionResource[]> {
-  if (tools.length === 0) {
+  if (data.length === 0) {
     return [];
   }
 
-  const toolIds = new Set(tools.map((t) => t.toolId));
+  const recordedItems = new Set(
+    data.map((d) => keyedSuggestionItemOf(d.kind, d.suggestion))
+  );
   const pending = await AgentSuggestionResource.listByAgentConfigurationId(
     auth,
     agent.sId,
-    { states: ["pending"], kind: "tools" }
+    { states: ["pending"] }
   );
-  await markDuplicateSuggestionsAsOutdated(auth, pending, (s) =>
-    isSupersededToolSuggestion(s, toolIds)
-  );
+  await markDuplicateSuggestionsAsOutdated(auth, pending, (s) => {
+    const item = keyedSuggestionItemOf(s.kind, s.suggestion);
+    return item !== null && recordedItems.has(item);
+  });
 
   return AgentSuggestionResource.createSuggestionsForAgent(
     auth,
     agent,
-    tools.map((suggestion) => ({
-      kind: "tools" as const,
-      suggestion,
-      analysis: null,
-      state: "pending" as const,
-      conversationId: conversation.id,
-      source: "conversational" as const,
-      batchId: batch?.id ?? null,
-    }))
-  );
-}
-
-/**
- * @cc [owner:fabiencelier,label:product] single-pending-per-sub-agent
- * Recording sub-agent suggestions MUST mark every other `pending` sub-agent suggestion on the same
- * agent and for the same sub-agent `outdated`, and never the recorded ones.
- */
-export async function recordAgentSubAgentSuggestions(
-  auth: Authenticator,
-  agent: AgentResource,
-  {
-    subAgents,
-    conversation,
-    batch,
-  }: {
-    subAgents: SubAgentSuggestionType[];
-    conversation: ConversationType;
-    batch: BatchSuggestionResource | null;
-  }
-): Promise<AgentSuggestionResource[]> {
-  if (subAgents.length === 0) {
-    return [];
-  }
-
-  const subAgentIds = new Set(subAgents.map((s) => s.childAgentId));
-  const pending = await AgentSuggestionResource.listByAgentConfigurationId(
-    auth,
-    agent.sId,
-    { states: ["pending"], kind: "sub_agent" }
-  );
-  await markDuplicateSuggestionsAsOutdated(
-    auth,
-    pending,
-    (s) =>
-      isSubAgentSuggestion(s.suggestion) &&
-      subAgentIds.has(s.suggestion.childAgentId)
-  );
-
-  return AgentSuggestionResource.createSuggestionsForAgent(
-    auth,
-    agent,
-    subAgents.map((suggestion) => ({
-      kind: "sub_agent" as const,
-      suggestion,
+    data.map((d) => ({
+      ...d,
       analysis: null,
       state: "pending" as const,
       conversationId: conversation.id,
