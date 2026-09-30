@@ -50,7 +50,7 @@ export async function getMemberGroups(
     groupKinds: [...MANAGEABLE_GROUP_KINDS],
   });
 
-  return new Ok(groups);
+  return new Ok(groups.filter((group) => auth.can("read_usage", group)));
 }
 
 /**

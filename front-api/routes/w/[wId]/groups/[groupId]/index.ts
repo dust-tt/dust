@@ -19,7 +19,10 @@ import { PatchGroupBodySchema } from "@app/types/api/groups/manage";
 import { isManageableGroupKind } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import {
+  ensureHasAnyGroupPermission,
+  ensureIsManager,
+} from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -36,7 +39,10 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsManager(),
+  ensureHasAnyGroupPermission(
+    "read_usage",
+    "Group management access required."
+  ),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<GetGroupResponseBody> => {
     const auth = ctx.get("auth");
@@ -84,6 +90,16 @@ app.get(
         api_error: {
           type: "group_not_found",
           message: "Group not found.",
+        },
+      });
+    }
+
+    if (!auth.can("read_usage", group)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Group management access required.",
         },
       });
     }
