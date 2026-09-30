@@ -21,12 +21,6 @@ export const GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME =
 
 export const WORKSPACE_ANALYTICS_SERVER_NAME = "workspace_analytics" as const;
 
-const getAgentDetailsSchema = {
-  agentId: z
-    .string()
-    .describe("The agent's id (sId), as returned by the ranking tools."),
-};
-
 const consumptionPeriodSchemaShape = {
   period: ConsumptionPeriodSchema.shape.period.describe(
     "Time window: 'cycle' (default) covers the workspace's current billing " +
@@ -146,21 +140,6 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving top entities by execution count",
       done: "Retrieved top entities by execution count",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  {
-    name: "get_agent_details",
-    description:
-      "Return an agent's full configuration, equipped skills and tools, " +
-      "and its complete instructions.",
-    schema: getAgentDetailsSchema,
-    stake: "never_ask",
-    eager: true,
-    displayLabels: {
-      running: "Retrieving agent details",
-      done: "Retrieved agent details",
     },
     toolCostCategory: "basic",
     freeUsage: true,

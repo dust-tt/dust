@@ -24,7 +24,6 @@ function createTestExtra(auth: Authenticator, runContext?: unknown) {
 
 describe("workspace_analytics tools", () => {
   it.each([
-    "get_agent_details",
     "get_consumption_overview",
     "get_credit_timeseries",
     "get_top_entities_by_credits",
