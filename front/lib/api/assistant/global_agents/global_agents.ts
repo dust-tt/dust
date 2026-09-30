@@ -113,7 +113,7 @@ import {
   getDataSourcesAndWorkspaceIdForGlobalAgents,
   getMCPServerViewsForGlobalAgents,
 } from "@app/lib/api/assistant/global_agents/tools";
-import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
+import { isModelWhitelistedForAuth } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getDefaultStreamConfigForAuth } from "@app/lib/model_tiers/enabled_models";
@@ -1207,7 +1207,7 @@ export async function getGlobalAgents(
     if (
       agentFetcherResult &&
       agentFetcherResult.scope === "global" &&
-      isProviderWhitelistedForAuth(auth, agentFetcherResult.model.providerId)
+      isModelWhitelistedForAuth(auth, agentFetcherResult.model)
     ) {
       globalAgents.push(agentFetcherResult);
     }
