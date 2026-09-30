@@ -1,8 +1,4 @@
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
+import { emitSkillAuditLogEvent } from "@app/lib/api/skills/audit";
 import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
@@ -19,6 +15,7 @@ import {
 } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
 import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
+import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
@@ -228,32 +225,41 @@ async function resolveSkillFieldEdits(
 async function writeAvailabilityChange(
   auth: Authenticator,
   skill: SkillResource,
-  availability: SkillAvailability
+  availability: SkillAvailability,
+  batch: BatchSuggestionResource
 ): Promise<void> {
   const previousAvailability = skill.availability;
   await SkillResource.updateAvailabilities(auth, [skill], availability);
 
-  void emitAuditLogEvent({
-    auth,
+  emitSkillAuditLogEvent(auth, {
     action: "skill.availability_updated",
-    targets: [
-      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      { type: "skill", id: skill.sId, name: skill.name },
-    ],
-    context: getAuditLogContext(auth),
+    skill,
     metadata: {
-      skill_name: skill.name,
       previous_availability: previousAvailability,
       new_availability: availability,
+      ...getBatchAuditMetadata(batch),
     },
   });
+}
+
+// Ties the audit event of an applied suggestion to its batch and to the conversation it was made in.
+function getBatchAuditMetadata(
+  batch: BatchSuggestionResource
+): Record<string, string> {
+  return {
+    suggestion_batch_id: batch.sId,
+    ...(batch.sourceConversationId
+      ? { conversation_id: batch.sourceConversationId }
+      : {}),
+  };
 }
 
 // Adding before removing to prevent orphaning the skill
 async function writeEditorsChange(
   auth: Authenticator,
   skill: SkillResource,
-  { usersToAdd, usersToRemove }: SkillEditorsChange
+  { usersToAdd, usersToRemove }: SkillEditorsChange,
+  batch: BatchSuggestionResource
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
   const addRes = await skill.addEditors(auth, usersToAdd);
   if (addRes.isErr()) {
@@ -269,21 +275,16 @@ async function writeEditorsChange(
     );
   }
 
-  void emitAuditLogEvent({
-    auth,
+  emitSkillAuditLogEvent(auth, {
     action: "skill.editors_updated",
-    targets: [
-      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      { type: "skill", id: skill.sId, name: skill.name },
-    ],
-    context: getAuditLogContext(auth),
+    skill,
     metadata: {
-      skill_name: skill.name,
       added_editor_ids: usersToAdd.map((u) => u.sId).join(","),
       removed_editor_ids: usersToRemove.map((u) => u.sId).join(","),
       actor_added_self: String(
         usersToAdd.some((u) => u.sId === auth.user()?.sId)
       ),
+      ...getBatchAuditMetadata(batch),
     },
   });
 
@@ -495,7 +496,8 @@ async function findEditorsWithoutAccess(
 export async function writeSkillChange(
   auth: Authenticator,
   skill: SkillResource,
-  change: ResolvedSkillChange
+  change: ResolvedSkillChange,
+  batch: BatchSuggestionResource
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
   switch (change.type) {
     case "create": {
@@ -512,6 +514,11 @@ export async function writeSkillChange(
       );
 
       await skill.updateSkill(auth, { ...update, requestedSpaceIds });
+      emitSkillAuditLogEvent(auth, {
+        action: "skill.created",
+        skill,
+        metadata: getBatchAuditMetadata(batch),
+      });
       return new Ok(undefined);
     }
     case "edit": {
@@ -546,17 +553,27 @@ export async function writeSkillChange(
       //  fails, the skill update is rolled back.
       if (update) {
         await skill.updateSkill(auth, { ...update, requestedSpaceIds });
+        emitSkillAuditLogEvent(auth, {
+          action: "skill.updated",
+          skill,
+          metadata: getBatchAuditMetadata(batch),
+        });
       }
       if (availability) {
-        await writeAvailabilityChange(auth, skill, availability);
+        await writeAvailabilityChange(auth, skill, availability, batch);
       }
       if (editorsChange) {
-        return writeEditorsChange(auth, skill, editorsChange);
+        return writeEditorsChange(auth, skill, editorsChange, batch);
       }
       return new Ok(undefined);
     }
     case "delete":
       await skill.archive(auth);
+      emitSkillAuditLogEvent(auth, {
+        action: "skill.archived",
+        skill,
+        metadata: getBatchAuditMetadata(batch),
+      });
       return new Ok(undefined);
     default:
       return assertNever(change);

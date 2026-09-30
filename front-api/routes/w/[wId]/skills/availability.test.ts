@@ -8,7 +8,21 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+  return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
+});
+
+beforeEach(() => {
+  mockEmitAuditLogEvent.mockClear();
+});
 
 async function setupTest(role: MembershipRoleType = "admin") {
   const { workspace, user: requestUser } = await createPrivateApiMockRequest({
@@ -98,6 +112,16 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
     );
     expect(untouchedSkill?.availability).toBe("workspace_users");
     expect(untouchedSkill?.editedBy).toBe(skillOwner.id);
+
+    // Each changed skill logs its availability change; the no-op skill logs nothing.
+    const auditedEvents = mockEmitAuditLogEvent.mock.calls.map(([event]) => [
+      event.action,
+      event.targets[1].id,
+    ]);
+    expect(auditedEvents).toEqual([
+      ["skill.availability_updated", firstSkill.sId],
+      ["skill.availability_updated", secondSkill.sId],
+    ]);
   });
 
   it("lets an admin change the availability of a skill built on a space they cannot read", async () => {

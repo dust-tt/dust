@@ -1,3 +1,4 @@
+import { emitSkillAuditLogEvent } from "@app/lib/api/skills/audit";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import {
   AttachedKnowledgeSchema,
@@ -578,6 +579,8 @@ app.post(
         fileAttachments: files,
       }
     );
+
+    emitSkillAuditLogEvent(auth, { action: "skill.created", skill: newSkill });
 
     // Update file useCaseMetadata with the newly created skill's sId.
     if (files) {

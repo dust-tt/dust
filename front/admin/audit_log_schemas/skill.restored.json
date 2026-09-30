@@ -1,0 +1,11 @@
+{
+  "action": "skill.restored",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "skill" }
+  ],
+  "metadata": {
+    "skill_name": "string",
+    "actor_type": "string"
+  }
+}

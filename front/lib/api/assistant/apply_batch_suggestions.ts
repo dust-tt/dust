@@ -204,9 +204,11 @@ async function applyStep(
   step: ResolvedStep,
   {
     agentsById,
+    batch,
     skillsById,
   }: {
     agentsById: Map<string, AgentResource>;
+    batch: BatchSuggestionResource;
     skillsById: Map<string, SkillResource>;
   }
 ): Promise<Result<undefined, ApplyBatchSuggestionsError>> {
@@ -214,7 +216,7 @@ async function applyStep(
     case "skill": {
       const skill = skillsById.get(step.skillId);
       assert(skill, "The skill this suggestion targets disappeared.");
-      return writeSkillChange(auth, skill, step.change);
+      return writeSkillChange(auth, skill, step.change, batch);
     }
     case "agent": {
       const agent = agentsById.get(step.agentId);
@@ -277,7 +279,11 @@ export async function applyBatchSuggestions(
   }
 
   for (const step of resolvedSteps) {
-    const res = await applyStep(auth, step, { agentsById, skillsById });
+    const res = await applyStep(auth, step, {
+      agentsById,
+      batch,
+      skillsById,
+    });
     if (res.isErr()) {
       return res;
     }
