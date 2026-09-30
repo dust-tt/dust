@@ -10,6 +10,9 @@ export const BATCH_SUGGESTION_STATES = [
 
 export type BatchSuggestionState = (typeof BATCH_SUGGESTION_STATES)[number];
 
+// Batch suggestions store their analysis in a `varchar(255)` column.
+export const BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH = 255;
+
 interface BaseBatchSuggestionType {
   id: string;
   createdAt: number;
