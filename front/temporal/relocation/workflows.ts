@@ -24,6 +24,8 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
+export { workspaceBackfillConversationDataSourcesWorkflow } from "./backfill_workflows";
+
 const CHUNK_SIZE = 3000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
 const TEMPORAL_CORE_DATA_SOURCE_RELOCATION_CONCURRENCY = 20;
