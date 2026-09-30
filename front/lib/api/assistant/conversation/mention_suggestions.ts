@@ -286,8 +286,7 @@ export const suggestionsOfMentions = async (
       const result = await searchAgents(auth, {
         searchTerm: query,
         limit: SUGGESTION_DISPLAY_LIMIT,
-        sortBy: "name",
-        sortOrder: "asc",
+        sortBy: query.trim() ? "relevance" : "name",
         permissionFiltering: "strict",
       });
       if (result.isOk()) {

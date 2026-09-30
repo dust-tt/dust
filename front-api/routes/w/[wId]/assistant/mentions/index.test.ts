@@ -62,21 +62,19 @@ async function mockAgentSearchResults(
   total = agentIds.length
 ) {
   const agents = await AgentResource.fetchByIds(auth, agentIds);
-  const documents = agents
-    .map((agent) =>
-      agent.toSearchDocument(auth, {
-        activeUsersCount: 0,
-        editors: [],
-        favoriteCount: 0,
-        feedbackNegativeCount: 0,
-        feedbackPositiveCount: 0,
-        lastEditedByUser: null,
-        mcpServerViewIds: [],
-        skillIds: [],
-        tagIds: [],
-      })
-    )
-    .toSorted((a, b) => a.name.localeCompare(b.name));
+  const documents = agents.map((agent) =>
+    agent.toSearchDocument(auth, {
+      activeUsersCount: 0,
+      editors: [],
+      favoriteCount: 0,
+      feedbackNegativeCount: 0,
+      feedbackPositiveCount: 0,
+      lastEditedByUser: null,
+      mcpServerViewIds: [],
+      skillIds: [],
+      tagIds: [],
+    })
+  );
   mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
     hits: {
       hits:
@@ -283,16 +281,26 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
   });
 
   it.each([
-    "",
-    "sal mar",
-  ])("uses alphabetically ordered search results with the flag on (query: %s)", async (query) => {
+    { query: "", sortBy: "name" },
+    { query: "   ", sortBy: "name" },
+    { query: "sal mar", sortBy: "relevance" },
+  ])("uses $sortBy sorting and preserves search result order with the flag on (query: $query)", async ({
+    query,
+    sortBy,
+  }) => {
     const { workspace, auth } = await setup();
     await FeatureFlagFactory.basic(auth, "new_manage_agents_page");
     const first = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Alpha Marketing Sales",
+      name:
+        sortBy === "relevance"
+          ? "Beta Marketing Sales"
+          : "Alpha Marketing Sales",
     });
     const second = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Beta Marketing Sales",
+      name:
+        sortBy === "relevance"
+          ? "Alpha Marketing Sales"
+          : "Beta Marketing Sales",
     });
     await mockAgentSearchResults(auth, [first.sId, second.sId]);
 
@@ -313,10 +321,17 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
       expect.objectContaining({
         index: AGENT_SEARCH_ALIAS_NAME,
         size: 20,
-        sort: [
-          { "name.keyword": { order: "asc", missing: "_last" } },
-          { agent_id: { order: "asc" } },
-        ],
+        sort:
+          sortBy === "relevance"
+            ? [
+                { _score: { order: "desc" } },
+                { active_users_count: { order: "desc", missing: "_last" } },
+                { agent_id: { order: "asc" } },
+              ]
+            : [
+                { "name.keyword": { order: "asc", missing: "_last" } },
+                { agent_id: { order: "asc" } },
+              ],
       })
     );
 
