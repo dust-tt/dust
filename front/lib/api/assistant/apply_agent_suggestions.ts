@@ -31,6 +31,7 @@ import {
 } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
+import type { AgentAuditOptions } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -787,7 +788,8 @@ export async function resolveAgentSuggestions(
 
 async function archiveAgent(
   auth: Authenticator,
-  agentId: string
+  agentId: string,
+  { auditMetadata }: AgentAuditOptions
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
   // Fetched at write time: an earlier write may have saved a newer version of the agent.
   const agent = await AgentResource.fetchById(auth, agentId);
@@ -800,7 +802,7 @@ async function archiveAgent(
     );
   }
 
-  const archiveResult = await agent.archive(auth);
+  const archiveResult = await agent.archive(auth, { auditMetadata });
   if (archiveResult.isErr()) {
     return new Err(
       new DustError("invalid_request_error", archiveResult.error.message)
@@ -821,7 +823,8 @@ async function archiveAgent(
 async function saveAgentConfiguration(
   auth: Authenticator,
   agentId: string,
-  assistant: AgentConfigurationAssistantPayload
+  assistant: AgentConfigurationAssistantPayload,
+  { auditMetadata }: AgentAuditOptions
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
   const res = await createOrUpgradeAgentConfiguration({
     auth,
@@ -830,6 +833,7 @@ async function saveAgentConfiguration(
     // Pruning cleans up after edits made in the agent builder. Here we only apply suggestions:
     // they are still `pending` during the save, so pruning would wrongly outdate them.
     skipSuggestionPruning: true,
+    auditMetadata,
   });
   if (res.isErr()) {
     return new Err(new DustError("invalid_request_error", res.error.message));
@@ -899,13 +903,18 @@ async function updateAgentWithoutFullSave(
     scope: Exclude<AgentConfigurationScope, "global"> | null;
     editors: UserType[] | null;
     tags: { addTags: TagResource[]; removeTags: TagResource[] } | null;
-  }
+  },
+  { auditMetadata }: AgentAuditOptions
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
-  const res = await agent.updateConfiguration(auth, {
-    ...(scope ? { scope } : {}),
-    ...(editors ? { editors } : {}),
-    ...(tags ?? {}),
-  });
+  const res = await agent.updateConfiguration(
+    auth,
+    {
+      ...(scope ? { scope } : {}),
+      ...(editors ? { editors } : {}),
+      ...(tags ?? {}),
+    },
+    { auditMetadata }
+  );
   if (res.isErr()) {
     return new Err(new DustError("invalid_request_error", res.error.message));
   }
@@ -916,11 +925,14 @@ async function updateAgentWithoutFullSave(
 export async function writeAgentChange(
   auth: Authenticator,
   agent: AgentResource,
-  change: ResolvedAgentChange
+  change: ResolvedAgentChange,
+  { auditMetadata }: AgentAuditOptions = {}
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
   switch (change.type) {
     case "create":
-      return saveAgentConfiguration(auth, change.agentId, change.assistant);
+      return saveAgentConfiguration(auth, change.agentId, change.assistant, {
+        auditMetadata,
+      });
     case "edit": {
       const tags = change.tags
         ? {
@@ -940,16 +952,22 @@ export async function writeAgentChange(
                 ...change.assistant,
                 tags: applyTagsDelta(change.assistant.tags, tags),
               }
-            : change.assistant
+            : change.assistant,
+          { auditMetadata }
         );
       }
       if (change.scope || change.editors || tags) {
-        return updateAgentWithoutFullSave(auth, agent, { ...change, tags });
+        return updateAgentWithoutFullSave(
+          auth,
+          agent,
+          { ...change, tags },
+          { auditMetadata }
+        );
       }
       return new Ok(undefined);
     }
     case "delete":
-      return archiveAgent(auth, change.agentId);
+      return archiveAgent(auth, change.agentId, { auditMetadata });
     default:
       return assertNever(change);
   }
