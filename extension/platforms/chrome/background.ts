@@ -106,6 +106,65 @@ const openSidePanelSchema = z
     message: "Either conversationId or agentId must be provided",
   });
 
+const getPanelStateSchema = z.object({
+  action: z.literal("getPanelState"),
+  workspaceId: z.string().regex(/^[a-zA-Z0-9_-]{10,}$/),
+});
+
+async function getPanelState(
+  workspaceId: string,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response?: unknown) => void
+): Promise<void> {
+  let responseSent = false;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const respond = (response: unknown) => {
+    if (responseSent) {
+      return;
+    }
+    responseSent = true;
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    sendResponse(response);
+  };
+
+  try {
+    const windowId = sender.tab?.windowId;
+    if (windowId === undefined) {
+      respond({ status: "unknown" });
+      return;
+    }
+
+    const { selectedWorkspace } = await chrome.storage.local.get([
+      "selectedWorkspace",
+    ]);
+    if (workspaceId !== selectedWorkspace) {
+      respond({
+        status: "workspace_mismatch",
+        workspaceId: selectedWorkspace ?? null,
+      });
+      return;
+    }
+
+    timeout = setTimeout(() => respond({ status: "unknown" }), 1000);
+
+    chrome.runtime.sendMessage(
+      { type: "EXT_GET_PANEL_STATE", windowId },
+      (panelState: unknown) => {
+        if (chrome.runtime.lastError || !panelState) {
+          respond({ status: "unknown" });
+          return;
+        }
+        respond(panelState);
+      }
+    );
+  } catch (error) {
+    log("[onMessageExternal] Error getting side panel state:", error);
+    respond({ status: "unknown" });
+  }
+}
+
 /**
  * Listener for messages sent from external websites that are whitelisted on the manifest.
  * It allows to open the side panel and either navigate to an existing conversation
@@ -116,10 +175,18 @@ const openSidePanelSchema = z
  *     Opens an existing conversation directly.
  *   - { action: "openSidePanel", workspaceId, agentId }
  *     Opens a new conversation with the given agent pre-selected in the input bar.
+ *   - { action: "getPanelState", workspaceId }
+ *     Returns the active conversation and Pod IDs from the open side panel.
  *
  * We return true to keep the message channel open for async response.
  */
-chrome.runtime.onMessageExternal.addListener((request) => {
+chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
+  const stateParsed = getPanelStateSchema.safeParse(request);
+  if (stateParsed.success) {
+    void getPanelState(stateParsed.data.workspaceId, sender, sendResponse);
+    return true;
+  }
+
   const parsed = openSidePanelSchema.safeParse(request);
 
   if (!parsed.success) {

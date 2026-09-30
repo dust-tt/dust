@@ -93,9 +93,25 @@ export type RouteChangeMesssage = {
   search: string;
 };
 
+export type GetPanelStateMessage = {
+  type: "EXT_GET_PANEL_STATE";
+  windowId: number;
+};
+
+export type PanelStateResponse =
+  | {
+      status: "open" | "loading";
+      workspaceId: string;
+      conversationId: string | null;
+      podId: string | null;
+    }
+  | { status: "workspace_mismatch"; workspaceId: string | null }
+  | { status: "unknown" };
+
 export type ExtensionAppMessage =
   | AttachSelectionMessage
   | RouteChangeMesssage
+  | GetPanelStateMessage
   | SaveToPodMessage;
 
 export type CaptureFullPageMessage = {
