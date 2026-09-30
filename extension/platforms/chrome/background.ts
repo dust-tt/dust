@@ -106,6 +106,52 @@ const openSidePanelSchema = z
     message: "Either conversationId or agentId must be provided",
   });
 
+const getPanelStateSchema = z.object({
+  action: z.literal("getPanelState"),
+});
+
+async function getPanelState(
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response?: unknown) => void
+): Promise<void> {
+  let responseSent = false;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const respond = (response: unknown) => {
+    if (responseSent) {
+      return;
+    }
+    responseSent = true;
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    sendResponse(response);
+  };
+
+  try {
+    const windowId = sender.tab?.windowId;
+    if (windowId === undefined) {
+      respond({ status: "unknown" });
+      return;
+    }
+
+    timeout = setTimeout(() => respond({ status: "unknown" }), 1000);
+
+    chrome.runtime.sendMessage(
+      { type: "EXT_GET_PANEL_STATE", windowId },
+      (panelState: unknown) => {
+        if (chrome.runtime.lastError || !panelState) {
+          respond({ status: "unknown" });
+          return;
+        }
+        respond(panelState);
+      }
+    );
+  } catch (error) {
+    log("[onMessageExternal] Error getting side panel state:", error);
+    respond({ status: "unknown" });
+  }
+}
+
 /**
  * Listener for messages sent from external websites that are whitelisted on the manifest.
  * It allows to open the side panel and either navigate to an existing conversation
@@ -116,93 +162,104 @@ const openSidePanelSchema = z
  *     Opens an existing conversation directly.
  *   - { action: "openSidePanel", workspaceId, agentId }
  *     Opens a new conversation with the given agent pre-selected in the input bar.
+ *   - { action: "getPanelState" }
+ *     Returns the general state of the open side panel (active workspace,
+ *     conversation, and Pod IDs), regardless of which workspace is requesting it.
  *
  * We return true to keep the message channel open for async response.
  */
-chrome.runtime.onMessageExternal.addListener((request) => {
-  const parsed = openSidePanelSchema.safeParse(request);
+chrome.runtime.onMessageExternal.addListener(
+  (request, sender, sendResponse) => {
+    const stateParsed = getPanelStateSchema.safeParse(request);
+    if (stateParsed.success) {
+      void getPanelState(sender, sendResponse);
+      return true;
+    }
 
-  if (!parsed.success) {
-    log("[onMessageExternal] Invalid params:", request);
+    const parsed = openSidePanelSchema.safeParse(request);
+
+    if (!parsed.success) {
+      log("[onMessageExternal] Invalid params:", request);
+      return true;
+    }
+
+    const { workspaceId, conversationId, agentId } = parsed.data;
+    const hasConversationId = !!conversationId;
+
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        void chrome.sidePanel
+          .open({
+            windowId: tabs[0].windowId,
+          })
+          .then(() => {
+            chrome.storage.local.get(
+              ["extensionReady", "selectedWorkspace"],
+              ({ extensionReady, selectedWorkspace }) => {
+                if (workspaceId != selectedWorkspace) {
+                  log("[onMessageExternal] User selected another workspace.");
+                  return;
+                }
+
+                const sendMessage = () => {
+                  const params = JSON.stringify(
+                    hasConversationId ? { conversationId } : { agentId }
+                  );
+                  void chrome.runtime.sendMessage({
+                    type: "EXT_ROUTE_CHANGE",
+                    pathname: "/run",
+                    search: `?${params}`,
+                  });
+                };
+
+                if (!extensionReady) {
+                  let retries = 0;
+                  const MAX_RETRIES = 15;
+                  const RETRY_INTERVAL = 500; // Check every 500ms 15 times = 7.5s total.
+
+                  const checkReady = () => {
+                    if (retries >= MAX_RETRIES) {
+                      log(
+                        "[onMessageExternal] Max retries reached waiting for extension ready."
+                      );
+                      return;
+                    }
+
+                    chrome.storage.local.get(
+                      ["extensionReady"],
+                      ({ extensionReady }) => {
+                        if (chrome.runtime.lastError) {
+                          log(
+                            "[onMessageExternal] Error checking extension ready:",
+                            chrome.runtime.lastError
+                          );
+                          return;
+                        }
+
+                        if (extensionReady) {
+                          sendMessage();
+                        } else {
+                          retries++;
+                          setTimeout(checkReady, RETRY_INTERVAL);
+                        }
+                      }
+                    );
+                  };
+                  checkReady();
+                } else {
+                  sendMessage();
+                }
+              }
+            );
+          })
+          .catch((err) => {
+            log("[onMessageExternal] Error opening side panel:", err);
+          });
+      }
+    });
+
     return true;
   }
-
-  const { workspaceId, conversationId, agentId } = parsed.data;
-  const hasConversationId = !!conversationId;
-
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]) {
-      void chrome.sidePanel
-        .open({
-          windowId: tabs[0].windowId,
-        })
-        .then(() => {
-          chrome.storage.local.get(
-            ["extensionReady", "selectedWorkspace"],
-            ({ extensionReady, selectedWorkspace }) => {
-              if (workspaceId != selectedWorkspace) {
-                log("[onMessageExternal] User selected another workspace.");
-                return;
-              }
-
-              const sendMessage = () => {
-                const params = JSON.stringify(
-                  hasConversationId ? { conversationId } : { agentId }
-                );
-                void chrome.runtime.sendMessage({
-                  type: "EXT_ROUTE_CHANGE",
-                  pathname: "/run",
-                  search: `?${params}`,
-                });
-              };
-
-              if (!extensionReady) {
-                let retries = 0;
-                const MAX_RETRIES = 15;
-                const RETRY_INTERVAL = 500; // Check every 500ms 15 times = 7.5s total.
-
-                const checkReady = () => {
-                  if (retries >= MAX_RETRIES) {
-                    log(
-                      "[onMessageExternal] Max retries reached waiting for extension ready."
-                    );
-                    return;
-                  }
-
-                  chrome.storage.local.get(
-                    ["extensionReady"],
-                    ({ extensionReady }) => {
-                      if (chrome.runtime.lastError) {
-                        log(
-                          "[onMessageExternal] Error checking extension ready:",
-                          chrome.runtime.lastError
-                        );
-                        return;
-                      }
-
-                      if (extensionReady) {
-                        sendMessage();
-                      } else {
-                        retries++;
-                        setTimeout(checkReady, RETRY_INTERVAL);
-                      }
-                    }
-                  );
-                };
-                checkReady();
-              } else {
-                sendMessage();
-              }
-            }
-          );
-        })
-        .catch((err) => {
-          log("[onMessageExternal] Error opening side panel:", err);
-        });
-    }
-  });
-
-  return true;
-});
+);
 
 registerMessageListener(platform);
