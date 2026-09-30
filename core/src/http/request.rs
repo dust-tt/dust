@@ -10,9 +10,67 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{io::prelude::*, str::FromStr};
 use tracing::info;
+use url::Url;
 
 use super::network::NetworkUtils;
 use super::proxy_client::create_untrusted_egress_client_builder;
+
+/// Names of query parameters whose values are redacted before logging.
+const SENSITIVE_QUERY_PARAMS: &[&str] = &[
+    "access_token",
+    "token",
+    "secret",
+    "api_key",
+    "key",
+    "auth",
+    "password",
+    "client_secret",
+    "private_key",
+];
+
+/// @cc [owner:frankaloia,label:security;logging] redact-credential-url-logging
+/// `redact_url_for_logging` MUST replace the values of any query parameters whose
+/// names appear in `SENSITIVE_QUERY_PARAMS` (case-insensitive) with `[redacted]`
+/// before the URL is written to any log output. The scheme, host, path, and
+/// non-sensitive query parameters MUST be preserved so the logged URL remains
+/// useful for debugging. If the URL cannot be parsed, everything from the first `?`
+/// onward MUST be dropped.
+fn redact_url_for_logging(url: &str) -> String {
+    let Ok(mut parsed) = Url::parse(url) else {
+        // If the URL cannot be parsed, drop the query string to be safe.
+        return url
+            .find('?')
+            .map(|i| url[..i].to_string())
+            .unwrap_or_else(|| url.to_string());
+    };
+
+    let has_sensitive = parsed.query_pairs().any(|(k, _)| {
+        SENSITIVE_QUERY_PARAMS
+            .iter()
+            .any(|s| k.eq_ignore_ascii_case(s))
+    });
+
+    if !has_sensitive {
+        return url.to_string();
+    }
+
+    let new_pairs: Vec<(String, String)> = parsed
+        .query_pairs()
+        .map(|(k, v)| {
+            if SENSITIVE_QUERY_PARAMS
+                .iter()
+                .any(|s| k.eq_ignore_ascii_case(s))
+            {
+                (k.into_owned(), "[redacted]".to_string())
+            } else {
+                (k.into_owned(), v.into_owned())
+            }
+        })
+        .collect();
+
+    parsed.query_pairs_mut().clear().extend_pairs(&new_pairs);
+    parsed.to_string()
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct HttpRequest {
@@ -196,7 +254,7 @@ impl HttpRequest {
             Some(response) => {
                 info!(
                     method = self.method.as_str(),
-                    url = self.url.as_str(),
+                    url = redact_url_for_logging(self.url.as_str()).as_str(),
                     hash = self.hash.as_str(),
                     "Retrieved cached HTTPRequest"
                 );
@@ -206,7 +264,7 @@ impl HttpRequest {
                 let response = self.execute().await?;
                 info!(
                     method = self.method.as_str(),
-                    url = self.url.as_str(),
+                    url = redact_url_for_logging(self.url.as_str()).as_str(),
                     hash = self.hash.as_str(),
                     "Performed fresh HTTPRequest"
                 );

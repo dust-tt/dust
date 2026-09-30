@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use dns_lookup::lookup_host;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use url::{Host, Url};
 
 lazy_static! {
@@ -19,28 +19,21 @@ lazy_static! {
 pub struct NetworkUtils;
 
 impl NetworkUtils {
-    // Get all IPv4 addresses for a URL, either direct or through DNS resolution.
-    pub fn get_ipv4_addresses(url: &str) -> Result<Vec<Ipv4Addr>> {
+    // Get all IP addresses for a URL, either direct or through DNS resolution.
+    pub fn get_ip_addresses(url: &str) -> Result<Vec<IpAddr>> {
         let parsed_url = Url::parse(url)?;
 
         match parsed_url.host() {
             Some(h) => match h {
                 Host::Domain(d) => {
-                    let ipv4: Vec<Ipv4Addr> = lookup_host(d)?
-                        .into_iter()
-                        .filter_map(|ip| match ip {
-                            IpAddr::V4(ip) => Some(ip),
-                            _ => None,
-                        })
-                        .collect::<Vec<_>>();
-
-                    match ipv4.len() {
-                        0 => Err(anyhow!("Could not find an ipv4 address for host: {}", d)),
-                        _ => Ok(ipv4),
+                    let ips = lookup_host(d)?;
+                    match ips.len() {
+                        0 => Err(anyhow!("Could not resolve any address for host: {}", d)),
+                        _ => Ok(ips),
                     }
                 }
-                Host::Ipv4(ip) => Ok(vec![ip]),
-                Host::Ipv6(_) => Err(anyhow!("Ipv6 addresses are not supported.")),
+                Host::Ipv4(ip) => Ok(vec![IpAddr::V4(ip)]),
+                Host::Ipv6(ip) => Ok(vec![IpAddr::V6(ip)]),
             },
             None => Err(anyhow!("Provided URL has an empty host")),
         }
@@ -59,11 +52,45 @@ impl NetworkUtils {
         }
     }
 
+    /// @cc [owner:frankaloia,label:security] ipv6-private-ranges
+    /// `check_ipv6_is_public` MUST reject all private/non-routable IPv6 ranges:
+    /// loopback (`::1`), ULA (`fc00::/7`, which includes `fd00::/8`), link-local
+    /// (`fe80::/10`), unspecified (`::`), and IPv4-mapped addresses (`::ffff:x.x.x.x`)
+    /// where the embedded IPv4 is itself private. Publicly routable IPv6 addresses
+    /// MUST be allowed.
+    pub fn check_ipv6_is_public(ip: Ipv6Addr) -> Result<()> {
+        // Loopback: ::1
+        if ip.is_loopback() {
+            return Err(anyhow!("Forbidden IP range: {}", ip));
+        }
+        // Unspecified: ::
+        if ip.is_unspecified() {
+            return Err(anyhow!("Forbidden IP range: {}", ip));
+        }
+        let segments = ip.segments();
+        // Link-local: fe80::/10
+        if (segments[0] & 0xffc0) == 0xfe80 {
+            return Err(anyhow!("Forbidden IP range: {}", ip));
+        }
+        // ULA (Unique Local Addresses): fc00::/7 (covers fc00::/8 and fd00::/8)
+        if (segments[0] & 0xfe00) == 0xfc00 {
+            return Err(anyhow!("Forbidden IP range: {}", ip));
+        }
+        // IPv4-mapped: ::ffff:0:0/96 — delegate to IPv4 check for the embedded address.
+        if let Some(ipv4) = ip.to_ipv4_mapped() {
+            return Self::check_ipv4_is_public(ipv4);
+        }
+        Ok(())
+    }
+
     // Check if a URL points to a private IP address.
     pub fn check_url_for_private_ip(url: &str) -> Result<()> {
-        let ips = Self::get_ipv4_addresses(url)?;
+        let ips = Self::get_ip_addresses(url)?;
         for ip in ips {
-            Self::check_ipv4_is_public(ip)?;
+            match ip {
+                IpAddr::V4(ipv4) => Self::check_ipv4_is_public(ipv4)?,
+                IpAddr::V6(ipv6) => Self::check_ipv6_is_public(ipv6)?,
+            }
         }
         Ok(())
     }
