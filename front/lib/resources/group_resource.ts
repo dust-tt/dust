@@ -2381,6 +2381,41 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * @cc [owner:rfrenoy,label:product;backend] group-limit-columns-paired
+   * `groupLimitAwuCredits` and `groupLimitPriority` MUST be both null or both non-null, and MUST
+   * only be written by this method. A group is "limited" iff `groupLimitAwuCredits IS NOT NULL`
+   */
+  async updateGroupLimit(groupLimitAwuCredits: number | null): Promise<void> {
+    if (groupLimitAwuCredits === null) {
+      await this.update({
+        groupLimitAwuCredits: null,
+        groupLimitPriority: null,
+      });
+      return;
+    }
+
+    if (this.groupLimitPriority !== null) {
+      await this.update({ groupLimitAwuCredits });
+      return;
+    }
+
+    const maxPriority = await GroupModel.max<number | null, GroupModel>(
+      "groupLimitPriority",
+      {
+        where: {
+          workspaceId: this.workspaceId,
+          groupLimitPriority: { [Op.ne]: null },
+        },
+      }
+    );
+
+    await this.update({
+      groupLimitAwuCredits,
+      groupLimitPriority: (maxPriority ?? 0) + 1,
+    });
+  }
+
   // Deletion
 
   async delete(
