@@ -11,7 +11,7 @@ import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getPinnedAgentConfigurationForRun } from "@app/lib/api/assistant/configuration/run_configuration";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
@@ -72,10 +72,9 @@ export async function createSandboxChildAction(
     return new Err(new Error("MCP server view not found."));
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
+  const agentConfiguration = await getPinnedAgentConfigurationForRun(auth, {
     agentId,
     agentVersion,
-    variant: "full",
   });
   if (!agentConfiguration) {
     return new Err(new Error("Agent configuration not found."));
