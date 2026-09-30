@@ -16,6 +16,7 @@ import type {
   AgentNameSuggestionType,
   AgentScopeSuggestionType,
   AgentSkillsSuggestionType,
+  AgentStructuredOutputSuggestionType,
   AgentSubAgentSuggestionType,
   AgentSuggestionState,
   AgentTagsSuggestionType,
@@ -52,6 +53,7 @@ export type AgentActionCardSuggestionType =
   | AgentNameSuggestionType
   | AgentScopeSuggestionType
   | AgentSkillsSuggestionType
+  | AgentStructuredOutputSuggestionType
   | AgentSubAgentSuggestionType
   | AgentTagsSuggestionType
   | AgentToolsSuggestionType;
@@ -152,6 +154,23 @@ function getAgentSuggestionLabels(
         title: "Update agent tags",
         acceptedTitle: "Tags update accepted",
         rejectedTitle: "Tags update rejected",
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "structured_output": {
+      if (agentSuggestion.suggestion.responseFormat === null) {
+        return {
+          title: "Remove structured output",
+          acceptedTitle: "Structured output removal accepted",
+          rejectedTitle: "Structured output removal rejected",
+          description: analysis ?? undefined,
+        };
+      }
+      return {
+        title: "Update structured output",
+        acceptedTitle: "Structured output update accepted",
+        rejectedTitle: "Structured output update rejected",
         description: analysis ?? undefined,
       };
     }
