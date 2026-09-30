@@ -167,8 +167,8 @@ const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
   { role: "none", permissions: ["read", "list"] },
 ];
 
-// Full-only payload: the private `AgentConfigurationModel` columns. Never loaded with the resource:
-// read on demand through `fetchInstructions`/`batchFetchInstructions` (see
+// The private `AgentConfigurationModel` columns, for callers who `canViewContent`. Never loaded with
+// the resource: read on demand through `fetchInstructions`/`batchFetchInstructions` (see
 // `agent-instructions-on-demand`).
 export type AgentResourceInstructions = {
   instructions: string | null;
@@ -289,8 +289,8 @@ type SerializedModelConfiguration = {
   responseFormat: string | null;
 };
 
-// Cached shape of a `full` custom `AgentResource`. Hand-written (the resource spans two tables and
-// reshapes columns), so `AGENT_RESOURCE_CACHE_VERSION` MUST be bumped on any change.
+// Cached shape of a caller-independent custom `AgentResource`. Hand-written (the resource spans two
+// tables and reshapes columns), so `AGENT_RESOURCE_CACHE_VERSION` MUST be bumped on any change.
 export type AgentResourceSnapshot = {
   agentModelId: ModelId;
   agentConfigurationModelId: ModelId;
@@ -366,17 +366,17 @@ export interface AgentResource
  * `sId`, and all share the `id: -1` sentinel.
  */
 /**
- * @cc [owner:sfriquet,label:security] unreadable-agent-is-light
- * A resource built for a caller who cannot view the agent's content (per `canViewContent`: no
- * `read`, outside the `admin_can_see_private_entities` admin override) MUST be `light`: its
- * `content`, which carries the agent's instructions (`instructions`, `instructionsHtml`), is never
- * materialized for that caller, whatever their role, key type, or superuser status. The
- * instructions are the only private fields: the head fields (`name`, `status`, `scope`,
+ * @cc [owner:sfriquet,label:security] unreadable-agent-content-hidden
+ * A resource built for a caller who cannot view the agent's content (`canViewContent` false: no
+ * `read`, outside the `admin_can_see_private_entities` admin override) MUST NOT expose the agent's
+ * instructions (`instructions`, `instructionsHtml`) to that caller: `fetchInstructions`/
+ * `batchFetchInstructions` never return them for it, whatever their role, key type, or superuser
+ * status. The instructions are the only private fields: the head fields (`name`, `status`, `scope`,
  * `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and carried by every
  * resource. This holds for every `fetch*` resolver, for `listVersions`, for `fromModels` and for
  * global agents, so a caller allowed to enumerate agents they cannot read (an admin or manager
- * listing hidden agents, a superuser) sees identity and core fields only. Callers MUST NOT re-attach
- * the instructions to a `light` resource from another read path.
+ * listing hidden agents, a superuser) sees identity and core fields only. Callers MUST NOT attach
+ * the instructions to such a resource from another read path.
  */
 /**
  * @cc [owner:philipperolet,label:security;product] agent-verbs
@@ -397,11 +397,11 @@ export interface AgentResource
  *   management, archiving/restoring is gated on `admin` and is not additionally space-gated, so a
  *   workspace admin may archive/restore an agent it cannot read (e.g. hidden agents surfaced by
  *   "Show hidden agents").
- * - `list`: seeing the agent's light core fields, including its version author, but not its
+ * - `list`: seeing the agent's core fields, including its version author, but not its
  *   editors. `read` implies `list`. The `admin` and `manager` roles MUST hold it on every custom
  *   agent, regardless of scope, status, or `requestedSpaceIds`.
- * Holding any verb makes the agent fetchable, but without `read` only its light core fields may be
- * exposed (see `unreadable-agent-is-light`). The explicit `admin_can_see_private_entities` admin
+ * Holding any verb makes the agent fetchable, but without `read` only its core fields may be
+ * exposed (see `unreadable-agent-content-hidden`). The explicit `admin_can_see_private_entities` admin
  * override is the only exception and may expose the full configuration.
  * Global (code-defined) agents are `read`-only, for the roles in their audience.
  */
@@ -527,14 +527,14 @@ export class AgentResource
    * @cc [owner:tdraier,label:backend;performance] agent-instructions-on-demand
    * The resolvers MUST NOT load a custom agent's instructions (`instructions`, `instructionsHtml`)
    * and the cache snapshot MUST NOT carry them: they are read on demand through `fetchInstructions`/
-   * `batchFetchInstructions`, for the resource's own configuration version, and only for a `full`
-   * resource (`canViewContent`, see `unreadable-agent-is-light`). A global agent's instructions are code-defined,
-   * built with the resource and served from memory.
+   * `batchFetchInstructions`, for the resource's own configuration version, and only for a caller
+   * who `canViewContent` (see `unreadable-agent-content-hidden`). A global agent's instructions are
+   * code-defined, built with the resource and served from memory.
    */
   async fetchInstructions(): Promise<AgentResourceInstructions> {
     assert(
       this.canViewContent,
-      `Unexpected: fetching the instructions of light agent ${this.sId}`
+      `Unexpected: fetching instructions the caller cannot view for agent ${this.sId}`
     );
     const contents = await AgentResource.batchFetchInstructions([this]);
     const content = contents.get(this);
@@ -758,15 +758,14 @@ export class AgentResource
     );
   }
 
-  // -- Resolvers: current version, full when readable, light otherwise --
+  // -- Resolvers: current version, materialized for the caller --
 
   /**
    * @cc [owner:tdraier,label:backend] fetch-current-version
    * Resolves each requested custom agent to its current configuration version — the row whose
    * `version` equals the agent's `currentVersion` pointer (see `agent-current-version-pointer`) —
-   * scoped to the authed workspace. Each is returned as a `full` resource when the caller can view
-   * its content (see `agent-content-visibility`), otherwise a `light` resource; a resource the caller
-   * cannot fetch at all (holds no verb on,
+   * scoped to the authed workspace. Each is materialized for the caller, whose `canViewContent`
+   * follows `agent-content-visibility`; a resource the caller cannot fetch at all (holds no verb on,
    * per `canFetch`) is dropped. An agent with no configuration yields no resource, and at most one
    * resource is returned per `agentModelId`. `fetchById(s)` additionally resolve global agents by
    * `sId` (they have no configuration rows) via `getGlobalAgents`, gated by the same `canFetch`
@@ -877,8 +876,8 @@ export class AgentResource
    * version metadata, tools, tags and skills, and MUST be materialized for the supplied `auth`, like
    * every resolved resource, whatever authenticator `this` was resolved for: the caller's verbs are
    * those its own row grants (its stored scope, status and requested spaces, see `agent-verbs`), a
-   * version the caller holds no verb on is dropped, and it is `light` unless the caller can view its
-   * content (see `agent-content-visibility`). Their `isCurrentVersion` MUST compare against the
+   * version the caller holds no verb on is dropped, and its `canViewContent` follows
+   * `agent-content-visibility`. Their `isCurrentVersion` MUST compare against the
    * agent's current-version pointer read together with them, not the one `this` was loaded with. A
    * global agent is not versioned: it is its only version, resolved for `auth` as `fetchById` does.
    * A previous version is read-only: see `isCurrentVersion`.
@@ -1168,7 +1167,7 @@ export class AgentResource
     return this.fetchByIds(auth, agentIds);
   }
 
-  // Caller-independent query: the current `full` resource of each identified agent — the row whose
+  // Caller-independent query: the current resource of each identified agent — the row whose
   // `version` equals the agent's `currentVersion` pointer, joined via the unique `(agentId, version)`
   // index — one per agent, scoped to the workspace. No read-access decision is folded in; that is the
   // caller's job (see `fetchByIds`). Takes a bare `workspaceId` so both the
@@ -1232,7 +1231,7 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:backend;performance] agent-resource-cache
-   * The cache holds the caller-independent full resource; the caller-dependent `canFetch` and
+   * The cache holds the caller-independent resource; the caller-dependent `canFetch` and
    * `materialize` gates MUST run on every read and MUST NOT be cached. Entries have no TTL, so
    * every write that changes or deletes an agent's cached version MUST invalidate its entry — via
    * `AgentResource.invalidateCache` here, or the leaf `invalidateAgentResourceCache`/
@@ -1962,14 +1961,17 @@ export class AgentResource
 
   // Builds the save params that recreate this agent's current version as-is — its full configuration,
   // including tags, editors, tools and skills. Override a field on the result to save a new version
-  // that changes only that (e.g. the model in a bulk model update). `this` must be `full`.
+  // that changes only that (e.g. the model in a bulk model update). Requires `canViewContent`.
   async buildResaveParams(
     auth: Authenticator
   ): Promise<SaveAgentConfigurationParams> {
     // Loaded custom agents are never global, and their stored status is always an `AgentStatus`
     // (the `disabled_*` values are global-only); narrow both from the resource's wider types.
     assert(this.scope !== "global");
-    assert(this.canViewContent, "Unexpected: re-saving a light AgentResource");
+    assert(
+      this.canViewContent,
+      "Unexpected: re-saving an agent whose content the caller cannot view"
+    );
     this.assertCurrentVersion();
     if (!isAgentStatus(this.status)) {
       throw new Error(
@@ -2795,8 +2797,8 @@ export class AgentResource
    * @cc [owner:tdraier,label:security;product] agent-read-requires-space-read
    * `read` on a custom agent requires read access to every space in `requestedSpaceIds` (the spaces
    * backing its tools/skills/data): a caller who cannot read one of them does not get `read`.
-   * `requestedSpaceIds` is a core field carried by every variant, so the gate applies regardless of
-   * `light`/`full`. Global agents have no requested spaces and are unaffected.
+   * `requestedSpaceIds` is a core field carried by every resource, so the gate applies whether or
+   * not the caller can view the content. Global agents have no requested spaces and are unaffected.
    */
   /**
    * @cc [owner:philipperolet,label:security;product] draft-agent-owner
@@ -2980,10 +2982,10 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:security;backend] agent-json-without-instructions
-   * `toJSON` serializes every resource, custom or global, `full` or `light`, with its head fields,
+   * `toJSON` serializes every resource, custom or global, with its head fields,
    * version metadata and the caller's permission snapshot, and MUST NOT carry the instructions: the
    * configuration builders add them (see `agent-json-redaction`). `isRedacted` MUST be `true`
-   * exactly for a `light` resource.
+   * exactly when the caller cannot view the content (`!canViewContent`).
    */
   toJSON(): AgentConfigurationBaseType {
     const isGlobal = this.scope === "global";
@@ -3030,7 +3032,8 @@ export class AgentResource
     };
   }
 
-  // What the sidekick's `inspect_available_agent` tool exposes; the instructions make it full-only.
+  // What the sidekick's `inspect_available_agent` tool exposes; the instructions require
+  // `canViewContent`.
   toInspectionJSON({
     instructions,
     toolIds,
@@ -3057,7 +3060,7 @@ export class AgentResource
     };
   }
 
-  // What the sidekick's `get_agent_info` tool exposes; the instructions make it full-only.
+  // What the sidekick's `get_agent_info` tool exposes; the instructions require `canViewContent`.
   toSidekickAgentInfoJSON({
     instructions,
     tags,
@@ -3188,11 +3191,11 @@ export class AgentResource
    * in place (preserving version 0 and its FK relationships, see `writeAgentConfigurationRow`) rather
    * than archiving it and creating a new version. All required permissions MUST be checked before any
    * change is applied so a save never partially succeeds. A caller that cannot view the agent's
-   * content (a `light` resource, see `agent-content-visibility`) cannot create a version, so provided
-   * definition fields are ignored; it may still change scope/editors it is authorized for. A caller
-   * that views the content without `read` (the `admin_can_see_private_entities` admin override) is
-   * handed a `full` resource, so its definition fields are NOT ignored but gated as above: only the
-   * model and tags may produce a version, through their `admin` paths.
+   * content (`canViewContent` false, see `agent-content-visibility`) cannot create a version, so
+   * provided definition fields are ignored; it may still change scope/editors it is authorized for. A
+   * caller that views the content without `read` (the `admin_can_see_private_entities` admin
+   * override) can view the content, so its definition fields are NOT ignored but gated as above: only
+   * the model and tags may produce a version, through their `admin` paths.
    */
   /**
    * @cc [owner:tdraier,label:backend] save-skips-noop-version
@@ -3253,7 +3256,7 @@ export class AgentResource
 
     // A new version is needed only when a definition field actually changes. The current
     // configuration is read (to diff and to fill the new version's unchanged columns) ONLY when a
-    // definition field is provided AND the agent is readable — an unreadable (`light`) caller cannot
+    // definition field is provided AND the caller can view the content — a caller who cannot
     // create a version, so its definition fields are ignored (it may still change scope/editors).
     const hasTagDelta =
       (update.addTags?.length ?? 0) > 0 || (update.removeTags?.length ?? 0) > 0;
@@ -3735,7 +3738,7 @@ export class AgentResource
       await AgentResource.invalidateCache(owner.id, agent.sId);
 
       // Resolve the saved agent through the access-controlled resolver. In every real path the caller
-      // is the author (or otherwise holds read), so this is the `full` agent they just wrote.
+      // is the author (or otherwise holds read), so they can view the content they just wrote.
       const resource = await AgentResource.fetchById(auth, agent.sId);
       if (resource === null) {
         return new Err(
@@ -3743,7 +3746,7 @@ export class AgentResource
         );
       }
 
-      // Recording the recent author reads the current version, so it needs the full resource.
+      // Recording the recent author reads the current version, so it needs `canViewContent`.
       if (resource.canViewContent) {
         await agentConfigurationWasUpdatedBy({ agent: resource, auth });
       }
@@ -3795,7 +3798,7 @@ export class AgentResource
     return {
       agentModelId: this.id,
       sId: this.sId,
-      variant: this.canViewContent ? "full" : "light",
+      canViewContent: String(this.canViewContent),
     };
   }
 }

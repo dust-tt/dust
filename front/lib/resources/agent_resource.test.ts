@@ -145,9 +145,9 @@ describe("AgentResource", () => {
     }
   });
 
-  it("carries the agent's creation date on full and light resources alike", async () => {
+  it("carries the agent's creation date whether or not the caller can view the content", async () => {
     const createdAt = new Date("2025-01-01T00:00:00.000Z");
-    // Hidden, so the non-author admin below gets it light.
+    // Hidden, so the non-author admin below cannot view its content.
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator,
       { scope: "hidden" }
@@ -179,8 +179,8 @@ describe("AgentResource", () => {
     expect(asAdmin?.createdAt.getTime()).toBe(createdAt.getTime());
   });
 
-  it("carries the configuration row id on full and light resources alike", async () => {
-    // Hidden, so the non-author admin below gets it light.
+  it("carries the configuration row id whether or not the caller can view the content", async () => {
+    // Hidden, so the non-author admin below cannot view its content.
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator,
       { scope: "hidden" }
@@ -211,15 +211,15 @@ describe("AgentResource", () => {
     const asAdmin = await AgentResource.fetchById(adminAuth, agent.sId);
 
     // The tables keyed by that id (skills, tools, tags) are read by callers who cannot read the
-    // agent, so the id is core: the light shape carries it just like the full one.
+    // agent, so the id is core: it is carried whether or not the caller can view the content.
     expect(asAuthor?.canViewContent).toBe(true);
     expect(asAuthor?.agentConfigurationModelId).toBe(currentConfiguration.id);
     expect(asAdmin?.canViewContent).toBe(false);
     expect(asAdmin?.agentConfigurationModelId).toBe(currentConfiguration.id);
   });
 
-  it("carries the head fields on full and light resources alike", async () => {
-    // Hidden, so the non-author admin below gets it light.
+  it("carries the head fields whether or not the caller can view the content", async () => {
+    // Hidden, so the non-author admin below cannot view its content.
     const template = await TemplateFactory.published();
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator,
@@ -268,13 +268,13 @@ describe("AgentResource", () => {
     }
   });
 
-  it("returns a light resource when the caller holds a verb but cannot read the agent", async () => {
+  it("returns the agent without its content when the caller holds a verb but cannot read it", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator,
       { scope: "hidden" }
     );
 
-    // Admins hold `admin` on hidden agents but not `read`: they can fetch a light resource.
+    // Admins hold `admin` on hidden agents but not `read`: they fetch it without viewing its content.
     const adminUser = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, adminUser, {
       role: "admin",
@@ -500,26 +500,25 @@ describe("AgentResource", () => {
     );
   });
 
-  it("serializes and restores a full resource without loss", async () => {
+  it("serializes and restores a resource without loss", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator
     );
 
-    const full = await AgentResource.fetchById(
+    const resource = await AgentResource.fetchById(
       testContext.authenticator,
       agent.sId
     );
-    assert(full?.canViewContent);
+    assert(resource?.canViewContent);
 
-    const restored = AgentResource.fromSnapshot(full.toSnapshot());
+    const restored = AgentResource.fromSnapshot(resource.toSnapshot());
 
     // The restored resource is indistinguishable from the one it was serialized from.
     expect(restored.canViewContent).toBe(true);
-    assert(restored.canViewContent);
     expect(await restored.fetchInstructions()).toEqual(
-      await full.fetchInstructions()
+      await resource.fetchInstructions()
     );
-    expect(restored.toSnapshot()).toEqual(full.toSnapshot());
+    expect(restored.toSnapshot()).toEqual(resource.toSnapshot());
   });
 
   it("round-trips the agent createdAt distinct from the version createdAt", async () => {
@@ -559,12 +558,12 @@ describe("AgentResource", () => {
       testContext.authenticator
     );
 
-    const full = await AgentResource.fetchById(
+    const resource = await AgentResource.fetchById(
       testContext.authenticator,
       agent.sId
     );
-    assert(full?.canViewContent);
-    const snapshot = full.toSnapshot();
+    assert(resource?.canViewContent);
+    const snapshot = resource.toSnapshot();
 
     // Every `AgentConfigurationModel` column is folded into the resource's identity/core/version
     // metadata, explicitly excluded, or content — which is never cached (see
@@ -616,7 +615,7 @@ describe("AgentResource", () => {
     expect(Object.keys(snapshot)).not.toContain("content");
   });
 
-  it("serves the same full content through single and batch reads", async () => {
+  it("serves the same content through single and batch reads", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator
     );
@@ -1054,8 +1053,8 @@ describe("AgentResource", () => {
     expect(await AgentResource.fetchById(otherAuth, agent.sId)).toBeNull();
 
     // An admin keeps the `admin` verb whatever the space restriction, so the agent is still
-    // returned — but as a light resource, since the space gate denied `read` and `_content` is
-    // materialized only for readers.
+    // returned — but without its content, since the space gate denied `read` and only readers
+    // can view it.
     const adminUser = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, adminUser, {
       role: "admin",
@@ -1069,7 +1068,7 @@ describe("AgentResource", () => {
     expect(adminResource?.canViewContent).toBe(false);
   });
 
-  it("resolves an agent to full when all its requested spaces are readable", async () => {
+  it("lets the caller view an agent's content when all its requested spaces are readable", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator,
       // The global space is readable by every workspace member.
@@ -1487,7 +1486,7 @@ describe("AgentResource", () => {
       });
     });
 
-    it("batches instructions by resource: null for a light one, in memory for a global one", async () => {
+    it("batches instructions by resource: null when not viewable, in memory for a global agent", async () => {
       const hidden = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
         {
@@ -1514,19 +1513,19 @@ describe("AgentResource", () => {
         visible.sId,
         GLOBAL_AGENTS_SID.HELPER,
       ]);
-      const [lightHidden, fullVisible, helper] = resources;
-      expect(lightHidden.canViewContent).toBe(false);
+      const [hiddenResource, visibleResource, helper] = resources;
+      expect(hiddenResource.canViewContent).toBe(false);
 
       const instructionsByAgent =
         await AgentResource.batchFetchInstructions(resources);
 
-      expect(instructionsByAgent.get(lightHidden)).toBeNull();
-      expect(instructionsByAgent.get(fullVisible)?.instructions).toBe(
+      expect(instructionsByAgent.get(hiddenResource)).toBeNull();
+      expect(instructionsByAgent.get(visibleResource)?.instructions).toBe(
         "visible instructions"
       );
       expect(instructionsByAgent.get(helper)?.instructions).toContain("@help");
-      expect(lightHidden.toJSON()).toMatchObject({ isRedacted: true });
-      expect(fullVisible.toJSON()).not.toHaveProperty("instructions");
+      expect(hiddenResource.toJSON()).toMatchObject({ isRedacted: true });
+      expect(visibleResource.toJSON()).not.toHaveProperty("instructions");
     });
   });
 
@@ -1563,7 +1562,7 @@ describe("AgentResource", () => {
       return { agent, adminAuth };
     }
 
-    it("keeps an unreadable agent light for an admin without the flag", async () => {
+    it("hides an unreadable agent's content from an admin without the flag", async () => {
       const { agent, adminAuth } = await setupHiddenAgentWithTool();
 
       const resource = await AgentResource.fetchById(adminAuth, agent.sId);
@@ -1656,8 +1655,8 @@ describe("AgentResource", () => {
         )
       ).toEqual([mcpServerView.sId]);
 
-      // A member who cannot read the hidden agent does not even fetch it; a light resource built for
-      // them still gets no tools.
+      // A member who cannot read the hidden agent does not even fetch it; a resource built for them
+      // still gets no tools.
       expect(await AgentResource.fetchById(otherAuth, agent.sId)).toBeNull();
       expect(await editorView.listActions(otherAuth)).toEqual([]);
     });

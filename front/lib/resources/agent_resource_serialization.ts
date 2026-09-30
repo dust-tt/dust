@@ -17,7 +17,7 @@ import type {
 // statically-loaded `AgentResource`s. They have no dependency on one another, so
 // `toLightAgentConfigurations`/`toAgentConfigurations` fan them out in parallel and shape and redact
 // the JSON on top of `AgentResource.toJSON` (see `agent-json-redaction`). Both builders accept any
-// resource, custom or global, `full` or `light`.
+// resource, custom or global, whether or not the caller can view its content.
 
 /**
  * @cc [owner:tdraier,label:backend] enrich-favorites-key-per-agent
@@ -103,7 +103,8 @@ export async function enrichWithActions(
 /**
  * @cc [owner:tdraier,label:backend] enrich-instructions-key-per-version
  * `enrichWithInstructions` keys its result by the input resource, which is one configuration
- * version: the instructions belong to that version. A `light` resource gets `null` instructions.
+ * version: the instructions belong to that version. A resource whose content the caller cannot view
+ * gets `null` instructions.
  */
 export async function enrichWithInstructions(
   resources: AgentResource[]
@@ -122,8 +123,9 @@ export async function enrichWithInstructions(
 /**
  * @cc [owner:tdraier,label:security;backend] agent-json-redaction
  * `toLightAgentConfigurations` and `toAgentConfigurations` are the only place that shapes an agent's
- * configuration JSON, on top of `AgentResource.toJSON`. A `light` resource MUST serialize with
- * `instructions: null` and, in the full shape, with `instructionsHtml: null`, no `actions` and no
+ * configuration JSON, on top of `AgentResource.toJSON`. A resource whose content the caller cannot
+ * view (`!canViewContent`) MUST serialize with `instructions: null` and, in the full shape, with
+ * `instructionsHtml: null`, no `actions` and no
  * `codeDefinedSkillIds`, whatever enrichment it is handed: the head fields and the version metadata
  * are not private and are always carried.
  */
@@ -207,7 +209,7 @@ export async function toLightAgentConfigurations(
 
 /**
  * Renders full `AgentConfigurationType`s: the light enrichments plus the batched `instructionsHtml`
- * and `actions` (redacted for a `light` resource).
+ * and `actions` (redacted when the caller cannot view the content).
  */
 export async function toAgentConfigurations(
   auth: Authenticator,

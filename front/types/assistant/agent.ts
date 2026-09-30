@@ -233,7 +233,8 @@ export const AgentTagsEnrichmentSchema = z.object({
 });
 export type AgentTagsEnrichment = z.infer<typeof AgentTagsEnrichmentSchema>;
 
-// `enrichWithInstructions` (both `null` for a `light` resource). `instructionsHtml` is full-only.
+// `enrichWithInstructions` (both `null` when the caller cannot view the content). `instructionsHtml`
+// is only part of the full configuration shape.
 export const AgentInstructionsEnrichmentSchema = z.object({
   instructions: z.string().nullable(),
   instructionsHtml: z.string().nullable(),
