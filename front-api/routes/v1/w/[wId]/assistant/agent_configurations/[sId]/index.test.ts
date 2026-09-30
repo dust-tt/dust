@@ -359,6 +359,29 @@ describe("PATCH /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     expect(data.agentConfiguration.actions).toEqual([]);
   });
 
+  it("applies an admin key's patch to a hidden agent it cannot read (tasks#10680)", async () => {
+    const { workspace, key, auth } = await setupTest("admin");
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Hidden Agent",
+      scope: "hidden",
+    });
+    const skill = await SkillFactory.create(auth, { name: "Support Playbook" });
+
+    const response = await patchAgentConfiguration(workspace, key, agent.sId, {
+      instructions: "Updated through the API",
+      skills: [{ sId: skill.sId, name: skill.name }],
+    });
+    expect(response.status, JSON.stringify(await response.json())).toBe(200);
+
+    const updated = await AgentResource.fetchById(auth, agent.sId);
+    expect(updated?.version).toBe(agent.version + 1);
+    expect((await updated?.fetchInstructions())?.instructions).toBe(
+      "Updated through the API"
+    );
+    const skills = await updated?.listSkills(auth);
+    expect(skills?.map((s) => s.sId)).toEqual([skill.sId]);
+  });
+
   it("returns 404 when the agent configuration does not exist", async () => {
     const { workspace, key } = await setupTest();
 
