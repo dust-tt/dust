@@ -40,6 +40,7 @@ export function useGroups({
   kinds,
   withMembers,
   withManagers,
+  managedOnly,
   disabled,
 }: {
   owner: LightWorkspaceType;
@@ -48,6 +49,7 @@ export function useGroups({
   // server-side) instead of just its memberCount.
   withMembers?: boolean;
   withManagers?: boolean;
+  managedOnly?: boolean;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -62,9 +64,12 @@ export function useGroups({
     if (withManagers) {
       params.append("withManagers", "true");
     }
+    if (managedOnly) {
+      params.append("managedOnly", "true");
+    }
     const queryString = params.toString();
     return `/api/w/${owner.sId}/groups${queryString ? `?${queryString}` : ""}`;
-  }, [owner.sId, kinds, withMembers, withManagers]);
+  }, [owner.sId, kinds, withMembers, withManagers, managedOnly]);
 
   const groupsFetcher: Fetcher<GetGroupsResponseBody> = fetcher;
 
