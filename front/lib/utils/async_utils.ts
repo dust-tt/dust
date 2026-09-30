@@ -100,6 +100,13 @@ export async function withRetry<T>(
   return new Err(normalizeError(lastErr));
 }
 
+// For our own code, add heartbeats at relevant points or fix avoidable delays such as
+// database stalls. A timer can hide a stalled operation from Temporal.
+/**
+ * @cc [owner:philipperolet,label:performance] external-calls-only
+ * Callers MUST use `withPeriodicHeartbeat` only for third-party calls outside our
+ * control that may exceed the activity heartbeat timeout.
+ */
 export async function withPeriodicHeartbeat<T>(
   fn: () => Promise<T>,
   {
