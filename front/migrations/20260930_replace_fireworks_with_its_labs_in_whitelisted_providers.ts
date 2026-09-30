@@ -1,3 +1,4 @@
+import { readFile, writeFile } from "node:fs/promises";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -5,6 +6,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { Op, QueryTypes } from "sequelize";
+import { z } from "zod";
 
 const HOST_TO_REPLACE = "fireworks";
 const DEEPSEEK_LAB = "deepseek";
@@ -21,11 +23,12 @@ export const FIREWORKS_SERVED_LABS: readonly string[] = [
   "thinking_machines",
 ];
 
-type WhitelistChange = {
-  workspaceId: string;
-  before: string[];
-  after: string[];
-};
+const WhitelistChangeSchema = z.object({
+  workspaceId: z.string(),
+  before: z.array(z.string()),
+  after: z.array(z.string()),
+});
+type WhitelistChange = z.infer<typeof WhitelistChangeSchema>;
 
 export function replaceFireworksWithItsLabs(before: string[]): string[] {
   const kept = before.filter((entry) => entry !== HOST_TO_REPLACE);
@@ -35,31 +38,57 @@ export function replaceFireworksWithItsLabs(before: string[]): string[] {
   ];
 }
 
+type WhitelistWrite = {
+  workspaceId: string;
+  from: string[];
+  to: string[];
+};
+
 // Raw SQL rather than `updateWorkspaceSettings`: the column validator only accepts provider ids
 // until whitelisting switches to labs. It also leaves `updatedAt` alone, since this is not a
-// workspace edit. The `before` match skips a row an admin re-saved between scan and write.
+// workspace edit. The `from` match skips a row an admin re-saved in the meantime.
 async function writeWhitelist({
   workspaceId,
-  before,
-  after,
-}: WhitelistChange): Promise<boolean> {
+  from,
+  to,
+}: WhitelistWrite): Promise<boolean> {
   const [, affectedRows] = await frontSequelize.query(
-    `UPDATE workspaces SET "whiteListedProviders" = ARRAY[:after]::varchar(255)[]
-     WHERE "sId" = :workspaceId AND "whiteListedProviders" = ARRAY[:before]::varchar(255)[]`,
-    { replacements: { workspaceId, before, after }, type: QueryTypes.UPDATE }
+    `UPDATE workspaces SET "whiteListedProviders" = ARRAY[:to]::varchar(255)[]
+     WHERE "sId" = :workspaceId AND "whiteListedProviders" = ARRAY[:from]::varchar(255)[]`,
+    { replacements: { workspaceId, from, to }, type: QueryTypes.UPDATE }
   );
   await WorkspaceResource.invalidateCache(workspaceId);
   return affectedRows === 1;
 }
 
+async function writeWhitelists(
+  writes: WhitelistWrite[],
+  logger: Logger
+): Promise<number> {
+  const written = await concurrentExecutor(writes, writeWhitelist, {
+    concurrency: UPDATE_CONCURRENCY,
+  });
+  const skipped = writes.filter((_, i) => !written[i]);
+  for (const { workspaceId } of skipped) {
+    logger.warn(
+      { workspaceId },
+      "Whitelist changed since it was read, skipped."
+    );
+  }
+  return writes.length - skipped.length;
+}
+
 type ReplaceFireworksWithItsLabsParams = {
   execute: boolean;
   logger: Logger;
+  // Required with `execute`: every planned change is written there before any row is touched.
+  backupFile?: string;
 };
 
 export async function replaceFireworksWithItsLabsInWhitelistedProviders({
   execute,
   logger,
+  backupFile,
 }: ReplaceFireworksWithItsLabsParams): Promise<{
   updated: WhitelistChange[];
   deepseekWithoutFireworks: string[];
@@ -119,31 +148,93 @@ export async function replaceFireworksWithItsLabsInWhitelistedProviders({
     return { updated, deepseekWithoutFireworks };
   }
 
-  const written = await concurrentExecutor(updated, writeWhitelist, {
-    concurrency: UPDATE_CONCURRENCY,
-  });
-  const skipped = updated.filter((_, i) => !written[i]);
-  for (const { workspaceId } of skipped) {
-    logger.warn(
-      { workspaceId },
-      "Whitelist changed since the scan, skipped. Re-run to pick it up."
-    );
+  if (!backupFile) {
+    throw new Error("--backupFile is required with --execute.");
   }
-  logger.info(
-    { writtenCount: updated.length - skipped.length },
-    "Migration complete."
+  await writeFile(backupFile, JSON.stringify(updated, null, 2));
+  logger.info({ backupFile }, "Backup written.");
+
+  const writtenCount = await writeWhitelists(
+    updated.map(({ workspaceId, before, after }) => ({
+      workspaceId,
+      from: before,
+      to: after,
+    })),
+    logger
   );
+  logger.info({ writtenCount }, "Migration complete.");
 
   return { updated, deepseekWithoutFireworks };
 }
 
+type RestoreWhitelistsFromBackupParams = {
+  execute: boolean;
+  logger: Logger;
+  backupFile: string;
+};
+
+// Puts back each row's `before` value, only where it still holds the migrated `after` value: a
+// whitelist an admin saved since is left alone and reported.
+export async function restoreWhitelistsFromBackup({
+  execute,
+  logger,
+  backupFile,
+}: RestoreWhitelistsFromBackupParams): Promise<{ writtenCount: number }> {
+  const changes = z
+    .array(WhitelistChangeSchema)
+    .parse(JSON.parse(await readFile(backupFile, "utf8")));
+
+  logger.info(
+    { backupFile, workspaceCount: changes.length },
+    execute
+      ? "Restoring whitelists."
+      : "[DRY RUN] Would restore whitelists (use --execute to write)."
+  );
+  if (!execute) {
+    return { writtenCount: 0 };
+  }
+
+  const writtenCount = await writeWhitelists(
+    changes.map(({ workspaceId, before, after }) => ({
+      workspaceId,
+      from: after,
+      to: before,
+    })),
+    logger
+  );
+  logger.info({ writtenCount }, "Rollback complete.");
+
+  return { writtenCount };
+}
+
 function runScript(): void {
-  makeScript({}, async ({ execute }, logger) => {
-    await replaceFireworksWithItsLabsInWhitelistedProviders({
-      execute,
-      logger,
-    });
-  });
+  makeScript(
+    {
+      backupFile: {
+        type: "string",
+        describe: "Where to write the changes before executing them",
+      },
+      rollbackFrom: {
+        type: "string",
+        describe: "Restore the whitelists saved in this backup file",
+      },
+    },
+    async ({ execute, backupFile, rollbackFrom }, logger) => {
+      if (rollbackFrom) {
+        await restoreWhitelistsFromBackup({
+          execute,
+          logger,
+          backupFile: rollbackFrom,
+        });
+        return;
+      }
+      await replaceFireworksWithItsLabsInWhitelistedProviders({
+        execute,
+        logger,
+        backupFile,
+      });
+    }
+  );
 }
 
 if (

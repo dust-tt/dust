@@ -1,10 +1,14 @@
 import assert from "node:assert";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import baseLogger from "@app/logger/logger";
 import {
   FIREWORKS_SERVED_LABS,
   replaceFireworksWithItsLabsInWhitelistedProviders,
+  restoreWhitelistsFromBackup,
 } from "@app/migrations/20260930_replace_fireworks_with_its_labs_in_whitelisted_providers";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
@@ -34,11 +38,21 @@ async function readStoredWhitelist(
 
 // The migration scans every workspace, and the shared test database carries committed rows from
 // other suites. Every assertion therefore targets the workspaces this file creates.
-async function runMigration(execute: boolean, workspace: LightWorkspaceType) {
+async function makeBackupFile(): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "whitelist-backup-"));
+  return join(dir, "backup.json");
+}
+
+async function runMigration(
+  execute: boolean,
+  workspace: LightWorkspaceType,
+  backupFile?: string
+) {
   const { updated, deepseekWithoutFireworks } =
     await replaceFireworksWithItsLabsInWhitelistedProviders({
       execute,
       logger,
+      backupFile: backupFile ?? (await makeBackupFile()),
     });
   const change = updated.find((c) => c.workspaceId === workspace.sId);
   return {
@@ -146,5 +160,41 @@ describe("replaceFireworksWithItsLabsInWhitelistedProviders", () => {
       "openai",
       "fireworks",
     ]);
+  });
+
+  it("refuses to execute without a backup file", async () => {
+    await expect(
+      replaceFireworksWithItsLabsInWhitelistedProviders({
+        execute: true,
+        logger,
+      })
+    ).rejects.toThrow("--backupFile");
+  });
+
+  it("restores the original whitelist from the backup file", async () => {
+    const workspace = await makeWorkspace(["openai", "fireworks"]);
+    const backupFile = await makeBackupFile();
+
+    await runMigration(true, workspace, backupFile);
+    await restoreWhitelistsFromBackup({ execute: true, logger, backupFile });
+
+    expect(await readStoredWhitelist(workspace)).toEqual([
+      "openai",
+      "fireworks",
+    ]);
+  });
+
+  it("leaves a whitelist an admin saved after the migration untouched on rollback", async () => {
+    const workspace = await makeWorkspace(["openai", "fireworks"]);
+    const backupFile = await makeBackupFile();
+
+    await runMigration(true, workspace, backupFile);
+    await frontSequelize.query(
+      `UPDATE workspaces SET "whiteListedProviders" = ARRAY['anthropic']::varchar(255)[] WHERE id = :id`,
+      { replacements: { id: workspace.id } }
+    );
+    await restoreWhitelistsFromBackup({ execute: true, logger, backupFile });
+
+    expect(await readStoredWhitelist(workspace)).toEqual(["anthropic"]);
   });
 });
