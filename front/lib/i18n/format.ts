@@ -66,29 +66,52 @@ export function formatCurrency(
   );
 }
 
+function formatFileSizeInUnit(
+  bytes: number,
+  unitBytes: number,
+  unit: string,
+  decimals: number,
+  locale: SupportedLocale | undefined
+): string {
+  return `${formatNumber(
+    bytes / unitBytes,
+    {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+      useGrouping: false,
+    },
+    locale
+  )} ${unit}`;
+}
+
 export function formatFileSize(
   bytes: number,
+  options?: { decimals?: number },
   locale: SupportedLocale | undefined = activeFormatLocale
 ): string {
+  const decimals = options?.decimals;
   if (bytes < 1024) {
-    return `${formatNumber(bytes, { useGrouping: false }, locale)} B`;
+    return formatFileSizeInUnit(bytes, 1, "B", decimals ?? 0, locale);
   }
   if (bytes < 1024 * 1024) {
-    return `${formatNumber(
-      bytes / 1024,
-      {
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-        useGrouping: false,
-      },
-      locale
-    )} KB`;
+    return formatFileSizeInUnit(bytes, 1024, "KB", decimals ?? 1, locale);
   }
-  return `${formatNumber(
-    bytes / (1024 * 1024),
-    { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false },
+  if (bytes < 1024 * 1024 * 1024) {
+    return formatFileSizeInUnit(
+      bytes,
+      1024 * 1024,
+      "MB",
+      decimals ?? 2,
+      locale
+    );
+  }
+  return formatFileSizeInUnit(
+    bytes,
+    1024 * 1024 * 1024,
+    "GB",
+    decimals ?? 2,
     locale
-  )} MB`;
+  );
 }
 
 export function prefersTwentyFourHourTime(

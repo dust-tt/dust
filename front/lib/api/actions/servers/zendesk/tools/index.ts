@@ -18,13 +18,10 @@ import type {
   ZendeskUser,
 } from "@app/lib/api/actions/servers/zendesk/types";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { formatFileSize } from "@app/lib/i18n/format";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import {
-  ensureFileSize,
-  fileSizeToHumanReadable,
-  isSupportedFileContentType,
-} from "@app/types/files";
+import { ensureFileSize, isSupportedFileContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -153,7 +150,7 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
             type: "text" as const,
             text:
               `\n--- Attachment: ${attachment.file_name} ---\n` +
-              `File too large (${fileSizeToHumanReadable(attachment.size)}), skipped.`,
+              `File too large (${formatFileSize(attachment.size, { decimals: 0 }, "en-US")}), skipped.`,
           });
           continue;
         }

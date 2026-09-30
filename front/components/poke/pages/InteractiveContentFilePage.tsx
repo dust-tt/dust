@@ -57,7 +57,7 @@ export function InteractiveContentFilePage({
           <Chip color="info" label={`Version: ${file.version}`} size="sm" />
           <Chip
             color="primary"
-            label={`Size: ${formatFileSize(file.fileSize, "en-US")}`}
+            label={`Size: ${formatFileSize(file.fileSize, undefined, "en-US")}`}
             size="sm"
           />
         </div>

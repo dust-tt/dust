@@ -8,6 +8,7 @@ import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { MissingPodFileTabCallout } from "@app/components/pod/MissingPodFileTabCallout";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { formatFileSize } from "@app/lib/i18n/format";
 import {
   getFilePathContentApiPath,
   getFilePathDownloadUrl,
@@ -15,10 +16,7 @@ import {
   useFileMetadataFromPath,
   writeFileContentByPath,
 } from "@app/lib/swr/files";
-import {
-  contentTypeFromFileName,
-  fileSizeToHumanReadable,
-} from "@app/types/files";
+import { contentTypeFromFileName } from "@app/types/files";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, cn, Spinner } from "@dust-tt/sparkle";
@@ -243,7 +241,7 @@ export function PodFileTabPreview({
         {isTooLarge ? (
           <FilePreviewFallback
             download={{ href: getFilePathDownloadUrl(owner, filePath) }}
-            message={`This file is too large to preview (${fileSizeToHumanReadable(sizeBytes, 1)}).`}
+            message={`This file is too large to preview (${formatFileSize(sizeBytes, { decimals: 1 }, "en-US")}).`}
           />
         ) : hasError ? (
           <FilePreviewFallback

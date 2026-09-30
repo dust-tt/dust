@@ -1,7 +1,7 @@
 import { computeDataSourceStatistics } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
+import { formatFileSize } from "@app/lib/i18n/format";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { fileSizeToHumanReadable } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -77,11 +77,11 @@ export async function computeWorkspaceStatistics(
   );
 
   return new Ok({
-    text_size: fileSizeToHumanReadable(stats.text_size, 2),
+    text_size: formatFileSize(stats.text_size, { decimals: 2 }, "en-US"),
     document_count: stats.document_count,
     dataSources: stats.dataSources.map((dataSource) => ({
       ...dataSource,
-      text_size: fileSizeToHumanReadable(dataSource.text_size, 2),
+      text_size: formatFileSize(dataSource.text_size, { decimals: 2 }, "en-US"),
     })),
   });
 }

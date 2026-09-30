@@ -1,8 +1,8 @@
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { formatFileSize } from "@app/lib/i18n/format";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConnectorType } from "@app/types/data_source";
-import { fileSizeToHumanReadable } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Chip, Tooltip } from "@dust-tt/sparkle";
 
@@ -118,7 +118,7 @@ export default function ConnectorSyncingChip({
       case "workspace_quota_exceeded":
         return (
           <Tooltip
-            label={`You've exceeded the total storage quota of ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} for your workspace. Contact support@dust.tt to upgrade your plan.`}
+            label={`You've exceeded the total storage quota of ${formatFileSize(activeSeats * DATASOURCE_QUOTA_PER_SEAT, { decimals: 0 }, "en-US")} for your workspace. Contact support@dust.tt to upgrade your plan.`}
             trigger={<Chip color="warning">Quota exceeded</Chip>}
           />
         );

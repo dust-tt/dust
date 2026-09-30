@@ -1,6 +1,6 @@
 import { computeDataSourceStatistics } from "@app/lib/api/data_sources";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { fileSizeToHumanReadable } from "@app/types/files";
+import { formatFileSize } from "@app/lib/i18n/format";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const computeStatsPlugin = createPlugin({
@@ -29,7 +29,7 @@ export const computeStatsPlugin = createPlugin({
       display: "json",
       value: {
         name,
-        text_size: fileSizeToHumanReadable(text_size, 2),
+        text_size: formatFileSize(text_size, { decimals: 2 }, "en-US"),
         document_count,
       },
     });
