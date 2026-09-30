@@ -12,13 +12,21 @@ on:
 
 jobs:
   claude:
+    # @cc [owner:frankaloia,label:security] claude-yml-fork-pr-checkout-prevention
+    # pull_request_review / pull_request_review_comment events check out the PR merge
+    # ref (refs/pull/N/merge), which includes fork content. We must verify the PR
+    # originates from this repository before checkout executes npm lifecycle scripts
+    # under a contents:write token. issue_comment and issues events use the default
+    # branch ref, so fork content is not checked out for those paths.
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') &&
         (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') &&
-        (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR')) ||
+        (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR') &&
+        github.event.pull_request.head.repo.full_name == github.repository) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') &&
-        (github.event.review.author_association == 'OWNER' || github.event.review.author_association == 'MEMBER' || github.event.review.author_association == 'COLLABORATOR')) ||
+        (github.event.review.author_association == 'OWNER' || github.event.review.author_association == 'MEMBER' || github.event.review.author_association == 'COLLABORATOR') &&
+        github.event.pull_request.head.repo.full_name == github.repository) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
         (github.event.issue.author_association == 'OWNER' || github.event.issue.author_association == 'MEMBER' || github.event.issue.author_association == 'COLLABORATOR'))
     runs-on: ubuntu-latest
