@@ -219,6 +219,7 @@ fn fixture(workspace: &WorkspaceId) -> Result<(ObjectMetadata, ObjectMetadata, M
         mime_type: "inode/directory".parse()?,
         xattrs: Xattrs::new(),
         metadata_revision: MetadataRevision::INITIAL,
+        posix: crate::model::PosixAttributes::new(true, crate::model::Timestamp::EPOCH),
     };
     let file = ObjectMetadata {
         workspace_id: workspace.clone(),
@@ -234,11 +235,12 @@ fn fixture(workspace: &WorkspaceId) -> Result<(ObjectMetadata, ObjectMetadata, M
         mime_type: "text/plain".parse()?,
         xattrs: Xattrs::from([("user.binary".to_owned(), vec![0, 128, 255])]),
         metadata_revision: MetadataRevision::INITIAL,
+        posix: crate::model::PosixAttributes::new(true, crate::model::Timestamp::EPOCH),
     };
     let batch = MetadataBatch {
         mutations: vec![
-            MetadataMutation::PutObject(root.clone()),
-            MetadataMutation::PutObject(file.clone()),
+            MetadataMutation::PutObject(root.clone().into()),
+            MetadataMutation::PutObject(file.clone().into()),
             MetadataMutation::PutChild(file.directory_entry().context("missing file entry")?),
             MetadataMutation::SetGrant {
                 object_id: file.id,
@@ -323,7 +325,7 @@ async fn moves_and_grants_publish_atomically_while_old_snapshots_stay_stable() -
     scoped
         .commit(MetadataBatch {
             mutations: vec![
-                MetadataMutation::PutObject(updated.clone()),
+                MetadataMutation::PutObject(updated.clone().into()),
                 MetadataMutation::DeleteChild {
                     parent_id: root.id,
                     name: old_parent.name.clone(),
@@ -379,7 +381,7 @@ async fn invalid_batches_missing_blobs_and_failed_uploads_leave_metadata_unchang
     let mut duplicate = initial.clone();
     duplicate
         .mutations
-        .push(MetadataMutation::PutObject(file.clone()));
+        .push(MetadataMutation::PutObject(file.clone().into()));
     ensure!(scoped.commit(duplicate).await.is_err());
     let other = storage.workspace(&WorkspaceId::new("w/other")?)?;
     ensure!(other.commit(initial.clone()).await.is_err());
@@ -396,6 +398,20 @@ async fn invalid_batches_missing_blobs_and_failed_uploads_leave_metadata_unchang
     ensure!(view.changes(0, 10).await?.is_empty());
     std::fs::remove_file(directory.path().join("test/blobs"))?;
     ensure!(scoped.commit(initial).await? == 1);
+    verify_fixture(&scoped, file.id).await?;
+    let mut changed_content = file.clone();
+    changed_content.kind = ObjectKind::File(FileContent {
+        version: ContentVersionId::generate(),
+        size_bytes: 0,
+    });
+    ensure!(
+        scoped
+            .begin_metadata_write()
+            .await
+            .commit(vec![MetadataMutation::PutObject(changed_content.into())])
+            .await
+            .is_err()
+    );
     verify_fixture(&scoped, file.id).await?;
     storage.close().await
 }
@@ -556,5 +572,135 @@ async fn cleanup_fixture(store: Arc<dyn ObjectStore>, prefix: &StoragePrefix) ->
         .try_collect::<Vec<_>>()
         .await?;
     ensure!(scoped.list(None).try_next().await?.is_none());
+    Ok(())
+}
+
+#[tokio::test]
+async fn namespace_writes_release_publication_before_durability_and_recover_atomically()
+-> Result<()> {
+    use crate::namespace::{CreateDirectory, mkdir};
+
+    for succeed in [true, false] {
+        let store: Arc<dyn ObjectStore> = Arc::new(InMemory::new());
+        let prefix = "namespace-durability".parse()?;
+        let storage = Arc::new(
+            Storage::open_with_settings(
+                store.clone(),
+                &prefix,
+                Settings {
+                    flush_interval: None,
+                    ..Default::default()
+                },
+            )
+            .await?,
+        );
+        let workspace = WorkspaceId::new("w")?;
+        let keys = Keyspace::new(workspace.clone())?;
+        let writer_store = storage.clone();
+        let writer_workspace = workspace.clone();
+        let creation = tokio::spawn(async move {
+            writer_store
+                .create_workspace(&writer_workspace, [42; 32], &["owner".to_owned()].into())
+                .await
+        });
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while storage
+                .metadata
+                .get(keys.workspace_record())
+                .await?
+                .is_none()
+            {
+                tokio::time::sleep(Duration::from_millis(1)).await;
+            }
+            Ok::<_, anyhow::Error>(())
+        })
+        .await??;
+        storage.metadata.flush().await?;
+        let root = creation.await??.context("root creation")?;
+        let mut writers = Vec::new();
+        for name in ["one", "two"] {
+            let writer_store = storage.clone();
+            let writer_workspace = workspace.clone();
+            writers.push(tokio::spawn(async move {
+                mkdir(
+                    &writer_store,
+                    &writer_workspace,
+                    &["owner".to_owned()].into(),
+                    CreateDirectory {
+                        parent_id: root,
+                        name: name.parse()?,
+                        mime_type: "inode/directory".parse()?,
+                        xattrs: Default::default(),
+                        mode: 0o755,
+                    },
+                )
+                .await
+                .map_err(anyhow::Error::from)
+            }));
+        }
+        // Both batches must publish even though neither caller can finish without a WAL flush.
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while storage
+                .workspace(&workspace)?
+                .read_view()
+                .await?
+                .children(root, None, 10)
+                .await?
+                .len()
+                != 2
+            {
+                tokio::time::sleep(Duration::from_millis(1)).await;
+            }
+            Ok::<_, anyhow::Error>(())
+        })
+        .await??;
+        ensure!(writers.iter().all(|writer| !writer.is_finished()));
+        let pending = storage.workspace(&workspace)?.read_view().await?;
+        ensure!(
+            pending
+                .object(root)
+                .await?
+                .context("root")?
+                .metadata_revision
+                .get()
+                == 2
+        );
+        ensure!(pending.changes(1, 10).await?.is_empty());
+        drop(pending);
+        if succeed {
+            storage.metadata.flush().await?;
+            for writer in writers {
+                writer.await??;
+            }
+            storage.close().await?;
+        } else {
+            storage
+                .metadata
+                .close_with_options(slatedb::config::CloseOptions { flush_type: None })
+                .await?;
+            for writer in writers {
+                ensure!(writer.await?.is_err());
+            }
+        }
+        let recovered = Storage::open(store, &prefix).await?;
+        let view = recovered.workspace(&workspace)?.read_view().await?;
+        let count = if succeed { 2 } else { 0 };
+        ensure!(view.children(root, None, 10).await?.len() == count);
+        ensure!(view.changes(1, 10).await?.len() == count);
+        ensure!(
+            view.object(root)
+                .await?
+                .context("root")?
+                .metadata_revision
+                .get()
+                == u64::try_from(count)?
+        );
+        for entry in view.children(root, None, 10).await? {
+            let object = view.object(entry.object_id).await?.context("child")?;
+            ensure!(object.directory_entry() == Some(entry));
+        }
+        drop(view);
+        recovered.close().await?;
+    }
     Ok(())
 }

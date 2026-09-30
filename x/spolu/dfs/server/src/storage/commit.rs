@@ -2,12 +2,13 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use anyhow::{Context, Result, ensure};
 use slatedb::{
-    WriteBatch,
+    WriteBatch, WriteHandle,
     bytes::Bytes,
     object_store::{ObjectStoreExt, PutMode, path::Path},
 };
+use tokio::sync::MutexGuard;
 
-use super::{WorkspaceStorage, codec};
+use super::{ReadView, WorkspaceStorage, codec};
 use crate::model::{
     ContentVersionId, DirectoryEntry, EntryName, ObjectId, ObjectKind, ObjectMetadata,
 };
@@ -15,7 +16,7 @@ use crate::model::{
 /// Internal storage mutations; namespace validation and authorization belong to their callers.
 #[derive(Clone, Debug)]
 pub enum MetadataMutation {
-    PutObject(ObjectMetadata),
+    PutObject(Box<ObjectMetadata>),
     DeleteObject(ObjectId),
     PutChild(DirectoryEntry),
     DeleteChild {
@@ -59,11 +60,73 @@ impl WorkspaceStorage<'_> {
      * retain uploaded blobs, and never claim that an error proves the batch did not commit.
      */
     pub async fn commit(&self, batch: MetadataBatch) -> Result<u64> {
-        ensure!(!batch.mutations.is_empty(), "empty metadata batch");
+        let PreparedBatch {
+            rows,
+            changed,
+            references,
+        } = self.prepare(batch.mutations)?;
+
+        let mut uploaded = HashSet::new();
+        for upload in &batch.uploads {
+            let reference = references
+                .get(&upload.object_id)
+                .context("upload has no object record")?;
+            ensure!(
+                reference.version == upload.version
+                    && reference.size_bytes == u64::try_from(upload.bytes.len())?,
+                "upload does not match content reference"
+            );
+            ensure!(uploaded.insert(upload.object_id), "duplicate blob upload");
+        }
+        for upload in batch.uploads {
+            self.storage
+                .blobs
+                .put_opts(
+                    &self.blob_path(upload.object_id, upload.version),
+                    upload.bytes.into(),
+                    PutMode::Create.into(),
+                )
+                .await
+                .context("upload immutable content")?;
+        }
+        for (id, content) in references {
+            if !uploaded.contains(&id) {
+                let blob = self
+                    .storage
+                    .blobs
+                    .head(&self.blob_path(id, content.version))
+                    .await
+                    .context("verify referenced content")?;
+                ensure!(
+                    blob.size == content.size_bytes,
+                    "content size does not match reference"
+                );
+            }
+        }
+
+        // Serialize sequence allocation and publication, never uploads or the durability wait.
+        let (sequence, handle) = self
+            .begin_metadata_write()
+            .await
+            .submit(PreparedBatch {
+                rows,
+                changed,
+                references: HashMap::new(),
+            })
+            .await?;
+        handle
+            .await_durable()
+            .await
+            .context("persist metadata WAL")?;
+        Ok(sequence)
+    }
+
+    fn prepare(&self, mutations: Vec<MetadataMutation>) -> Result<PreparedBatch> {
+        ensure!(!mutations.is_empty(), "empty metadata batch");
         let mut rows = BTreeMap::new();
         let mut changed = BTreeSet::new();
         let mut references = HashMap::new();
-        for mutation in batch.mutations {
+        for mutation in mutations {
             match mutation {
                 MetadataMutation::PutObject(object) => {
                     ensure!(
@@ -122,84 +185,21 @@ impl WorkspaceStorage<'_> {
             }
         }
 
-        let mut uploaded = HashSet::new();
-        for upload in &batch.uploads {
-            let reference = references
-                .get(&upload.object_id)
-                .context("upload has no object record")?;
-            ensure!(
-                reference.version == upload.version
-                    && reference.size_bytes == u64::try_from(upload.bytes.len())?,
-                "upload does not match content reference"
-            );
-            ensure!(uploaded.insert(upload.object_id), "duplicate blob upload");
-        }
-        for upload in batch.uploads {
-            self.storage
-                .blobs
-                .put_opts(
-                    &self.blob_path(upload.object_id, upload.version),
-                    upload.bytes.into(),
-                    PutMode::Create.into(),
-                )
-                .await
-                .context("upload immutable content")?;
-        }
-        for (id, content) in references {
-            if !uploaded.contains(&id) {
-                let blob = self
-                    .storage
-                    .blobs
-                    .head(&self.blob_path(id, content.version))
-                    .await
-                    .context("verify referenced content")?;
-                ensure!(
-                    blob.size == content.size_bytes,
-                    "content size does not match reference"
-                );
-            }
-        }
+        Ok(PreparedBatch {
+            rows,
+            changed,
+            references,
+        })
+    }
 
-        // Serialize sequence allocation and publication, never uploads or the durability wait.
-        let (sequence, handle) = {
-            let _publish = self.storage.publish.lock().await;
-            let previous: u64 = self
-                .storage
-                .metadata
-                .get(self.keys.change_sequence())
-                .await?
-                .map(|bytes| codec::decode(&bytes))
-                .transpose()?
-                .unwrap_or(0);
-            let sequence = previous
-                .checked_add(1)
-                .context("change sequence exhausted")?;
-            let mut writes = WriteBatch::new();
-            for (key, value) in rows {
-                match value {
-                    Some(value) => writes.put(key, value),
-                    None => writes.delete(key),
-                }
-            }
-            writes.put(self.keys.change_sequence(), codec::encode(&sequence)?);
-            writes.put(
-                self.keys.change(sequence),
-                codec::encode(&changed.into_iter().collect::<Vec<_>>())?,
-            );
-            (
-                sequence,
-                self.storage
-                    .metadata
-                    .write(writes)
-                    .await
-                    .context("publish metadata batch")?,
-            )
-        };
-        handle
-            .await_durable()
-            .await
-            .context("persist metadata WAL")?;
-        Ok(sequence)
+    pub(crate) async fn begin_metadata_write(&self) -> MetadataWrite<'_> {
+        MetadataWrite {
+            workspace: WorkspaceStorage {
+                storage: self.storage,
+                keys: self.keys.clone(),
+            },
+            _publish: self.storage.publish.lock().await,
+        }
     }
 
     /// Callers authorize the object and choose a current content version before fetching bytes.
@@ -232,4 +232,91 @@ fn insert(
         "duplicate key in metadata batch"
     );
     Ok(())
+}
+
+struct PreparedBatch {
+    rows: BTreeMap<Vec<u8>, Option<Vec<u8>>>,
+    changed: BTreeSet<[u8; 16]>,
+    references: HashMap<ObjectId, crate::model::FileContent>,
+}
+
+/**
+ * @cc [owner:spolu,label:concurrency] metadata-write-guard
+ * Workspace mutations MUST share this lock during publication. Namespace metadata edits MUST
+ * acquire it before reading or authorizing, and retain it through publication. Drop the guard
+ * before awaiting WAL durability; blob I/O MUST happen outside the guard. Failure before submission
+ * MUST leave metadata and events unchanged.
+ */
+pub(crate) struct MetadataWrite<'a> {
+    workspace: WorkspaceStorage<'a>,
+    _publish: MutexGuard<'a, ()>,
+}
+
+impl MetadataWrite<'_> {
+    pub async fn read_view(&self) -> Result<ReadView> {
+        self.workspace.read_view().await
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend] metadata-only-content-preservation
+     * Every published file reference MUST match an existing record in the guarded view. This
+     * method MUST perform no blob I/O, and success MUST wait for the atomic batch's WAL durability.
+     */
+    pub async fn commit(self, mutations: Vec<MetadataMutation>) -> Result<u64> {
+        let prepared = self.workspace.prepare(mutations)?;
+        let view = self.read_view().await?;
+        for (id, content) in &prepared.references {
+            let object = view.object(*id).await?.context("missing existing file")?;
+            ensure!(
+                object.kind == ObjectKind::File(content.clone()),
+                "changed content reference"
+            );
+        }
+        let (sequence, handle) = self.submit(prepared).await?;
+        handle
+            .await_durable()
+            .await
+            .context("persist metadata WAL")?;
+        Ok(sequence)
+    }
+
+    async fn submit(self, prepared: PreparedBatch) -> Result<(u64, WriteHandle)> {
+        let PreparedBatch { rows, changed, .. } = prepared;
+        let previous: u64 = self
+            .workspace
+            .storage
+            .metadata
+            .get(self.workspace.keys.change_sequence())
+            .await?
+            .map(|bytes| codec::decode(&bytes))
+            .transpose()?
+            .unwrap_or(0);
+        let sequence = previous
+            .checked_add(1)
+            .context("change sequence exhausted")?;
+        let mut writes = WriteBatch::new();
+        for (key, value) in rows {
+            match value {
+                Some(value) => writes.put(key, value),
+                None => writes.delete(key),
+            }
+        }
+        writes.put(
+            self.workspace.keys.change_sequence(),
+            codec::encode(&sequence)?,
+        );
+        writes.put(
+            self.workspace.keys.change(sequence),
+            codec::encode(&changed.into_iter().collect::<Vec<_>>())?,
+        );
+        Ok((
+            sequence,
+            self.workspace
+                .storage
+                .metadata
+                .write(writes)
+                .await
+                .context("publish metadata batch")?,
+        ))
+    }
 }

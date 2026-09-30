@@ -1,3 +1,6 @@
+mod write;
+pub(crate) use write::{CreateDirectory, MetadataUpdate, mkdir, update};
+
 use std::collections::{BTreeSet, HashSet};
 
 use crate::{
@@ -169,11 +172,12 @@ impl<'a> NamespaceRead<'a> {
         })
     }
 
-    async fn directory(&self, id: ObjectId) -> Result<(), ApiError> {
-        if self.stat(id).await?.kind != ObjectKind::Directory {
+    async fn directory(&self, id: ObjectId) -> Result<ObjectMetadata, ApiError> {
+        let object = self.stat(id).await?;
+        if object.kind != ObjectKind::Directory {
             return Err(ApiError::NotDirectory);
         }
-        Ok(())
+        Ok(object)
     }
 }
 

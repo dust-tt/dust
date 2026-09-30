@@ -51,6 +51,7 @@ impl Storage {
                 mime_type: "inode/directory".parse()?,
                 xattrs: Xattrs::new(),
                 metadata_revision: MetadataRevision::INITIAL,
+                posix: crate::model::PosixAttributes::new(true, crate::model::Timestamp::now()?),
             };
             let mut batch = WriteBatch::new();
             batch.put(

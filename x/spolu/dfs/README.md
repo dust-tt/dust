@@ -11,8 +11,8 @@ and `HEAD` for process liveness. The server library defines typed IDs, object UR
 metadata, directory entries, revision tokens, and shared API errors with focused tests. Its storage
 API provides workspace-scoped snapshots, immutable blobs, and synchronous metadata/index/event
 batches. Workspace creation issues a workspace key; that key issues sessions with fixed grants.
-Session-authenticated stat, child lookup, and directory listing are available. Namespace mutations,
-file I/O, search, and FUSE follow in separate increments.
+Session-authenticated stat, child lookup, directory listing, mkdir, and metadata updates are available.
+Moves/removal, file I/O, search, and FUSE follow in separate increments.
 Optional GCS configuration opens SlateDB before serving HTTP and
 closes it after requests drain. Without it, the HTTP scaffold still runs without external services.
 The server runs natively on macOS and Linux.
@@ -108,7 +108,8 @@ Use a session key for these read-only JSON endpoints. Names and cursors stay in 
 | `POST /objects/list` | `{ "directory_id": "<uuid>", "limit": 100, "after": "file.txt" }` | Entries with attributes and `next_after` |
 
 Attributes include ID, kind, MIME type, base64 xattrs, metadata revision, and file content version/size.
-They omit canonical parents, paths, and grants. POSIX timestamps/modes arrive with metadata mutations.
+They include modes and `atime`/`mtime`/`ctime` as `{ "seconds": i64, "nanoseconds": u32 }`, and omit
+canonical parents, paths, and grants. Old records without timestamps read as the Unix epoch.
 Stat can access a directly shared object without exposing its private ancestors; lookup/list require
 access to the containing directory. Missing and inaccessible objects both return `not_found`.
 
@@ -118,6 +119,30 @@ and rechecks grants. Concurrent edits can cause skips/repeats across pages; rest
 a consistent full listing is required. Revocations and moves apply to subsequent requests; an
 already-started read may finish against its snapshot. Responses use `Cache-Control: no-store`.
 
+## Directory creation and metadata updates
+
+Both endpoints require a session key and return attributes after the atomic SlateDB batch is durable.
+
+| Request | JSON body | Result |
+| --- | --- | --- |
+| `POST /objects/mkdir` | `{ "parent_id": "<uuid>", "name": "folder" }` | New directory attributes; 201 |
+| `POST /objects/update` | `{ "object_id": "<uuid>", "expected_metadata_revision": 0, "mode": 493 }` | Updated attributes; 200 |
+
+Mkdir accepts optional `mime_type`, `xattrs` (base64 values), and `mode` (decimal `493` = octal `0755`).
+The caller applies umask. It creates a fresh ID, inherits parent access without attaching grants, and
+updates the parent's revision/mtime/ctime. A duplicate name returns `already_exists` (409).
+
+Update accepts `mime_type`, `mode`, `atime`, `mtime`, and an xattr patch. Omitted fields remain unchanged;
+`{"xattrs":{"user.note":"aGk=","user.old":null}}` stores bytes for `user.note` and removes `user.old`.
+Empty strings store empty byte values. Xattrs are limited to 32 KiB total key/value bytes per object.
+A stale expected revision returns `conflict` (409); an empty patch is invalid. Every accepted update
+advances the revision and sets server ctime. Content, parent, ID, and grants remain unchanged.
+Modes retain only permission bits and do not authorize server access; additional bits are unsupported.
+
+Authorization and validation remain serialized with publication; durability waits release the lock.
+A failed/disconnected request can have committed: inspect the name or attributes before retrying.
+Per-object concurrency and a broader retry protocol arrive in later increments.
+
 ## Storage and server checks
 
 Normal `cargo test --locked --workspace` runs real SlateDB against memory and temporary filesystem
@@ -126,8 +151,8 @@ create immutable blobs, commit scoped metadata/index/event batches, and verify r
 Local tests also withhold WAL flushing and inject upload failures. A subprocess test kills the
 writer after acknowledgement and verifies the full batch from a fresh process, locally and on GCS.
 The same cloud fixture exercises workspace/session HTTP handlers against GCS, including restart:
-workspace keys remain valid and old session keys fail. The cloud fixture creates a fresh
-`<test-prefix>/tests/<uuid>/` for every run and deletes only that
+workspace keys remain valid, old session keys fail, and created directories/edited attributes recover.
+The cloud fixture creates a fresh `<test-prefix>/tests/<uuid>/` for every run and deletes only that
 run's objects after success; failures leave the isolated prefix for inspection. The ignored `worker`
 test is an internal subprocess helper, not a standalone test command.
 

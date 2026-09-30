@@ -49,6 +49,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/objects/stat", post(objects::stat))
         .route("/objects/lookup", post(objects::lookup))
         .route("/objects/list", post(objects::list))
+        .route("/objects/mkdir", post(objects::mkdir))
+        .route("/objects/update", post(objects::update))
         .layer(DefaultBodyLimit::max(64 * 1024))
         .fallback(|| async { ApiError::NotFound })
         .method_not_allowed_fallback(|| async { ApiError::MethodNotAllowed })

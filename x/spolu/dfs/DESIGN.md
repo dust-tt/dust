@@ -134,12 +134,13 @@ Error responses carry `Cache-Control: no-store`; authentication failures also ca
 | `not_directory` | 400 | `ENOTDIR` |
 | `method_not_allowed` | 405 | `EOPNOTSUPP` |
 | `conflict` | 409 | `EAGAIN` for stale revisions. |
+| `already_exists` | 409 | `EEXIST` |
 | `capacity_exhausted` | 507 | `ENOSPC` |
 | `unavailable` | 503 | `EAGAIN` |
 | `unsupported` | 501 | `EOPNOTSUPP` |
 | `internal` | 500 | `EIO` |
 
-Add distinct codes for filesystem conditions such as existing names or nonempty directories with
+Add distinct codes for filesystem conditions such as nonempty directories with
 their endpoints; clients must not infer errno from message text or HTTP status alone. Unknown codes
 map to `EIO`. A failure or disconnect does not prove a mutation was uncommitted: do not blindly
 replay writes; define safe retries with the mutation protocol.
@@ -150,6 +151,13 @@ grant checks and returned attributes. Stat omits parent links and paths; lookup/
 to the containing directory. Listing returns attributes with entries, ordered by name bytes, with
 exclusive name cursors and limits of 1–1000. Pages reauthorize independently; concurrent edits may
 require restarting traversal. An in-flight read may complete against its original snapshot.
+
+`POST /objects/mkdir` creates an authorized child and updates its parent atomically.
+`POST /objects/update` patches MIME, xattrs, mode, and atime/mtime with a required expected metadata
+revision; stale revisions conflict. Both set server ctime, publish indexing events, and await durability.
+Xattr patches use base64 values, null deletions, and a 32 KiB total key/value limit. Authorization and
+publication share a lock until per-object concurrency is implemented; WAL waits release that lock.
+Old metadata remains readable, with default modes and epoch timestamps for absent POSIX attributes.
 
 ## Workspace creation, sessions, and virtual folders
 

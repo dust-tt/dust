@@ -1,9 +1,11 @@
+mod attributes;
 mod id;
 mod object;
 mod path;
 mod revision;
 mod uri;
 
+pub use attributes::{PosixAttributes, Timestamp};
 pub use id::{ContentVersionId, InvalidUuid, InvalidWorkspaceId, ObjectId, WorkspaceId};
 pub use mime::Mime as MimeType;
 pub use object::{DirectoryEntry, FileContent, ObjectKind, ObjectMetadata, ParentLink, Xattrs};

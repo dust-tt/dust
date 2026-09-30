@@ -104,6 +104,37 @@ pub(crate) async fn exercise_sessions(
             .key_hash
             == access::fingerprint(workspace_key)
     );
+    let (_, writer) = call(
+        &app,
+        "POST",
+        "/sessions",
+        Some(workspace_key),
+        json!({"workspace_id":workspace.as_str(), "grants":["g:admins"]}),
+    )
+    .await?;
+    let writer_key = text(&writer, "session_key")?;
+    let (status, directory) = call(
+        &app,
+        "POST",
+        "/objects/mkdir",
+        Some(writer_key),
+        json!({"parent_id":root_id.to_string(), "name":"persisted directory"}),
+    )
+    .await?;
+    ensure!(status == StatusCode::CREATED);
+    let (status, persisted) = call(
+        &app,
+        "POST",
+        "/objects/update",
+        Some(writer_key),
+        json!({
+            "object_id":directory["object_id"], "expected_metadata_revision":0,
+            "mode":448, "mime_type":"application/x-directory", "xattrs":{"user.binary":"AP8="},
+            "atime":{"seconds":-42,"nanoseconds":123}, "mtime":{"seconds":42,"nanoseconds":456},
+        }),
+    )
+    .await?;
+    ensure!(status == StatusCode::OK && persisted["metadata_revision"] == 1);
     let request = json!({"workspace_id": workspace.as_str(), "grants": ["u:alice", "arbitrary/\u{0000}é", "u:alice"]});
     let (status, created_session) = call(
         &app,
@@ -201,9 +232,19 @@ pub(crate) async fn exercise_sessions(
     .await?;
     ensure!(
         status == StatusCode::OK
-            && listing["entries"] == json!([])
+            && listing["entries"]
+                == json!([{ "name":"persisted directory", "attributes":persisted }])
             && listing["next_after"].is_null()
     );
+    let (status, recovered) = call(
+        &app,
+        "POST",
+        "/objects/stat",
+        Some(reader_key),
+        json!({"object_id":persisted["object_id"]}),
+    )
+    .await?;
+    ensure!(status == StatusCode::OK && recovered == persisted);
     ensure!(
         call(
             &app,

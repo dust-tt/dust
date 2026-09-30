@@ -4,7 +4,7 @@ use slatedb::Db;
 
 use crate::model::{
     ContentVersionId, FileContent, MetadataRevision, ObjectId, ObjectKind, ObjectMetadata,
-    ParentLink, WorkspaceId, Xattrs,
+    ParentLink, PosixAttributes, Timestamp, WorkspaceId, Xattrs,
 };
 
 const FORMAT_KEY: &[u8] = b"dfs-format";
@@ -41,14 +41,22 @@ pub(super) async fn check_format(db: &Db) -> Result<()> {
  * The V1 field order and enum tags MUST remain stable; format changes require a new version.
  */
 pub(super) fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>> {
-    let mut bytes = vec![1];
+    encode_version(1, value)
+}
+
+fn encode_version<T: Serialize>(version: u8, value: &T) -> Result<Vec<u8>> {
+    let mut bytes = vec![version];
     bytes.extend(postcard::to_stdvec(value).context("encode metadata")?);
     Ok(bytes)
 }
 
 pub(super) fn decode<T: DeserializeOwned>(bytes: &[u8]) -> Result<T> {
+    decode_version(1, bytes)
+}
+
+fn decode_version<T: DeserializeOwned>(version: u8, bytes: &[u8]) -> Result<T> {
     ensure!(
-        bytes.first() == Some(&1),
+        bytes.first() == Some(&version),
         "unsupported metadata schema version"
     );
     let (value, remaining) = postcard::take_from_bytes(&bytes[1..]).context("decode metadata")?;
@@ -73,9 +81,22 @@ enum KindV1 {
     Directory,
 }
 
+/**
+ * @cc [owner:spolu,label:backend] object-format-evolution
+ * Object writes MUST use version 2; reads MUST continue accepting unchanged V1 records, supplying
+ * default modes and epoch times for their missing attributes. V2 field order and nested attribute
+ * layouts MUST remain stable; incompatible changes require a new version.
+ */
+#[derive(Serialize, Deserialize)]
+struct ObjectV2 {
+    base: ObjectV1,
+    posix: PosixAttributes,
+}
+
 pub(super) fn encode_object(object: &ObjectMetadata) -> Result<Vec<u8>> {
     validate_xattrs(&object.xattrs)?;
-    encode(&ObjectV1 {
+    object.posix.validate()?;
+    let base = ObjectV1 {
         workspace: object.workspace_id.to_string(),
         id: *object.id.as_bytes(),
         parent: object
@@ -92,7 +113,14 @@ pub(super) fn encode_object(object: &ObjectMetadata) -> Result<Vec<u8>> {
         mime_type: object.mime_type.to_string(),
         xattrs: object.xattrs.clone(),
         revision: object.metadata_revision.get(),
-    })
+    };
+    encode_version(
+        2,
+        &ObjectV2 {
+            base,
+            posix: object.posix.clone(),
+        },
+    )
 }
 
 pub(super) fn decode_object(
@@ -100,7 +128,20 @@ pub(super) fn decode_object(
     workspace: &WorkspaceId,
     id: ObjectId,
 ) -> Result<ObjectMetadata> {
-    let record: ObjectV1 = decode(bytes)?;
+    let (record, posix) = match bytes.first() {
+        Some(1) => {
+            let record: ObjectV1 = decode(bytes)?;
+            let posix =
+                PosixAttributes::new(matches!(record.kind, KindV1::Directory), Timestamp::EPOCH);
+            (record, posix)
+        }
+        Some(2) => {
+            let record: ObjectV2 = decode_version(2, bytes)?;
+            record.posix.validate()?;
+            (record.base, record.posix)
+        }
+        _ => anyhow::bail!("unsupported object schema version"),
+    };
     ensure!(
         record.workspace == workspace.as_str() && record.id == *id.as_bytes(),
         "object record does not match its key"
@@ -134,6 +175,7 @@ pub(super) fn decode_object(
             .context("invalid stored MIME type")?,
         xattrs: record.xattrs,
         metadata_revision: MetadataRevision::from_u64(record.revision),
+        posix,
     })
 }
 
@@ -167,6 +209,7 @@ mod tests {
             mime_type: "text/plain; charset=utf-8".parse()?,
             xattrs: Xattrs::from([("user.binary".to_owned(), vec![0, 128, 255])]),
             metadata_revision: MetadataRevision::from_u64(u64::MAX),
+            posix: PosixAttributes::new(false, Timestamp::EPOCH),
         };
         let bytes = encode_object(&object)?;
         assert_eq!(
@@ -183,9 +226,31 @@ mod tests {
         ] {
             assert!(decode_object(&invalid, &object.workspace_id, object.id).is_err());
         }
-        let mut corrupt: ObjectV1 = decode(&bytes)?;
-        corrupt.mime_type = "invalid".to_owned();
-        assert!(decode_object(&encode(&corrupt)?, &object.workspace_id, object.id).is_err());
+        let mut corrupt: ObjectV2 = decode_version(2, &bytes)?;
+        let legacy = encode(&corrupt.base)?;
+        let old = decode_object(&legacy, &object.workspace_id, object.id)?;
+        assert_eq!(old.posix, PosixAttributes::new(false, Timestamp::EPOCH));
+        assert_eq!(old.kind, object.kind);
+        assert_eq!(old.metadata_revision, object.metadata_revision);
+        corrupt.posix.mtime.nanoseconds = 1_000_000_000;
+        assert!(
+            decode_object(
+                &encode_version(2, &corrupt)?,
+                &object.workspace_id,
+                object.id
+            )
+            .is_err()
+        );
+        corrupt.posix = object.posix.clone();
+        corrupt.base.mime_type = "invalid".to_owned();
+        assert!(
+            decode_object(
+                &encode_version(2, &corrupt)?,
+                &object.workspace_id,
+                object.id
+            )
+            .is_err()
+        );
         assert_eq!(encode(&[0x42_u8; 16])?, [vec![1], vec![0x42; 16]].concat());
         Ok(())
     }

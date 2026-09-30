@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use super::{
-    ContentVersionId, EntryName, MetadataRevision, MimeType, ObjectId, ObjectRevision, WorkspaceId,
+    ContentVersionId, EntryName, MetadataRevision, MimeType, ObjectId, ObjectRevision,
+    PosixAttributes, WorkspaceId,
 };
 
 /// Xattr values are opaque bytes; JSON endpoints encode them as standard padded base64.
@@ -36,6 +37,7 @@ pub struct ObjectMetadata {
     pub mime_type: MimeType,
     pub xattrs: Xattrs,
     pub metadata_revision: MetadataRevision,
+    pub posix: PosixAttributes,
 }
 
 impl ObjectMetadata {
@@ -91,6 +93,7 @@ mod tests {
             mime_type: "text/plain".parse()?,
             xattrs: BTreeMap::from([("user.example".to_owned(), vec![0, 128, 255])]),
             metadata_revision: MetadataRevision::INITIAL,
+            posix: crate::model::PosixAttributes::new(true, crate::model::Timestamp::EPOCH),
         };
         let after = ObjectMetadata {
             parent: Some(ParentLink {
@@ -123,6 +126,7 @@ mod tests {
             mime_type: "inode/directory".parse()?,
             xattrs: Xattrs::new(),
             metadata_revision: MetadataRevision::INITIAL,
+            posix: crate::model::PosixAttributes::new(true, crate::model::Timestamp::EPOCH),
         };
         assert_eq!(root.directory_entry(), None);
         assert_eq!(root.revision().content, None);

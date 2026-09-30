@@ -5,8 +5,11 @@ snapshot for related lookups and scans. Scans take typed exclusive cursors and a
 Object batches fetch at most 1000 IDs, in order, with up to 16 concurrent point reads. Grant
 intersection checks at most 512 exact keys with the same concurrency bound, independent of the
 number of grants attached to the object. The namespace read service authorizes stat/lookup/list
-against current ancestors in one snapshot. Mutation callers will check parent/cycle/collision/revision
-constraints and serialize competing writes before calling this layer.
+against current ancestors in one snapshot. Mkdir/metadata updates acquire `begin_metadata_write()`,
+then read/authorize/validate through its view and publish with that guard. The shared publication lock
+prevents collisions, lost updates, and authorization races; the guard releases before the durability
+wait. This metadata-only path verifies unchanged file references against existing records, without
+blob I/O. Rename/removal validation and per-object concurrency arrive in later increments.
 
 Workspace creation atomically persists its root, explicit root grants in both directions, key hash,
 and initial change event. An existing workspace namespace is never replaced. Authentication reads
@@ -19,7 +22,7 @@ cross-workspace records are rejected before uploading. Uploaded versions use cre
 an existing version is never overwritten, even with identical bytes.
 
 Each batch includes a per-workspace change sequence and the sorted, deduplicated IDs of affected
-objects/parents. A short shared publication lock protects sequence allocation and submission;
+objects/parents. A shared publication lock protects sequence allocation and submission;
 blob I/O and the WAL durability wait occur outside it. `commit` returns the sequence only after
 `WriteHandle::await_durable()` succeeds. An error after submission may have an ambiguous outcome;
 do not blindly retry mutations or delete their blobs. Orphan reclamation is deferred.
@@ -32,14 +35,15 @@ Event sequences are local to a workspace and are distinct from object metadata r
 ## Format v1
 
 The database-level `dfs-format` key contains ASCII `1`. Unknown formats and unmarked nonempty
-databases fail opening; empty databases receive a durable marker. No automatic migrations exist.
+databases fail opening; empty databases receive a durable marker. Object V1 records remain readable;
+updates write V2. No bulk migration runs.
 
 Workspace keys start with byte `01`, a big-endian `u32` UTF-8 byte length, the exact workspace bytes,
 and a one-byte family tag. IDs below are raw 16-byte UUIDs; names and grants preserve exact UTF-8.
 
 | Tag | Family | Suffix after the workspace prefix and tag | Value before encoding |
 | --- | --- | --- | --- |
-| `01` | Objects | Object ID | `ObjectV1` |
+| `01` | Objects | Object ID | `ObjectV1` or `ObjectV2` |
 | `02` | Children | Parent ID, name bytes | Child ID |
 | `03` | Grants by object | Object ID, grant bytes | Unit |
 | `04` | Objects by grant | Grant byte length (`u32` big-endian), grant bytes, object ID | Unit |
@@ -51,11 +55,15 @@ Length prefixes keep workspaces and grants distinct even with slashes, NUL, Unic
 prefixes. Names/grants at the end of a key need no length delimiter. Fixed-width big-endian change
 sequences preserve scan order.
 
-Each value starts with version byte `01`, followed by [Postcard](https://docs.rs/postcard/1.1.3/postcard/)
-encoding. `ObjectV1` stores workspace, ID, optional parent/name, kind/content reference, MIME type,
-xattrs, and metadata revision in that order. UUIDs occupy 16 bytes; xattr values remain binary.
+Each value starts with a version byte (`01`, or `02` for new object records), followed by
+[Postcard](https://docs.rs/postcard/1.1.3/postcard/) encoding. `ObjectV1` stores workspace, ID, optional parent/name, kind/content reference, MIME type,
+xattrs, and metadata revision in that order. `ObjectV2` stores that unchanged V1 structure followed
+by mode (`u16`), atime, mtime, ctime; each time is signed seconds (`i64`) then nanoseconds (`u32`).
+Legacy V1 defaults to mode 0644/0755 and epoch times; new objects initialize all times at creation.
+UUIDs occupy 16 bytes; xattr values remain binary.
 Decoding checks the version, complete consumption, validated names/MIME/xattr keys, and object-key
-identity. Changing record layouts requires a new version; HTTP representations are independent.
+identity, permission bits, and nanosecond bounds. Changing record layouts requires a new version;
+HTTP representations are independent.
 
 SlateDB files live under `<prefix>/metadata/`. Content lives at
 `<prefix>/blobs/v1/<hex UTF-8 workspace>/<object UUID>/<content UUID>`, with UUIDs formatted as

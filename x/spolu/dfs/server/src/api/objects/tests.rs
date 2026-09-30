@@ -1,3 +1,5 @@
+mod mutations;
+
 use std::sync::Arc;
 
 use anyhow::{Context, Result, ensure};
@@ -61,7 +63,7 @@ impl Fixture {
         root_record.metadata_revision = root_record.metadata_revision.next()?;
         batch
             .mutations
-            .push(MetadataMutation::PutObject(root_record));
+            .push(MetadataMutation::PutObject(root_record.into()));
         for object in [&private, &shared, &elsewhere] {
             add_object(&mut batch, object)?;
         }
@@ -135,13 +137,14 @@ fn directory(workspace: &WorkspaceId, parent: ObjectId, name: &str) -> Result<Ob
         mime_type: "inode/directory".parse()?,
         xattrs: Xattrs::new(),
         metadata_revision: MetadataRevision::INITIAL,
+        posix: crate::model::PosixAttributes::new(true, crate::model::Timestamp::EPOCH),
     })
 }
 
 fn add_object(batch: &mut MetadataBatch, object: &ObjectMetadata) -> Result<()> {
     batch
         .mutations
-        .push(MetadataMutation::PutObject(object.clone()));
+        .push(MetadataMutation::PutObject(object.clone().into()));
     batch.mutations.push(MetadataMutation::PutChild(
         object.directory_entry().context("child link")?,
     ));
@@ -255,7 +258,9 @@ async fn moves_and_revocations_change_access_while_in_flight_reads_keep_one_snap
     });
     for mut parent in [f.shared.clone(), f.elsewhere.clone()] {
         parent.metadata_revision = parent.metadata_revision.next()?;
-        batch.mutations.push(MetadataMutation::PutObject(parent));
+        batch
+            .mutations
+            .push(MetadataMutation::PutObject(parent.into()));
     }
     f.storage.workspace(&f.workspace)?.commit(batch).await?;
     ensure!(
@@ -482,7 +487,7 @@ async fn inconsistent_children_and_ancestor_cycles_fail_closed() -> Result<()> {
     f.storage
         .workspace(&f.workspace)?
         .commit(MetadataBatch {
-            mutations: vec![MetadataMutation::PutObject(corrupt)],
+            mutations: vec![MetadataMutation::PutObject(corrupt.into())],
             uploads: vec![],
         })
         .await?;

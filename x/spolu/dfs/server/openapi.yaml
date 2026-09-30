@@ -7,7 +7,7 @@ info:
     return 405 with ErrorResponse (method_not_allowed) and an Allow header.
     Errors carry Cache-Control: no-store. HEAD responses omit the body.
     JSON requests accept at most 64 KiB. Malformed JSON, unknown fields, and
-    oversized bodies return invalid_input (400). All workspace/session responses disable caching.
+    oversized bodies return invalid_input (400). All authenticated responses disable caching.
     Missing and inaccessible objects
     produce the same not_found response; messages never contain resource or storage details.
 paths:
@@ -223,6 +223,64 @@ paths:
                 $ref: '#/components/schemas/ListResponse'
         default:
           $ref: '#/components/responses/ApiError'
+  /objects/mkdir:
+    post:
+      operationId: createDirectory
+      summary: Create a directory under an authorized parent.
+      description: |
+        Requires the session's current grants to authorize the parent. The directory, child entry,
+        parent revision/mtime/ctime, and indexing event persist atomically before returning.
+        Access is inherited; session grants are never attached to the new directory. Existing names
+        return already_exists (409); an authorized file parent returns not_directory (400).
+        Creation generates a fresh ID, revision zero, and equal server atime/mtime/ctime.
+        Failure after submission can have an ambiguous outcome; look up the name before retrying.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MkdirRequest'
+      responses:
+        "201":
+          description: Directory persisted; attributes use Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectAttributes'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/update:
+    post:
+      operationId: updateMetadata
+      summary: Update an authorized file or directory's metadata.
+      description: |
+        Requires current grants and expected_metadata_revision. Authorization, revision comparison,
+        and publication are serialized; stale revisions return conflict (409) without a mutation.
+        Only supplied fields change. Omitted/null scalar fields are unchanged; xattr null values
+        remove keys and empty base64 strings store empty bytes. Require at least one supplied scalar
+        or xattr entry. Every accepted update increments the revision and sets server ctime,
+        preserving identity, parent, content reference, and grants. Reads never change atime.
+        Metadata and the indexing event must be durable before returning. A failed/disconnected
+        request may already have committed; re-read attributes to resolve an ambiguous outcome.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMetadataRequest'
+      responses:
+        "200":
+          description: Updated attributes persisted; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectAttributes'
+        default:
+          $ref: '#/components/responses/ApiError'
 components:
   securitySchemes:
     ServerKey:
@@ -241,7 +299,7 @@ components:
     ApiError:
       description: |
         Shared error envelope. Requests may fail with invalid_input/name_too_long/not_directory (400), unauthenticated (401),
-        not_found (404), conflict (409), internal (500), unsupported (501), unavailable (503), or
+        not_found (404), conflict/already_exists (409), internal (500), unsupported (501), unavailable (503), or
         capacity_exhausted (507). Credentials and resource/storage details are never included.
       headers:
         Cache-Control:
@@ -303,13 +361,97 @@ components:
           minimum: 1
           maximum: 1000
           default: 100
+    Timestamp:
+      type: object
+      additionalProperties: false
+      required: [seconds, nanoseconds]
+      properties:
+        seconds:
+          type: integer
+          format: int64
+          description: Signed Unix seconds; negative values are allowed.
+        nanoseconds:
+          type: integer
+          minimum: 0
+          maximum: 999999999
+    MkdirRequest:
+      type: object
+      additionalProperties: false
+      required: [parent_id, name]
+      properties:
+        parent_id:
+          $ref: '#/components/schemas/ObjectId'
+        name:
+          $ref: '#/components/schemas/EntryName'
+        mime_type:
+          type: string
+          nullable: true
+          default: inode/directory
+          description: Valid MIME type; omitted/null uses inode/directory.
+        mode:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 511
+          default: 493
+          description: Low nine bits (0755 default); caller applies umask. Extra bits return unsupported.
+        xattrs:
+          type: object
+          default: {}
+          additionalProperties:
+            type: string
+            format: byte
+          description: |
+            Nonempty UTF-8 keys without NUL and standard padded base64 values. Sum of UTF-8 key
+            bytes and decoded value bytes must fit 32 KiB per object (capacity_exhausted, 507).
+    UpdateMetadataRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id, expected_metadata_revision]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        expected_metadata_revision:
+          type: integer
+          minimum: 0
+          description: Required unsigned 64-bit revision from this object's attributes in this session.
+        mime_type:
+          type: string
+          nullable: true
+          description: Valid MIME type; omitted/null leaves unchanged.
+        mode:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 511
+          description: Low nine permission bits; extra bits return unsupported (501). Grants authorize access.
+        atime:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        mtime:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        xattrs:
+          type: object
+          default: {}
+          additionalProperties:
+            type: string
+            format: byte
+            nullable: true
+          description: |
+            Patch with nonempty UTF-8 keys without NUL. Standard padded base64 replaces a value,
+            null removes a key (absent keys are harmless), and omitted keys are unchanged.
+            Resulting total of key bytes plus decoded value bytes must fit 32 KiB (507 otherwise).
     ObjectAttributes:
       type: object
       additionalProperties: false
-      required: [object_id, kind, mime_type, xattrs, metadata_revision]
+      required: [object_id, kind, mime_type, xattrs, metadata_revision, mode, atime, mtime, ctime]
       description: |
         Persisted attributes only. content_version and size_bytes are present for files and absent
-        for directories. POSIX modes/timestamps arrive with metadata mutations. Parent links,
+        for directories. Modes contain the low nine permission bits and do not grant server access.
+        Legacy objects without timestamps use the Unix epoch until updated. Parent links,
         names, paths, and grants are omitted. Revisions are meaningful only within the current
         session, workspace, and object; session recreation discards cached state.
       properties:
@@ -330,6 +472,16 @@ components:
           type: integer
           minimum: 0
           description: Unsigned 64-bit metadata counter; clients must preserve its full precision.
+        mode:
+          type: integer
+          minimum: 0
+          maximum: 511
+        atime:
+          $ref: '#/components/schemas/Timestamp'
+        mtime:
+          $ref: '#/components/schemas/Timestamp'
+        ctime:
+          $ref: '#/components/schemas/Timestamp'
         content_version:
           type: string
           pattern: '^[0-9a-f]{32}$'
@@ -449,7 +601,7 @@ components:
               type: string
               description: |
                 invalid_input, name_too_long, and not_directory (400), unauthenticated (401), forbidden (403),
-                not_found (404), method_not_allowed (405), conflict (409), internal (500),
+                not_found (404), method_not_allowed (405), conflict/already_exists (409), internal (500),
                 unsupported (501), unavailable (503), capacity_exhausted (507).
                 Unauthenticated responses include WWW-Authenticate: Bearer.
                 Clients branch on codes, not messages, and must handle unknown codes.
@@ -462,6 +614,7 @@ components:
                 - not_directory
                 - method_not_allowed
                 - conflict
+                - already_exists
                 - internal
                 - unsupported
                 - unavailable

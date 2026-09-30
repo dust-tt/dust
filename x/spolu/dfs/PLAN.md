@@ -1,8 +1,8 @@
 # Implementation plan
 
 [DESIGN.md](DESIGN.md) describes the architecture; [CONTRACTS](CONTRACTS) defines the invariants.
-The server scaffold, initial model types, API errors, synchronous storage, workspace creation, and
-sessions are implemented today.
+The server scaffold, object model, synchronous storage, workspace/session APIs, namespace reads,
+directory creation, and metadata updates are implemented today.
 
 Work in small increments: each checkbox should produce a reviewable change with a focused test or
 demo. Split a checkbox further when needed. Keep the server runnable, update API documentation and
@@ -98,7 +98,7 @@ restart while old session keys fail.
 ## 4. Persistent namespace and grant enforcement
 
 - [x] Implement object lookup, stat, and paginated directory listing with entry attributes.
-- [ ] Implement directory creation and metadata updates (MIME type, xattrs, timestamps, and modes)
+- [x] Implement directory creation and metadata updates (MIME type, xattrs, timestamps, and modes)
   through synchronous metadata batches.
 - [ ] Maintain explicit object-to-grant and grant-to-object indexes atomically in SlateDB.
 - [ ] Resolve effective grants through current ancestors and authorize every operation against a
@@ -107,10 +107,12 @@ restart while old session keys fail.
   prevention, and nonempty-directory errors. Specify replacement behavior explicitly.
 - [ ] Add per-object concurrency control without holding a file's write lock across unrelated files.
 
-Read-only operations now enforce current inherited grants within one snapshot per request. Stat
-returns the attributes currently persisted; timestamps/modes arrive with metadata mutations. Listing
-uses exclusive name cursors and fresh authorization per page; concurrent edits can require restarting
-the listing. Mutation authorization remains part of the later tasks above.
+Reads enforce current inherited grants within one snapshot per request. Listing uses exclusive name
+cursors and fresh authorization per page; concurrent edits can require restarting the listing.
+Mkdir and metadata updates authorize under the shared publication lock and release it before the WAL
+wait. Metadata updates require the expected revision. Per-object concurrency and authorization for
+future mutation endpoints remain in the tasks above. Local interruption tests verify atomic recovery;
+the GCS fixture verifies mkdir, metadata updates, and attributes after reopening.
 
 **Done when:** sessions can traverse authorized persisted trees; moves and grant changes immediately
 affect access, and failed mutations leave namespace and indexes unchanged.
