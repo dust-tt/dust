@@ -216,6 +216,8 @@ export type SaveAgentConfigurationParams = {
   skills?: SkillResource[];
 };
 
+export type AgentAuditOptions = { auditMetadata?: Record<string, string> };
+
 // A partial update applied by `updateConfiguration`/`bulkUpdate`: any subset of an agent's
 // configuration. Only provided properties are considered. `model` may itself be partial — the
 // provided fields are merged into the agent's current model, so a bulk model change can set the
@@ -2188,7 +2190,10 @@ export class AgentResource
    * never left `archived` while a trigger keeps firing. Disabling is idempotent, so a retry after a
    * transient failure converges.
    */
-  async archive(auth: Authenticator): Promise<Result<boolean, Error>> {
+  async archive(
+    auth: Authenticator,
+    { auditMetadata }: AgentAuditOptions = {}
+  ): Promise<Result<boolean, Error>> {
     assert(this.scope !== "global", "Global agents cannot be archived.");
     this.assertCurrentVersion();
     if (!auth.can("admin", this)) {
@@ -2245,6 +2250,7 @@ export class AgentResource
         context: getAuditLogContext(auth),
         metadata: {
           agent_name: this.name,
+          ...auditMetadata,
         },
       });
 
@@ -3101,16 +3107,18 @@ export class AgentResource
   // here (see the `agent-create-capability` contract).
   static async makeNew(
     auth: Authenticator,
-    params: SaveAgentConfigurationParams
+    params: SaveAgentConfigurationParams,
+    { auditMetadata }: AgentAuditOptions = {}
   ): Promise<Result<AgentResource, Error>> {
     if (!auth.hasWorkspacePermission("create", "agent")) {
       return new Err(new Error("Creating agents is restricted."));
     }
 
-    return AgentResource._saveConfiguration(auth, {
-      ...params,
-      agentConfigurationId: undefined,
-    });
+    return AgentResource._saveConfiguration(
+      auth,
+      { ...params, agentConfigurationId: undefined },
+      { auditMetadata }
+    );
   }
 
   static async createPending(
@@ -3201,7 +3209,8 @@ export class AgentResource
    */
   async updateConfiguration(
     auth: Authenticator,
-    update: AgentConfigurationUpdate
+    update: AgentConfigurationUpdate,
+    { auditMetadata }: AgentAuditOptions = {}
   ): Promise<Result<{ resource: AgentResource; changed: boolean }, Error>> {
     if (this.scope === "global") {
       return new Err(new Error("Global agents cannot be updated."));
@@ -3352,6 +3361,7 @@ export class AgentResource
       const editorsRes = await syncAgentEditors(auth, {
         agentResource: this,
         editors: editorsChange,
+        auditMetadata,
       });
       if (editorsRes.isErr()) {
         return editorsRes;
@@ -3363,10 +3373,11 @@ export class AgentResource
     // target (the old row is now archived).
     let target: AgentResource = this;
     if (versionParams) {
-      const versionRes = await AgentResource._saveConfiguration(auth, {
-        ...versionParams,
-        agentConfigurationId: this.sId,
-      });
+      const versionRes = await AgentResource._saveConfiguration(
+        auth,
+        { ...versionParams, agentConfigurationId: this.sId },
+        { auditMetadata }
+      );
       if (versionRes.isErr()) {
         return versionRes;
       }
@@ -3375,7 +3386,9 @@ export class AgentResource
     // Scope is applied last, to the current version, so its trigger reconciliation (disabling the
     // triggers of users who are no longer editors of a now-hidden agent) sees the final editor set.
     if (scopeChange) {
-      const scopeRes = await target.updateScopeInPlace(auth, scopeChange);
+      const scopeRes = await target.updateScopeInPlace(auth, scopeChange, {
+        auditMetadata,
+      });
       if (scopeRes.isErr()) {
         return scopeRes;
       }
@@ -3422,7 +3435,8 @@ export class AgentResource
    */
   async updateScopeInPlace(
     auth: Authenticator,
-    scope: Exclude<AgentConfigurationScope, "global">
+    scope: Exclude<AgentConfigurationScope, "global">,
+    { auditMetadata }: AgentAuditOptions = {}
   ): Promise<Result<undefined, Error>> {
     this.assertCurrentVersion();
     if (this.scope === scope) {
@@ -3453,6 +3467,7 @@ export class AgentResource
         agent_name: this.name,
         previous_scope: previousScope,
         new_scope: scope,
+        ...auditMetadata,
       },
     });
 
@@ -3525,7 +3540,8 @@ export class AgentResource
       ignoreCreditSpendThresholdAlert?: boolean;
       actions?: ServerSideMCPServerConfigurationType[];
       skills?: SkillResource[];
-    }
+    },
+    { auditMetadata }: AgentAuditOptions = {}
   ): Promise<Result<AgentResource, Error>> {
     const owner = auth.workspace();
     if (!owner) {
@@ -3735,6 +3751,7 @@ export class AgentResource
             agent_name: resource.name,
             scope: persistedScope,
             model: `${model.providerId}/${model.modelId}`,
+            ...auditMetadata,
           },
         });
       }

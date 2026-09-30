@@ -221,7 +221,7 @@ async function applyStep(
     case "agent": {
       const agent = agentsById.get(step.agentId);
       assert(agent, "The agent this suggestion targets disappeared.");
-      return writeAgentChange(auth, agent, step.change);
+      return writeAgentChange(auth, agent, step.change, { auditMetadata });
     }
     default:
       return assertNever(step);

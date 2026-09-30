@@ -157,6 +157,42 @@ describe("applyBatchSuggestions", () => {
         },
       })
     );
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent.updated",
+        targets: [
+          expect.objectContaining({ type: "workspace" }),
+          expect.objectContaining({ type: "agent", id: agent.sId }),
+        ],
+        metadata: expect.objectContaining({
+          agent_name: "RenamedAgent",
+          suggestion_batch_id: sId,
+          conversation_id: conversation.sId,
+        }),
+      })
+    );
+  });
+
+  it("archives the agent from its delete suggestion", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createDelete(auth, agent, { batchModelId });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const archived = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(archived?.status).toBe("archived");
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent.archived",
+        metadata: { agent_name: agent.name, suggestion_batch_id: sId },
+      })
+    );
   });
 
   it("writes nothing when the batch holds several actions on the same agent", async () => {
@@ -842,6 +878,15 @@ describe("applyBatchSuggestions", () => {
       variant: "full",
     });
     expect(created).toMatchObject({ status: "active", name: "IncidentHelper" });
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent.created",
+        metadata: expect.objectContaining({
+          agent_name: "IncidentHelper",
+          suggestion_batch_id: sId,
+        }),
+      })
+    );
     expect(
       created?.actions.filter(isServerSideMCPServerConfiguration)
     ).toMatchObject([{ mcpServerViewId: view.sId, name: "ticket_tracker" }]);
@@ -1017,6 +1062,17 @@ describe("applyBatchSuggestions", () => {
     });
     expect(updated?.scope).toBe("hidden");
     expect(updated?.version).toBe(agent.version);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent.scope_changed",
+        metadata: {
+          agent_name: agent.name,
+          previous_scope: "visible",
+          new_scope: "hidden",
+          suggestion_batch_id: sId,
+        },
+      })
+    );
   });
 
   it("lets a workspace admin change the scope of an agent they cannot read", async () => {
@@ -1073,6 +1129,16 @@ describe("applyBatchSuggestions", () => {
 
     expect(res.isOk()).toBe(true);
     expect(await fetchAgentEditorIds(agent.sId)).toEqual([newEditor.sId]);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent.editors_updated",
+        metadata: expect.objectContaining({
+          added_editor_ids: newEditor.sId,
+          removed_editor_ids: user.sId,
+          suggestion_batch_id: sId,
+        }),
+      })
+    );
     const updated = await getAgentConfiguration(auth, {
       agentId: agent.sId,
       variant: "light",
