@@ -50,8 +50,8 @@ function buildImgproxyUrl({
 }
 
 /**
- * ImageConverter resizes raster images via imgproxy, which fetches the source from a (signed) URL
- * and returns a stream of the resized image.
+ * ImageConverter resizes images and rasterizes SVGs via imgproxy, which fetches the source from
+ * a (signed) URL and returns a stream in the requested output format.
  */
 export class ImageConverter {
   async resizeImage(
