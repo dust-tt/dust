@@ -17,7 +17,8 @@ pattern client_module_source() {
         `"@app/lib/utils/utm_client"`,
         `"@app/logger/datadogLogger"`,
         `"@dust-tt/sparkle"`,
-        `"@dust-tt/sparkle/$_"`
+        `"@dust-tt/sparkle/$_"`,
+        `"@lingui/$_"`
     }
 }
 
