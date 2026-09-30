@@ -4,7 +4,7 @@ import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import { listActiveConfigurationIdentities } from "@app/lib/resources/agent_configuration_rows";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -259,7 +259,7 @@ export async function getDataSourceViewsUsageByModelIds({
 
   const dataSourceAgents =
     dataSourceAgentConfigurationModelIds.length > 0
-      ? await AgentResource.listActiveConfigurationIdentities(auth, {
+      ? await listActiveConfigurationIdentities(auth, {
           configurationModelIds: dataSourceAgentConfigurationModelIds,
           usageVisibleOnly: true,
         })
@@ -278,7 +278,7 @@ export async function getDataSourceViewsUsageByModelIds({
 
   const tableAgents =
     tableAgentConfigurationModelIds.length > 0
-      ? await AgentResource.listActiveConfigurationIdentities(auth, {
+      ? await listActiveConfigurationIdentities(auth, {
           configurationModelIds: tableAgentConfigurationModelIds,
           usageVisibleOnly: false,
         })
