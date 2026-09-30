@@ -2,9 +2,8 @@ import { UserLocaleSync } from "@app/components/app/UserLocaleSync";
 import { i18n } from "@app/lib/i18n/i18n";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { SupportedLocale } from "@app/types/locale";
-import { I18nProvider } from "@lingui/react";
 import { Trans } from "@lingui/react/macro";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
@@ -24,18 +23,17 @@ vi.mock("@app/hooks/useUserLocale", () => ({
   useUserLocale: () => ({ userLocale: state.userLocale }),
 }));
 
-function renderWithI18n(onReady?: () => void) {
+function renderUserLocaleSync(onReady?: () => void) {
   return render(
-    <I18nProvider i18n={i18n}>
+    <>
       <UserLocaleSync onReady={onReady} />
       <Trans>Untranslated probe</Trans>
-    </I18nProvider>
+    </>
   );
 }
 
 describe("UserLocaleSync", () => {
   beforeEach(() => {
-    act(() => i18n.activate("en-US"));
     document.documentElement.lang = "en";
   });
 
@@ -43,7 +41,7 @@ describe("UserLocaleSync", () => {
     state.hasLocalisation = false;
     state.userLocale = "fr-FR";
 
-    renderWithI18n();
+    renderUserLocaleSync();
 
     await waitFor(() => expect(document.documentElement.lang).toBe("en-US"));
     expect(i18n.locale).toBe("en-US");
@@ -53,7 +51,7 @@ describe("UserLocaleSync", () => {
     state.hasLocalisation = true;
     state.userLocale = "fr-FR";
 
-    renderWithI18n();
+    renderUserLocaleSync();
 
     await waitFor(() => expect(i18n.locale).toBe("fr-FR"));
     expect(document.documentElement.lang).toBe("fr-FR");
@@ -63,7 +61,7 @@ describe("UserLocaleSync", () => {
     state.hasLocalisation = true;
     state.userLocale = "fr-FR";
 
-    renderWithI18n();
+    renderUserLocaleSync();
 
     await waitFor(() => expect(i18n.locale).toBe("fr-FR"));
     expect(screen.getByText("Untranslated probe")).toBeDefined();
@@ -74,7 +72,7 @@ describe("UserLocaleSync", () => {
     state.userLocale = "fr-FR";
     const localesAtReady: string[] = [];
 
-    renderWithI18n(() => localesAtReady.push(i18n.locale));
+    renderUserLocaleSync(() => localesAtReady.push(i18n.locale));
 
     await waitFor(() => expect(localesAtReady).toEqual(["fr-FR"]));
   });
