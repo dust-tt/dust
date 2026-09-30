@@ -848,7 +848,8 @@ function keyedSuggestionItemOf(
  * @cc [owner:fabiencelier;avervaet,label:product] single-pending-per-item
  * Recording suggestions of keyed kinds MUST mark every other `pending` suggestion on the same agent
  * of the same kind and for the same item (skill, tool or sub-agent) `outdated`, and never the
- * recorded ones.
+ * recorded ones. Concurrent calls are not serialized: they can leave several pending suggestions
+ * for an item on the agent.
  */
 export async function recordKeyedAgentSuggestions(
   auth: Authenticator,
