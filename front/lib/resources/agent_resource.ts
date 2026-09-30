@@ -3410,8 +3410,12 @@ export class AgentResource
    * in place (preserving version 0 and its FK relationships, see `writeAgentConfigurationRow`) rather
    * than archiving it and creating a new version. All required permissions MUST be checked before any
    * change is applied so a save never partially succeeds. A caller that cannot view the agent's
-   * content (`canViewContent` false, see `agent-content-visibility`) cannot create a version, so
-   * provided definition fields are ignored; it may still change scope/editors it is authorized for. A
+   * content (`canViewContent` false, see `agent-content-visibility`) and does not hold `write` cannot
+   * create a version, so provided definition fields are ignored; it may still change scope/editors
+   * it is authorized for. A caller that holds `write` without viewing the content (a regular admin
+   * API key on a hidden agent, see `admin-key-agent-write`) MUST NOT have its definition fields
+   * ignored: they are diffed and versioned like any writer's, without the current content ever being
+   * returned to it (see `unreadable-agent-content-hidden`). A
    * caller that views the content without `read` (the `admin_can_see_private_entities` admin
    * override) can view the content, so its definition fields are NOT ignored but gated as above: only
    * the model and tags may produce a version, through their `admin` paths.
@@ -3476,8 +3480,9 @@ export class AgentResource
 
     // A new version is needed only when a definition field actually changes. The current
     // configuration is read (to diff and to fill the new version's unchanged columns) ONLY when a
-    // definition field is provided AND the caller can view the content — a caller who cannot
-    // create a version, so its definition fields are ignored (it may still change scope/editors).
+    // definition field is provided AND the caller can view the content or holds `write` — any other
+    // caller cannot create a version, so its definition fields are ignored (it may still change
+    // scope/editors).
     const hasTagDelta =
       (update.addTags?.length ?? 0) > 0 || (update.removeTags?.length ?? 0) > 0;
     const providedDefinitionKeys = AGENT_CONFIGURATION_KEYS.filter(
@@ -3493,9 +3498,13 @@ export class AgentResource
     let protectedTagsChanged = false;
     if (
       (providedDefinitionKeys.length > 0 || hasTagDelta) &&
-      this.canViewContent
+      (this.canViewContent || auth.can("write", this))
     ) {
-      const currentParams = await this.buildResaveParams(auth);
+      const resaveSourceRes = await this.getResaveSource();
+      if (resaveSourceRes.isErr()) {
+        return resaveSourceRes;
+      }
+      const currentParams = await resaveSourceRes.value.buildResaveParams(auth);
       const mergedParams: SaveAgentConfigurationParams = { ...currentParams };
       for (const key of providedDefinitionKeys) {
         // Override each provided definition field; `model` is merged into the current one (the
@@ -3643,6 +3652,28 @@ export class AgentResource
 
     const updated = await AgentResource.fetchById(auth, this.sId);
     return new Ok({ resource: updated ?? target, changed: true });
+  }
+
+  // A writer who cannot view the content (a regular admin API key on a hidden agent, see
+  // `admin-key-agent-write`) rebuilds the new version from a caller-independent copy of the current
+  // one. The copy never leaves `updateConfiguration`: its content only flows into the new version
+  // (see `unreadable-agent-content-hidden`).
+  private async getResaveSource(): Promise<Result<AgentResource, Error>> {
+    if (this.canViewContent) {
+      return new Ok(this);
+    }
+    const [current] = await AgentResource.loadResource(this.workspaceId, {
+      id: [this.id],
+    });
+    if (
+      !current ||
+      current.agentConfigurationModelId !== this.agentConfigurationModelId
+    ) {
+      return new Err(
+        new Error("The agent was modified concurrently, please retry.")
+      );
+    }
+    return new Ok(current);
   }
 
   // Whether `auth` may publish or unpublish this agent. `write` never appears without `admin` on an
