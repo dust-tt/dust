@@ -458,11 +458,7 @@ function FeaturedCard({ item, onClick }: FeaturedCardProps) {
           <>
             <SkillBackdrop icon={item.skill.icon} />
             <span className="relative">
-              <SkillCatalogAvatar
-                icon={item.skill.icon}
-                isDustProvided={item.isDustProvided}
-                size="md"
-              />
+              <SkillCatalogAvatar icon={item.skill.icon} size="md" />
             </span>
           </>
         )}
