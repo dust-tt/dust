@@ -447,9 +447,14 @@ describe("managed People reads", () => {
       [manual.sId, provisioned.sId].sort()
     );
     for (const group of [manual, provisioned]) {
-      expect(
-        (await honoApp.request(`${base}/groups/${group.sId}`)).status
-      ).toBe(200);
+      const response = await honoApp.request(`${base}/groups/${group.sId}`);
+      expect(response.status).toBe(200);
+      const detail = await response.json();
+      for (const person of [...detail.members, ...detail.managers]) {
+        expect(person).not.toHaveProperty("id");
+        expect(person).not.toHaveProperty("lastLoginAt");
+        expect(person).not.toHaveProperty("provider");
+      }
     }
     expect((await honoApp.request(`${base}/groups/${other.sId}`)).status).toBe(
       403

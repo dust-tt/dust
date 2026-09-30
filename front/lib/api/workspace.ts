@@ -323,7 +323,8 @@ async function resolveRoleFilterUserIds({
 /**
  * @cc [owner:philipperolet,label:security] managed-people-search
  * For delegated callers, managedOnly MUST restrict results and counts to active members in their
- * managed groups before pagination. Role and email filters MUST only narrow that scope; an empty scope stays empty.
+ * managed groups before pagination. Role and email filters MUST only narrow that scope;
+ * an empty scope stays empty.
  */
 export async function searchMembers(
   auth: Authenticator,
