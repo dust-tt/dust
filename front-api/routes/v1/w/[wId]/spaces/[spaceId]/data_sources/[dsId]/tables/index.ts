@@ -6,6 +6,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type {
   ListTablesResponseType,
   UpsertTableResponseType,
@@ -419,6 +420,35 @@ app.post(
           message: `Invalid parent id: parents[1] and parent_id should be equal.`,
         },
       });
+    }
+
+    // @cc [owner:frankaloia,label:security] table-upsert-remote-db-secret-workspace
+    // remote_database_secret_id supplied in table upsert requests MUST be validated
+    // to belong to the caller's workspace before being forwarded to core.
+    if (remoteDatabaseSecretId) {
+      const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+      const credentialRes = await oauthApi.getCredentials({
+        credentialsId: remoteDatabaseSecretId,
+      });
+      if (credentialRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The remote database secret you provided was not found.",
+          },
+        });
+      }
+      if (credentialRes.value.credential.metadata.workspace_id !== owner.sId) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The remote database secret you provided does not belong to your workspace.",
+          },
+        });
+      }
     }
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);

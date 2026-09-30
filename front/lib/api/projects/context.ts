@@ -466,7 +466,7 @@ export async function addContentNodeToProject(
     });
   }
 
-  const blobRes = await getContentFragmentBlob(auth, contentFragment);
+  const blobRes = await getContentFragmentBlob(auth, contentFragment, null);
   if (blobRes.isErr()) {
     return new Err({
       name: "dust_error",

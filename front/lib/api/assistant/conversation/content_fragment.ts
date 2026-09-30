@@ -6,7 +6,7 @@ import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -108,9 +108,14 @@ export async function toFileContentFragment(
   });
 }
 
+// @cc [owner:frankaloia,label:security] content-fragment-fileid-access
+// postNewContentFragment MUST verify the caller has access to the referenced
+// fileId before attaching it as a citation. For conversation/tool_output files,
+// this means verifying the file belongs to an accessible conversation.
 export async function getContentFragmentBlob(
   auth: Authenticator,
-  cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode
+  cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode,
+  conversation: ConversationWithoutContentType | null
 ): Promise<Result<ContentFragmentBlob, Error>> {
   const { title, url } = cf;
 
@@ -137,6 +142,30 @@ export async function getContentFragmentBlob(
           "The file is not ready. Please re-upload the file to proceed."
         )
       );
+    }
+
+    // Verify the caller has access to the conversation the file belongs to.
+    // This prevents a workspace member from attaching files from other users'
+    // conversations by referencing them by fileId.
+    const fileConversationId = file.useCaseMetadata?.conversationId;
+    if (fileConversationId) {
+      // If the file belongs to the current conversation, allow it unconditionally.
+      // Otherwise, verify the caller can access the file's conversation.
+      const isCurrentConversation =
+        conversation && conversation.sId === fileConversationId;
+      if (!isCurrentConversation) {
+        const accessibleConversation = await ConversationResource.fetchById(
+          auth,
+          fileConversationId
+        );
+        if (!accessibleConversation) {
+          return new Err(
+            new Error(
+              "File not found or not accessible in the referenced conversation."
+            )
+          );
+        }
+      }
     }
 
     // Give priority to the URL if it is provided.
