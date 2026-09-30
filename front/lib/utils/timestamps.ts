@@ -1,4 +1,8 @@
 import {
+  formatDate as formatLocaleDate,
+  formatTime,
+} from "@app/lib/i18n/format";
+import {
   differenceInCalendarDays,
   format,
   formatDistance,
@@ -64,7 +68,7 @@ export const cleanTimestamp = (
 
 export const formatTimestring = (timestamp: number): string => {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString(undefined, {
+  return formatTime(date, {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -98,7 +102,7 @@ export const formatDurationString = (durationMs: number): string => {
  * @returns A formatted string like "Jan 15"
  */
 export const formatShortDate = (timestamp: number | string): string => {
-  return new Date(timestamp).toLocaleDateString(undefined, {
+  return formatLocaleDate(new Date(timestamp), {
     month: "short",
     day: "numeric",
   });

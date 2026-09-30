@@ -1,4 +1,5 @@
 import { getPriceAsString } from "@app/lib/client/subscription";
+import { formatDate } from "@app/lib/i18n/format";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import { CREDIT_TYPE_SORT_ORDER } from "@app/types/credits";
 import type { EditedByUser } from "@app/types/user";
@@ -88,7 +89,7 @@ export function getTableRows(credits: CreditDisplayData[]): RowData[] {
     }),
     expirationDate:
       credit.expirationDate !== null
-        ? new Date(credit.expirationDate).toLocaleDateString(undefined, {
+        ? formatDate(credit.expirationDate, {
             year: "numeric",
             month: "long",
             day: "numeric",

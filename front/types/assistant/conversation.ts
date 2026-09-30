@@ -1,6 +1,7 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
+import { formatDate } from "@app/lib/i18n/format";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import { isSameDay } from "date-fns";
@@ -697,7 +698,7 @@ export function getConversationDisplayTitle(
   const createdDate = new Date(conversation.created);
   return isSameDay(createdDate, now)
     ? "New Conversation"
-    : `Conversation from ${createdDate.toLocaleDateString()}`;
+    : `Conversation from ${formatDate(createdDate)}`;
 }
 
 /**

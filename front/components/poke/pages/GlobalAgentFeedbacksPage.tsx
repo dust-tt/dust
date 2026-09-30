@@ -10,6 +10,7 @@ import {
   usePokeGlobalAgentFeedbacksAllCells,
 } from "@app/hooks/usePokeGlobalAgentFeedbacks";
 import { useCellContext } from "@app/lib/auth/CellContext";
+import { formatDate, formatTime } from "@app/lib/i18n/format";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { CellType } from "@app/types/cell";
@@ -58,7 +59,7 @@ function makeColumns({
         const date = new Date(row.original.createdAt);
         return (
           <span className="whitespace-nowrap">
-            {date.toLocaleDateString()} {date.toLocaleTimeString()}
+            {formatDate(date)} {formatTime(date)}
           </span>
         );
       },
