@@ -216,12 +216,14 @@ For cookie-based session resolution, call
 as `front-api/middlewares/session_resolution.ts` does.
 
 @cc [owner:frankaloia,label:security;api] webhook-body-streamed-before-auth
-Unauthenticated webhook endpoints (mounted outside `publicApiAuth`) MUST enforce their
-request-body size limit *incrementally during streaming*, not after a full
-`arrayBuffer()` / `text()` allocation.
+The unauthenticated trigger webhook
+`POST /api/v1/w/:wId/triggers/hooks/:webhookSourceId/:webhookSourceUrlSecret`
+MUST enforce `WEBHOOK_REQUEST_MAX_SIZE_BYTES` while streaming the request body.
+As soon as the running byte total exceeds that cap, the handler MUST cancel the
+unread remainder and respond with HTTP 400. It MUST NOT buffer the body with
+`arrayBuffer()` or `text()` before applying the cap.
 
-Use a streaming reader (e.g. `readBodyWithSizeLimit`) that aborts and returns `null`
-as soon as the running byte total exceeds the cap. Reject with HTTP 400 at that point.
-
-Rationale: `arrayBuffer()` allocates the full body before the limit check runs, so an
-anonymous attacker can OOM a shared front-api pod before any authentication fires.
+This route is mounted outside `publicApiAuth` and already has a 2 MB cap. The
+obligation is that existing cap: it must be applied incrementally so an anonymous
+oversized POST cannot allocate the full body before rejection. Other webhook
+receivers are not given a new body cap by this contract.

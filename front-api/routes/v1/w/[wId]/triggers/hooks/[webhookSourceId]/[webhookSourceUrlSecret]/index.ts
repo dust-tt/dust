@@ -24,7 +24,7 @@ const ParamsSchema = z.object({
 });
 
 // 2mb body limit, matches the original `raw-body` `limit: "2mb"`.
-const WEBHOOK_REQUEST_MAX_SIZE_BYTES = 2 * 1024 * 1024;
+export const WEBHOOK_REQUEST_MAX_SIZE_BYTES = 2 * 1024 * 1024;
 
 /**
  * Streams the request body into a Buffer, aborting as soon as `maxBytes` is

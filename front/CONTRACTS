@@ -739,12 +739,16 @@ A notification that pushes either counter over the limit MUST be silently droppe
 
 @cc [owner:frankaloia,label:security;performance] zip-entry-count-cap
 ZIP archives processed for skill detection MUST be rejected when their entry count
-exceeds `MAX_ZIP_ENTRIES` (1 000), enforced in `openAndValidateZip` before any
-per-entry or per-skill-directory work begins.
+exceeds `MAX_ZIP_ENTRIES` (1 000). `extractZipEntries` MUST check that count before
+mapping central-directory records into `ZipEntry` objects, and `openAndValidateZip`
+MUST run that check before decompressed-size summation or skill-directory scanning.
 
 The SKILL.md scanner is O(entries × skill-dirs); without the entry cap a 5 MB ZIP with
 ~80 k tiny entries (headers alone fill the size budget) causes quadratic synchronous CPU
-work that blocks the shared front-api Node.js event loop for all tenants.
+work that blocks the shared front-api Node.js event loop for all tenants. The entry cap
+bounds that scan at O(MAX_ZIP_ENTRIES²).
 
-Additionally, `detectSkillsFromZip` MUST reject (return `Err`) when the detected skill
-directory count exceeds `MAX_SKILL_DIRS` (50); it MUST NOT silently truncate the list.
+Skill-directory count alone MUST NOT reject an archive and MUST NOT truncate the
+detected skills. A small archive with more than 50 skill directories was previously a
+successful public API import, including when `names` selects a single skill
+(`api-backward-compatibility`).

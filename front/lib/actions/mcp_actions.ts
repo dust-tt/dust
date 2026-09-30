@@ -562,7 +562,9 @@ export async function* tryCallMCPTool(
         if (!isMCPProgressNotificationType(notification)) {
           return;
         }
-        const notificationBytes = JSON.stringify(notification).length;
+        const notificationBytes = computeTextByteSize(
+          JSON.stringify(notification)
+        );
         notificationCount += 1;
         notificationTotalBytes += notificationBytes;
         if (

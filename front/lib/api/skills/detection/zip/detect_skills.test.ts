@@ -4,7 +4,7 @@
 import { isString } from "@app/types/shared/utils/general";
 import AdmZip from "adm-zip";
 import { describe, expect, test } from "vitest";
-import { detectSkillsFromZip } from "./detect_skills";
+import { detectSkillsFromZip, MAX_ZIP_ENTRIES } from "./detect_skills";
 
 function makeSkillMd(name: string, description: string, body: string): string {
   return `---
@@ -143,6 +143,36 @@ describe("detectSkillsFromZip", () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value).toHaveLength(2);
+    }
+  });
+
+  test("rejects a zip whose entry count exceeds the cap", () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < MAX_ZIP_ENTRIES + 1; i++) {
+      files[`file-${i}.txt`] = "x";
+    }
+
+    const result = detectSkillsFromZip({ zipBuffer: buildZipBuffer(files) });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("too many entries");
+    }
+  });
+
+  test("detects a small archive with more than 50 skill directories", () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 51; i++) {
+      files[`skills/skill-${i}/SKILL.md`] = makeSkillMd(
+        `skill-${i}`,
+        "A skill",
+        "Do the thing."
+      );
+    }
+
+    const result = detectSkillsFromZip({ zipBuffer: buildZipBuffer(files) });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toHaveLength(51);
     }
   });
 
