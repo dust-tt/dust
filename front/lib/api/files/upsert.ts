@@ -87,7 +87,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
     parents = upsertArgs.parents ?? [documentId];
   }
   /**
-   * @cc [owner:flvndvd,label:security] document-upsert-no-mass-assignment
+   * @cc [owner:frankaloia,label:security] document-upsert-no-mass-assignment
    * Only caller-supplied fields that are safe to override (title, tags,
    * light_document_output) MUST be forwarded from `upsertArgs`. Trusted
    * server-side fields (dataSource, auth, document_id, source_url, text,
@@ -242,7 +242,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
   tableId = upsertArgs?.tableId ?? tableId;
 
   /**
-   * @cc [owner:flvndvd,label:security] table-upsert-no-mass-assignment
+   * @cc [owner:frankaloia,label:security] table-upsert-no-mass-assignment
    * Only caller-supplied fields that are safe to override (title, name,
    * description, tags) MUST be forwarded from `upsertArgs` without further
    * validation. Sensitive server-controlled fields (auth, dataSource, tableId,

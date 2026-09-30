@@ -95,7 +95,7 @@ export async function editFrameTextsAtSource(
         );
       }
       /**
-       * @cc [owner:flvndvd,label:security] frame-bundle-path-containment
+       * @cc [owner:frankaloia,label:security] frame-bundle-path-containment
        * The resolved edit path MUST remain within `rootScopedPath`. A caller-supplied
        * `relPath` containing `..` segments MUST NOT be allowed to escape the bundle
        * root and address files outside it.

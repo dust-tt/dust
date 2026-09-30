@@ -916,7 +916,7 @@ export async function convertCanonicalFileToPdf(
 }
 
 /**
- * @cc [owner:flvndvd,label:security] delete-requires-write-access
+ * @cc [owner:frankaloia,label:security] delete-requires-write-access
  * `deleteCanonicalFile` MUST verify write access on `scopedPath` before
  * deleting, regardless of whether the file has a linked FileResource. The
  * `DustFileSystem.delete` path enforces this implicitly, but the FileResource

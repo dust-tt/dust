@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { registerSlackWebhookRouterEntry } from "@app/lib/api/data_sources";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { deleteNovuSlackChannelSetup } from "@app/lib/notifications";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
