@@ -746,5 +746,5 @@ The SKILL.md scanner is O(entries × skill-dirs); without the entry cap a 5 MB Z
 ~80 k tiny entries (headers alone fill the size budget) causes quadratic synchronous CPU
 work that blocks the shared front-api Node.js event loop for all tenants.
 
-Additionally, the number of detected skill directories MUST be capped at `MAX_SKILL_DIRS`
-(50) in `detectSkillsFromZip` before the per-dir attachment scan runs.
+Additionally, `detectSkillsFromZip` MUST reject (return `Err`) when the detected skill
+directory count exceeds `MAX_SKILL_DIRS` (50); it MUST NOT silently truncate the list.

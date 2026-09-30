@@ -148,7 +148,14 @@ export function detectSkillsFromZip({
   if (allSkillDirs.length === 0) {
     return new Ok([]);
   }
-  const skillDirs = allSkillDirs.slice(0, MAX_SKILL_DIRS);
+  if (allSkillDirs.length > MAX_SKILL_DIRS) {
+    return new Err(
+      new Error(
+        `ZIP contains too many skill directories (${allSkillDirs.length}). Maximum allowed is ${MAX_SKILL_DIRS}.`
+      )
+    );
+  }
+  const skillDirs = allSkillDirs;
 
   const allSkills: ZipDetectedSkill[] = [];
 
