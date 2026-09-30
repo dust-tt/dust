@@ -5,10 +5,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 
-/**
- * Checks block-targeted instruction edits against the live instructions HTML: every targeted block
- * must exist, and no two edits may target overlapping regions.
- */
 export function validateInstructionEditTargets(
   instructionsHtml: string,
   instructionEdits: SkillInstructionEditItemType[],
