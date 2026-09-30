@@ -6535,11 +6535,11 @@
             "type": "array",
             "items": {
               "type": "string",
-              "description": "List of allowed authentication providers"
+              "description": "Whitelisted model lab (maker) IDs"
             },
             "example": [
-              "google",
-              "github"
+              "openai",
+              "zai"
             ]
           },
           "defaultEmbeddingProvider": {
