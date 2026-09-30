@@ -208,7 +208,7 @@ export function NotificationPreferences({
   workflowEnabled,
   conversationExternalNotificationsEnabled,
 }: NotificationPreferencesProps) {
-  const { t, i18n } = useLingui();
+  const { t } = useLingui();
   const { field: notifyConditionField } = useController({
     name: "notifyCondition",
     control,
@@ -249,7 +249,7 @@ export function NotificationPreferences({
                   variant="outline"
                   size="sm"
                   isSelect
-                  label={i18n._(
+                  label={t(
                     NOTIFICATION_CONDITION_LABELS[notifyConditionField.value]
                   )}
                 />
@@ -258,7 +258,7 @@ export function NotificationPreferences({
                 {NOTIFICATION_CONDITION_OPTIONS.map((condition) => (
                   <DropdownMenuItem
                     key={condition}
-                    label={i18n._(NOTIFICATION_CONDITION_LABELS[condition])}
+                    label={t(NOTIFICATION_CONDITION_LABELS[condition])}
                     onClick={() => notifyConditionField.onChange(condition)}
                   />
                 ))}
@@ -330,7 +330,7 @@ export function NotificationPreferences({
                   isSelect
                   disabled={!isEmailFrequencyEnabled}
                   icon={externalChannelsDisabled ? Lock01 : undefined}
-                  label={i18n._(
+                  label={t(
                     NOTIFICATION_PREFERENCES_DELAY_LABELS[emailDelayField.value]
                   )}
                 />
@@ -339,7 +339,7 @@ export function NotificationPreferences({
                 {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
                   <DropdownMenuItem
                     key={delay}
-                    label={i18n._(NOTIFICATION_PREFERENCES_DELAY_LABELS[delay])}
+                    label={t(NOTIFICATION_PREFERENCES_DELAY_LABELS[delay])}
                     onClick={() => emailDelayField.onChange(delay)}
                   />
                 ))}

@@ -65,7 +65,7 @@ export function PendingInvitationsTable({
             rowB.original.workspaceName
           ),
         cell: ({ row }) => {
-          const role = i18n._(ROLE_LABELS[row.original.initialRole]);
+          const role = t(ROLE_LABELS[row.original.initialRole]);
           return (
             <DataTable.CellContent grow>
               <div

@@ -146,14 +146,25 @@ function SectionContent({
 
 // ─── Personal Information ─────────────────────────────────────────────────────
 
-interface PersonalInfoType {
-  firstName: string;
-  lastName: string;
-  profilePictureUrl: string | null;
+function usePersonalInfoSchema() {
+  const { t } = useLingui();
+
+  return useMemo(
+    () =>
+      z.object({
+        firstName: z.string().min(1, t`First name is required.`),
+        lastName: z.string().min(1, t`Last name is required.`),
+        profilePictureUrl: z.string().nullable(),
+      }),
+    [t]
+  );
 }
+
+type PersonalInfoType = z.infer<ReturnType<typeof usePersonalInfoSchema>>;
 
 function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
   const { t } = useLingui();
+  const personalInfoSchema = usePersonalInfoSchema();
   const { user, isUserLoading } = useUser();
   const { patchUser } = usePatchUser();
   const isProvisioned = user?.origin === "provisioned";
@@ -165,16 +176,6 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
     owner,
     useCase: "avatar",
   });
-
-  const personalInfoSchema = useMemo(
-    () =>
-      z.object({
-        firstName: z.string().min(1, t`First name is required.`),
-        lastName: z.string().min(1, t`Last name is required.`),
-        profilePictureUrl: z.string().nullable(),
-      }),
-    [t]
-  );
 
   const form = useForm<PersonalInfoType>({
     resolver: zodResolver(personalInfoSchema),
@@ -397,7 +398,7 @@ interface CustomizationSectionProps {
 }
 
 function CustomizationSection({ owner }: CustomizationSectionProps) {
-  const { t, i18n } = useLingui();
+  const { t } = useLingui();
   const { theme: currentTheme, setTheme } = useTheme();
   // Null outside ConversationFontProvider: this
   // popover also renders on pages without conversations (e.g. /no-workspace,
@@ -554,7 +555,7 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
               ariaLabel={t`Theme`}
               options={THEME_OPTIONS.map((option) => ({
                 ...option,
-                label: i18n._(option.label),
+                label: t(option.label),
               }))}
               value={localTheme}
               onValueChange={setLocalTheme}
@@ -571,7 +572,7 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
                 ariaLabel={t`Conversation font`}
                 options={CONVERSATION_FONT_OPTIONS.map((option) => ({
                   ...option,
-                  label: i18n._(option.label),
+                  label: t(option.label),
                 }))}
                 value={localConversationFont}
                 onValueChange={setLocalConversationFont}
@@ -888,7 +889,7 @@ export function UserSettingsPopover({
   onOpenChange,
   owner,
 }: UserSettingsPopoverProps) {
-  const { i18n } = useLingui();
+  const { t } = useLingui();
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("personal");
 
@@ -958,7 +959,7 @@ export function UserSettingsPopover({
                     key={section}
                     value={section}
                     icon={icon}
-                    label={i18n._(label)}
+                    label={t(label)}
                   />
                 ))}
               </TabsList>
@@ -977,7 +978,7 @@ export function UserSettingsPopover({
                 <NavigationListItem
                   key={section}
                   icon={icon}
-                  label={i18n._(label)}
+                  label={t(label)}
                   selected={activeSection === section}
                   onClick={() => setActiveSection(section)}
                 />
