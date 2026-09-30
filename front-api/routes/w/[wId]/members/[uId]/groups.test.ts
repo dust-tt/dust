@@ -347,9 +347,16 @@ describe("delegated membership writes", () => {
     );
 
     expect((await addSelf(manual.sId)).status).toBe(200);
-    expect(
-      (await patch(manual.sId, { memberIds: [user.sId, member.sId] })).status
-    ).toBe(200);
+    const saved = await patch(manual.sId, {
+      memberIds: [user.sId, member.sId],
+    });
+    expect(saved.status).toBe(200);
+    const detail = await saved.json();
+    for (const person of [...detail.members, ...detail.managers]) {
+      expect(person).not.toHaveProperty("id");
+      expect(person).not.toHaveProperty("lastLoginAt");
+      expect(person).not.toHaveProperty("provider");
+    }
     expect(
       (await deleteMemberGroup(workspace, member.sId, manual.sId)).status
     ).toBe(200);
