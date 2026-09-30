@@ -1,5 +1,6 @@
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { getFileFormat } from "@app/types/files";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -46,6 +47,16 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
+    });
+  }
+
+  if (!getFileFormat(file.contentType)?.isSafeToDisplay) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Unsafe content type for inline serving.",
+      },
     });
   }
 
