@@ -1,43 +1,16 @@
-import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getNovuClient } from "@app/lib/notifications";
 import logger from "@app/logger/logger";
 import { CONSUMPTION_EXPORT_READY_TRIGGER_ID } from "@app/types/notification_preferences";
-import { workflow } from "@novu/framework";
 import z from "zod";
 
-const ConsumptionExportReadyPayloadSchema = z.object({
+export const ConsumptionExportReadyPayloadSchema = z.object({
   workspaceId: z.string(),
 });
 
-type ConsumptionExportReadyPayloadType = z.infer<
+export type ConsumptionExportReadyPayloadType = z.infer<
   typeof ConsumptionExportReadyPayloadSchema
 >;
-
-export const consumptionExportReadyWorkflow = workflow(
-  CONSUMPTION_EXPORT_READY_TRIGGER_ID,
-  async ({ step, payload }) => {
-    await step.inApp("send-in-app", async () => {
-      return {
-        subject: "Your consumption export is ready",
-        body: "The raw consumption data you requested has finished generating and is ready to download.",
-        primaryAction: {
-          label: "Download",
-          redirect: {
-            url: `${config.getAppUrl()}/w/${payload.workspaceId}/analytics/consumption`,
-          },
-        },
-        data: {
-          workspaceId: payload.workspaceId,
-        },
-      };
-    });
-  },
-  {
-    payloadSchema: ConsumptionExportReadyPayloadSchema,
-    tags: ["admin"],
-  }
-);
 
 /**
  * Fire-and-forget helper to notify the requesting user that their consumption export is

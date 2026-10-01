@@ -4,48 +4,23 @@ import { getNovuClient } from "@app/lib/notifications/novu-client";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
-import {
-  PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG,
-  PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID,
-} from "@app/types/notification_preferences";
+import { PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID } from "@app/types/notification_preferences";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { workflow } from "@novu/framework";
 import z from "zod";
 
 // Novu's triggerBulk API is capped at 100 events per call.
 // Fetch memberships in pages of the same size to avoid extra chunking.
 const NOVU_BULK_TRIGGER_LIMIT = 100;
 
-const ProviderCredentialsHealthUpdatedPayloadSchema = z.object({
+export const ProviderCredentialsHealthUpdatedPayloadSchema = z.object({
   workspaceId: z.string(),
 });
 
-type ProviderCredentialsHealthUpdatedPayloadType = z.infer<
+export type ProviderCredentialsHealthUpdatedPayloadType = z.infer<
   typeof ProviderCredentialsHealthUpdatedPayloadSchema
 >;
-
-export const providerCredentialsHealthUpdatedWorkflow = workflow(
-  PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID,
-  async ({ step, payload }) => {
-    await step.inApp("provider-credentials-health-updated-in-app", async () => {
-      return {
-        subject: "Provider credentials health updated",
-        body: payload.workspaceId,
-        data: {
-          autoDelete: true,
-          mutateAuthContext: true,
-          workspaceId: payload.workspaceId,
-        },
-      };
-    });
-  },
-  {
-    payloadSchema: ProviderCredentialsHealthUpdatedPayloadSchema,
-    tags: [PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG],
-  }
-);
 
 const triggerProviderCredentialsHealthUpdatedNotifications = async (
   auth: Authenticator
