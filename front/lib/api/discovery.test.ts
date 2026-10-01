@@ -31,7 +31,6 @@ function forYouCandidate(resourceType: "agent" | "skill", resourceId: string) {
     reasonGroupId: "group-1",
     users: 3,
     groupActiveUsers: 5,
-    viewerConversations: 0,
   };
 }
 
