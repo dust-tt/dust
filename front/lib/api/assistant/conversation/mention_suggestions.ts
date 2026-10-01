@@ -213,14 +213,7 @@ export const suggestionsOfMentions = async (
       .filter((agent) => agent.status === "active" && auth.can("read", agent))
       .toSorted((a, b) => a.name.localeCompare(b.name))
       .slice(0, SUGGESTION_DISPLAY_LIMIT)
-      .map((agent) => ({
-        type: "agent" as const,
-        id: agent.sId,
-        label: agent.name,
-        pictureUrl: agent.pictureUrl,
-        description: agent.description,
-        userFavorite: true,
-      }));
+      .map((agent) => agent.toMentionSuggestionJSON({ userFavorite: true }));
     if (favoriteSuggestions.length > 0) {
       return favoriteSuggestions;
     }

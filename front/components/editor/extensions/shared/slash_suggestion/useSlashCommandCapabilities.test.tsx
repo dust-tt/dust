@@ -12,6 +12,10 @@ import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
 
+interface WrapperProps {
+  children: ReactNode;
+}
+
 async function setup(hasFavorites = true) {
   const { authenticator: auth, user } = await createResourceTest({
     role: "user",
@@ -57,7 +61,7 @@ async function setup(hasFavorites = true) {
     });
   }
   const swrConfig = { provider: () => new Map(), shouldRetryOnError: false };
-  const wrapper = ({ children }: { children: ReactNode }) => (
+  const wrapper = ({ children }: WrapperProps) => (
     <AuthContext.Provider value={context}>
       <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
         <SWRConfig value={swrConfig}>{children}</SWRConfig>

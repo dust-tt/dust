@@ -96,6 +96,7 @@ import type {
 } from "@app/types/assistant/agent";
 import { isAgentStatus } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import type { RichAgentMention } from "@app/types/assistant/mentions";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -3180,6 +3181,21 @@ export class AgentResource
       feedback_negative_count: isGlobal ? 0 : feedbackNegativeCount,
       active_users_count: isGlobal ? null : activeUsersCount,
       favorite_count: isGlobal ? 0 : favoriteCount,
+    };
+  }
+
+  toMentionSuggestionJSON({
+    userFavorite,
+  }: {
+    userFavorite: boolean;
+  }): RichAgentMention {
+    return {
+      type: "agent",
+      id: this.sId,
+      label: this.name,
+      pictureUrl: this.pictureUrl,
+      description: this.description,
+      userFavorite,
     };
   }
 

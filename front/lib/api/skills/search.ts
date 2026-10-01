@@ -87,8 +87,9 @@ function buildFacetAggregation(
  */
 /**
  * @cc [owner:aubin-tchoi,label:product] empty-query-favorite-skills
- * With defaultToFavorites and a blank query, return only the current user's matching favorites
- * alphabetically, excluding excludeSkillId. If no favorites match, or the query is nonblank,
+ * With defaultToFavorites and a blank query, return only the current user's active, readable
+ * favorites matching the search filters, alphabetically, excluding excludeSkillId. Archived
+ * favorites MUST NOT participate in this default list. If none match, or the query is nonblank,
  * preserve ordinary search. Favorite selection MUST retain authorization, filters and pagination.
  */
 export async function searchSkills(
