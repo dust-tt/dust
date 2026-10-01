@@ -15,7 +15,6 @@ import {
   toHydratedSkillCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { serializeSkillNodeClipboardHTML } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { compareStrings, formatNumber } from "@app/lib/i18n/format";
@@ -37,7 +36,6 @@ import {
   Avatar,
   Button,
   CheckVerified01,
-  Chip,
   cn,
   EmptyCTA,
   Icon,
@@ -46,12 +44,7 @@ import {
   Pin02,
   SearchInput,
   Spinner,
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
   Users01,
-  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
@@ -589,26 +582,6 @@ interface CatalogRowProps {
 
 export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
   const name = getItemName(item);
-  const handle = item.kind === "agent" ? `@${name}` : `/${name}`;
-  const [isCopied, copy] = useCopyToClipboard();
-  const copyHandle = () =>
-    copy(
-      item.kind === "agent"
-        ? handle
-        : new ClipboardItem({
-            "text/plain": new Blob([handle], { type: "text/plain" }),
-            "text/html": new Blob(
-              [
-                serializeSkillNodeClipboardHTML({
-                  skillId: item.skill.sId,
-                  skillName: item.skill.name,
-                  skillIcon: item.skill.icon,
-                }),
-              ],
-              { type: "text/html" }
-            ),
-          })
-    );
   const avatar =
     item.kind === "agent" ? (
       <Avatar size="md" visual={item.agent.pictureUrl} />
@@ -629,21 +602,6 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
           >
             {name}
           </button>
-          <TooltipProvider>
-            <TooltipRoot open={isCopied}>
-              <TooltipTrigger asChild>
-                <span className="relative shrink-0">
-                  <Chip
-                    size="xs"
-                    label={handle}
-                    className="font-mono"
-                    onClick={copyHandle}
-                  />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>Copied !</TooltipContent>
-            </TooltipRoot>
-          </TooltipProvider>
         </div>
         <div className="flex h-5 items-center gap-4 copy-sm">
           <ItemAuthor item={item} />
