@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   ColumnDef,
+  flexRender,
   PaginationState,
   RowSelectionState,
   SortingState,
 } from "@tanstack/react-table";
 import React, { useCallback, useMemo, useState } from "react";
-import { fn } from "storybook/test";
+import { expect, fn, userEvent } from "storybook/test";
 
 import {
   DataTable,
@@ -1137,6 +1138,75 @@ export const RowSelection = () => {
       </div>
     </div>
   );
+};
+
+/**
+ * A custom select-all header uses CellContent directly, as on the manage search
+ * pages. Its checkbox stays centered without an extra flex wrapper.
+ * @summary Centered select-all checkbox inside CellContent.
+ */
+export const CenteredSelectAll: StoryObj<typeof DataTable<Data>> = {
+  render: function Render(args) {
+    const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+    const [rows] = useState<Data[]>(() => createData(0, 3));
+    const columnsWithSelection = useMemo(() => {
+      const selectionColumn = createSelectionColumn<Data>();
+      return [
+        {
+          ...selectionColumn,
+          id: "select",
+          header: (context) => (
+            <DataTable.CellContent className="size-full items-center justify-center">
+              {flexRender(selectionColumn.header, context)}
+            </DataTable.CellContent>
+          ),
+          meta: { className: "w-10 p-0" },
+        },
+        columns[0],
+      ] satisfies ColumnDef<Data>[];
+    }, []);
+
+    return (
+      <DataTable
+        {...args}
+        data={rows}
+        columns={columnsWithSelection}
+        rowSelection={rowSelection}
+        setRowSelection={setRowSelection}
+        enableRowSelection
+        getRowId={(row) => row.name}
+      />
+    );
+  },
+  play: async ({ canvas }) => {
+    const checkbox = canvas.getByRole("checkbox", { name: "Select all rows" });
+    const header = checkbox.closest("th");
+    await expect(header).not.toBeNull();
+    if (!header) {
+      return;
+    }
+    const checkboxBounds = checkbox.getBoundingClientRect();
+    const headerBounds = header.getBoundingClientRect();
+    await expect(
+      Math.abs(
+        checkboxBounds.x +
+          checkboxBounds.width / 2 -
+          (headerBounds.x + headerBounds.width / 2)
+      )
+    ).toBeLessThanOrEqual(1);
+    await expect(
+      Math.abs(
+        checkboxBounds.y +
+          checkboxBounds.height / 2 -
+          (headerBounds.y + headerBounds.height / 2)
+      )
+    ).toBeLessThanOrEqual(1);
+
+    await userEvent.click(checkbox);
+    for (const rowCheckbox of canvas.getAllByRole("checkbox")) {
+      await expect(rowCheckbox).toBeChecked();
+    }
+  },
 };
 
 /**
