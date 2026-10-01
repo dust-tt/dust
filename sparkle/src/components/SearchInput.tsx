@@ -33,6 +33,8 @@ export interface SearchInputProps {
   disabled?: boolean;
   /** Replaces the trailing icon with a small spinner while results are being fetched. */
   isLoading?: boolean;
+  /** Use borderless inside a picker header; standalone search fields keep their outline. */
+  variant?: "default" | "borderless";
   className?: string;
 }
 
@@ -58,6 +60,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       name,
       disabled = false,
       isLoading = false,
+      variant = "default",
       className,
     },
     ref
@@ -67,16 +70,28 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     };
 
     const inputId = id ?? name;
+    const InputComponent = variant === "borderless" ? "input" : Input;
 
     return (
       <div className={cn("relative", className)}>
-        <Input
+        <InputComponent
+          className={
+            variant === "borderless"
+              ? cn(
+                  "h-8 w-full min-w-0 border-0 border-b border-transparent bg-transparent py-0 pl-2 pr-8",
+                  "font-sans text-base text-foreground outline-hidden md:text-sm",
+                  "placeholder:text-muted-foreground focus-visible:border-border-form-active",
+                  "disabled:cursor-not-allowed disabled:text-faint"
+                )
+              : undefined
+          }
           id={inputId}
           type="text"
           name={name}
           autoComplete="off"
+          data-1p-ignore
           placeholder={placeholder}
-          value={value}
+          value={value ?? ""}
           onChange={(e) => {
             onChange(e.target.value);
           }}
