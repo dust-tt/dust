@@ -23,12 +23,12 @@ describe("getFeatureFlags with global flags", () => {
 
     // Set global flag at 100%.
     await GlobalFeatureFlagResource.setRolloutPercentage(
-      "labs_transcripts",
+      "dummy_feature_for_flag_testing",
       100
     );
 
     const flags = await getFeatureFlags(auth);
-    expect(flags).toContain("labs_transcripts");
+    expect(flags).toContain("dummy_feature_for_flag_testing");
   });
 
   it("workspace flag takes precedence over global flag", async () => {
@@ -36,15 +36,20 @@ describe("getFeatureFlags with global flags", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     // Enable at workspace level and globally.
-    await FeatureFlagResource.enable(workspace, "labs_transcripts");
+    await FeatureFlagResource.enable(
+      workspace,
+      "dummy_feature_for_flag_testing"
+    );
     await GlobalFeatureFlagResource.setRolloutPercentage(
-      "labs_transcripts",
+      "dummy_feature_for_flag_testing",
       100
     );
 
     const flags = await getFeatureFlags(auth);
     // Should appear exactly once, not duplicated.
-    expect(flags.filter((f) => f === "labs_transcripts")).toHaveLength(1);
+    expect(
+      flags.filter((f) => f === "dummy_feature_for_flag_testing")
+    ).toHaveLength(1);
   });
 
   it("global flag at 0% is not returned", async () => {
@@ -53,13 +58,16 @@ describe("getFeatureFlags with global flags", () => {
 
     // Setting to 0 should remove the global flag.
     await GlobalFeatureFlagResource.setRolloutPercentage(
-      "labs_transcripts",
+      "dummy_feature_for_flag_testing",
       100
     );
-    await GlobalFeatureFlagResource.setRolloutPercentage("labs_transcripts", 0);
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      "dummy_feature_for_flag_testing",
+      0
+    );
 
     const flags = await getFeatureFlags(auth);
-    expect(flags).not.toContain("labs_transcripts");
+    expect(flags).not.toContain("dummy_feature_for_flag_testing");
   });
 
   it("global flag with percentage respects rollout bucket", async () => {
@@ -69,22 +77,22 @@ describe("getFeatureFlags with global flags", () => {
 
     // Set percentage just above the workspace bucket so it's included.
     await GlobalFeatureFlagResource.setRolloutPercentage(
-      "labs_transcripts",
+      "dummy_feature_for_flag_testing",
       bucket + 1
     );
 
     const flagsIn = await getFeatureFlags(auth);
-    expect(flagsIn).toContain("labs_transcripts");
+    expect(flagsIn).toContain("dummy_feature_for_flag_testing");
 
     // Set percentage to exactly the bucket value so it's excluded.
     if (bucket > 0) {
       await GlobalFeatureFlagResource.setRolloutPercentage(
-        "labs_transcripts",
+        "dummy_feature_for_flag_testing",
         bucket
       );
 
       const flagsOut = await getFeatureFlags(auth);
-      expect(flagsOut).not.toContain("labs_transcripts");
+      expect(flagsOut).not.toContain("dummy_feature_for_flag_testing");
     }
   });
 
@@ -94,13 +102,13 @@ describe("getFeatureFlags with global flags", () => {
 
     await FeatureFlagResource.enable(workspace, "deepseek_feature");
     await GlobalFeatureFlagResource.setRolloutPercentage(
-      "labs_transcripts",
+      "dummy_feature_for_flag_testing",
       100
     );
 
     const flags = await getFeatureFlags(auth);
     expect(flags).toContain("deepseek_feature");
-    expect(flags).toContain("labs_transcripts");
+    expect(flags).toContain("dummy_feature_for_flag_testing");
   });
 
   it("returns disable_computer_feature alongside other feature flags", async () => {

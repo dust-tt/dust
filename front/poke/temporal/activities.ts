@@ -68,10 +68,6 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import {
-  LabsTranscriptsConfigurationModel,
-  LabsTranscriptsHistoryModel,
-} from "@app/lib/resources/storage/models/labs_transcripts";
-import {
   UserMetadataModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
@@ -867,36 +863,6 @@ export async function deleteWorkspaceActivity({
       throw deleteResult.error;
     }
   }
-}
-
-export async function deleteTranscriptsActivity({
-  workspaceId,
-}: {
-  workspaceId: string;
-}) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = auth.getNonNullableWorkspace();
-
-  const configs = await LabsTranscriptsConfigurationModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
-
-  await LabsTranscriptsHistoryModel.destroy({
-    where: {
-      workspaceId: workspace.id,
-      configurationId: {
-        [Op.in]: configs.map((c) => c.id),
-      },
-    },
-  });
-
-  await LabsTranscriptsConfigurationModel.destroy({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
 }
 
 export async function deleteTagsActivity({

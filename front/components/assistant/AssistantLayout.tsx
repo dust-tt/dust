@@ -20,7 +20,7 @@ interface AssistantLayoutProps {
  * @cc [owner:rfrenoy,label:react;performance] single-owner-for-sidebar-nav-children
  * `AssistantLayout` MUST be the only component that passes `AgentSidebarMenu` to
  * `useSetNavChildren`, and it MUST be rendered above the route outlet of every agent surface it
- * covers (conversations, Pods, get-started, agent and skill management, labs) rather than by
+ * covers (conversations, Pods, get-started, agent and skill management) rather than by
  * those routes' page components.
  *
  * A single owner above the outlet guarantees that clearing `navChildren` on unmount and setting
