@@ -145,6 +145,12 @@ export type FinalToolCallAssertion =
       agentKey?: string;
     }
   | {
+      type: "suggestSkillCitingNewSkill";
+      // The seeded skill whose instruction edits must cite the created skill. Without it, one
+      // created skill must cite another one.
+      skillKey?: string;
+    }
+  | {
       type: "suggestAgentInstructionsChange";
       agentKey: string;
       // The edit must target one of these block ids (from the seeded HTML). Guards against a

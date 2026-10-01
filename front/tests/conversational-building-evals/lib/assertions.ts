@@ -1,4 +1,5 @@
 import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
+import { extractSkillRefs } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
 import { TOOL } from "@app/tests/conversational-building-evals/lib/tool-runner";
 import type {
@@ -400,6 +401,47 @@ export function validateFinalToolCall(
       return { success: true };
     }
 
+    case "suggestSkillCitingNewSkill": {
+      const created = findSuggestion(finalToolCall, "create_skill");
+      if (!created.success) {
+        return created;
+      }
+      const creations = getSuggestions(finalToolCall).filter(
+        (s) => s.kind === "create_skill"
+      );
+      const declaredRefs = creations.map((s) => s.ref).filter(isString);
+
+      if (!assertion.skillKey) {
+        const citesAnotherCreation = creations.some(
+          (creation) =>
+            isString(creation.instructions) &&
+            extractSkillRefs(creation.instructions).some(
+              (ref) => ref !== creation.ref && declaredRefs.includes(ref)
+            )
+        );
+        if (!citesAnotherCreation) {
+          return {
+            success: false,
+            error: `No create_skill suggestion cites another created skill as <skill ref="..."/>: ${JSON.stringify(creations)}`,
+          };
+        }
+        return { success: true };
+      }
+
+      const edit = findSkillEdit(finalToolCall, scenario, assertion.skillKey);
+      if (!edit.success) {
+        return edit;
+      }
+      const citedRefs = extractSkillRefs(getInstructionEditsContent(edit.item));
+      if (!citedRefs.some((ref) => declaredRefs.includes(ref))) {
+        return {
+          success: false,
+          error: `The edit_skill instruction edits cite no created skill (declared refs ${JSON.stringify(declaredRefs)}, cited ${JSON.stringify(citedRefs)})`,
+        };
+      }
+      return { success: true };
+    }
+
     case "suggestSkillUpdate": {
       const found = findSkillEdit(finalToolCall, scenario, assertion.skillKey);
       if (!found.success) {
@@ -628,6 +670,10 @@ function getEntitiesToMention(
     case "suggestAgentSkillByRef":
       return assertion.agentKey
         ? [{ kind: "agent", key: assertion.agentKey }]
+        : [];
+    case "suggestSkillCitingNewSkill":
+      return assertion.skillKey
+        ? [{ kind: "skill", key: assertion.skillKey }]
         : [];
     case "suggestAgentInstructionsChange":
     case "suggestAgentModelChange":
