@@ -54,6 +54,24 @@ describe("canReadSourceFile", () => {
     expect(await canReadSourceFile(outsiderAuth, globalFile)).toBe(true);
   });
 
+  it("grants a system key a user-less upsert_table upload and denies a regular key", async () => {
+    const { auth: systemAuth, workspace } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+    const file = await FileFactory.csv(systemAuth, null, {
+      useCase: "upsert_table",
+      status: "ready",
+    });
+
+    expect(await canReadSourceFile(systemAuth, file)).toBe(true);
+
+    const regularKey = await KeyFactory.regular(
+      (await GroupFactory.defaults(workspace)).globalGroup
+    );
+    const regularAuth = await Authenticator.fromKey(regularKey, workspace.sId);
+    expect(await canReadSourceFile(regularAuth, file)).toBe(false);
+  });
+
   it("limits unattached uploads to the file owner", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "user",
