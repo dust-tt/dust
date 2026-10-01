@@ -67,7 +67,7 @@ export async function moveConversationToProject(
     currentAgentConversationId,
     spaceId,
   }: {
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType | ConversationResource;
     currentAgentConversationId?: string;
     spaceId: string;
   }
@@ -263,7 +263,7 @@ export async function moveConversationOutOfProject(
   {
     conversation,
   }: {
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType | ConversationResource;
   }
 ): Promise<
   Result<

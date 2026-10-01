@@ -264,7 +264,7 @@ app.patch(
     const { cId } = ctx.req.valid("param");
 
     const conversationRes =
-      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional ConversationWithoutContentType
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: need unread + actionRequired
       await ConversationResource.fetchConversationWithParticipantState(
         auth,
         cId
