@@ -1,52 +1,67 @@
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useAppRouter } from "@app/lib/platform";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, trackEvent, withTracking } from "@app/lib/tracking";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { Button, XClose } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { AnimatePresence, motion } from "framer-motion";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-const MODEL_PICKER_IMAGE_PATH = "/static/Model_Picker_Banner.png";
-const MODEL_PICKER_BANNER_LOCAL_STORAGE_KEY = "model-picker-banner-dismissed";
-const MODEL_PICKER_DOCS_URL =
-  "https://docs.dust.tt/docs/user-documentation/agents/model-selection";
+const CONVERSATIONAL_BUILDING_IMAGE_PATH =
+  "/static/Conversational_Building_Banner.svg";
+const CONVERSATIONAL_BUILDING_BANNER_LOCAL_STORAGE_KEY =
+  "conversational-building-banner-dismissed";
 
-interface ModelPickerBannerProps {
-  showModelPickerBanner: boolean;
-  onShowModelPickerBanner: (open: boolean) => void;
+// sId of the code-defined `conversationalBuildingSkill` (server-side, not importable here).
+const CONVERSATIONAL_BUILDING_SKILL_ID = "conversational-building";
+
+interface ConversationalBuildingBannerProps {
+  owner: { sId: string };
+  showBanner: boolean;
+  onShowBanner: (open: boolean) => void;
 }
 
-function ModelPickerBanner({
-  showModelPickerBanner,
-  onShowModelPickerBanner,
-}: ModelPickerBannerProps) {
-  const { openModelPickerRef } = useContext(InputBarContext);
+function ConversationalBuildingBanner({
+  owner,
+  showBanner,
+  onShowBanner,
+}: ConversationalBuildingBannerProps) {
+  const { t } = useLingui();
+  const router = useAppRouter();
 
   // Impression event: denominator for the dismiss / CTA click rates.
   useEffect(() => {
-    if (showModelPickerBanner) {
+    if (showBanner) {
       trackEvent({
         area: TRACKING_AREAS.CONVERSATION,
-        object: "model_picker_banner",
+        object: "conversational_building_banner",
         action: "view",
       });
     }
-  }, [showModelPickerBanner]);
+  }, [showBanner]);
 
   const onDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    localStorage.setItem(MODEL_PICKER_BANNER_LOCAL_STORAGE_KEY, "true");
-    onShowModelPickerBanner(false);
+    localStorage.setItem(
+      CONVERSATIONAL_BUILDING_BANNER_LOCAL_STORAGE_KEY,
+      "true"
+    );
+    onShowBanner(false);
   };
 
-  const onOpenModelPicker = () => {
-    openModelPickerRef.current?.();
+  // Same entry point as the "Try skill" button of the skill details.
+  const onTryIt = () => {
+    void router.push(
+      getConversationRoute(
+        owner.sId,
+        "new",
+        `skill=${CONVERSATIONAL_BUILDING_SKILL_ID}`
+      )
+    );
   };
 
-  const onLearnMore = () => {
-    window.open(MODEL_PICKER_DOCS_URL, "_blank", "noopener,noreferrer");
-  };
-
-  if (!showModelPickerBanner) {
+  if (!showBanner) {
     return null;
   }
 
@@ -59,11 +74,11 @@ function ModelPickerBanner({
     >
       <div className="relative overflow-hidden rounded-t-2xl">
         <img
-          src={MODEL_PICKER_IMAGE_PATH}
-          alt="Model picker"
-          width={300}
-          height={98}
-          className="h-[98px] w-[300px] border-b border-border-dark object-cover"
+          src={CONVERSATIONAL_BUILDING_IMAGE_PATH}
+          alt={t`A message asking Dust to improve an agent, next to the modified agent`}
+          width={298}
+          height={138}
+          className="h-auto w-full border-b border-border-dark"
         />
         <Button
           variant="outline"
@@ -72,38 +87,27 @@ function ModelPickerBanner({
           className="absolute right-1 top-1"
           onClick={withTracking(
             TRACKING_AREAS.CONVERSATION,
-            "dismiss_model_picker_banner",
+            "dismiss_conversational_building_banner",
             onDismiss
           )}
         />
       </div>
       <div className="relative px-4 py-3">
-        <div className="mb-1 text-pretty text-sm font-medium text-foreground">
-          Choose your model from the input bar
+        <div className="mb-3 text-pretty text-sm font-medium text-foreground">
+          <Trans>
+            You can now build and edit skills and agents directly in
+            conversations.
+          </Trans>
         </div>
-        <h4 className="mb-3 text-xs leading-tight text-primary">
-          GPT, Claude, Gemini and more are now available in the model picker.
-          Choose one to use with any agent.
-        </h4>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="highlight"
             size="xs"
-            label="Pick a model"
+            label={t`Try it`}
             onClick={withTracking(
               TRACKING_AREAS.CONVERSATION,
-              "open_model_picker_banner",
-              onOpenModelPicker
-            )}
-          />
-          <Button
-            variant="outline"
-            size="xs"
-            label="Learn more"
-            onClick={withTracking(
-              TRACKING_AREAS.CONVERSATION,
-              "learn_more_model_picker_banner",
-              onLearnMore
+              "try_conversational_building_banner",
+              onTryIt
             )}
           />
         </div>
@@ -116,19 +120,26 @@ interface StackedInAppBannersProps {
   owner: { sId: string };
 }
 
-export function StackedInAppBanners({
-  owner: _owner,
-}: StackedInAppBannersProps) {
-  const [showModelPickerBanner, setShowModelPickerBanner] = useState(
-    () => localStorage.getItem(MODEL_PICKER_BANNER_LOCAL_STORAGE_KEY) !== "true"
+export function StackedInAppBanners({ owner }: StackedInAppBannersProps) {
+  const { hasPermission } = useWorkspacePermissions();
+  const canBuild =
+    hasPermission("create", "agent") || hasPermission("create", "skill");
+  const [
+    showConversationalBuildingBanner,
+    setShowConversationalBuildingBanner,
+  ] = useState(
+    () =>
+      localStorage.getItem(CONVERSATIONAL_BUILDING_BANNER_LOCAL_STORAGE_KEY) !==
+      "true"
   );
 
   return (
     <AnimatePresence>
-      <ModelPickerBanner
-        key="model-picker-banner"
-        showModelPickerBanner={showModelPickerBanner}
-        onShowModelPickerBanner={setShowModelPickerBanner}
+      <ConversationalBuildingBanner
+        key="conversational-building-banner"
+        owner={owner}
+        showBanner={canBuild && showConversationalBuildingBanner}
+        onShowBanner={setShowConversationalBuildingBanner}
       />
     </AnimatePresence>
   );
