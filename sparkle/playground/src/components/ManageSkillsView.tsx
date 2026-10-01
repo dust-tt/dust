@@ -287,12 +287,17 @@ function SkillBatchBar({
 interface ManageSkillsViewProps {
   /** Whose skills count as "editable by me". */
   currentUserId: string;
+  /** The workspace's own skills; defaults to the shared mock catalog. */
+  skills?: ManagedSkill[];
 }
 
-export function ManageSkillsView({ currentUserId }: ManageSkillsViewProps) {
+export function ManageSkillsView({
+  currentUserId,
+  skills: workspaceSkills,
+}: ManageSkillsViewProps) {
   const [skills, setSkills] = useState<ManagedSkill[]>(() =>
     withCurrentUserAsEditor(
-      mockManagedSkills,
+      workspaceSkills ?? mockManagedSkills,
       currentUserId,
       (skill) => !skill.isDustProvided
     )

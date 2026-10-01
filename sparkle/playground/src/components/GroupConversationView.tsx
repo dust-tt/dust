@@ -142,6 +142,11 @@ interface GroupConversationViewProps {
   onTabChange?: (tab: string) => void;
   dynamicFileTabIds?: string[];
   onAddFileToTopbar?: (fileId: string) => void;
+  /**
+   * The Pod's files, rooted at `null`. Defaults to the shared per-space mock
+   * set; pass the workspace's own so the Pod and the file system agree.
+   */
+  initialDataSources?: DataSource[];
   /** When set, opening a file calls this instead of the built-in sheet. */
   onFileOpen?: (dataSource: DataSource) => void;
   onFileDragChange?: (fileId: string | null, fileName?: string | null) => void;
@@ -1365,6 +1370,7 @@ export function GroupConversationView({
   onTabChange,
   dynamicFileTabIds = [],
   onAddFileToTopbar,
+  initialDataSources,
   onFileOpen,
   onFileDragChange,
   fileToRevealInKnowledge = null,
@@ -1478,8 +1484,8 @@ export function GroupConversationView({
   );
 
   // Files tab state
-  const [dataSources, setDataSources] = useState<DataSource[]>(() =>
-    getDataSourcesBySpaceId(space.id)
+  const [dataSources, setDataSources] = useState<DataSource[]>(
+    () => initialDataSources ?? getDataSourcesBySpaceId(space.id)
   );
   const [knowledgeSearchText, setKnowledgeSearchText] = useState("");
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -2308,12 +2314,12 @@ export function GroupConversationView({
 
   // Reset data sources when space changes
   useEffect(() => {
-    setDataSources(getDataSourcesBySpaceId(space.id));
+    setDataSources(initialDataSources ?? getDataSourcesBySpaceId(space.id));
     setCurrentFolderId(null);
     setRevealedFileIdInKnowledge(null);
     setDraggingFileId(null);
     setDropHoverTargetId(null);
-  }, [space.id]);
+  }, [space.id, initialDataSources]);
 
   useEffect(() => {
     if (!fileToRevealInKnowledge) {
