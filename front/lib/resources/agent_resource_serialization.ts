@@ -218,6 +218,20 @@ export async function toLightAgentConfigurations(
   );
 }
 
+// The light configuration of a single resource, as `toLightAgentConfigurations` renders it.
+export async function toLightAgentConfiguration(
+  auth: Authenticator,
+  resource: AgentResource,
+  options: { withFavorites?: boolean; withTags?: boolean } = {}
+): Promise<LightAgentConfigurationType> {
+  const [configuration] = await toLightAgentConfigurations(
+    auth,
+    [resource],
+    options
+  );
+  return configuration;
+}
+
 /**
  * Renders full `AgentConfigurationType`s: the light enrichments plus the batched `instructionsHtml`
  * and `actions` (redacted when the caller cannot view the content).

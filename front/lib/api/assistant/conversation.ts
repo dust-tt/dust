@@ -104,7 +104,7 @@ import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
+import { toLightAgentConfiguration } from "@app/lib/resources/agent_resource_serialization";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import type { RunningAgentMessageContext } from "@app/lib/resources/conversation_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -131,10 +131,7 @@ import type {
   ContentFragmentInputWithFileIdType,
 } from "@app/types/api/assistant";
 import { isContentFragmentInputWithContentNode } from "@app/types/api/assistant";
-import type {
-  LightAgentConfigurationType,
-  ToolErrorEvent,
-} from "@app/types/assistant/agent";
+import type { ToolErrorEvent } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgenticMessageData,
@@ -801,10 +798,14 @@ export async function postUserMessage(
     message: { type: "user_message" },
   });
 
-  const mentionedAgentConfiguration = await toMentionedAgentConfiguration(
-    auth,
-    mentionedAgents[0] ?? null
-  );
+  // The model resolution, the space-usage check and the agent message created for the mention still
+  // take a configuration: only the mentioned agent is serialized, without favorites or tags.
+  const mentionedAgentConfiguration = mentionedAgents[0]
+    ? await toLightAgentConfiguration(auth, mentionedAgents[0], {
+        withFavorites: false,
+        withTags: false,
+      })
+    : null;
   const mentionedAgentRestricted = await isAgentRestrictedBySpaceUsage(auth, {
     configuration: mentionedAgentConfiguration,
     conversation,
@@ -1082,23 +1083,6 @@ async function loadMentionedAgents(
   return AgentResource.dangerouslyFetchByIds(auth, agentIds);
 }
 
-// The model resolution, the space-usage check and the agent message created for the mention still
-// take a configuration: only the mentioned agent is serialized, without favorites or tags.
-async function toMentionedAgentConfiguration(
-  auth: Authenticator,
-  agent: AgentResource | null
-): Promise<LightAgentConfigurationType | null> {
-  if (!agent) {
-    return null;
-  }
-
-  const [configuration] = await toLightAgentConfigurations(auth, [agent], {
-    withFavorites: false,
-    withTags: false,
-  });
-  return configuration ?? null;
-}
-
 /**
  * Can a user mention a given configuration
  */
@@ -1252,10 +1236,12 @@ export async function editUserMessage(
     message: { type: "user_message" },
   });
 
-  const mentionedAgentConfiguration = await toMentionedAgentConfiguration(
-    auth,
-    mentionedAgents[0] ?? null
-  );
+  const mentionedAgentConfiguration = mentionedAgents[0]
+    ? await toLightAgentConfiguration(auth, mentionedAgents[0], {
+        withFavorites: false,
+        withTags: false,
+      })
+    : null;
 
   const mentionedAgentRestricted = await isAgentRestrictedBySpaceUsage(auth, {
     configuration: mentionedAgentConfiguration,
