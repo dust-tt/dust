@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface FrecencyEntry<T> {
   count: number;
@@ -13,6 +13,19 @@ function computeFrecencyScore(entry: {
   const ageHours = (Date.now() - entry.lastVisited) / (1000 * 60 * 60);
   const decay = Math.pow(0.5, ageHours / 72);
   return entry.count * decay;
+}
+
+function isFrecencyEntry<T>(value: unknown): value is FrecencyEntry<T> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const entry = value as Record<string, unknown>;
+  return (
+    typeof entry.count === "number" &&
+    typeof entry.lastVisited === "number" &&
+    "item" in entry &&
+    entry.item != null
+  );
 }
 
 function readFrecencyMap<T>(
@@ -31,16 +44,31 @@ function readFrecencyMap<T>(
     ) {
       return {};
     }
-    return parsed as Record<string, FrecencyEntry<T>>;
+    const result: Record<string, FrecencyEntry<T>> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (isFrecencyEntry<T>(value)) {
+        result[key] = value;
+      }
+    }
+    return result;
   } catch {
     return {};
   }
 }
 
+/**
+ * Frecency ranking with localStorage persistence.
+ *
+ * Callers MUST include a workspace id in `namespace` (e.g.
+ * `command-palette-${owner.sId}`) so each workspace gets its own storage key.
+ * The in-memory map is reloaded whenever that key changes so SPA workspace
+ * switches cannot leak another workspace's items into view or storage.
+ */
 export function useFrecencySorting<T>(
   data: T[] | undefined,
   options?: {
     key?: (item: T) => string;
+    /** Storage namespace; include a workspace id for workspace isolation. */
     namespace?: string;
     sortUnvisited?: (a: T, b: T) => number;
   }
@@ -63,21 +91,31 @@ export function useFrecencySorting<T>(
   const [frecencyMap, setFrecencyMap] = useState<
     Record<string, FrecencyEntry<T>>
   >(() => readFrecencyMap<T>(storageKey));
+  // Tracks which storageKey the in-memory map was loaded for, so we never
+  // persist workspace A's map under workspace B's key during a switch.
+  const [activeStorageKey, setActiveStorageKey] = useState(storageKey);
 
-  const persistMap = useCallback(
-    (map: Record<string, FrecencyEntry<T>>) => {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(map));
-      } catch {
-        // best-effort
-      }
-    },
-    [storageKey]
-  );
+  useEffect(() => {
+    if (storageKey === activeStorageKey) {
+      return;
+    }
+    setFrecencyMap(readFrecencyMap<T>(storageKey));
+    setActiveStorageKey(storageKey);
+  }, [storageKey, activeStorageKey]);
+
+  useEffect(() => {
+    if (storageKey !== activeStorageKey) {
+      return;
+    }
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(frecencyMap));
+    } catch {
+      // best-effort
+    }
+  }, [frecencyMap, storageKey, activeStorageKey]);
 
   const visitedItems = useMemo(() => {
     return Object.values(frecencyMap)
-      .filter((entry) => entry.item != null)
       .sort((a, b) => computeFrecencyScore(b) - computeFrecencyScore(a))
       .map((entry) => entry.item);
   }, [frecencyMap]);
@@ -120,7 +158,7 @@ export function useFrecencySorting<T>(
       const k = getKey(item);
       setFrecencyMap((prev) => {
         const entry = prev[k];
-        const updated = {
+        return {
           ...prev,
           [k]: {
             count: (entry?.count || 0) + 1,
@@ -128,11 +166,9 @@ export function useFrecencySorting<T>(
             item,
           },
         };
-        persistMap(updated);
-        return updated;
       });
     },
-    [getKey, persistMap]
+    [getKey]
   );
 
   const resetRanking = useCallback(
@@ -141,11 +177,10 @@ export function useFrecencySorting<T>(
       setFrecencyMap((prev) => {
         const updated = { ...prev };
         delete updated[k];
-        persistMap(updated);
         return updated;
       });
     },
-    [getKey, persistMap]
+    [getKey]
   );
 
   return { data: sortedData, visitedItems, visitItem, resetRanking };

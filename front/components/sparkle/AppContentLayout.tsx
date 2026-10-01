@@ -186,7 +186,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
             </div>
           </AppContentInnerWrapper>
         </div>
-        <CommandPalette owner={owner} user={user} />
+        <CommandPalette key={owner.sId} owner={owner} user={user} />
       </div>
       {DevFeatureFlagPanel && (
         <Suspense fallback={null}>
