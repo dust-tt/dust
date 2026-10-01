@@ -1,5 +1,6 @@
 import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
 import type { Authenticator } from "@app/lib/auth";
+import type { MessageModel } from "@app/lib/models/agent/conversation";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { GlobalAgentContext } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -31,36 +32,25 @@ export function getGlobalAgentContextForTurn({
 
 // Callers outside the agent loop (the sandbox) resolve a global agent for the same turn as the
 // loop did: the user message version the agent message answers (its `parentId` row). Custom agents
-// ignore the context, so the user message is only read for global ones. A missing message resolves
-// no context rather than failing: the caller reports it when it reads the agent message itself.
+// ignore the context, so the user message is only read for global ones.
 export async function getGlobalAgentContextForAgentMessage(
   auth: Authenticator,
   {
     agentId,
     conversation,
-    agentMessageId,
+    agentMessage,
   }: {
     agentId: string;
     conversation: ConversationResource;
-    agentMessageId: string;
+    agentMessage: MessageModel;
   }
 ): Promise<GlobalAgentContext | undefined> {
-  if (!isGlobalAgentId(agentId)) {
+  if (!isGlobalAgentId(agentId) || !agentMessage.parentId) {
     return undefined;
   }
 
-  const agentMessageRes = await conversation.getMessageById(
-    auth,
-    agentMessageId
-  );
-  const parentId = agentMessageRes.isOk()
-    ? agentMessageRes.value.parentId
-    : null;
-  if (!parentId) {
-    return undefined;
-  }
   const [message] = await conversation.fetchMessagesByModelIds(auth, [
-    parentId,
+    agentMessage.parentId,
   ]);
   if (!message?.userMessage) {
     return undefined;

@@ -1,6 +1,9 @@
+import { getGlobalAgentContextForAgentMessage } from "@app/lib/api/assistant/global_agent_context";
 import type { Authenticator } from "@app/lib/auth";
+import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
   AgentConfigurationType,
   GlobalAgentContext,
@@ -51,14 +54,34 @@ export async function getPinnedAgentConfigurationForRun(
 
 /**
  * @cc [owner:tdraier,label:security;performance] pinned-run-tooling
- * Returns the configuration `getPinnedAgentConfigurationForRun` returns, under the same `read` gate,
- * without loading its instructions (`instructions`/`instructionsHtml` are null): for callers that
- * resolve a run's tools and model without running it (the sandbox). It MUST NOT be used to run the
- * agent.
+ * Returns the configuration `getPinnedAgentConfigurationForRun` returns for the version
+ * `agentMessage` pinned, under the same `read` gate and shaped for the agent message's turn (global
+ * agents: the `globalAgentContext` the loop built for it), without loading its instructions
+ * (`instructions`/`instructionsHtml` are null): for callers that resolve a run's tools and model
+ * without running it (the sandbox). It MUST NOT be used to run the agent.
  */
-export async function getPinnedAgentToolingForRun(
+export async function getPinnedAgentToolingForAgentMessage(
   auth: Authenticator,
-  pinned: PinnedAgentVersion
+  {
+    agentId,
+    agentVersion,
+    conversation,
+    agentMessage,
+  }: {
+    agentId: string;
+    agentVersion: number;
+    conversation: ConversationResource;
+    agentMessage: MessageModel;
+  }
 ): Promise<AgentConfigurationType | null> {
-  return getPinnedAgentConfiguration(auth, pinned, { withInstructions: false });
+  const globalAgentContext = await getGlobalAgentContextForAgentMessage(auth, {
+    agentId,
+    conversation,
+    agentMessage,
+  });
+  return getPinnedAgentConfiguration(
+    auth,
+    { agentId, agentVersion, globalAgentContext },
+    { withInstructions: false }
+  );
 }

@@ -849,7 +849,10 @@ export class Authenticator {
    * spaces, plus the token agent's `regular_auto` editor group (the `editor` grant on the agent), and
    * no other: the sandbox acts with the verbs the agent loop holds on that agent, restricted to the
    * conversation's spaces. No other group kind is kept for an agent grant, so a grant on the agent
-   * never widens the sandbox to another group's spaces.
+   * never widens the sandbox to another group's spaces. This relies on agent `editor` grants being
+   * held by the agent's `regular_auto` editor group only (`AgentResource.grantEditors` →
+   * `GroupPermissionResource.grantToUsers`): a path granting `editor` on an agent to another group
+   * kind MUST update this narrowing, or the sandbox would not read an agent the loop runs.
    */
   private static async restrictGroupsToSandboxExecSpaces(
     userGroupIds: ModelId[],

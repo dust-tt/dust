@@ -1,8 +1,7 @@
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
-import { getPinnedAgentToolingForRun } from "@app/lib/api/assistant/configuration/run_configuration";
-import { getGlobalAgentContextForAgentMessage } from "@app/lib/api/assistant/global_agent_context";
+import { getPinnedAgentToolingForAgentMessage } from "@app/lib/api/assistant/configuration/run_configuration";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -131,15 +130,23 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   }
   const conversation = conversationResource.toJSON();
 
+  const agentMessageRes = await conversationResource.getMessageById(auth, mId);
+  if (agentMessageRes.isErr()) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message: `Agent message ${mId} not found.`,
+      },
+    });
+  }
+
   // Fetch agent accessible servers.
-  const agentConfig = await getPinnedAgentToolingForRun(auth, {
+  const agentConfig = await getPinnedAgentToolingForAgentMessage(auth, {
     agentId,
     agentVersion,
-    globalAgentContext: await getGlobalAgentContextForAgentMessage(auth, {
-      agentId,
-      conversation: conversationResource,
-      agentMessageId: mId,
-    }),
+    conversation: conversationResource,
+    agentMessage: agentMessageRes.value,
   });
   if (!agentConfig) {
     return apiError(ctx, {
