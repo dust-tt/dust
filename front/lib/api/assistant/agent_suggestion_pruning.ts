@@ -163,7 +163,11 @@ async function pruneSuggestions(
     ),
   ]);
 
-  await outdateAgentSuggestions(auth, outdatedByKind.flat());
+  await BatchSuggestionResource.outdateSuggestions(
+    auth,
+    AgentSuggestionResource,
+    outdatedByKind.flat()
+  );
 }
 
 /** Outdated if tool to add already exists or tool to remove no longer exists. */
@@ -412,7 +416,11 @@ export async function pruneConflictingInstructionSuggestions(
     )
   );
 
-  await outdateAgentSuggestions(auth, toMarkOutdated);
+  await BatchSuggestionResource.outdateSuggestions(
+    auth,
+    AgentSuggestionResource,
+    toMarkOutdated
+  );
 }
 
 export async function pruneSuggestionsForAgent(
@@ -430,30 +438,6 @@ export async function pruneSuggestionsForAgent(
 }
 
 /**
- * @cc [owner:fabiencelier,label:product] outdate-through-batch
- * Every agent suggestion pruning outdates MUST go through `outdateAgentSuggestions`: a suggestion
- * that belongs to a batch outdates its whole batch (see `batch-outdated-as-a-whole`), the others
- * are outdated on their own.
- */
-export async function outdateAgentSuggestions(
-  auth: Authenticator,
-  suggestions: AgentSuggestionResource[]
-): Promise<void> {
-  if (suggestions.length === 0) {
-    return;
-  }
-
-  await AgentSuggestionResource.bulkUpdateState(
-    auth,
-    suggestions.filter((s) => s.batchId === null),
-    "outdated"
-  );
-  await BatchSuggestionResource.outdateBatchesOf(auth, [
-    ...new Set(removeNulls(suggestions.map((s) => s.batchId))),
-  ]);
-}
-
-/**
  * Marks as outdated the pending suggestions that match the predicate, and returns the other ones.
  */
 export async function markDuplicateSuggestionsAsOutdated(
@@ -462,7 +446,11 @@ export async function markDuplicateSuggestionsAsOutdated(
   isDuplicate: (suggestion: AgentSuggestionResource) => boolean
 ): Promise<AgentSuggestionResource[]> {
   const duplicates = pendingSuggestions.filter(isDuplicate);
-  await outdateAgentSuggestions(auth, duplicates);
+  await BatchSuggestionResource.outdateSuggestions(
+    auth,
+    AgentSuggestionResource,
+    duplicates
+  );
 
   return pendingSuggestions.filter((s) => !isDuplicate(s));
 }
@@ -485,8 +473,9 @@ export async function pruneSupersededSingletonSuggestions(
   const recordedKinds = new Set(recorded.map((s) => s.kind));
   const recordedIds = new Set(recorded.map((s) => s.id));
 
-  await outdateAgentSuggestions(
+  await BatchSuggestionResource.outdateSuggestions(
     auth,
+    AgentSuggestionResource,
     pending.filter((s) => recordedKinds.has(s.kind) && !recordedIds.has(s.id))
   );
 }

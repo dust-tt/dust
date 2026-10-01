@@ -213,6 +213,37 @@ export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> 
   }
 
   /**
+   * @cc [owner:fabiencelier,label:product] outdate-through-batch
+   * Every suggestion pruning outdates MUST go through `outdateSuggestions`: a suggestion that
+   * belongs to a batch outdates its whole batch (see `batch-outdated-as-a-whole`), the others are
+   * outdated on their own.
+   */
+  static async outdateSuggestions<S extends { batchId: ModelId | null }>(
+    auth: Authenticator,
+    suggestionClass: {
+      bulkUpdateState(
+        auth: Authenticator,
+        suggestions: S[],
+        state: "outdated"
+      ): Promise<void>;
+    },
+    suggestions: S[]
+  ): Promise<void> {
+    if (suggestions.length === 0) {
+      return;
+    }
+
+    await suggestionClass.bulkUpdateState(
+      auth,
+      suggestions.filter((s) => s.batchId === null),
+      "outdated"
+    );
+    await this.outdateBatchesOf(auth, [
+      ...new Set(removeNulls(suggestions.map((s) => s.batchId))),
+    ]);
+  }
+
+  /**
    * @cc [owner:fabiencelier,label:product] batch-outdated-as-a-whole
    * When suggestions are outdated, every batch they belong to MUST be marked `outdated` together
    * with all its members, in a single transaction.

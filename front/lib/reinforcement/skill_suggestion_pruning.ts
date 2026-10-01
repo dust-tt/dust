@@ -7,7 +7,6 @@ import {
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
-import { removeNulls } from "@app/types/shared/utils/general";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillEditorsSuggestionData,
@@ -122,7 +121,11 @@ export async function pruneConflictingSkillEditSuggestions(
       (e) => e.targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
     )
   ) {
-    await outdateSkillSuggestions(auth, existingPending);
+    await BatchSuggestionResource.outdateSuggestions(
+      auth,
+      SkillSuggestionResource,
+      existingPending
+    );
     return;
   }
 
@@ -157,7 +160,11 @@ export async function pruneConflictingSkillEditSuggestions(
     );
   });
 
-  await outdateSkillSuggestions(auth, toMarkOutdated);
+  await BatchSuggestionResource.outdateSuggestions(
+    auth,
+    SkillSuggestionResource,
+    toMarkOutdated
+  );
 }
 
 /**
@@ -204,7 +211,11 @@ export async function pruneConflictingSkillEditorsSuggestions(
     );
   });
 
-  await outdateSkillSuggestions(auth, toMarkOutdated);
+  await BatchSuggestionResource.outdateSuggestions(
+    auth,
+    SkillSuggestionResource,
+    toMarkOutdated
+  );
 }
 
 /** Kinds whose field holds a single value, so two pending suggestions of the kind always conflict. */
@@ -243,7 +254,11 @@ export async function pruneSupersededSingletonSkillSuggestions(
     })
   ).filter((s) => !recordedIds.has(s.sId));
 
-  await outdateSkillSuggestions(auth, toMarkOutdated);
+  await BatchSuggestionResource.outdateSuggestions(
+    auth,
+    SkillSuggestionResource,
+    toMarkOutdated
+  );
 }
 
 /**
@@ -289,28 +304,9 @@ export async function pruneOutdatedSkillEditSuggestions(
     return false;
   });
 
-  await outdateSkillSuggestions(auth, outdated);
-}
-
-/**
- * @cc [owner:fabiencelier,label:product] outdate-through-batch
- * Every skill suggestion pruning outdates MUST go through `outdateSkillSuggestions`: a suggestion
- * that belongs to a batch outdates its whole batch the others are outdated on their own.
- */
-export async function outdateSkillSuggestions(
-  auth: Authenticator,
-  suggestions: SkillSuggestionResource[]
-): Promise<void> {
-  if (suggestions.length === 0) {
-    return;
-  }
-
-  await SkillSuggestionResource.bulkUpdateState(
+  await BatchSuggestionResource.outdateSuggestions(
     auth,
-    suggestions.filter((s) => s.batchId === null),
-    "outdated"
+    SkillSuggestionResource,
+    outdated
   );
-  await BatchSuggestionResource.outdateBatchesOf(auth, [
-    ...new Set(removeNulls(suggestions.map((s) => s.batchId))),
-  ]);
 }
