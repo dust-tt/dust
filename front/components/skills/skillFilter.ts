@@ -66,10 +66,10 @@ export function toSkillSearchFilterFacets(
 }
 
 export const SKILL_SEARCH_TABS = [
-  { id: "all", label: "All", filters: { status: ["active"] } },
+  { id: "all", label: "Workspace", filters: { status: ["active"] } },
   {
     id: "default",
-    label: "Default",
+    label: "Dust",
     filters: { status: ["active"], codeDefinedOnly: true },
   },
   { id: "archived", label: "Archived", filters: { status: ["archived"] } },

@@ -285,7 +285,7 @@ describe("search-backed Manage Agents", () => {
 
     for (const { tab, filters } of [
       {
-        tab: "Default",
+        tab: "Dust",
         filters: {
           status: ["active"],
           scope: ["global"],
@@ -344,7 +344,7 @@ describe("search-backed Manage Agents", () => {
       screen.getByRole("checkbox", { name: "Hidden agents" })
     ).not.toBeChecked();
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    await userEvent.click(screen.getByRole("tab", { name: "Default" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
     await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(
       screen.queryByRole("checkbox", { name: "Hidden agents" })
@@ -597,12 +597,12 @@ describe("search-backed Manage Agents", () => {
     );
   });
 
-  it("hides Access on the Default tab", async () => {
+  it("hides Access on the Dust tab", async () => {
     const { mount } = await setup();
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
-    await userEvent.click(screen.getByRole("tab", { name: "Default" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
     await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(
       screen.queryByRole("tab", { name: "Access" })
