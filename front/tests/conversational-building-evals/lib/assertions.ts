@@ -442,6 +442,9 @@ export function validateFinalToolCall(
       return { success: true };
     }
 
+    case "suggestSkillCreation":
+      return findSuggestion(finalToolCall, "create_skill");
+
     case "suggestSkillUpdate": {
       const found = findSkillEdit(finalToolCall, scenario, assertion.skillKey);
       if (!found.success) {
@@ -664,6 +667,7 @@ function getEntitiesToMention(
   switch (assertion.type) {
     // A created agent has no id the model could know: it is named in plain text.
     case "suggestAgentCreation":
+    case "suggestSkillCreation":
       return [];
     case "suggestSubAgentByRef":
       return [{ kind: "agent", key: assertion.parentAgentKey }];
