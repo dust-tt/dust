@@ -1151,6 +1151,66 @@ describe("building_agents_and_skills tools", () => {
 
         expectMcpError(result, "must be written as");
       });
+
+      it("refuses a skill citing its own ref", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+
+        const result = await runSuggest(authenticator, {
+          title: "Notes skill",
+          analysis: "Notes.",
+          suggestions: [
+            {
+              ...createSkill,
+              ref: "notes",
+              instructions: '<p>Use <skill ref="notes"/></p>',
+            },
+          ],
+        });
+
+        expectMcpError(result, "cannot cite itself");
+      });
+
+      it("refuses a skill ref added twice to an existing agent", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+        const agent =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+
+        const result = await runSuggest(authenticator, {
+          title: "Notes skill",
+          analysis: "Notes.",
+          suggestions: [
+            {
+              kind: "edit_agent",
+              agentId: agent.sId,
+              skills: { addSkillRefs: ["notes", "notes"] },
+            },
+            { ...createSkill, ref: "notes" },
+          ],
+        });
+
+        expectMcpError(result, "Each skill can only be added once");
+      });
+
+      it("refuses a skill ref given twice to a new agent", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+
+        const result = await runSuggest(authenticator, {
+          title: "Notes agent",
+          analysis: "Notes.",
+          suggestions: [
+            {
+              kind: "create_agent",
+              name: "NotesTaker",
+              description: "Takes notes.",
+              instructions: "<p>Take notes.</p>",
+              skillRefs: ["notes", "notes"],
+            },
+            { ...createSkill, ref: "notes" },
+          ],
+        });
+
+        expectMcpError(result, "Each skill can only be added once");
+      });
     });
 
     describe("tool changes", () => {
@@ -2018,6 +2078,48 @@ describe("building_agents_and_skills tools", () => {
           });
 
           expectMcpError(result, "its own sub-agent");
+        });
+
+        it("refuses an agent ref added twice to an existing agent", async () => {
+          const { authenticator } = await createAgentAuthorTestContext();
+          const agent =
+            await AgentConfigurationFactory.createTestAgent(authenticator);
+
+          const result = await runSuggest(authenticator, {
+            title: "Pricing helper",
+            analysis: "Pricing.",
+            suggestions: [
+              {
+                kind: "edit_agent",
+                agentId: agent.sId,
+                subAgents: { addAgentRefs: ["pricing", "pricing"] },
+              },
+              createPricingAgent,
+            ],
+          });
+
+          expectMcpError(result, "Each sub-agent can only be added once");
+        });
+
+        it("refuses an agent ref given twice to a new agent", async () => {
+          const { authenticator } = await createAgentAuthorTestContext();
+
+          const result = await runSuggest(authenticator, {
+            title: "Sales lead",
+            analysis: "Sales.",
+            suggestions: [
+              {
+                kind: "create_agent",
+                name: "SalesLead",
+                description: "Handles sales questions.",
+                instructions: "<p>Handle sales questions.</p>",
+                subAgentRefs: ["pricing", "pricing"],
+              },
+              createPricingAgent,
+            ],
+          });
+
+          expectMcpError(result, "Each sub-agent can only be added once");
         });
       });
     });

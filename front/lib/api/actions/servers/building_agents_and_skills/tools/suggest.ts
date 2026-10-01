@@ -147,10 +147,6 @@ async function planAgentCreation(
     return validation;
   }
 
-  if (new Set(subAgentRefs).size !== subAgentRefs.length) {
-    return new Err(new MCPError("Each sub-agent can only be added once."));
-  }
-
   const capabilities = await validateAgentCreationCapabilities(auth, {
     toolIds,
     skillIds,
@@ -666,8 +662,9 @@ function agentSkillRefsOf(suggestions: Suggestion[]): string[] {
 /**
  * Checks that each skill ref is declared once among the skill creations, and each agent ref once
  * among the agent creations. Every skill tag citing a ref in the call's instructions, and every
- * skill ref given to an agent, must point at a declared skill ref. Every sub-agent ref, given to
- * a new or an existing agent, must point at a declared agent ref other than the agent's own.
+ * skill ref given to an agent, must point at a declared skill ref. A skill creation cannot cite its
+ * own ref. Every sub-agent ref, given to a new or an existing agent, must point at a declared agent
+ * ref other than the agent's own. An agent lists each skill ref and each sub-agent ref at most once.
  */
 function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
   const pendingSkillRefs = new Set<string>();
@@ -697,6 +694,33 @@ function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
   );
   if (agentCitingItself) {
     return new Err(new MCPError("An agent cannot be its own sub-agent."));
+  }
+
+  const skillCitingItself = suggestions.find(
+    (suggestion) =>
+      suggestion.kind === "create_skill" &&
+      suggestion.ref &&
+      extractSkillRefs(suggestion.instructions).includes(suggestion.ref)
+  );
+  if (skillCitingItself) {
+    return new Err(new MCPError("A skill cannot cite itself."));
+  }
+
+  const hasDuplicateRef = (refs: string[]) =>
+    new Set(refs).size !== refs.length;
+  if (
+    suggestions.some((suggestion) =>
+      hasDuplicateRef(subAgentRefsOf(suggestion))
+    )
+  ) {
+    return new Err(new MCPError("Each sub-agent can only be added once."));
+  }
+  if (
+    suggestions.some((suggestion) =>
+      hasDuplicateRef(agentSkillRefsOf([suggestion]))
+    )
+  ) {
+    return new Err(new MCPError("Each skill can only be added once."));
   }
 
   const unknownSubAgentRef = suggestions
@@ -1123,10 +1147,10 @@ async function recordPlannedChange(
  * `suggest` MUST validate every suggestion of the call against live state before recording any of
  * them: when one suggestion is invalid or unsupported, or two suggestions target the same agent or
  * skill, or a skill is both deleted and added to an agent, or an agent is both deleted and added
- * as a sub-agent, or a skill ref or agent ref is declared twice among the creations of its kind or
- * used without being declared, the call fails and no batch, placeholder agent or skill, or
- * suggestion row is created. A skill and an agent may share a ref, as each is only resolved among
- * the refs of its own kind.
+ * as a sub-agent, or a skill ref or agent ref is declared twice among the creations of its kind,
+ * used without being declared, cited by the creation that declares it, or given twice to one agent,
+ * the call fails and no batch, placeholder agent or skill, or suggestion row is created. A skill
+ * and an agent may share a ref, as each is only resolved among the refs of its own kind.
  */
 /**
  * @cc [owner:achilleburah,label:product;mcp] refs-resolved-before-storage
