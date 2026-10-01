@@ -719,6 +719,12 @@ currencies, file sizes, hour cycles, the local time zone and string comparisons 
 `lib/i18n/format.ts`, the only place that calls `Intl` for UI code. Enforced by the
 `noRestrictedGlobals` lint rule.
 
+@cc [owner:sfriquet,label:product;react] ui-text-not-concatenated
+User-visible text in `.tsx` files under `components/`, outside `components/poke/`, MUST NOT be built
+with `+`: each sentence is a single string literal or a single template literal. Error messages are
+exempt. In every `.tsx` file, a `+` with a string or template literal operand inside JSX props or
+children is rejected by the `noStringConcatInJsx` lint rule.
+
 @cc [owner:frankaloia,label:security;backend] oauth-connection-ownership-before-token
 Before calling getMCPConnectionAccessToken or otherwise using a caller-supplied OAuth
 connectionId, the code MUST call checkConnectionOwnership(auth, connectionId) and reject

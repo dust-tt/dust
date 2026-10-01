@@ -183,6 +183,10 @@
       "plugins": ["./.grit/patterns/noSparkleClassInFront.grit"]
     },
     {
+      "includes": ["front/**/*.tsx"],
+      "plugins": ["./.grit/patterns/noStringConcatInJsx.grit"]
+    },
+    {
       "includes": ["marketing/pages/**/*.{js,jsx,ts,tsx}"],
       "plugins": [
         "./.grit/patterns/nextjsPageComponentNaming.grit",

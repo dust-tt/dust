@@ -37,20 +37,14 @@ export default function ConnectorSyncingChip({
       case "third_party_internal_error":
         return (
           <Tooltip
-            label={
-              `We have encountered an error with ${CONNECTOR_CONFIGURATIONS[connector.type].name}. ` +
-              "We sent you an email to resolve the issue."
-            }
+            label={`We have encountered an error with ${CONNECTOR_CONFIGURATIONS[connector.type].name}. We sent you an email to resolve the issue.`}
             trigger={<Chip color="warning">Synchronization failed</Chip>}
           />
         );
       case "transient_upstream_error":
         return (
           <Tooltip
-            label={
-              `We are having trouble retrieving your data from ${CONNECTOR_CONFIGURATIONS[connector.type].name}. ` +
-              "Synchronization will resume automatically once the issue is resolved."
-            }
+            label={`We are having trouble retrieving your data from ${CONNECTOR_CONFIGURATIONS[connector.type].name}. Synchronization will resume automatically once the issue is resolved.`}
             className="max-w-md"
             trigger={<Chip color="warning">Synchronization delayed</Chip>}
           />
@@ -99,8 +93,7 @@ export default function ConnectorSyncingChip({
         return (
           <Tooltip
             label={
-              "We need read-only access to your database to synchronize data." +
-              " Please update the permissions and try again."
+              "We need read-only access to your database to synchronize data. Please update the permissions and try again."
             }
             trigger={<Chip color="warning">Synchronization failed</Chip>}
           />
@@ -109,8 +102,7 @@ export default function ConnectorSyncingChip({
         return (
           <Tooltip
             label={
-              "We encountered a network error while trying to connect to your database." +
-              "Please check your network connection and try again."
+              "We encountered a network error while trying to connect to your database.Please check your network connection and try again."
             }
             trigger={<Chip color="warning">Synchronization failed</Chip>}
           />

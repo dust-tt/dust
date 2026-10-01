@@ -88,10 +88,7 @@ export function ProviderSelection({
         sendNotification({
           type: "error",
           title: "Failed to connect provider",
-          description:
-            "Unexpected error trying to connect to your transcripts provider. Please try again. Error: " +
-            // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
-            error,
+          description: `Unexpected error trying to connect to your transcripts provider. Please try again. Error: ${error}`,
         });
       }
     },

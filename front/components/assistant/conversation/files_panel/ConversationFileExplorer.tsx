@@ -49,10 +49,7 @@ export function getDeletePrompt(
     case "frame_package":
       return {
         title: "Delete Frame?",
-        message:
-          `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, ` +
-          "functions, databases and share links will be permanently removed. " +
-          "This action cannot be undone.",
+        message: `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, functions, databases and share links will be permanently removed. This action cannot be undone.`,
       };
     case "folder":
       return {

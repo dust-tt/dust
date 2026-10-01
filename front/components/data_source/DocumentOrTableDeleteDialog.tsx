@@ -78,9 +78,7 @@ export const DocumentOrTableDeleteDialog = ({
       sendNotification({
         type: "success",
         title: `${capitalize(contentNode.type)} deletion submitted`,
-        description:
-          `Deletion of ${contentNode.type} ${contentNode.title} is ongoing, ` +
-          `it will complete shortly.`,
+        description: `Deletion of ${contentNode.type} ${contentNode.title} is ongoing, it will complete shortly.`,
       });
 
       if (onDeleteSuccess) {

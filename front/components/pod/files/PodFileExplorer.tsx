@@ -589,10 +589,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       } else if (entry.kind === "frame_package") {
         const confirmed = await confirm({
           title: "Delete Frame?",
-          message:
-            `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, ` +
-            "functions, databases and share links will be permanently removed. " +
-            "This action cannot be undone.",
+          message: `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, functions, databases and share links will be permanently removed. This action cannot be undone.`,
           validateLabel: "Delete",
           validateVariant: "warning",
         });

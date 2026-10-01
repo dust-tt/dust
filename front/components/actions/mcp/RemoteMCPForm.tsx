@@ -70,7 +70,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           title="Synchronization Error"
         >
           Server could not synchronize successfully. Last attempt{" "}
-          {lastSyncAt ? "on " + formatDateTime(lastSyncAt) : ""} : {lastError}
+          {lastSyncAt ? `on ${formatDateTime(lastSyncAt)}` : ""} : {lastError}
         </ContentMessage>
       )}
 

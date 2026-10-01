@@ -403,10 +403,7 @@ export const TableUploadOrEditModal = ({
                   <div>
                     <Page.SectionHeader
                       title="Data File"
-                      description={
-                        `Select your data file for extraction. Supported formats: CSV, ` +
-                        `XLSX. Maximum file size: ${formatFileSize(MAX_FILE_SIZES.delimited, { decimals: 0 }, "en-US")}.`
-                      }
+                      description={`Select your data file for extraction. Supported formats: CSV, XLSX. Maximum file size: ${formatFileSize(MAX_FILE_SIZES.delimited, { decimals: 0 }, "en-US")}.`}
                       action={{
                         label: fileUploaderService.isProcessingFiles
                           ? "Uploading..."
