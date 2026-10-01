@@ -1142,10 +1142,12 @@ msgid "Hi {name},"
 msgstr "Bonjour {name},"
 
 #: front/lib/notifications/workflows/agent-suggestions-ready.ts
+#: front/lib/notifications/workflows/skill-suggestions-ready.ts
 msgid "{suggestionCount, plural, one {# new improvement suggestion ready for review.} other {# new improvement suggestions ready for review.}}"
 msgstr "{suggestionCount, plural, one {# nouvelle suggestion d’amélioration prête à être examinée.} many {# nouvelles suggestions d’amélioration prêtes à être examinées.} other {# nouvelles suggestions d’amélioration prêtes à être examinées.}}"
 
 #: front/lib/notifications/workflows/agent-suggestions-ready.ts
+#: front/lib/notifications/workflows/skill-suggestions-ready.ts
 msgctxt "action"
 msgid "Review"
 msgstr "Examiner"
