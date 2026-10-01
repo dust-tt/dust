@@ -29,7 +29,10 @@ const config: KnipConfig = {
               : declaration
         );
       }
-      if (!filename.includes("/front-spa/src/app/routes/")) {
+      if (
+        !filename.includes("/front-spa/src/app/routes/") &&
+        !filename.endsWith("/front-spa/src/app/routes.tsx")
+      ) {
         return source;
       }
       // withSuspense selects module[exportName] at runtime. Expose that reference
