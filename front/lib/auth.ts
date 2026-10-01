@@ -841,6 +841,13 @@ export class Authenticator {
    * Falls back to the full set if the conversation is not found or has no
    * requested spaces, preserving the existing behavior for legacy conversations.
    */
+  /**
+   * @cc [owner:tdraier,label:security] sandbox-exec-groups
+   * When the conversation has requested spaces, the sandbox-token groups MUST be the user's groups
+   * that hold a grant on one of those spaces, on one of the token agent version's requested spaces,
+   * or on the token's agent itself (its editor grants), and no other: the sandbox acts with the
+   * verbs the agent loop holds on that agent, restricted to the conversation's spaces.
+   */
   private static async restrictGroupsToSandboxExecSpaces(
     userGroupIds: ModelId[],
     claims: SandboxExecTokenPayload,
@@ -858,7 +865,7 @@ export class Authenticator {
             version: claims.aV,
             workspaceId,
           },
-          attributes: ["requestedSpaceIds"],
+          attributes: ["requestedSpaceIds", "agentId"],
         }),
       ]);
 
@@ -885,17 +892,33 @@ export class Authenticator {
       requestedSpaceIds.add(spaceId);
     }
 
-    const spaceGrants = await GroupPermissionModel.findAll({
-      where: {
-        resourceType: "space",
-        resourceId: [...requestedSpaceIds],
-        workspaceId,
-      },
-      attributes: ["groupId"],
-    });
+    const [spaceGrants, agentGrants] = await Promise.all([
+      GroupPermissionModel.findAll({
+        where: {
+          resourceType: "space",
+          resourceId: [...requestedSpaceIds],
+          workspaceId,
+        },
+        attributes: ["groupId"],
+      }),
+      // A hidden agent is readable through its editor grants only, which live on per-user groups
+      // holding no space grant: keep them so the sandbox reads the agent as the loop does.
+      agentConfiguration
+        ? GroupPermissionModel.findAll({
+            where: {
+              resourceType: "agent",
+              resourceId: agentConfiguration.agentId,
+              workspaceId,
+            },
+            attributes: ["groupId"],
+          })
+        : [],
+    ]);
 
     const allowedGroupIds = new Set(
-      spaceGrants.map((grant) => Number(grant.groupId) as ModelId)
+      [...spaceGrants, ...agentGrants].map(
+        (grant) => Number(grant.groupId) as ModelId
+      )
     );
 
     return new Ok(userGroupIds.filter((id) => allowedGroupIds.has(id)));
