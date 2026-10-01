@@ -1,6 +1,6 @@
 import type { Logger } from "@app/logger/logger";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurations } from "@app/tests/utils/agent_configuration_reads";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";

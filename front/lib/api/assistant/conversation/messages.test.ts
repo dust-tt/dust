@@ -6,7 +6,6 @@ vi.mock("@app/lib/api/assistant/agent_usage", () => ({
 }));
 
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import {
   attributeUserFromWorkspaceAndEmail,
@@ -31,6 +30,7 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";

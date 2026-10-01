@@ -925,7 +925,7 @@ describe("updateConversationRequirements", () => {
 
       // Fetch agents with updated requirements
       const { getAgentConfigurations } = await import(
-        "@app/lib/api/assistant/configuration/agent"
+        "@app/tests/utils/agent_configuration_reads"
       );
       const agents = await getAgentConfigurations(auth, {
         agentIds: [agent1.sId, agent2.sId],
@@ -1054,7 +1054,7 @@ describe("updateConversationRequirements", () => {
 
       // Fetch agents and conversation
       const { getAgentConfigurations } = await import(
-        "@app/lib/api/assistant/configuration/agent"
+        "@app/tests/utils/agent_configuration_reads"
       );
       const agents = await getAgentConfigurations(auth, {
         agentIds: [agent.sId],
@@ -1128,7 +1128,7 @@ describe("updateConversationRequirements", () => {
 
       // Fetch agent and conversation
       const { getAgentConfigurations } = await import(
-        "@app/lib/api/assistant/configuration/agent"
+        "@app/tests/utils/agent_configuration_reads"
       );
       const agents = await getAgentConfigurations(auth, {
         agentIds: [agent.sId],
@@ -1181,7 +1181,7 @@ describe("updateConversationRequirements", () => {
 
       // Fetch agent and conversation
       const { getAgentConfigurations } = await import(
-        "@app/lib/api/assistant/configuration/agent"
+        "@app/tests/utils/agent_configuration_reads"
       );
       const agents = await getAgentConfigurations(auth, {
         agentIds: [agent.sId],
@@ -1295,7 +1295,7 @@ describe("updateConversationRequirements", () => {
 
       // Fetch agent and conversation
       const { getAgentConfigurations } = await import(
-        "@app/lib/api/assistant/configuration/agent"
+        "@app/tests/utils/agent_configuration_reads"
       );
       const agents = await getAgentConfigurations(auth, {
         agentIds: [agent.sId],
