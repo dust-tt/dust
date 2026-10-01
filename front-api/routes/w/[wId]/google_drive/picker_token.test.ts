@@ -1,5 +1,4 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -16,15 +15,25 @@ import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-process.env.OAUTH_GOOGLE_DRIVE_CLIENT_ID ??=
-  "123456789012.apps.googleusercontent.com";
-process.env.GOOGLE_DRIVE_PICKER_API_KEY ??= "picker-test-key";
-
 const ACCESS_TOKEN = "ya29.picker-test-token";
 
 const mocks = vi.hoisted(() => ({
   getAccessToken: vi.fn(),
+  googleDriveClientId: "123456789012.apps.googleusercontent.com",
+  googleDrivePickerApiKey: "picker-test-key",
 }));
+
+vi.mock("@app/lib/api/config", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/api/config")>();
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      getOAuthGoogleDriveClientId: () => mocks.googleDriveClientId,
+      getGoogleDrivePickerApiKey: () => mocks.googleDrivePickerApiKey,
+    },
+  };
+});
 
 vi.mock("@app/lib/api/oauth_access_token", async (importOriginal) => {
   const actual =
@@ -113,9 +122,9 @@ describe("POST /api/w/:wId/google_drive/picker_token", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.accessToken).toBe(ACCESS_TOKEN);
-    expect(body.appId).toBe(
-      config.getOAuthGoogleDriveClientId().match(/^(\d+)/)?.[1]
-    );
+    expect(body.clientId).toBe(mocks.googleDriveClientId);
+    expect(body.developerKey).toBe(mocks.googleDrivePickerApiKey);
+    expect(body.appId).toBe(mocks.googleDriveClientId.match(/^(\d+)/)?.[1]);
     expect(mocks.getAccessToken).toHaveBeenCalledTimes(1);
     expect(mocks.getAccessToken).toHaveBeenCalledWith(
       expect.objectContaining({ connectionId: connection.connectionId })

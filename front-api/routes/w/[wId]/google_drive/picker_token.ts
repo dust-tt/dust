@@ -26,11 +26,11 @@ const RequestBodySchema = z.object({
 // The picker runs in the browser and needs this server's OAuth access token.
 // The route must not exchange a connection for any other MCP server.
 function isWorkspaceGoogleDriveServer(
-  workspaceId: ModelId,
+  workspaceModelId: ModelId,
   mcpServerId: string
 ): boolean {
   return (
-    isValidInternalMCPServerId(workspaceId, mcpServerId) &&
+    isValidInternalMCPServerId(workspaceModelId, mcpServerId) &&
     matchesInternalMCPServerName(mcpServerId, "google_drive")
   );
 }
