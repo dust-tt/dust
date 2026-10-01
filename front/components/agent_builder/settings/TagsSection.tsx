@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { TagsSelector } from "@app/components/agent_builder/settings/TagsSelector";
 import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";

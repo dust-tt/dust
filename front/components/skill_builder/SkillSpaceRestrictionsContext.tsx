@@ -5,7 +5,7 @@ import type {
   AttachedKnowledgeFormData,
   ReferencedSkillFormData,
   SkillBuilderFormData,
-} from "@app/components/skill_builder/SkillBuilderFormContext";
+} from "@app/components/skill_builder/skillBuilderFormSchema";
 import {
   useSpaceProjectsLookup,
   useSpacesAccessCheck,

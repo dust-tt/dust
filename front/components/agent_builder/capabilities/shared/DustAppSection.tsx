@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { MCPFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { useApps } from "@app/lib/swr/apps";

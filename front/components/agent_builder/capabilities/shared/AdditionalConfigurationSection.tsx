@@ -1,4 +1,4 @@
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { MCPFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";

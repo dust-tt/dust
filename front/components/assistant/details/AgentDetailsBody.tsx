@@ -1,4 +1,4 @@
-import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import { TriggerSelectionPageContent } from "@app/components/agent_builder/triggers/TriggerSelectionPage";
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";

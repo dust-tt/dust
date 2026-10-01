@@ -1,5 +1,5 @@
 import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import type {
   SkillRelations,
   SkillType,

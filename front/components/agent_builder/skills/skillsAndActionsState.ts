@@ -1,4 +1,4 @@
-import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderSkillsType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";

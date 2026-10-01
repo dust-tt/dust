@@ -1,7 +1,7 @@
 import type {
   AgentBuilderFormData,
   AgentBuilderTriggerType,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+} from "@app/components/agent_builder/agentBuilderFormSchema";
 import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
 import {
   expandFoldersToTables,

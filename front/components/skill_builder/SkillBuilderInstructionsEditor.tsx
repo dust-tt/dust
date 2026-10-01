@@ -13,13 +13,13 @@ import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDef
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import type {
-  ReferencedSkillFormData,
-  SkillBuilderFormData,
-} from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { ReferenceSummaryItem } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import type {
+  ReferencedSkillFormData,
+  SkillBuilderFormData,
+} from "@app/components/skill_builder/skillBuilderFormSchema";
 import {
   useAreSkillSuggestionsEnabled,
   useSkillSuggestions,

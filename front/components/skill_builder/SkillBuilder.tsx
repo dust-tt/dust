@@ -5,8 +5,6 @@ import {
 import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderFilesSection } from "@app/components/skill_builder/SkillBuilderFilesSection";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { skillBuilderFormSchema } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/SkillBuilderInstructionsSection";
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
@@ -22,6 +20,8 @@ import {
   SkillSpaceRestrictionsProvider,
   useSkillSpaceRestrictionsContext,
 } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { skillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
 import {
   getDefaultSkillFormData,
   transformSkillTypeToFormData,

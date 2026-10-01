@@ -1,4 +1,4 @@
-import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderSkillsType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import {
   getSelectedToolIcon,
   getSelectedToolLabel,

@@ -1,7 +1,7 @@
 import type {
   AgentBuilderSkillsType,
   MCPFormData,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+} from "@app/components/agent_builder/agentBuilderFormSchema";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/shared/types";

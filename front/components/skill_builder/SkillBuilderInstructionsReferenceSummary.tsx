@@ -1,7 +1,7 @@
 import { ToolChip } from "@app/components/editor/extensions/skill_builder/ToolChip";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import type { AttachedKnowledgeFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import type { AttachedKnowledgeFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { compareStrings } from "@app/lib/i18n/format";
 import { getSkillIcon } from "@app/lib/skill";

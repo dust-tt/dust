@@ -1,4 +1,4 @@
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import type { FetchAgentTemplateResponse } from "@app/lib/resources/template_resource";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";

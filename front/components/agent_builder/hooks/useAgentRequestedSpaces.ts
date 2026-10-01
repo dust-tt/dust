@@ -1,4 +1,4 @@
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
