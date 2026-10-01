@@ -1196,13 +1196,14 @@ export async function suggest(
     );
   }
 
-  const batch = await BatchSuggestionResource.makeNew(auth, {
-    title,
-    analysis,
-    sourceConversation: conversation,
-  });
-
-  const pendingEntities = await createPendingEntities(auth, plannedChanges);
+  const [batch, pendingEntities] = await Promise.all([
+    BatchSuggestionResource.makeNew(auth, {
+      title,
+      analysis,
+      sourceConversation: conversation,
+    }),
+    createPendingEntities(auth, plannedChanges),
+  ]);
   if (pendingEntities.isErr()) {
     await batch.updateState(auth, "outdated");
     return pendingEntities;
