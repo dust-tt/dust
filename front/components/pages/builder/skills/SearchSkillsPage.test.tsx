@@ -754,6 +754,7 @@ describe("search-backed Manage Skills", () => {
         searchType: "autocomplete",
         sortBy: "usage",
         status: ["active"],
+        codeDefinedOnly: false,
         limit: 50,
         offset: 0,
         permissionFiltering: undefined,

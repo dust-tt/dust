@@ -25,7 +25,7 @@ export const SearchSkillsQuerySchema = z.object({
     .max(SKILL_AVAILABILITIES.length)
     .optional(),
   editedByMe: z.literal(true).optional(),
-  codeDefinedOnly: z.literal(true).optional(),
+  codeDefinedOnly: z.boolean().optional(),
   editorIds: z.array(z.string().min(1)).max(100).optional(),
   childSkillIds: z.array(z.string().min(1)).max(100).optional(),
   spaceIds: z.array(z.string().min(1)).max(100).optional(),

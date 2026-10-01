@@ -231,7 +231,7 @@ describe("POST /api/w/:wId/skills/search", () => {
     { permissionFiltering: "dangerously_skip" },
     { editedByMe: false },
     { editedByMe: 1 },
-    { codeDefinedOnly: false },
+    { codeDefinedOnly: "false" },
     { searchType: "unknown" },
     { searchType: null },
     { sortBy: "unknown" },
@@ -421,7 +421,10 @@ describe("POST /api/w/:wId/skills/search", () => {
     });
   });
 
-  it("accepts structured filters and opt-in editor selection", async () => {
+  it.each([
+    true,
+    false,
+  ])("accepts structured filters with codeDefinedOnly=%s", async (codeDefinedOnly) => {
     const { workspace } = await setup();
     searchSkills.mockResolvedValue(
       new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
@@ -431,7 +434,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       mcpServerViewIds: ["tool"],
       availability: ["editors", "workspace_users"],
       editedByMe: true,
-      codeDefinedOnly: true,
+      codeDefinedOnly,
       sortBy: "usage",
     });
     expect(response.status).toBe(200);
@@ -444,7 +447,7 @@ describe("POST /api/w/:wId/skills/search", () => {
           mcpServerViewIds: ["tool"],
           availability: ["editors", "workspace_users"],
           editedByMe: true,
-          codeDefinedOnly: true,
+          codeDefinedOnly,
         },
       })
     );
