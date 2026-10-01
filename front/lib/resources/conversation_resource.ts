@@ -2149,10 +2149,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return message?.userMessage?.userContextOrigin ?? null;
   }
 
+  /**
+   * Fetches a conversation and hydrates per-user participation + read state on
+   * the resource. Use {@link ConversationResource#unread} /
+   * {@link ConversationResource#actionRequired} /
+   * {@link ConversationResource#lastReadMs} after this call.
+   */
   static async fetchConversationWithParticipantState(
     auth: Authenticator,
     sId: string
-  ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
+  ): Promise<Result<ConversationResource, ConversationError>> {
     const conversation = await this.fetchById(auth, sId);
 
     if (!conversation) {
@@ -2161,7 +2167,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     await this.enrichWithParticipationAndReadState(auth, [conversation]);
 
-    return new Ok(conversation.toJSON());
+    return new Ok(conversation);
   }
 
   private static async update(
@@ -2967,7 +2973,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async markAsActionRequired(
     auth: Authenticator,
-    { conversation }: { conversation: ConversationWithoutContentType }
+    {
+      conversation,
+    }: { conversation: ConversationWithoutContentType | ConversationResource }
   ) {
     const user = auth.user();
     if (!user) {
@@ -5530,12 +5538,36 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  /**
+   * Per-user unread flag. Meaningful after
+   * {@link ConversationResource.fetchConversationWithParticipantState} (or
+   * another path that hydrates participation + read state).
+   */
+  get unread(): boolean {
+    return this.userLastReadAt === null || this.updatedAt > this.userLastReadAt;
+  }
+
+  /**
+   * Per-user action-required flag. Meaningful after participation hydration.
+   */
+  get actionRequired(): boolean {
+    return this.userParticipation?.actionRequired ?? false;
+  }
+
+  /**
+   * Per-user last-read timestamp in ms, or null when never read. Meaningful
+   * after read-state hydration.
+   */
+  get lastReadMs(): number | null {
+    return this.userLastReadAt?.getTime() ?? null;
+  }
+
   toListItem(): ConversationListItemType {
     return {
-      actionRequired: this.userParticipation?.actionRequired ?? false,
+      actionRequired: this.actionRequired,
       created: this.createdAt.getTime(),
       hasError: this.hasError,
-      lastReadMs: this.userLastReadAt?.getTime() ?? null,
+      lastReadMs: this.lastReadMs,
       metadata: this.metadata ?? {},
       nextWakeupAt: this.nextWakeupAt,
       requestedSpaceIds: this.getRequestedSpaceIdsFromModel(),
@@ -5547,8 +5579,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         title: this.title,
       }),
       triggerId: this.triggerSId,
-      unread:
-        this.userLastReadAt === null || this.updatedAt > this.userLastReadAt,
+      unread: this.unread,
       updated: this.updatedAt.getTime(),
       isRunningAgentLoop: this.isRunningAgentLoop,
       isParticipant: !!this.userParticipation,

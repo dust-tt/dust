@@ -1587,6 +1587,14 @@ const QUERIES: LabeledQuery[] = [
     query: "rename this conversation to something descriptive",
     expected: "common_utilities.set_conversation_title",
   },
+  {
+    query: "mark this conversation as read",
+    expected: "common_utilities.mark_conversation_read",
+  },
+  {
+    query: "mark this conversation as unread",
+    expected: "common_utilities.mark_conversation_read",
+  },
 
   // --- conversation_side_panel ---
   {
