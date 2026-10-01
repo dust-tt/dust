@@ -25,7 +25,6 @@ Keep these checks open until their stated prerequisite is met.
 | Admin-group protection and Manager-role self-addition | **[GAP: configure a group]** No existing group grants Admin or Manager. These cases need an existing manual group prepared for role changes, or another workspace. Having admins among the members does not make a group Admin-granting. |
 | Seats granted through membership | **[GAP: contract and group setup]** No group grants seats. Active members have 123 `workspace_yearly` seats and 17 `none` seats; there are no Pro, Max, or free-seat examples. Confirm an allowed seat mapping and a suitable test account before running this case. |
 | Simultaneous approval and partial failures | **[PREP]** Use two ordinary group managers and fresh requests. Failure cases need browser request blocking or another controlled failure. |
-| Groups-list pagination | **[GAP: insufficient rows]** There are 20 visible groups; the list uses 25 rows per page. Member pagination is covered by `team-france`, but group pagination needs a separate larger fixture. |
 
 ## Existing fixtures and setup
 
