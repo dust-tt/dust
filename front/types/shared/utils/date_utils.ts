@@ -23,10 +23,6 @@ export function ordinalDay(day: number): string {
   return `${day}${suffix}`;
 }
 
-export function getTime(date: number): string {
-  return format(new Date(date), "HH:mm");
-}
-
 export function formatUTCDateFromMillis(ms: number): string {
   const d = new Date(ms);
   const y = d.getUTCFullYear();
