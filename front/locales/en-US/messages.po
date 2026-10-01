@@ -1170,9 +1170,58 @@ msgid "See usage details"
 msgstr "See usage details"
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "there"
 msgstr "there"
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "[Dust] Your workspace has used 80% of its programmatic API credit cap in {workspaceName}"
+msgstr "[Dust] Your workspace has used 80% of its programmatic API credit cap in {workspaceName}"
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Your workspace \"{workspaceName}\" has used 80% of its monthly programmatic API credit cap of {cap} credits."
+msgstr "Your workspace \"{workspaceName}\" has used 80% of its monthly programmatic API credit cap of {cap} credits."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Your workspace \"{workspaceName}\" has used 80% of its monthly programmatic API credit cap."
+msgstr "Your workspace \"{workspaceName}\" has used 80% of its monthly programmatic API credit cap."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Once the cap is fully reached, programmatic API calls will be blocked. Consider raising the cap before that happens."
+msgstr "Once the cap is fully reached, programmatic API calls will be blocked. Consider raising the cap before that happens."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "[Dust] Your workspace has reached its programmatic API credit cap in {workspaceName}"
+msgstr "[Dust] Your workspace has reached its programmatic API credit cap in {workspaceName}"
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Your workspace \"{workspaceName}\" has exhausted its monthly programmatic API credit cap of {cap} credits."
+msgstr "Your workspace \"{workspaceName}\" has exhausted its monthly programmatic API credit cap of {cap} credits."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Your workspace \"{workspaceName}\" has exhausted its monthly programmatic API credit cap."
+msgstr "Your workspace \"{workspaceName}\" has exhausted its monthly programmatic API credit cap."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Programmatic API calls are now blocked until the billing cycle resets or the cap is raised."
+msgstr "Programmatic API calls are now blocked until the billing cycle resets or the cap is raised."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "[Dust] Your programmatic triggers are paused in {workspaceName}"
+msgstr "[Dust] Your programmatic triggers are paused in {workspaceName}"
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "A programmatic trigger in your Dust workspace \"{workspaceName}\" could not run because the workspace's monthly programmatic usage limit is set to 0 credits."
+msgstr "A programmatic trigger in your Dust workspace \"{workspaceName}\" could not run because the workspace's monthly programmatic usage limit is set to 0 credits."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Programmatic triggers will remain blocked until you set a positive limit in workspace usage settings."
+msgstr "Programmatic triggers will remain blocked until you set a positive limit in workspace usage settings."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Manage workspace usage"
+msgstr "Manage workspace usage"
 
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "[Dust] {count, plural, one {# member was auto-upgraded to a higher seat} other {# members were auto-upgraded to higher seats}}"

@@ -1,3 +1,4 @@
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import * as novuClientModule from "@app/lib/notifications/novu-client";
 import { triggerProgrammaticCapReachedNotifications } from "@app/lib/notifications/triggers/programmatic-cap-reached";
 import { buildProgrammaticCapReachedEmailCopy } from "@app/lib/notifications/workflows/programmatic-cap-reached";
@@ -28,8 +29,9 @@ const ADMIN = {
 };
 
 describe("buildProgrammaticCapReachedEmailCopy", () => {
-  it("describes a 0 cap as paused triggers, not consumed credits", () => {
-    const { subject, content } = buildProgrammaticCapReachedEmailCopy({
+  it("describes a 0 cap as paused triggers, not consumed credits", async () => {
+    const i18n = await getNotificationI18n("en-US");
+    const { subject, content } = buildProgrammaticCapReachedEmailCopy(i18n, {
       workspaceName: "Acme",
       monthlyCapCredits: 0,
       reason: "programmatic_cap_disabled",
@@ -47,8 +49,9 @@ describe("buildProgrammaticCapReachedEmailCopy", () => {
     expect(content).not.toMatch(/exhausted|consumed/);
   });
 
-  it("keeps the exhausted-cap copy for a positive cap", () => {
-    const { subject, content } = buildProgrammaticCapReachedEmailCopy({
+  it("keeps the exhausted-cap copy for a positive cap", async () => {
+    const i18n = await getNotificationI18n("en-US");
+    const { subject, content } = buildProgrammaticCapReachedEmailCopy(i18n, {
       workspaceName: "Acme",
       monthlyCapCredits: 500,
       reason: "programmatic_cap_exhausted",
@@ -65,8 +68,9 @@ describe("buildProgrammaticCapReachedEmailCopy", () => {
     );
   });
 
-  it("keeps the 80% warning copy", () => {
-    const { subject } = buildProgrammaticCapReachedEmailCopy({
+  it("keeps the 80% warning copy", async () => {
+    const i18n = await getNotificationI18n("en-US");
+    const { subject } = buildProgrammaticCapReachedEmailCopy(i18n, {
       workspaceName: "Acme",
       monthlyCapCredits: 500,
       reason: "programmatic_cap_warning",
@@ -74,6 +78,19 @@ describe("buildProgrammaticCapReachedEmailCopy", () => {
 
     expect(subject).toBe(
       "[Dust] Your workspace has used 80% of its programmatic API credit cap in Acme"
+    );
+  });
+
+  it("renders the copy in French", async () => {
+    const i18n = await getNotificationI18n("fr-FR");
+    const { subject } = buildProgrammaticCapReachedEmailCopy(i18n, {
+      workspaceName: "Acme",
+      monthlyCapCredits: 0,
+      reason: "programmatic_cap_disabled",
+    });
+
+    expect(subject).toBe(
+      "[Dust] Vos déclencheurs programmatiques sont en pause dans Acme"
     );
   });
 });

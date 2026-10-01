@@ -1170,9 +1170,58 @@ msgid "See usage details"
 msgstr "Voir le détail de l’utilisation"
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "there"
 msgstr "à vous"
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "[Dust] Your workspace has used 80% of its programmatic API credit cap in {workspaceName}"
+msgstr "[Dust] Votre espace de travail a utilisé 80 % de son plafond de crédits pour l’API programmatique dans {workspaceName}"
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Your workspace \"{workspaceName}\" has used 80% of its monthly programmatic API credit cap of {cap} credits."
+msgstr "Votre espace de travail « {workspaceName} » a utilisé 80 % de son plafond mensuel de {cap} crédits pour l’API programmatique."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Your workspace \"{workspaceName}\" has used 80% of its monthly programmatic API credit cap."
+msgstr "Votre espace de travail « {workspaceName} » a utilisé 80 % de son plafond mensuel de crédits pour l’API programmatique."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Once the cap is fully reached, programmatic API calls will be blocked. Consider raising the cap before that happens."
+msgstr "Une fois le plafond atteint, les appels à l’API programmatique seront bloqués. Pensez à relever le plafond avant que cela ne se produise."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "[Dust] Your workspace has reached its programmatic API credit cap in {workspaceName}"
+msgstr "[Dust] Votre espace de travail a atteint son plafond de crédits pour l’API programmatique dans {workspaceName}"
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Your workspace \"{workspaceName}\" has exhausted its monthly programmatic API credit cap of {cap} credits."
+msgstr "Votre espace de travail « {workspaceName} » a épuisé son plafond mensuel de {cap} crédits pour l’API programmatique."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Your workspace \"{workspaceName}\" has exhausted its monthly programmatic API credit cap."
+msgstr "Votre espace de travail « {workspaceName} » a épuisé son plafond mensuel de crédits pour l’API programmatique."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Programmatic API calls are now blocked until the billing cycle resets or the cap is raised."
+msgstr "Les appels à l’API programmatique sont désormais bloqués jusqu’à la réinitialisation du cycle de facturation ou au relèvement du plafond."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "[Dust] Your programmatic triggers are paused in {workspaceName}"
+msgstr "[Dust] Vos déclencheurs programmatiques sont en pause dans {workspaceName}"
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "A programmatic trigger in your Dust workspace \"{workspaceName}\" could not run because the workspace's monthly programmatic usage limit is set to 0 credits."
+msgstr "Un déclencheur programmatique de votre espace de travail Dust « {workspaceName} » n’a pas pu s’exécuter, car la limite mensuelle d’utilisation programmatique de l’espace de travail est fixée à 0 crédit."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Programmatic triggers will remain blocked until you set a positive limit in workspace usage settings."
+msgstr "Les déclencheurs programmatiques resteront bloqués tant que vous n’aurez pas défini une limite positive dans les paramètres d’utilisation de l’espace de travail."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Manage workspace usage"
+msgstr "Gérer l’utilisation de l’espace de travail"
 
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "[Dust] {count, plural, one {# member was auto-upgraded to a higher seat} other {# members were auto-upgraded to higher seats}}"
