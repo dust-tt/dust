@@ -12,6 +12,7 @@ import { AssistantSkillsToolsSection } from "@app/components/assistant/details/t
 import { RedactedAgentMessage } from "@app/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { getModelProviderLogo } from "@app/components/providers/types";
+import { RequestedSpacesSection } from "@app/components/spaces/RequestedSpacesSection";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { PreviewedAgentCapabilities } from "@app/lib/editor/preview_agent_suggestions";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -134,6 +135,13 @@ export function AgentInfoTab({
           />
         </>
       )}
+
+      {/* An admin may view an agent requesting spaces they are not a member of. */}
+      <RequestedSpacesSection
+        owner={owner}
+        requestedSpaceIds={agentConfiguration.requestedSpaceIds}
+        resolveAsAdmin={!agentConfiguration.canRead}
+      />
 
       {model && (
         <div className="relative flex flex-col gap-5">
