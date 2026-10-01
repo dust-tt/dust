@@ -42,10 +42,3 @@ export type LabsFeatureItemType = {
   description: string;
   onlyAdminCanManage?: boolean;
 };
-
-export enum SyncStatus {
-  IDLE = "idle",
-  IN_PROGRESS = "running",
-  COMPLETED = "completed",
-  FAILED = "failed",
-}

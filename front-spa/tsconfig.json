@@ -39,10 +39,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "app",
-    "../front/migrations/20250214_backfill_gong_modjo_default_configurations.ts",
-    "../front/migrations/20250306_gong_labs_to_connector.ts",
-    "../front/migrations/20250321_startstop_relocated_transcripts_workflows.ts",
-    "../front/migrations/20260209_disable_transcripts_on_connected_datasources.ts"
+    "app"
   ]
 }
