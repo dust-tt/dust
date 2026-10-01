@@ -28,6 +28,7 @@ import type {
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { EnrichedSpaceType } from "@app/types/space";
+import { isFilesSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
@@ -116,12 +117,24 @@ export function SkillInfoTab({
     setKnowledgeItems(items);
   }, []);
 
+  // Files a previewed suggestion adds have no id until it is applied, so they are not part of the
+  // skill's attachments.
+  const addedFilePaths = useMemo(
+    () =>
+      previewSuggestions
+        .filter(isFilesSkillSuggestion)
+        .flatMap((s) => s.suggestion.addFilePaths),
+    [previewSuggestions]
+  );
+  const hasFiles =
+    skill.fileAttachments.length > 0 || addedFilePaths.length > 0;
+
   const hasInstructions = !!skill.instructions || !!skill.instructionsHtml;
 
   const showSeparator =
     hasInstructions ||
     knowledgeItems.length > 0 ||
-    skill.fileAttachments.length > 0 ||
+    hasFiles ||
     sortedMCPServerViews.length > 0 ||
     showChildSkills ||
     showDiscoverableSkills ||
@@ -186,7 +199,7 @@ export function SkillInfoTab({
           </div>
         </div>
       )}
-      {skill.fileAttachments.length > 0 && (
+      {hasFiles && (
         <div className="relative flex flex-col gap-4">
           {editedSections.has("files") && <EditedSectionBar />}
           <div className="heading-lg text-foreground">Files</div>
@@ -195,6 +208,15 @@ export function SkillInfoTab({
               <AttachmentChip
                 key={file.fileId}
                 label={file.fileName}
+                icon={{ visual: File02 }}
+                color="primary"
+                size="xs"
+              />
+            ))}
+            {addedFilePaths.map((filePath) => (
+              <AttachmentChip
+                key={filePath}
+                label={filePath.split("/").pop() ?? filePath}
                 icon={{ visual: File02 }}
                 color="primary"
                 size="xs"
