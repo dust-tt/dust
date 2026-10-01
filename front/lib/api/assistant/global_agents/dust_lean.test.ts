@@ -137,6 +137,12 @@ describe("Dust Lean", () => {
       ]),
       favoriteSkills: [],
     });
+    expect(initialSkills.systemSkills.map((s) => s.sId)).not.toContain(
+      "sandbox"
+    );
+    expect(initialSkills.equippedSkills.map((s) => s.sId)).not.toContain(
+      "sandbox"
+    );
     const initialJitServers = await getJITServers(authenticator, {
       agentConfiguration: lean,
       conversation,
