@@ -418,10 +418,6 @@ above, NOTHING ELSE.
 `;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:product] computer-not-auto-equipped-for-dust-lean
- * Computer MUST NOT be automatically enabled or equipped for dust-lean.
- */
 export const sandboxSkill = {
   sId: "sandbox",
   kind: "global",
