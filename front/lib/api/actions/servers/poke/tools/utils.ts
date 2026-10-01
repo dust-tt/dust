@@ -8,7 +8,6 @@ import logger from "@app/logger/logger";
 import { isDustWorkspace } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
  * Wraps any serializable data as a successful text content MCP response.
@@ -86,26 +85,11 @@ export async function getTargetAuth(
   { auth }: ToolHandlerExtra,
   workspaceId: string
 ): Promise<Result<Authenticator, MCPError>> {
-  try {
-    const targetAuth = await Authenticator.fromDustSuperUser({
-      user: auth.user(),
-      wId: workspaceId,
-    });
-    if (!targetAuth.workspace()) {
-      return new Err(
-        new MCPError(
-          `Workspace not found: no workspace with sId "${workspaceId}" exists.`,
-          { tracked: false }
-        )
-      );
-    }
-    return new Ok(targetAuth);
-  } catch (err) {
-    const normalizedErr = normalizeError(err);
-    logger.error(
-      { err: normalizedErr },
-      "Failed to create authenticator for workspace"
-    );
+  const targetAuth = await Authenticator.fromDustSuperUser({
+    user: auth.user(),
+    wId: workspaceId,
+  });
+  if (!targetAuth.workspace()) {
     return new Err(
       new MCPError(
         `Workspace not found: no workspace with sId "${workspaceId}" exists.`,
@@ -113,4 +97,5 @@ export async function getTargetAuth(
       )
     );
   }
+  return new Ok(targetAuth);
 }
