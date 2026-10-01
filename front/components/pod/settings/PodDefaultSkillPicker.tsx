@@ -13,7 +13,7 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Icon,
-  ShapesPlus,
+  PuzzlePiece01,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -88,7 +88,7 @@ export function PodDefaultSkillPicker({
           aria-label="Add a default skill"
           className={triggerClassName}
         >
-          <Icon visual={ShapesPlus} size="xs" />
+          <Icon visual={PuzzlePiece01} size="xs" />
           <span className="grow truncate">Add skill</span>
           <Icon visual={ChevronDown} size="xs" className="-mr-1 text-faint" />
         </button>
