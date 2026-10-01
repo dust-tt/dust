@@ -1,7 +1,10 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { isToolWithKnowledge } from "@app/lib/actions/mcp_helper";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolHandlerResult,
+  ToolHandlers,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type {
   InstructionsSuggestionSchema,
@@ -9,7 +12,10 @@ import type {
   ToolsSuggestionSchema,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
-import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
+import {
+  formatAgentSuggestionDirective,
+  requireSidekickTargetAgentId,
+} from "@app/lib/api/actions/servers/agent_sidekick_helpers";
 import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
@@ -80,6 +86,32 @@ import type { z } from "zod";
 const UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT =
   "Please mark some existing suggestions as outdated using update_suggestions_state before " +
   "adding new ones.";
+
+// Each created suggestion is returned as a directive so the conversation renders a card for it.
+async function createSuggestionsOutput(
+  create: () => Promise<Result<{ sId: string; kind: string }[], string>>
+): Promise<ToolHandlerResult> {
+  try {
+    const result = await create();
+    if (result.isErr()) {
+      return new Err(new MCPError(result.error, { tracked: false }));
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: result.value.map(formatAgentSuggestionDirective).join("\n\n"),
+      },
+    ]);
+  } catch (error) {
+    return new Err(
+      new MCPError(
+        `Failed to create suggestion: ${normalizeError(error).message}`,
+        { tracked: false }
+      )
+    );
+  }
+}
 
 type InstructionSuggestionInput = z.infer<typeof InstructionsSuggestionSchema>;
 
@@ -515,18 +547,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     { limit, filter, latestVersionOnly },
     { auth, runContext }
   ) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentIdRes = requireSidekickTargetAgentId({ runContext });
+    if (agentIdRes.isErr()) {
+      return agentIdRes;
     }
+    const agentConfigurationId = agentIdRes.value;
 
     const latestVersionOnlyWithDefault = latestVersionOnly ?? true;
 
@@ -614,18 +639,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   get_agent_insights: async ({ days }, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentIdRes = requireSidekickTargetAgentId({ runContext });
+    if (agentIdRes.isErr()) {
+      return agentIdRes;
     }
+    const agentConfigurationId = agentIdRes.value;
 
     // Verify agent configuration exists and is accessible.
     const agent = await AgentResource.fetchById(auth, agentConfigurationId);
@@ -691,108 +709,43 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
   // Suggestion handlers
   suggest_prompt_edits: async (params, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentIdRes = requireSidekickTargetAgentId({ runContext });
+    if (agentIdRes.isErr()) {
+      return agentIdRes;
     }
+    const agentConfigurationId = agentIdRes.value;
 
-    try {
-      const result = await createInstructionSuggestions({
+    return createSuggestionsOutput(() =>
+      createInstructionSuggestions({
         auth,
         agentConfigurationId,
         suggestions: params.suggestions,
-      });
-
-      if (result.isErr()) {
-        return new Err(new MCPError(result.error, { tracked: false }));
-      }
-
-      const directives = result.value.map(
-        (s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`
-      );
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text: directives.join("\n\n"),
-        },
-      ]);
-    } catch (error) {
-      return new Err(
-        new MCPError(
-          `Failed to create suggestion: ${normalizeError(error).message}`,
-          { tracked: false }
-        )
-      );
-    }
+      })
+    );
   },
 
   suggest_tools: async (params, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentIdRes = requireSidekickTargetAgentId({ runContext });
+    if (agentIdRes.isErr()) {
+      return agentIdRes;
     }
+    const agentConfigurationId = agentIdRes.value;
 
-    try {
-      const result = await createToolsSuggestions({
+    return createSuggestionsOutput(() =>
+      createToolsSuggestions({
         auth,
         agentConfigurationId,
         suggestions: params.suggestions,
-      });
-
-      if (result.isErr()) {
-        return new Err(new MCPError(result.error, { tracked: false }));
-      }
-
-      const directives = result.value.map(
-        (s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`
-      );
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text: directives.join("\n\n"),
-        },
-      ]);
-    } catch (error) {
-      return new Err(
-        new MCPError(
-          `Failed to create suggestion: ${normalizeError(error).message}`,
-          { tracked: false }
-        )
-      );
-    }
+      })
+    );
   },
 
   suggest_sub_agent: async (params, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentIdRes = requireSidekickTargetAgentId({ runContext });
+    if (agentIdRes.isErr()) {
+      return agentIdRes;
     }
+    const agentConfigurationId = agentIdRes.value;
 
     // Validate that the sub-agent exists and is accessible.
     const { action, subAgentId } = params;
@@ -875,7 +828,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       childAgentId: subAgentId,
     };
 
-    try {
+    return createSuggestionsOutput(async () => {
       const createdSuggestion =
         await AgentSuggestionResource.createSuggestionForAgent(auth, agent, {
           kind: "sub_agent",
@@ -884,66 +837,24 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
           state: "pending",
           source: "sidekick",
         });
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`,
-        },
-      ]);
-    } catch (error) {
-      return new Err(
-        new MCPError(
-          `Failed to create suggestion: ${normalizeError(error).message}`,
-          { tracked: false }
-        )
-      );
-    }
+      return new Ok([createdSuggestion]);
+    });
   },
 
   suggest_skills: async (params, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentIdRes = requireSidekickTargetAgentId({ runContext });
+    if (agentIdRes.isErr()) {
+      return agentIdRes;
     }
+    const agentConfigurationId = agentIdRes.value;
 
-    try {
-      const result = await createSkillsSuggestions({
+    return createSuggestionsOutput(() =>
+      createSkillsSuggestions({
         auth,
         agentConfigurationId,
         suggestions: params.suggestions,
-      });
-
-      if (result.isErr()) {
-        return new Err(new MCPError(result.error, { tracked: false }));
-      }
-
-      const directives = result.value.map(
-        (s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`
-      );
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text: directives.join("\n\n"),
-        },
-      ]);
-    } catch (error) {
-      return new Err(
-        new MCPError(
-          `Failed to create suggestion: ${normalizeError(error).message}`,
-          { tracked: false }
-        )
-      );
-    }
+      })
+    );
   },
 
   suggest_model: async (params, { auth, runContext }) => {
@@ -961,18 +872,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentIdRes = requireSidekickTargetAgentId({ runContext });
+    if (agentIdRes.isErr()) {
+      return agentIdRes;
     }
+    const agentConfigurationId = agentIdRes.value;
 
     // Fetch the latest version of the agent configuration.
     const agent = await AgentResource.fetchById(auth, agentConfigurationId);
@@ -985,7 +889,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    try {
+    return createSuggestionsOutput(async () => {
       const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
         auth,
         agent,
@@ -997,21 +901,8 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
           source: "sidekick",
         }
       );
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
-        },
-      ]);
-    } catch (error) {
-      return new Err(
-        new MCPError(
-          `Failed to create suggestion: ${normalizeError(error).message}`,
-          { tracked: false }
-        )
-      );
-    }
+      return new Ok([suggestion]);
+    });
   },
 
   search_knowledge: async ({ query, topK, category }, { auth }) => {
@@ -1045,18 +936,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   suggest_knowledge: async (params, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentIdRes = requireSidekickTargetAgentId({ runContext });
+    if (agentIdRes.isErr()) {
+      return agentIdRes;
     }
+    const agentConfigurationId = agentIdRes.value;
 
     // Validate that the data source view exists and is accessible.
     const { action, method, dataSourceViewId, nodeIds, description } =
@@ -1119,7 +1003,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       description,
     };
 
-    try {
+    return createSuggestionsOutput(async () => {
       const createdSuggestion =
         await AgentSuggestionResource.createSuggestionForAgent(auth, agent, {
           kind: "knowledge",
@@ -1128,36 +1012,16 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
           state: "pending",
           source: "sidekick",
         });
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`,
-        },
-      ]);
-    } catch (error) {
-      return new Err(
-        new MCPError(
-          `Failed to create suggestion: ${normalizeError(error).message}`,
-          { tracked: false }
-        )
-      );
-    }
+      return new Ok([createdSuggestion]);
+    });
   },
 
   list_suggestions: async (params, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentIdRes = requireSidekickTargetAgentId({ runContext });
+    if (agentIdRes.isErr()) {
+      return agentIdRes;
     }
+    const agentConfigurationId = agentIdRes.value;
 
     // Lists suggestions across all versions of this agent.
     const suggestions =

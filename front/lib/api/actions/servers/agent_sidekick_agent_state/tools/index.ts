@@ -3,8 +3,8 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
 import {
-  getAgentConfigurationIdFromContext,
   getAgentConfigurationVersionFromContext,
+  requireSidekickTargetAgentId,
 } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { Err, Ok } from "@app/types/shared/result";
@@ -12,18 +12,11 @@ import { Err, Ok } from "@app/types/shared/result";
 const handlers: ToolHandlers<typeof AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA> =
   {
     get_agent_info: async (_, { auth, runContext }) => {
-      const agentConfigurationId = getAgentConfigurationIdFromContext({
-        runContext,
-      });
-
-      if (!agentConfigurationId) {
-        return new Err(
-          new MCPError(
-            "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-            { tracked: false }
-          )
-        );
+      const agentIdRes = requireSidekickTargetAgentId({ runContext });
+      if (agentIdRes.isErr()) {
+        return agentIdRes;
       }
+      const agentConfigurationId = agentIdRes.value;
 
       const agentVersion = getAgentConfigurationVersionFromContext({
         runContext,

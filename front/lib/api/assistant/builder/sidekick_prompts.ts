@@ -1,3 +1,4 @@
+import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
@@ -60,9 +61,7 @@ function buildExistingAgentMessage({
 
   const suggestionDirectives =
     pendingSuggestions.length > 0 &&
-    pendingSuggestions
-      .map((s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`)
-      .join("\n");
+    pendingSuggestions.map(formatAgentSuggestionDirective).join("\n");
 
   const pendingSuggestionsSection = suggestionDirectives
     ? `
