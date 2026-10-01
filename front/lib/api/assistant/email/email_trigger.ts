@@ -26,6 +26,7 @@ import { filterAndSortAgents } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type { AgentFavoriteEnrichment } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -692,15 +693,18 @@ export async function userAndWorkspaceFromEmail({
   });
 }
 
-export function emailAssistantMatcher({
-  targetEmail,
-  allAgentConfigurations,
-  emailBlacklistedAgentIds,
-}: {
-  targetEmail: string;
-  allAgentConfigurations: AgentResource[];
-  emailBlacklistedAgentIds: Set<string>;
-}): Result<
+export function emailAssistantMatcher(
+  {
+    targetEmail,
+    allAgentConfigurations,
+    emailBlacklistedAgentIds,
+  }: {
+    targetEmail: string;
+    allAgentConfigurations: AgentResource[];
+    emailBlacklistedAgentIds: Set<string>;
+  },
+  favorites: Map<string, AgentFavoriteEnrichment>
+): Result<
   {
     agentConfiguration: AgentResource;
   },
@@ -710,7 +714,8 @@ export function emailAssistantMatcher({
 
   const matchingAgents = filterAndSortAgents(
     allAgentConfigurations,
-    agentPrefix
+    agentPrefix,
+    favorites
   );
   if (matchingAgents.length === 0) {
     return new Err({

@@ -27,6 +27,7 @@ import { config as cellsConfig } from "@app/lib/api/cells/config";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { enrichWithFavorites } from "@app/lib/resources/agent_resource_serialization";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -276,14 +277,18 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
       }
 
       const allAgentConfigurations = await AgentResource.listReadable(auth);
+      const favorites = await enrichWithFavorites(auth, allAgentConfigurations);
 
       const agentConfigurations: AgentResource[] = [];
       for (const targetEmail of targetEmails) {
-        const matchResult = emailAssistantMatcher({
-          allAgentConfigurations,
-          emailBlacklistedAgentIds: emailBlacklistedAgentIdsRes.value,
-          targetEmail,
-        });
+        const matchResult = emailAssistantMatcher(
+          {
+            allAgentConfigurations,
+            emailBlacklistedAgentIds: emailBlacklistedAgentIdsRes.value,
+            targetEmail,
+          },
+          favorites
+        );
         if (matchResult.isErr()) {
           await replyToError(email, matchResult.error, errorLogContext);
           continue;
