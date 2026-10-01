@@ -11,8 +11,6 @@ import {
 } from "@app/types/assistant/triggers";
 import { editorUserSchema } from "@app/types/editors";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
-import { createContext } from "react";
-import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
@@ -173,6 +171,3 @@ export interface MCPFormData {
     _jsonSchemaString: string | null;
   };
 }
-
-export const AgentBuilderFormContext =
-  createContext<UseFormReturn<AgentBuilderFormData> | null>(null);
