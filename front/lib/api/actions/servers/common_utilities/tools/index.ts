@@ -145,9 +145,10 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
     { read, conversationId: conversationIdParam },
     { auth, runContext }
   ) => {
-    const conversationId =
-      conversationIdParam ??
-      (isAgentLoopRunContext(runContext) ? runContext.conversation.sId : null);
+    const currentConversationId = isAgentLoopRunContext(runContext)
+      ? runContext.conversation.sId
+      : null;
+    const conversationId = conversationIdParam ?? currentConversationId;
 
     if (!conversationId) {
       return new Err(
@@ -180,6 +181,11 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
       if (conversation.unread) {
         const markRes = await ConversationResource.markAsReadForAuthUser(auth, {
           conversation,
+          lastReadAt:
+            // 1 minute from now for now as the agent is currently acting in the conversation
+            currentConversationId === conversationId
+              ? new Date(Date.now() + 60 * 1000)
+              : undefined,
         });
         if (markRes.isErr()) {
           return new Err(
