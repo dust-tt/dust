@@ -108,7 +108,6 @@
   "sequelize",
   "sharp",
   "slackify-markdown",
-  "snowflake-sdk",
   "sqids",
   "stripe",
   "swr",
