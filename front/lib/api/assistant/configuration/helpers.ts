@@ -239,9 +239,9 @@ export async function toAgentConfigurationsWithSkills(
   // Only `sId` and `name` reach the wire, so skip the instructions, tools and file attachments:
   // see the `labels-only-skips-dynamic-instructions` contract.
   const [workspaceAgentSkills, codeDefinedSkills] = await Promise.all([
-    SkillResource.listByAgentConfigurations(
+    SkillResource.listByAgentConfigurationModelIds(
       auth,
-      workspaceAgents,
+      workspaceAgents.map((agent) => agent.id),
       LABELS_ONLY_FETCH_OPTIONS
     ),
     SkillResource.fetchByIds(
@@ -255,10 +255,9 @@ export async function toAgentConfigurationsWithSkills(
   // pass several of them. `version` is unique within an agent id, and the
   // version is a number, so the two parts cannot run together ambiguously.
   const skillsByConfiguration: Record<string, SkillResource[]> = {};
-  for (const { agentConfiguration, skill } of workspaceAgentSkills) {
-    (skillsByConfiguration[configurationKey(agentConfiguration)] ??= []).push(
-      skill
-    );
+  for (const agent of workspaceAgents) {
+    skillsByConfiguration[configurationKey(agent)] =
+      workspaceAgentSkills.get(agent.id) ?? [];
   }
 
   const codeDefinedSkillById = new Map(

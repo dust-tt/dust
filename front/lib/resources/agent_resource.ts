@@ -1247,13 +1247,12 @@ export class AgentResource
   }
 
   /**
-   * @cc [owner:tdraier,label:security;product] list-readable-agents
-   * Returns the active agents the caller can `read` (the ones they can mention and run), and no
-   * other: the default global agents (`listDefaultGlobalAgentIds`, which leaves out Sidekick,
-   * Reinforcement, model-only and retired agents) first in their default order, then custom agents
-   * in name order.
+   * @cc [owner:tdraier,label:security;product] list-active-agents
+   * Returns the active agents the caller can fetch, readable or not: the default global agents
+   * (`listDefaultGlobalAgentIds`) first in their default order, then custom agents in name order.
+   * Callers that surface the agents to be mentioned or run MUST use `listReadable` instead.
    */
-  static async listReadable(auth: Authenticator): Promise<AgentResource[]> {
+  static async listActive(auth: Authenticator): Promise<AgentResource[]> {
     const [globalAgents, customAgents] = await Promise.all([
       this.listGlobalAgents(auth),
       this.listByWorkspace(auth),
@@ -1262,17 +1261,35 @@ export class AgentResource
     return [
       ...globalAgents.filter((agent) => agent.status === "active"),
       ...customAgents.toSorted((a, b) => a.name.localeCompare(b.name)),
-    ].filter((agent) => auth.can("read", agent));
+    ];
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security;product] list-readable-agents
+   * Returns the agents of `listActive` (see `list-active-agents`, same order) the caller can
+   * `read` (the ones they can mention and run), and no other. The default global agents leave out
+   * Sidekick, Reinforcement, model-only and retired agents.
+   */
+  static async listReadable(auth: Authenticator): Promise<AgentResource[]> {
+    return (await this.listActive(auth)).filter((agent) =>
+      auth.can("read", agent)
+    );
   }
 
   // Every agent of the authed workspace whose current status is in `status` (active by default),
   // filtered to what the caller can fetch.
   static async listByWorkspace(
     auth: Authenticator,
-    { status = "active" }: { status?: AgentStatus | AgentStatus[] } = {}
+    {
+      status = "active",
+      scope,
+    }: {
+      status?: AgentStatus | AgentStatus[];
+      scope?: Exclude<AgentConfigurationScope, "global">;
+    } = {}
   ): Promise<AgentResource[]> {
     const agentIds = await this.listCurrentVersionAgentIds(auth, {
-      agentWhere: { status },
+      agentWhere: { status, ...(scope ? { scope } : {}) },
     });
     return this.fetchByIds(auth, agentIds);
   }
@@ -3161,19 +3178,12 @@ export class AgentResource
     auth: Authenticator,
     fetchContext: SkillFetchContext = {}
   ): Promise<SkillResource[]> {
-    if (this.scope === "global") {
-      return SkillResource.fetchByIds(
-        auth,
-        this._codeDefinedSkillIds,
-        fetchContext
-      );
-    }
-
-    return SkillResource.listByAgentConfigurationModelId(
+    const skillsByAgent = await SkillResource.listByAgents(
       auth,
-      this.agentConfigurationModelId,
+      [this],
       fetchContext
     );
+    return skillsByAgent.get(this) ?? [];
   }
 
   /**

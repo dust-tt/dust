@@ -278,3 +278,33 @@ export function toParticipantJSON(
     pictureUrl: resource.pictureUrl,
   };
 }
+
+export type PokeAgentSummaryJSON = {
+  agentId: string;
+  name: string;
+  description: string;
+  scope: AgentConfigurationType["scope"];
+  status: AgentConfigurationType["status"];
+  version: number;
+  versionCreatedAt: string | null;
+  instructionsLength: number;
+  requestedSpaceCount: number;
+};
+
+export function toPokeAgentSummaryJSON(
+  resource: AgentResource,
+  { instructionsLength }: { instructionsLength: number }
+): PokeAgentSummaryJSON {
+  const json = resource.toJSON();
+  return {
+    agentId: json.sId,
+    name: json.name,
+    description: json.description,
+    scope: json.scope,
+    status: json.status,
+    version: json.version,
+    versionCreatedAt: json.versionCreatedAt,
+    instructionsLength,
+    requestedSpaceCount: json.requestedSpaceIds.length,
+  };
+}

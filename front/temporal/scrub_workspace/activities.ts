@@ -1,4 +1,3 @@
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
 import {
@@ -43,7 +42,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { MAX_WORKSPACES_TO_DOWNGRADE_PER_RUN } from "@app/temporal/scrub_workspace/config";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -281,32 +279,18 @@ export async function deleteAllConversations(auth: Authenticator) {
 }
 
 async function archiveAssistants(auth: Authenticator) {
-  const agentConfigurations = await getAgentConfigurationsForView({
-    auth,
-    agentsGetView: "admin_internal",
-    variant: "light",
-  });
-
-  const agentConfigurationsToArchive = agentConfigurations.filter(
-    (ac) => !isGlobalAgentId(ac.sId)
-  );
-  for (const agentConfiguration of agentConfigurationsToArchive) {
-    const agentToArchive = await AgentResource.fetchById(
-      auth,
-      agentConfiguration.sId
-    );
-    if (agentToArchive) {
-      const archiveResult = await agentToArchive.archive(auth);
-      if (archiveResult.isErr()) {
-        logger.error(
-          {
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            agentConfigurationId: agentConfiguration.sId,
-            error: archiveResult.error,
-          },
-          "Failed to archive agent during workspace scrub"
-        );
-      }
+  const agentsToArchive = await AgentResource.listByWorkspace(auth);
+  for (const agentToArchive of agentsToArchive) {
+    const archiveResult = await agentToArchive.archive(auth);
+    if (archiveResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentConfigurationId: agentToArchive.sId,
+          error: archiveResult.error,
+        },
+        "Failed to archive agent during workspace scrub"
+      );
     }
   }
 }
