@@ -76,9 +76,16 @@ export function previewSkillSuggestions({
     agentFacingDescription:
       agentFacingDescription ?? skill.agentFacingDescription,
     userFacingDescription: userFacingDescription ?? skill.userFacingDescription,
-    fileAttachments: skill.fileAttachments.filter(
-      (file) => !removedFileIds.has(file.fileId)
-    ),
+    fileAttachments: [
+      ...skill.fileAttachments.filter(
+        (file) => !removedFileIds.has(file.fileId)
+      ),
+      // An added file has no id until the suggestion is applied: its path stands in for it.
+      ...(files?.addFilePaths ?? []).map((filePath) => ({
+        fileId: filePath,
+        fileName: filePath.split("/").pop() ?? filePath,
+      })),
+    ],
   };
 
   if (!instructionEdits?.length) {
