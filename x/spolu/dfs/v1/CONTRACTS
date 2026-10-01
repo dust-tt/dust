@@ -15,18 +15,19 @@ Synthetic entries MUST NOT be mutated. Inode parents MUST follow the visible pro
 hidden canonical ancestry. Missing and inaccessible objects MUST produce indistinguishable errors.
 
 @cc [owner:spolu,label:backend] atomic-filesystem-mutations
-Each mutation MUST atomically publish its blocks, object records, child entries, and both explicit
-grant indexes in one SlateDB batch. Reads MUST NOT observe a partial mutation. Shrink followed by
+Every filesystem mutation MUST atomically publish all affected blocks, object records, child entries,
+and explicit grant indexes in one SlateDB batch. Reads MUST NOT observe a partial mutation. Shrink followed by
 extension MUST return zeros for removed bytes. Renames MUST preserve object identity and reject cycles.
 
 @cc [owner:spolu,label:concurrency] compare-and-publish
-A mutation MUST compare expected versions under synchronization covering authorization and publication.
-A mismatch MUST publish nothing. Each changed object MUST advance its version once. Unrelated files
-MUST have independent versions. No automatic retry may replace a rejected expected version.
+Mutations of existing filesystem objects MUST compare expected versions under synchronization covering
+authorization and publication. A mismatch MUST publish nothing. Each changed, surviving object MUST
+advance its version once; new objects start at 1. Unrelated files MUST have independent versions. No automatic retry may replace a rejected expected version.
 
 @cc [owner:spolu,label:performance;backend] memory-acknowledgement
-Success MUST await SlateDB memory publication but MUST NOT await remote durability. Fsync MUST wait
-for preceding client writes and propagate errors without flushing SlateDB. SlateDB's internal WAL
+Successful filesystem/workspace mutation RPCs MUST await SlateDB memory publication but MUST NOT
+await remote durability. Fsync MUST wait for preceding client writes and propagate errors without
+flushing SlateDB. SlateDB's internal WAL
 MUST remain enabled. Recovery MUST retain complete batches only; losing recent acknowledgements is
 allowed. An application WAL, overlay, or persistence worker MUST NOT be introduced.
 

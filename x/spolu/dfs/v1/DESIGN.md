@@ -141,8 +141,8 @@ operation. Reads and `fsync` barriers do not create object mutations.
 ## Version conflicts
 
 Every mutation carries the expected version of each existing object it changes. A successful
-operation increments each affected object's version once; metadata, grants, and content all share
-that counter. File-content writes do not bump the parent directory. Namespace edits validate and
+operation increments each affected, surviving object's version once; new objects start at 1.
+Metadata, grants, and content all share that counter. File-content writes do not bump the parent directory. Namespace edits validate and
 bump their affected parents too; unrelated file writes have independent versions.
 
 Authorize before reporting versions. If any expected version differs, reject the entire operation

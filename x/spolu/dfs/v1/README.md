@@ -113,3 +113,21 @@ cargo fmt --all -- --check
 ```
 
 Tests use real SlateDB with memory/local object-store backends; the transport test runs real gRPC.
+
+## Performance benchmark
+
+Latest measurements: [bench/RESULTS.md](bench/RESULTS.md).
+
+With ADC access to the development bucket, run:
+
+```sh
+python3 bench/vfs.py
+```
+
+This runs jd's unchanged 10,000-file corpus and 24 workload measurements on local Linux storage,
+then dfs backed by a fresh GCS prefix. It measures untar and remaining persistence drain separately,
+restarts the server with discarded local caches, and mounts a fresh session before the DFS suite.
+The server restarts once before the suite, not between rows; later rows benefit from prior reads.
+Successful runs remove their own GCS fixture. Reports contain timings and logs, with credentials
+removed. `--local-store` runs the same harness with a local object-store backend for offline checks.
+Retained remote bytes measure the final object-store footprint, not cumulative upload amplification.

@@ -31,6 +31,7 @@ def main():
                     'expected_version': file['version'], 'data': [version] * (65536 + version * 7)})['object']
                 assert file['version'] == version
             last_acknowledged = file['version']
+            assert rpc(endpoint, owner['session_key'], 'fsync', {'object_id': file['id']})['version'] == last_acknowledged
             server.kill()
             server.wait(timeout=10)
             cache_directories = list((work / 'cache').iterdir())

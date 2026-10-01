@@ -9,5 +9,5 @@
 - [x] Runnable gRPC server, thin async/blocking client, operator CLI, and real transport test.
 - [x] Linux FUSE adapter.
 - [x] Real gRPC and two-mount filesystem tests, including grants, revocation, and version conflicts.
-- [ ] Cold GCS benchmark using jd's unchanged corpus/workloads; foreground and drain measurements.
-- [ ] Usage documentation, results, contract review, formatting, and native/Linux checks.
+- [x] Cold GCS benchmark using jd's unchanged corpus/workloads; foreground and drain measurements.
+- [x] Usage documentation, results, contract review, formatting, and native/Linux checks.
