@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import agentId from "./[aId]";
 import importRoute from "./import";
+import search from "./search";
 
 const ListAgentConfigurationsQuerySchema = z.object({
   view: z.enum(["admin_internal", "archived"]),
@@ -51,6 +52,7 @@ app.get(
 );
 
 app.route("/import", importRoute);
+app.route("/search", search);
 app.route("/:aId", agentId);
 
 export default app;

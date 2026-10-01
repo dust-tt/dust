@@ -47,6 +47,9 @@ export function matchesSkillSearchFilters(
       );
     });
   }
+  if (query.match_none) {
+    return false;
+  }
   assert(
     query.match_all ||
       query.multi_match ||

@@ -85,7 +85,7 @@ export function matchesAgentSearchFilters(
     return false;
   }
   assert(
-    query.match_all || query.multi_match,
+    query.match_all || query.multi_match || query.constant_score,
     "Unsupported agent search filter"
   );
   return true;
