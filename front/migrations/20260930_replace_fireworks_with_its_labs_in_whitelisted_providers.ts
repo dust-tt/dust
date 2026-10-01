@@ -5,6 +5,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import isEqual from "lodash/isEqual";
 import { Op, QueryTypes } from "sequelize";
 import { z } from "zod";
 
@@ -30,8 +31,15 @@ const WhitelistChangeSchema = z.object({
 });
 type WhitelistChange = z.infer<typeof WhitelistChangeSchema>;
 
-export function replaceFireworksWithItsLabs(before: string[]): string[] {
-  const kept = before.filter((entry) => entry !== HOST_TO_REPLACE);
+// With `keepFireworks`, only adds the labs: lets this run before whitelisting switches to labs,
+// with a second run without it removing fireworks once the switch is deployed.
+export function replaceFireworksWithItsLabs(
+  before: string[],
+  keepFireworks: boolean
+): string[] {
+  const kept = keepFireworks
+    ? before
+    : before.filter((entry) => entry !== HOST_TO_REPLACE);
   return [
     ...kept,
     ...FIREWORKS_SERVED_LABS.filter((lab) => !kept.includes(lab)),
@@ -81,6 +89,8 @@ async function writeWhitelists(
 type ReplaceFireworksWithItsLabsParams = {
   execute: boolean;
   logger: Logger;
+  // Add the labs but leave fireworks in place.
+  keepFireworks?: boolean;
   // Required with `execute`: every planned change is written there before any row is touched.
   backupFile?: string;
 };
@@ -88,6 +98,7 @@ type ReplaceFireworksWithItsLabsParams = {
 export async function replaceFireworksWithItsLabsInWhitelistedProviders({
   execute,
   logger,
+  keepFireworks = false,
   backupFile,
 }: ReplaceFireworksWithItsLabsParams): Promise<{
   updated: WhitelistChange[];
@@ -110,21 +121,25 @@ export async function replaceFireworksWithItsLabsInWhitelistedProviders({
   const deepseekWithoutFireworks: string[] = [];
   for (const { sId, whiteListedProviders } of rows) {
     const before: string[] = whiteListedProviders ?? [];
-    if (before.includes(HOST_TO_REPLACE)) {
-      updated.push({
-        workspaceId: sId,
-        before,
-        after: replaceFireworksWithItsLabs(before),
-      });
+    if (!before.includes(HOST_TO_REPLACE)) {
+      deepseekWithoutFireworks.push(sId);
       continue;
     }
-    deepseekWithoutFireworks.push(sId);
+    const after = replaceFireworksWithItsLabs(before, keepFireworks);
+    // Only with `keepFireworks`: every lab is already there.
+    if (isEqual(after, before)) {
+      continue;
+    }
+    updated.push({ workspaceId: sId, before, after });
   }
 
+  const action = keepFireworks
+    ? `add ${HOST_TO_REPLACE}'s labs`
+    : `replace ${HOST_TO_REPLACE} with its labs`;
   for (const change of updated) {
     logger.info(
       change,
-      `${execute ? "Replacing" : "[DRY RUN] Would replace"} ${HOST_TO_REPLACE} with its labs in workspace ${change.workspaceId}.`
+      `${execute ? "Will" : "[DRY RUN] Would"} ${action} in workspace ${change.workspaceId}.`
     );
   }
   // Not rewritten: whitelisting the DeepSeek lab will also grant DeepSeek models served by
@@ -138,6 +153,7 @@ export async function replaceFireworksWithItsLabsInWhitelistedProviders({
   logger.info(
     {
       fireworksLabs: FIREWORKS_SERVED_LABS,
+      keepFireworks,
       updatedCount: updated.length,
       deepseekWithoutFireworksCount: deepseekWithoutFireworks.length,
     },
@@ -214,12 +230,17 @@ function runScript(): void {
         type: "string",
         describe: "Where to write the changes before executing them",
       },
+      keepFireworks: {
+        type: "boolean",
+        default: false,
+        describe: "Add fireworks' labs without removing fireworks",
+      },
       rollbackFrom: {
         type: "string",
         describe: "Restore the whitelists saved in this backup file",
       },
     },
-    async ({ execute, backupFile, rollbackFrom }, logger) => {
+    async ({ execute, backupFile, keepFireworks, rollbackFrom }, logger) => {
       if (rollbackFrom) {
         await restoreWhitelistsFromBackup({
           execute,
@@ -231,6 +252,7 @@ function runScript(): void {
       await replaceFireworksWithItsLabsInWhitelistedProviders({
         execute,
         logger,
+        keepFireworks,
         backupFile,
       });
     }

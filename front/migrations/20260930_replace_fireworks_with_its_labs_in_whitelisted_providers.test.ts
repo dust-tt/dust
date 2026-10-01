@@ -46,12 +46,14 @@ async function makeBackupFile(): Promise<string> {
 async function runMigration(
   execute: boolean,
   workspace: LightWorkspaceType,
-  backupFile?: string
+  backupFile?: string,
+  keepFireworks = false
 ) {
   const { updated, deepseekWithoutFireworks } =
     await replaceFireworksWithItsLabsInWhitelistedProviders({
       execute,
       logger,
+      keepFireworks,
       backupFile: backupFile ?? (await makeBackupFile()),
     });
   const change = updated.find((c) => c.workspaceId === workspace.sId);
@@ -123,6 +125,36 @@ describe("replaceFireworksWithItsLabsInWhitelistedProviders", () => {
 
     expect(firstRun.change).toBeDefined();
     expect(secondRun.change).toBeUndefined();
+  });
+
+  it("adds the labs and keeps fireworks with keepFireworks", async () => {
+    const workspace = await makeWorkspace(["openai", "fireworks"]);
+    const expected = ["openai", "fireworks", ...FIREWORKS_SERVED_LABS];
+
+    await runMigration(true, workspace, undefined, true);
+
+    expect(await readStoredWhitelist(workspace)).toEqual(expected);
+  });
+
+  it("skips the workspace on a second keepFireworks run, every lab being there", async () => {
+    const workspace = await makeWorkspace(["openai", "fireworks"]);
+
+    await runMigration(true, workspace, undefined, true);
+    const secondRun = await runMigration(true, workspace, undefined, true);
+
+    expect(secondRun.change).toBeUndefined();
+  });
+
+  it("removes fireworks on a run without keepFireworks after a keepFireworks run", async () => {
+    const workspace = await makeWorkspace(["openai", "fireworks"]);
+
+    await runMigration(true, workspace, undefined, true);
+    await runMigration(true, workspace);
+
+    expect(await readStoredWhitelist(workspace)).toEqual([
+      "openai",
+      ...FIREWORKS_SERVED_LABS,
+    ]);
   });
 
   it("reports a workspace whitelisting deepseek without fireworks, without rewriting it", async () => {
